@@ -62,7 +62,7 @@ Roles describe accountabilities; they do not require separate teams or people in
 | GAEP Product Research Owner | Problem, usability, outcome, burden, and alternative evidence | Approval of findings without method review |
 | GAEP Specification Steward | Coherence, terminology, requirement IDs, dependency integrity, and release assembly | Product-value approval or local policy authority |
 | GAEP Core Subject Owner | One bounded Core semantic area and its compatibility | Ownership of every profile using that subject |
-| GAEP Profile Owner | Applicability, obligations, evidence, and evolution of a profile | Permission to weaken Core invariants |
+| GAEP Profile Specification Steward | Semantic meaning of one Profile's applicability rules, obligations, evidence contract, conformance, and evolution | Authority to select the Profile for a scope or permission to weaken Core invariants |
 | GAEP Conformance Authority | Defined conformance evaluation and result | Product certification beyond declared authority |
 | GAEP Decision and Authorization Steward | Integrity and separation of Decision, Approval, Gate Evaluation, Authorization Grant, and effect boundaries | Authority to select an outcome or grant permission solely by maintaining the process |
 | GAEP Identity and Authority Steward | Role taxonomy, assignments, delegation, and accountable-human chains | Authority outside a valid assignment |
@@ -142,7 +142,8 @@ Release assembly does not create missing substantive authority.
 | Product investment | GAEP Investment Sponsor | Outcomes, burden, economics, risks, alternatives | May condition scope and budget |
 | Constitutional amendment | GAEP Constitutional Owner | Specification, product, risk, compatibility, and affected authorities | Version-bound constitutional approval |
 | Core requirement change | GAEP Core Subject Owner within delegated process | Profile impact, conformance, migration, scenarios | Release approval |
-| Profile adoption or change | GAEP Profile Owner | Core conformance, user burden, evidence, affected initiatives | Organizational or initiative binding |
+| Profile semantic change | GAEP Profile Specification Steward | Core conformance, user burden, evidence, affected initiatives, and compatibility | Release approval; does not select the Profile for a scope |
+| Profile selection or adoption | Applicable domain decision authority and GAEP Initiative Owner | Profile Selection Manifest, applicability evidence, conflicts, burden, and affected participants | Organizational or initiative binding |
 | Conformance result | GAEP Conformance Authority | Declared method, evidence, deviations | Certification or mark authority if any |
 | Public product claim | GAEP Product Owner | Claim evidence and distribution review | Legal, brand, or publication authority |
 | Research data use | GAEP Product Research Owner | Consent, privacy, security, retention, affected participants | GAEP Data, Privacy, and Records Authority |

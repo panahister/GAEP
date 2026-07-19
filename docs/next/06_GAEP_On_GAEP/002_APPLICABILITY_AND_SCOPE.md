@@ -26,7 +26,7 @@ supersedes: []
 
 ## Manifest status
 
-Manifest ID: `urn:gaep:candidate:effective-profile-manifest:vnext-working`
+Profile Selection Manifest ID: `urn:gaep:candidate:profile-selection-manifest:vnext-working`
 
 Manifest result: `unresolved`.
 
@@ -49,7 +49,7 @@ This manifest deliberately separates selection obligation, Core resolution resul
 | Candidate subject/version | Obligation | Core resolution result | Fulfillment evidence | Selection authority | Current blockers |
 |---|---|---|---|---|---|
 | Product Development `GAEP-PROF-001@0.1.0` | required | unresolved | candidate profile exists; not effective | Product Governance Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | first segment/user/workflow unvalidated |
-| Reusable Asset Change `GAEP-PROF-007@0.1.0` | required | unresolved | candidate profile exists; not effective | Capability Steward, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | consumer and compatibility model not piloted |
+| Reusable Asset Change `GAEP-PROF-007@0.1.0` | required | unresolved | candidate profile exists; not effective | Engineering Change Authority, unassigned; Capability Steward consultation plus concrete Principal assignment and authority pending `GAEP-DEC-018` | consumer and compatibility model not piloted |
 | Architecture `GAEP-PROF-008@0.1.0` | required | unresolved | candidate profile exists; not effective | Architecture Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | approved quality-attribute scenarios missing |
 | Assurance `GAEP-PROF-009@0.1.0` | required | unresolved | candidate profile exists; not effective | Assurance Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | evidence-strength and critical-claim decisions pending |
 | Platform Security `GAEP-PROF-010@0.1.0` | required | unresolved | candidate threat model exists; profile not effective | Security Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | deployment boundary and residual-risk authority missing |

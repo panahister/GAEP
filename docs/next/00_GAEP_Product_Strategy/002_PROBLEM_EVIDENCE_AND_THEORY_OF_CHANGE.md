@@ -171,7 +171,7 @@ Compare GAEP with the actual incumbent workflow. When feasible, use matched chan
 
 ### 5. Product and non-product cases
 
-Use at least one Product initiative and one bounded non-Product initiative before claiming initiative neutrality. The cases should share the Core semantics but differ in applicable profiles.
+Use at least one bounded Initiative targeting a Product Managed Asset and one bounded Initiative targeting a non-Product Managed Asset before claiming Initiative neutrality. The cases should share the Core semantics but differ in applicable Profiles.
 
 ### 6. Adversarial scenarios
 

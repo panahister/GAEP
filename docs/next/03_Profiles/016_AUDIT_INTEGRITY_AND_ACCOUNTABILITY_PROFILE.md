@@ -40,11 +40,11 @@ GAEP-CORE-004 owns Event Envelopes and State Dimensions; GAEP-CORE-008 owns trac
 
 ## Selection
 
-Select when material decisions, approvals, authorizations, Confirmations, privileged actions, external or destructive effects, regulated records, incident custody, or accountability claims require completeness criteria, trusted ordering, tamper or loss detection, end-to-end reconstruction, controlled correction, or independent challenge. Record the selecting principal, governed subjects, actors, event classes, environments, purposes, authorities, consequence, exclusions, and exact profile revision.
+Select when material decisions, approvals, authorizations, Confirmations, privileged actions, external or destructive effects, regulated records, incident custody, or accountability claims require completeness criteria, trusted ordering, tamper or loss detection, end-to-end reconstruction, controlled correction, or independent challenge. Record the selecting principal, governed subjects, actors, event types, environments, purposes, authorities, consequence, exclusions, and exact profile revision.
 
 ## Audit model
 
-An audit scope declares required event classes and transitions, capture points, expected volumes and ordering, correlation and canonical identities, authoritative sources, trusted-time properties, integrity controls, loss and tamper detection, custody, access, privacy, retention, correction, reconstruction questions, challenge paths, and review cadence. A completeness claim is always bounded to this declared scope.
+An audit scope declares required event types and transitions, capture points, expected volumes and ordering, correlation and canonical identities, authoritative sources, trusted-time properties, integrity controls, loss and tamper detection, custody, access, privacy, retention, correction, reconstruction questions, challenge paths, and review cadence. A completeness claim is always bounded to this declared scope.
 
 ## Requirements
 
@@ -76,7 +76,7 @@ An audit scope declares required event classes and transitions, capture points, 
 | Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the manifest identifies Audit Authority plus event, data, security, records, and challenge authorities, evidence methods, review cadence, retention, reconstruction exercises, and control-test schedule. |
 | Conformance | Conformance requires an exact manifest, audit scope and coverage model, requirement and negative-case evidence, integrity and time limits, deviations, detected gaps, challenge status, and unresolved obligations. |
 | Compatibility and conflicts | Conflicts among auditability, minimization, privacy, legal hold, correction, deletion, confidentiality, access, and security remain explicit and identify controlling authorities; audit preference alone does not override them. |
-| Invalidation, migration, deprecation, and expiry | Change to scope, purpose, actor, event class, schema, source, clock, integrity control, storage, access, retention, policy, reconstruction need, or observed gap reopens conformance. Profile evolution preserves schema, event, correction, integrity, custody, retention, migration, and historical reconstruction mappings. |
+| Invalidation, migration, deprecation, and expiry | Change to scope, purpose, actor, event type, schema, source, clock, integrity control, storage, access, retention, policy, reconstruction need, or observed gap reopens conformance. Profile evolution preserves schema, event, correction, integrity, custody, retention, migration, and historical reconstruction mappings. |
 
 | Requirement ID | Requirement | Verification |
 |---|---|---|

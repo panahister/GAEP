@@ -87,7 +87,7 @@ Every row has Decision authoring lifecycle `draft` and Decision Outcome `unresol
 | Source decision | Roll-up Decision Record | Candidate accountable role and authority status | Evidence and disposition route |
 |---|---|---|---|
 | GAEP-STR-SCP-DEC-001 | GAEP-DEC-005 | GAEP Specification Steward and GAEP Core Subject Owners; unassigned | minimum Core trace, scenarios, and non-duplication review; Complexity and Subtraction Gate |
-| GAEP-STR-SCP-DEC-002 | GAEP-DEC-002, GAEP-DEC-005 | GAEP Product Owner and GAEP Profile Owners; unassigned | first-workflow applicability and burden evidence; Pilot Readiness Gate |
+| GAEP-STR-SCP-DEC-002 | GAEP-DEC-002, GAEP-DEC-005 | GAEP Product Owner, applicable domain authorities, and GAEP Profile Specification Steward; unassigned | first-workflow applicability and burden evidence; Pilot Readiness Gate |
 | GAEP-STR-SCP-DEC-003 | GAEP-DEC-006 | GAEP Workspace Steward; unassigned | manual representation, portability, and no-double-entry evidence; Pilot Readiness Gate |
 | GAEP-STR-SCP-DEC-004 | GAEP-DEC-006, GAEP-DEC-013 | GAEP Workspace Steward and GAEP Data, Privacy, and Records Authority; unassigned | source authority, access, classification, freshness, and retention; Pilot Readiness Gate |
 | GAEP-STR-SCP-DEC-005 | GAEP-DEC-009, GAEP-DEC-015 | GAEP Assurance Authority and GAEP AI System Authority; unassigned | deterministic-control boundary and AI trial prerequisites; Pilot Readiness Gate |
@@ -100,7 +100,7 @@ Every row has Decision authoring lifecycle `draft` and Decision Outcome `unresol
 |---|---|---|---|
 | GAEP-STR-MET-DEC-001 | GAEP-DEC-017 | GAEP Product Owner and GAEP Metric Integrity Owner; unassigned | primary outcome and balanced countermetric decision; Pilot Readiness Gate |
 | GAEP-STR-MET-DEC-002 | GAEP-DEC-017 | GAEP Product Research Owner and GAEP Metric Integrity Owner; unassigned | baseline window, case selection, confounders, and comparison method; Pilot Readiness Gate |
-| GAEP-STR-MET-DEC-003 | GAEP-DEC-017 | GAEP Product Owner and GAEP Profile Owners; unassigned | role/risk-segmented burden budgets; Pilot Readiness and Complexity Gates |
+| GAEP-STR-MET-DEC-003 | GAEP-DEC-017 | GAEP Product Owner, applicable domain authorities, and GAEP Profile Specification Steward; unassigned | role/risk-segmented burden budgets; Pilot Readiness and Complexity Gates |
 | GAEP-STR-MET-DEC-004 | GAEP-DEC-017, GAEP-DEC-019 | GAEP Investment Sponsor and GAEP Metric Integrity Owner; unassigned | predeclared thresholds inform a Decision but do not authorize activity; Implementation Readiness Gate |
 | GAEP-STR-MET-DEC-005 | GAEP-DEC-017, GAEP-DEC-018 | GAEP Metric Integrity Owner and GAEP Assurance Authority; unassigned | metric authority, independence, quality, and reporting controls; Pilot Readiness Gate |
 | GAEP-STR-MET-DEC-006 | GAEP-DEC-013, GAEP-DEC-017 | GAEP Data, Privacy, and Records Authority; unassigned | purpose, granularity, access, retention, deletion, and prohibited reuse; Pilot Readiness Gate |

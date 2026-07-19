@@ -51,7 +51,7 @@ An outcome may be satisfied locally, through approved reuse, or declared not app
 
 | Requirement ID | Requirement | Verification |
 |---|---|---|
-| GAEP-PROD-REQ-001 | A Product Initiative SHALL identify the managed Product asset, affected baselines, target users, problem evidence, intended outcomes, scope and non-goals. | Charter review |
+| GAEP-PROD-REQ-001 | A bounded Initiative targeting a Product Managed Asset SHALL identify the exact Product Managed Asset, affected baselines, target users, problem evidence, intended outcomes, scope and non-goals. | Charter review |
 | GAEP-PROD-REQ-002 | Product value and user claims SHALL be labeled as evidence-backed, assumed, inferred, or unknown. | Evidence trace review |
 | GAEP-PROD-REQ-003 | The selected workflow SHALL identify source authorities and SHALL avoid unowned double entry. | Service/workflow blueprint |
 | GAEP-PROD-REQ-004 | Architecture, quality, security, privacy, AI, operational and legal obligations SHALL be selected proportionately through explicit profiles or applicability decisions. | Effective-profile review |

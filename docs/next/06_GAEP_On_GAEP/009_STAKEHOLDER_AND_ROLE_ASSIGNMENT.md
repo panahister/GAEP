@@ -36,7 +36,7 @@ This is a role-type catalog, not an Authority Assignment. Every current assignme
 | GAEP Distribution and Ecosystem Owner | distribution mode, contribution, conformance marks and ecosystem boundary | unassigned |
 | GAEP Specification Steward | corpus integrity, terminology, requirements, compatibility and baseline coordination | unassigned; an acting author is not an Authority Assignment |
 | GAEP Core Subject Owner | one bounded Core semantic subject and compatibility obligations | unassigned by subject |
-| GAEP Profile Owner | one Profile's applicability, obligations, evidence and evolution | unassigned by profile; existing profile owner labels require mapping |
+| GAEP Profile Specification Steward | one Profile's semantic applicability rules, obligations, evidence contract, conformance and evolution | unassigned by profile; selection authority remains separate |
 | GAEP Conformance Authority | declared conformance evaluation and result | unassigned |
 | GAEP Identity and Authority Steward | role taxonomy, assignments, delegation and accountable-human chains | unassigned |
 | GAEP Assurance Authority | critical claims, evidence rules, assurance evaluation and gate method | unassigned |
@@ -58,18 +58,18 @@ This is a role-type catalog, not an Authority Assignment. Every current assignme
 
 ## Existing profile-role label crosswalk
 
-The Profile documents use domain-role labels that now resolve in the candidate owner-role registry. The mappings below expose proposed GAEP-specific operating aliases to those generic Profile roles. They remain recommendations under `GAEP-DEC-018`, not silent renames, Principal assignments, or authority grants.
+Profile metadata now names `GAEP Profile Specification Steward` for semantic stewardship. The applicability contracts separately use domain-role labels for selection, approval, assessment, or operational decisions. The mappings below expose proposed GAEP-specific operating aliases for those domain roles. They remain recommendations under `GAEP-DEC-018`, not silent renames, Principal assignments, or authority grants.
 
 | Existing profile label | Candidate canonical role | Current disposition |
 |---|---|---|
-| Product Governance Authority | GAEP Profile Owner, with GAEP Product Owner consultation | mapping unresolved |
-| Engineering Change Authority | GAEP Profile Owner, with GAEP Initiative Owner authority | mapping unresolved |
-| Migration Authority | GAEP Profile Owner, with GAEP Initiative Owner authority | mapping unresolved |
+| Product Governance Authority | GAEP Product Owner plus scoped local governance authority | mapping unresolved |
+| Engineering Change Authority | GAEP Initiative Owner plus scoped engineering authority | mapping unresolved |
+| Migration Authority | GAEP Initiative Owner plus scoped migration authority | mapping unresolved |
 | Security Authority | GAEP Security Authority | mapping unresolved |
 | Operational Authority | GAEP Operational Authority | mapping unresolved |
-| Experiment Authority | GAEP Profile Owner, with GAEP Product Research Owner consultation | mapping unresolved |
-| Capability Steward | GAEP Profile Owner, with GAEP Specification Steward consultation | mapping unresolved |
-| Architecture Authority | GAEP Profile Owner for the Architecture Profile | mapping unresolved |
+| Experiment Authority | GAEP Product Research Owner plus scoped experiment authority | mapping unresolved |
+| Capability Steward | GAEP Profile Specification Steward consultation; a separate selection authority is required | mapping unresolved |
+| Architecture Authority | GAEP Initiative Owner plus scoped architecture authority | mapping unresolved |
 | Assurance Authority | GAEP Assurance Authority | mapping unresolved |
 | Data and Privacy Authority | GAEP Data, Privacy, and Records Authority | mapping unresolved |
 | AI System Authority | GAEP AI System Authority | mapping unresolved |
