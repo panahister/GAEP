@@ -115,7 +115,7 @@ An extension remains namespaced. It cannot be represented as a canonical Core ca
 | GAEP-ADAPT-REQ-017 | An adapter SHALL declare model/provider data-use, retention, deletion, residency, human-access, training-use, subprocessors, and isolation facts as observed, provider-declared, configured, inferred, or unknown. | Data-boundary review |
 | GAEP-ADAPT-REQ-018 | Unsupported identity, revocation, evidence, data, or effect semantics SHALL fail closed for the affected operation unless an approved, scoped policy exception explicitly permits a safe alternative. | Degraded-mode negative test |
 | GAEP-ADAPT-REQ-019 | Evaluation validity SHALL identify the exact subject, environment, scenarios, evidence, evaluator, time, limitations, expiry or review trigger, and invalidating changes. | Evaluation-record review |
-| GAEP-ADAPT-REQ-020 | Activation SHALL bind an evaluated adapter environment to an allowed scope, capabilities, data classes, effect classes, principals, validity interval, and revocation conditions. | Activation-boundary test |
+| GAEP-ADAPT-REQ-020 | Activation SHALL bind an evaluated adapter environment to an allowed scope, capabilities, data classes, applicable effect-descriptor sets, principals, validity interval, and revocation conditions. | Activation-boundary test |
 | GAEP-ADAPT-REQ-021 | Provider, model, tool, prompt-policy, extension, or environment fallback SHALL NOT occur silently when the fallback changes authority, data handling, semantics, assurance, cost, or effect behavior. | Fallback scenario |
 | GAEP-ADAPT-REQ-022 | Adapter retirement SHALL preserve interpretable records, provide migration or export guidance, revoke future selection, and identify residual retention or deletion obligations. | Retirement exercise |
 

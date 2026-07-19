@@ -35,13 +35,13 @@ supersedes: []
 
 ## Purpose
 
-This gate evaluates whether an exact GAEP candidate version set is ready to enter a formal Approval Case and, if approved, receive Baseline Set designation. A passing gate is not the Approval Determination and does not supersede legacy documents by itself.
+This gate evaluates whether one exact Candidate Revision Set revision is ready to support a Baseline Proposal and enter a formal Approval Case. If the proposal is approved, a separate authorized designation may create a Baseline Set. A passing gate is not a Baseline Proposal, Approval Determination, Authorization Grant, or Baseline Set and does not supersede legacy documents by itself.
 
 ## Requirements
 
 | Requirement ID | Required condition | Evidence |
 |---|---|---|
-| GAEP-BASE-READY-REQ-001 | The candidate Baseline Set SHALL enumerate exact document and registry revisions or content digests. | Baseline manifest |
+| GAEP-BASE-READY-REQ-001 | The Candidate Revision Set SHALL enumerate exact document and registry revisions or immutable content digests and SHALL have one exact immutable set revision. | Candidate Revision Set manifest |
 | GAEP-BASE-READY-REQ-002 | Product identity, first workflow, scope, non-goals, operating ownership, distribution, license and contribution decisions SHALL have explicit outcomes or approved blockers. | Product decision package |
 | GAEP-BASE-READY-REQ-003 | Every document SHALL have valid metadata, owner, normative level, dependencies, approval state and migration disposition. | Structural validation |
 | GAEP-BASE-READY-REQ-004 | Document IDs, requirement IDs, registry values and normative dependency graphs SHALL be unique, valid and acyclic. | Conformance report |
@@ -57,4 +57,4 @@ This gate evaluates whether an exact GAEP candidate version set is ready to ente
 
 ## Evaluation, approval, and designation
 
-The Gate Evaluation produces the Core gate result. If the result is `passed` or `conditionally-passed`, the designated authorities may consider a separate Approval Case. Only an approved Approval Determination and valid Authorization Grant may designate the exact set as a Baseline Set or supersede a prior set.
+The Gate Evaluation produces the Core gate result. If the result is `passed` or `conditionally-passed`, the designated proposer may create a Baseline Proposal that references the exact Candidate Revision Set revision, proposed authority scope, purpose, release, environment, and validity. The designated authorities may then consider a separate Approval Case for that proposal. Only an approved Approval Determination and valid Authorization Grant may create the Baseline Set designation or supersede a prior set.

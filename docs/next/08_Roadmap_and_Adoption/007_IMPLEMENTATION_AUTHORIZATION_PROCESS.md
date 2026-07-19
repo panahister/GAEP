@@ -46,7 +46,7 @@ One grant may cover several boundaries only when each is explicit and supported.
 
 | Requirement ID | Requirement | Verification |
 |---|---|---|
-| GAEP-IMPL-AUTH-REQ-001 | An Implementation Approval Case SHALL reference the exact readiness Gate Evaluation, product Decision Outcome, candidate Baseline Set, slice charter, threat model, assurance evidence, risks and obligations. | Approval package review |
+| GAEP-IMPL-AUTH-REQ-001 | An Implementation Approval Case SHALL reference the exact readiness Gate Evaluation, product Decision Outcome, approved Baseline Set, slice charter, threat model, assurance evidence, risks and obligations. | Approval package review |
 | GAEP-IMPL-AUTH-REQ-002 | The Approval Determination SHALL remain distinct from the Authorization Grant and SHALL identify any conditions that must become enforceable obligations. | Record separation review |
 | GAEP-IMPL-AUTH-REQ-003 | Each Authorization Grant SHALL identify exact subject, activity/effect boundary, principal, environment, capability or plan version, scope, budget, effective time, expiry, revocation, conditions, evidence and recovery expectations. | Grant validation |
 | GAEP-IMPL-AUTH-REQ-004 | A material change to baseline, slice scope, architecture, data, provider, capability, risk, policy, profile or evidence SHALL trigger declared re-evaluation or re-authorization. | Change scenario |
@@ -57,4 +57,3 @@ One grant may cover several boundaries only when each is explicit and supported.
 ## Current state
 
 No Implementation Approval Case, Approval Determination or Authorization Grant exists. All implementation boundaries therefore remain unauthorized.
-

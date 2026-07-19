@@ -73,7 +73,7 @@ No Work Item or Implementation Unit is declared in this pre-implementation docum
 | Initiative type | Product-definition and specification redesign |
 | Current phase | Pre-implementation discovery and paper specification |
 | Legacy observed baseline | Git commit `29312cf841c9c462431cfc64ea38a49eb3e9a0e5`; legacy documents remain Draft |
-| Candidate revision | Uncommitted working tree; no candidate Baseline Set exists |
+| Candidate revision | Uncommitted working tree; no immutable Candidate Revision Set, Baseline Proposal, or Baseline Set exists |
 | Current permission boundary | Documentation creation, documentation correction, local validation, and read-only research requested by the repository owner |
 | Explicitly unauthorized | Product/runtime code, external integration, procurement, release, deployment, production data, organizational mandate, baseline designation, or conformance claims |
 | GAEP Investment Sponsor | Unassigned; requires accountable identity and Authority Assignment |

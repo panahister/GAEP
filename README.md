@@ -9,6 +9,8 @@ GAEP is currently a pre-implementation body of work for governed human-AI engine
 
 Neither corpus is an approved implementation baseline. The candidate remains `proposed` until the GAEP-on-GAEP readiness and approval process is completed.
 
+“Candidate baseline” is an informal working-corpus label. It does not mean that a Core Candidate Revision Set, Baseline Proposal, Approval Determination, or Baseline Set already exists.
+
 ## Recommended starting points
 
 1. Read the candidate [orientation](docs/next/000_READ_FIRST.md).

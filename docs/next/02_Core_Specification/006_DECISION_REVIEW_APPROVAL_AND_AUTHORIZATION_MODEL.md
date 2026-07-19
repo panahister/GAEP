@@ -233,7 +233,7 @@ An Authorization Grant contains:
 - permitted Principal or role;
 - allowed action types;
 - exact subject revisions, resource selectors, and scope;
-- permitted effect class and destination;
+- permitted effect-descriptor set and destinations;
 - valid-from, expiry, use count, or single-use rule;
 - required current state and policy result;
 - Obligations, conditions, and confirmations;
@@ -312,7 +312,7 @@ Where a small organization combines roles, the Approval Case records the combina
 | GAEP-DRAA-REQ-020 | A materially changed Approval Case SHALL invalidate or reopen prior Responses according to policy before new dependent authorization. | Changed-subject scenario |
 | GAEP-DRAA-REQ-021 | Approval validity SHALL be re-evaluated when subject revision, policy, evidence, risk, authority, condition, or effective time changes materially. | Approval-staleness test |
 | GAEP-DRAA-REQ-022 | Revocation SHALL identify revoking Principal, authority, reason, effective time, affected scope, and downstream Authorization Grants or actions. | Revocation validation |
-| GAEP-DRAA-REQ-023 | Every Authorization Grant SHALL identify grantor, source authority, grantee, actions, exact target or selector, scope, effect class, validity, conditions, delegation, and invalidation triggers. | Grant-record validation |
+| GAEP-DRAA-REQ-023 | Every Authorization Grant SHALL identify grantor, source authority, grantee, actions, exact target or selector, scope, applicable effect-descriptor set, destinations, validity, conditions, delegation, and invalidation triggers. | Grant-record validation |
 | GAEP-DRAA-REQ-024 | An Authorization Grant SHALL NOT permit actions broader than its source standing Authority Grant, Role Assignment, Policy Evaluation, Approval Determination, Decision, Exception, or grantor authority. | Grant-amplification test |
 | GAEP-DRAA-REQ-025 | A material action SHALL revalidate applicable Authorization Grant, Principal, subject revision, state, policy, time, and unsatisfied blocking Obligations immediately before effect. | Action-time authorization test |
 | GAEP-DRAA-REQ-026 | Expired, revoked, suspended, consumed, invalidated, wrong-scope, or wrong-version Authorization Grants SHALL NOT permit new action. | Invalid-grant scenarios |

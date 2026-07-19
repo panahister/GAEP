@@ -73,7 +73,7 @@ A capability definition contains:
 - input, output, and context contracts;
 - required roles, qualifications, profiles, and effective configuration;
 - declared deterministic, probabilistic, human, and external responsibilities;
-- required tools, resources, data classes, permissions, and proposed effect classes;
+- required tools, resources, data classes, permissions, and proposed effect-descriptor set;
 - policy, risk, approval, review, evidence, assurance, and stop obligations;
 - expected failure modes, timeout, cancellation, retry, and recovery semantics;
 - evaluation evidence, compatibility, deprecation, and invalidation triggers.

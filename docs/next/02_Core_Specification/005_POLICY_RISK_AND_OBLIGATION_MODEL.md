@@ -84,7 +84,7 @@ GAEP-CORE-006 governs decisions and approvals that accept risk, grant exceptions
 A Policy Target may constrain:
 
 - Principal kind, identity, role, assignment, or authority source;
-- action type and effect class;
+- action type and applicable effect descriptors;
 - exact resource, Resource Type, revision, or classification;
 - Organization, Portfolio, Managed Asset, Initiative, Change, Implementation Unit, or Workspace;
 - lifecycle, validity, freshness, or operational state;

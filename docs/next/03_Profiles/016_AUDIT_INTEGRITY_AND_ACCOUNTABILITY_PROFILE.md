@@ -50,7 +50,7 @@ An audit scope declares required event classes and transitions, capture points, 
 
 | Requirement ID | Requirement | Verification |
 |---|---|---|
-| GAEP-AUDIT-REQ-001 | An audit scope SHALL identify governed subjects, actors, accountable principals, event and effect classes, transitions, systems, environments, purposes, authorities, capture boundaries, exclusions, and required reconstruction questions. | Audit-scope review |
+| GAEP-AUDIT-REQ-001 | An audit scope SHALL identify governed subjects, actors, accountable principals, event types, applicable effect descriptors, transitions, systems, environments, purposes, authorities, capture boundaries, exclusions, and required reconstruction questions. | Audit-scope review |
 | GAEP-AUDIT-REQ-002 | Each required audit record SHALL bind to the applicable GAEP-CORE-004 Event Envelope, canonical subject and actor identities, exact revisions, source, time evidence, correlation, action or transition, outcome, and relevant policy, profile, approval, authorization, Confirmation, exception, evidence, and effect references. | Audit-record validation |
 | GAEP-AUDIT-REQ-003 | An audit completeness claim SHALL define expected records, sequence or correlation constraints, coverage bounds, duplicate handling, and detection of missing, delayed, dropped, truncated, or unparseable records. | Completeness and loss scenarios |
 | GAEP-AUDIT-REQ-004 | Audit time evidence SHALL identify clock source, synchronization or trust basis, resolution, uncertainty, and ordering limits; unavailable trusted time SHALL remain explicit and SHALL NOT be represented as exact chronology. | Clock-skew and ordering test |

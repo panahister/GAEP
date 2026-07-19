@@ -177,4 +177,4 @@ The execution control boundary includes target resolution, authorization binding
 | GAEP-EER-OD-003 | Which trusted-time, event-ordering, and offline execution guarantees are required? | Affects reconciliation and audit portability. |
 | GAEP-EER-OD-004 | Which cumulative resource, duration, data, and cost budget dimensions are mandatory? | Affects decomposition abuse and denial-of-resource controls. |
 | GAEP-EER-OD-005 | What quarantine, emergency stop, break-glass, and manual-reconciliation semantics belong in Core versus profiles? | Affects incident containment and operational continuity. |
-| GAEP-EER-OD-006 | Which effect classes require logically separated preparation and commitment? | Affects irreversible-action control and runtime complexity. |
+| GAEP-EER-OD-006 | Which effect-descriptor combinations require logically separated preparation and commitment? | Affects irreversible-action control and runtime complexity. |

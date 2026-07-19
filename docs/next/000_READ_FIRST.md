@@ -26,6 +26,8 @@ supersedes: []
 
 This directory is a non-destructive candidate replacement for the current Draft corpus. It is not an approved GAEP baseline and does not authorize software implementation, procurement, integration, release, deployment, or organizational mandate.
 
+“Candidate baseline” is an informal working-corpus label in navigation and gate names. No immutable Candidate Revision Set, Baseline Proposal, Approval Determination, or Core Baseline Set currently exists.
+
 The existing documents remain available as research input. If a current document conflicts with this candidate, neither silently wins. The conflict must be recorded, decided, and bound to exact document versions before approval.
 
 ## Candidate product definition
