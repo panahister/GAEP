@@ -1,0 +1,11 @@
+.DS_Store
+**/.DS_Store
+
+# Local editor and temporary files
+*.swp
+*.swo
+*~
+
+# Candidate validation output
+.gaep-validation/
+
