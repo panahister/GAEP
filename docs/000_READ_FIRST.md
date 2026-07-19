@@ -1,199 +1,191 @@
-You are the lead documentation architect for the Governed AI Engineering Platform (GAEP).
+# Read First
 
-Your task is to author the document:
+**Governed AI Engineering Platform (GAEP)**\
+**Document ID:** GAEP-DOC-000\
+**Version:** 1.0\
+**Status:** Draft\
+**Authority:** Navigation and document-governance guide
 
-/docs/000_READ_FIRST.md
+## Purpose
 
-This is NOT a technical document.
+This repository defines the governance, knowledge, lifecycle, architecture, assurance, and runtime foundations of the Governed AI Engineering Platform (GAEP). It is organized as an authoritative knowledge system rather than a collection of unrelated documents.
 
-It is the entry point into the entire GAEP knowledge base.
+Read this file before creating, changing, approving, or generating any GAEP artifact.
 
-Every human contributor, AI agent (Codex, Claude Code, Cursor, etc.), architect, product manager, or engineer should begin by reading this document before opening any other file.
+## What GAEP Is
 
-The purpose of this document is to explain how the documentation is organized, how it should be navigated, and how readers should use it.
+GAEP is a vendor-, technology-, architecture-, tool-, and test-methodology-neutral platform for governing how artificial intelligence participates in engineering. Its generic unit of work is the **Engineering Initiative**, which may be a product, service, library, integration, migration, infrastructure capability, security improvement, defect fix, research activity, or another bounded engineering effort.
 
-The writing style must be professional, concise, and similar to CNCF, Kubernetes, OpenTelemetry, or major open-source projects.
+GAEP connects:
 
-Do not describe implementation details.
+- initiative intent, classification, scope, and applicability;
+- business, product, system, and implementation architecture where applicable;
+- requirements, contracts, data, identity, security, and operational decisions;
+- test methodology, acceptance conditions, test evidence, and readiness;
+- governed organizational assets, including commands, skills, patterns, templates, and boilerplates;
+- repository-visible state, decisions, traceability, approvals, and change history;
+- AI analysis, challenge, generation, validation, and execution;
+- accountable human judgment and Explicit Approval.
 
-Do not explain the platform architecture.
+GAEP does not replace professional judgment. It gives humans and AI agents a governed workspace in which context is persistent, applicable engineering rigor is explicit, decisions are traceable, and change is controlled.
 
-Instead, explain how to read the documentation.
+## What GAEP Is Not
 
-The document should contain at least the following sections:
+GAEP is not:
 
-# Welcome
+- an AI code generator or prompt library;
+- a single AI-DLC or fixed lifecycle methodology;
+- a wrapper around Codex, Claude Code, Cursor, or another vendor;
+- a product-only, web-only, UI-first, or Figma-dependent process;
+- a mandate for one programming language, framework, database, cache, broker, architecture style, or test methodology;
+- a replacement for product, architecture, security, quality, engineering, or operational accountability;
+- an excuse to automate consequential decisions without human authority;
+- a repository layout without an operating model.
 
-Introduce GAEP in one or two paragraphs.
+AI-DLC and similar approaches may be integrated as execution methods. They do not define the platform.
 
-Explain that GAEP is a Governed AI Engineering Platform designed to become the operating system for AI-assisted product engineering.
+## Authority Order
 
-Explain that the repository is organized as a knowledge system rather than a collection of documents.
+When documents conflict, use this precedence order:
 
----
+1. `001_GAEP_CONSTITUTION.md` — constitutional law.
+2. Foundation principles, including `006_ADAPTIVE_ENGINEERING_PRINCIPLES.md`.
+3. Approved governance, approval, state, architecture, assurance, and change-control documents.
+4. Approved repository, artifact, metadata, command, skill, agent, and runtime specifications.
+5. Roadmaps and adoption guidance.
+6. Draft proposals, examples, and external references.
 
-# Purpose of this Documentation
+No lower-authority document may override a higher-authority document implicitly. Conflicts shall be recorded, analyzed, and resolved through controlled change.
 
-Explain why these documents exist.
+## Document Status
 
-Explain that the documentation serves as the authoritative knowledge base for both humans and AI agents.
+| Status | Meaning |
+|---|---|
+| Draft | Under active design; usable as provisional context but not an approved baseline. |
+| In Review | Submitted for accountable review; material changes remain visible. |
+| Approved | Accepted by the identified authority for a stated scope and version. |
+| Baseline | Approved and designated as the current authoritative reference. |
+| Superseded | Replaced by another identified version or document. |
+| Retired | No longer valid for active work; retained according to policy. |
 
-State that implementation should always follow these documents rather than precede them.
+Approval must not be inferred from file presence, silence, generation, or merge status.
 
----
+## Recommended Foundation Reading Order
 
-# Who Should Read These Documents
+Read the Foundation in this order:
 
-Describe the intended audiences.
+1. [GAEP Constitution](01_Foundation/001_GAEP_CONSTITUTION.md) — highest-level obligations and human authority.
+2. [Project Vision](01_Foundation/002_PROJECT_VISION.md) — the future engineering environment GAEP intends to create.
+3. [Platform Philosophy](01_Foundation/003_PLATFORM_PHILOSOPHY.md) — the mindset used to interpret the platform.
+4. [Core Principles](01_Foundation/004_CORE_PRINCIPLES.md) — durable evaluation criteria.
+5. [Design Principles](01_Foundation/005_DESIGN_PRINCIPLES.md) — structural guidance for GAEP mechanisms and implementations.
+6. [Adaptive Engineering Principles](01_Foundation/006_ADAPTIVE_ENGINEERING_PRINCIPLES.md) — GAEP's initiative-neutral lifecycle, Architecture-Before-Implementation rule, test-first assurance, security-by-design, applicability model, and Human–AI Challenge obligations.
 
-Include:
+The order matters: law and vision establish purpose; philosophy and core principles establish judgment; design and adaptive engineering principles determine how rigor is selected and applied.
 
-- Product Owners
-- Business Analysts
-- Software Architects
-- Developers
-- QA Engineers
-- Platform Engineers
-- AI Agents
-- Technical Writers
-- Future Contributors
+## Recommended Platform Execution Reading Order
 
-Explain what each audience should expect.
+After the Foundation, read:
 
----
+1. [Dynamic Engineering Model](02_Platform/019_DYNAMIC_ENGINEERING_MODEL.md) — classifies the initiative and resolves applicability, topology, technology, boilerplate, assurance, architecture, and readiness obligations.
+2. [Engineering Assurance and Architecture Model](02_Platform/020_ENGINEERING_ASSURANCE_AND_ARCHITECTURE_MODEL.md) — executes Test Case, evidence, Quality Gate, HLD, LLD, approval, and living-architecture obligations.
+3. The responsibility-specific Platform, Product Engineering, Repository, AI Runtime, and lifecycle documents required by the task.
 
-# How the Documentation is Organized
+The Dynamic Engineering Model (`GAEP-PLT-019`) and Engineering Assurance and Architecture Model (`GAEP-PLT-020`) operationalize the Foundation; they do not override the Constitution.
 
-Explain the purpose of every documentation section.
+## Recommended Role-Based Paths
 
-Include descriptions for:
+### Executive, engineering, or product leader
 
-01 Foundation
+Read the full Foundation, then [Platform Architecture](02_Platform/010_PLATFORM_ARCHITECTURE.md), [Governance Model](02_Platform/013_GOVERNANCE_MODEL.md), the applicable lifecycle profile, and [Platform Roadmap](06_Roadmap/050_PLATFORM_ROADMAP.md).
 
-02 Platform
+### Architect, security leader, or quality leader
 
-03 Product Engineering
+Read the full Foundation, then the Dynamic Engineering Model (`GAEP-PLT-019`) and Engineering Assurance and Architecture Model (`GAEP-PLT-020`), followed by responsibility-specific Platform, Artifact Lifecycle, Change Management, Traceability, Human Approval, Repository, and AI Runtime documents. Resolve architecture, identity, Assurance Strategy, Test Cases, evidence, and applicability before implementation readiness.
 
-04 Repository
+### Product, business-analysis, or UX practitioner
 
-05 AI Runtime
+Read the Foundation, then the product-specific lifecycle and artifact models. Product discovery, personas, journeys, UI design, and Figma apply only when the Engineering Initiative requires them.
 
-06 Roadmap
+### Engineer, platform engineer, or operator
 
-99 References
+Read the Foundation, applicable Architecture Decisions and Technology Profiles, Assurance Strategy and Test Methodology Decisions, identity and authorization decisions, Organizational Boilerplate binding, active change, and implementation-readiness evidence.
 
-Do not simply list folders.
+### AI agent
 
-Explain why each section exists.
+An agent shall not load every file indiscriminately. It should:
 
----
+1. load the Constitution and applicable Foundation principles;
+2. identify the Engineering Initiative, Initiative Classification, scope, risk, and current state;
+3. load Applicability Decisions and the minimum applicable policy set;
+4. resolve Architecture Assets, Technology Profiles, Assurance Strategy and Profile, identity and authorization decisions, approved Test Cases, Quality Gates, and Organizational Boilerplate bindings required for its role;
+5. load the context pack declared by the command;
+6. resolve relevant upstream and downstream trace links;
+7. challenge material ambiguity from within its assigned role;
+8. record assumptions and missing context;
+9. confirm current Implementation Readiness and stop when a defined condition or missing human authority prevents safe progress.
 
-# Recommended Reading Order
+See [Context Loading](05_AI_Runtime/043_CONTEXT_LOADING.md) for the intended detailed algorithm.
 
-Provide a recommended reading sequence.
+## Knowledge Domains
 
-For example:
+| Directory | Responsibility |
+|---|---|
+| `01_Foundation` | Identity, purpose, philosophy, durable principles, and adaptive engineering obligations. |
+| `02_Platform` | Logical architecture and governed operating mechanisms. |
+| `03_Product_Engineering` | Product-specific packages plus generic artifact, change, traceability, and approval lifecycles. Product is one Engineering Initiative type. |
+| `04_Repository` | Repository, context, knowledge, artifact, metadata, and trace structures. |
+| `05_AI_Runtime` | Vendor-neutral execution behavior and tool-specific working models. |
+| `06_Roadmap` | Delivery sequence, adoption, implementation, and future evolution. |
+| `99_References` | Sources, glossary, controlled terminology, and external projects. |
 
-1. Constitution
+## Adaptive Operating Loop
 
-2. Vision
+Every governed activity uses the applicable parts of this loop:
 
-3. Philosophy
+1. **Classify** — establish Engineering Initiative type, objective, scope, risk, and ownership.
+2. **Determine Applicability** — resolve required, conditional, reused, deferred, or Not Applicable activities and assets.
+3. **Understand and Analyze** — inspect context, evidence, dependencies, impacts, risks, and alternatives.
+4. **Design** — resolve applicable architecture, security, identity, technology, assurance, and execution constraints.
+5. **Challenge and Review** — test assumptions and outputs through role-bounded Human–AI Challenge and qualified review.
+6. **Approve** — obtain Explicit Approval for consequential decisions at the correct authority level.
+7. **Baseline and Execute** — establish exact authoritative versions and perform only readiness-compliant work.
+8. **Trace and Evolve** — connect intent, decisions, implementation, Test Evidence, outcomes, and Change-Driven Re-evaluation.
 
-4. Core Principles
+No step, artifact, method, or tool is mandatory merely because GAEP supports it. Applicable obligations may not be omitted merely because adaptive execution is permitted.
 
-5. Platform Architecture
+Apply **Risk-Proportionate Governance** throughout: rigor follows criticality, sensitivity, regulatory exposure, blast radius, reversibility, and cost of failure.
 
-...
+## Working Rules for Humans and AI Agents
 
-Explain why the order matters.
+- Treat approved repository knowledge as authoritative within its scope.
+- Treat temporary conversation as provisional until captured in a governed artifact.
+- Distinguish facts, decisions, proposals, assumptions, Test Evidence, and examples.
+- Never invent approval, state, ownership, trace links, applicability, or validation results.
+- Do not implement while applicable architecture, assurance, security, identity, or Organizational Boilerplate decisions remain unresolved.
+- Prefer governed reuse over uncontrolled generation.
+- Prefer small, reviewable, evidence-producing increments.
+- Challenge unsupported assumptions and context-free best practices.
+- Preserve architecture and assurance assets as living, versioned repository knowledge.
+- Escalate when missing authority or information could materially change the outcome.
 
----
+## Document Maintenance
 
-# How Humans Should Use This Repository
+Every material document should include identity, version, status, authority, purpose, scope, relevant non-goals, normative rules, ownership, dependencies, validation, trace relationships, and design implications.
 
-Explain that humans should:
+Changes must follow [Change Management](03_Product_Engineering/023_CHANGE_MANAGEMENT.md). Terminology must follow [Naming Conventions](04_Repository/035_NAMING_CONVENTIONS.md) and [Terminology](99_References/992_TERMINOLOGY.md). Changes to approved architecture, assurance, identity, or technology decisions require impact-based synchronization rather than isolated text edits.
 
-- review documents
-- challenge ideas
-- approve changes
-- evolve architecture
-- preserve governance
+## Current Boundary
 
-Explain that documentation is a living knowledge system.
+This knowledge baseline defines GAEP before detailed platform implementation. It does not prescribe a backend, frontend, infrastructure, deployment topology, or programming stack. Those decisions shall be resolved at the appropriate enterprise, portfolio, initiative, system, and component levels.
 
----
+## Design Implications
 
-# How AI Agents Should Use This Repository
+This guide governs:
 
-Explain that AI agents must:
-
-read before generating
-
-understand before proposing
-
-respect governance
-
-respect repository state
-
-avoid assumptions
-
-never bypass approval
-
-always reference authoritative documents
-
-never invent missing information
-
-Explain that AI agents should treat the repository as the source of truth.
-
----
-
-# Documentation Principles
-
-Explain that every document should be:
-
-authoritative
-
-vendor-neutral
-
-versionable
-
-traceable
-
-cross-referenced
-
-reviewable
-
-maintainable
-
-future-proof
-
-Explain that documentation quality is as important as code quality.
-
----
-
-# Contributing
-
-Explain how future contributors should extend the documentation.
-
-State that existing documents should be understood before new ones are created.
-
-Avoid duplication.
-
-Prefer references over repetition.
-
-Maintain consistency across the entire knowledge base.
-
----
-
-# Final Message
-
-End the document with an inspiring statement explaining that GAEP is not merely documenting software engineering—it is documenting how organizations collaborate with artificial intelligence to build better products.
-
-The document should be approximately 4–6 pages long.
-
-Do not write placeholder text.
-
-Do not summarize.
-
-Produce a complete production-quality Markdown document.
+- documentation navigation and authority resolution;
+- agent context-loading order;
+- initiative-neutral interpretation of downstream specifications;
+- adaptive lifecycle and applicability expectations;
+- the boundary between repository knowledge and conversational memory;
+- synchronization obligations when Foundation principles change.
