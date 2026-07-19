@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Incident and Continuity Authority
+owner_role: GAEP Profile Specification Steward
 scope: Material incident declaration, response, evidence custody, communication, recovery, continuity, closure, and decision reopening
 normative_level: normative
 classification: internal
@@ -75,7 +75,7 @@ An incident record uses Core State Dimensions and attributable events rather tha
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Security for security incidents; Data for privacy, records, loss, or disclosure; AI for AI behavior, model, provider, or autonomy incidents; Operational Reliability for service, dependency, recovery, or continuity; Legal for notification, regulator, supplier, litigation, contract, or jurisdiction; Workforce Trust for people, accessibility, communication, monitoring, or labor effects; Audit Integrity only when policy or consequence independently requires stronger custody, completeness, tamper or loss detection, reconstruction, or challenge; Assurance when incident evidence informs restored confidence; and Emergency Operational Change only for a separately qualifying urgent Change. |
 | Obligations | Identity, severity and declaration, evidence custody, containment, notification and communication, cross-domain impact, recovery and continuity, closure, exercises, and decision reopening remain distinct and cumulative. |
 | Permitted variation points | Severity labels, response organization, communication channel, evidence method, exercise cadence, recovery strategy, and review independence may vary within effective policy and authority. Stable identity, accountable declaration, exact authority, evidence custody, truthful communication, protected affected persons, explicit uncertainty, decision reopening, and closure criteria are not variation points. |
-| Authority, evidence, and cadence | Incident and Continuity Authority owns this profile; the manifest identifies declaration, severity, response, domain, communication, evidence, recovery, continuity, and closure authorities, on-call or escalation rules, review cadence, and exercise schedule. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the manifest identifies Incident and Continuity Authority plus declaration, severity, response, domain, communication, evidence, recovery, continuity, and closure authorities, on-call or escalation rules, review cadence, and exercise schedule. |
 | Conformance | Conformance requires an exact manifest, incident record and timeline, requirement and negative-case evidence, custody and notification status, deviations, reopened decisions, closure determination, residual uncertainty, and unresolved obligations. |
 | Compatibility and conflicts | Conflicting safety, security, privacy, legal, evidentiary, communication, continuity, supplier, or workforce obligations remain explicit and identify controlling authorities; urgency or reputational preference cannot silently resolve them. |
 | Invalidation, migration, deprecation, and expiry | Change to incident scope, severity basis, subject, actor, evidence, custody, policy, authority, notification duty, supplier, recovery state, continuity need, reopened decision, or observed effect reopens the manifest. Profile evolution preserves incident identity, timeline, custody, notification, recovery, closure, obligation, migration, and historical mappings. |

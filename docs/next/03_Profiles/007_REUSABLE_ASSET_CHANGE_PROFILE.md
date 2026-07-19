@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Capability Steward
+owner_role: GAEP Profile Specification Steward
 scope: Shared templates, policies, profiles, libraries, workflows, skills, adapters, boilerplates, and organizational assets
 normative_level: normative
 classification: internal
@@ -53,7 +53,7 @@ Select when changing an asset intended for reuse across initiatives, products, r
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Security for executable, privileged, externally sourced, or integrity-sensitive assets; Legal for distribution, licensing, supplier, or third-party content; Data for data-handling assets; AI for model, prompt, agent, evaluation, or AI adapter assets; Operational Reliability for operational components; Workforce Trust for human-process, monitoring, or accessibility effects; Assurance for high-blast-radius claims; Audit Integrity when asset use or update history requires accountable reconstruction; and Incident Response when the asset participates in detection, response, recovery, continuity, or notification. |
 | Obligations | Publisher and consumer obligations coexist: publication does not grant adoption authority, and adoption does not erase the asset's provenance, integrity, compatibility, migration, or support requirements. |
 | Permitted variation points | Packaging, distribution channel, support period, evidence depth, review cadence, and migration window may vary by asset type and blast radius. Provenance, exact versioning, integrity, compatibility, adoption authority, and retirement disposition are not variation points. |
-| Authority, evidence, and cadence | Capability Steward owns the profile; the manifest identifies publisher and consumer authorities, qualification evidence, compatibility evidence, review cadence, and support or end-of-life dates. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics with Capability Steward consultation; the manifest identifies publisher and consumer decision authorities, qualification evidence, compatibility evidence, review cadence, and support or end-of-life dates. |
 | Conformance | Conformance requires an exact manifest, dependency graph, consumer and compatibility evidence, requirement and negative-case results, deviations, and known-unknown consumer risk. |
 | Compatibility and conflicts | An incompatible consumer requirement or higher-authority constraint remains `conflicted`; version-number convention or organizational publication does not resolve it. |
 | Invalidation, migration, deprecation, and expiry | Change to semantics, publisher, provenance, integrity, dependency, compatibility range, support, consumers, threat evidence, or policy invalidates affected claims. Deprecation identifies replacement, coexistence, migration, notice, expiry, revocation, and historical reconstruction. |

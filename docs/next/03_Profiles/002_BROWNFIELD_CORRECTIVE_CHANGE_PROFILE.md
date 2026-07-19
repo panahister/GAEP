@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Engineering Change Authority
+owner_role: GAEP Profile Specification Steward
 scope: Defect correction and bounded change to an existing managed asset
 normative_level: normative
 classification: internal
@@ -68,7 +68,7 @@ A low-risk, isolated correction may use one compact change record, direct eviden
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Security-and-Identity Change and Security for vulnerabilities or security-control effects; Data for data or records effects; AI for material AI behavior; Operational Reliability for consequential deployment or service behavior; Legal for supplier, license, regulatory, or disclosure consequences; Workforce Trust for people monitoring, accessibility, or decision impacts; Assurance when consequence or uncertainty requires stronger evidence; Audit Integrity when correction or prior behavior requires accountable reconstruction; and Incident Response when the correction is part of material incident containment, recovery, continuity, or follow-up. |
 | Obligations | The correction requirements add to the still-applicable requirements of the affected asset and do not erase earlier approved constraints. |
 | Permitted variation points | Record size, evidence depth, review independence, rollout size, and review cadence may vary by impact and uncertainty. The lightweight path is not a variation point for omitting a triggered domain profile, recovery control, or regression evidence. |
-| Authority, evidence, and cadence | Engineering Change Authority owns the profile; the effective configuration identifies decision and approval authorities, evidence methods, independence, and any workaround review cadence. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the effective configuration identifies Engineering Change Authority and other decision and approval authorities, evidence methods, independence, and any workaround review cadence. |
 | Conformance | Conformance requires an exact effective manifest, requirement and negative-case evidence, explicit deviations, residual uncertainty, and owned follow-up obligations. |
 | Compatibility and conflicts | Conflict with an existing approved constraint or mandatory co-profile remains `conflicted` until an authorized disposition; observed legacy behavior alone is not authority. |
 | Invalidation, migration, deprecation, and expiry | A changed reproduction, root-cause hypothesis, baseline, impact radius, rollout target, policy, dependency, or evidence result reopens resolution. Profile evolution preserves applicability mapping, workaround obligations, coexistence, and historical reconstruction. |

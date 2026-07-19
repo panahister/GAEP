@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Product Governance Authority
+owner_role: GAEP Profile Specification Steward
 scope: Creation and material evolution of a managed Product asset
 normative_level: normative
 classification: internal
@@ -74,7 +74,7 @@ Low-risk internal improvements may use a thin charter and combined roles. Produc
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Architecture for architecture-significant change; Security and Security-and-Identity Change for their respective triggers; Data for personal, confidential, regulated, or records-relevant data; AI for material AI use; Operational Reliability for consequential operation; Legal for distribution, supplier, IP, jurisdiction, or regulated scope; Workforce Trust for workforce, accessibility, or affected-person consequences; Assurance proportionately to critical claims; Audit Integrity when accountable reconstruction is material; and Incident Response when material incident, communication, recovery, continuity, or decision-reopening duties apply. |
 | Obligations | The requirements in this profile, applicable dependency requirements, and stronger effective-policy obligations compose without replacement. |
 | Permitted variation points | Charter form, artifact representation, evidence depth, review cadence, and role combination may vary by documented consequence and uncertainty. Variation may strengthen obligations but may not remove a required outcome, domain profile, independent review, or Core invariant. |
-| Authority, evidence, and cadence | Product Governance Authority owns this profile; the effective configuration identifies approval authorities, evidence methods, independence, and review cadence for the selected outcome areas. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the effective configuration identifies Product Governance Authority and other approval authorities, evidence methods, independence, and review cadence for the selected outcome areas. |
 | Conformance | A claim identifies the effective-configuration manifest, exact versions, satisfied requirements, evidence, negative-case results, deviations, and unresolved obligations. |
 | Compatibility and conflicts | A domain conflict or unavailable mandatory co-profile produces `conflicted` or `unresolved`; schedule, convenience, or a local default does not resolve it. |
 | Invalidation, migration, deprecation, and expiry | Material change to product scope, users, claims, effects, data, AI, architecture, supplier, environment, policy, evidence, or selected profiles invalidates or reopens the manifest. Profile revision or retirement requires impact analysis, coexistence or migration rules, replacement mapping, and preserved historical reconstruction. |

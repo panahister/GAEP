@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Operational Authority
+owner_role: GAEP Profile Specification Steward
 scope: Urgent changes needed to contain or recover from active harm or severe service impact
 normative_level: normative
 classification: internal
@@ -67,7 +67,7 @@ Emergency classification changes urgency and may activate an approved break-glas
 | Co-selection rules | Mandatory: the normal profile for each underlying effect. Consequence-triggered examples are Security and Security-and-Identity Change for security or identity, Data for data or records, AI for AI, Operational Reliability for service operation, Legal for legal or supplier constraints, Workforce Trust for people impacts, Assurance as feasible and proportionate, Audit Integrity when evidence custody or accountable reconstruction is material, and Incident Response when declaration, severity, notification, recovery, continuity, closure, or decision reopening is in scope. Emergency selection never replaces an applicable profile. |
 | Obligations | Emergency requirements add containment, least-scope authority, expiry, reconstruction, recovery, and return-to-normal obligations while preserving all non-waivable Core and policy obligations. |
 | Permitted variation points | Only response sequencing, evidence capture timing, review timing, and recovery strategy may vary when effective policy explicitly permits it and immediate harm justifies it. Identity, least authority, non-exceptionable prohibitions, exact authorization, effect accounting, and temporary-access expiry are not variation points. |
-| Authority, evidence, and cadence | Operational Authority owns the profile; the effective configuration identifies emergency and domain approvers, least-scope authorization, minimum reconstructive evidence, authorization expiry, and post-event review deadline. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the effective configuration identifies Operational Authority, emergency and domain approvers, least-scope authorization, minimum reconstructive evidence, authorization expiry, and post-event review deadline. |
 | Conformance | Conformance requires an exact manifest, emergency evidence, normal domain-profile co-selection, requirement and negative-case evidence, every deferral or exception, actual effects, and post-event obligations. |
 | Compatibility and conflicts | A conflict with non-waivable policy resolves to denial. Other unresolved profile, authority, or effect conflicts remain explicit and cannot be normalized by emergency status. |
 | Invalidation, migration, deprecation, and expiry | Containment, elapsed authorization, changed scope, target, policy, actor, condition, or effect invalidates or reopens the emergency manifest. Profile evolution preserves event reconstruction, temporary access, deferrals, exceptions, migration, and post-event obligations. |

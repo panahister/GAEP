@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Architecture Authority
+owner_role: GAEP Profile Specification Steward
 scope: Architecture-significant managed assets and changes
 normative_level: normative
 classification: internal
@@ -73,7 +73,7 @@ A measurable scenario identifies source, stimulus, affected subject, operating c
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Security for trust and security concerns; Data for information, privacy, or records concerns; AI for AI system or autonomy concerns; Operational Reliability for live operational concerns; Legal for suppliers, distribution, jurisdiction, or regulatory constraints; Workforce Trust for accessibility or human-system effects; Migration for material transition; Assurance for consequential architecture claims; Audit Integrity for material accountability and reconstruction concerns; and Incident Response for detection, communication, recovery, continuity, or incident-command concerns. |
 | Obligations | Architecture outcomes, selected views, decisions, quality scenarios, conformance criteria, and lifecycle consequences compose with domain-profile obligations; architecture review does not replace them. |
 | Permitted variation points | View set, notation, artifact representation, evidence method, review independence, and review cadence may vary by concern and consequence. Exact decision scope, measurable criteria, conflict visibility, and lifecycle consequences are not variation points. |
-| Authority, evidence, and cadence | Architecture Authority owns the profile; the effective configuration identifies decision and approval authorities, stakeholder evidence, fitness methods, independence, and review cadence. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the effective configuration identifies Architecture Authority and other decision and approval authorities, stakeholder evidence, fitness methods, independence, and review cadence. |
 | Conformance | Conformance requires an exact manifest, concern-to-view rationale, decision and fitness evidence, requirement and negative-case results, deviations, and unresolved inconsistencies. |
 | Compatibility and conflicts | Inconsistent architecture, implementation, operation, policy, or domain-profile requirements remain explicit and resolve to `conflicted` when jointly unsatisfied. |
 | Invalidation, migration, deprecation, and expiry | Material change to concern, constraint, assumption, decision, baseline, dependency, topology, interface, data, environment, evidence, or policy reopens conformance. Profile evolution preserves decision, view, criterion, migration, deprecation, and historical mappings. |

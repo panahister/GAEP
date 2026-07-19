@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Security Authority
+owner_role: GAEP Profile Specification Steward
 scope: Material authentication, authorization, identity, credential, privilege, trust, or security-control changes
 normative_level: normative
 classification: internal
@@ -58,7 +58,7 @@ Repository write access or operational access does not prove authority to approv
 | Co-selection rules | Mandatory: Security Profile (`GAEP-PROF-010`) for every selected Security-and-Identity Change. Consequence-triggered: select Data for personal data, credentials, audit records, or disclosure; Operational Reliability for live security services and recovery; Legal for supplier, regulatory, export, disclosure, or jurisdiction effects; AI for AI-enabled controls or agent authority; Workforce Trust for monitoring, workforce access, accessibility, or affected-person consequences; Assurance for consequential privilege or trust changes; Audit Integrity when privileged activity or control changes require accountable reconstruction; and Incident Response for active or suspected security incidents and material response or continuity duties. |
 | Obligations | Change-specific requirements supplement the continuing Security Profile and effective policy; they do not redefine identity, approval, authorization, or effect semantics owned by Core. |
 | Permitted variation points | Review independence, rollout unit, evidence depth, monitoring period, and credential transition pattern may vary by consequence. Least authority, accountable identity, non-waivable policy, expiry, revocation, and recoverable control paths are not variation points. |
-| Authority, evidence, and cadence | Security Authority owns the profile; effective configuration identifies eligible approvers, separation constraints, threat and negative-test evidence, and review cadence for temporary or elevated access. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; effective configuration identifies Security Authority, eligible approvers, separation constraints, threat and negative-test evidence, and review cadence for temporary or elevated access. |
 | Conformance | Conformance requires an exact manifest, Security Profile co-selection, requirement and negative-case evidence, deviations, residual threats, and temporary-access obligations. |
 | Compatibility and conflicts | A conflict among privilege, policy, identity, or co-profile obligations remains `conflicted`; repository ownership, tool permission, or self-approval does not resolve it. |
 | Invalidation, migration, deprecation, and expiry | Change to identity, role, target, trust boundary, policy, credential, cryptographic material, environment, threat evidence, or rollout state reopens the manifest. Profile evolution preserves access expiry, revocation, compatibility, migration, and historical authorization reconstruction. |

@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Data and Privacy Authority
+owner_role: GAEP Profile Specification Steward
 scope: Data processed by GAEP workspaces, contexts, runtimes, adapters, evidence, telemetry, and governed initiatives
 normative_level: normative
 classification: internal
@@ -62,7 +62,7 @@ Records may require correction without erasing history. Controlled correction cr
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Security for personal, confidential, regulated, secret, integrity-sensitive, or externally disclosed data; AI for AI processing; Legal for legal basis, rights, jurisdiction, supplier, transfer, retention, or hold; Workforce Trust for workforce or participant data; Operational Reliability for persistent operational flows and recovery; Audit Integrity when authoritative auditability or reconstruction is material; and Incident Response when breach, loss, disclosure, or continuity response is in scope. |
 | Obligations | Purpose, authority, minimization, classification, flow, access, provider, retention, deletion, correction, rights, integrity, and transformation obligations remain distinct and cumulative. |
 | Permitted variation points | Inventory granularity, evidence method, review cadence, retention period, access-review cadence, and transformation technique may vary only within controlling policy and authority. Purpose, lawful or policy authority, minimization, recipient constraints, rights, legal hold, and secure disposition are not variation points. |
-| Authority, evidence, and cadence | Data and Privacy Authority owns the profile; the manifest identifies purpose and records owners, applicable authorities, evidence, review cadence, retention and hold decisions, and rights-process ownership. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the manifest identifies Data and Privacy Authority, purpose and records owners, other applicable authorities, evidence, review cadence, retention and hold decisions, and rights-process ownership. |
 | Conformance | Conformance requires an exact manifest, inventory and flow coverage, requirement and negative-case evidence, deviations, unresolved conflicts, rights and records obligations, and provider constraints. |
 | Compatibility and conflicts | Conflict among privacy, records, legal hold, correction, deletion, audit, security, or supplier obligations remains explicit and must identify controlling authority; no concern silently erases another. |
 | Invalidation, migration, deprecation, and expiry | Change to purpose, authority, data class, subject population, source, recipient, provider, location, model use, retention, hold, flow, policy, or evidence reopens the manifest. Profile evolution preserves dataset, rights, retention, deletion, hold, migration, and historical mappings. |

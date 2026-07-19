@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: AI System Authority
+owner_role: GAEP Profile Specification Steward
 scope: AI capabilities used by GAEP or governed through GAEP
 normative_level: normative
 classification: internal
@@ -86,7 +86,7 @@ Monitor material performance, failure patterns, user overrides, unsafe near miss
 | Co-selection rules | Mandatory: Security Profile (`GAEP-PROF-010`), Data Privacy and Records Profile (`GAEP-PROF-011`), Legal IP and Supplier Profile (`GAEP-PROF-014`), and Workforce Trust Accessibility and Ethics Profile (`GAEP-PROF-015`) for every material AI use. Consequence-triggered: select Assurance for consequential claims or `AI-2` through `AI-4` reliance; Operational Reliability and Incident Response for operational or continuity-critical AI; Audit Integrity when AI decisions or effects require independent reconstruction; and Security-and-Identity Change for identity or privilege effects. |
 | Obligations | Use-case governance, exact identity, evaluation, independence, human oversight, authority, effect control, transparency, data and supplier controls, monitoring, incident response, fallback, cost, and retirement obligations compose with all mandatory domain profiles. |
 | Permitted variation points | Evaluation methods, thresholds, monitoring cadence, evidence depth, oversight workflow, model choice, and fallback implementation may vary within effective policy and the selected autonomy class. Mandatory composition, exact required identity, least authority, substantive oversight, pause and revocation, incident response, affected-person protections, and no-AI continuity are not variation points. |
-| Authority, evidence, and cadence | AI System Authority owns the profile; the effective configuration identifies model and use-case owners, domain authorities, eligible approvers, evaluation independence, monitoring owners and cadence, incident authority, and review or retirement triggers. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the effective configuration identifies AI System Authority, model and use-case owners, domain authorities, eligible approvers, evaluation independence, monitoring owners and cadence, incident authority, and review or retirement triggers. |
 | Conformance | Conformance requires an exact manifest, resolved autonomy class, mandatory co-profiles, evaluation and monitoring evidence, requirement and negative-case results, deviations, incidents, drift status, and unresolved obligations. |
 | Compatibility and conflicts | Conflict among AI capability, policy, autonomy, exact identity, evaluation, Security, Data, Legal, Workforce, or other selected profiles remains `conflicted`; model output or business benefit cannot resolve it. |
 | Invalidation, migration, deprecation, and expiry | Material change to use, effect, autonomy, model, provider, adapter, prompt or policy, tool, context, data, user population, environment, evaluation, monitoring, supplier terms, incident state, or policy reopens the manifest. Evolution preserves use-case, model, evaluation, monitoring, incident, affected-person, migration, retirement, and historical mappings. |

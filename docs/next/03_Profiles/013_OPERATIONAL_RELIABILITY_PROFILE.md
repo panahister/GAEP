@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Operational Authority
+owner_role: GAEP Profile Specification Steward
 scope: Operational services, runtimes, integrations, and consequential managed assets
 normative_level: normative
 classification: internal
@@ -54,7 +54,7 @@ Identify service ownership, users and dependencies, environments, critical journ
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Security for operational threats and controls; Data for operational data, telemetry, backup, or records; AI for AI-supported operation; Legal for suppliers, service commitments, notification, jurisdiction, or exit; Workforce Trust for on-call burden, monitoring, accessibility, or human operation; Audit Integrity for material operational accountability and reconstruction; Incident Response for material incident, continuity, notification, or recovery needs; and Emergency Operational Change only when its qualifying active condition exists. |
 | Obligations | Service objectives, monitoring, incidents, recovery, degraded operation, capacity, configuration, release, supplier, deprecation, and retirement obligations remain distinct and cumulative. |
 | Permitted variation points | Service objectives, monitoring cadence, recovery technique, deployment unit, support model, review independence, and evidence depth may vary by consequence and uncertainty. Named ownership, observable outcomes, incident authority, tested recovery, explicit degradation, and retirement disposition are not variation points. |
-| Authority, evidence, and cadence | Operational Authority owns the profile; the manifest identifies service, support, security, data, incident, and continuity owners, evidence methods, review cadence, and recovery-test schedule. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the manifest identifies Operational Authority and service, support, security, data, incident, and continuity owners, evidence methods, review cadence, and recovery-test schedule. |
 | Conformance | Conformance requires an exact manifest, service and dependency model, requirement and negative-case evidence, deviations, degraded guarantees, incidents, residual risk, and unresolved obligations. |
 | Compatibility and conflicts | Conflicting service, security, data, supplier, capacity, recovery, or profile constraints remain `conflicted`; availability pressure does not silently lower a control. |
 | Invalidation, migration, deprecation, and expiry | Change to service objective, critical journey, environment, dependency, supplier, capacity, configuration, release, recovery evidence, incident state, policy, or ownership reopens conformance. Profile evolution preserves service, consumer, incident, recovery, migration, deprecation, and historical mappings. |

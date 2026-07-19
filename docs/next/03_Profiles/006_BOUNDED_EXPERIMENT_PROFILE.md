@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Experiment Authority
+owner_role: GAEP Profile Specification Steward
 scope: Spikes, prototypes, evaluations, and research intended to learn rather than establish production authority
 normative_level: normative
 classification: internal
@@ -55,7 +55,7 @@ The profile minimizes ceremony while protecting the boundary between learning an
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Data for personal, confidential, regulated, or records-relevant data; AI for material AI use; Security for external tools, untrusted inputs, executable outputs, or privileged capabilities; Legal for third-party content, supplier, licensing, jurisdiction, or regulated use; Workforce Trust for participants, telemetry, accessibility, or affected persons; Assurance before promotion when reliance is consequential; Audit Integrity when experimental activity or effects require accountable reconstruction; and Incident Response when plausible experiment harm requires coordinated notification, recovery, or continuity. |
 | Obligations | Experiment controls and all triggered domain obligations apply even when outputs are disposable; promotion remains a separate governed Change. |
 | Permitted variation points | Charter size, timebox, sample size, evidence depth, review cadence, and environment isolation may vary by risk. Production authority, prohibited data use, required authorization, explicit promotion, and closure are not variation points. |
-| Authority, evidence, and cadence | Experiment Authority owns the profile; the manifest identifies data and effect authorities, evidence methods, stop conditions, timebox, and closure review. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the manifest identifies Experiment Authority, data and effect authorities, evidence methods, stop conditions, timebox, and closure review. |
 | Conformance | Conformance requires an exact manifest, bounded-use evidence, requirement and negative-case results, deviations, reproducibility limits, and closure disposition. |
 | Compatibility and conflicts | A conflict with production, data, security, legal, or workforce constraints remains `conflicted`; calling work an experiment does not resolve it. |
 | Invalidation, migration, deprecation, and expiry | Change to question, boundary, data, environment, tool, model, dependency, effect, participant population, or timebox reopens resolution. Profile evolution preserves promotion, retention, deletion, access-revocation, and abandoned-resource obligations. |

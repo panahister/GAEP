@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Assurance Authority
+owner_role: GAEP Profile Specification Steward
 scope: Evidence-backed confidence in governed claims and release/readiness decisions
 normative_level: normative
 classification: internal
@@ -74,7 +74,7 @@ Coverage is declared against claims, requirements, risks, decisions, quality att
 | Co-selection rules | Mandatory: every profile already applicable to the subject under assurance remains selected. Consequence-triggered: select Audit Integrity when the claim depends on accountable reconstruction and Incident Response when evaluating response, continuity, recovery, closure, or restored confidence. Assurance never replaces Security, Data, AI, Operational Reliability, Legal, Workforce Trust, Architecture, Migration, Product, or change-profile obligations. |
 | Obligations | Claim selection, evidence quality, coverage, independence, tool qualification, negative evidence, decision rules, and invalidation obligations supplement the subject profiles. |
 | Permitted variation points | Evidence methods, coverage depth, assessor independence, review cadence, confidence expression, and artifact form may vary by consequence and uncertainty. Critical-claim visibility, failed-criterion preservation, evidence binding, and invalidation are not variation points. |
-| Authority, evidence, and cadence | Assurance Authority owns the profile; the effective configuration identifies claim and decision owners, assessor independence, evidence methods, expiry, and review cadence. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the effective configuration identifies Assurance Authority, claim and decision owners, assessor independence, evidence methods, expiry, and review cadence. |
 | Conformance | Conformance requires an exact manifest, assurance plan, claim-to-evidence coverage, requirement and negative-case results, deviations, conflicts, confidence limits, and residual uncertainty. |
 | Compatibility and conflicts | Conflicting evidence, insufficient independence, invalid tools, or incompatible subject-profile requirements remain unresolved and cannot be averaged into confidence. |
 | Invalidation, migration, deprecation, and expiry | Change to claim, subject, method, tool, assessor, environment, data, profile, policy, evidence validity, or production result reopens assurance. Profile evolution preserves claim, evidence, decision, expiry, migration, and historical replay mappings. |

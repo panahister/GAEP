@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Migration Authority
+owner_role: GAEP Profile Specification Steward
 scope: Technology, data, platform, architecture, or provider migration
 normative_level: normative
 classification: internal
@@ -61,7 +61,7 @@ Undocumented dependencies and incomplete inventories are risks, not reasons to i
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Data for data movement or semantic transformation; Security-and-Identity Change and Security for trust, identity, credential, or control changes; AI for model, provider, adapter, autonomy, or AI-context migration; Operational Reliability for live traffic, continuity, or recovery; Legal for supplier, jurisdiction, contract, license, export, or records change; Workforce Trust for workforce data, accessibility, or human-process impacts; Assurance proportionately to cutover consequence; Audit Integrity for migration of accountable records or reconstruction properties; and Incident Response when cutover creates material incident, notification, recovery, or continuity duties. |
 | Obligations | Source, coexistence, target, reconciliation, cutover, recovery, consumer transition, and retirement obligations remain distinct and cumulative. |
 | Permitted variation points | Cutover unit, coexistence pattern, rollout rate, evidence depth, review independence, observation window, and forward-versus-rollback strategy may vary when justified. Variation may not invent compatibility or permit premature source retirement. |
-| Authority, evidence, and cadence | Migration Authority owns the profile; the manifest identifies decision and approval authorities, mapping and cutover evidence, independent assessment where required, and review cadence through terminal disposition. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the manifest identifies Migration Authority and other decision and approval authorities, mapping and cutover evidence, independent assessment where required, and review cadence through terminal disposition. |
 | Conformance | Conformance requires an exact manifest, stage and requirement evidence, negative-case results, deviations, residual unknowns, and disposition of source and coexistence obligations. |
 | Compatibility and conflicts | Unresolved semantic, consumer, authority, retention, or profile incompatibility produces `conflicted` or `unresolved`; target availability cannot override it. |
 | Invalidation, migration, deprecation, and expiry | Changes to source or target revision, mapping, consumers, data semantics, provider, traffic plan, recovery, policy, or evidence invalidate affected stages. Evolution of this profile requires coexistence, mapping, deprecation, expiry, and reconstructable disposition of in-flight migrations. |

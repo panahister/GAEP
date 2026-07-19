@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Legal and Supplier Authority
+owner_role: GAEP Profile Specification Steward
 scope: Distribution, third-party content, providers, dependencies, and regulated obligations
 normative_level: normative
 classification: internal
@@ -51,7 +51,7 @@ This profile is jurisdiction-dependent and does not provide legal advice. It ens
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Data for personal, regulated, transferred, retained, or supplier-processed data; AI for models, generated content, AI providers, or AI obligations; Security for executable dependencies, supplier security, vulnerability, or disclosure; Operational Reliability for service suppliers, continuity, portability, or exit; Workforce Trust for labor, accessibility, worker monitoring, or affected persons; Audit Integrity for mandated audit, record, or reconstruction duties; and Incident Response for notification, supplier incident, continuity, or coordinated response obligations. |
 | Obligations | Applicable legal, regulatory, contractual, licensing, supplier, provenance, notification, portability, termination, and records obligations remain distinct and are assigned to accountable authorities. |
 | Permitted variation points | Assessment depth, evidence form, review cadence, notice workflow, supplier tiering, and exit exercise frequency may vary within controlling authority. Applicability decisions, permitted-use boundaries, required notices, records duties, sanctions or export constraints, termination, and deletion or confidentiality obligations are not local variation points. |
-| Authority, evidence, and cadence | Legal and Supplier Authority owns the profile; the manifest identifies accountable legal, procurement, IP, regulatory, records, and supplier owners, approved interpretations, evidence, and review or renewal dates. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the manifest identifies Legal and Supplier Authority plus accountable legal, procurement, IP, regulatory, records, and supplier owners, approved interpretations, evidence, and review or renewal dates. |
 | Conformance | Conformance requires an exact manifest, authority-backed applicability, supplier and content inventory, requirement and negative-case evidence, deviations, expiries, and unresolved interpretations or obligations. |
 | Compatibility and conflicts | Legal, regulatory, contractual, licensing, privacy, records, security, and supplier conflicts remain explicit and identify the controlling authority; technical feasibility does not resolve them. |
 | Invalidation, migration, deprecation, and expiry | Change to use, jurisdiction, law or policy input, supplier, subcontractor, term, license, content provenance, model, dataset, transfer, notice, dependency, or exit feasibility reopens the manifest. Profile evolution preserves applicability, approval, contract, license, supplier, notice, records, migration, and historical mappings. |

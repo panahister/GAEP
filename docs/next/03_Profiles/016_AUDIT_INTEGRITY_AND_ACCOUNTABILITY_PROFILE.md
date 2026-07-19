@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Audit Authority
+owner_role: GAEP Profile Specification Steward
 scope: Accountable event capture, integrity, reconstruction, correction, and independent challenge for governed activity
 normative_level: normative
 classification: internal
@@ -73,7 +73,7 @@ An audit scope declares required event classes and transitions, capture points, 
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Data for personal, confidential, regulated, retained, corrected, or deleted audit content; Security for integrity, privileged access, or tamper and loss controls; Legal for regulated audit, legal hold, discovery, notification, or retention; Workforce Trust for workforce activity or individual consequences; Assurance when reliance on an audit claim informs a decision; Incident Response only when incident declaration, response, recovery, continuity, closure, or reopening duties are independently applicable; AI for material AI actors or decisions; and Operational Reliability for operational audit services. |
 | Obligations | Coverage, identity and revision binding, trusted-time limits, integrity, loss detection, correction, privacy, retention, reconstruction, challenge, and failure disposition remain distinct and cumulative. |
 | Permitted variation points | Event detail, capture location, integrity method, time source, retention period, access-review cadence, sampling for non-material events, challenge independence, and reconstruction-test cadence may vary within effective policy. Required material-event coverage, failure visibility, attributable correction, purpose limitation, and independent challenge required by consequence are not variation points. |
-| Authority, evidence, and cadence | Audit Authority owns this profile; the manifest identifies event, data, security, records, and challenge authorities, evidence methods, review cadence, retention, reconstruction exercises, and control-test schedule. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the manifest identifies Audit Authority plus event, data, security, records, and challenge authorities, evidence methods, review cadence, retention, reconstruction exercises, and control-test schedule. |
 | Conformance | Conformance requires an exact manifest, audit scope and coverage model, requirement and negative-case evidence, integrity and time limits, deviations, detected gaps, challenge status, and unresolved obligations. |
 | Compatibility and conflicts | Conflicts among auditability, minimization, privacy, legal hold, correction, deletion, confidentiality, access, and security remain explicit and identify controlling authorities; audit preference alone does not override them. |
 | Invalidation, migration, deprecation, and expiry | Change to scope, purpose, actor, event class, schema, source, clock, integrity control, storage, access, retention, policy, reconstruction need, or observed gap reopens conformance. Profile evolution preserves schema, event, correction, integrity, custody, retention, migration, and historical reconstruction mappings. |

@@ -51,6 +51,7 @@ Every current concrete assignment is `unassigned`. This is intentional: reposito
 | `gaep.role.assurance-steward` | GAEP Assurance Authority | yes | yes | yes | no | GAEP assurance model stewardship and bounded assurance decisions | unassigned |
 | `gaep.role.constitutional-owner` | GAEP Constitutional Owner | yes | yes | yes | no | Constitution meaning, amendment proposal, and bounded constitutional decisions | unassigned |
 | `gaep.role.core-specification-steward` | GAEP Core Specification Steward | yes | no | yes | no | Small-Core boundary, coherence, and compatibility stewardship | unassigned |
+| `gaep.role.profile-specification-steward` | GAEP Profile Specification Steward | yes | no | yes | no | Scoped Profile semantics, applicability-rule meaning, conformance contract, and evolution stewardship | unassigned |
 | `gaep.role.decision-authorization-steward` | GAEP Decision and Authorization Steward | yes | no | yes | no | Decision, review, approval, and authorization contract stewardship | unassigned |
 | `gaep.role.distribution-ecosystem-owner` | GAEP Distribution and Ecosystem Owner | yes | yes | no | yes | Distribution, packaging, ecosystem, and channel outcome stewardship | unassigned |
 | `gaep.role.identity-authority-steward` | GAEP Identity and Authority Steward | yes | no | yes | no | Principal, role, assignment, delegation, and standing-authority semantics | unassigned |

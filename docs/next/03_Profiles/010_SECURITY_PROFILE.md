@@ -5,7 +5,7 @@ document_type: profile
 schema_version: 1.0
 version: 0.1.0
 status: proposed
-owner_role: Security Authority
+owner_role: GAEP Profile Specification Steward
 scope: GAEP platform, workspace, runtime, adapters, suppliers, and governed initiatives
 normative_level: normative
 classification: internal
@@ -74,7 +74,7 @@ Security enforces and protects some governance decisions, but a technically perm
 | Co-selection rules | Mandatory: none beyond the normative dependencies. Consequence-triggered: select Security-and-Identity Change for material identity or security-control change; Data for sensitive data, secrets, audit, or records; AI for AI or agent threat paths; Operational Reliability for operational security and incident recovery; Legal for vulnerability disclosure, supplier, export, regulatory, or contract scope; Workforce Trust for monitoring, insider, access, or human-impact controls; Assurance for high-consequence security claims; Audit Integrity when security events or privileged effects require accountable reconstruction; and Incident Response for actual or suspected security incidents and coordinated response, notification, recovery, or continuity. |
 | Obligations | Threat modeling, identity and least authority, control-record integrity, injection and supply-chain controls, secret handling, incident response, fail-closed behavior, and vulnerability ownership compose with every applicable domain profile. |
 | Permitted variation points | Threat method, review cadence, evidence depth, control implementation, independence, and testing technique may vary by consequence and threat. Accountable identity, least authority, integrity, provenance, revocation, non-waivable policy, and explicit failure are not variation points. |
-| Authority, evidence, and cadence | Security Authority owns the profile; the manifest identifies threat and risk authorities, eligible approvers, assessment independence, control evidence, vulnerability cadence, and review triggers. |
+| Authority, evidence, and cadence | GAEP Profile Specification Steward maintains this profile's semantics; the manifest identifies Security Authority, threat and risk authorities, eligible approvers, assessment independence, control evidence, vulnerability cadence, and review triggers. |
 | Conformance | Conformance requires an exact manifest, approved threat scope, requirement and negative-case evidence, deviations, residual threats, accepted risk, and unresolved supplier or control obligations. |
 | Compatibility and conflicts | An authority, trust, control, supplier, or profile conflict remains `conflicted`; capability availability or technical permission never manufactures governance authority. |
 | Invalidation, migration, deprecation, and expiry | Change to threat, asset, actor, trust boundary, privilege, policy, capability, dependency, supplier, environment, evidence, or incident state reopens conformance. Profile evolution preserves control, revocation, vulnerability, migration, expiry, and historical evidence mappings. |
