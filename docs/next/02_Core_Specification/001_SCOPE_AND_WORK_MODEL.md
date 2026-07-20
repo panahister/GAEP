@@ -72,10 +72,11 @@ This early contract records later-owned concepts only as opaque, version-pinned 
 | Authority Namespace | Globally scoped issuing authority for GAEP identifiers. | Stable for as long as identifiers issued by it must resolve. |
 | Organization Scope | Accountable administrative boundary that owns or governs assets, initiatives, roles, policies, and namespaces. | Long-lived and versioned through governed change. |
 | Portfolio | Optional grouping of managed assets or initiatives for strategy, investment, or governance. | Long-lived; membership is time- and scope-aware. |
-| Managed Asset | Long-lived subject created, changed, operated, or retired through engineering work. Examples include a Product, system, service, library, platform, data asset, model, or shared capability. | Stable lineage independent of any one initiative or workspace. |
-| Engineering Initiative | Time-bounded governed endeavor intended to create, change, investigate, migrate, secure, or retire one or more Managed Assets. | Begins with declared intent and closes or is cancelled with retained history. |
-| Change | Versioned proposal and governed mutation scope against one or more exact subjects. | Belongs to one governing Initiative; may have several analyzed revisions and executions. |
-| Work Item | Bounded unit of planned or assigned work contributing to an Initiative or Change. | May be decomposed; it is not itself a source of authority. |
+| Managed Asset | Long-lived governed subject created, changed, migrated, secured, operated, or retired through engineering work. The initial hierarchy includes Product, Platform, System, Service, Data Asset, and Reusable Capability types. | Stable lineage independent of any Initiative, Change, Work Item, repository, or workspace. |
+| Product | Long-lived Managed Asset type whose identity and history remain distinct from every Initiative that creates, changes, operates, or retires it. | Stable Product lineage may span many Initiatives and Changes. It is never an Initiative identity. |
+| Engineering Initiative | Bounded governed endeavor intended to create, change, migrate, secure, operate, or retire one or more Managed Assets. | Begins with declared intent and closes or is cancelled with retained history; closure does not end its target assets. |
+| Change | Versioned delta against one or more exact subject baselines, or against an explicit genesis declaration where no prior baseline exists. | Belongs to one governing Initiative; proposal, decision, approval, authorization, and execution remain separate governed records. |
+| Work Item | Bounded unit of planned or executable work contributing to exactly one Change. | Derives its governing Initiative from that Change, may be decomposed, and is not itself a source of authority. |
 | Implementation Unit | Identifiable technical or operational unit that may be designed, built, deployed, configured, tested, or operated. | Long-lived relative to individual work items; classified by a controlled type. |
 | Workspace | Administrative and technical boundary that contains or references governed representations for one or more scopes. | May change location or tooling without changing represented entity identity. |
 | Scope Reference | Namespaced reference to an exact scope-bearing entity and, where needed, an effective version or time. | Portable across workspaces and repositories. |
@@ -83,7 +84,7 @@ This early contract records later-owned concepts only as opaque, version-pinned 
 
 ## Managed subjects versus work
 
-A Managed Asset answers “what enduring subject is governed?” An Engineering Initiative answers “what bounded outcome are we pursuing?” A Change answers “which exact mutation is being proposed or executed?” A Work Item answers “which bounded contribution is assigned or planned?”
+A Managed Asset answers “what enduring subject is governed?” A Product is one Managed Asset type, not a kind of Initiative. An Engineering Initiative answers “what bounded outcome are we pursuing against one or more Managed Assets?” A Change answers “which exact baseline delta is being proposed or, through separate authority, executed?” A Work Item answers “which bounded contribution to that Change is planned or executable?”
 
 The distinction prevents these invalid substitutions:
 
@@ -91,6 +92,7 @@ The distinction prevents these invalid substitutions:
 - treating a defect report as the long-lived identity of the service it changes;
 - treating a repository as the Product or Initiative identity;
 - treating a work item as approval for the underlying change;
+- treating a Change proposal as its own decision, approval, or execution authorization;
 - treating a technical component as the administrative owner of itself.
 
 ## Scope hierarchy and federation
@@ -112,8 +114,7 @@ Containment never implies authority. Authority is resolved through the Identity 
 | Engineering Initiative | parent of | Engineering Initiative | Zero or more children; parent relationships are acyclic and do not imply approval inheritance. |
 | Change | governed by | Engineering Initiative | Exactly one. Emergency profiles may create the Initiative and Change together, but they remain distinct records. |
 | Change | affects | Managed Asset, Implementation Unit, or Resource Revision | One or more exact targets or explicitly unresolved target candidates during discovery. |
-| Work Item | contributes to | Engineering Initiative | Exactly one. |
-| Work Item | implements or analyzes | Change | Zero or one primary Change; additional relationships require explicit rationale. |
+| Work Item | contributes to | Change | Exactly one. Its governing Initiative is derived from the Change; any denormalized Initiative reference must resolve to the same Initiative. |
 | Work Item | parent of | Work Item | Zero or more children; the decomposition graph is acyclic. |
 | Implementation Unit | part of | Managed Asset | At least one current Managed Asset scope; shared units declare each consumer or governing asset explicitly. |
 | Workspace | represents | Scope Reference | One or more; representation does not create ownership or authority. |
@@ -121,17 +122,24 @@ Containment never implies authority. Authority is resolved through the Identity 
 
 ## Scope kinds
 
-Managed Asset and Implementation Unit types are controlled, extensible registries. The Core does not require Product to be the universal type and does not require every unit to be deployable.
+Managed Asset and Implementation Unit types are controlled through separate extensible registries. Product is a canonical Managed Asset type, but it is not the universal Managed Asset type. The initial Managed Asset hierarchy contains:
 
-Initial semantic categories that profiles may register include:
+- Product;
+- Platform;
+- System;
+- Service;
+- Data Asset;
+- Reusable Capability.
 
-- product or customer-facing capability;
-- system, platform, or shared service;
-- application, service, workload, function, or job;
+Profiles may add namespaced Managed Asset specializations, but they cannot redefine Product as work or collapse a Managed Asset type into Engineering Initiative. Classification depends on identity and lifetime rather than display name alone.
+
+Implementation Unit types and facets remain separate from that hierarchy and do not require every unit to be deployable. Initial technical categories that profiles may register include:
+
+- application, workload, function, or job;
 - library, package, SDK, or command-line interface;
 - module, component, bounded context, or logical subsystem;
 - API, event contract, integration, or external-system boundary;
-- data product, dataset, schema, model, or storage responsibility;
+- dataset representation, schema, model, or storage responsibility;
 - infrastructure, environment, deployment target, or operational capability;
 - AI model, AI system, evaluation asset, or automation capability.
 
@@ -166,9 +174,9 @@ Closing an Initiative does not retire its target Managed Assets. Retiring a Mana
 | GAEP-SCOPE-REQ-001 | Every scope-bearing entity SHALL have a canonical identifier issued by exactly one Authority Namespace. | Identity and namespace review |
 | GAEP-SCOPE-REQ-002 | A Managed Asset SHALL have identity independent of any Engineering Initiative, Change, Work Item, repository, or workspace. | Lifecycle scenario review |
 | GAEP-SCOPE-REQ-003 | An Engineering Initiative SHALL identify one accountable Organization Scope and at least one target Managed Asset or proposed Managed Asset identity. | Initiative-record validation |
-| GAEP-SCOPE-REQ-004 | A Product SHALL be modeled as a Managed Asset type unless an approved profile explicitly defines another non-conflicting meaning. | Type-registry inspection |
-| GAEP-SCOPE-REQ-005 | A Change SHALL reference exactly one governing Engineering Initiative and SHALL identify its affected scope at the precision available for its current analysis state. | Change-record validation |
-| GAEP-SCOPE-REQ-006 | A Work Item SHALL reference exactly one governing Engineering Initiative and SHALL NOT be interpreted as approval or authorization for a Change. | Work-item and authorization scenario |
+| GAEP-SCOPE-REQ-004 | A Product SHALL be modeled as a Managed Asset type and SHALL NOT be modeled as, or share canonical identity with, an Engineering Initiative. | Type-registry and identity inspection |
+| GAEP-SCOPE-REQ-005 | A Change SHALL reference exactly one governing Engineering Initiative, SHALL identify one or more exact affected baselines or an explicit genesis/no-prior-baseline declaration for a newly created subject, and SHALL identify its affected scope at the precision available for its current analysis state. A Change record alone SHALL NOT imply decision, approval, authorization, or execution. | Change-record and authorization-boundary validation |
+| GAEP-SCOPE-REQ-006 | A Work Item SHALL reference exactly one Change, SHALL derive its governing Engineering Initiative from that Change, and SHALL NOT be interpreted as approval or authorization for the Change. Any denormalized Initiative reference SHALL resolve to the same governing Initiative. | Work-item, referential-consistency, and authorization scenario |
 | GAEP-SCOPE-REQ-007 | A Workspace SHALL reference the scopes it represents and SHALL NOT derive ownership, approval, or authority from file containment or write access. | Workspace negative scenario |
 | GAEP-SCOPE-REQ-008 | Parent-child relationships among Initiatives and Work Items SHALL be acyclic. | Graph-cycle validation |
 | GAEP-SCOPE-REQ-009 | Parent scope, Portfolio membership, or Initiative decomposition SHALL NOT cause approval, policy exception, or authority to be inherited implicitly. | Inheritance negative scenario |
@@ -213,6 +221,7 @@ Every derived view identifies its source revisions and resolution time.
 | A workspace contains an organizational policy copy | Presence does not establish that the policy applies or is authoritative; the policy binding and exact revision must resolve. |
 | A target cannot be distinguished between similarly named services | Scope resolution returns unresolved and blocks material action rather than selecting the nearest repository path. |
 | A Product continues after a release initiative closes | The Product identity and operational state continue independently; the Initiative retains historical relationships. |
+| A Work Item is recorded directly against an Initiative without a Change | The record is unresolved or invalid until it references exactly one Change governed by that Initiative; Initiative membership alone is insufficient. |
 
 ## Open decisions
 

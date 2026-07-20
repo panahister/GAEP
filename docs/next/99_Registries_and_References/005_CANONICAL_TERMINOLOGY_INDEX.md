@@ -30,10 +30,12 @@ This is a navigation index, not a second definition owner. The listed owning con
 
 | Term | Short distinction | Normative owner |
 |---|---|---|
-| Managed Asset | durable Product, System, Service, Data Asset, Platform or Capability that work targets | GAEP-CORE-001 |
-| Initiative | bounded effort intended to create, change, migrate or retire managed assets | GAEP-CORE-001 |
-| Change | governed delta against one or more exact subject revisions or scoped Baseline Set designations | GAEP-CORE-001 |
-| Work Item | planning or execution decomposition of an Initiative or Change | GAEP-CORE-001 |
+| Managed Asset | long-lived governed subject with identity and history independent of the work that creates, changes, migrates, secures, operates, or retires it; initial types are Product, Platform, System, Service, Data Asset, and Reusable Capability | GAEP-CORE-001 |
+| Product | long-lived Managed Asset type; never an Engineering Initiative identity | GAEP-CORE-001 |
+| Engineering Initiative | bounded governed effort intended to create, change, migrate, secure, operate, or retire one or more Managed Assets | GAEP-CORE-001 |
+| Initiative | canonical short form for Engineering Initiative; not a separate entity type | GAEP-CORE-001 |
+| Change | versioned delta against exact subject baselines or an explicit genesis/no-prior-baseline declaration; proposal and authorization remain separate | GAEP-CORE-001 |
+| Work Item | planned or executable unit of exactly one Change; its governing Initiative is derived through that Change | GAEP-CORE-001 |
 | Implementation Unit | logical or deployable subject affected by work; not the work itself | GAEP-CORE-001 |
 | Workspace | governed representation and bindings for a scope; not automatically the authority for every represented resource | GAEP-CORE-001 |
 | Principal | identity-bearing human, organization, service or agent subject | GAEP-CORE-002 |
@@ -111,7 +113,7 @@ This is a navigation index, not a second definition owner. The listed owning con
 | evidence authority | distinguish epistemic role from semantic authority |
 | AI agent owns | identify service/agent Principal, Role, authority source and accountable human chain |
 | source of truth | declare authority per resource, field or representation |
-| Product Initiative | Product Managed Asset plus the bounded Initiative that targets it |
+| Product Initiative | preserve this legacy phrase with its exact source meaning; in the candidate model use an explicit Product Managed Asset plus the bounded Initiative or Initiatives that target it, without silent identity equivalence or identifier reuse |
 | defect initiative | defect Finding or work subject plus corrective Initiative/Change |
 | context | identify Context Item, Context Pack, selection rule or interaction context |
 | compliant | identify conformance class, versions, profiles, deviations and evidence |

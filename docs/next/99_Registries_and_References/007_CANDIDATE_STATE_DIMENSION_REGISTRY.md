@@ -52,7 +52,21 @@ Values are candidates. Profile-specific statecharts may add namespaced values on
 | `gaep.state.claim-assessment` | epistemic support for one bounded claim | not-assessed, supported, partially-supported, not-supported, inconclusive | approval, conformance, freshness |
 | `gaep.state.evidence-assessment` | fitness of evidence for declared use | not-assessed, fit-for-declared-use, not-fit-for-declared-use, inconclusive, disputed | authoring lifecycle, freshness, validity |
 | `gaep.state.semantic-verification` | assessment of a trace link or semantic mapping | not-assessed, verified, disputed, failed, inconclusive | authoring lifecycle, freshness, validity |
+| `gaep.state.mapping-fidelity` | preservation of meaning in one exact source-to-target semantic mapping | not-mapped, lossless, lossy, unknown | compatibility, semantic verification, representation strategy, migration decision, approval, authorization |
 | `gaep.state.gate-result` | result against a declared gate contract | not-assessed, incomplete, failed, conditionally-passed, passed, blocked | approval, authorization, conformance |
+
+## Subject and state ownership
+
+Every State Record binds one exact subject. A relationship between subjects does not copy, merge, or propagate their State Values unless the owning contract defines an explicit transition or derived-view rule.
+
+For the Product and Initiative semantic boundary:
+
+- Product operational eligibility, including retirement, belongs to the exact Product Managed Asset;
+- Initiative condition belongs to the exact Initiative under its applicable registered or Profile-defined State Dimension and Statechart;
+- closing or cancelling an Initiative does not retire, supersede, approve, or otherwise transition a target Product;
+- retiring a Product does not close, delete, or rewrite the Initiatives, Changes, Work Items, decisions, evidence, or historical relationships associated with it;
+- a mapping-fidelity State Record binds one exact mapping assessment identified by its source revision, target revision or target identity set, mapping method, and assessed semantic scope; it is not an intrinsic state of either endpoint;
+- a legacy value that combines Product and Initiative meaning maps to separate subject-and-dimension results, or remains explicitly lossy or unresolved when a defensible separation cannot be established.
 
 ## Scoped designations rather than intrinsic state
 
@@ -66,7 +80,7 @@ Baseline membership, release-channel membership and current organizational desig
 | GAEP-STATE-REG-REQ-002 | A profile-specific value SHALL identify namespace, owning profile, allowed transitions, compatibility and mapping to Core consequences. | Extension-state review |
 | GAEP-STATE-REG-REQ-003 | Unknown, conflicted and blocked conditions SHALL identify typed reason and resolution path; `blocked` SHALL NOT become a substitute universal state value. | Negative scenarios |
 | GAEP-STATE-REG-REQ-004 | Derived readiness SHALL preserve individual criterion results and blockers instead of becoming an independently editable universal status. | Readiness projection review |
-| GAEP-STATE-REG-REQ-005 | Legacy values SHALL map by semantic dimension; visually similar labels SHALL NOT be normalized without meaning review. | Migration mapping review |
+| GAEP-STATE-REG-REQ-005 | Legacy values SHALL map by exact source subject, target subject or target-subject set, semantic dimension, and mapping assessment; a composite or ambiguous value SHALL produce separate explicit mappings or an unresolved or lossy result, and visually similar labels SHALL NOT be normalized without meaning review. | Migration mapping review |
 | GAEP-STATE-REG-REQ-006 | Authoring lifecycle values SHALL be exactly `draft`, `proposed`, `in-review`, or `finalized` for the common document metadata contract; `approved`, `baselined`, `deprecated`, and `retired` SHALL be represented through their separate outcome, designation, or operational-eligibility semantics. | Metadata-registry alignment |
 | GAEP-STATE-REG-REQ-007 | Applicability, obligation strength, activity, timing, fulfillment, and disposition SHALL remain separate; no value in one dimension SHALL imply a value in another. | Obligation-state matrix test |
 | GAEP-STATE-REG-REQ-008 | Approval outcome SHALL expose `incomplete` and `indeterminate`, and authorization validity SHALL expose `suspended`; none SHALL be normalized to rejection, expiry, or revocation. | Failure-state scenario |
