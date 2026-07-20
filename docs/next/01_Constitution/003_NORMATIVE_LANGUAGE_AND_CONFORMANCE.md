@@ -70,4 +70,3 @@ Each requirement belongs to one normative document. Other documents reference it
 ## Change control
 
 A normative change must identify affected requirement IDs, registries, profiles, examples, conformance claims, migrations, and approvals. Renumbering a requirement solely for editorial convenience is prohibited; retired IDs remain reserved.
-

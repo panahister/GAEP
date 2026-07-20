@@ -52,4 +52,3 @@ A scenario passes only when the selected Core and Profiles can represent its sub
 ## Execution record
 
 For each run, record selected Core/profile versions, organizational bindings, scenario inputs, actors, assumptions, decisions, observed ambiguities, invented workarounds, burden, result, evidence and required specification changes. A scenario result expires when a materially relevant contract changes.
-

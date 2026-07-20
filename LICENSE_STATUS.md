@@ -16,4 +16,3 @@ The decision must address:
 - license migration and versioning.
 
 See `docs/next/00_GAEP_Product_Strategy/008_DISTRIBUTION_LICENSE_AND_ECOSYSTEM.md` and `docs/next/06_GAEP_On_GAEP/003_DECISION_REGISTER.md`.
-

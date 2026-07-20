@@ -128,4 +128,3 @@ The workspace may retain bounded snapshots for offline review when classificatio
 - Digest algorithms and signing profiles remain unselected.
 - The minimum portable export package remains to be specified after paper scenarios.
 - Organization-wide versus repository-local namespace allocation requires validation against multi-repository pilots.
-

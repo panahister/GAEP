@@ -19,4 +19,3 @@ Before external release or operational use, GAEP requires:
 - an approved platform threat model.
 
 The candidate threat model is in `docs/next/06_GAEP_On_GAEP/007_PLATFORM_THREAT_MODEL.md`.
-

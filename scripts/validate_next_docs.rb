@@ -14,6 +14,15 @@ PRODUCT_DECISION_CROSSWALK = NEXT_DOCS.join("06_GAEP_On_GAEP", "011_PRODUCT_DECI
 PRODUCT_STRATEGY = NEXT_DOCS.join("00_GAEP_Product_Strategy")
 CORE_OPEN_DECISION_REGISTER = NEXT_DOCS.join("99_Registries_and_References", "009_CORE_OPEN_DECISION_REGISTER.md")
 CORE_SPECIFICATION = NEXT_DOCS.join("02_Core_Specification")
+REPOSITORY_GAP_REGISTER = NEXT_DOCS.join("06_GAEP_On_GAEP", "012_REPOSITORY_GAP_REGISTER.md")
+ROOT_TEXT_FILES = %w[
+  .gitignore
+  README.md
+  CONTRIBUTING.md
+  LICENSE_STATUS.md
+  SECURITY.md
+  CHANGELOG.md
+].freeze
 PROFILE_CONTRACT_FIELDS = [
   "Core compatibility",
   "Versioned dependencies",
@@ -59,6 +68,7 @@ errors << "No candidate Markdown files found under #{NEXT_DOCS}" if files.empty?
 files.each do |path|
   relative = path.relative_path_from(ROOT).to_s
   text = path.read
+  errors << "#{relative}: extra blank line at end of file" if text.match?(/\r?\n\r?\n\z/)
 
   unless text.start_with?("---\n")
     errors << "#{relative}: missing YAML front matter"
@@ -339,7 +349,19 @@ if CORE_OPEN_DECISION_REGISTER.exist?
   CORE_SPECIFICATION.glob("*.md").each do |path|
     path.read.scan(/GAEP-[A-Z0-9-]+-OD-\d{3}/) { |id| source_open_decisions << id }
   end
-  registered_open_decisions = CORE_OPEN_DECISION_REGISTER.read.scan(/^\|\s*(GAEP-[A-Z0-9-]+-OD-\d{3})\s*\|/).flatten
+  open_decision_text = CORE_OPEN_DECISION_REGISTER.read
+  open_decision_sections = open_decision_text.split(/^## Register\s*$/, 2)
+  if open_decision_sections.length == 2
+    open_decision_register_body = open_decision_sections.last.split(/^##\s+/, 2).first
+    registered_open_decision_rows = open_decision_register_body.lines.grep(/^\|\s*GAEP-[A-Z0-9-]+-OD-\d{3}\s*\|/)
+    registered_open_decisions = registered_open_decision_rows.map do |row|
+      row[/^\|\s*(GAEP-[A-Z0-9-]+-OD-\d{3})\s*\|/, 1]
+    end
+  else
+    errors << "#{CORE_OPEN_DECISION_REGISTER.relative_path_from(ROOT)}: missing Register section"
+    registered_open_decision_rows = []
+    registered_open_decisions = []
+  end
   duplicate_open_decisions = registered_open_decisions.group_by { |id| id }.select { |_id, entries| entries.length > 1 }
   duplicate_open_decisions.each_key do |id|
     errors << "#{CORE_OPEN_DECISION_REGISTER.relative_path_from(ROOT)}: duplicate Core Open Decision #{id}"
@@ -351,9 +373,45 @@ if CORE_OPEN_DECISION_REGISTER.exist?
   (registered_set - source_open_decisions).each do |id|
     errors << "#{CORE_OPEN_DECISION_REGISTER.relative_path_from(ROOT)}: orphan Core Open Decision #{id}"
   end
+
+  registered_statuses = registered_open_decision_rows.to_h do |row|
+    fields = row.split("|").map(&:strip).reject(&:empty?)
+    [fields[0], fields[5]]
+  end
+  conflicting_registered = registered_statuses.select { |_id, status| status == "open-conflicts-with-current-contract" }.keys.to_set
+  assumption_sections = open_decision_text.split(/^## Current normative assumptions that still require decisions\s*$/, 2)
+  if assumption_sections.length == 2
+    assumption_body = assumption_sections.last.split(/^##\s+/, 2).first
+    assumption_ids = assumption_body.scan(/^\|\s*(GAEP-[A-Z0-9-]+-OD-\d{3})\s*\|/).flatten
+    duplicate_assumption_ids = assumption_ids.group_by { |id| id }.select { |_id, entries| entries.length > 1 }
+    duplicate_assumption_ids.each_key do |id|
+      errors << "#{CORE_OPEN_DECISION_REGISTER.relative_path_from(ROOT)}: duplicate current-assumption row #{id}"
+    end
+    assumption_set = assumption_ids.to_set
+    (conflicting_registered - assumption_set).each do |id|
+      errors << "#{CORE_OPEN_DECISION_REGISTER.relative_path_from(ROOT)}: missing current normative assumption for #{id}"
+    end
+    (assumption_set - conflicting_registered).each do |id|
+      errors << "#{CORE_OPEN_DECISION_REGISTER.relative_path_from(ROOT)}: current-assumption row #{id} is not registered with conflicting status"
+    end
+  else
+    errors << "#{CORE_OPEN_DECISION_REGISTER.relative_path_from(ROOT)}: missing current normative assumptions section"
+  end
   core_open_decision_count = source_open_decisions.length
 else
   errors << "missing Core Open Decision Register #{CORE_OPEN_DECISION_REGISTER.relative_path_from(ROOT)}"
+end
+
+repository_gap_count = 0
+if REPOSITORY_GAP_REGISTER.exist?
+  registered_gaps = REPOSITORY_GAP_REGISTER.read.scan(/^\|\s*(GAEP-GAP-\d{3})\s*\|/).flatten
+  duplicate_gaps = registered_gaps.group_by { |id| id }.select { |_id, entries| entries.length > 1 }
+  duplicate_gaps.each_key do |id|
+    errors << "#{REPOSITORY_GAP_REGISTER.relative_path_from(ROOT)}: duplicate repository gap #{id}"
+  end
+  repository_gap_count = registered_gaps.uniq.length
+else
+  errors << "missing Repository Gap Register #{REPOSITORY_GAP_REGISTER.relative_path_from(ROOT)}"
 end
 
 visiting = Set.new
@@ -379,11 +437,18 @@ end
 
 documents.each_key { |id| visit.call(id) }
 
-%w[README.md CONTRIBUTING.md LICENSE_STATUS.md SECURITY.md CHANGELOG.md].each do |relative|
+ROOT_TEXT_FILES.each do |relative|
   path = ROOT.join(relative)
-  next unless path.exist?
+  unless path.exist?
+    errors << "missing root text file #{relative}"
+    next
+  end
 
-  path.read.scan(/\[[^\]]*\]\(([^)]+)\)/).flatten.each do |target|
+  text = path.read
+  errors << "#{relative}: extra blank line at end of file" if text.match?(/\r?\n\r?\n\z/)
+  next unless path.extname == ".md"
+
+  text.scan(/\[[^\]]*\]\(([^)]+)\)/).flatten.each do |target|
     clean = target.split("#", 2).first
     next if clean.nil? || clean.empty?
     next if clean.match?(%r{\A(?:https?|mailto):})
@@ -401,6 +466,7 @@ puts "requirement definitions: #{requirement_definitions.length}"
 puts "legacy documents mapped: #{LEGACY_DOCS.glob('**/*.md').count { |path| !path.to_s.start_with?(NEXT_DOCS.to_s + File::SEPARATOR) }}"
 puts "Product Strategy decisions crosswalked: #{PRODUCT_STRATEGY.glob('*.md').flat_map { |path| path.read.scan(/GAEP-STR-[A-Z0-9-]+-DEC-[A-Z0-9-]+/) }.uniq.length}"
 puts "Core Open Decisions registered: #{core_open_decision_count}"
+puts "Repository gaps registered: #{repository_gap_count}"
 puts "warnings: #{warnings.length}"
 warnings.each { |warning| puts "WARN: #{warning}" }
 

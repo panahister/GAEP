@@ -44,6 +44,19 @@ supersedes: []
 
 The owning-document question is copied exactly. `Closure evidence` states the minimum package, not evidence that closure already occurred. All concrete owner-role assignments remain `unassigned` under GAEP-REG-008.
 
+## Current normative assumptions that still require decisions
+
+Permission to prepare or edit this Proposed documentation is not a Decision Outcome, Approval Determination, or Authorization Grant and cannot decide or defer Core semantics. The four rows below therefore remain `open-conflicts-with-current-contract` and block any baseline scope that depends on them. This table exposes the assumed answer already encoded in current normative text so reviewers cannot mistake implementation detail for a resolved Decision Outcome.
+
+| Decision ID | Current normative assumption | Still-open alternative or boundary | Required disposition |
+|---|---|---|---|
+| GAEP-SCOPE-OD-001 | Portfolio is presently a Core entity with Core-owned grouping relationships. | Portfolio may be a Profile or extension grouping type rather than universal Core. | Apply the Core admission and complexity tests, obtain a Decision Outcome, then retain or extract the entity and reconcile relationships, requirements, registries, scenarios, and migration. |
+| GAEP-SCOPE-OD-002 | A Managed Asset has exactly one accountable governing organization for a declared interval, with other organizations represented as participants. | Joint accountable organizations may be permitted through explicit cardinality and federation semantics. | Decide accountability cardinality and failure behavior, then reconcile Core scope, identity/authority, federation, policy, and joint-accountability scenarios. |
+| GAEP-DRAA-OD-002 | Approval Response is restricted to a Human Principal; deterministic organizational automation may provide only other governed records such as Authorization Grants. | Defined non-human or organizational mechanisms may require another accountable approval representation. | Decide the accountable-human invariant and machine/organization boundary, then reconcile entity definitions, requirements, integrity evidence, and human/non-human negative scenarios. |
+| GAEP-EER-OD-001 | Core presently defines composable effect descriptors and an effect envelope containing effect type and risk classification. | Some descriptors or classifications may belong in Profiles or registries outside the minimum Core. | Apply the Core admission and complexity tests, decide the minimal portable set, and reconcile Core, registry, Profile, Runtime, Adapter, and migration semantics. |
+
+No row may change to `deferred` without an approved Decision Record naming the owner, scope, rationale, current assumed answer, consequences, trigger, expiry, and required reconciliation. Until then, “deferred” is not a valid editorial shortcut.
+
 ## Register
 
 | Decision ID | Owning document | Exact decision question | Affected contracts / gates | Owner role | Status | Closure evidence required |
@@ -123,7 +136,7 @@ The owning-document question is copied exactly. `Closure evidence` states the mi
 
 | Requirement ID | Requirement | Verification |
 |---|---|---|
-| GAEP-OPEN-REQ-001 | Every Open Decision ID declared by GAEP-CORE-001 through GAEP-CORE-012 SHALL appear exactly once in this register, and no register ID may be absent from its owning document. | Bidirectional ID reconciliation |
+| GAEP-OPEN-REQ-001 | Every Open Decision ID declared by GAEP-CORE-001 through GAEP-CORE-012 SHALL appear exactly once as a canonical row in the `## Register` table, and no canonical register ID may be absent from its owning document; explanatory cross-references do not create additional registrations. | Bidirectional ID reconciliation |
 | GAEP-OPEN-REQ-002 | Owning document, exact question text, owner role, status, affected contracts or gates, and closure evidence SHALL be populated for every row. | Row completeness validation |
 | GAEP-OPEN-REQ-003 | `decided` SHALL require an approved exact Decision Record, exact resulting contract or registry revisions, and the named verification evidence; discussion or edited prose alone SHALL NOT close a row. | Decision-closure audit |
 | GAEP-OPEN-REQ-004 | `deferred` SHALL require an approved Decision Record identifying responsible owner assignment, rationale, trigger, expiry or review condition, affected risks, and prohibited reliance while deferred. | Deferral audit |

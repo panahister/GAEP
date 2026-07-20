@@ -40,7 +40,7 @@ The candidate corpus can be checked without third-party packages:
 ruby scripts/validate_next_docs.rb
 ```
 
-The check covers metadata and approval-shape rules, owner-role resolution, unique document and requirement IDs, exact requirement references, normative dependency integrity and cycles, candidate document references, Profile contract structure, Product and Core decision-register coverage, all 44 legacy migration entries, local links, headings, fenced blocks, and trailing whitespace. Passing it demonstrates machine-checkable document consistency only; it does not resolve semantic contradictions, close open decisions, approve the specification, validate product value, or authorize implementation.
+The check covers metadata and approval-shape rules, owner-role resolution, unique document and requirement IDs, exact requirement references, normative dependency integrity and cycles, candidate document references, Profile contract structure, Product and Core decision-register coverage, synchronization of conflicting Core decisions with their current-assumption disclosures, repository-gap ID uniqueness, all 44 legacy migration entries, required root governance files, local links, headings, fenced blocks, trailing whitespace, and extra blank lines at end of file. Passing it demonstrates machine-checkable document consistency only; it does not resolve semantic contradictions, close open decisions, approve the specification, validate product value, or authorize implementation.
 
 ## License and contribution status
 

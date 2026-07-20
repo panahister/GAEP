@@ -42,4 +42,3 @@ Deferral means the Core may preserve a compatible extension point, not that GAEP
 ## Anti-roadmap rule
 
 Deferred items are not promises or hidden roadmap commitments. Moving one into active scope requires a new evidence-backed decision with owner, value, risk, alternatives, prerequisites and displaced work.
-
