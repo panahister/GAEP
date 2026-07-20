@@ -1,12 +1,12 @@
 ---
 id: GAEP-CORE-001
-title: Scope and Work Model
+title: Scope, Work, Identity, and Authority Model
 document_type: normative-specification
 schema_version: 1.0
 version: 0.1.0
 status: proposed
 owner_role: GAEP Core Specification Steward
-scope: GAEP scope-bearing subjects, governed work, and workspace boundaries
+scope: GAEP durable subjects, bounded work, accountable identity, role assignment, standing authority, and scope boundaries
 normative_level: normative
 classification: internal
 provenance: GAEP pre-implementation restructuring
@@ -18,7 +18,6 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
 core_package_interfaces:
-  - GAEP-CORE-002
   - GAEP-CORE-003
   - GAEP-CORE-004
   - GAEP-CORE-005
@@ -32,7 +31,7 @@ informative_references:
 supersedes: []
 ---
 
-# Scope and Work Model
+# Scope, Work, Identity, and Authority Model
 
 ## Purpose
 
@@ -63,7 +62,7 @@ Those responsibilities belong to downstream Core specifications and realizations
 
 ### Intra-package interface rule
 
-This early contract records later-owned concepts only as opaque, version-pinned references: Principal/authority references, Resource Revision references, State/Transition references, Policy Binding references, approval/decision references, Profile Selection references, and federation references. It does not define or evaluate their downstream semantics. The edges are declared in `core_package_interfaces` and must resolve within the same exact Candidate Revision Set before approval. Consequently, GAEP claims an acyclic interpretation/build dependency graph, not an acyclic complete semantic-interface graph, and GAEP-CORE-001 is not independently baseline-complete.
+This first contract owns durable-subject, bounded-work, Principal, Role Assignment, standing-authority eligibility, and scope-resolution semantics. It records later-owned Resource Revision, State/Transition, Policy Binding, approval/decision, Profile Selection, and federation concepts only as opaque, version-pinned references. Those edges are declared in `core_package_interfaces` and must resolve within the same exact Candidate Revision Set before approval. Consequently, GAEP claims an acyclic interpretation/build dependency graph, not an acyclic complete semantic-interface graph, and GAEP-CORE-001 is not independently baseline-complete.
 
 ## Core entities
 
@@ -161,6 +160,14 @@ Scope resolution produces an attributable Scope Resolution Record containing:
 
 Scope resolution may narrow authority. It does not expand authority merely because a parent scope was selected.
 
+## Accountable identity and authority
+
+A `Principal` is an attributable human, organization, system, agent, or governed group identity. A `Role Definition` describes bounded responsibilities; it grants nothing. A `Role Assignment` binds one Principal to one exact role, scope, assigning authority, validity interval, review condition, delegation rule, and disclosed limitation. A standing `Authority Grant` establishes eligibility for a declared decision class within its exact scope; it is not executable permission. An action-specific `Authorization Grant` remains governed by GAEP-CORE-006.
+
+Authority resolution evaluates the acting Principal, exact role and assignment, standing grant where required, action, target, scope, time, state, policy, and constraints. Its result is eligible, ineligible, unresolved, or conflicted. Missing, expired, revoked, unverifiable, self-manufactured, or out-of-scope authority never becomes permission. Repository access, authorship, tool capability, funding, seniority, and file ownership do not substitute for these records.
+
+Role assignment, standing authority, approval authority, reviewer competence, and operational authorization remain separate. Delegated execution does not transfer accountability, and no delegation may exceed or outlive its source.
+
 ## Time and change
 
 Membership, ownership, target, and binding relationships have valid-time intervals when history matters. A current query and a historical query may return different scope graphs without rewriting history.
@@ -178,23 +185,21 @@ Closing an Initiative does not retire its target Managed Assets. Retiring a Mana
 | GAEP-SCOPE-REQ-005 | A Change SHALL reference exactly one governing Engineering Initiative, SHALL identify one or more exact affected baselines or an explicit genesis/no-prior-baseline declaration for a newly created subject, and SHALL identify its affected scope at the precision available for its current analysis state. A Change record alone SHALL NOT imply decision, approval, authorization, or execution. | Change-record and authorization-boundary validation |
 | GAEP-SCOPE-REQ-006 | A Work Item SHALL reference exactly one Change, SHALL derive its governing Engineering Initiative from that Change, and SHALL NOT be interpreted as approval or authorization for the Change. Any denormalized Initiative reference SHALL resolve to the same governing Initiative. | Work-item, referential-consistency, and authorization scenario |
 | GAEP-SCOPE-REQ-007 | A Workspace SHALL reference the scopes it represents and SHALL NOT derive ownership, approval, or authority from file containment or write access. | Workspace negative scenario |
-| GAEP-SCOPE-REQ-008 | Parent-child relationships among Initiatives and Work Items SHALL be acyclic. | Graph-cycle validation |
 | GAEP-SCOPE-REQ-009 | Parent scope, Portfolio membership, or Initiative decomposition SHALL NOT cause approval, policy exception, or authority to be inherited implicitly. | Inheritance negative scenario |
-| GAEP-SCOPE-REQ-010 | An Implementation Unit SHALL declare its canonical type, governing Managed Asset relationship, owner role reference, and effective interval where ownership changes over time. | Unit-record inspection |
-| GAEP-SCOPE-REQ-011 | Shared Implementation Units SHALL identify all known governing or consuming Managed Asset scopes required for impact analysis. | Shared-unit scenario |
-| GAEP-SCOPE-REQ-012 | Cross-organization work SHALL identify the accountable organization, participating organizations, and authority boundaries explicitly. | Federation scenario review |
 | GAEP-SCOPE-REQ-013 | Scope bindings SHALL identify their exact target scopes, effective interval, source, and combination or precedence semantics. | Binding-record validation |
 | GAEP-SCOPE-REQ-014 | Scope resolution SHALL return an explicit unresolved or conflicting result when a unique effective scope cannot be established. | Ambiguous-scope negative test |
 | GAEP-SCOPE-REQ-015 | Unresolved scope SHALL NOT be interpreted as the broadest available scope. | Over-broad-target negative test |
 | GAEP-SCOPE-REQ-016 | A scope change that can alter policy, authority, approval, impact, or evidence obligations SHALL create a new governed revision or transition record. | Scope-change scenario |
 | GAEP-SCOPE-REQ-017 | Closing an Initiative SHALL NOT silently retire, delete, or transfer its target Managed Assets. | Closure scenario |
 | GAEP-SCOPE-REQ-018 | Retiring a Managed Asset SHALL preserve required historical Initiative, Change, decision, trace, and evidence references according to policy. | Retirement and retention review |
-| GAEP-SCOPE-REQ-019 | Repository path, branch, project key, issue key, or external URL SHALL NOT be the sole canonical identity of a scope-bearing entity. | Portability inspection |
-| GAEP-SCOPE-REQ-020 | A conformance claim SHALL identify the exact Organization, Managed Asset, Initiative, Change, Implementation Unit, or Workspace scope to which it applies. | Conformance-record review |
 | GAEP-SCOPE-REQ-021 | Scope kinds and relationship names SHALL use controlled, versioned registries or declared extension namespaces. | Registry validation |
-| GAEP-SCOPE-REQ-022 | Scope history SHALL preserve transaction time and SHALL preserve valid time where retroactive or future-effective scope is supported. | Temporal-history scenario |
-| GAEP-SCOPE-REQ-023 | A profile MAY specialize permitted scope kinds, but SHALL NOT collapse Managed Asset, Initiative, Change, Work Item, and Workspace into one indistinguishable entity. | Effective-profile review |
 | GAEP-SCOPE-REQ-024 | Scope-sensitive records SHALL reference canonical Scope References rather than relying only on copied display names. | Referential validation |
+| GAEP-IDAUTH-REQ-001 | Every attributable action, transition, decision, approval, delegation, or external effect SHALL identify the acting Principal. | Record inspection |
+| GAEP-IDAUTH-REQ-004 | Repository write access, file ownership, tool availability, group membership, model capability, or possession of a credential SHALL NOT by itself constitute GAEP approval or authority. | Negative authorization scenarios |
+| GAEP-IDAUTH-REQ-005 | A Role Definition SHALL NOT establish standing authority eligibility without an applicable Role Assignment, Authority Grant, or policy binding, and none of those records SHALL substitute for executable Authorization Grant. | Unassigned-role test |
+| GAEP-IDAUTH-REQ-006 | Every Role Assignment SHALL identify Principal, role, scope, assigning authority, effective time, expiry or review condition, and current validity. | Assignment-record validation |
+| GAEP-IDAUTH-REQ-008 | Authority resolution SHALL evaluate Principal, action, target, scope, policy, state, time, classification, and required authorization at the precision applicable to the action, and SHALL produce eligibility rather than executable permission. | Authority decision-table test |
+| GAEP-IDAUTH-REQ-009 | Missing, conflicting, expired, revoked, or unverifiable authority inputs SHALL NOT resolve to silent eligibility or permission. | Negative resolution test |
 
 ## Derived views
 
@@ -237,7 +242,7 @@ These items remain proposed design questions and do not create requirements:
 
 ## Cross-contract dependencies
 
-- Principal, role, owner, and authority semantics are defined by GAEP-CORE-002.
+- Principal, role, assignment, standing-authority eligibility, and scope semantics are defined in this contract.
 - Scope-bound resources and exact revisions are defined by GAEP-CORE-003.
 - Scope changes and transition records are defined by GAEP-CORE-004.
 - Policy Binding and Policy Evaluation semantics are defined by GAEP-CORE-005.

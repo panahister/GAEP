@@ -18,16 +18,12 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-001
-  - GAEP-CORE-002
   - GAEP-CORE-003
   - GAEP-CORE-004
   - GAEP-CORE-005
   - GAEP-CORE-006
   - GAEP-CORE-007
-  - GAEP-CORE-008
   - GAEP-CORE-009
-  - GAEP-CORE-010
-  - GAEP-CORE-011
 informative_references: []
 supersedes: []
 ---
@@ -101,6 +97,22 @@ Capability or protocol negotiation compares exact supported contracts, versions,
 
 Unknown required fields, events, states, relationship types, policy outcomes, or effect semantics fail explicitly. Optional unknowns may be preserved opaquely only when the owning contract permits it and no security or semantic invariant is affected.
 
+## Candidate compatibility staging
+
+`GAEP-DEC-007` selects a versioned mapping between the legacy Product-as-Initiative representation and the candidate Product-as-durable-Managed-Asset model. The selected initial treatment is staged dual-read with one authoritative write model per exact subject and no dual-write. It remains a Proposed, pending-effectiveness Decision and does not activate migration or supersession.
+
+During a future separately approved initial compatibility phase:
+
+- legacy-only consumers read preserved legacy records using their original historical semantics;
+- explicitly versioned candidate consumers read candidate Product, Initiative, Change, and Work Item identities only after exact mappings resolve them;
+- a mapping result records mapping fidelity independently from compatibility by dimension and representation strategy;
+- unresolved, ambiguous, or lossy mappings remain explicit and cannot manufacture identity, cardinality, state history, approval, or authority;
+- no writer updates both representations, and no reader's compatibility view becomes a second authoritative source;
+- rollback restores the prior read routing and preserves every source record, mapping record, and attributable transformation result;
+- any future dual-write proposal requires a new Decision Record covering write authority, synchronization, conflict precedence, failure, reconciliation, rollback, and historical interpretation.
+
+This staging contract is a compatibility constraint, not a migration Approval Determination, constitutional supersession, Profile activation, or Authorization Grant.
+
 ## Federation model
 
 A federation connects independently governed authority domains while preserving local accountability. A federation agreement identifies:
@@ -121,16 +133,7 @@ Federation does not merge authority domains. A remote assertion is evidence from
 
 | Requirement ID | Requirement | Verification |
 |---|---|---|
-| GAEP-ECF-REQ-001 | Every extension SHALL have a stable namespaced ID, exact version, owner, publisher, class, lifecycle state, and approval state. | Extension-manifest validation |
-| GAEP-ECF-REQ-002 | An extension SHALL identify the exact Core variation points and contracts it extends or specializes. | Variation-point review |
 | GAEP-ECF-REQ-003 | An extension SHALL NOT redefine, weaken, shadow, or bypass a Core prohibition, invariant, state meaning, or authority rule outside an explicit permitted variation point. | Semantic-override negative test |
-| GAEP-ECF-REQ-004 | New extension semantics SHALL use an owned namespace and SHALL declare mappings, conflicts, and migration behavior relative to Core registries. | Namespace and mapping test |
-| GAEP-ECF-REQ-005 | Presence, installation, discovery, download, or successful loading SHALL NOT make an extension approved, active, trusted, or authorized. | Installation-state negative test |
-| GAEP-ECF-REQ-006 | An extension manifest SHALL declare dependencies, permissions, data access, recipients, tools, effects, credentials, budgets, failure modes, evidence, and recovery obligations. | Manifest-completeness review |
-| GAEP-ECF-REQ-007 | Transitive dependencies and effective permissions SHALL be resolved and reviewed before extension activation. | Dependency-resolution test |
-| GAEP-ECF-REQ-008 | An extension SHALL NOT receive ambient authority or credentials solely because its host possesses them. | Ambient-authority negative test |
-| GAEP-ECF-REQ-009 | Extension provenance, publisher identity, integrity, source, review, evaluation, and distribution channel SHALL be recorded according to applicable profile. | Supply-chain evidence review |
-| GAEP-ECF-REQ-010 | A compromised, vulnerable, malicious, expired, or unsupported extension SHALL support quarantine, revocation, affected-scope discovery, and rollback or containment. | Revocation scenario |
 | GAEP-ECF-REQ-011 | Compatibility SHALL be assessed by declared dimensions and SHALL NOT collapse a material incompatibility into one positive aggregate label. | Compatibility-matrix inspection |
 | GAEP-ECF-REQ-012 | Compatibility results SHALL bind to exact Core, profile, extension, registry, representation, and dependency versions. | Version-change scenario |
 | GAEP-ECF-REQ-013 | Unknown or untested compatibility SHALL resolve to `unknown` and SHALL NOT be represented as compatible. | Unknown-compatibility test |
@@ -139,18 +142,9 @@ Federation does not merge authority domains. A remote assertion is evidence from
 | GAEP-ECF-REQ-016 | Migration SHALL preserve governed identity, provenance, decisions, approvals, evidence, and historical interpretation or SHALL disclose any loss. | Migration round-trip test |
 | GAEP-ECF-REQ-017 | Export and import SHALL preserve canonical semantics or identify every lossy, unsupported, transformed, or locally interpreted element. | Round-trip and loss test |
 | GAEP-ECF-REQ-018 | An adapter SHALL declare its capability and semantic limits and SHALL NOT fabricate support for a Core state, evidence, authorization, effect, or recovery behavior. | Adapter negative test |
-| GAEP-ECF-REQ-019 | Negotiation SHALL compare exact supported versions, profiles, semantics, permissions, and constraints and SHALL fail explicitly when a required contract is unsupported. | Negotiation scenario |
 | GAEP-ECF-REQ-020 | Optional unknown fields MAY be preserved opaquely only when the owning contract permits it and no mandatory interpretation or trust decision depends on them. | Forward-compatibility test |
-| GAEP-ECF-REQ-021 | Every federation SHALL have a versioned agreement with accountable domains, purpose, scope, trust, policy, data, audit, incident, continuity, dispute, and exit terms. | Federation-agreement review |
 | GAEP-ECF-REQ-022 | Federation SHALL preserve distinct authority domains; a remote identity, role, decision, approval, policy, or evidence item SHALL NOT acquire local authority automatically. | Cross-domain authority test |
 | GAEP-ECF-REQ-023 | Federated authority SHALL be no greater than the intersection of valid local and remote grants, mappings, policy, and agreement constraints. | Privilege-amplification negative test |
-| GAEP-ECF-REQ-024 | Identity and role mapping SHALL record source assurance, local meaning, scope, expiry, revocation, and unmapped attributes. | Identity-mapping review |
-| GAEP-ECF-REQ-025 | Policy conflict across domains SHALL produce an explicit conflict, denial, or authorized resolution; it SHALL NOT silently choose the more permissive result. | Cross-domain policy test |
-| GAEP-ECF-REQ-026 | Federated data exchange SHALL bind purpose, data classes, sender, recipient, destination, handling, retention, deletion, and applicable transfer authority. | Data-exchange record inspection |
-| GAEP-ECF-REQ-027 | Federation SHALL define synchronization, stale-reference, outage, partition, split-brain, and reconciliation behavior before material shared effects are enabled. | Partition and recovery scenario |
-| GAEP-ECF-REQ-028 | Revocation or termination SHALL propagate to mapped authority, credentials, data access, extensions, active runs, approvals, and pending effects according to declared timing. | Revocation-propagation test |
-| GAEP-ECF-REQ-029 | Federation exit SHALL provide governed data return or deletion, retained-record disposition, authority revocation, unresolved-effect reconciliation, and portable export. | Exit exercise review |
-| GAEP-ECF-REQ-030 | A conformance claim SHALL identify extension and federation versions, unsupported semantics, deviations, trust assumptions, and evidence. | Conformance-record inspection |
 
 ## Required negative cases
 

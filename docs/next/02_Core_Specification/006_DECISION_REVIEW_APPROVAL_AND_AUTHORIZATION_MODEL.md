@@ -18,7 +18,6 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-001
-  - GAEP-CORE-002
   - GAEP-CORE-003
   - GAEP-CORE-004
   - GAEP-CORE-005
@@ -224,7 +223,7 @@ Expired, revoked, conflicted, out-of-scope, or wrong-version Responses do not sa
 
 ## Authorization model
 
-Approval expresses accountable acceptance. Authorization permits an action. A standing Authority Grant from GAEP-CORE-002 establishes decision rights or authority source only. A Policy Evaluation, standing Authority Grant, valid Approval Determination, Decision, or approved Exception may be a source for an Authorization Grant, but none substitutes for the executable grant. The Authorization Grant binds action, Actor, target, scope, policy, state, time, and conditions.
+Approval expresses accountable acceptance. Authorization permits an action. A standing Authority Grant from GAEP-CORE-001 establishes decision rights or authority source only. A Policy Evaluation, standing Authority Grant, valid Approval Determination, Decision, or approved Exception may be a source for an Authorization Grant, but none substitutes for the executable grant. The Authorization Grant binds action, Actor, target, scope, policy, state, time, and conditions.
 
 An Authorization Grant contains:
 
@@ -291,43 +290,27 @@ Where a small organization combines roles, the Approval Case records the combina
 | Requirement ID | Requirement | Verification |
 |---|---|---|
 | GAEP-DRAA-REQ-001 | Recommendation, Decision, Review, Approval, Authorization Grant, and Confirmation SHALL remain distinct governed entities or interactions. | Entity and scenario review |
-| GAEP-DRAA-REQ-002 | A Recommendation SHALL identify recommender, options considered, preferred option, rationale, evidence, assumptions, uncertainty, and scope. | Recommendation validation |
 | GAEP-DRAA-REQ-003 | A Recommendation SHALL NOT be interpreted as a Decision, Approval, Risk Acceptance, or Authorization Grant. | Recommendation negative test |
 | GAEP-DRAA-REQ-004 | Every material Decision Record SHALL identify Decision Question, owner, authority, scope, options, criteria, evidence, Recommendation, Outcome, consequences, and review triggers. | Decision-record validation |
 | GAEP-DRAA-REQ-005 | A Decision Outcome SHALL identify exact selected option or explicit deferred, rejected-option-set, no-action, or unresolved disposition. | Outcome inspection |
 | GAEP-DRAA-REQ-006 | Human selection SHALL NOT be interpreted as formal Approval or executable authorization when policy requires either separately. | Selection-versus-approval scenario |
-| GAEP-DRAA-REQ-007 | Material change to Decision Question, options, criteria, evidence, scope, or selected subject SHALL create a new Decision revision and trigger declared re-evaluation. | Decision-change scenario |
 | GAEP-DRAA-REQ-008 | Every Review SHALL bind to exact subject revisions or one exact Candidate Revision Set revision, criteria, reviewer identities and roles, consumed Evaluation Results, evidence, exclusions, findings, and limitations. | Review-record validation |
 | GAEP-DRAA-REQ-009 | Review completion, validation success, passing tests, or AI concurrence SHALL NOT by itself approve or authorize the reviewed subject. | Review negative scenarios |
-| GAEP-DRAA-REQ-010 | Every Review Finding SHALL have stable identity, subject, criterion, rationale, severity method, consequence, owner, disposition, and verification state. | Finding-record validation |
-| GAEP-DRAA-REQ-011 | Finding severity, confidence, activity state, and disposition SHALL remain separate dimensions. | Finding-state inspection |
-| GAEP-DRAA-REQ-012 | Waiving or accepting a material Finding SHALL reference applicable authority, Risk Record, Decision, and Policy Exception where required. | Finding-waiver scenario |
 | GAEP-DRAA-REQ-013 | An Approval Requirement SHALL identify source policy, exact subject, purpose, approver roles, evidence, segregation, aggregation, allowed outcomes, and validity. | Requirement validation |
 | GAEP-DRAA-REQ-014 | An Approval Case SHALL bind to exact Resource Revisions, one exact Candidate Revision Set revision, or an existing immutable Baseline Set designation and SHALL expose exclusions, uncertainty, unresolved findings, and requested scope. | Approval-package review |
 | GAEP-DRAA-REQ-015 | An Approval Response SHALL identify the Human Principal, exercised role, authority source, exact Approval Case revision, response, rationale, time, and conditions. | Response validation |
-| GAEP-DRAA-REQ-016 | An Agent Principal SHALL NOT provide a human Approval Response or Risk Acceptance. | AI approval negative test |
 | GAEP-DRAA-REQ-017 | Approval SHALL NOT be inferred from silence, attendance, file presence, merge, generation, review, test success, or access rights. | Approval inference test |
 | GAEP-DRAA-REQ-018 | An Approval Determination SHALL apply the declared aggregation rule and SHALL identify valid, invalid, missing, conflicting, expired, and revoked Responses. | Multi-approver scenario |
-| GAEP-DRAA-REQ-019 | Conditional approval SHALL create explicit Obligations with owner, due condition, verification, consequence, and validity. | Conditional-approval validation |
 | GAEP-DRAA-REQ-020 | A materially changed Approval Case SHALL invalidate or reopen prior Responses according to policy before new dependent authorization. | Changed-subject scenario |
-| GAEP-DRAA-REQ-021 | Approval validity SHALL be re-evaluated when subject revision, policy, evidence, risk, authority, condition, or effective time changes materially. | Approval-staleness test |
 | GAEP-DRAA-REQ-022 | Revocation SHALL identify revoking Principal, authority, reason, effective time, affected scope, and downstream Authorization Grants or actions. | Revocation validation |
 | GAEP-DRAA-REQ-023 | Every Authorization Grant SHALL identify grantor, source authority, grantee, actions, exact target or selector, scope, applicable effect-descriptor set, destinations, validity, conditions, delegation, and invalidation triggers. | Grant-record validation |
 | GAEP-DRAA-REQ-024 | An Authorization Grant SHALL NOT permit actions broader than its source standing Authority Grant, Role Assignment, Policy Evaluation, Approval Determination, Decision, Exception, or grantor authority. | Grant-amplification test |
 | GAEP-DRAA-REQ-025 | A material action SHALL revalidate applicable Authorization Grant, Principal, subject revision, state, policy, time, and unsatisfied blocking Obligations immediately before effect. | Action-time authorization test |
 | GAEP-DRAA-REQ-026 | Expired, revoked, suspended, consumed, invalidated, wrong-scope, or wrong-version Authorization Grants SHALL NOT permit new action. | Invalid-grant scenarios |
-| GAEP-DRAA-REQ-027 | A Confirmation SHALL identify exact action, target, destination, effect, authorization, risk, reversibility, confirming Principal, and validity. | Confirmation-record validation |
-| GAEP-DRAA-REQ-028 | Confirmation SHALL NOT create missing authority or replace a required Approval unless the applicable policy explicitly unifies them and every Approval requirement is met. | Confirmation negative test |
 | GAEP-DRAA-REQ-029 | A gate pass, automated Policy Evaluation permit, standing Authority Grant, Decision, Exception, or Approval Determination SHALL create executable authority only through an exact applicable Authorization Grant. | Gate-to-action scenario |
-| GAEP-DRAA-REQ-030 | Segregation and conflict-of-interest rules SHALL be evaluated for every Approval Case where policy requires them. | Role-conflict scenario |
-| GAEP-DRAA-REQ-031 | Combined roles SHALL be disclosed with compensating controls when policy permits role combination. | Small-team scenario |
-| GAEP-DRAA-REQ-032 | External or offline Approval Responses SHALL preserve exact subject, identity, role, authority, time, outcome, conditions, evidence reference, and integrity needed by policy. | Offline-approval scenario |
 | GAEP-DRAA-REQ-033 | Unknown, ambiguous, conflicting, or unverifiable Approval or Authorization state SHALL NOT be interpreted as permission. | Failure-mode negative test |
-| GAEP-DRAA-REQ-034 | Every executable policy path, including paths with no human Approval Requirement, SHALL materialize a current Authorization Grant before commitment and SHALL preserve the Policy Evaluation as a source reference. | Policy-to-grant materialization test |
 | GAEP-DRAA-REQ-035 | Standing Authority Grant, Policy Evaluation, Approval Determination, Decision, Exception, Review, Evaluation Result, gate result, and Confirmation SHALL NOT be accepted as executable permission in place of an Authorization Grant. | Authorization-substitution negative test |
 | GAEP-DRAA-REQ-036 | Review and Evaluation SHALL remain distinct: Review orchestrates and judges the sufficiency of one or more exact Evaluation Results plus attributable Review Contributions, while Evaluation produces an epistemic result under a declared method. | Review-evaluation boundary scenario |
-| GAEP-DRAA-REQ-037 | Decision authoring lifecycle, revision disposition, operational eligibility, Decision Outcome, and decision effectiveness SHALL remain independent state dimensions. | Decision-state inspection |
-| GAEP-DRAA-REQ-038 | A completed Review SHALL emit exactly one Review Conclusion for that Review revision, binding all Evaluation Results and Contributions considered and exposing omitted, conflicting, stale, or insufficient inputs. | Review-conclusion validation |
 
 ## Relationship and cardinality contract
 
@@ -378,7 +361,7 @@ Where a small organization combines roles, the Approval Case records the combina
 ## Cross-contract dependencies
 
 - Decision and approval scopes use GAEP-CORE-001.
-- Principal, role, authority chain, delegation, and accountability use GAEP-CORE-002.
+- Principal, role, authority chain, delegation, and accountability use GAEP-CORE-001.
 - All exact subjects, case revisions, and Baseline Sets use GAEP-CORE-003.
 - Lifecycle, validity, events, and transition history use GAEP-CORE-004.
 - Policy, Risk Records, Exceptions, and Obligations use GAEP-CORE-005.

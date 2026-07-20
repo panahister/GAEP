@@ -66,7 +66,8 @@ Outputs:
 
 - asset/work ontology and cardinalities;
 - bounded-context and single-writer ownership map;
-- identity, resource/version, state/event, policy/risk, decision/authorization, evidence/trace, profile, capability/context, execution and federation contracts;
+- eight active Core contracts covering scope/work/identity/authority; resource/version/trace/provenance; state/event; policy/risk; decision/review/approval/authorization; claim/evidence/assurance; Profile/configuration; and portable extension/compatibility/federation invariants;
+- capability/context and execution/effect mechanics classified as Realizations, with extension/supply-chain and federation mechanics extracted to selectable Profiles;
 - canonical registries and requirement IDs;
 - Complexity and Subtraction Gate Evaluations for material additions to Core.
 
@@ -91,7 +92,7 @@ Exit evidence: high-risk and manual/no-AI paths are trustworthy on paper.
 
 Outputs:
 
-- every profile selected for evaluation by the current applicability manifest, including the candidate Product, corrective-change, migration, security/identity-change, emergency, experiment, reusable-asset, architecture, assurance, platform-security, data/privacy/records, AI System, operational-reliability, legal/IP/supplier, workforce-trust/accessibility/ethics, audit-integrity/accountability, and incident-response/continuity profiles;
+- every Profile selected for evaluation by the current applicability manifest, including the candidate Product, corrective-change, migration, security/identity-change, emergency, experiment, reusable-asset, architecture, assurance, platform-security, data/privacy/records, AI System, operational-reliability, legal/IP/supplier, workforce-trust/accessibility/ethics, audit-integrity/accountability, incident-response/continuity, extension/supply-chain, and federation Profiles;
 - effective-profile resolution examples;
 - complete reference-scenario results;
 - corrected Core and profile contracts;

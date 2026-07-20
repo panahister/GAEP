@@ -18,7 +18,6 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-001
-  - GAEP-CORE-002
   - GAEP-CORE-003
 core_package_interfaces:
   - GAEP-CORE-005
@@ -221,24 +220,14 @@ Invalidation is a validity-dimension transition, not deletion. Compensation reco
 | GAEP-STATE-REQ-010 | An Event SHALL represent an occurrence and SHALL NOT be silently mutated after publication or durable recording. | Event correction scenario |
 | GAEP-STATE-REQ-011 | Every material Event SHALL use an Event Envelope containing event identity, type, schema version, subject, producer, actor where applicable, occurrence and recorded times, causation, correlation, classification, and provenance. | Event-envelope validation |
 | GAEP-STATE-REQ-012 | Event type names and State Values SHALL use controlled registries or declared extension namespaces. | Registry validation |
-| GAEP-STATE-REQ-013 | Event consumers SHALL NOT assume global ordering unless an ordering scope and guarantee are explicitly declared. | Out-of-order event scenario |
-| GAEP-STATE-REQ-014 | Duplicate transition or event delivery SHALL be handled idempotently or SHALL return an explicit duplicate-risk result before a repeated side effect. | Duplicate-delivery test |
-| GAEP-STATE-REQ-015 | An accepted idempotent retry SHALL return or reference the original committed result. | Retry scenario |
 | GAEP-STATE-REQ-016 | A Composite State View SHALL identify each source State Record and SHALL NOT become an independent mutable source of truth. | Projection reconstruction |
 | GAEP-STATE-REQ-017 | A State Snapshot SHALL identify source versions, included dimensions, sequence or time boundary, and generation provenance. | Snapshot validation |
 | GAEP-STATE-REQ-018 | Reopening SHALL preserve prior decisions, transitions, approvals, and evidence rather than overwrite them. | Reopening scenario |
 | GAEP-STATE-REQ-019 | Invalidation SHALL be represented separately from deletion, retirement, freshness, and supersession. | Invalidation scenario |
 | GAEP-STATE-REQ-020 | Compensation or rollback SHALL identify the original effect, compensating action, restored state, residual effects, actor, authority, and evidence. | Compensation scenario |
 | GAEP-STATE-REQ-021 | Changing a Statechart Definition SHALL identify migration, compatibility, affected active instances, and re-evaluation requirements. | Statechart-upgrade review |
-| GAEP-STATE-REQ-022 | A profile SHALL NOT rename a Core State Value into an unregistered synonym or change its meaning silently. | Profile conformance review |
 | GAEP-STATE-REQ-023 | Unknown or unsupported required State Values or Event semantics SHALL return an explicit incompatible result. | Forward-compatibility negative test |
 | GAEP-STATE-REQ-024 | Approval expiry, authority revocation, policy change, or material subject revision SHALL trigger state or guard re-evaluation before the next dependent material transition. | Mid-run invalidation scenario |
-| GAEP-STATE-REQ-025 | Sensitive event payloads MAY be referenced or redacted, but the Event Envelope SHALL preserve sufficient identity, attribution, classification, and integrity for its declared use. | Redaction and audit scenario |
-| GAEP-STATE-REQ-026 | A producer unable to verify whether a material external effect occurred SHALL record an uncertain outcome and SHALL NOT report success. | Ambiguous-effect scenario |
-| GAEP-STATE-REQ-027 | A generic document or resource metadata field named `status` SHALL represent at most one declared State Dimension and SHALL NOT encode approval, baseline designation, validity, freshness, retention, or operational eligibility together. | Metadata-state inspection |
-| GAEP-STATE-REQ-028 | Approval and Baseline Set designation SHALL be represented by separate governed records and relationships, not as values in an authoring lifecycle or revision-disposition field. | Approval-and-baseline separation scenario |
-| GAEP-STATE-REQ-029 | Obligation applicability, strength, activity, timing, fulfillment, and disposition SHALL be separately recordable so that, for example, an applicable required obligation may be active, overdue, unsatisfied, and unwaived simultaneously. | Obligation composite-state test |
-| GAEP-STATE-REQ-030 | Decision authoring lifecycle, revision disposition, operational eligibility, decision outcome, and decision effectiveness SHALL be separate State Dimensions so that a finalized accepted decision can remain pending, expire, be superseded, or retire from new use without rewriting its outcome. | Decision-state reconstruction |
 
 ## Negative cases
 
@@ -267,7 +256,7 @@ Invalidation is a validity-dimension transition, not deletion. Compensation reco
 ## Cross-contract dependencies
 
 - Transition subjects and scope come from GAEP-CORE-001.
-- Actors and authority chains come from GAEP-CORE-002.
+- Actors and authority chains come from GAEP-CORE-001.
 - Revision identity, immutable records, and baselines come from GAEP-CORE-003.
 - Policy decisions, risks, and obligations guard transitions under GAEP-CORE-005.
 - Decision, review, approval, and Authorization Grant events use GAEP-CORE-006.

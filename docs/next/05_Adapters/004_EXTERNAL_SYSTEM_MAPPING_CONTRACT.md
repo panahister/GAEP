@@ -17,7 +17,6 @@ approval:
 normative_dependencies:
   - GAEP-CST-003
   - GAEP-CORE-003
-  - GAEP-CORE-008
   - GAEP-CORE-012
   - GAEP-REAL-001
 informative_references:

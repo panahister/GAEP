@@ -18,13 +18,11 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-001
-  - GAEP-CORE-002
   - GAEP-CORE-003
   - GAEP-CORE-004
   - GAEP-CORE-005
   - GAEP-CORE-006
   - GAEP-CORE-007
-  - GAEP-CORE-008
 informative_references: []
 supersedes: []
 ---
@@ -133,13 +131,8 @@ Other configuration conflict resolution considers authority, scope specificity, 
 | GAEP-PCR-REQ-015 | A profile dependency graph SHALL be acyclic and SHALL bind to explicit compatible version ranges. | Graph and compatibility check |
 | GAEP-PCR-REQ-016 | A resolver SHALL consume an exception only through an exact Policy Exception revision governed by GAEP-CORE-005 and its applicable approval under GAEP-CORE-006. | Exception-input review |
 | GAEP-PCR-REQ-017 | Effective configuration SHALL preserve the non-exceptionable result required by GAEP-POLICY-REQ-010 regardless of profile, organizational binding, runtime parameter, or default. | Non-waivable negative test |
-| GAEP-PCR-REQ-018 | A Policy Exception excluded by GAEP-POLICY-REQ-027 SHALL be excluded from effective configuration with an explicit reason and affected obligations. | Exception-validity scenario |
-| GAEP-PCR-REQ-019 | A repeated-exception review signal produced under GAEP-CORE-005 SHALL remain visible in effective configuration and SHALL NOT be normalized into a default. | Renewal scenario |
 | GAEP-PCR-REQ-020 | A material change to subject, actor, action, environment, profile, policy, exception, or configuration source SHALL invalidate or reopen the effective manifest as declared. | Change-invalidation test |
 | GAEP-PCR-REQ-021 | Resolution SHALL preserve conflicts, exclusions, unknowns, obligations, and non-applicable results in the manifest. | Manifest-completeness review |
-| GAEP-PCR-REQ-022 | Configuration with a classification or recipient constraint SHALL NOT flow into a subject, provider, tool, or environment lacking permission. | Classification-routing test |
-| GAEP-PCR-REQ-023 | A conformance claim SHALL identify its effective-configuration manifest and all deviations from the selected profiles. | Conformance-record inspection |
-| GAEP-PCR-REQ-024 | Resolution behavior SHALL be deterministic for equivalent governed inputs or SHALL disclose and govern any permitted nondeterminism. | Repeat-resolution test |
 | GAEP-PCR-REQ-025 | Historical effective manifests SHALL remain reconstructable after profile, registry, and configuration evolution. | Historical-replay analysis |
 | GAEP-PCR-REQ-026 | Resolution SHALL follow the staged protocol of Base Policy Envelope, Profile Selection Manifest, selected-profile composition, Effective Policy Snapshot, remaining organizational configuration, and workflow/run configuration without a dependency from an earlier stage on a later stage. | Resolution-graph acyclicity test |
 | GAEP-PCR-REQ-027 | The policy resolver SHALL NOT select profiles, infer profile selection, or use an Effective Policy Snapshot containing a profile to decide that same profile's applicability. | Policy-profile recursion negative test |

@@ -1,12 +1,12 @@
 ---
 id: GAEP-CORE-003
-title: Governed Resource and Version Model
+title: Governed Resource, Version, Trace, and Provenance Model
 document_type: normative-specification
 schema_version: 1.0
 version: 0.1.0
 status: proposed
 owner_role: GAEP Resource and Version Steward
-scope: Governed resource identity, immutable revisions, representations, provenance, versions, and baselines
+scope: Governed resource identity, immutable revisions, candidate and baseline sets, trace, provenance, semantic registries, representations, and retention
 normative_level: normative
 classification: internal
 provenance: GAEP pre-implementation restructuring
@@ -18,13 +18,11 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-001
-  - GAEP-CORE-002
 core_package_interfaces:
   - GAEP-CORE-004
   - GAEP-CORE-005
   - GAEP-CORE-006
   - GAEP-CORE-007
-  - GAEP-CORE-008
 informative_references:
   - ../../02_Platform/011_REPOSITORY_PHILOSOPHY.md
   - ../../03_Product_Engineering/022_ARTIFACT_LIFECYCLE.md
@@ -33,7 +31,7 @@ informative_references:
 supersedes: []
 ---
 
-# Governed Resource and Version Model
+# Governed Resource, Version, Trace, and Provenance Model
 
 ## Purpose
 
@@ -214,6 +212,14 @@ A Derived View is authoritative only for its declared calculation, not for the u
 
 Indexes and caches are rebuildable unless an approved decision explicitly designates otherwise.
 
+## Trace and semantic registry boundary
+
+A Trace Link is an attributable, version-bound assertion between exact governed subjects. Resolution of both endpoints is necessary but not sufficient: relationship type, direction, cardinality, scope, assertion provenance, state, compatibility, and invalidation conditions must also be semantically fit. Absence of a link is not evidence that no relationship exists.
+
+A Provenance Record connects sources, transformations, contributors, methods, and resulting revisions without treating generation or storage as approval. Lossy transformations disclose omission and uncertainty. A Semantic Registry owns namespaced controlled values and relationship behavior; aliases resolve to one canonical meaning for an exact registry revision and never silently transfer authority or identity.
+
+Trace, provenance, and registry histories preserve attributable amendments and supersession. Storage indexes and derived views remain reconstructable representations rather than independent sources of truth.
+
 ## Supersession, deprecation, validity, and retention
 
 These concepts are independent:
@@ -244,25 +250,17 @@ Superseded or retired resources may remain required for historical decisions, in
 | GAEP-RESVER-REQ-009 | A Candidate Revision Set SHALL have canonical identity, declared purpose, set revision, exact member Resource Revisions or immutable digests, owner role, provenance, and supersession behavior. | Candidate-set validation |
 | GAEP-RESVER-REQ-010 | Changing Candidate Revision Set membership SHALL create a new Candidate Revision Set revision and SHALL preserve prior membership history. | Candidate-set revision scenario |
 | GAEP-RESVER-REQ-011 | Approved and baselined SHALL remain separate designations. | Approved-not-baselined scenario |
-| GAEP-RESVER-REQ-012 | One Resource Revision MAY belong to multiple Candidate Revision Sets and MAY be designated through multiple Baseline Sets, but each designation SHALL identify its independent scope and validity. | Multi-baseline scenario |
 | GAEP-RESVER-REQ-013 | Supersession SHALL identify predecessor, successor, effective scope, time, and migration or historical interpretation. | Supersession validation |
-| GAEP-RESVER-REQ-014 | Supersession, deprecation, invalidation, freshness, retirement, archival, retention, and disposal SHALL NOT be collapsed into one generic status. | State-dimension inspection |
 | GAEP-RESVER-REQ-015 | A Provenance Record SHALL identify origin, attributable contributors or sources, transformations, source revisions, and generating run or import process when applicable. | Provenance inspection |
-| GAEP-RESVER-REQ-016 | AI-assisted or AI-generated revisions SHALL identify the Agent Principal or execution reference and the governed context and capability references available to the producing run. | AI provenance scenario |
-| GAEP-RESVER-REQ-017 | Derived Resources SHALL identify exact source revisions, derivation method, omissions, and invalidation rules. | Derived-view reconstruction |
-| GAEP-RESVER-REQ-018 | A Derived View or index SHALL NOT silently replace the authority of its source resources. | Search-index negative test |
-| GAEP-RESVER-REQ-019 | External Representations SHALL identify the authoritative side, exact external revision or declared limitation, resolver, owner, classification, and unavailable-source behavior. | External-reference validation |
-| GAEP-RESVER-REQ-020 | An external mutable source used for material approval or evidence SHALL be pinned, snapshotted, digested, attested, or explicitly accepted as a bounded limitation under policy. | Mutable-external-source scenario |
-| GAEP-RESVER-REQ-021 | Representation migration MAY preserve a Resource Revision only when governed content and interpretation remain unchanged and the migration is attributable. | Representation-migration test |
-| GAEP-RESVER-REQ-022 | Classification SHALL NOT default to public when classification is absent or unresolved. | Missing-classification negative test |
-| GAEP-RESVER-REQ-023 | Disposal SHALL require policy-authorized scope and SHALL preserve mandatory lineage, decision, approval, and evidence references or an attributable tombstone when retention requires it. | Disposal and audit scenario |
-| GAEP-RESVER-REQ-024 | Resource Type values and metadata extensions SHALL use controlled registries or declared namespaces with compatibility rules. | Registry and extension validation |
-| GAEP-RESVER-REQ-025 | A consumer that cannot interpret required schema semantics SHALL return an explicit incompatible or unsupported result rather than ignore them. | Forward-version negative test |
-| GAEP-RESVER-REQ-026 | Resource resolution SHALL expose unavailable, ambiguous, conflicting, invalidated, or unauthorized results explicitly. | Resolver negative scenarios |
-| GAEP-RESVER-REQ-027 | Candidate Revision Set identity or membership SHALL NOT imply review completion, approval, authorization, conformance, release readiness, or baseline authority. | Candidate-authority negative test |
-| GAEP-RESVER-REQ-028 | A Baseline Proposal SHALL bind one exact Candidate Revision Set revision, proposed scope, purpose, effective interval, owner role, required decision authority, and applicable approval requirements. | Baseline-proposal validation |
-| GAEP-RESVER-REQ-029 | A Baseline Set SHALL be created only from an approved Baseline Proposal and SHALL reference the exact Candidate Revision Set revision, Approval Determination, scope, purpose, effective interval, and supersession behavior. | Baseline-designation validation |
-| GAEP-RESVER-REQ-030 | Approval or rejection of a Baseline Proposal SHALL bind the exact Candidate Revision Set revision and its membership digest; a changed member or membership order SHALL require a new proposal and determination. | Approval-binding mutation test |
+| GAEP-TPS-REQ-002 | A trace assertion whose meaning depends on content SHALL reference endpoints using the exact Resource Revision, digest, or explicit constraint semantics of GAEP-CORE-003. | Reference validation |
+| GAEP-TPS-REQ-004 | Every trace link SHALL use an approved relationship-type registry entry or remain explicitly provisional and non-authoritative. | Registry resolution test |
+| GAEP-TPS-REQ-005 | A trace link SHALL identify source, target, versions, assertion provenance, scope, invalidation conditions, and each applicable GAEP-CORE-004 State Record independently. | Link-schema validation |
+| GAEP-TPS-REQ-006 | Relationship direction, inverse, transitivity, symmetry, and impact behavior SHALL come from the relationship registry and SHALL NOT be inferred from a label. | Semantic scenario test |
+| GAEP-TPS-REQ-007 | Link verification SHALL establish both endpoint resolution and semantic fitness; resolvable endpoints alone SHALL NOT produce `verified`. | False-link negative test |
+| GAEP-TPS-REQ-009 | A multi-step derivation SHALL connect the Provenance Records required by GAEP-RESVER-REQ-015 through attributable transformation events from source revisions to output revisions. | Lineage reconstruction test |
+| GAEP-TPS-REQ-010 | A lossy transformation or summary SHALL disclose material omissions, aggregation, and uncertainty. | Transformation review |
+| GAEP-TPS-REQ-015 | Controlled values SHALL be namespaced, versioned, owned, and governed through registry lifecycle. | Registry-schema validation |
+| GAEP-TPS-REQ-024 | Trace, provenance, and registry history SHALL be append-only in meaning; corrections SHALL create attributable amendment or supersession events. | History reconstruction test |
 
 ## Negative cases
 
@@ -294,7 +292,7 @@ Superseded or retired resources may remain required for historical decisions, in
 ## Cross-contract dependencies
 
 - Scope and workspace bindings come from GAEP-CORE-001.
-- Principal, owner role, and provenance attribution use GAEP-CORE-002.
+- Principal, owner role, and provenance attribution use GAEP-CORE-001.
 - Revision state, transition, and event semantics use GAEP-CORE-004.
 - Classification, retention, and policy obligations use GAEP-CORE-005.
 - Approval and authorization bind to revisions under GAEP-CORE-006.

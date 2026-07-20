@@ -1,15 +1,15 @@
 ---
 id: GAEP-CORE-010
-title: Capability, Workflow, and Context Model
-document_type: normative-specification
+title: Capability, Workflow, and Context Realization Contract
+document_type: realization
 schema_version: 1.0
 version: 0.1.0
 status: proposed
 owner_role: GAEP Specification Steward
-scope: GAEP capability contracts, workflow definitions and plans, and governed context assembly
+scope: Optional realization mechanics for GAEP capabilities, workflow plans, and governed context assembly
 normative_level: normative
 classification: internal
-provenance: GAEP pre-implementation restructuring
+provenance: GAEP Core contraction; retained historical document and requirement IDs
 approval:
   state: not-approved
   approved_by: []
@@ -18,31 +18,29 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-001
-  - GAEP-CORE-002
   - GAEP-CORE-003
   - GAEP-CORE-004
   - GAEP-CORE-005
   - GAEP-CORE-006
   - GAEP-CORE-007
-  - GAEP-CORE-008
   - GAEP-CORE-009
-core_package_interfaces:
-  - GAEP-CORE-011
 informative_references: []
 supersedes: []
 ---
 
-# Capability, Workflow, and Context Model
+# Capability, Workflow, and Context Realization Contract
 
 ## Purpose
 
-This document defines portable contracts for capabilities, workflow definitions and plans, context requirements, context packs, and sufficiency results. It separates user intent, reusable method, orchestration, model behavior, tool authority, and execution effects.
+This contract has been extracted from the portable Core. It defines optional realization mechanics that may implement the retained Core invariants for exact subject, authority, policy, state, evidence, and change invalidation. Its historical `GAEP-CORE-010` document ID and `GAEP-CWC-REQ-*` requirement IDs remain stable for traceability; neither the identifier nor directory location makes it an active Core contract.
+
+This document defines optional implementation-neutral Realization contracts for capabilities, workflow definitions and plans, context requirements, context packs, and sufficiency results. It separates user intent, reusable method, orchestration, model behavior, tool authority, and execution effects.
 
 ## Scope and non-goals
 
-This model does not prescribe a command-line syntax, workflow engine, agent framework, prompt format, retrieval technology, model provider, or context-window strategy. It does not authorize execution; authorization and effects remain separate Core concerns.
+This model does not prescribe a command-line syntax, workflow engine, agent framework, prompt format, retrieval technology, model provider, or context-window strategy. It does not authorize execution; authorization remains a Core concern and effect execution remains a separately governed Realization concern.
 
-## Core concepts
+## Realization concepts
 
 | Concept | Meaning |
 |---|---|
@@ -56,7 +54,7 @@ This model does not prescribe a command-line syntax, workflow engine, agent fram
 
 A capability is not an authority grant. A workflow plan is not an approval. A prompt is not a portable capability contract. A model role name is not proof of competence or independence.
 
-## Core invariants
+## Realization constraints
 
 - Capabilities and plans describe permitted work but never create authority.
 - Workflow steps retain explicit scope, contracts, effects, evidence, and stop behavior.

@@ -101,3 +101,24 @@ Measures span user value, engineering quality, governance, adoption, burden, tru
 - compose existing tools instead of building a runtime;
 - pause for missing ownership or trust controls;
 - stop investment because value does not justify burden.
+
+## GAEP-on-GAEP rehearsal GAEP-SELF-REH-001
+
+This 2026-07-20 activity is a manual documentation rehearsal, not the participant pilot described above. It used the candidate-closure work itself as the case and stopped before any approval, baseline designation, participant activity, implementation, migration, or external effect. The normalized plan SHA-256 is `c7b0346d57069535c1a5e0e85f19804574fa22459bf6c474587a9414a7347dd5`, omitting this result section; the broader normalized 46-file semantic input aggregate is `34b3adcae06d09216d5d9a4f518289e3e95a86ea135ca09d4c559728b7f3b3a0`.
+
+| Manual workflow step | Rehearsal observation | Result |
+|---|---|---|
+| 1. Intent, assets, baseline, boundaries | The bounded intent is candidate specification closure; target assets are the proposed corpus and its registries; checkpoint `8289d11b2e2764dfedeb2b2e4a4a2817244a97e4` is storage evidence, not a baseline; runtime and platform implementation remain excluded. | paper-pass |
+| 2. Authorities and context | Proposed assignments, owner-role types, repository state, prior checkpoint evidence, and exact semantic inputs are visible; no assignment is accepted or effective and no standing GAEP Authority Grant exists. | expected-stop finding |
+| 3. Impacts, risks, assumptions, unknowns, Profiles | Core contraction, 135 former-requirement dispositions, 70 tiered Open Decisions, Product/Initiative compatibility, two extracted Profiles, and unresolved applicability are explicit. | paper-pass-with-blockers |
+| 4. Governed resource and decision drafting | Candidate documents and registries were revised with stable IDs and migration trace; criticality labels were not misrepresented as Decision Outcomes. | paper-pass |
+| 5. Exact delta, evidence, uncertainty, obligations | Numeric contraction, structural validation, scenario limitations, absent authority, and unresolved decisions are disclosed; exact formal Candidate Revision Set mechanics remain a separate task. | paper-pass-with-blockers |
+| 6. Review and findings | Static self-review and deterministic validation can run; independent human semantic, legal, security, data, accessibility, and assurance review is absent. | partial; independent-review blocker retained |
+| 7. Decision Outcome and Approval Determination | Product Option B remains selected but ineffective; no Core Open Decision is decided or deferred; no Approval Determination was created. | correctly not executed |
+| 8. Authorization Grant | No GAEP Authorization Grant exists. The user's repository instruction permits this documentation task but is not converted into a GAEP governed grant. | correctly not executed |
+| 9. Authorized transition and Baseline Set | No baseline transition, supersession, migration, or persistent platform effect was attempted. | correctly not executed |
+| 10. Measures and burden | Qualitative burden is high: 70 open semantic decisions, 19 Profile rows, many authority roles, and cross-layer trace are difficult to review manually. No participant, elapsed-time baseline, active-effort instrumentation, or privacy-governed metric collection occurred. | evidence gap retained |
+
+Challenge injection also produced the expected safe outcomes: stale counts required recount; absent authority stopped decision effectiveness; changed semantics invalidated old checkpoint claims; a dual-write proposal was denied; unsupported identity/cardinality remained unresolved; and passing structural validation did not advance approval or implementation state.
+
+Overall result: `rehearsal-partial; gate-blocked`. The candidate process can expose missing authority, semantic uncertainty, state separation, and prohibited effects without inventing completion. It has not demonstrated user value, comprehension by a new participant, independent reviewer effectiveness, acceptable burden, portability outside this repository, willingness to repeat, or operational enforcement. Those claims remain `not-assessed`, and participant pilot work remains separately gated.

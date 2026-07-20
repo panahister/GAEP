@@ -1,15 +1,15 @@
 ---
 id: GAEP-CORE-011
-title: Execution, Effect, and Recovery Model
-document_type: normative-specification
+title: Execution, Effect, and Recovery Realization Contract
+document_type: realization
 schema_version: 1.0
 version: 0.1.0
 status: proposed
 owner_role: GAEP Specification Steward
-scope: GAEP execution runs, side effects, verification, cancellation, compensation, and recovery
+scope: Optional realization mechanics for execution runs, effects, retries, cancellation, compensation, and recovery
 normative_level: normative
 classification: internal
-provenance: GAEP pre-implementation restructuring
+provenance: GAEP Core contraction; retained historical document and requirement IDs
 approval:
   state: not-approved
   approved_by: []
@@ -18,13 +18,11 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-001
-  - GAEP-CORE-002
   - GAEP-CORE-003
   - GAEP-CORE-004
   - GAEP-CORE-005
   - GAEP-CORE-006
   - GAEP-CORE-007
-  - GAEP-CORE-008
   - GAEP-CORE-009
   - GAEP-CORE-010
 informative_references:
@@ -32,17 +30,19 @@ informative_references:
 supersedes: []
 ---
 
-# Execution, Effect, and Recovery Model
+# Execution, Effect, and Recovery Realization Contract
 
 ## Purpose
+
+This contract has been extracted from the portable Core. It defines optional realization mechanics constrained by the retained Core authorization, state, policy, evidence, compatibility, and recovery invariants. Its historical `GAEP-CORE-011` document ID and `GAEP-EER-REQ-*` requirement IDs remain stable for traceability; neither the identifier nor directory location makes it an active Core contract or authorizes a runtime.
 
 This document defines how an authorized workflow becomes observable execution, how effects are prepared and verified, and how partial, failed, uncertain, cancelled, or compromised execution is contained and recovered.
 
 ## Scope and non-goals
 
-This model defines portable semantics, not a workflow engine, transaction protocol, sandbox product, queue, scheduler, credential system, or deployment topology. It does not claim every effect is reversible or that compensation restores the original world state. Runtime retry, provider, sandbox, credential-brokerage, quarantine, and recovery mechanics are subject to the Core extraction and complexity gate in GAEP-REG-010; presence here does not prejudge that boundary decision.
+This model defines optional implementation-neutral Realization semantics, not a workflow engine, transaction protocol, sandbox product, queue, scheduler, credential system, or deployment topology. It does not claim every effect is reversible or that compensation restores the original world state. Runtime retry, provider, sandbox, credential-brokerage, quarantine, and recovery mechanics remain governed by the extraction dispositions and complexity rules in GAEP-REG-010; presence here does not admit them to portable Core or authorize implementation.
 
-## Core invariants
+## Realization constraints
 
 - Every material effect is bound to exact actor, authority, target, operation, payload, policy, and validity context.
 - Preparation and preview never authorize commitment.
@@ -69,7 +69,7 @@ Every material effect has a stable effect ID and an effect envelope containing:
 
 ## Effect descriptors
 
-Core distinguishes the following composable semantic descriptors without assigning universal risk or forcing one mutually exclusive class:
+This Realization distinguishes the following composable semantic descriptors without assigning universal risk or forcing one mutually exclusive class:
 
 - `observe`: reads state without an intended mutation or disclosure beyond the authorized recipient;
 - `provisional`: creates isolated working output without changing an authoritative baseline;
@@ -123,13 +123,13 @@ A quarantine prevents suspect outputs, capabilities, credentials, evidence, or r
 | GAEP-EER-REQ-003 | Effect commitment SHALL use a current applicable Authorization Grant satisfying GAEP-DRAA-REQ-023 and SHALL bind that grant to the canonical target, operation, payload or digest, scope, data, constraints, policy version, actor, and validity interval in the effect envelope. | Authorization-binding test |
 | GAEP-EER-REQ-004 | A plan, analysis, preview, capability, tool permission, or prior successful effect SHALL NOT constitute authorization for a new effect. | Authority negative test |
 | GAEP-EER-REQ-005 | The canonical target and mutable preconditions SHALL be revalidated immediately before a material effect commits. | Target-race scenario |
-| GAEP-EER-REQ-006 | A changed target, payload, scope, actor, state, policy, approval, or risk SHALL trigger applicable approval and Authorization Grant re-evaluation under GAEP-DRAA-REQ-020, GAEP-DRAA-REQ-021, GAEP-DRAA-REQ-025, and GAEP-DRAA-REQ-026 before execution. | TOCTOU scenario |
+| GAEP-EER-REQ-006 | A changed target, payload, scope, actor, state, policy, approval, or risk SHALL trigger applicable Approval Case reopening and Authorization Grant re-evaluation under GAEP-DRAA-REQ-020, GAEP-DRAA-REQ-025, and GAEP-DRAA-REQ-026 before execution. | TOCTOU scenario |
 | GAEP-EER-REQ-007 | An effect prohibited by effective policy SHALL resolve to denial and SHALL NOT be converted to an exception by a runtime, model, adapter, or tool. | Prohibited-effect test |
 | GAEP-EER-REQ-008 | Analysis, preparation, commitment, verification, and recovery responsibilities SHALL be distinguishable in run evidence. | Phase-separation review |
-| GAEP-EER-REQ-009 | A material external, destructive, irreversible, permission-changing, or sensitive-data effect SHALL have every Approval Determination and Confirmation required by the effective profile; Confirmation SHALL NOT replace required Approval except as permitted by GAEP-DRAA-REQ-028. | High-effect scenario |
-| GAEP-EER-REQ-010 | A Confirmation used for effect commitment SHALL satisfy GAEP-DRAA-REQ-027 and SHALL bind the exact current effect envelope, including canonical target, destination, payload or data, expected effect, consequences, reversibility, and Authorization Grant. | Confirmation-package review |
+| GAEP-EER-REQ-009 | A material external, destructive, irreversible, permission-changing, or sensitive-data effect SHALL have every Approval Determination and Confirmation required by the effective profile; Confirmation SHALL NOT replace a required Approval or Authorization Grant. | High-effect scenario |
+| GAEP-EER-REQ-010 | A Confirmation used for effect commitment SHALL bind the exact current effect envelope, including canonical target, destination, payload or data, expected effect, consequences, reversibility, confirming Principal, validity, and Authorization Grant. | Confirmation-package review |
 | GAEP-EER-REQ-011 | A runtime SHALL NOT report effect success without an authoritative result and verified postconditions appropriate to the effect contract. | False-success negative test |
-| GAEP-EER-REQ-012 | An uncertain external-effect outcome under GAEP-STATE-REQ-026 SHALL create a reconciliation, containment, or escalation obligation and SHALL block any dependent success claim until disposition. | Ambiguous-result scenarios |
+| GAEP-EER-REQ-012 | An uncertain external-effect outcome under the explicit uncertain-result rule in GAEP-STATE-REQ-009 SHALL create a reconciliation, containment, or escalation obligation and SHALL block any dependent success claim until disposition. | Ambiguous-result scenarios |
 | GAEP-EER-REQ-013 | Run and workflow completion SHALL NOT hide failed, partial, uncertain, compensating, quarantined, or unverified effects. | Completion-state test |
 | GAEP-EER-REQ-014 | Retry of a potentially side-effecting operation SHALL require a valid idempotency rule or evidence that duplicate effect cannot occur. | Duplicate-effect test |
 | GAEP-EER-REQ-015 | Idempotency scope and key SHALL bind to the intended operation, target, actor scope, and validity period. | Idempotency-collision test |

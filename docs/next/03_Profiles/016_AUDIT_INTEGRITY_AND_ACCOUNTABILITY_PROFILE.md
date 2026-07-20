@@ -17,13 +17,12 @@ approval:
 normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
-  - GAEP-CORE-002
+  - GAEP-CORE-001
   - GAEP-CORE-003
   - GAEP-CORE-004
   - GAEP-CORE-005
   - GAEP-CORE-006
   - GAEP-CORE-007
-  - GAEP-CORE-008
   - GAEP-CORE-009
   - GAEP-CORE-011
 informative_references: []
@@ -36,7 +35,7 @@ supersedes: []
 
 This candidate profile governs whether material governed activity can be detected, attributed, protected, reconstructed, corrected, and independently challenged. It does not make audit logging universal. Select it when consequence, policy, regulation, external commitment, or an explicit accountability claim requires stronger audit properties than ordinary Core event and trace conformance.
 
-GAEP-CORE-004 owns Event Envelopes and State Dimensions; GAEP-CORE-008 owns trace and provenance semantics; the Data Profile owns purpose, access, privacy, retention, and deletion; the Security Profile owns protective controls; and the Assurance Profile evaluates claims. This profile owns the scoped audit-coverage contract and the evidence that those Core and domain semantics produce adequate accountability. It does not turn a log entry into proof of permission, success, legality, or correctness.
+GAEP-CORE-004 owns Event Envelopes and State Dimensions; GAEP-CORE-003 owns trace and provenance semantics; the Data Profile owns purpose, access, privacy, retention, and deletion; the Security Profile owns protective controls; and the Assurance Profile evaluates claims. This profile owns the scoped audit-coverage contract and the evidence that those Core and domain semantics produce adequate accountability. It does not turn a log entry into proof of permission, success, legality, or correctness.
 
 ## Selection
 

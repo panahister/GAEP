@@ -32,7 +32,7 @@ This registry makes every current `owner_role` value resolvable without pretendi
 - **reviewer/assessor**: may produce attributable Review Contributions, Evaluation Results, findings, or recommendations but does not thereby approve;
 - **operational performer**: may carry out bounded operational work only through an applicable executable Authorization Grant.
 
-No concrete assignment is currently effective. `GAEP-SELF-009` contains a bounded package of proposed Role Assignments for Principal `mehdi-panahi`, but explicit acceptance is pending and every effective time remains unset. Repository metadata names accountable role types, while Principal or Organization assignments, their scope, and their validity remain separate records under GAEP-CORE-002.
+No concrete assignment is currently effective. `GAEP-SELF-009` contains a bounded package of proposed Role Assignments for Principal `mehdi-panahi`, but explicit acceptance is pending and every effective time remains unset. Repository metadata names accountable role types, while Principal or Organization assignments, their scope, and their validity remain separate records under GAEP-CORE-001.
 
 ## Canonical roles
 

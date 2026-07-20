@@ -55,13 +55,14 @@ The Gate Evaluation records exactly one Core result: `not-assessed`, `incomplete
 
 ## Current profile-contract subtraction finding
 
-A 2026-07-19 requirement count provides a concrete complexity signal:
+A 2026-07-20 candidate-mode recount provides a concrete complexity signal while preserving the earlier comparison:
 
 - the original 15 Profiles contained 121 requirements before the repair pass;
-- the repaired versions of those same 15 Profiles contain 192 requirements, an increase of 71 or 58.7%;
-- the two new conditional Profiles add 32 requirements;
-- all 17 candidate Profiles therefore contain 224 requirements;
-- 68 requirements are repeated structural contract rows: four common rows across each of 17 Profiles.
+- the current versions of those same 15 Profiles contain 194 requirements, an increase of 73 or 60.3%;
+- Audit Integrity/Accountability and Incident Response/Continuity add 32 requirements;
+- Extension/Supply-Chain and Federation add 18 requirements;
+- all 19 candidate Profiles therefore contain 244 requirements;
+- 76 requirements are repeated structural contract rows: four common rows across each of 19 Profiles.
 
 **Recommendation `GAEP-REC-SUB-001`:** evaluate a shared, machine-validated Profile Contract schema owned by `GAEP-CORE-009` for the repeated structural invariants, while each Profile retains its field values, applicability rules, domain obligations, prohibitions, evidence, and domain-specific deltas. This recommendation is tied to unresolved `GAEP-DEC-005` and `GAEP-DEC-016`; it is not a Core change, scope Decision, or completed Complexity and Subtraction Gate Evaluation. Counts must be regenerated when Profile requirements change.
 

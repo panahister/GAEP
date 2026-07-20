@@ -30,7 +30,7 @@ supersedes: []
 
 This charter is a Proposed product decision package. It is not an approved product mandate, commercial commitment, implementation authorization, procurement request, or claim of product-market fit. Terms such as *candidate*, *hypothesis*, and *proposed* are intentional.
 
-The charter describes GAEP as a product that must itself be discovered, governed, measured, and approved. It does not describe every product that GAEP may later govern.
+The charter describes GAEP as a provisional Product identity candidate that must itself be discovered, governed, measured, and approved. Under the selected candidate semantics, Product is a durable Managed Asset and not an Engineering Initiative identity; bounded Initiatives may create, change, operate, migrate, or retire it. The exact GAEP Product identity, family boundary, genesis or baseline, and canonical namespace remain unresolved. This charter does not describe every Product that GAEP may later govern and does not itself establish a canonical Product Scope Reference.
 
 ## Candidate product identity
 

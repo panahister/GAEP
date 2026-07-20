@@ -15,7 +15,7 @@ approval:
   approved_by: []
   approved_at: null
 normative_dependencies:
-  - GAEP-CORE-008
+  - GAEP-CORE-003
 informative_references:
   - ../../99_References/991_GLOSSARY.md
   - ../../99_References/992_TERMINOLOGY.md
@@ -38,12 +38,12 @@ This is a navigation index, not a second definition owner. The listed owning con
 | Work Item | planned or executable unit of exactly one Change; its governing Initiative is derived through that Change | GAEP-CORE-001 |
 | Implementation Unit | logical or deployable subject affected by work; not the work itself | GAEP-CORE-001 |
 | Workspace | governed representation and bindings for a scope; not automatically the authority for every represented resource | GAEP-CORE-001 |
-| Principal | identity-bearing human, organization, service or agent subject | GAEP-CORE-002 |
-| Actor | a Principal acting in a particular event or interaction | GAEP-CORE-002 |
-| Role Definition | named responsibility and candidate-right category; canonical owner-role values are registered by GAEP-REG-008 | GAEP-CORE-002 and GAEP-REG-008 |
-| Assignment | time- and scope-bound association of a Principal with a Role | GAEP-CORE-002 |
-| Delegation | attributable transfer of bounded authority or capability without erasing retained accountability | GAEP-CORE-002 |
-| Authority Grant | standing source record establishing bounded decision rights or an authority basis; never executable permission | GAEP-CORE-002 |
+| Principal | identity-bearing human, organization, service or agent subject | GAEP-CORE-001 |
+| Actor | a Principal acting in a particular event or interaction | GAEP-CORE-001 |
+| Role Definition | named responsibility and candidate-right category; canonical owner-role values are registered by GAEP-REG-008 | GAEP-CORE-001 and GAEP-REG-008 |
+| Assignment | time- and scope-bound association of a Principal with a Role | GAEP-CORE-001 |
+| Delegation | attributable transfer of bounded authority or capability without erasing retained accountability | GAEP-CORE-001 |
+| Authority Grant | standing source record establishing bounded decision rights or an authority basis; never executable permission | GAEP-CORE-001 |
 | Governed Resource | stable lineage whose content, metadata, state or authority is governed | GAEP-CORE-003 |
 | Artifact | content-oriented Governed Resource; not the universal base type for every record or identity | GAEP-CORE-003 |
 | Record | event-, decision- or transaction-oriented Governed Resource | GAEP-CORE-003 |
@@ -80,10 +80,10 @@ This is a navigation index, not a second definition owner. The listed owning con
 | Evaluation Result | immutable epistemic outcome of an exact Evaluation Run; not a Review, approval, or permission | GAEP-CORE-007 |
 | Gate | Evaluation contract and result informing readiness or progression; never executable authority | GAEP-CORE-007 |
 | Assurance Case | structured set of Claims, Evidence Items, reasoning, assumptions and limits supporting a decision | GAEP-CORE-007 |
-| Trace Link | typed, attributable, version-aware relationship between exact governed subjects | GAEP-CORE-008 |
+| Trace Link | typed, attributable, version-aware relationship between exact governed subjects | GAEP-CORE-003 |
 | Provenance Record | resource-level attributable origin, sources, transformations, contributors, and generating execution | GAEP-CORE-003 |
-| Provenance Chain | traversable origin, custody, transformation, responsibility, and trace across governed resources | GAEP-CORE-008 |
-| Semantic Registry | governed definitions and controlled values with compatibility and lifecycle | GAEP-CORE-008 |
+| Provenance Chain | traversable origin, custody, transformation, responsibility, and trace across governed resources | GAEP-CORE-003 |
+| Semantic Registry | governed definitions and controlled values with compatibility and lifecycle | GAEP-CORE-003 |
 | Profile | versioned specialization of permitted Core variation points and added obligations | GAEP-CORE-009 |
 | Profile Selection Manifest | explicit attributable record of selected, excluded, conflicting, and unresolved exact profile revisions | GAEP-CORE-009 |
 | Organizational Binding | approved organization- or scope-specific configuration | GAEP-CORE-009 |

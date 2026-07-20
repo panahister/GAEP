@@ -17,7 +17,7 @@ approval:
 normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
-  - GAEP-CORE-002
+  - GAEP-CORE-001
   - GAEP-CORE-007
   - GAEP-CORE-009
   - GAEP-CORE-010
@@ -97,6 +97,8 @@ Monitor material performance, failure patterns, user overrides, unsafe near miss
 | GAEP-AI-REQ-022 | Tailoring SHALL use only declared variation points and SHALL NOT weaken mandatory profile composition, exact required identity, evaluation binding, least authority, substantive oversight, pause, revocation, incident response, affected-person protection, or continuity. | AI-tailoring negative test |
 | GAEP-AI-REQ-023 | An AI conformance claim SHALL identify the effective manifest, autonomy class, mandatory co-profiles, evidence for every applicable requirement and required negative case, deviations, drift and incident status, and unresolved obligations. | Conformance-record review |
 | GAEP-AI-REQ-024 | Material change or profile migration, deprecation, expiry, revocation, or replacement SHALL invalidate affected manifests and SHALL preserve use-case, model, evaluation, monitoring, incident, affected-person, migration, retirement, and historical mappings. | Lifecycle-change scenario |
+| GAEP-AI-REQ-025 | An Agent Principal or AI-enabled capability SHALL NOT create, expand, accept, approve, validate, or modify its own Role Assignment, standing Authority Grant, Approval Response, Risk Acceptance, or Authorization Grant; any proposal remains non-authoritative until the required eligible human or organizational authority acts. | AI self-escalation and self-approval negative tests |
+| GAEP-AI-REQ-026 | Every material AI-assisted revision SHALL record attributable human and system participants, use case, provider and model identity or explicit unknown, adapter, material prompt or policy revision, tools, governed source revisions, transformations, review status, and limitations without treating generation metadata as approval. | AI provenance inspection |
 
 ## Required negative cases
 

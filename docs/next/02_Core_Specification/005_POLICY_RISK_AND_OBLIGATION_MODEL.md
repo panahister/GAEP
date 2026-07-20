@@ -18,7 +18,6 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-001
-  - GAEP-CORE-002
   - GAEP-CORE-003
   - GAEP-CORE-004
 core_package_interfaces:
@@ -213,33 +212,21 @@ An exception is not precedent and does not modify the original Rule. Repeated ex
 | Requirement ID | Requirement | Verification |
 |---|---|---|
 | GAEP-POLICY-REQ-001 | Every Policy Rule SHALL have stable identity, version, issuing Policy Authority, target, effect, effective interval, and exception behavior. | Policy-schema validation |
-| GAEP-POLICY-REQ-002 | Policy targets SHALL identify action, resource or resource type, scope, and Principal conditions at the precision required by the governed effect. | Target decision-table review |
-| GAEP-POLICY-REQ-003 | Policy effects SHALL use controlled values for permit, deny, additional authorization, and Obligation creation. | Effect-registry validation |
-| GAEP-POLICY-REQ-004 | Every Policy Set SHALL declare its Combining Algorithm or reference an exact approved algorithm definition. | Policy-set validation |
 | GAEP-POLICY-REQ-005 | A Policy Evaluation SHALL use exact Policy Set, Policy Binding, identity, scope, resource, state, and action versions available at evaluation time. | Evaluation-record inspection |
 | GAEP-POLICY-REQ-006 | A Policy Evaluation SHALL return permitted, permitted-with-obligations, additional-authorization-required, denied, not-applicable, or indeterminate with reason codes and source rules, and SHALL NOT be consumed as executable authorization. | Policy decision-table test |
 | GAEP-POLICY-REQ-007 | Not-applicable from one Policy Set SHALL NOT be interpreted as global permission. | Missing-policy negative test |
 | GAEP-POLICY-REQ-008 | Indeterminate, conflicting, unsupported, or unavailable required policy SHALL NOT resolve to silent permission. | Policy failure scenarios |
 | GAEP-POLICY-REQ-009 | Lower-scope policy SHALL NOT weaken a higher applicable mandatory rule without an explicitly permitted and approved Policy Exception. | Policy hierarchy scenario |
 | GAEP-POLICY-REQ-010 | A non-exceptionable prohibition SHALL remain denied regardless of lower policy, profile, configuration, or local preference. | Non-exceptionable rule test |
-| GAEP-POLICY-REQ-011 | Every Policy Binding SHALL identify Policy Set source, governed scope, precedence, effective interval, and conflict behavior; profile selection SHALL be represented separately by an exact Profile Selection Manifest. | Effective-policy snapshot review |
-| GAEP-POLICY-REQ-012 | Every material Policy Evaluation SHALL create an immutable record containing considered rules, result, obligations, exceptions, inputs, time, and invalidation triggers. | Evaluation audit inspection |
 | GAEP-POLICY-REQ-013 | Policy change affecting an active plan, approval, authorization, transition, or Obligation SHALL trigger re-evaluation before the next dependent material effect. | Policy-change-during-run scenario |
 | GAEP-POLICY-REQ-014 | A Risk Record SHALL identify affected scope, source, impact, likelihood or plausibility, uncertainty, evidence, owner, treatment, residual risk, and review triggers. | Risk-record validation |
-| GAEP-POLICY-REQ-015 | Risk tier or score SHALL identify the exact Risk Profile, method, factors, exclusions, and evidence used. | Risk-calculation review |
 | GAEP-POLICY-REQ-016 | A Risk Tier SHALL NOT be interpreted as an Approval Level unless an applicable Policy Rule defines the mapping. | Tier-mapping negative test |
 | GAEP-POLICY-REQ-017 | Risk Acceptance SHALL bind to exact residual Risk Record revision, scope, decision, approver authority, validity, conditions, and review triggers. | Risk-acceptance validation |
-| GAEP-POLICY-REQ-018 | AI recommendation or confidence SHALL NOT constitute Risk Acceptance. | AI risk negative scenario |
 | GAEP-POLICY-REQ-019 | Every material Obligation SHALL identify source revision, owner, scope, required outcome, due condition, verification, evidence, consequence, and state. | Obligation-record validation |
 | GAEP-POLICY-REQ-020 | Every enforceable condition received from an Approval Determination SHALL be represented as an explicit Obligation without making this contract the owner of approval procedure. | Conditional-approval scenario |
-| GAEP-POLICY-REQ-021 | Closing an Obligation SHALL record whether it was satisfied, waived, cancelled, invalidated, or left unsatisfied. | Obligation closure test |
 | GAEP-POLICY-REQ-022 | Obligation satisfaction SHALL require the declared verification and evidence; elapsed time, file presence, merge, or assertion alone SHALL NOT satisfy it. | Satisfaction negative test |
-| GAEP-POLICY-REQ-023 | Waiving an Obligation SHALL require an approved exception or other authority explicitly permitted by the source rule. | Waiver negative test |
-| GAEP-POLICY-REQ-024 | An overdue or unsatisfied Obligation SHALL expose its consequence and escalation state before dependent authorization or transition. | Overdue-obligation scenario |
 | GAEP-POLICY-REQ-025 | Every Policy Exception SHALL identify exact Rule, scope, rationale, risk, compensating controls, approval, effective interval, obligations, and closure criteria. | Exception-record validation |
-| GAEP-POLICY-REQ-026 | A Policy Exception SHALL NOT silently alter the original Policy Rule or establish general precedent. | Repeated-exception scenario |
 | GAEP-POLICY-REQ-027 | Expired, revoked, out-of-scope, or condition-breached Policy Exceptions SHALL NOT permit new dependent action. | Exception-expiry test |
-| GAEP-POLICY-REQ-028 | Sensitive policy, risk, and exception records MAY protect payload detail, but SHALL preserve enough identity, authority, result, scope, and integrity for their declared governance purpose. | Redacted-governance review |
 | GAEP-POLICY-REQ-029 | A Base Policy Envelope SHALL be resolvable from constitutional, legal, contractual, organizational, scope, and source-authority inputs without depending on selected profiles or effective profile configuration. | Bootstrap-resolution test |
 | GAEP-POLICY-REQ-030 | An Effective Policy Snapshot that includes profile contributions SHALL consume one exact Profile Selection Manifest and SHALL preserve every selected, excluded, conflicting, and unresolved profile result relevant to the evaluation scope. | Staged-composition review |
 | GAEP-POLICY-REQ-031 | A policy resolver SHALL NOT select profiles, infer profile selection from file presence or defaults, or recursively depend on an Effective Policy Snapshot containing the profile being assessed. | Circular-resolution negative test |
@@ -274,7 +261,7 @@ An exception is not precedent and does not modify the original Rule. Repeated ex
 ## Cross-contract dependencies
 
 - Policy target scopes come from GAEP-CORE-001.
-- Policy Authorities, Principals, roles, and authority chains come from GAEP-CORE-002.
+- Policy Authorities, Principals, roles, and authority chains come from GAEP-CORE-001.
 - Policy, Risk, Exception, and Obligation revisions use GAEP-CORE-003.
 - Their state transitions and events use GAEP-CORE-004.
 - Risk Acceptance, exception approval, and Authorization Grants are governed by GAEP-CORE-006.

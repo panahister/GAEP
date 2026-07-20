@@ -18,13 +18,11 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-001
-  - GAEP-CORE-002
   - GAEP-CORE-003
   - GAEP-CORE-004
   - GAEP-CORE-005
   - GAEP-CORE-006
 core_package_interfaces:
-  - GAEP-CORE-008
   - GAEP-CORE-009
 informative_references: []
 supersedes: []
@@ -154,25 +152,14 @@ Evidence strength is proportional to the consequence of a false claim. High-cons
 | GAEP-CAE-REQ-008 | An assurance case SHALL expose material assumptions, counter-evidence, defeaters, gaps, and residual uncertainty. | Assurance-case review |
 | GAEP-CAE-REQ-009 | A material assurance conclusion SHALL identify the argument connecting evidence to the claim; a list of evidence alone SHALL NOT be sufficient. | Argument completeness review |
 | GAEP-CAE-REQ-010 | Evidence quality SHALL be evaluated across declared dimensions without hiding a material failed dimension inside one aggregate score. | Quality-assessment inspection |
-| GAEP-CAE-REQ-011 | Required evidence independence SHALL be declared by the applicable profile and recorded in the evidence item. | Independence-profile test |
-| GAEP-CAE-REQ-012 | A separate AI run SHALL NOT be represented as independent merely because it has a different run ID. | Correlated-review negative test |
 | GAEP-CAE-REQ-013 | An Evaluation Definition SHALL declare criteria, expected results, evidence outputs, evaluator needs, failure behavior, limitations, and invalidation triggers. | Evaluation-contract validation |
 | GAEP-CAE-REQ-014 | An Evaluation Result SHALL bind to exact Evaluation Definition, Evaluation Run, subject, configuration, environment, data, and tool or model versions where applicable. | Evaluation-record inspection |
-| GAEP-CAE-REQ-015 | Model-based or probabilistic evaluation SHALL disclose its limitations and SHALL NOT be the sole acceptance evidence for a high-consequence claim unless an approved profile explicitly permits it. | High-risk gate scenario |
 | GAEP-CAE-REQ-016 | A gate SHALL evaluate only declared criteria and SHALL expose missing, non-applicable, failed, waived, and conditional criteria separately. | Gate-result validation |
 | GAEP-CAE-REQ-017 | A pending waiver, missing evaluation, unavailable environment, flaky result, or inconclusive result SHALL NOT resolve to `passed`. | Negative gate scenarios |
 | GAEP-CAE-REQ-018 | A conditional pass SHALL identify obligations, owners, due or trigger conditions, validation, consequence of non-compliance, and expiry. | Conditional-gate review |
 | GAEP-CAE-REQ-019 | A declared subject, dependency, assumption, policy, or version trigger SHALL update the applicable freshness, validity, revision-disposition, or assessment dimension of an affected claim, evidence item, assurance case, evaluation, or gate result without collapsing those dimensions. | Change-invalidation scenario |
 | GAEP-CAE-REQ-020 | Reassessment SHALL preserve prior conclusions and evidence through traceable supersession rather than destructive replacement. | History and supersession test |
-| GAEP-CAE-REQ-021 | Evidence containing sensitive information SHALL be minimized, classified, access-controlled, retained, and disposed according to applicable obligations. | Handling-policy review |
-| GAEP-CAE-REQ-022 | A summary SHALL preserve a resolvable path to underlying evidence and SHALL disclose material omissions or transformations. | Summary-provenance test |
-| GAEP-CAE-REQ-023 | Evidence integrity SHALL be protected from the subject or agent whose claim it evaluates at the independence level required by profile. | Tamper scenario analysis |
 | GAEP-CAE-REQ-024 | Assurance conclusions and gate results SHALL identify the accountable evaluator and evidence actually considered; any dependent approval or authorization SHALL reference the applicable GAEP-CORE-006 record. | Evaluation-record inspection |
-| GAEP-CAE-REQ-025 | A conformance claim SHALL reference the requirements and evidence that establish it and SHALL disclose unsupported requirements and deviations. | Conformance-case review |
-| GAEP-CAE-REQ-026 | Evaluation Definition, Evaluation Run, Evaluation Result, Review, Review Contribution, and Review Conclusion SHALL remain distinct governed records with explicit relationships. | Evaluation-review entity inspection |
-| GAEP-CAE-REQ-027 | A Review governed by GAEP-CORE-006 SHALL consume exact Evaluation Results and attributable Review Contributions and SHALL expose which inputs were accepted, rejected, omitted, stale, conflicting, or insufficient in its Review Conclusion. | Review-input trace scenario |
-| GAEP-CAE-REQ-028 | Completion or success of an Evaluation, Evaluation Run, Evaluation Result, or gate SHALL NOT imply Review completion, Approval, Authorization Grant, conformance, or permission. | Evaluation-substitution negative test |
-| GAEP-CAE-REQ-029 | A Review Finding SHALL specialize the shared Finding contract and SHALL trace to the Review Contribution, Evaluation Result, evidence, and criterion from which it arose where applicable. | Finding-origin trace review |
 
 ## Required negative cases
 

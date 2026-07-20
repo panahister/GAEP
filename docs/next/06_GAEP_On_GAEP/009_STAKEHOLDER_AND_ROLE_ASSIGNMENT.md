@@ -15,7 +15,7 @@ approval:
   approved_by: []
   approved_at: null
 normative_dependencies:
-  - GAEP-CORE-002
+  - GAEP-CORE-001
 informative_references: []
 supersedes: []
 ---
@@ -77,7 +77,7 @@ The records below implement the selected minimum model without making it effecti
 | Accountable Organization Scope display name | GAEP Foundational Specification Initiative; despite the display name, this record treats it as an Organization Scope, not as an Engineering Initiative identity. |
 | Authority source ID | `GAEP-AUTH-SRC-001` |
 | Authority source | Explicit founder/owner authority over the GAEP Foundational Specification Initiative. |
-| Authority-source record class | Proposed authority-source declaration that may support a later standing Authority Grant under GAEP-CORE-002 for the bounded decision-role eligibility listed below; it is not itself an Authority Grant, Approval Determination, or executable permission. |
+| Authority-source record class | Proposed authority-source declaration that may support a later standing Authority Grant under GAEP-CORE-001 for the bounded decision-role eligibility listed below; it is not itself an Authority Grant, Approval Determination, or executable permission. |
 | Assigning Principal and role | `mehdi-panahi`, acting as the declared founder/owner authority source; self-assignment and role concentration are disclosed limitations. |
 | Selection provenance | `GAEP-DEC-007` in `docs/next/06_GAEP_On_GAEP/003_DECISION_REGISTER.md` at accepted Batch 1 checkpoint `0719efb75b09c8704d08385d6cd61541fd9c614c`, file SHA-256 `0bda79df57d9fc9fbb3b1053c68220f81bb1fe38f773a2e9690cb0d39ed2bae8`, records the supplied Principal, intended assignment set, authority source, scope, no-delegation rule, limitations, and review trigger. |
 | Provenance limitation | The source records the human selection but not an independently assured identity assertion or exact selection timestamp. Acceptance evidence, acceptance time, effective time, exact accepted assignment revision, and any standing Authority Grant remain absent and must not be invented. |

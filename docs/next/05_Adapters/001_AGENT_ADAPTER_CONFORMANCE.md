@@ -16,7 +16,7 @@ approval:
   approved_at: null
 normative_dependencies:
   - GAEP-CST-003
-  - GAEP-CORE-002
+  - GAEP-CORE-001
   - GAEP-CORE-010
   - GAEP-CORE-011
   - GAEP-CORE-012

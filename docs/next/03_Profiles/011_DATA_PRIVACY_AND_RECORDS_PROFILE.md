@@ -18,7 +18,6 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-003
-  - GAEP-CORE-008
   - GAEP-CORE-009
   - GAEP-CORE-011
 informative_references: []

@@ -18,7 +18,7 @@ normative_dependencies:
   - GAEP-CST-003
   - GAEP-REG-001
   - GAEP-CORE-007
-  - GAEP-CORE-008
+  - GAEP-CORE-003
   - GAEP-CORE-009
 informative_references:
   - ../../02_Platform/020_ENGINEERING_ASSURANCE_AND_ARCHITECTURE_MODEL.md

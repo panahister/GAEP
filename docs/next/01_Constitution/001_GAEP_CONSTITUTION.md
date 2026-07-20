@@ -42,12 +42,12 @@ The uppercase normative terms in the addressable requirements below have the mea
 
 ## Article I — Mission and governed scope
 
-GAEP's durable mission is to define portable governance semantics for accountable human-AI engineering. Engineering initiatives may include product and non-product work. Applicability determines which profiles and activities are relevant; product-specific practice is not universal law.
+GAEP's durable mission is to define portable governance semantics for accountable human-AI engineering. A Product is a durable Managed Asset with identity and history independent of the bounded Initiatives that create, change, operate, migrate, or retire it. Engineering Initiatives may target Product and non-Product Managed Assets. Applicability determines which profiles and activities are relevant; Product-specific practice is not universal law. This is proposed replacement language for separate version-bound constitutional consideration and has no superseding effect while this Constitution remains unapproved.
 
 | Requirement ID | Constitutional requirement | Verification |
 |---|---|---|
 | GAEP-CST-REQ-001 | GAEP SHALL preserve accountable human or legally recognized organizational responsibility for consequential engineering decisions and effects. | Authority and decision scenario review |
-| GAEP-CST-REQ-002 | GAEP SHALL distinguish Core semantics, profiles, organizational bindings, workspaces, realizations, adapters, guidance, examples, and external systems. | Dependency and conformance review |
+| GAEP-CST-REQ-002 | GAEP SHALL distinguish durable governed subjects, including Product Managed Assets, from bounded Initiatives and Changes, and SHALL distinguish Core semantics, profiles, organizational bindings, workspaces, realizations, adapters, guidance, examples, and external systems. | Subject-lifetime, dependency, and conformance review |
 | GAEP-CST-REQ-003 | GAEP SHALL determine applicable rigor from declared subject, scope, consequence, risk, authority, and policy; availability of a capability SHALL NOT make it universally mandatory. | Applicability scenario review |
 | GAEP-CST-REQ-004 | GAEP SHALL NOT claim authority, correctness, safety, compliance, readiness, or value merely because content was generated, stored, merged, executed, or labeled conforming. | Negative claim scenario |
 

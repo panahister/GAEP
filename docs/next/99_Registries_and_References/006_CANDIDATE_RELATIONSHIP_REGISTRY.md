@@ -16,13 +16,11 @@ approval:
   approved_at: null
 normative_dependencies:
   - GAEP-CORE-001
-  - GAEP-CORE-002
   - GAEP-CORE-003
   - GAEP-CORE-004
   - GAEP-CORE-005
   - GAEP-CORE-006
   - GAEP-CORE-007
-  - GAEP-CORE-008
   - GAEP-CORE-009
   - GAEP-CORE-010
   - GAEP-CORE-011
@@ -52,9 +50,9 @@ These entries are Proposed and cannot support an approved conformance claim unti
 | `gaep.rel.proposed-as-baseline` | `proposed-as-baseline` | proposal asks to designate one exact candidate-set revision | Baseline Proposal -> Candidate Revision Set | GAEP-CORE-003 | 1.0 | proposal exactly 1; set 0..n proposals | no authority until approved; inverse `baseline-proposed-by` |
 | `gaep.rel.designates-baseline` | `designates-baseline` | approved baseline set designates one exact candidate-set revision | Baseline Set -> Candidate Revision Set | GAEP-CORE-003 | 1.0 | baseline exactly 1; set 0..n designations | scoped authority only through exact Approval Determination; inverse `designated-by-baseline` |
 | `gaep.rel.member-of-baseline` | `member-of-baseline` | deprecated legacy alias for derived baseline designation | Resource Revision -> Baseline Set | GAEP-CORE-003 | legacy-0.1 | derived only; no direct writes | migrate through `member-of-candidate-set` plus `designates-baseline`; no independent propagation |
-| `gaep.rel.references` | `references` | source points to target without stronger semantic assertion | Governed Resource -> Governed Resource | GAEP-CORE-008 | 1.0 | 0..n to 0..n | no impact propagation by default; inverse omitted |
+| `gaep.rel.references` | `references` | source points to target without stronger semantic assertion | Governed Resource -> Governed Resource | GAEP-CORE-003 | 1.0 | 0..n to 0..n | no impact propagation by default; inverse omitted |
 | `gaep.rel.derived-from` | `derived-from` | source content was transformed from target; derivation alone does not assert identity or semantic equivalence, mapping fidelity, compatibility, or supersession | Resource Revision -> Resource Revision, External Resource | GAEP-CORE-003 | 1.0 | source 1..n; target 0..n | provenance and transformation method required; change may create freshness review; inverse `source-of-derivation` |
-| `gaep.rel.summarizes` | `summarizes` | source is a lossy or compressed representation of targets | Resource Revision -> Resource Revision | GAEP-CORE-008 | 1.0 | source 1..n targets | omissions required; target change creates review candidate; inverse `summarized-by` |
+| `gaep.rel.summarizes` | `summarizes` | source is a lossy or compressed representation of targets | Resource Revision -> Resource Revision | GAEP-CORE-003 | 1.0 | source 1..n targets | omissions required; target change creates review candidate; inverse `summarized-by` |
 | `gaep.rel.governed-by` | `governed-by` | source is subject to target rule or standing authority | Governed Resource -> Policy Rule, Authority Grant | GAEP-CORE-005 | 1.0 | source 1..n where governed; target 0..n | scope/time applicability only; never executable permission; inverse `governs` |
 | `gaep.rel.constrained-by` | `constrained-by` | source must satisfy target constraint | Work, Governed Resource -> Policy Rule, Decision, Obligation | GAEP-CORE-005 | 1.0 | source 0..n; target 0..n | may block dependent authorization as declared; inverse `constrains` |
 | `gaep.rel.approved-by` | `approved-by` | exact subject received an approval outcome for a declared purpose | Resource Revision, Candidate Revision Set, Baseline Proposal -> Approval Determination | GAEP-CORE-006 | 1.0 | subject 0..n determinations; determination exactly 1 case scope | no executable authority; outcome/scope/validity qualify link; inverse `approves-subject` |
@@ -70,7 +68,7 @@ These entries are Proposed and cannot support an approved conformance claim unti
 | `gaep.rel.review-emits-conclusion` | `review-emits-conclusion` | completed Review emits its governed conclusion | Review -> Review Conclusion | GAEP-CORE-006 | 1.0 | exactly 1 per completed Review revision | conclusion does not approve or authorize; inverse `conclusion-of-review` |
 | `gaep.rel.realizes` | `realizes` | concrete subject realizes an abstract design or contract | Implementation, Configuration -> Design, Contract | GAEP-CORE-012 | 1.0 | 0..n to 0..n | conformance not implied; inverse `realized-by` |
 | `gaep.rel.implements` | `implements` | implementation claims to implement a requirement, decision, or interface | Implementation Revision -> Specification, Requirement, Decision | GAEP-CORE-012 | 1.0 | 0..n to 0..n | creates conformance-evaluation scope only; inverse `implemented-by` |
-| `gaep.rel.depends-on` | `depends-on` | source requires target for declared behavior | Governed Resource -> Governed Resource | GAEP-CORE-008 | 1.0 | 0..n to 0..n | registered impact rule required; inverse `dependency-of` |
+| `gaep.rel.depends-on` | `depends-on` | source requires target for declared behavior | Governed Resource -> Governed Resource | GAEP-CORE-003 | 1.0 | 0..n to 0..n | registered impact rule required; inverse `dependency-of` |
 | `gaep.rel.consumes` | `consumes` | source uses target input or capability | Component, Workflow -> Data, Interface, Capability | GAEP-CORE-010 | 1.0 | 0..n to 0..n | no authority propagation; inverse `consumed-by` |
 | `gaep.rel.provides` | `provides` | source offers target interface or capability | Component, Managed Asset -> Interface, Capability | GAEP-CORE-010 | 1.0 | 0..n to 0..n | no automatic inverse with consumption; inverse `provided-by` |
 | `gaep.rel.invalidates` | `invalidates` | source makes target invalid for declared use | Event, Decision, Resource Revision -> Governed Resource | GAEP-CORE-004 | 1.0 | source 0..n; target 0..n | may transition validity only with reason/scope/authority; inverse `invalidated-by` |
