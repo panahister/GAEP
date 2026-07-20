@@ -26,11 +26,27 @@ supersedes: []
 
 ## Manifest status
 
-Profile Selection Manifest ID: `urn:gaep:candidate:profile-selection-manifest:vnext-working`
+Working Profile Selection record ID: `urn:gaep:candidate:profile-selection-manifest:vnext-working`
 
-Manifest result: `unresolved`.
+Record class: pre-resolution applicability worksheet; **not** a conforming Profile Selection Manifest.
 
-This is a candidate selection manifest for evaluation. No profile is effective through this record because profile-selection authority, organizational bindings, Approval Determinations, and final exact versions are unassigned. File presence does not select a profile.
+Resolution completion: `unresolved`.
+
+This worksheet lacks a resolved exact subject, Base Policy Envelope revision, selected profile revisions, selector authority, selection time, complete rationale, conflict disposition, and invalidation record required by GAEP-CORE-009. It cannot contribute Profile obligations to effective policy composition. No profile is selected or effective because governed selection records, effective profile-selection authority, complete organizational bindings, Approval Determinations where required, and final exact versions are absent. File presence, selected Product semantics, a Product identifier candidate, a Product path, or a proposed relationship to a Product Managed Asset does not select a profile.
+
+## Exact subject and Organization Scope boundary
+
+| Subject dimension | Candidate binding or unresolved identity candidate | Boundary |
+|---|---|---|
+| Accountable Organization Scope | `urn:gaep:candidate:organization:governing-owner`, declared label GAEP Foundational Specification Initiative | This is the bounded administrative Organization Scope for candidate documentation and closure work. The label does not make it the Engineering Initiative, an enterprise-wide organization, or authority over unrelated work; effective authority binding remains pending. |
+| Engineering Initiative | `urn:gaep:candidate:initiative:vnext-preimplementation` | Bounded specification-governance and candidate-closure work, distinct from its durable target Managed Assets. |
+| Provisional Product identity candidate | `urn:gaep:candidate:product:gaep` | Local candidate derived from the incomplete Product Charter; exact Product identity boundary, product-family relationships, namespace issuer, and applicable baseline or genesis remain unresolved under `GAEP-DEC-001`. It is not yet a canonical Product Scope Reference or proven target. |
+| Other included target Managed Assets | the three governed-specification assets identified by `GAEP-SELF-001` | Their identity and lineage do not end when the Initiative closes; their proposed specialization still requires registry disposition. |
+| Excluded runtime asset | `urn:gaep:candidate:asset:runtime-product` | Possible future runtime Product or other Managed Asset whose exact type remains unresolved; excluded from the current Change, prototype, pilot, and implementation scope. |
+| Input storage checkpoint | Git commit `0719efb75b09c8704d08385d6cd61541fd9c614c` | Exact accepted Batch 1 checkpoint and Batch 2A input; it is not a Candidate Revision Set or Baseline Set. |
+| Current candidate state | documentation-only working changes derived from the checkpoint | No immutable Candidate Revision Set, Baseline Proposal, Baseline Set, constitutional Approval, pilot authorization, or implementation authorization exists. |
+
+Applicability is evaluated for exact subject and scope references. Similar names, repository containment, or one Principal's selected roles do not merge the Organization Scope, Initiative, Managed Assets, Change, Workspace, or Product Profile into one subject and do not expand authority.
 
 ## Prerequisite records outside profile resolution
 
@@ -38,35 +54,35 @@ Product Strategy and Core documents are inputs to profile resolution; they are n
 
 | Candidate subject/version | Authoring/approval condition | Evidence readiness | Candidate owner role | Current blockers |
 |---|---|---|---|---|
-| Product Charter `GAEP-STR-001@0.1.0` | Proposed; not approved | candidate local revision | GAEP Product Owner, unassigned | sponsor, segment and distribution unresolved |
+| Product Charter `GAEP-STR-001@0.1.0` | Proposed; not approved | candidate local revision | `GAEP-RA-002` proposes Mehdi Panahi as GAEP Product Owner for the bounded candidate-closure scope; acceptance and effectiveness remain pending | proposed GAEP Initiative Sponsor assignment remains ineffective; `GAEP Investment Sponsor` is a noncanonical candidate operating label whose registry mapping is unresolved, so no assignment is possible until it is registered or mapped to a controlled value; segment and distribution remain unresolved |
 | Problem Evidence `GAEP-STR-002@0.1.0` | Proposed; not approved | research planned | GAEP Product Research Owner, unassigned | no interviews or historical-case evidence |
-| Core `GAEP-CORE-001` through `GAEP-CORE-012`, each at `0.1.0` | Proposed; not approved or baselined | candidate local revisions exist | GAEP Specification Steward, unassigned | integration review, scenarios and baseline approval pending |
+| Core `GAEP-CORE-001` through `GAEP-CORE-012`, each at `0.1.0` | Proposed; not approved or baselined | candidate local revisions exist; Batch 1 input is bound to checkpoint `0719efb75b09c8704d08385d6cd61541fd9c614c` | `GAEP-RA-003` and `GAEP-RA-004` propose Mehdi Panahi as GAEP Specification Steward and GAEP Core Specification Steward for the bounded candidate-closure scope; acceptance and effectiveness remain pending | integration review, exact post-change revisions, Core reduction, independent review, and baseline approval pending |
 
-## Candidate Profile applicability and resolution
+## Candidate Profile applicability and resolution worksheet
 
-This manifest deliberately separates selection obligation, Core resolution result, fulfillment evidence, selection authority, and blocking reason.
+The worksheet keeps `gaep.state.applicability`, `gaep.state.obligation-strength`, resolution completion, fulfillment, selection authority, and blocking reason separate. Every applicability result remains `unresolved`; the strength column states what would apply only if a governed applicability decision resolves the trigger. No selected profile revision or fulfillment result exists.
 
-| Candidate subject/version | Obligation | Core resolution result | Fulfillment evidence | Selection authority | Current blockers |
-|---|---|---|---|---|---|
-| Product Development `GAEP-PROF-001@0.1.0` | required | unresolved | candidate profile exists; not effective | Product Governance Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | first segment/user/workflow unvalidated |
-| Reusable Asset Change `GAEP-PROF-007@0.1.0` | required | unresolved | candidate profile exists; not effective | Engineering Change Authority, unassigned; Capability Steward consultation plus concrete Principal assignment and authority pending `GAEP-DEC-018` | consumer and compatibility model not piloted |
-| Architecture `GAEP-PROF-008@0.1.0` | required | unresolved | candidate profile exists; not effective | Architecture Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | approved quality-attribute scenarios missing |
-| Assurance `GAEP-PROF-009@0.1.0` | required | unresolved | candidate profile exists; not effective | Assurance Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | evidence-strength and critical-claim decisions pending |
-| Platform Security `GAEP-PROF-010@0.1.0` | required | unresolved | candidate threat model exists; profile not effective | Security Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | deployment boundary and residual-risk authority missing |
-| Data/Privacy/Records `GAEP-PROF-011@0.1.0` | required | unresolved | candidate assessment exists; profile not effective | Data and Privacy Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | data inventory, jurisdiction and records authority missing |
-| AI System `GAEP-PROF-012@0.1.0` | conditional because AI-assisted authorship is current and future product use is possible | unresolved | candidate assessment exists; profile not effective | AI System Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | use case, autonomy, provider, provenance limits and evaluation not approved |
-| Operational Reliability `GAEP-PROF-013@0.1.0` | conditional for a future supported runtime/product | unresolved | candidate profile exists; not effective | Operational Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | service form, SLOs, support and continuity unresolved |
-| Legal/IP/Supplier `GAEP-PROF-014@0.1.0` | required before distribution or supplier authorization | unresolved | candidate profile exists; not effective | Legal and Supplier Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | ownership, license, supplier and jurisdiction review missing |
-| Workforce Trust/Accessibility/Ethics `GAEP-PROF-015@0.1.0` | required for pilots and telemetry | unresolved | candidate profile exists; not effective | Organizational Trust Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | participant protocol and accessibility evidence missing |
-| Audit Integrity/Accountability `GAEP-PROF-016@0.1.0` | conditional when consequence, policy, external commitment, or accountability claim requires stronger audit properties | unresolved | candidate profile exists; not effective | Audit Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | selection triggers, coverage, integrity method and independent challenge unresolved |
-| Incident Response/Continuity `GAEP-PROF-017@0.1.0` | conditional when a material incident or future operational scope requires coordinated response and continuity | unresolved | candidate profile exists; not effective | Incident and Continuity Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | current documentation scope trigger, declaration authority, communication and continuity method unresolved |
-| Corrective Change `GAEP-PROF-002@0.1.0` | optional scenario coverage | unresolved | candidate profile exists; not effective | Engineering Change Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | reference scenario only |
-| Migration `GAEP-PROF-003@0.1.0` | optional scenario coverage | unresolved | candidate profile exists; not effective | Migration Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | reference scenario only |
-| Security/Identity Change `GAEP-PROF-004@0.1.0` | optional scenario coverage | unresolved | candidate profile exists; not effective | Security Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | reference scenario only |
-| Emergency Operational Change `GAEP-PROF-005@0.1.0` | optional scenario coverage | unresolved | candidate profile exists; not effective | Operational Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | reference scenario only |
-| Bounded Experiment `GAEP-PROF-006@0.1.0` | required for manual pilot design | unresolved | candidate profile exists; not effective | Experiment Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | pilot readiness not evaluated |
+| Candidate subject/version | Applicability | Proposed obligation strength if applicable | Resolution completion | Fulfillment | Selection authority | Current blockers |
+|---|---|---|---|---|---|---|
+| Product Development `GAEP-PROF-001@0.1.0` | `unresolved` | `required` | `unresolved` | not evaluated; candidate profile exists but no effective obligation | Product Governance Authority remains unassigned; proposed GAEP Product Owner assignment is not equivalent to Profile-selection authority | provisional Product identity and target relation, Product baseline or genesis, accepted authority, selection record, first segment/user/workflow evidence, Core compatibility, and effective configuration are absent |
+| Reusable Asset Change `GAEP-PROF-007@0.1.0` | `unresolved` | `required` | `unresolved` | not evaluated; profile not effective | Engineering Change Authority, unassigned; Capability Steward consultation plus concrete Principal assignment and authority pending `GAEP-DEC-018` | exact reusable-asset applicability, consumer evidence, and compatibility model unresolved |
+| Architecture `GAEP-PROF-008@0.1.0` | `unresolved` | `required` | `unresolved` | not evaluated; profile not effective | Architecture Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | applicability trigger and approved quality-attribute scenarios missing |
+| Assurance `GAEP-PROF-009@0.1.0` | `unresolved` | `required` | `unresolved` | not evaluated; profile not effective | Assurance Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | applicability, evidence-strength, and critical-claim decisions pending |
+| Platform Security `GAEP-PROF-010@0.1.0` | `unresolved` | `required` | `unresolved` | not evaluated; candidate threat model exists but profile not effective | Security Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | applicability, deployment boundary, and residual-risk authority missing |
+| Data/Privacy/Records `GAEP-PROF-011@0.1.0` | `unresolved` | `required` | `unresolved` | not evaluated; candidate assessment exists but profile not effective | Data and Privacy Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | applicability, data inventory, jurisdiction, and records authority missing |
+| AI System `GAEP-PROF-012@0.1.0` | `unresolved` | `conditional` | `unresolved` | not evaluated; candidate assessment exists but profile not effective | AI System Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | current AI-assisted authorship trigger, future use case, autonomy, provider, provenance limits, and evaluation unresolved |
+| Operational Reliability `GAEP-PROF-013@0.1.0` | `unresolved` | `conditional` | `unresolved` | not evaluated; profile not effective | Operational Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | future supported runtime/product trigger, service form, SLOs, support, and continuity unresolved |
+| Legal/IP/Supplier `GAEP-PROF-014@0.1.0` | `unresolved` | `required` | `unresolved` | not evaluated; profile not effective | Legal and Supplier Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | distribution/supplier trigger, ownership, license, supplier, and jurisdiction review missing |
+| Workforce Trust/Accessibility/Ethics `GAEP-PROF-015@0.1.0` | `unresolved` | `required` | `unresolved` | not evaluated; profile not effective | Organizational Trust Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | pilot/telemetry trigger, participant protocol, and accessibility evidence missing |
+| Audit Integrity/Accountability `GAEP-PROF-016@0.1.0` | `unresolved` | `conditional` | `unresolved` | not evaluated; profile not effective | Audit Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | applicability triggers, coverage, integrity method, and independent challenge unresolved |
+| Incident Response/Continuity `GAEP-PROF-017@0.1.0` | `unresolved` | `conditional` | `unresolved` | not evaluated; profile not effective | Incident and Continuity Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | documentation-scope trigger, declaration authority, communication, and continuity method unresolved |
+| Corrective Change `GAEP-PROF-002@0.1.0` | `unresolved` | `optional` | `unresolved` | not evaluated; profile not effective | Engineering Change Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | reference-scenario applicability only |
+| Migration `GAEP-PROF-003@0.1.0` | `unresolved` | `optional` | `unresolved` | not evaluated; profile not effective | Migration Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | reference-scenario applicability only |
+| Security/Identity Change `GAEP-PROF-004@0.1.0` | `unresolved` | `optional` | `unresolved` | not evaluated; profile not effective | Security Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | reference-scenario applicability only |
+| Emergency Operational Change `GAEP-PROF-005@0.1.0` | `unresolved` | `optional` | `unresolved` | not evaluated; profile not effective | Operational Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | reference-scenario applicability only |
+| Bounded Experiment `GAEP-PROF-006@0.1.0` | `unresolved` | `conditional` | `unresolved` | not evaluated; profile not effective | Experiment Authority, unassigned; concrete Principal assignment and authority pending `GAEP-DEC-018` | applies only to a separately authorized experiment or participant pilot, not paper scenarios or documentation rehearsal; no pilot is authorized |
 
-Actual selection requires exact profile revisions, Core compatibility, source authority, scope, applicability rationale, effective time, Approval Determination, and a resolved effective-configuration manifest under GAEP-CORE-009. File presence does not make the Audit Integrity or Incident Response profile universally applicable.
+Actual selection requires exact profile revisions, Core compatibility, source authority, exact Organization Scope and Initiative/Managed Asset references, applicability rationale, effective time, Approval Determination where required, and a resolved effective-configuration manifest under GAEP-CORE-009. File presence does not make Product Development, Audit Integrity, Incident Response, or any other Profile applicable or effective.
 
 ## Deferred realization and capability recommendations
 
@@ -90,12 +106,14 @@ The dispositions below are Recommendations tied to `GAEP-DEC-016`; they are not 
 - GAEP platform threat, data, AI, assurance, and operational models;
 - repository/runtime/adapter boundaries;
 - GAEP-on-GAEP records;
-- manual scenarios, pilot design, metrics, migration, and approval gates;
+- paper scenarios, reversible non-authoritative migration rehearsal preparation, GAEP-on-GAEP manual rehearsal, future pilot design without participant activity, metrics, migration planning, and approval-gate definitions;
 - documentation and consistency validation.
 
 ### Out of scope now
 
 - source code or executable schemas;
+- executable reference realizations or prototypes;
+- participant recruitment, participant interaction, or collection of participant data;
 - live AI or external-system integrations;
 - migration of organizational production artifacts;
 - automatic enforcement;
