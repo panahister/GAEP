@@ -14,9 +14,11 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "check": "npm run typecheck && npm run test && npm run validate:docs",
+    "check:founder": "npm run check && npm run test:vscode:extension-host",
     "clean": "npm run clean --workspaces --if-present",
     "package:vscode": "npm run package -w gaep-vscode",
     "test": "vitest run",
+    "test:vscode:extension-host": "npm run test:extension-host -w gaep-vscode",
     "test:watch": "vitest",
     "typecheck": "tsc -b",
     "validate:docs": "ruby scripts/validate_next_docs.rb"

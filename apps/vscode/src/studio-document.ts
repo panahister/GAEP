@@ -16,11 +16,41 @@ export function createStudioNonce(): string {
   return randomBytes(24).toString("base64url")
 }
 
+const hostCreatedUriPattern = /^[A-Za-z][A-Za-z0-9+.-]*:\/\/[^\s'";\\]+$/
+
 function requireCspToken(value: string, label: string): string {
-  if (!/^[A-Za-z][A-Za-z0-9+.-]*:\/\/[^\s'";]+$/.test(value)) {
+  if (!hostCreatedUriPattern.test(value)) {
     throw new Error(`${label} must be a host-created URI without CSP delimiters`)
   }
   return value
+}
+
+function requireCspSourceList(value: string, label: string): string {
+  if (
+    value.length > 2_048 ||
+    value.trim() !== value ||
+    value.includes("  ") ||
+    /[\u0000-\u001f\u007f;"\\]/u.test(value)
+  ) {
+    throw new Error(`${label} must be a bounded host-created CSP source list`)
+  }
+  const tokens = value.split(" ")
+  if (tokens.length < 1 || tokens.length > 4 || new Set(tokens).size !== tokens.length) {
+    throw new Error(`${label} must contain one to four unique CSP sources`)
+  }
+  let uriCount = 0
+  for (const [index, token] of tokens.entries()) {
+    if (token === "'self'") {
+      if (index !== 0) throw new Error(`${label} permits 'self' only as the first source`)
+      continue
+    }
+    if (!hostCreatedUriPattern.test(token)) {
+      throw new Error(`${label} contains a non-host URI or unsupported CSP keyword`)
+    }
+    uriCount += 1
+  }
+  if (uriCount === 0) throw new Error(`${label} requires at least one host-created URI source`)
+  return tokens.join(" ")
 }
 
 function requireOpaqueToken(value: string, label: string): string {
@@ -37,7 +67,7 @@ function escapeAttribute(value: string): string {
 }
 
 export function createStudioDocument(options: StudioDocumentOptions): string {
-  const cspSource = requireCspToken(options.cspSource, "CSP source")
+  const cspSource = requireCspSourceList(options.cspSource, "CSP source")
   const clientScriptUri = requireCspToken(options.clientScriptUri, "Client script URI")
   const codiconStylesUri = options.codiconStylesUri
     ? requireCspToken(options.codiconStylesUri, "Codicon stylesheet URI")

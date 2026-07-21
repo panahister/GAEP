@@ -39,4 +39,28 @@ describe("Product Studio webview document", () => {
     })).toThrow(/CSP source/)
     expect(createStudioNonce()).toMatch(/^[A-Za-z0-9_-]{32}$/)
   })
+
+  it("accepts the strict host-created CSP source list emitted by current VS Code", () => {
+    const html = createStudioDocument({
+      cspSource: "'self' https://*.vscode-cdn.net",
+      clientScriptUri: "vscode-webview://studio/client.js",
+      channelId: "channel_token_1234567890",
+      nonce: "nonce_token_123456789012",
+    })
+    expect(html).toContain("font-src 'self' https://*.vscode-cdn.net")
+    expect(html).toContain("script-src 'self' https://*.vscode-cdn.net 'nonce-nonce_token_123456789012'")
+    for (const unsafeSource of [
+      "'self' https://*.vscode-cdn.net; script-src *",
+      "'self' 'unsafe-inline' https://*.vscode-cdn.net",
+      "'self' https://*.vscode-cdn.net\nscript-src *",
+      "'none' https://*.vscode-cdn.net",
+    ]) {
+      expect(() => createStudioDocument({
+        cspSource: unsafeSource,
+        clientScriptUri: "vscode-webview://studio/client.js",
+        channelId: "channel_token_1234567890",
+        nonce: "nonce_token_123456789012",
+      }), unsafeSource).toThrow(/CSP source/)
+    }
+  })
 })
