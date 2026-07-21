@@ -9,6 +9,7 @@
   "license": "UNLICENSED",
   "files": [
     "dist/extension.cjs",
+    "dist/studio-client.js",
     "media/gaep.svg",
     "README.md",
     "LICENSE"
@@ -23,6 +24,9 @@
     "onView:gaep.overview",
     "onView:gaep.agent",
     "onView:gaep.governance",
+    "onView:gaep.runs",
+    "onWebviewPanel:gaep.productStudio",
+    "onCommand:gaep.openProductStudio",
     "onCommand:gaep.initializeProduct",
     "onCommand:gaep.selectWorkspaceRoot",
     "onCommand:gaep.selectAgent",
@@ -48,6 +52,7 @@
   "contributes": {
     "commands": [
       { "command": "gaep.initializeProduct", "title": "GAEP: Initialize Product" },
+      { "command": "gaep.openProductStudio", "title": "GAEP: Open Product Studio", "icon": "$(layout)" },
       { "command": "gaep.selectWorkspaceRoot", "title": "GAEP: Select Product Root" },
       { "command": "gaep.selectAgent", "title": "GAEP: Select Agent and Model" },
       { "command": "gaep.createInitiative", "title": "GAEP: Create Initiative" },
@@ -72,13 +77,15 @@
       "gaep": [
         { "id": "gaep.overview", "name": "Product" },
         { "id": "gaep.agent", "name": "Agent" },
-        { "id": "gaep.governance", "name": "Governance" }
+        { "id": "gaep.governance", "name": "Governance" },
+        { "id": "gaep.runs", "name": "Runs" }
       ]
     },
     "menus": {
       "view/title": [
         { "command": "gaep.refresh", "when": "view =~ /gaep\\./", "group": "navigation" },
-        { "command": "gaep.selectWorkspaceRoot", "when": "view =~ /gaep\\./", "group": "navigation@2" }
+        { "command": "gaep.selectWorkspaceRoot", "when": "view =~ /gaep\\./", "group": "navigation@2" },
+        { "command": "gaep.openProductStudio", "when": "view =~ /gaep\\./", "group": "navigation@3" }
       ]
     },
     "configuration": {

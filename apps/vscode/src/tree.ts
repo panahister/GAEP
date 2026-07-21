@@ -128,13 +128,22 @@ function diagnosticEntry(label: string, detail: string): TreeEntry {
   }
 }
 
+function studioEntry(route: "overview" | "agents-tools" | "runs-evidence" | "readiness"): TreeEntry {
+  return {
+    label: "Open Product Studio",
+    description: route,
+    icon: "layout",
+    command: { command: "gaep.openProductStudio", title: "Open Product Studio", arguments: [route] },
+  }
+}
+
 export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
   private readonly changes = new vscode.EventEmitter<TreeEntry | undefined>()
   readonly onDidChangeTreeData = this.changes.event
 
   constructor(
     private readonly context: () => GaepViewContext,
-    private readonly view: "product" | "agent" | "governance",
+    private readonly view: "product" | "agent" | "governance" | "runs",
   ) {}
 
   refresh(): void {
@@ -205,6 +214,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
       const selected = currentInitiative(initiatives)
       return [
         ...recovery,
+        studioEntry("overview"),
         {
           label: String(product.name),
           description: String(product.lifecycleState ?? "active"),
@@ -265,6 +275,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         : `permission mode=${String(settings.permissionMode ?? "default")}`
       return [
         ...recovery,
+        studioEntry("agents-tools"),
         ...(unsafe.length > 0 ? [diagnosticEntry("Unsafe Stored Selection", unsafe.join("; "))] : []),
         { label: String(selection.agentId), description: runtimeVersion ? `v${String(runtimeVersion)}` : "agent", icon: "hubot" },
         { label: String(selection.modelId), description: "model", icon: "symbol-variable" },
@@ -279,7 +290,13 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
           tooltip: "This direct-execution release launches only when provider-native controls enforce the effective read-only, network-disabled boundary.",
           icon: "shield",
         },
-        { label: String(selection.runtimeExecutable), description: "resolved runtime", icon: "terminal" },
+        {
+          label: "Machine-local executable binding",
+          description: "inspect in Product Studio",
+          tooltip: "Absolute executable paths are shown only in the Product Studio machine-local runtime inspector.",
+          icon: "terminal",
+          command: { command: "gaep.openProductStudio", title: "Open Product Studio", arguments: ["agents-tools"] },
+        },
         {
           label: "Change Agent or Model",
           icon: "arrow-swap",
@@ -287,6 +304,44 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         },
         {
           label: "Create Charter and Start Run",
+          icon: "play",
+          command: { command: "gaep.prepareRun", title: "Create Charter and Start Run" },
+        },
+      ]
+    }
+
+    if (this.view === "runs") {
+      const runs = await readRuns(context.workspacePath)
+      const latest = newestRun(runs)
+      const unknown = runs.filter((run) => run.state === "unknown")
+      return [
+        ...recovery,
+        studioEntry("runs-evidence"),
+        {
+          label: "Latest run",
+          description: latest ? latest.state : "none",
+          tooltip: latest ? `${latest.id}\n${latest.agent.agentId} / ${latest.agent.modelId}` : "No governed run exists.",
+          icon: latest?.state === "unknown" ? "error" : latest ? "pulse" : "circle-outline",
+        },
+        ...runs.map((run) => ({
+          label: run.id,
+          description: run.state,
+          tooltip: `Initiative: ${run.initiativeId}\nAgent/model: ${run.agent.agentId} / ${run.agent.modelId}`,
+          icon: run.state === "unknown" ? "error" : run.state === "completed" ? "pass" : run.state === "failed" ? "warning" : "pulse",
+          command: run.state === "unknown"
+            ? { command: "gaep.showDiagnostics", title: "Show GAEP Diagnostics" }
+            : { command: "gaep.openProductStudio", title: "Open Product Studio", arguments: ["runs-evidence"] },
+        })),
+        ...(unknown.length > 0 ? [diagnosticEntry("Unknown run effects", `${unknown.length} run(s) require investigation before their effects can be trusted.`)] : []),
+        {
+          label: "Structured evidence",
+          description: "not exposed by current engine",
+          tooltip: "Run lifecycle records are available. Structured event and evidence records remain an explicit Product Studio gap.",
+          icon: "info",
+        },
+        {
+          label: "Create Charter and Start Run",
+          description: "Codex observe-only",
           icon: "play",
           command: { command: "gaep.prepareRun", title: "Create Charter and Start Run" },
         },
@@ -318,6 +373,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
     }
     return [
       ...recovery,
+      studioEntry("readiness"),
       { label: "Local source of truth", description: ".gaep", icon: "repo" },
       {
         label: "Policy enforcement",

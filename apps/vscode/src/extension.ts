@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { lstat, readdir } from "node:fs/promises"
 import { join } from "node:path"
 
@@ -19,6 +20,8 @@ import { GaepEngine, initiativeTransitions } from "@gaep/engine"
 import * as vscode from "vscode"
 
 import { ActiveRunRegistry } from "./run-registry.js"
+import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-source.js"
+import { resolveLocalActorPrincipal } from "./local-actor.js"
 import {
   runtimeBindingKey,
   sameExecutableFingerprint,
@@ -33,8 +36,9 @@ import {
   unsafeSelectionReasons,
 } from "./safety.js"
 import { GaepTreeProvider, readInitiatives, type GaepViewContext } from "./tree.js"
+import { StudioProvider } from "./studio-provider.js"
+import { isStudioRoute } from "./studio-protocol.js"
 
-const actorId = "gaep.local-founder"
 const selectedWorkspaceKey = "gaep.selectedWorkspaceUri"
 const runtimeBindingsKey = "gaep.runtimeBindings.v1"
 const activeAgentRuns = new ActiveRunRegistry()
@@ -142,12 +146,20 @@ function machineSetting(key: "codex.executable" | "claude.executable", fallback:
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const diagnostics = vscode.window.createOutputChannel("GAEP Diagnostics", { log: true })
+  const localActor = await resolveLocalActorPrincipal(context.globalState)
+  const actorId = localActor.id
   let selectedFolder: vscode.WorkspaceFolder | undefined
   let engine: GaepEngine | undefined
   let recoveryDiagnostic: string | undefined
   let gaepWatcher: vscode.FileSystemWatcher | undefined
   let refreshTimer: NodeJS.Timeout | undefined
   let lastStatusDiagnostic: string | undefined
+  let studioProvider: StudioProvider | undefined
+  let studioContextGeneration = randomUUID()
+
+  const rotateStudioContext = (): void => {
+    studioContextGeneration = randomUUID()
+  }
 
   const runtimeBindings = (): RuntimeBindingIndex =>
     context.globalState.get<RuntimeBindingIndex>(runtimeBindingsKey) ?? {}
@@ -185,12 +197,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     new GaepTreeProvider(viewContext, "product"),
     new GaepTreeProvider(viewContext, "agent"),
     new GaepTreeProvider(viewContext, "governance"),
+    new GaepTreeProvider(viewContext, "runs"),
   ] as const
   context.subscriptions.push(
     diagnostics,
     vscode.window.registerTreeDataProvider("gaep.overview", providers[0]),
     vscode.window.registerTreeDataProvider("gaep.agent", providers[1]),
     vscode.window.registerTreeDataProvider("gaep.governance", providers[2]),
+    vscode.window.registerTreeDataProvider("gaep.runs", providers[3]),
   )
 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 40)
@@ -267,6 +281,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const refresh = (): void => {
     providers.forEach((provider) => provider.refresh())
     void refreshStatus()
+    void studioProvider?.refresh().catch((error) => logDiagnostic("Product Studio refresh failed", error))
   }
   const scheduleRefresh = (): void => {
     if (refreshTimer) clearTimeout(refreshTimer)
@@ -312,6 +327,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (activeAgentRuns.size > 0) {
       throw new Error("GAEP cannot replace its Product root or runtime configuration while a provider process remains active")
     }
+    rotateStudioContext()
     selectedFolder = folder
     recoveryDiagnostic = undefined
     lastStatusDiagnostic = undefined
@@ -403,6 +419,33 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   }
 
+  const studioDataSource = new CurrentEngineStudioDataSource({
+    contextGeneration: () => studioContextGeneration,
+    trusted: () => vscode.workspace.isTrusted,
+    workspace: () => selectedFolder ? { name: selectedFolder.name, path: selectedFolder.uri.fsPath } : undefined,
+    engine: () => engine,
+    recoveryDiagnostic: () => recoveryDiagnostic,
+    hasGaepState: async () => selectedFolder ? exists(join(selectedFolder.uri.fsPath, ".gaep")) : false,
+    listInitiatives: async () => selectedFolder ? readInitiatives(selectedFolder.uri.fsPath) : [],
+    probeAgents: async () => engine ? probeAgentsResilient(engine) : [],
+    runtimeBindings,
+    executeCommand: (expectedContextGeneration, command, ...args) => {
+      if (expectedContextGeneration !== studioContextGeneration) {
+        throw new Error("The Product Studio context changed before the native workflow could start")
+      }
+      return vscode.commands.executeCommand(command, ...args)
+    },
+    logDiagnostic,
+  })
+  studioProvider = new StudioProvider(context.extensionUri, studioDataSource, logDiagnostic)
+  context.subscriptions.push(
+    studioProvider,
+    vscode.window.registerWebviewPanelSerializer(StudioProvider.viewType, studioProvider),
+    vscode.commands.registerCommand("gaep.openProductStudio", async (route?: unknown) => {
+      await studioProvider?.open(isStudioRoute(route) ? route : "overview")
+    }),
+  )
+
   context.subscriptions.push(
     vscode.commands.registerCommand("gaep.refresh", refresh),
     vscode.commands.registerCommand("gaep.showDiagnostics", () => {
@@ -410,6 +453,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       diagnostics.info(`Selected Product root: ${selectedFolder?.uri.fsPath ?? "none"}`)
       diagnostics.info(`Recovery diagnostic: ${recoveryDiagnostic ?? "none"}`)
       diagnostics.info(`Managed active runs: ${activeAgentRuns.list().map((run) => run.runId).join(", ") || "none"}`)
+      diagnostics.info(`Local actor: ${localActor.id} (machine-local attribution only; not an approval authority)`)
       diagnostics.show(true)
     }),
     vscode.commands.registerCommand("gaep.manageWorkspaceTrust", () => vscode.commands.executeCommand("workbench.trust.manage")),
@@ -804,6 +848,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.workspace.onDidGrantWorkspaceTrust(() => {
+      rotateStudioContext()
       void (async () => {
         try {
           const folder = selectedFolder ?? await initialRoot()
@@ -819,6 +864,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       void (async () => {
         const folders = vscode.workspace.workspaceFolders ?? []
         if (selectedFolder && folders.some((folder) => folder.uri.toString() === selectedFolder?.uri.toString())) return
+        rotateStudioContext()
         try {
           await stopActiveRuns("The selected Product root was removed from the workspace.", false)
         } catch (error) {
