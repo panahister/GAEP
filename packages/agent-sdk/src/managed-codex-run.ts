@@ -8,8 +8,10 @@ import {
   type ManagedRuntimeResultEnvelope,
   type ManagedTerminalDisposition,
 } from "./managed-runtime.js"
+import { ManagedStageRegistry } from "./managed-stage-registry.js"
 import {
   WorkspaceStagingService,
+  WorkspaceApplyError,
   type WorkspaceApplyOptions,
   type WorkspaceApplyResult,
   type WorkspaceStage,
@@ -33,6 +35,9 @@ export interface ManagedCodexStagedRunRequest {
   capabilityDigest?: `sha256:${string}`
   timeoutMs?: number
   policy: ManagedCodexStagePolicy
+  /** Portable Managed Run identity used only as a key in the machine-local stage registry. */
+  managedRunId?: string
+  stageRegistry?: ManagedStageRegistry
   stagingService?: WorkspaceStagingService
   appServerOptions?: Omit<
     CodexAppServerOptions,
@@ -152,6 +157,8 @@ class CodexStageReview implements ManagedCodexStageReview {
     private readonly sourceWorkspacePath: string,
     private readonly stage: WorkspaceStage,
     private readonly stagingService: WorkspaceStagingService,
+    private readonly managedRunId?: string,
+    private readonly stageRegistry?: ManagedStageRegistry,
   ) {
     this.finalResult = initialResult
   }
@@ -183,10 +190,22 @@ class CodexStageReview implements ManagedCodexStageReview {
   }
 
   private async applyOnce(request: ManagedCodexApplyRequest): Promise<ManagedRuntimeResultEnvelope> {
-    const applyResult = await this.stagingService.apply(this.stage, {
-      authorizationId: requireBoundedText(request.authorizationId, "Apply authorization ID", 1_024),
-      approvedPaths: request.approvedPaths,
-    })
+    if (this.managedRunId && this.stageRegistry) await this.stageRegistry.markApplying(this.managedRunId)
+    let applyResult: WorkspaceApplyResult
+    try {
+      applyResult = await this.stagingService.apply(this.stage, {
+        authorizationId: requireBoundedText(request.authorizationId, "Apply authorization ID", 1_024),
+        approvedPaths: request.approvedPaths,
+      })
+    } catch (error) {
+      if (error instanceof WorkspaceApplyError && this.managedRunId && this.stageRegistry) {
+        await this.stageRegistry.retainJournal(this.managedRunId, error.journalPath, error.journalDigest)
+      }
+      throw error
+    }
+    if (this.managedRunId && this.stageRegistry) {
+      await this.stageRegistry.retainJournal(this.managedRunId, applyResult.journalPath, applyResult.journalDigest)
+    }
     if (applyResult.status === "conflict") {
       this.disposition = "conflict"
       this.finalResult = resultWithApply(this.finalResult, applyResult, "indeterminate")
@@ -233,6 +252,9 @@ class CodexStageReview implements ManagedCodexStageReview {
     if (this.disposition === "discarded" || this.disposition === "applied") return this.result
     this.operation = (async () => {
       await this.stagingService.cleanup(this.stage)
+      if (this.managedRunId && this.stageRegistry && !this.finalResult.portable.staging?.applyJournalDigest) {
+        await this.stageRegistry.complete(this.managedRunId)
+      }
       this.disposition = "discarded"
       return this.result
     })()
@@ -264,6 +286,15 @@ export async function startManagedCodexStagedRun(
   const capabilityDigest = optionalCapabilityDigest(request.capabilityDigest)
   const stagingService = request.stagingService ?? new WorkspaceStagingService()
   const stage = await stagingService.create(request.sourceWorkspacePath)
+  const stageRegistry = request.managedRunId
+    ? request.stageRegistry ?? new ManagedStageRegistry()
+    : undefined
+  try {
+    if (request.managedRunId && stageRegistry) await stageRegistry.register(request.managedRunId, stage)
+  } catch (error) {
+    await stagingService.cleanup(stage).catch(() => undefined)
+    throw error
+  }
   const events = new BoundedAsyncQueue<ManagedRuntimeEvent>(4_096, 32 * 1_024 * 1_024)
   let threadId: string | undefined
   let turnId: string | undefined
@@ -304,6 +335,7 @@ export async function startManagedCodexStagedRun(
     })
   } catch (error) {
     await stagingService.cleanup(stage).catch(() => undefined)
+    if (request.managedRunId && stageRegistry) await stageRegistry.complete(request.managedRunId).catch(() => undefined)
     throw error
   }
 
@@ -410,6 +442,7 @@ export async function startManagedCodexStagedRun(
       initialResult.portable.events.push({ ...coordinatorFailure, sequence: maximumSequence + 1 })
       initialResult.portable.warnings.push("Managed Codex coordination ended before a normal terminal result.")
     }
+    if (request.managedRunId && stageRegistry) await stageRegistry.markReview(request.managedRunId)
     return new CodexStageReview(
       initialResult,
       inspection,
@@ -417,11 +450,14 @@ export async function startManagedCodexStagedRun(
       stage.sourceRoot,
       stage,
       stagingService,
+      request.managedRunId,
+      stageRegistry,
     )
   })().catch(async (error: unknown) => {
     events.fail(error instanceof Error ? error : new Error(String(error)))
     await supervisor.stop().catch(() => undefined)
     await stagingService.cleanup(stage).catch(() => undefined)
+    if (request.managedRunId && stageRegistry) await stageRegistry.complete(request.managedRunId).catch(() => undefined)
     throw error
   })
 

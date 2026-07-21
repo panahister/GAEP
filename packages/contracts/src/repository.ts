@@ -78,6 +78,18 @@ export const workspaceHealthIssueSchema = z.object({
   code: z.string().regex(/^[a-z0-9]+(?:[.-][a-z0-9]+)*$/),
   severity: z.enum(["warning", "error"]),
   message: z.string().min(1),
+  portablePath: z.string().optional(),
+  fieldPath: z.array(z.union([z.string(), z.number()])).max(64).optional(),
+  record: z.object({ type: z.string().min(1), id: z.string().min(1), revision: z.number().int().positive().optional() }).optional(),
+  repairActions: z.array(z.enum([
+    "inspect-read-only",
+    "export-valid-records",
+    "rebuild-derived-index",
+    "rebind-local-runtime",
+    "resume-or-quarantine-run",
+    "create-superseding-revision",
+    "manual-repair-required",
+  ])).max(16).optional(),
 })
 
 export const workspaceHealthSchema = z.object({

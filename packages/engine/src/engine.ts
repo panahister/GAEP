@@ -7,6 +7,7 @@ import {
   adapterCapabilitiesSchema,
   executionWorkspaceScopeSchema,
   executionCharterSchema,
+  executionManagedIntentSchema,
   handoffSchema,
   initiativeSchema,
   productSchema,
@@ -17,6 +18,7 @@ import {
   type AdapterCapabilities,
   type AgentSelection,
   type ExecutionCharter,
+  type ExecutionManagedIntent,
   type Handoff,
   type Initiative,
   type Product,
@@ -33,6 +35,11 @@ import {
 } from "@gaep/agent-sdk"
 
 import { GaepRepository, type GaepRepositoryOptions } from "./repository.js"
+import {
+  ManagedExecutionService,
+  type ManagedExecutionHandle,
+  type ManagedExecutionStartInput,
+} from "./managed-execution.js"
 import { ProductStudioService } from "./product-studio.js"
 
 const execFileAsync = promisify(execFile)
@@ -117,6 +124,7 @@ export interface LegacyAgentSelectionMigrationInput {
 export class GaepEngine {
   readonly repository: GaepRepository
   readonly productStudio: ProductStudioService
+  readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
   constructor(readonly workspacePath: string, adapters: AgentAdapter[], repositoryOptions: GaepRepositoryOptions = {}) {
@@ -130,6 +138,12 @@ export class GaepEngine {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
     }
+    this.managedExecution = new ManagedExecutionService(
+      this.workspacePath,
+      this.repository,
+      this.productStudio,
+      this.adapters,
+    )
   }
 
   async probeAgents(): Promise<AdapterCapabilities[]> {
@@ -507,8 +521,12 @@ export class GaepEngine {
   }
 
   async recoverInterruptedRuns(actorId: string): Promise<Run[]> {
+    const managedRecovered = await this.managedExecution.recoverInterrupted(actorId)
+    const recoveredManagedRuns = await Promise.all(managedRecovered.map((managed) =>
+      this.repository.readJson(this.repository.resolve("sessions", `run-${managed.runId}.json`), runSchema),
+    ))
     const interrupted = (await this.listRuns()).filter((run) => run.state === "running")
-    const recovered: Run[] = []
+    const recovered: Run[] = [...recoveredManagedRuns]
     for (const run of interrupted) {
       recovered.push(await this.markRunState(
         run.id,
@@ -527,6 +545,7 @@ export class GaepEngine {
     forbiddenActions: string[]
     stopConditions: string[]
     requiredEvidence: string[]
+    managedIntent?: ExecutionManagedIntent
   }, actorId: string): Promise<ExecutionCharter> {
     const initiativeId = requireUuid(input.initiativeId, "Initiative ID")
     return this.repository.withLock(async () => {
@@ -538,6 +557,15 @@ export class GaepEngine {
         throw new Error(`Initiative must be active before creating an Execution Charter; current state is ${initiative.state}`)
       }
       const selection = await this.readSelection()
+      const managedIntent = input.managedIntent
+        ? executionManagedIntentSchema.parse(input.managedIntent)
+        : undefined
+      if (managedIntent) {
+        if (JSON.stringify([...managedIntent.requestedEffects].sort()) !== JSON.stringify([...input.expectedEffects].sort())) {
+          throw new Error("Managed Charter intent must exactly bind the Charter expected effects")
+        }
+        await this.assertManagedIntentBindings(managedIntent, product.id)
+      }
       const charter = executionCharterSchema.parse({
         schemaVersion: 1,
         id: randomUUID(),
@@ -555,6 +583,7 @@ export class GaepEngine {
         forbiddenActions: input.forbiddenActions,
         stopConditions: input.stopConditions,
         requiredEvidence: input.requiredEvidence,
+        managedIntent,
         createdAt: new Date().toISOString(),
       })
       await this.repository.commitMutation({
@@ -675,6 +704,70 @@ export class GaepEngine {
     })
   }
 
+  /**
+   * Creates the portable Run identity needed by the managed execution lane
+   * without constructing a direct CLI invocation. Runtime bindings remain
+   * process-local and are re-probed only when startManagedRun is called.
+   */
+  async prepareManagedRun(charterId: string, actorId: string): Promise<Run> {
+    const validatedCharterId = requireUuid(charterId, "Charter ID")
+    return this.repository.withLock(async () => {
+      await this.assertAuditIntegrity()
+      const charter = await this.repository.readJson(
+        this.repository.resolve("sessions", `charter-${validatedCharterId}.json`),
+        executionCharterSchema,
+      )
+      if (!charter.confirmedAt) throw new Error("Confirm the Execution Charter before preparing a managed Run")
+      if (!charter.managedIntent) {
+        throw new Error("Managed Run preparation requires a Charter with exact managed Workflow, Context, Tool, effect, and scope intent")
+      }
+      await this.assertCharterBindings(charter)
+      const initiative = await this.readInitiative(charter.initiativeId)
+      if (initiative.state !== "active") {
+        throw new Error(`Initiative must be active before preparing a managed Run; current state is ${initiative.state}`)
+      }
+      const run = runSchema.parse({
+        schemaVersion: 1,
+        id: randomUUID(),
+        revision: 1,
+        charterId: charter.id,
+        charterDigest: canonicalDigest(charter),
+        productId: charter.productId,
+        initiativeId: charter.initiativeId,
+        agent: charter.agent,
+        state: "prepared",
+      })
+      await this.repository.commitMutation({
+        writes: [{
+          path: this.repository.resolve("sessions", `run-${run.id}.json`),
+          value: run,
+          schema: runSchema,
+          governed: true,
+        }],
+        audit: {
+          eventType: "run.prepared-managed",
+          actor: { kind: "human", id: actorId },
+          subjectId: run.id,
+          payload: {
+            charterId: validatedCharterId,
+            charterDigest: run.charterDigest,
+            revision: revisionOf(run),
+            recordDigest: canonicalDigest(run),
+            adapterId: run.agent.adapterId,
+            modelId: run.agent.modelId,
+            runtimeBindingPersisted: false,
+            invocationPersisted: false,
+          },
+        },
+      })
+      return run
+    })
+  }
+
+  async startManagedRun(input: ManagedExecutionStartInput, actorId: string): Promise<ManagedExecutionHandle> {
+    return this.managedExecution.start(input, actorId)
+  }
+
   async markRunState(
     runId: string,
     state: Extract<Run["state"], "running" | "paused" | "completed" | "failed" | "cancelled" | "unknown">,
@@ -682,6 +775,9 @@ export class GaepEngine {
     providerSessionId?: string,
   ): Promise<Run> {
     const validatedRunId = requireUuid(runId, "Run ID")
+    if ((await this.managedExecution.list()).some((managed) => managed.runId === validatedRunId)) {
+      throw new Error("Managed Run state is derived from durable managed evidence and cannot be set directly")
+    }
     const path = this.repository.resolve("sessions", `run-${validatedRunId}.json`)
     return this.repository.withLock(async () => {
       await this.assertAuditIntegrity()
@@ -693,7 +789,9 @@ export class GaepEngine {
         ...current,
         revision: revisionOf(current) + 1,
         state,
-        providerSessionId: providerSessionId ?? current.providerSessionId,
+        providerSessionRef: providerSessionId
+          ? canonicalDigest({ kind: "provider-session", value: providerSessionId })
+          : current.providerSessionRef,
         startedAt: current.startedAt ?? (state === "running" ? now : undefined),
         endedAt: terminal ? now : undefined,
       })
@@ -707,7 +805,7 @@ export class GaepEngine {
             from: current.state,
             to: state,
             revision: revisionOf(next),
-            providerSessionId: next.providerSessionId,
+            providerSessionRef: next.providerSessionRef,
             recordDigest: canonicalDigest(next),
           },
         },
@@ -905,6 +1003,48 @@ export class GaepEngine {
       charter.selectionDigest !== canonicalDigest(selection)
     ) {
       throw new Error("Agent, model, or settings changed after the Execution Charter was created")
+    }
+    if (charter.managedIntent) {
+      if (JSON.stringify([...charter.managedIntent.requestedEffects].sort()) !== JSON.stringify([...charter.expectedEffects].sort())) {
+        throw new Error("Managed Charter intent no longer matches the Charter expected effects")
+      }
+      await this.assertManagedIntentBindings(charter.managedIntent, product.id)
+    }
+  }
+
+  private async assertManagedIntentBindings(intent: ExecutionManagedIntent, productId: string): Promise<void> {
+    const plan = await this.productStudio.readWorkflowPlan(intent.workflowPlan.recordId)
+    if (
+      plan.productId !== productId ||
+      plan.revision !== intent.workflowPlan.revision ||
+      canonicalDigest(plan) !== intent.workflowPlan.digest ||
+      plan.state !== "resolved"
+    ) {
+      throw new Error("Managed Charter intent requires the exact resolved Workflow Plan revision")
+    }
+    const contexts = await Promise.all(intent.contextPacks.map(async (binding) => {
+      const pack = await this.productStudio.readContextPack(binding.recordId)
+      if (pack.productId !== productId || pack.revision !== binding.revision || canonicalDigest(pack) !== binding.digest) {
+        throw new Error("Managed Charter intent contains a stale or mismatched Context Pack binding")
+      }
+      return pack
+    }))
+    const tools = await Promise.all(intent.toolDefinitions.map(async (binding) => {
+      const tool = await this.productStudio.readToolDefinition(binding.recordId)
+      if (tool.productId !== productId || tool.revision !== binding.revision || canonicalDigest(tool) !== binding.digest) {
+        throw new Error("Managed Charter intent contains a stale or mismatched Tool Definition binding")
+      }
+      return tool
+    }))
+    const planContexts = plan.contextPacks.map((binding) => `${binding.recordId}:${binding.revision}:${binding.digest}`).sort()
+    const intentContexts = intent.contextPacks.map((binding) => `${binding.recordId}:${binding.revision}:${binding.digest}`).sort()
+    const planTools = plan.toolDefinitions.map((binding) => `${binding.recordId}:${binding.revision}:${binding.digest}`).sort()
+    const intentTools = intent.toolDefinitions.map((binding) => `${binding.recordId}:${binding.revision}:${binding.digest}`).sort()
+    if (JSON.stringify(planContexts) !== JSON.stringify(intentContexts) || JSON.stringify(planTools) !== JSON.stringify(intentTools)) {
+      throw new Error("Managed Charter intent must exactly match the Workflow Plan Context and Tool inventories")
+    }
+    if (contexts.some((pack) => pack.sufficiency.status === "insufficient") || tools.some((tool) => !tool.enabled)) {
+      throw new Error("Managed Charter intent requires sufficient Context Packs and enabled Tools")
     }
   }
 

@@ -88,6 +88,11 @@ describe("Product Studio domain engine", () => {
     expect(result.revision.productRevision).toBe(2)
     expect(result.revision.readiness.status).toBe("ready")
     expect(result.product.revision).toBe(2)
+    expect(result.product.currentDesign).toEqual({
+      id: result.revision.id,
+      revision: result.revision.revision,
+      digest: canonicalDigest(result.revision),
+    })
     expect((await engine.productStudio.readDesignDraft(product.id)).baseDesignRevisionId).toBe(result.revision.id)
     expect((await engine.productStudio.listProductRevisions()).map((record) => record.revision)).toEqual([2, 1])
     expect((await engine.repository.verifyAudit()).valid).toBe(true)
@@ -154,7 +159,7 @@ describe("Product Studio domain engine", () => {
       { productId: randomUUID(), title: "Unsafe move" } as never,
       "founder",
     )).rejects.toThrow(/immutable or unsupported fields/i)
-    await engine.productStudio.reviseChange(change.id, 1, { state: "planned" }, "founder")
+    await engine.productStudio.reviseChange(change.id, 1, { state: "planned" }, "founder", "Plan the bounded Change.")
     await expect(engine.productStudio.reviseChange(change.id, 1, { state: "active" }, "founder"))
       .rejects.toThrow(/revision conflict/i)
   })
@@ -223,8 +228,12 @@ describe("Product Studio domain engine", () => {
 
     await expect(engine.productStudio.reviseWorkItem(first.id, 1, { dependsOn: [second.id] }, "founder"))
       .rejects.toThrow(/cycle/i)
-    const plannedSecond = await engine.productStudio.reviseWorkItem(second.id, 1, { state: "planned" }, "founder")
-    await expect(engine.productStudio.reviseWorkItem(second.id, plannedSecond.revision, { state: "ready" }, "founder"))
+    const plannedSecond = await engine.productStudio.reviseWorkItem(
+      second.id, 1, { state: "planned" }, "founder", "Plan dependent implementation work.",
+    )
+    await expect(engine.productStudio.reviseWorkItem(
+      second.id, plannedSecond.revision, { state: "ready" }, "founder", "Request readiness after dependencies.",
+    ))
       .rejects.toThrow(/before every dependency is completed/i)
     await expect(engine.productStudio.createWorkItem({
       changeId: change.id,
@@ -255,7 +264,7 @@ describe("Product Studio domain engine", () => {
         proposedAt: new Date().toISOString(),
       },
       dissentAndUncertainty: ["Large workspaces may need an index"],
-      affectedRecordIds: [],
+      affectedRecords: [],
     }, product.revision ?? 1, "founder")
     expect(decision.state).toBe("open")
     expect(decision.selectedOutcome).toBeUndefined()
@@ -282,7 +291,7 @@ describe("Product Studio domain engine", () => {
         selectedBy: { kind: "human", id: "founder" },
         selectedAt: new Date().toISOString(),
       },
-    }, "founder")
+    }, "founder", "The Founder records the selected outcome after review.")
     expect(decided.recommendation?.optionId).toBe(recommended)
     expect(decided.selectedOutcome?.optionId).toBe(alternative)
 
@@ -298,8 +307,11 @@ describe("Product Studio domain engine", () => {
       owner: { kind: "human", id: "founder" },
       reviewTriggers: ["External collaboration is enabled"],
       residualRisk: "Privileged local rewrite remains possible.",
+      evidence: [],
     }, product.revision ?? 1, "founder")
-    await expect(engine.productStudio.reviseRisk(risk.id, 1, { state: "accepted" }, "founder"))
+    await expect(engine.productStudio.reviseRisk(
+      risk.id, 1, { state: "accepted" }, "founder", "Evaluate explicit residual-risk acceptance.",
+    ))
       .rejects.toThrow(/human acceptance/i)
     await expect(engine.productStudio.reviseRisk(risk.id, 1, {
       state: "accepted",
@@ -308,7 +320,7 @@ describe("Product Studio domain engine", () => {
         rationale: "Accepted for local-only dogfooding, not multi-party assurance.",
         acceptedAt: new Date().toISOString(),
       },
-    }, "founder")).resolves.toMatchObject({ state: "accepted" })
+    }, "founder", "The Founder accepts this bounded residual risk.")).resolves.toMatchObject({ state: "accepted" })
   })
 
   it("rejects host paths and secret-shaped portable values", async () => {
@@ -351,8 +363,163 @@ describe("Product Studio domain engine", () => {
       rationale: "Secret-shaped values must fail before persistence.",
       priority: "must",
       verificationCriteria: ["Secret scanner rejects the fixture"],
-      sourceRecordIds: [],
+      sourceRecords: [],
     }, 1, "founder")).rejects.toThrow(/secret-shaped/i)
+  })
+
+  it("preserves immutable revision history and freezes terminal records", async () => {
+    const { product } = await initialize()
+    const requirement = await engine.productStudio.createRequirement({
+      key: "HISTORY-001",
+      statement: "Every governed record revision remains exactly reconstructable.",
+      rationale: "Trace references must not silently float to the latest content.",
+      priority: "must",
+      verificationCriteria: ["Read both immutable snapshots by exact revision"],
+      sourceRecords: [],
+    }, product.revision ?? 1, "founder")
+    const accepted = await engine.productStudio.reviseRequirement(
+      requirement.id,
+      requirement.revision,
+      { state: "accepted" },
+      "founder",
+      "Accept the immutable-history requirement.",
+    )
+    const satisfied = await engine.productStudio.reviseRequirement(
+      accepted.id,
+      accepted.revision,
+      { state: "satisfied" },
+      "founder",
+      "The history implementation and tests satisfy the requirement.",
+    )
+    const history = await engine.productStudio.listRecordHistory("requirement", requirement.id)
+    expect(history.map((entry) => entry.revision)).toEqual([3, 2, 1])
+    expect(history[0]?.recordDigest).toBe(canonicalDigest(satisfied))
+    expect(history[1]?.predecessorDigest).toBe(history[2]?.recordDigest)
+    expect((await engine.productStudio.readRecordHistory("requirement", requirement.id, 1)).snapshot)
+      .toMatchObject({ statement: requirement.statement, state: "proposed" })
+    await expect(engine.productStudio.reviseRequirement(
+      satisfied.id,
+      satisfied.revision,
+      { statement: "Attempt to rewrite satisfied history." },
+      "founder",
+    )).rejects.toThrow(/terminal Requirement/i)
+  })
+
+  it("requires a current verified attestation for an external exact baseline", async () => {
+    const { product, initiative } = await initialize()
+    const externalDigest = canonicalDigest({ source: "https://example.test/spec", revision: 7 })
+    const verifiedAt = new Date().toISOString()
+    const limitations = ["The verifier confirms content identity, not Product suitability."]
+    const evidence = await engine.productStudio.createEvidence({
+      subjects: [{
+        recordType: "product",
+        recordId: product.id,
+        revision: product.revision ?? 1,
+        digest: canonicalDigest(product),
+      }],
+      origin: {
+        kind: "external",
+        locator: { kind: "external-uri", uri: "https://example.test/spec" },
+        actor: { kind: "human", id: "founder" },
+      },
+      method: "Verify the external source digest against the reviewed artifact.",
+      result: { status: "pass", summary: "The reviewed external artifact matches the recorded digest." },
+      artifactDigest: externalDigest,
+      limitations,
+      verification: {
+        status: "verified",
+        verifier: { kind: "human", id: "founder" },
+        method: "Founder compared the reviewed artifact and recorded digest.",
+        verifiedAt,
+      },
+      freshness: { status: "fresh", assessedAt: verifiedAt, basis: "Verified in the current review." },
+      collectedAt: verifiedAt,
+      validUntil: new Date(Date.now() + 60_000).toISOString(),
+    }, product.revision ?? 1, "founder")
+    await expect(engine.productStudio.createChange({
+      initiativeId: initiative.id,
+      title: "Bind reviewed external baseline",
+      summary: "Use only the exact external artifact established by verified Evidence.",
+      baseline: {
+        kind: "exact",
+        subjectType: "external",
+        subjectId: "https://example.test/spec",
+        revision: 7,
+        digest: externalDigest,
+        externalAttestation: {
+          evidenceRecordId: evidence.id,
+          verifiedBy: { kind: "human", id: "founder" },
+          verifiedAt,
+          limitations,
+        },
+      },
+      effectEnvelope: ["observe"],
+    }, product.revision ?? 1, "founder")).resolves.toMatchObject({ baseline: { subjectType: "external" } })
+
+    await expect(engine.productStudio.createChange({
+      initiativeId: initiative.id,
+      title: "Reject forged external baseline",
+      summary: "A changed source identity must not reuse unrelated Evidence.",
+      baseline: {
+        kind: "exact",
+        subjectType: "external",
+        subjectId: "https://example.test/other",
+        revision: 7,
+        digest: externalDigest,
+        externalAttestation: {
+          evidenceRecordId: evidence.id,
+          verifiedBy: { kind: "human", id: "founder" },
+          verifiedAt,
+          limitations,
+        },
+      },
+      effectEnvelope: ["observe"],
+    }, product.revision ?? 1, "founder")).rejects.toThrow(/different source/i)
+  })
+
+  it("invalidates Evidence verification after material change and rejects future timestamps", async () => {
+    const { product } = await initialize()
+    const now = new Date().toISOString()
+    const base = {
+      subjects: [{
+        recordType: "product" as const,
+        recordId: product.id,
+        revision: product.revision ?? 1,
+        digest: canonicalDigest(product),
+      }],
+      origin: {
+        kind: "manual-observation" as const,
+        locator: { kind: "logical" as const, value: "evidence-invalidation-fixture" },
+        actor: { kind: "human" as const, id: "founder" },
+      },
+      method: "Record one bounded observation and its exact digest.",
+      result: { status: "pass" as const, summary: "Initial observation passed." },
+      artifactDigest: canonicalDigest({ result: "initial" }),
+      limitations: ["Local author evidence only."],
+      verification: {
+        status: "verified" as const,
+        verifier: { kind: "human" as const, id: "founder" },
+        method: "Review the observation and digest.",
+        verifiedAt: now,
+      },
+      freshness: { status: "fresh" as const, assessedAt: now, basis: "Current observation." },
+      collectedAt: now,
+    }
+    const evidence = await engine.productStudio.createEvidence(base, product.revision ?? 1, "founder")
+    const revised = await engine.productStudio.reviseEvidence(evidence.id, evidence.revision, {
+      result: { status: "fail", summary: "The material result changed after re-evaluation." },
+      artifactDigest: canonicalDigest({ result: "changed" }),
+    }, "founder")
+    expect(revised.verification.status).toBe("unverified")
+    expect(revised.freshness.status).toBe("unknown")
+
+    const future = new Date(Date.now() + 10 * 60_000).toISOString()
+    await expect(engine.productStudio.createEvidence({
+      ...base,
+      verification: { status: "unverified" },
+      freshness: { status: "unknown", assessedAt: future, basis: "Invalid future fixture." },
+      collectedAt: future,
+    }, product.revision ?? 1, "founder")).rejects.toThrow(/future/i)
   })
 
   it("supports a complete Product-to-evidence trace, search, staleness, and governed tamper detection", async () => {
@@ -370,7 +537,7 @@ describe("Product Studio domain engine", () => {
       rationale: "Completion without evidence is not trustworthy.",
       priority: "must",
       verificationCriteria: ["Inspect the Work Item evidence criteria"],
-      sourceRecordIds: [change.id],
+      sourceRecords: [{ recordType: "change", recordId: change.id, revision: change.revision, digest: canonicalDigest(change) }],
     }, 1, "founder")
     const architecture = await engine.productStudio.createArchitectureRecord({
       recordType: "direction",
@@ -379,7 +546,12 @@ describe("Product Studio domain engine", () => {
       rationale: "Users can inspect and export trace without a provider.",
       assumptions: ["One local Product per workspace"],
       constraints: ["No machine-local absolute paths"],
-      affectedRecordIds: [requirement.id],
+      affectedRecords: [{
+        recordType: "requirement",
+        recordId: requirement.id,
+        revision: requirement.revision,
+        digest: canonicalDigest(requirement),
+      }],
     }, 1, "founder")
     const workItem = await engine.productStudio.createWorkItem({
       changeId: change.id,
@@ -392,7 +564,10 @@ describe("Product Studio domain engine", () => {
       owner: { kind: "agent", id: "local-agent" },
     }, 1, "founder")
     const evidence = await engine.productStudio.createEvidence({
-      subjectRecordIds: [workItem.id, requirement.id],
+      subjects: [
+        { recordType: "work-item", recordId: workItem.id, revision: workItem.revision, digest: canonicalDigest(workItem) },
+        { recordType: "requirement", recordId: requirement.id, revision: requirement.revision, digest: canonicalDigest(requirement) },
+      ],
       origin: {
         kind: "local-command",
         locator: { kind: "logical", value: "engine-test-suite" },
@@ -425,7 +600,12 @@ describe("Product Studio domain engine", () => {
       provenance: { kind: "human", actorId: "founder", rationale: "The architecture direction constrains trace storage." },
     }, 1, "founder")
 
-    const impact = await engine.productStudio.impactAnalysis({ recordType: "work-item", recordId: workItem.id })
+    const impact = await engine.productStudio.impactAnalysis({
+      recordType: "work-item",
+      recordId: workItem.id,
+      revision: workItem.revision,
+      digest: canonicalDigest(workItem),
+    })
     expect(impact.upstream).toHaveLength(1)
     expect(impact.downstream).toHaveLength(1)
     expect(impact.validatingEvidence).toHaveLength(1)
@@ -436,7 +616,12 @@ describe("Product Studio domain engine", () => {
     await engine.productStudio.reviseRequirement(requirement.id, 1, {
       statement: "Every completed Work Item must identify and satisfy proportionate evidence criteria.",
     }, "founder")
-    const staleImpact = await engine.productStudio.impactAnalysis({ recordType: "work-item", recordId: workItem.id })
+    const staleImpact = await engine.productStudio.impactAnalysis({
+      recordType: "work-item",
+      recordId: workItem.id,
+      revision: workItem.revision,
+      digest: canonicalDigest(workItem),
+    })
     expect(staleImpact.stale.map((link) => link.id)).toContain(implementationLink.id)
 
     const evidencePath = join(workspace, ".gaep", "evidence", `${evidence.id}.json`)

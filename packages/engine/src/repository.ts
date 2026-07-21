@@ -24,10 +24,15 @@ import {
   executionCharterSchema,
   governedStateSchema,
   handoffSchema,
+  instructionPrivilegeGrantSchema,
   initiativeSchema,
+  managedRunEvidenceSchema,
+  managedRunRecordSchema,
+  managedRunResultSchema,
   productSchema,
   productDesignRevisionSchema,
   productRevisionSchema,
+  productRecordRevisionSchema,
   repositoryManifestSchema,
   repositoryTransactionBodySchema,
   repositoryTransactionSchema,
@@ -61,6 +66,7 @@ const directoryNames = [
   "profiles",
   "design-revisions",
   "product-history",
+  "record-history",
   "initiatives",
   "changes",
   "work-items",
@@ -74,6 +80,7 @@ const directoryNames = [
   "handoffs",
   "trace",
   "context-packs",
+  "instruction-grants",
   "workflow-plans",
   "tools",
   "tool-selections",
@@ -806,6 +813,7 @@ export class GaepRepository {
     for (const [directory, pattern] of [
       ["design-revisions", /^[0-9a-f-]+\.json$/i],
       ["product-history", /^product-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["record-history", /^[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["initiatives", /^[0-9a-f-]+\.json$/i],
       ["changes", /^[0-9a-f-]+\.json$/i],
       ["work-items", /^[0-9a-f-]+\.json$/i],
@@ -816,10 +824,11 @@ export class GaepRepository {
       ["evidence", /^[0-9a-f-]+\.json$/i],
       ["trace", /^[0-9a-f-]+\.json$/i],
       ["context-packs", /^[0-9a-f-]+\.json$/i],
+      ["instruction-grants", /^[0-9a-f-]+\.json$/i],
       ["workflow-plans", /^[0-9a-f-]+\.json$/i],
       ["tools", /^[0-9a-f-]+\.json$/i],
       ["tool-selections", /^[0-9a-f-]+\.json$/i],
-      ["sessions", /^(?:charter|run)-[0-9a-f-]+\.json$/i],
+      ["sessions", /^(?:(?:charter|run|managed-run|managed-evidence|managed-result)-[0-9a-f-]+)\.json$/i],
       ["handoffs", /^[0-9a-f-]+\.json$/i],
       ["runtime", /^capabilities-[0-9a-f]{64}\.json$/],
     ] as const) {
@@ -868,6 +877,9 @@ export class GaepRepository {
     if (/^product-history\/product-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, productRevisionSchema)
     }
+    if (/^record-history\/[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, productRecordRevisionSchema)
+    }
     if (/^changes\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, changeSchema)
     if (/^work-items\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, workItemSchema)
     if (/^requirements\/[0-9a-f-]+\.json$/i.test(relativePath)) {
@@ -885,6 +897,9 @@ export class GaepRepository {
     if (/^context-packs\/[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, contextPackSchema)
     }
+    if (/^instruction-grants\/[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, instructionPrivilegeGrantSchema)
+    }
     if (/^workflow-plans\/[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, workflowPlanSchema)
     }
@@ -897,6 +912,15 @@ export class GaepRepository {
     }
     if (/^sessions\/run-[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, runSchema)
+    }
+    if (/^sessions\/managed-run-[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, managedRunRecordSchema)
+    }
+    if (/^sessions\/managed-evidence-[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, managedRunEvidenceSchema)
+    }
+    if (/^sessions\/managed-result-[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, managedRunResultSchema)
     }
     if (/^handoffs\/[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, handoffSchema)

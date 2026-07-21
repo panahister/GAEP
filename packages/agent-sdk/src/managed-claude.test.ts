@@ -23,6 +23,7 @@ describe("managed Claude tool-free analysis", () => {
         "--print",
         "--output-format", "stream-json",
         "--verbose",
+        "--no-session-persistence",
         "--setting-sources", "",
         "--strict-mcp-config",
         "--disable-slash-commands",

@@ -59,16 +59,19 @@ function sandboxArgument(args: string[]): string | undefined {
 }
 
 describe("Codex adapter", () => {
-  it("advertises an analysis-only execution stop-line", async () => {
+  it("advertises the managed app-server transport separately from the direct read-only fallback", async () => {
     const { capabilities: observed, runtimeBinding: binding } = await new CodexAdapter(process.execPath).probe({ timeoutMs: 1_000, refreshModels: false })
-    const sandbox = observed.settings.find((setting) => setting.key === "sandbox")
 
     expect(observed.detected).toBe(true)
     expect(observed).not.toHaveProperty("executablePath")
     expect(binding).toMatchObject({ kind: "executable", executablePath: process.execPath })
-    expect(sandbox?.defaultValue).toBe("read-only")
-    expect(sandbox?.options?.map((option) => option.value)).toEqual(["read-only"])
-    expect(observed.limitations.join(" ")).toContain("read-only analysis")
+    expect(observed.executionInterface).toBe("stdio-rpc")
+    expect(observed.supportsCancel).toBe(true)
+    expect(observed.supportsResume).toBe(true)
+    expect(observed.supportsCheckpoints).toBe(false)
+    expect(observed.supportsToolSelection).toBe(true)
+    expect(observed.settings.some((setting) => setting.key === "sandbox" || setting.key === "approvalPolicy")).toBe(false)
+    expect(observed.limitations.join(" ")).toContain("legacy direct codex exec JSONL builder")
   })
 
   it("orders root flags before exec and transports the prompt only over stdin", () => {

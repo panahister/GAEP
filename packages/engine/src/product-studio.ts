@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
-import { lstat, readFile } from "node:fs/promises"
+import { constants as fsConstants } from "node:fs"
+import { open } from "node:fs/promises"
 import { isAbsolute } from "node:path"
 
 import {
@@ -10,15 +11,23 @@ import {
   decisionSchema,
   designReadinessReportSchema,
   evidenceRecordSchema,
+  exactDomainRecordReferenceSchema,
   executionCharterSchema,
+  handoffSchema,
+  instructionPrivilegeGrantSchema,
   initiativeSchema,
+  managedRunEvidenceSchema,
+  managedRunRecordSchema,
+  managedRunResultSchema,
   productDesignDraftSchema,
   productDesignRevisionSchema,
   productDomainSearchResultSchema,
+  productDomainRecordKindSchema,
   productExportBundleSchema,
   productExportManifestSchema,
   productImportPreviewSchema,
   productRevisionSchema,
+  productRecordRevisionSchema,
   productSchema,
   productStudioSectionIds,
   requirementSchema,
@@ -39,7 +48,10 @@ import {
   type DesignField,
   type DesignReadinessReport,
   type EvidenceRecord,
+  type ExactDomainRecordReference,
   type Initiative,
+  type InstructionPrivilegeGrant,
+  type ManagedRunRecord,
   type Product,
   type ProductDesignDraft,
   type ProductDesignRevision,
@@ -49,6 +61,7 @@ import {
   type ProductExportBundle,
   type ProductImportPreview,
   type ProductRevision,
+  type ProductRecordRevision,
   type Requirement,
   type Run,
   type RunToolSelection,
@@ -151,6 +164,34 @@ const requirementTransitions: Record<Requirement["state"], readonly Requirement[
   rejected: [],
 }
 
+const decisionTransitions: Record<Decision["state"], readonly Decision["state"][]> = {
+  open: ["decided", "deferred", "superseded"],
+  deferred: ["open", "decided", "superseded"],
+  decided: ["superseded"],
+  superseded: [],
+}
+
+const riskTransitions: Record<Risk["state"], readonly Risk["state"][]> = {
+  open: ["treated", "accepted", "closed"],
+  treated: ["open", "accepted", "closed"],
+  accepted: ["closed"],
+  closed: [],
+}
+
+const architectureTransitions: Record<ArchitectureRecord["state"], readonly ArchitectureRecord["state"][]> = {
+  proposed: ["accepted", "deprecated", "superseded"],
+  accepted: ["deprecated", "superseded"],
+  deprecated: ["superseded"],
+  superseded: [],
+}
+
+const workflowTransitions: Record<WorkflowPlan["state"], readonly WorkflowPlan["state"][]> = {
+  draft: ["resolved", "blocked", "retired"],
+  resolved: ["blocked", "retired"],
+  blocked: ["draft", "retired"],
+  retired: [],
+}
+
 type ProductReader = () => Promise<Product>
 type InitiativeReader = (id: string) => Promise<Initiative>
 
@@ -161,25 +202,29 @@ type MutableWorkItem = Pick<WorkItem,
 >
 type NewWorkItem = Omit<MutableWorkItem, "state">
 type MutableRequirement = Pick<Requirement,
-  "key" | "statement" | "rationale" | "priority" | "state" | "verificationCriteria" | "sourceRecordIds"
+  "key" | "statement" | "rationale" | "priority" | "state" | "verificationCriteria" | "sourceRecords"
 >
 type NewRequirement = Omit<MutableRequirement, "state">
 type MutableDecision = Pick<Decision,
-  "question" | "options" | "recommendation" | "selectedOutcome" | "dissentAndUncertainty" | "affectedRecordIds" | "state"
+  "question" | "options" | "recommendation" | "selectedOutcome" | "dissentAndUncertainty" | "affectedRecords" | "state"
 >
 type NewDecision = Omit<MutableDecision, "selectedOutcome" | "state">
 type MutableRisk = Pick<Risk,
   "title" | "cause" | "condition" | "consequence" | "likelihood" | "impact" | "uncertainty" | "treatment" |
-  "owner" | "reviewTriggers" | "residualRisk" | "state" | "acceptance"
+  "owner" | "reviewTriggers" | "residualRisk" | "evidence" | "state" | "acceptance"
 >
 type NewRisk = Omit<MutableRisk, "state" | "acceptance">
 type MutableArchitecture = Pick<ArchitectureRecord,
-  "recordType" | "title" | "description" | "rationale" | "assumptions" | "constraints" | "affectedRecordIds" | "state"
+  "recordType" | "title" | "description" | "rationale" | "assumptions" | "constraints" | "affectedRecords" | "state"
 >
 type NewArchitecture = Omit<MutableArchitecture, "state">
 type MutableEvidence = Pick<EvidenceRecord,
-  "subjectRecordIds" | "origin" | "method" | "result" | "artifactDigest" | "limitations" | "verification" |
+  "subjects" | "origin" | "method" | "result" | "artifactDigest" | "limitations" | "verification" |
   "freshness" | "collectedAt" | "validUntil"
+>
+
+export type InstructionPrivilegeGrantInput = Pick<InstructionPrivilegeGrant,
+  "source" | "sourceDigest" | "privilege" | "purpose" | "recipient" | "scope" | "authority" | "expiresAt"
 >
 
 export interface ContextPackInput {
@@ -217,6 +262,7 @@ export interface RunToolSelectionInput {
   runId: string
   tools: RunToolSelection["tools"]
   requestedEffects: RunToolSelection["requestedEffects"]
+  requestedScopes: RunToolSelection["requestedScopes"]
   confirmedToolIds: RunToolSelection["confirmedToolIds"]
   workspaceTrusted: boolean
 }
@@ -224,6 +270,44 @@ export interface RunToolSelectionInput {
 export interface ProductStudioSearchInput {
   query: string
   kinds?: ProductDomainRecordKind[]
+  limit?: number
+}
+
+export interface ProductStudioRecordMap {
+  "product-design-revision": ProductDesignRevision
+  "product-revision": ProductRevision
+  change: Change
+  "work-item": WorkItem
+  requirement: Requirement
+  decision: Decision
+  risk: Risk
+  "architecture-record": ArchitectureRecord
+  evidence: EvidenceRecord
+  "trace-link": TraceLink
+  "context-pack": ContextPack
+  "workflow-plan": WorkflowPlan
+  "tool-definition": ToolDefinition
+  "instruction-privilege-grant": InstructionPrivilegeGrant
+  "run-tool-selection": RunToolSelection
+}
+
+export interface ProductStudioPageInput {
+  offset?: number
+  limit?: number
+}
+
+export interface ProductStudioPage<T> {
+  items: T[]
+  offset: number
+  limit: number
+  total: number
+  hasMore: boolean
+}
+
+export interface ProductExportDisclosureInput {
+  reviewedRecordIds?: string[]
+  actorId?: string
+  reviewedAt?: string
 }
 
 export class ProductStudioService {
@@ -300,12 +384,25 @@ export class ProductStudioService {
         throw new Error("Design draft base is stale; explicit rebase is required")
       }
       const now = new Date().toISOString()
+      const normalizedSections = structuredClone(input.sections)
+      for (const sectionId of productStudioSectionIds) {
+        const incoming = normalizedSections[sectionId]
+        const existing = current.sections[sectionId]
+        const withoutTimestamp = <T extends { updatedAt: string }>(section: T) => {
+          const { updatedAt: _updatedAt, ...content } = section
+          return content
+        }
+        incoming.updatedAt = canonicalDigest(withoutTimestamp(incoming)) === canonicalDigest(withoutTimestamp(existing))
+          ? existing.updatedAt
+          : now
+      }
       const updated = productDesignDraftSchema.parse({
         ...current,
         revision: current.revision + 1,
-        sections: input.sections,
+        sections: normalizedSections,
         updatedAt: now,
       })
+      this.assertDesignSectionsIntegrity(updated.sections)
       if (canonicalDigest(current.sections) === canonicalDigest(updated.sections)) {
         throw new Error("Design draft has no material changes")
       }
@@ -315,6 +412,7 @@ export class ProductStudioService {
 
   evaluateDesignReadiness(draft: ProductDesignDraft, evaluatedAt = new Date().toISOString()): DesignReadinessReport {
     const validated = productDesignDraftSchema.parse(draft)
+    this.assertDesignSectionsIntegrity(validated.sections)
     const sections = productStudioSectionIds.map((sectionId) => {
       const section = validated.sections[sectionId]
       const fieldsByKey = new Map(section.fields.map((field) => [field.key, field]))
@@ -323,34 +421,37 @@ export class ProductStudioService {
       const weakFields = section.fields.filter((field) => field.state === "weak").map((field) => field.key)
       const deferredFields = section.fields.filter((field) => field.state === "deferred").map((field) => field.key)
       const openConflictIds = section.conflicts.filter((conflict) => conflict.state === "open").map((conflict) => conflict.id)
+      const acceptedConflictIds = section.conflicts.filter((conflict) => conflict.state === "accepted").map((conflict) => conflict.id)
       const blockerGapIds = section.gaps
-        .filter((gap) => gap.severity === "blocker" && !gap.resolution)
+        .filter((gap) => gap.severity === "blocker" && gap.state === "open")
         .map((gap) => gap.id)
       const state = openConflictIds.length > 0 || blockerGapIds.length > 0
         ? "conflicted"
         : missingFields.length > 0
           ? "missing"
-          : weakFields.length > 0
-            ? "weak"
-            : deferredFields.length > 0
+            : weakFields.length > 0
+              ? "weak"
+            : deferredFields.length > 0 || acceptedConflictIds.length > 0
               ? "deferred"
               : "complete"
-      return { sectionId, state, missingFields, weakFields, deferredFields, openConflictIds, blockerGapIds }
+      return { sectionId, state, missingFields, weakFields, deferredFields, openConflictIds, acceptedConflictIds, blockerGapIds }
     })
     const blockingGapIds = sections.flatMap((section) => section.blockerGapIds)
     const openConflictIds = sections.flatMap((section) => section.openConflictIds)
     const deferredFieldCount = sections.reduce((total, section) => total + section.deferredFields.length, 0)
+    const acceptedConflictCount = sections.reduce((total, section) => total + section.acceptedConflictIds.length, 0)
     const incomplete = sections.some((section) => ["missing", "weak", "conflicted"].includes(section.state))
     return designReadinessReportSchema.parse({
       schemaVersion: 1,
       productId: validated.productId,
       draftId: validated.id,
       draftRevision: validated.revision,
-      status: incomplete ? "incomplete" : deferredFieldCount > 0 ? "ready-with-deferrals" : "ready",
+      status: incomplete ? "incomplete" : deferredFieldCount > 0 || acceptedConflictCount > 0 ? "ready-with-deferrals" : "ready",
       sections,
       blockingGapIds,
       openConflictIds,
       deferredFieldCount,
+      acceptedConflictCount,
       evaluatedAt,
       claimBoundary: "design-readiness-is-not-implementation-approval",
     })
@@ -376,18 +477,15 @@ export class ProductStudioService {
       if (previous?.snapshotDigest === snapshotDigest) throw new Error("Design revision has no material changes")
       const now = new Date().toISOString()
       const readiness = this.evaluateDesignReadiness(draft, now)
-      const nextProduct = {
-        ...product,
-        revision: (product.revision ?? 1) + 1,
-        updatedAt: now,
-      }
+      this.assertAcceptedDesignConflicts(draft.sections, actorId)
+      const nextProductRevision = (product.revision ?? 1) + 1
       const designRevision = productDesignRevisionSchema.parse({
         schemaVersion: 1,
         kind: "product-design-revision",
         id: randomUUID(),
         productId: product.id,
         revision: (previous?.revision ?? 0) + 1,
-        productRevision: nextProduct.revision,
+        productRevision: nextProductRevision,
         predecessorId: previous?.id,
         sourceDraftId: draft.id,
         sourceDraftRevision: draft.revision,
@@ -396,6 +494,17 @@ export class ProductStudioService {
         snapshotDigest,
         createdBy: { kind: "human", id: actorId },
         createdAt: now,
+      })
+      const designRevisionDigest = canonicalDigest(designRevision)
+      const nextProduct = productSchema.parse({
+        ...product,
+        revision: nextProductRevision,
+        currentDesign: {
+          id: designRevision.id,
+          revision: designRevision.revision,
+          digest: designRevisionDigest,
+        },
+        updatedAt: now,
       })
       const history = productRevisionSchema.parse({
         schemaVersion: 1,
@@ -481,6 +590,9 @@ export class ProductStudioService {
       const product = await this.requireProductRevision(expectedProductRevision)
       const initiative = await this.readInitiative(this.requireUuid(input.initiativeId, "Initiative ID"))
       if (initiative.productId !== product.id) throw new Error("Change Initiative does not target this Product")
+      if (["completed", "cancelled"].includes(initiative.state)) {
+        throw new Error(`Cannot create a Change for terminal Initiative ${initiative.state}`)
+      }
       await this.validateBaseline(input.baseline, product)
       const now = new Date().toISOString()
       const record = changeSchema.parse({
@@ -500,25 +612,39 @@ export class ProductStudioService {
     })
   }
 
-  async reviseChange(id: string, expectedRevision: number, patch: Partial<MutableChange>, actorId: string): Promise<Change> {
+  async reviseChange(
+    id: string,
+    expectedRevision: number,
+    patch: Partial<MutableChange>,
+    actorId: string,
+    transitionReason?: string,
+  ): Promise<Change> {
     return this.repository.withLock(async () => {
       this.assertAllowedKeys(patch, ["title", "summary", "baseline", "state", "effectEnvelope"], "Change patch")
       await this.assertIntegrity()
       const current = await this.readChange(id)
       this.assertExpectedRevision(current.revision, expectedRevision, "Change")
+      if (["completed", "cancelled"].includes(current.state)) {
+        throw new Error(`Terminal Change ${current.state} records are immutable; create a superseding Change`)
+      }
       if (patch.state && patch.state !== current.state && !changeTransitions[current.state].includes(patch.state)) {
         throw new Error(`Invalid Change transition from ${current.state} to ${patch.state}`)
       }
+      if (patch.state && patch.state !== current.state) this.requireTransitionReason(transitionReason, "Change")
       if (patch.baseline && current.state !== "proposed" && canonicalDigest(patch.baseline) !== canonicalDigest(current.baseline)) {
         throw new Error("A Change baseline cannot be replaced after the proposed state")
       }
       const product = await this.readProduct()
       if (patch.baseline) await this.validateBaseline(patch.baseline, product)
+      if (patch.state === "active") {
+        const initiative = await this.readInitiative(current.initiativeId)
+        if (initiative.state !== "active") throw new Error("A Change can become active only under an active Initiative")
+      }
       if (patch.state === "completed") {
-        const unfinished = (await this.listWorkItems()).filter((item) =>
-          item.changeId === current.id && !["completed", "cancelled"].includes(item.state),
-        )
-        if (unfinished.length > 0) throw new Error("Change cannot complete while Work Items remain non-terminal")
+        const workItems = (await this.listWorkItems()).filter((item) => item.changeId === current.id)
+        if (workItems.length === 0 || workItems.some((item) => item.state !== "completed")) {
+          throw new Error("Change completion requires at least one completed Work Item and no cancelled or unfinished Work Items")
+        }
       }
       const updated = changeSchema.parse({
         ...current,
@@ -533,7 +659,7 @@ export class ProductStudioService {
         updatedAt: new Date().toISOString(),
       })
       this.assertMaterialChange(current, updated, "Change")
-      await this.commitRecord("changes", updated, changeSchema, "change.revised", actorId)
+      await this.commitRecord("changes", updated, changeSchema, "change.revised", actorId, transitionReason)
       return updated
     })
   }
@@ -571,7 +697,13 @@ export class ProductStudioService {
     })
   }
 
-  async reviseWorkItem(id: string, expectedRevision: number, patch: Partial<MutableWorkItem>, actorId: string): Promise<WorkItem> {
+  async reviseWorkItem(
+    id: string,
+    expectedRevision: number,
+    patch: Partial<MutableWorkItem>,
+    actorId: string,
+    transitionReason?: string,
+  ): Promise<WorkItem> {
     return this.repository.withLock(async () => {
       this.assertAllowedKeys(
         patch,
@@ -581,9 +713,13 @@ export class ProductStudioService {
       await this.assertIntegrity()
       const current = await this.readWorkItem(id)
       this.assertExpectedRevision(current.revision, expectedRevision, "Work Item")
+      if (["completed", "cancelled"].includes(current.state)) {
+        throw new Error(`Terminal Work Item ${current.state} records are immutable; create a superseding Work Item`)
+      }
       if (patch.state && patch.state !== current.state && !workItemTransitions[current.state].includes(patch.state)) {
         throw new Error(`Invalid Work Item transition from ${current.state} to ${patch.state}`)
       }
+      if (patch.state && patch.state !== current.state) this.requireTransitionReason(transitionReason, "Work Item")
       const updated = workItemSchema.parse({
         ...current,
         ...patch,
@@ -604,7 +740,7 @@ export class ProductStudioService {
         }
       }
       this.assertMaterialChange(current, updated, "Work Item")
-      await this.commitRecord("work-items", updated, workItemSchema, "work-item.revised", actorId)
+      await this.commitRecord("work-items", updated, workItemSchema, "work-item.revised", actorId, transitionReason)
       return updated
     })
   }
@@ -616,7 +752,7 @@ export class ProductStudioService {
     return this.repository.withLock(async () => {
       this.assertAllowedKeys(
         input,
-        ["key", "statement", "rationale", "priority", "verificationCriteria", "sourceRecordIds"],
+        ["key", "statement", "rationale", "priority", "verificationCriteria", "sourceRecords"],
         "Requirement input",
       )
       await this.assertIntegrity()
@@ -624,6 +760,7 @@ export class ProductStudioService {
       if ((await this.listRequirements()).some((record) => record.key === input.key)) {
         throw new Error(`Requirement key ${input.key} already exists`)
       }
+      await this.validateExactReferences(input.sourceRecords)
       const now = new Date().toISOString()
       const record = requirementSchema.parse({
         schemaVersion: 1,
@@ -641,11 +778,17 @@ export class ProductStudioService {
     })
   }
 
-  async reviseRequirement(id: string, expectedRevision: number, patch: Partial<MutableRequirement>, actorId: string): Promise<Requirement> {
+  async reviseRequirement(
+    id: string,
+    expectedRevision: number,
+    patch: Partial<MutableRequirement>,
+    actorId: string,
+    transitionReason?: string,
+  ): Promise<Requirement> {
     return this.repository.withLock(async () => {
       this.assertAllowedKeys(
         patch,
-        ["key", "statement", "rationale", "priority", "state", "verificationCriteria", "sourceRecordIds"],
+        ["key", "statement", "rationale", "priority", "state", "verificationCriteria", "sourceRecords"],
         "Requirement patch",
       )
       await this.assertIntegrity()
@@ -654,6 +797,12 @@ export class ProductStudioService {
       if (patch.state && patch.state !== current.state && !requirementTransitions[current.state].includes(patch.state)) {
         throw new Error(`Invalid Requirement transition from ${current.state} to ${patch.state}`)
       }
+      if (patch.state && patch.state !== current.state) this.requireTransitionReason(transitionReason, "Requirement")
+      if (patch.key && patch.key !== current.key) throw new Error("Requirement keys are immutable; create a superseding Requirement")
+      if (["satisfied", "rejected"].includes(current.state)) {
+        throw new Error(`Terminal Requirement ${current.state} records are immutable; create a superseding Requirement`)
+      }
+      if (patch.sourceRecords) await this.validateExactReferences(patch.sourceRecords)
       if (patch.key && patch.key !== current.key && (await this.listRequirements()).some((record) => record.key === patch.key)) {
         throw new Error(`Requirement key ${patch.key} already exists`)
       }
@@ -669,7 +818,7 @@ export class ProductStudioService {
         updatedAt: new Date().toISOString(),
       })
       this.assertMaterialChange(current, updated, "Requirement")
-      await this.commitRecord("requirements", updated, requirementSchema, "requirement.revised", actorId)
+      await this.commitRecord("requirements", updated, requirementSchema, "requirement.revised", actorId, transitionReason)
       return updated
     })
   }
@@ -678,20 +827,36 @@ export class ProductStudioService {
   async listRequirements(): Promise<Requirement[]> { return this.listRecords("requirements", /^[0-9a-f-]+\.json$/i, requirementSchema) }
 
   async createDecision(input: NewDecision, expectedProductRevision: number, actorId: string): Promise<Decision> {
+    await this.validateExactReferences(input.affectedRecords)
     return this.createSimpleRecord("decisions", decisionSchema, {
       ...input,
       state: "open",
     }, expectedProductRevision, "decision.created", actorId)
   }
 
-  async reviseDecision(id: string, expectedRevision: number, patch: Partial<MutableDecision>, actorId: string): Promise<Decision> {
+  async reviseDecision(
+    id: string,
+    expectedRevision: number,
+    patch: Partial<MutableDecision>,
+    actorId: string,
+    transitionReason?: string,
+  ): Promise<Decision> {
     this.assertAllowedKeys(
       patch,
-      ["question", "options", "recommendation", "selectedOutcome", "dissentAndUncertainty", "affectedRecordIds", "state"],
+      ["question", "options", "recommendation", "selectedOutcome", "dissentAndUncertainty", "affectedRecords", "state"],
       "Decision patch",
     )
+    const current = await this.readDecision(id)
+    if (current.state === "superseded") throw new Error("Superseded Decisions are immutable")
+    if (patch.state && patch.state !== current.state) {
+      this.assertStateTransition(current.state, patch.state, decisionTransitions, "Decision", transitionReason)
+    }
+    if (patch.selectedOutcome?.selectedBy.id !== undefined && patch.selectedOutcome.selectedBy.id !== actorId) {
+      throw new Error("Decision outcome actor must match the local human mutation actor")
+    }
+    if (patch.affectedRecords) await this.validateExactReferences(patch.affectedRecords)
     return this.reviseSimpleRecord<Decision>(
-      "decisions", id, expectedRevision, decisionSchema, patch, "decision.revised", actorId,
+      "decisions", id, expectedRevision, decisionSchema, patch, "decision.revised", actorId, transitionReason,
     )
   }
 
@@ -699,20 +864,36 @@ export class ProductStudioService {
   async listDecisions(): Promise<Decision[]> { return this.listRecords("decisions", /^[0-9a-f-]+\.json$/i, decisionSchema) }
 
   async createRisk(input: NewRisk, expectedProductRevision: number, actorId: string): Promise<Risk> {
+    await this.validateExactReferences(input.evidence)
     return this.createSimpleRecord("risks", riskSchema, { ...input, state: "open" }, expectedProductRevision, "risk.created", actorId)
   }
 
-  async reviseRisk(id: string, expectedRevision: number, patch: Partial<MutableRisk>, actorId: string): Promise<Risk> {
+  async reviseRisk(
+    id: string,
+    expectedRevision: number,
+    patch: Partial<MutableRisk>,
+    actorId: string,
+    transitionReason?: string,
+  ): Promise<Risk> {
     this.assertAllowedKeys(
       patch,
       [
         "title", "cause", "condition", "consequence", "likelihood", "impact", "uncertainty", "treatment",
-        "owner", "reviewTriggers", "residualRisk", "state", "acceptance",
+        "owner", "reviewTriggers", "residualRisk", "evidence", "state", "acceptance",
       ],
       "Risk patch",
     )
+    const current = await this.readRisk(id)
+    if (current.state === "closed") throw new Error("Closed Risks are immutable")
+    if (patch.state && patch.state !== current.state) {
+      this.assertStateTransition(current.state, patch.state, riskTransitions, "Risk", transitionReason)
+    }
+    if (patch.acceptance?.acceptedBy.id !== undefined && patch.acceptance.acceptedBy.id !== actorId) {
+      throw new Error("Risk acceptance actor must match the local human mutation actor")
+    }
+    if (patch.evidence) await this.validateExactReferences(patch.evidence)
     return this.reviseSimpleRecord<Risk>(
-      "risks", id, expectedRevision, riskSchema, patch, "risk.revised", actorId,
+      "risks", id, expectedRevision, riskSchema, patch, "risk.revised", actorId, transitionReason,
     )
   }
 
@@ -724,6 +905,7 @@ export class ProductStudioService {
     expectedProductRevision: number,
     actorId: string,
   ): Promise<ArchitectureRecord> {
+    await this.validateExactReferences(input.affectedRecords)
     return this.createSimpleRecord(
       "architecture",
       architectureRecordSchema,
@@ -739,12 +921,19 @@ export class ProductStudioService {
     expectedRevision: number,
     patch: Partial<MutableArchitecture>,
     actorId: string,
+    transitionReason?: string,
   ): Promise<ArchitectureRecord> {
     this.assertAllowedKeys(
       patch,
-      ["recordType", "title", "description", "rationale", "assumptions", "constraints", "affectedRecordIds", "state"],
+      ["recordType", "title", "description", "rationale", "assumptions", "constraints", "affectedRecords", "state"],
       "Architecture patch",
     )
+    const current = await this.readArchitectureRecord(id)
+    if (current.state === "superseded") throw new Error("Superseded Architecture records are immutable")
+    if (patch.state && patch.state !== current.state) {
+      this.assertStateTransition(current.state, patch.state, architectureTransitions, "Architecture", transitionReason)
+    }
+    if (patch.affectedRecords) await this.validateExactReferences(patch.affectedRecords)
     return this.reviseSimpleRecord<ArchitectureRecord>(
       "architecture",
       id,
@@ -753,6 +942,7 @@ export class ProductStudioService {
       patch,
       "architecture-record.revised",
       actorId,
+      transitionReason,
     )
   }
 
@@ -764,28 +954,144 @@ export class ProductStudioService {
   }
 
   async createEvidence(input: MutableEvidence, expectedProductRevision: number, actorId: string): Promise<EvidenceRecord> {
-    this.assertEvidenceFreshness(input)
-    return this.createSimpleRecord("evidence", evidenceRecordSchema, input, expectedProductRevision, "evidence.created", actorId)
+    return this.repository.withLock(async () => {
+      this.assertNoReservedKeys(input as unknown as Record<string, unknown>, "Evidence input")
+      await this.assertIntegrity()
+      const product = await this.requireProductRevision(expectedProductRevision)
+      await this.validateExactReferences(input.subjects)
+      this.assertEvidenceFreshness(input)
+      const now = new Date().toISOString()
+      const record = evidenceRecordSchema.parse({
+        schemaVersion: 1,
+        kind: "evidence",
+        id: randomUUID(),
+        productId: product.id,
+        revision: 1,
+        ...input,
+        createdAt: now,
+        updatedAt: now,
+      })
+      await this.commitRecord("evidence", record, evidenceRecordSchema, "evidence.created", actorId)
+      return record
+    })
   }
 
   async reviseEvidence(id: string, expectedRevision: number, patch: Partial<MutableEvidence>, actorId: string): Promise<EvidenceRecord> {
-    this.assertAllowedKeys(
-      patch,
-      [
-        "subjectRecordIds", "origin", "method", "result", "artifactDigest", "limitations", "verification",
-        "freshness", "collectedAt", "validUntil",
-      ],
-      "Evidence patch",
-    )
-    const current = await this.readEvidence(id)
-    this.assertEvidenceFreshness({ ...current, ...patch })
-    return this.reviseSimpleRecord<EvidenceRecord>(
-      "evidence", id, expectedRevision, evidenceRecordSchema, patch, "evidence.revised", actorId,
-    )
+    return this.repository.withLock(async () => {
+      this.assertAllowedKeys(
+        patch,
+        [
+          "subjects", "origin", "method", "result", "artifactDigest", "limitations", "verification",
+          "freshness", "collectedAt", "validUntil",
+        ],
+        "Evidence patch",
+      )
+      await this.assertIntegrity()
+      const current = await this.readEvidence(id)
+      this.assertExpectedRevision(current.revision, expectedRevision, "Evidence")
+      if (patch.subjects) await this.validateExactReferences(patch.subjects)
+      const evidenceChanged = ["subjects", "origin", "method", "result", "artifactDigest", "limitations", "collectedAt", "validUntil"]
+        .some((key) => Object.prototype.hasOwnProperty.call(patch, key))
+      const normalizedPatch: Partial<MutableEvidence> = evidenceChanged && patch.verification === undefined
+        ? {
+            ...patch,
+            verification: { status: "unverified" },
+            freshness: {
+              status: "unknown",
+              assessedAt: new Date().toISOString(),
+              basis: "Material Evidence content changed; freshness and verification require reassessment.",
+            },
+          }
+        : patch
+      this.assertEvidenceFreshness({ ...current, ...normalizedPatch })
+      const updated = evidenceRecordSchema.parse({
+        ...current,
+        ...normalizedPatch,
+        schemaVersion: current.schemaVersion,
+        kind: current.kind,
+        id: current.id,
+        productId: current.productId,
+        createdAt: current.createdAt,
+        revision: current.revision + 1,
+        updatedAt: new Date().toISOString(),
+      })
+      this.assertMaterialChange(current, updated, "Evidence")
+      await this.commitRecord("evidence", updated, evidenceRecordSchema, "evidence.revised", actorId)
+      return updated
+    })
   }
 
   async readEvidence(id: string): Promise<EvidenceRecord> { return this.readRecord("evidence", id, evidenceRecordSchema) }
   async listEvidence(): Promise<EvidenceRecord[]> { return this.listRecords("evidence", /^[0-9a-f-]+\.json$/i, evidenceRecordSchema) }
+
+  async createInstructionPrivilegeGrant(
+    input: InstructionPrivilegeGrantInput,
+    expectedProductRevision: number,
+    actorId: string,
+  ): Promise<InstructionPrivilegeGrant> {
+    return this.repository.withLock(async () => {
+      this.assertAllowedKeys(
+        input,
+        ["source", "sourceDigest", "privilege", "purpose", "recipient", "scope", "authority", "expiresAt"],
+        "Instruction Privilege Grant input",
+      )
+      await this.assertIntegrity()
+      const product = await this.requireProductRevision(expectedProductRevision)
+      await this.validateInstructionAuthority(input.authority)
+      const now = new Date().toISOString()
+      const grant = instructionPrivilegeGrantSchema.parse({
+        schemaVersion: 1,
+        kind: "instruction-privilege-grant",
+        id: randomUUID(),
+        productId: product.id,
+        revision: 1,
+        ...input,
+        state: "active",
+        acceptedBy: { kind: "human", id: actorId },
+        acceptedAt: now,
+        authorityBoundary: "instruction-privilege-is-exact-source-purpose-recipient-and-scope",
+        createdAt: now,
+        updatedAt: now,
+      })
+      await this.commitRecord(
+        "instruction-grants",
+        grant,
+        instructionPrivilegeGrantSchema,
+        "instruction-privilege-grant.created",
+        actorId,
+      )
+      return grant
+    })
+  }
+
+  async revokeInstructionPrivilegeGrant(
+    id: string,
+    expectedRevision: number,
+    reason: string,
+    actorId: string,
+  ): Promise<InstructionPrivilegeGrant> {
+    if (reason.trim().length < 2) throw new Error("Instruction privilege revocation requires a reason")
+    const current = await this.readInstructionPrivilegeGrant(id)
+    if (current.state !== "active") throw new Error(`Instruction Privilege Grant is already ${current.state}`)
+    return this.reviseSimpleRecord(
+      "instruction-grants",
+      id,
+      expectedRevision,
+      instructionPrivilegeGrantSchema,
+      { state: "revoked", revocationReason: reason },
+      "instruction-privilege-grant.revoked",
+      actorId,
+      reason,
+    )
+  }
+
+  async readInstructionPrivilegeGrant(id: string): Promise<InstructionPrivilegeGrant> {
+    return this.readRecord("instruction-grants", id, instructionPrivilegeGrantSchema)
+  }
+
+  async listInstructionPrivilegeGrants(): Promise<InstructionPrivilegeGrant[]> {
+    return this.listRecords("instruction-grants", /^[0-9a-f-]+\.json$/i, instructionPrivilegeGrantSchema)
+  }
 
   redactContextContent(content: string): { text: string; redactions: number } {
     if (content.length > 1_000_000) throw new Error("Context redaction input exceeds the local safety limit")
@@ -796,7 +1102,7 @@ export class ProductStudioService {
     return this.repository.withLock(async () => {
       await this.assertIntegrity()
       const product = await this.requireProductRevision(expectedProductRevision)
-      await this.validateContextItems(input.items)
+      await this.validateContextItems(input.items, input.recipient, input.objective)
       const now = new Date().toISOString()
       const derived = this.deriveContextEvaluation(input)
       const body = {
@@ -853,7 +1159,7 @@ export class ProductStudioService {
         sufficiencyEvaluator: patch.sufficiencyEvaluator ?? current.sufficiency.evaluator,
         sufficiencyAssumptions: patch.sufficiencyAssumptions ?? current.sufficiency.assumptions,
       }
-      await this.validateContextItems(merged.items)
+      await this.validateContextItems(merged.items, merged.recipient, merged.objective)
       const derived = this.deriveContextEvaluation(merged)
       const body = {
         ...current,
@@ -920,6 +1226,7 @@ export class ProductStudioService {
     expectedRevision: number,
     patch: Partial<MutableWorkflowPlan>,
     actorId: string,
+    transitionReason?: string,
   ): Promise<WorkflowPlan> {
     return this.repository.withLock(async () => {
       this.assertAllowedKeys(
@@ -930,6 +1237,10 @@ export class ProductStudioService {
       await this.assertIntegrity()
       const current = await this.readWorkflowPlan(id)
       this.assertExpectedRevision(current.revision, expectedRevision, "Workflow Plan")
+      if (current.state === "retired") throw new Error("Retired Workflow Plans are immutable")
+      if (patch.state && patch.state !== current.state) {
+        this.assertStateTransition(current.state, patch.state, workflowTransitions, "Workflow Plan", transitionReason)
+      }
       const merged = {
         title: patch.title ?? current.title,
         objective: patch.objective ?? current.objective,
@@ -951,7 +1262,7 @@ export class ProductStudioService {
       const { planDigest: _oldDigest, ...digestBody } = body
       const updated = workflowPlanSchema.parse({ ...body, planDigest: this.workflowPlanDigest(digestBody) })
       this.assertMaterialChange(current, updated, "Workflow Plan")
-      await this.commitRecord("workflow-plans", updated, workflowPlanSchema, "workflow-plan.revised", actorId)
+      await this.commitRecord("workflow-plans", updated, workflowPlanSchema, "workflow-plan.revised", actorId, transitionReason)
       return updated
     })
   }
@@ -1050,7 +1361,7 @@ export class ProductStudioService {
     return this.repository.withLock(async () => {
       this.assertAllowedKeys(
         input,
-        ["runId", "tools", "requestedEffects", "confirmedToolIds", "workspaceTrusted"],
+        ["runId", "tools", "requestedEffects", "requestedScopes", "confirmedToolIds", "workspaceTrusted"],
         "Run Tool Selection input",
       )
       await this.assertIntegrity()
@@ -1064,6 +1375,7 @@ export class ProductStudioService {
       )
       if (run.productId !== product.id) throw new Error("Run Tool Selection targets a different Product")
       const readiness = await this.evaluateToolSelection(input, run)
+      const { workspaceTrusted: _localWorkspaceTrust, ...portableInput } = input
       const now = new Date().toISOString()
       const record = runToolSelectionSchema.parse({
         schemaVersion: 1,
@@ -1071,9 +1383,10 @@ export class ProductStudioService {
         id: randomUUID(),
         productId: product.id,
         revision: 1,
-        ...input,
+        ...portableInput,
         readiness,
         selectedBy: { kind: "human", id: actorId },
+        localTrustBoundary: "workspace-trust-must-be-revalidated-before-every-launch",
         authorityBoundary: "tool-selection-does-not-grant-authority",
         createdAt: now,
         updatedAt: now,
@@ -1088,13 +1401,13 @@ export class ProductStudioService {
   async reviseRunToolSelection(
     id: string,
     expectedRevision: number,
-    patch: Partial<Omit<RunToolSelectionInput, "runId">>,
+    patch: Partial<Omit<RunToolSelectionInput, "runId">> & { workspaceTrusted: boolean },
     actorId: string,
   ): Promise<RunToolSelection> {
     return this.repository.withLock(async () => {
       this.assertAllowedKeys(
         patch,
-        ["tools", "requestedEffects", "confirmedToolIds", "workspaceTrusted"],
+        ["tools", "requestedEffects", "requestedScopes", "confirmedToolIds", "workspaceTrusted"],
         "Run Tool Selection patch",
       )
       await this.assertIntegrity()
@@ -1104,17 +1417,20 @@ export class ProductStudioService {
         this.repository.resolve("sessions", `run-${current.runId}.json`),
         runSchema,
       )
+      if (run.state !== "prepared") throw new Error(`Run Tool Selection is immutable while Run is ${run.state}`)
       const merged = {
         runId: current.runId,
         tools: patch.tools ?? current.tools,
         requestedEffects: patch.requestedEffects ?? current.requestedEffects,
+        requestedScopes: patch.requestedScopes ?? current.requestedScopes,
         confirmedToolIds: patch.confirmedToolIds ?? current.confirmedToolIds,
-        workspaceTrusted: patch.workspaceTrusted ?? current.workspaceTrusted,
+        workspaceTrusted: patch.workspaceTrusted,
       }
       const readiness = await this.evaluateToolSelection(merged, run)
+      const { workspaceTrusted: _localWorkspaceTrust, ...portableMerged } = merged
       const updated = runToolSelectionSchema.parse({
         ...current,
-        ...merged,
+        ...portableMerged,
         readiness,
         selectedBy: { kind: "human", id: actorId },
         revision: current.revision + 1,
@@ -1148,6 +1464,10 @@ export class ProductStudioService {
         input.source.recordId === input.target.recordId &&
         input.relationship !== "related-to"
       ) throw new Error("A trace link cannot imply a directional relationship from a record to itself")
+      this.assertTraceRelationship(input.source, input.relationship, input.target)
+      if (input.provenance.kind === "human" && input.provenance.actorId !== actorId) {
+        throw new Error("Human Trace provenance must match the local mutation actor")
+      }
       const state = await this.assessTraceState(input.source, input.target)
       const now = new Date().toISOString()
       const record = traceLinkSchema.parse({
@@ -1187,36 +1507,85 @@ export class ProductStudioService {
   async readTraceLink(id: string): Promise<TraceLink> { return this.readRecord("trace", id, traceLinkSchema) }
   async listTraceLinks(): Promise<TraceLink[]> { return this.listRecords("trace", /^[0-9a-f-]+\.json$/i, traceLinkSchema) }
 
-  async impactAnalysis(subject: TraceEndpoint): Promise<TraceImpact> {
+  async impactAnalysis(subject: TraceEndpoint, proposedRevision?: TraceEndpoint): Promise<TraceImpact> {
+    if (subject.recordType !== "external") {
+      await this.validateExactDomainReference({
+        recordType: subject.recordType,
+        recordId: subject.recordId,
+        revision: subject.revision!,
+        digest: subject.digest!,
+      })
+    }
     const links = await Promise.all((await this.listTraceLinks()).map(async (link) => ({
       ...link,
       state: await this.assessTraceState(link.source, link.target),
     } as TraceLink)))
-    const matches = (endpoint: TraceEndpoint) =>
-      endpoint.recordType === subject.recordType && endpoint.recordId === subject.recordId
-    const upstream = links.filter((link) => matches(link.target))
-    const downstream = links.filter((link) => matches(link.source))
+    const key = (endpoint: TraceEndpoint) => `${endpoint.recordType}:${endpoint.recordId}`
+    const walk = (direction: "upstream" | "downstream"): { links: TraceLink[]; truncated: boolean } => {
+      const collected = new Map<string, TraceLink>()
+      const visited = new Set<string>([key(subject)])
+      const queue = [subject]
+      let truncated = false
+      while (queue.length > 0) {
+        const endpoint = queue.shift()!
+        const matches = links.filter((link) => direction === "upstream"
+          ? key(link.target) === key(endpoint)
+          : key(link.source) === key(endpoint))
+        for (const link of matches) {
+          collected.set(link.id, link)
+          const next = direction === "upstream" ? link.source : link.target
+          if (!visited.has(key(next))) {
+            visited.add(key(next))
+            queue.push(next)
+          }
+          if (collected.size >= 2_000 || visited.size >= 2_000) {
+            truncated = true
+            queue.length = 0
+            break
+          }
+        }
+      }
+      return { links: [...collected.values()], truncated }
+    }
+    const upstreamResult = walk("upstream")
+    const downstreamResult = walk("downstream")
+    const upstream = upstreamResult.links
+    const downstream = downstreamResult.links
     const related = [...upstream, ...downstream]
+    const uniqueRelated = [...new Map(related.map((link) => [link.id, link])).values()]
+    const invalidatedByProposedRevision = proposedRevision
+      ? uniqueRelated.filter((link) => [link.source, link.target].some((endpoint) =>
+          endpoint.recordType === proposedRevision.recordType &&
+          endpoint.recordId === proposedRevision.recordId &&
+          (endpoint.revision !== proposedRevision.revision || endpoint.digest !== proposedRevision.digest),
+        ))
+      : []
     return traceImpactSchema.parse({
       subject,
       upstream,
       downstream,
-      validatingEvidence: related.filter((link) =>
-        link.relationship === "validates" || link.source.recordType === "evidence" || link.target.recordType === "evidence",
-      ),
-      decisionsAndRisks: related.filter((link) =>
+      validatingEvidence: uniqueRelated.filter((link) => link.relationship === "validates" && link.source.recordType === "evidence"),
+      decisionsAndRisks: uniqueRelated.filter((link) =>
         [link.source.recordType, link.target.recordType].some((kind) => kind === "decision" || kind === "risk"),
       ),
-      unresolved: related.filter((link) => link.state === "unresolved" || link.state === "invalid"),
-      stale: related.filter((link) => link.state === "stale"),
+      unresolved: uniqueRelated.filter((link) => link.state === "unresolved"),
+      invalid: uniqueRelated.filter((link) => link.state === "invalid"),
+      stale: uniqueRelated.filter((link) => link.state === "stale"),
+      invalidatedByProposedRevision,
+      coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact",
+      truncated: upstreamResult.truncated || downstreamResult.truncated,
       evaluatedAt: new Date().toISOString(),
     })
   }
 
   async search(input: ProductStudioSearchInput): Promise<ProductDomainSearchResult[]> {
-    const query = input.query.trim().toLocaleLowerCase()
+    const query = input.query.trim().toLowerCase()
     if (query.length < 2) throw new Error("Search query must contain at least two characters")
-    const allowed = new Set(input.kinds ?? [])
+    if (query.length > 500) throw new Error("Search query cannot exceed 500 characters")
+    const limit = input.limit ?? 100
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new Error("Search result limit must be between 1 and 200")
+    const kinds = (input.kinds ?? []).map((kind) => productDomainRecordKindSchema.parse(kind))
+    const allowed = new Set(kinds)
     const include = (kind: ProductDomainRecordKind) => allowed.size === 0 || allowed.has(kind)
     const groups: Array<{ kind: ProductDomainRecordKind; records: unknown[] }> = []
     if (include("product-design-revision")) groups.push({ kind: "product-design-revision", records: await this.listDesignRevisions() })
@@ -1232,6 +1601,9 @@ export class ProductStudioService {
     if (include("context-pack")) groups.push({ kind: "context-pack", records: await this.listContextPacks() })
     if (include("workflow-plan")) groups.push({ kind: "workflow-plan", records: await this.listWorkflowPlans() })
     if (include("tool-definition")) groups.push({ kind: "tool-definition", records: await this.listToolDefinitions() })
+    if (include("instruction-privilege-grant")) {
+      groups.push({ kind: "instruction-privilege-grant", records: await this.listInstructionPrivilegeGrants() })
+    }
     if (include("run-tool-selection")) {
       groups.push({ kind: "run-tool-selection", records: await this.listRunToolSelections() })
     }
@@ -1239,7 +1611,7 @@ export class ProductStudioService {
     for (const group of groups) {
       for (const unknownRecord of group.records) {
         const record = unknownRecord as Record<string, unknown>
-        const searchable = JSON.stringify(record).toLocaleLowerCase()
+        const searchable = JSON.stringify(record).toLowerCase()
         const position = searchable.indexOf(query)
         if (position < 0) continue
         const id = group.kind === "product-revision"
@@ -1258,21 +1630,83 @@ export class ProductStudioService {
         }))
       }
     }
-    return results.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    return results.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, limit)
   }
 
-  async buildPortableExport(): Promise<ProductExportBundle> {
+  async listDomainPage<K extends keyof ProductStudioRecordMap>(
+    kind: K,
+    input: ProductStudioPageInput = {},
+  ): Promise<ProductStudioPage<ProductStudioRecordMap[K]>> {
+    const offset = input.offset ?? 0
+    const limit = input.limit ?? 100
+    if (!Number.isInteger(offset) || offset < 0 || offset > 1_000_000) {
+      throw new Error("Product-domain page offset must be between 0 and 1,000,000")
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+      throw new Error("Product-domain page limit must be between 1 and 200")
+    }
+    let records: ProductStudioRecordMap[K][]
+    switch (kind) {
+      case "product-design-revision": records = await this.listDesignRevisions() as ProductStudioRecordMap[K][]; break
+      case "product-revision": records = await this.listProductRevisions() as ProductStudioRecordMap[K][]; break
+      case "change": records = await this.listChanges() as ProductStudioRecordMap[K][]; break
+      case "work-item": records = await this.listWorkItems() as ProductStudioRecordMap[K][]; break
+      case "requirement": records = await this.listRequirements() as ProductStudioRecordMap[K][]; break
+      case "decision": records = await this.listDecisions() as ProductStudioRecordMap[K][]; break
+      case "risk": records = await this.listRisks() as ProductStudioRecordMap[K][]; break
+      case "architecture-record": records = await this.listArchitectureRecords() as ProductStudioRecordMap[K][]; break
+      case "evidence": records = await this.listEvidence() as ProductStudioRecordMap[K][]; break
+      case "trace-link": records = await this.listTraceLinks() as ProductStudioRecordMap[K][]; break
+      case "context-pack": records = await this.listContextPacks() as ProductStudioRecordMap[K][]; break
+      case "workflow-plan": records = await this.listWorkflowPlans() as ProductStudioRecordMap[K][]; break
+      case "tool-definition": records = await this.listToolDefinitions() as ProductStudioRecordMap[K][]; break
+      case "instruction-privilege-grant": records = await this.listInstructionPrivilegeGrants() as ProductStudioRecordMap[K][]; break
+      case "run-tool-selection": records = await this.listRunToolSelections() as ProductStudioRecordMap[K][]; break
+      default: throw new Error(`Unsupported Product-domain page kind: ${String(kind)}`)
+    }
+    return {
+      items: records.slice(offset, offset + limit),
+      offset,
+      limit,
+      total: records.length,
+      hasMore: offset + limit < records.length,
+    }
+  }
+
+  async buildPortableExport(disclosure: ProductExportDisclosureInput = {}): Promise<ProductExportBundle> {
     await this.assertIntegrity()
     const [manifest, product] = await Promise.all([
       this.repository.readJson(this.repository.resolve("manifest.json"), repositoryManifestSchema),
       this.readProduct(),
     ])
+    const reviewedRecordIds = new Set(disclosure.reviewedRecordIds ?? [])
+    if (
+      reviewedRecordIds.size > 0 &&
+      (!disclosure.actorId || disclosure.actorId.trim().length < 1 || !disclosure.reviewedAt || !Number.isFinite(Date.parse(disclosure.reviewedAt)))
+    ) {
+      throw new Error("Confidential or restricted export disclosure requires an explicit human reviewer")
+    }
+    const contextPacks = await this.listContextPacks()
+    const sensitiveContextIds = new Set(contextPacks
+      .filter((pack) => ["confidential", "restricted"].includes(pack.classification.level))
+      .map((pack) => pack.id))
+    for (const id of sensitiveContextIds) {
+      if (!reviewedRecordIds.has(id)) {
+        throw new Error(`Context Pack ${id} is ${contextPacks.find((pack) => pack.id === id)?.classification.level}; explicit disclosure review is required`)
+      }
+    }
+    for (const id of reviewedRecordIds) {
+      if (!sensitiveContextIds.has(id)) throw new Error(`Disclosure review references a record that does not require sensitive-context review: ${id}`)
+    }
     const portableRecords: Array<{ path: string; recordType: string; content: unknown }> = [
       { path: "manifest.json", recordType: "repository-manifest", content: manifest },
       { path: "product.json", recordType: "product", content: product },
     ]
     const append = <T>(directory: string, recordType: string, records: T[], pathFor?: (record: T) => string) => {
       for (const record of records) {
+        if (portableRecords.length >= 10_000) {
+          throw new Error("Portable Product export exceeds the 10,000-record safety limit")
+        }
         const path = pathFor ? pathFor(record) : `${directory}/${String((record as { id: string }).id)}.json`
         portableRecords.push({ path, recordType, content: record })
       }
@@ -1289,10 +1723,34 @@ export class ProductStudioService {
     append("architecture", "architecture-record", await this.listArchitectureRecords())
     append("evidence", "evidence", await this.listEvidence())
     append("trace", "trace-link", await this.listTraceLinks())
-    append("context-packs", "context-pack", await this.listContextPacks())
+    append("context-packs", "context-pack", contextPacks)
     append("workflow-plans", "workflow-plan", await this.listWorkflowPlans())
     append("tools", "tool-definition", await this.listToolDefinitions())
+    append("instruction-grants", "instruction-privilege-grant", await this.listInstructionPrivilegeGrants())
     append("tool-selections", "run-tool-selection", await this.listRunToolSelections())
+    const recordHistory = await this.listRecords(
+      "record-history", /^[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i, productRecordRevisionSchema,
+    )
+    append("record-history", "product-record-revision", recordHistory, (record) =>
+      `record-history/${record.recordType}-${record.recordId}-r${record.revision}.json`)
+    append("sessions", "execution-charter", await this.listRecords(
+      "sessions", /^charter-[0-9a-f-]+\.json$/i, executionCharterSchema,
+    ), (record) => `sessions/charter-${record.id}.json`)
+    append("sessions", "run", await this.listRecords(
+      "sessions", /^run-[0-9a-f-]+\.json$/i, runSchema,
+    ), (record) => `sessions/run-${record.id}.json`)
+    append("sessions", "managed-run", await this.listRecords(
+      "sessions", /^managed-run-[0-9a-f-]+\.json$/i, managedRunRecordSchema,
+    ), (record) => `sessions/managed-run-${record.id}.json`)
+    append("sessions", "managed-run-evidence", await this.listRecords(
+      "sessions", /^managed-evidence-[0-9a-f-]+\.json$/i, managedRunEvidenceSchema,
+    ), (record) => `sessions/managed-evidence-${record.id}.json`)
+    append("sessions", "managed-run-result", await this.listRecords(
+      "sessions", /^managed-result-[0-9a-f-]+\.json$/i, managedRunResultSchema,
+    ), (record) => `sessions/managed-result-${record.id}.json`)
+    append("handoffs", "handoff", await this.listRecords(
+      "handoffs", /^[0-9a-f-]+\.json$/i, handoffSchema,
+    ))
     portableRecords.sort((left, right) => left.path.localeCompare(right.path))
     if (containsSecretShapedValue(portableRecords.map((record) => record.content))) {
       throw new Error("Portable export rejected secret-shaped governed content")
@@ -1316,10 +1774,20 @@ export class ProductStudioService {
       membershipDigest: canonicalDigest(members.map(({ path, digest }) => ({ path, digest }))),
       excluded: [
         { recordClass: "runtime-bindings", reason: "Machine-local executable paths, locks, drafts, and capability probes are not portable." },
-        { recordClass: "execution-sessions", reason: "Current execution contracts contain machine-local bindings and require a later portability revision." },
-        { recordClass: "handoffs", reason: "Current handoffs can contain machine-local run and workspace observations." },
         { recordClass: "audit-runtime", reason: "The local operational audit can contain execution diagnostics not reviewed for portable disclosure." },
       ],
+      disclosureReview: {
+        includedClassifications: [...new Set<ContextPack["classification"]["level"]>([
+          "public",
+          "internal",
+          ...contextPacks.map((pack) => pack.classification.level),
+        ])],
+        reviewedRecordIds: [...reviewedRecordIds].sort(),
+        excludedRecordIds: [],
+        ...(disclosure.actorId ? { reviewedBy: { kind: "human" as const, id: disclosure.actorId } } : {}),
+        evaluatedAt: disclosure.reviewedAt ?? product.updatedAt,
+        boundary: "confidential-and-restricted-records-require-explicit-human-review",
+      },
       authorityBoundary: "export-does-not-assert-readiness-or-approval",
     })
     return productExportBundleSchema.parse({
@@ -1334,20 +1802,41 @@ export class ProductStudioService {
     if (!isAbsolute(path) || path.split(/[\\/]/).includes("..")) {
       throw new Error("Import preview requires an explicit absolute file path without traversal segments")
     }
-    const metadata = await lstat(path)
-    if (metadata.isSymbolicLink()) throw new Error("Import preview refuses symbolic-link sources")
-    if (!metadata.isFile()) throw new Error("Import preview source must be a regular file")
-    if (metadata.size > 25 * 1024 * 1024) throw new Error("Import preview source exceeds the 25 MiB safety limit")
+    let handle
+    try {
+      handle = await open(path, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0))
+    } catch (error) {
+      if (error instanceof Error && "code" in error && ["ELOOP", "EMLINK"].includes(String(error.code))) {
+        throw new Error("Import preview refuses symbolic-link sources")
+      }
+      throw error
+    }
     let raw: unknown
     try {
-      raw = JSON.parse(await readFile(path, "utf8"))
-    } catch (error) {
-      throw new Error(error instanceof Error ? `Malformed import bundle: ${error.message}` : "Malformed import bundle")
+      const metadata = await handle.stat()
+      if (!metadata.isFile()) throw new Error("Import preview source must be a regular file")
+      if (metadata.size > 25 * 1024 * 1024) throw new Error("Import preview source exceeds the 25 MiB safety limit")
+      const text = await handle.readFile("utf8")
+      try {
+        raw = JSON.parse(text)
+      } catch (error) {
+        throw new Error(error instanceof Error ? `Malformed import bundle: ${error.message}` : "Malformed import bundle")
+      }
+    } finally {
+      await handle.close()
     }
     return this.previewImportBundle(raw)
   }
 
   async previewImportBundle(input: unknown): Promise<ProductImportPreview> {
+    let inputSize: number
+    try {
+      inputSize = Buffer.byteLength(JSON.stringify(input))
+    } catch {
+      throw new Error("Import preview requires an acyclic JSON-compatible bundle")
+    }
+    if (inputSize > 25 * 1024 * 1024) throw new Error("Import preview bundle exceeds the 25 MiB safety limit")
+    this.assertJsonDepth(input, 64)
     const bundle = productExportBundleSchema.parse(input)
     if (containsSecretShapedValue(bundle.records.map((record) => record.content))) {
       throw new Error("Import preview rejected secret-shaped portable content")
@@ -1389,6 +1878,19 @@ export class ProductStudioService {
       ) {
         throw new Error(`Import Product history filename does not match record identity: ${member.path}`)
       }
+      const recordHistoryMatch = /^record-history\/([a-z-]+)-([0-9a-f-]+)-r([1-9][0-9]*)\.json$/i.exec(member.path)
+      if (recordHistoryMatch) {
+        const history = validated as ProductRecordRevision
+        if (
+          history.recordType !== recordHistoryMatch[1] ||
+          history.recordId !== recordHistoryMatch[2] ||
+          history.revision !== Number(recordHistoryMatch[3])
+        ) throw new Error(`Import Record History filename does not match its envelope: ${member.path}`)
+      }
+      const prefixedIdentityMatch = /^(?:sessions\/(?:charter|run|managed-run|managed-evidence|managed-result))-([0-9a-f-]+)\.json$/i.exec(member.path)
+      if (prefixedIdentityMatch && record.id !== prefixedIdentityMatch[1]) {
+        throw new Error(`Import session filename does not match record identity: ${member.path}`)
+      }
       const serialized = `${JSON.stringify(validated, null, 2)}\n`
       if (canonicalDigest(validated) !== member.digest) throw new Error(`Import member digest mismatch: ${member.path}`)
       if (Buffer.byteLength(serialized) !== member.byteLength) throw new Error(`Import member byte length mismatch: ${member.path}`)
@@ -1407,6 +1909,7 @@ export class ProductStudioService {
       importedProduct.id !== bundle.manifest.productId ||
       (importedProduct.revision ?? 1) !== bundle.manifest.productRevision
     ) throw new Error("Import Product identity or revision does not match the export manifest")
+    await this.validateImportGraph(validatedByPath, bundle)
     const conflicts: ProductImportPreview["conflicts"] = []
     let currentProduct: Product | undefined
     try {
@@ -1448,13 +1951,135 @@ export class ProductStudioService {
       status: conflicts.length > 0 ? "blocked" : "compatible",
       memberCount: bundle.manifest.members.length,
       conflicts,
-      warnings: bundle.manifest.excluded.map((item) => `${item.recordClass}: ${item.reason}`),
+      warnings: [
+        ...bundle.manifest.excluded.map((item) => `${item.recordClass}: ${item.reason}`),
+        ...(bundle.manifest.members.some((member) => member.recordType === "run-tool-selection")
+          ? ["run-tool-selection: workspace trust and all selected capabilities must be revalidated locally before launch."]
+          : []),
+      ],
       importMutation: "not-performed",
     })
   }
 
   async healthIssues(): Promise<WorkspaceHealthIssue[]> {
     const issues: WorkspaceHealthIssue[] = []
+    const product = await this.readProduct()
+    const designRevisions = await this.listDesignRevisions()
+    if (product.currentDesign) {
+      const currentDesign = designRevisions.find((revision) => revision.id === product.currentDesign?.id)
+      if (!currentDesign || currentDesign.revision !== product.currentDesign.revision || canonicalDigest(currentDesign) !== product.currentDesign.digest) {
+        issues.push({
+          code: "product.current-design-invalid",
+          severity: "error",
+          message: "Product current Design binding does not resolve to the exact governed Design Revision.",
+          portablePath: "product.json",
+          fieldPath: ["currentDesign"],
+          repairActions: ["inspect-read-only", "manual-repair-required"],
+        })
+      }
+    } else if (designRevisions.length > 0) {
+      issues.push({
+        code: "product.current-design-migration-required",
+        severity: "error",
+        message: "Design Revisions exist but Product has no exact current Design binding; explicit migration is required.",
+        portablePath: "product.json",
+        fieldPath: ["currentDesign"],
+        repairActions: ["inspect-read-only", "manual-repair-required"],
+      })
+    }
+
+    const historyGroups: Array<{
+      type: ProductRecordRevision["recordType"]
+      records: Array<{ id: string; revision: number }>
+    }> = [
+      { type: "change", records: await this.listChanges() },
+      { type: "work-item", records: await this.listWorkItems() },
+      { type: "requirement", records: await this.listRequirements() },
+      { type: "decision", records: await this.listDecisions() },
+      { type: "risk", records: await this.listRisks() },
+      { type: "architecture-record", records: await this.listArchitectureRecords() },
+      { type: "evidence", records: await this.listEvidence() },
+      { type: "trace-link", records: await this.listTraceLinks() },
+      { type: "context-pack", records: await this.listContextPacks() },
+      { type: "workflow-plan", records: await this.listWorkflowPlans() },
+      { type: "tool-definition", records: await this.listToolDefinitions() },
+      { type: "instruction-privilege-grant", records: await this.listInstructionPrivilegeGrants() },
+      { type: "run-tool-selection", records: await this.listRunToolSelections() },
+    ]
+    for (const group of historyGroups) {
+      for (const record of group.records) {
+        try {
+          const history = await this.listRecordHistory(group.type, record.id)
+          if (history.length !== record.revision || history[0]?.recordDigest !== canonicalDigest(record)) {
+            throw new Error("history is missing, non-contiguous, or does not match the current record")
+          }
+          const ascending = [...history].sort((left, right) => left.revision - right.revision)
+          for (const [index, revision] of ascending.entries()) {
+            if (
+              revision.recordType !== group.type ||
+              revision.recordId !== record.id ||
+              revision.revision !== index + 1 ||
+              (index === 0 && revision.predecessorDigest !== undefined) ||
+              (index > 0 && revision.predecessorDigest !== ascending[index - 1]?.recordDigest)
+            ) {
+              throw new Error("history predecessor chain is invalid")
+            }
+          }
+        } catch (error) {
+          issues.push({
+            code: "product.record-history-invalid",
+            severity: "error",
+            message: `${group.type} ${record.id}: ${error instanceof Error ? error.message : "immutable history is invalid"}`,
+            record: { type: group.type, id: record.id, revision: record.revision },
+            repairActions: ["inspect-read-only", "manual-repair-required"],
+          })
+        }
+      }
+    }
+
+    for (const change of await this.listChanges()) {
+      try {
+        await this.validateBaseline(change.baseline, product)
+      } catch (error) {
+        issues.push({
+          code: "product.change-baseline-invalid",
+          severity: "error",
+          message: `Change ${change.id}: ${error instanceof Error ? error.message : "baseline is invalid"}`,
+          record: { type: "change", id: change.id, revision: change.revision },
+          repairActions: ["inspect-read-only", "create-superseding-revision"],
+        })
+      }
+    }
+    for (const item of await this.listWorkItems()) {
+      try {
+        await this.validateWorkGraph(item)
+      } catch (error) {
+        issues.push({
+          code: "product.work-graph-invalid",
+          severity: "error",
+          message: `Work Item ${item.id}: ${error instanceof Error ? error.message : "dependency graph is invalid"}`,
+          record: { type: "work-item", id: item.id, revision: item.revision },
+          repairActions: ["inspect-read-only", "create-superseding-revision"],
+        })
+      }
+    }
+    for (const evidence of await this.listEvidence()) {
+      try {
+        await this.validateExactReferences(evidence.subjects)
+        this.assertEvidenceFreshness(evidence)
+        if (evidence.validUntil && Date.parse(evidence.validUntil) <= Date.now() && evidence.freshness.status === "fresh") {
+          throw new Error("expired Evidence is still marked fresh")
+        }
+      } catch (error) {
+        issues.push({
+          code: "product.evidence-invalid",
+          severity: "warning",
+          message: `Evidence ${evidence.id}: ${error instanceof Error ? error.message : "Evidence is stale or invalid"}`,
+          record: { type: "evidence", id: evidence.id, revision: evidence.revision },
+          repairActions: ["inspect-read-only", "create-superseding-revision"],
+        })
+      }
+    }
     for (const link of await this.listTraceLinks()) {
       const state = await this.assessTraceState(link.source, link.target)
       if (state !== "valid") issues.push({
@@ -1465,7 +2090,8 @@ export class ProductStudioService {
     }
     for (const pack of await this.listContextPacks()) {
       try {
-        await this.validateContextItems(pack.items)
+        await this.validateContextItems(pack.items, pack.recipient, pack.objective)
+        if (pack.packDigest !== this.contextPackDigest(pack)) throw new Error("Context Pack internal digest does not match")
       } catch (error) {
         issues.push({
           code: "product.context-stale",
@@ -1482,6 +2108,7 @@ export class ProductStudioService {
     for (const plan of await this.listWorkflowPlans()) {
       try {
         await this.validateWorkflow(plan)
+        if (plan.planDigest !== this.workflowPlanDigest(plan)) throw new Error("Workflow Plan internal digest does not match")
       } catch (error) {
         issues.push({
           code: "product.workflow-stale",
@@ -1496,7 +2123,7 @@ export class ProductStudioService {
           this.repository.resolve("sessions", `run-${selection.runId}.json`),
           runSchema,
         )
-        const readiness = await this.evaluateToolSelection(selection, run)
+        const readiness = await this.evaluateToolSelection({ ...selection, workspaceTrusted: true }, run)
         if (
           readiness.status === "blocked" ||
           canonicalDigest({ status: readiness.status, issues: readiness.issues }) !==
@@ -1519,7 +2146,47 @@ export class ProductStudioService {
     return issues
   }
 
-  private async validateContextItems(items: ContextPack["items"]): Promise<void> {
+  private async validateContextItems(
+    items: ContextPack["items"],
+    recipient?: ContextPack["recipient"],
+    purpose?: string,
+  ): Promise<void> {
+    this.validateContextItemDigests(items)
+    for (const item of items) {
+      if (item.instructionPrivilegeGrant) {
+        const exact = await this.validateExactDomainReference(item.instructionPrivilegeGrant)
+        const grant = instructionPrivilegeGrantSchema.parse(exact)
+        const current = await this.readInstructionPrivilegeGrant(grant.id)
+        if (current.revision !== grant.revision || current.state !== "active") {
+          throw new Error(`Instruction Privilege Grant ${grant.id} is stale or no longer active`)
+        }
+        if (grant.expiresAt && Date.parse(grant.expiresAt) <= Date.now()) {
+          throw new Error(`Instruction Privilege Grant ${grant.id} is expired`)
+        }
+        if (!await this.isExactReferenceCurrent(grant.authority)) {
+          throw new Error(`Instruction Privilege Grant ${grant.id} authority has been superseded and requires re-acceptance`)
+        }
+        if (canonicalDigest(grant.source) !== canonicalDigest(item.source) || grant.sourceDigest !== item.sourceDigest) {
+          throw new Error(`Instruction Privilege Grant ${grant.id} does not bind the exact Context Item source`)
+        }
+        if (grant.privilege !== item.trust.instructionPrivilege) {
+          throw new Error(`Instruction Privilege Grant ${grant.id} does not grant the requested privilege class`)
+        }
+        if (recipient && canonicalDigest(grant.recipient) !== canonicalDigest(recipient)) {
+          throw new Error(`Instruction Privilege Grant ${grant.id} does not permit the Context Pack recipient`)
+        }
+        if (purpose && grant.purpose !== purpose) {
+          throw new Error(`Instruction Privilege Grant ${grant.id} does not bind the exact Context Pack purpose`)
+        }
+        const requestedScope = item.trust.semanticAuthority.scope
+        if (requestedScope.some((scope) => !grant.scope.includes(scope))) {
+          throw new Error(`Instruction Privilege Grant ${grant.id} does not cover the declared semantic-authority scope`)
+        }
+      }
+    }
+  }
+
+  private validateContextItemDigests(items: ContextPack["items"]): void {
     for (const item of items) {
       if (canonicalDigest(item.content) !== item.contentDigest) {
         throw new Error(`Context Item ${item.id} content digest does not match`)
@@ -1537,15 +2204,34 @@ export class ProductStudioService {
       if (item.transformations.length > 0 && precedingDigest !== item.contentDigest) {
         throw new Error(`Context Item ${item.id} final transformation does not bind its content`)
       }
-      if (item.instructionPrivilegeGrant) {
-        await this.validateExactReference({
-          recordType: item.instructionPrivilegeGrant.recordType,
-          recordId: item.instructionPrivilegeGrant.recordId,
-          revision: item.instructionPrivilegeGrant.revision,
-          digest: item.instructionPrivilegeGrant.digest,
-        })
-      }
     }
+  }
+
+  private async validateInstructionAuthority(reference: ExactDomainRecordReference): Promise<void> {
+    const record = await this.validateExactDomainReference(reference)
+    if (!await this.isExactReferenceCurrent(reference)) {
+      throw new Error("Instruction privilege authority must reference the current governed revision")
+    }
+    if (reference.recordType === "requirement") {
+      const requirement = requirementSchema.parse(record)
+      if (!["accepted", "satisfied"].includes(requirement.state)) {
+        throw new Error("Instruction privilege authority requires an accepted or satisfied Requirement")
+      }
+      return
+    }
+    if (reference.recordType === "decision") {
+      if (decisionSchema.parse(record).state !== "decided") {
+        throw new Error("Instruction privilege authority requires a decided Decision")
+      }
+      return
+    }
+    if (reference.recordType === "architecture") {
+      if (architectureRecordSchema.parse(record).state !== "accepted") {
+        throw new Error("Instruction privilege authority requires accepted Architecture")
+      }
+      return
+    }
+    throw new Error("Instruction privilege authority must be a Requirement, Decision, or Architecture record")
   }
 
   private deriveContextEvaluation(input: ContextPackInput): Pick<ContextPack, "classification" | "sufficiency"> {
@@ -1617,21 +2303,68 @@ export class ProductStudioService {
 
   private async validateWorkflow(input: WorkflowPlanInput): Promise<void> {
     await this.validateExactReference(input.subject)
+    if (!await this.isExactReferenceCurrent(input.subject)) throw new Error("Workflow subject exact reference is stale")
+    const contextById = new Map<string, ContextPack>()
     for (const reference of input.contextPacks) {
       if (reference.recordType !== "context-pack") throw new Error("Workflow context references must target Context Packs")
       const pack = await this.validateExactReference(reference) as ContextPack
+      if (!await this.isExactReferenceCurrent(reference)) throw new Error(`Context Pack ${pack.id} exact reference is stale`)
       if (pack.sufficiency.status === "insufficient") throw new Error(`Context Pack ${pack.id} is insufficient for planning`)
+      contextById.set(pack.id, pack)
     }
     const tools: ToolDefinition[] = []
+    const toolById = new Map<string, ToolDefinition>()
     for (const reference of input.toolDefinitions) {
       if (reference.recordType !== "tool-definition") throw new Error("Workflow tool references must target Tool Definitions")
-      tools.push(await this.validateExactReference(reference) as ToolDefinition)
+      const tool = await this.validateExactReference(reference) as ToolDefinition
+      if (!await this.isExactReferenceCurrent(reference)) throw new Error(`Tool Definition ${tool.id} exact reference is stale`)
+      tools.push(tool)
+      toolById.set(tool.id, tool)
     }
     const byId = new Map(input.steps.map((step) => [step.id, step]))
     for (const step of input.steps) {
       if (step.dependsOn.includes(step.id)) throw new Error(`Workflow Step ${step.id} cannot depend on itself`)
       for (const dependency of step.dependsOn) {
         if (!byId.has(dependency)) throw new Error(`Workflow Step dependency ${dependency} is missing`)
+      }
+      const stepContexts: ContextPack[] = []
+      for (const reference of step.contextPacks) {
+        if (reference.recordType !== "context-pack") throw new Error(`Workflow Step ${step.id} Context references must target Context Packs`)
+        const declared = contextById.get(reference.recordId)
+        if (!declared || declared.revision !== reference.revision || canonicalDigest(declared) !== reference.digest) {
+          throw new Error(`Workflow Step ${step.id} references Context not declared by the Plan`)
+        }
+        stepContexts.push(declared)
+      }
+      for (const pack of stepContexts) {
+        if (pack.recipient.id !== step.responsibility.id) {
+          throw new Error(`Workflow Step ${step.id} Context recipient does not match its responsible actor`)
+        }
+      }
+      const stepTools: ToolDefinition[] = []
+      for (const reference of step.toolDefinitions) {
+        if (reference.recordType !== "tool-definition") throw new Error(`Workflow Step ${step.id} Tool references must target Tool Definitions`)
+        const declared = toolById.get(reference.recordId)
+        if (!declared || declared.revision !== reference.revision || canonicalDigest(declared) !== reference.digest) {
+          throw new Error(`Workflow Step ${step.id} references a Tool not declared by the Plan`)
+        }
+        if (!declared.enabled) throw new Error(`Workflow Step ${step.id} references disabled Tool ${declared.key}`)
+        stepTools.push(declared)
+      }
+      if (step.responsibility.kind === "tool" && stepTools.length === 0) {
+        throw new Error(`Tool-responsible Workflow Step ${step.id} requires an exact Tool Definition`)
+      }
+      if (stepTools.length > 0) {
+        const supportedEffects = new Set(stepTools.flatMap((tool) => tool.effectEnvelope))
+        for (const effect of step.effectEnvelope) {
+          if (!supportedEffects.has(effect)) throw new Error(`Workflow Step ${step.id} effect ${effect} is unsupported by its Tools`)
+        }
+        const requestedScopes = [...step.scope.read, ...step.scope.write, ...step.scope.effects]
+        for (const scope of requestedScopes) {
+          if (!stepTools.some((tool) => tool.allowedScopes.some((allowed) => this.locatorContains(allowed, scope)))) {
+            throw new Error(`Workflow Step ${step.id} scope is outside its Tool Definitions`)
+          }
+        }
       }
     }
     const visiting = new Set<string>()
@@ -1685,7 +2418,33 @@ export class ProductStudioService {
       rightEffects.some((scope) => leftAll.some((candidate) => overlaps(scope, candidate)))
   }
 
+  private locatorContains(
+    allowed: WorkItem["scope"]["read"][number],
+    requested: WorkItem["scope"]["read"][number],
+  ): boolean {
+    if (allowed.kind !== requested.kind) return false
+    if (allowed.kind === "workspace-relative" && requested.kind === "workspace-relative") {
+      return this.workspacePathContains(allowed.path, requested.path)
+    }
+    if (allowed.kind === "logical" && requested.kind === "logical") return allowed.value === requested.value
+    if (allowed.kind === "external-uri" && requested.kind === "external-uri") return allowed.uri === requested.uri
+    return false
+  }
+
+  private workspacePathContains(allowed: string, requested: string): boolean {
+    return allowed === "." || allowed === requested || requested.startsWith(`${allowed}/`)
+  }
+
   private async validateExactReference(reference: WorkflowPlan["subject"]): Promise<unknown> {
+    return this.validateExactDomainReference(reference)
+  }
+
+  private async validateExactReferences(references: readonly ExactDomainRecordReference[]): Promise<void> {
+    for (const reference of references) await this.validateExactDomainReference(reference)
+  }
+
+  private async validateExactDomainReference(referenceInput: ExactDomainRecordReference): Promise<unknown> {
+    const reference = exactDomainRecordReferenceSchema.parse(referenceInput)
     let record: unknown
     switch (reference.recordType) {
       case "product": {
@@ -1696,23 +2455,84 @@ export class ProductStudioService {
         break
       }
       case "design-revision": record = await this.readDesignRevision(reference.recordId); break
-      case "change": record = await this.readChange(reference.recordId); break
-      case "work-item": record = await this.readWorkItem(reference.recordId); break
-      case "requirement": record = await this.readRequirement(reference.recordId); break
-      case "decision": record = await this.readDecision(reference.recordId); break
-      case "architecture": record = await this.readArchitectureRecord(reference.recordId); break
-      case "context-pack": record = await this.readContextPack(reference.recordId); break
-      case "tool-definition": record = await this.readToolDefinition(reference.recordId); break
+      case "initiative": record = await this.readInitiative(reference.recordId); break
+      case "change": record = await this.readCurrentOrHistorical("changes", "change", reference, changeSchema); break
+      case "work-item": record = await this.readCurrentOrHistorical("work-items", "work-item", reference, workItemSchema); break
+      case "requirement": record = await this.readCurrentOrHistorical("requirements", "requirement", reference, requirementSchema); break
+      case "decision": record = await this.readCurrentOrHistorical("decisions", "decision", reference, decisionSchema); break
+      case "risk": record = await this.readCurrentOrHistorical("risks", "risk", reference, riskSchema); break
+      case "architecture": record = await this.readCurrentOrHistorical("architecture", "architecture-record", reference, architectureRecordSchema); break
+      case "evidence": record = await this.readCurrentOrHistorical("evidence", "evidence", reference, evidenceRecordSchema); break
+      case "context-pack": record = await this.readCurrentOrHistorical("context-packs", "context-pack", reference, contextPackSchema); break
+      case "workflow-plan": record = await this.readCurrentOrHistorical("workflow-plans", "workflow-plan", reference, workflowPlanSchema); break
+      case "tool-definition": record = await this.readCurrentOrHistorical("tools", "tool-definition", reference, toolDefinitionSchema); break
+      case "instruction-privilege-grant": record = await this.readCurrentOrHistorical(
+        "instruction-grants", "instruction-privilege-grant", reference, instructionPrivilegeGrantSchema,
+      ); break
+      case "run-tool-selection": record = await this.readCurrentOrHistorical(
+        "tool-selections", "run-tool-selection", reference, runToolSelectionSchema,
+      ); break
+      case "run": record = await this.repository.readJson(
+        this.repository.resolve("sessions", `run-${reference.recordId}.json`),
+        runSchema,
+      ); break
     }
     const candidate = record as { id?: string; productId?: string; revision?: number }
-    const identity = reference.recordType === "product" ? candidate.id : candidate.id
-    if (identity !== reference.recordId || (candidate.revision ?? 1) !== reference.revision) {
+    if (candidate.id !== reference.recordId || (candidate.revision ?? 1) !== reference.revision) {
       throw new Error(`Exact ${reference.recordType} reference identity or revision does not match`)
     }
     if (canonicalDigest(record) !== reference.digest) {
       throw new Error(`Exact ${reference.recordType} reference digest does not match`)
     }
     return record
+  }
+
+  private async readCurrentOrHistorical<T>(
+    directory: string,
+    historyType: ProductRecordRevision["recordType"],
+    reference: ExactDomainRecordReference,
+    schema: ZodType<T>,
+  ): Promise<T> {
+    const current = await this.readRecord(directory, reference.recordId, schema)
+    const currentRevision = (current as { revision?: number }).revision ?? 1
+    if (currentRevision === reference.revision) return current
+    const history = await this.readRecordHistory(historyType, reference.recordId, reference.revision)
+    const snapshot = schema.parse(history.snapshot)
+    if (history.recordDigest !== canonicalDigest(snapshot)) {
+      throw new Error(`Historical ${reference.recordType} digest does not match its snapshot`)
+    }
+    return snapshot
+  }
+
+  private async isExactReferenceCurrent(reference: ExactDomainRecordReference): Promise<boolean> {
+    let current: unknown
+    switch (reference.recordType) {
+      case "product": current = await this.readProduct(); break
+      case "design-revision": {
+        const product = await this.readProduct()
+        return product.currentDesign?.id === reference.recordId &&
+          product.currentDesign.revision === reference.revision &&
+          product.currentDesign.digest === reference.digest
+      }
+      case "initiative": current = await this.readInitiative(reference.recordId); break
+      case "change": current = await this.readChange(reference.recordId); break
+      case "work-item": current = await this.readWorkItem(reference.recordId); break
+      case "requirement": current = await this.readRequirement(reference.recordId); break
+      case "decision": current = await this.readDecision(reference.recordId); break
+      case "risk": current = await this.readRisk(reference.recordId); break
+      case "architecture": current = await this.readArchitectureRecord(reference.recordId); break
+      case "evidence": current = await this.readEvidence(reference.recordId); break
+      case "context-pack": current = await this.readContextPack(reference.recordId); break
+      case "workflow-plan": current = await this.readWorkflowPlan(reference.recordId); break
+      case "tool-definition": current = await this.readToolDefinition(reference.recordId); break
+      case "instruction-privilege-grant": current = await this.readInstructionPrivilegeGrant(reference.recordId); break
+      case "run-tool-selection": current = await this.readRunToolSelection(reference.recordId); break
+      case "run": current = await this.repository.readJson(
+        this.repository.resolve("sessions", `run-${reference.recordId}.json`), runSchema,
+      ); break
+    }
+    const candidate = current as { revision?: number }
+    return (candidate.revision ?? 1) === reference.revision && canonicalDigest(current) === reference.digest
   }
 
   private async evaluateToolSelection(
@@ -1730,7 +2550,8 @@ export class ProductStudioService {
       tools.push(await this.validateExactReference(reference) as ToolDefinition)
     }
     const issues: string[] = []
-    if (["completed", "failed", "cancelled"].includes(run.state)) issues.push(`Run is already terminal: ${run.state}`)
+    if (run.state !== "prepared") issues.push(`Tool Selection can be evaluated only for a prepared Run: ${run.state}`)
+    if (!input.workspaceTrusted) issues.push("Workspace trust is required and must be revalidated locally before launch")
     const selectedIds = new Set(tools.map((tool) => tool.id))
     for (const confirmation of input.confirmedToolIds) {
       if (!selectedIds.has(confirmation)) issues.push(`Confirmation references an unselected Tool: ${confirmation}`)
@@ -1740,6 +2561,21 @@ export class ProductStudioService {
       if (!supportedEffects.has(effect)) issues.push(`Requested effect ${effect} is not declared by any selected Tool`)
       if (!charter.expectedEffects.includes(effect)) {
         issues.push(`Requested effect ${effect} is outside the confirmed Execution Charter`)
+      }
+    }
+    for (const tool of tools) {
+      for (const effect of tool.effectEnvelope) {
+        if (!input.requestedEffects.includes(effect)) {
+          issues.push(`Tool ${tool.key} exposes effect ${effect} outside the exact Run request`)
+        }
+        if (!charter.expectedEffects.includes(effect)) {
+          issues.push(`Tool ${tool.key} exposes effect ${effect} outside the confirmed Execution Charter`)
+        }
+      }
+    }
+    for (const scope of input.requestedScopes) {
+      if (!tools.some((tool) => tool.allowedScopes.some((allowed) => this.locatorContains(allowed, scope)))) {
+        issues.push(`Requested Tool scope ${JSON.stringify(scope)} is not allowed by any selected Tool`)
       }
     }
     for (const tool of tools) {
@@ -1755,8 +2591,16 @@ export class ProductStudioService {
       }
       for (const permission of tool.requiredPermissions) {
         const charterPermission = charter.permissions.find((candidate) => candidate.capability === permission.capability)
-        if (!charterPermission || charterPermission.mode === "deny") {
+        const permissionRank = { deny: 0, ask: 1, allow: 2 } as const
+        if (!charterPermission || permissionRank[charterPermission.mode] < permissionRank[permission.mode]) {
           issues.push(`Tool ${tool.key} requires permission ${permission.capability} not granted by the Charter`)
+        }
+        if (charterPermission) {
+          for (const requestedScope of input.requestedScopes.filter((scope) => scope.kind === "workspace-relative")) {
+            if (!charterPermission.scope.some((allowed) => this.workspacePathContains(allowed, requestedScope.path))) {
+              issues.push(`Tool ${tool.key} requested scope ${requestedScope.path} outside Charter permission ${permission.capability}`)
+            }
+          }
         }
       }
     }
@@ -1793,7 +2637,484 @@ export class ProductStudioService {
         throw new Error(`Import Workflow Plan digest mismatch: ${path}`)
       }
     }
+    if (/^record-history\//.test(path)) {
+      const history = validated as ProductRecordRevision
+      const snapshot = this.schemaForHistoryType(history.recordType).parse(history.snapshot)
+      if (history.recordDigest !== canonicalDigest(snapshot)) {
+        throw new Error(`Import Record History snapshot digest mismatch: ${path}`)
+      }
+    }
     return validated
+  }
+
+  private async validateImportGraph(
+    recordsByPath: ReadonlyMap<string, unknown>,
+    bundle: ProductExportBundle,
+  ): Promise<void> {
+    const product = productSchema.parse(recordsByPath.get("product.json"))
+    const exactRecords = new Map<string, unknown>()
+    const currentByHistoryKey = new Map<string, unknown>()
+    const exactKey = (recordType: string, recordId: string, revision: number, digest: string) =>
+      `${recordType}:${recordId}:${revision}:${digest}`
+    const addExact = (recordType: string, record: unknown): void => {
+      const candidate = record as { id?: string; revision?: number }
+      if (!candidate.id) throw new Error(`Import ${recordType} record has no logical identity`)
+      const revision = candidate.revision ?? 1
+      const key = exactKey(recordType, candidate.id, revision, canonicalDigest(record))
+      const previous = exactRecords.get(key)
+      if (previous && canonicalDigest(previous) !== canonicalDigest(record)) {
+        throw new Error(`Import exact record identity is ambiguous: ${recordType}:${candidate.id}@${revision}`)
+      }
+      exactRecords.set(key, record)
+    }
+    const resolveExact = (reference: ExactDomainRecordReference): unknown => {
+      const validated = exactDomainRecordReferenceSchema.parse(reference)
+      const record = exactRecords.get(exactKey(
+        validated.recordType,
+        validated.recordId,
+        validated.revision,
+        validated.digest,
+      ))
+      if (!record) throw new Error(`Import exact reference is unresolved: ${validated.recordType}:${validated.recordId}@${validated.revision}`)
+      return record
+    }
+
+    addExact("product", product)
+    const productHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("product-history/"))
+      .map(([, record]) => productRevisionSchema.parse(record))
+      .sort((left, right) => left.revision - right.revision)
+    if (productHistory.length !== (product.revision ?? 1)) {
+      throw new Error("Import Product history must contain every revision through the current Product")
+    }
+    for (const [index, history] of productHistory.entries()) {
+      if (history.revision !== index + 1) throw new Error("Import Product history revisions must be contiguous")
+      addExact("product", history.product)
+    }
+    if (canonicalDigest(productHistory.at(-1)?.product) !== canonicalDigest(product)) {
+      throw new Error("Import current Product does not match the latest Product history snapshot")
+    }
+
+    const designRevisions = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-revisions/"))
+      .map(([, record]) => productDesignRevisionSchema.parse(record))
+      .sort((left, right) => left.revision - right.revision)
+    for (const [index, revision] of designRevisions.entries()) {
+      if (revision.revision !== index + 1) throw new Error("Import Design Revision history must be contiguous")
+      if (index === 0 ? revision.predecessorId !== undefined : revision.predecessorId !== designRevisions[index - 1]?.id) {
+        throw new Error("Import Design Revision predecessor chain is invalid")
+      }
+      const draft = productDesignDraftSchema.parse({
+        schemaVersion: 1,
+        kind: "product-design-draft",
+        id: revision.sourceDraftId,
+        productId: revision.productId,
+        revision: revision.sourceDraftRevision,
+        baseProductRevision: Math.max(1, revision.productRevision - 1),
+        sections: revision.sections,
+        createdAt: revision.createdAt,
+        updatedAt: revision.readiness.evaluatedAt,
+      })
+      const recomputed = this.evaluateDesignReadiness(draft, revision.readiness.evaluatedAt)
+      if (canonicalDigest(recomputed) !== canonicalDigest(revision.readiness)) {
+        throw new Error(`Import Design Revision ${revision.id} carries a forged or stale readiness report`)
+      }
+      addExact("design-revision", revision)
+    }
+    if (product.currentDesign) {
+      const currentDesign = designRevisions.find((revision) => revision.id === product.currentDesign?.id)
+      if (
+        !currentDesign ||
+        currentDesign.revision !== product.currentDesign.revision ||
+        canonicalDigest(currentDesign) !== product.currentDesign.digest
+      ) throw new Error("Import Product current Design binding is unresolved or does not match its exact digest")
+    } else if (designRevisions.length > 0) {
+      throw new Error("Import Product has Design Revisions but no exact current Design binding; migration is required")
+    }
+
+    const pathRecordTypes: ReadonlyArray<readonly [RegExp, string, ProductRecordRevision["recordType"] | undefined]> = [
+      [/^initiatives\//, "initiative", undefined],
+      [/^changes\//, "change", "change"],
+      [/^work-items\//, "work-item", "work-item"],
+      [/^requirements\//, "requirement", "requirement"],
+      [/^decisions\//, "decision", "decision"],
+      [/^risks\//, "risk", "risk"],
+      [/^architecture\//, "architecture", "architecture-record"],
+      [/^evidence\//, "evidence", "evidence"],
+      [/^context-packs\//, "context-pack", "context-pack"],
+      [/^workflow-plans\//, "workflow-plan", "workflow-plan"],
+      [/^tools\//, "tool-definition", "tool-definition"],
+      [/^instruction-grants\//, "instruction-privilege-grant", "instruction-privilege-grant"],
+      [/^tool-selections\//, "run-tool-selection", "run-tool-selection"],
+    ]
+    for (const [path, record] of recordsByPath) {
+      const mapping = pathRecordTypes.find(([pattern]) => pattern.test(path))
+      if (!mapping) continue
+      addExact(mapping[1], record)
+      if (mapping[2]) {
+        const candidate = record as { id: string }
+        currentByHistoryKey.set(`${mapping[2]}:${candidate.id}`, record)
+      }
+    }
+    for (const [path, record] of recordsByPath) {
+      if (/^sessions\/run-/.test(path)) addExact("run", runSchema.parse(record))
+    }
+
+    const histories = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("record-history/"))
+      .map(([, record]) => productRecordRevisionSchema.parse(record))
+    const historyGroups = new Map<string, ProductRecordRevision[]>()
+    for (const history of histories) {
+      const groupKey = `${history.recordType}:${history.recordId}`
+      const group = historyGroups.get(groupKey) ?? []
+      group.push(history)
+      historyGroups.set(groupKey, group)
+      const referenceType = history.recordType === "architecture-record" ? "architecture" : history.recordType
+      addExact(referenceType, history.snapshot)
+    }
+    for (const [key, current] of currentByHistoryKey) {
+      const currentRevision = (current as { revision: number }).revision
+      const group = (historyGroups.get(key) ?? []).sort((left, right) => left.revision - right.revision)
+      if (group.length !== currentRevision) throw new Error(`Import immutable history is incomplete for ${key}`)
+      for (const [index, history] of group.entries()) {
+        if (history.revision !== index + 1) throw new Error(`Import immutable history is non-contiguous for ${key}`)
+        if (index === 0 && history.predecessorDigest !== undefined) {
+          throw new Error(`Import first immutable history revision has a predecessor for ${key}`)
+        }
+        if (index > 0 && history.predecessorDigest !== group[index - 1]?.recordDigest) {
+          throw new Error(`Import immutable history predecessor digest is invalid for ${key}`)
+        }
+      }
+      if (group.at(-1)?.recordDigest !== canonicalDigest(current)) {
+        throw new Error(`Import current record does not match immutable history for ${key}`)
+      }
+    }
+    for (const key of historyGroups.keys()) {
+      if (!currentByHistoryKey.has(key)) throw new Error(`Import immutable history has no current record: ${key}`)
+    }
+
+    const initiatives = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("initiatives/"))
+      .map(([, record]) => initiativeSchema.parse(record))
+    const initiativesById = new Map(initiatives.map((initiative) => [initiative.id, initiative]))
+    const changes = [...recordsByPath.entries()].filter(([path]) => path.startsWith("changes/"))
+      .map(([, record]) => changeSchema.parse(record))
+    const changesById = new Map(changes.map((change) => [change.id, change]))
+    for (const change of changes) {
+      if (!initiativesById.has(change.initiativeId)) throw new Error(`Import Change ${change.id} has no Initiative`)
+      if (change.baseline.kind === "exact") {
+        if (change.baseline.subjectType === "external") {
+          const attestation = change.baseline.externalAttestation
+          if (!attestation) throw new Error(`Import Change ${change.id} external baseline lacks attestation`)
+          const evidence = [...recordsByPath.entries()]
+            .filter(([path]) => path.startsWith("evidence/"))
+            .map(([, record]) => evidenceRecordSchema.parse(record))
+            .find((record) => record.id === attestation.evidenceRecordId)
+          if (
+            !evidence ||
+            evidence.verification.status !== "verified" ||
+            evidence.freshness.status !== "fresh" ||
+            evidence.artifactDigest !== change.baseline.digest ||
+            evidence.verification.verifier?.kind !== attestation.verifiedBy.kind ||
+            evidence.verification.verifier?.id !== attestation.verifiedBy.id ||
+            evidence.verification.verifiedAt !== attestation.verifiedAt ||
+            canonicalDigest(evidence.limitations) !== canonicalDigest(attestation.limitations)
+          ) {
+            throw new Error(`Import Change ${change.id} external baseline attestation is invalid`)
+          }
+          this.assertEvidenceFreshness(evidence)
+          const locatorIdentity = evidence.origin.locator.kind === "external-uri"
+            ? evidence.origin.locator.uri
+            : evidence.origin.locator.kind === "logical"
+              ? evidence.origin.locator.value
+              : undefined
+          if (locatorIdentity !== change.baseline.subjectId) {
+            throw new Error(`Import Change ${change.id} external baseline Evidence targets a different source`)
+          }
+          if (evidence.validUntil && Date.parse(evidence.validUntil) <= Date.now()) {
+            throw new Error(`Import Change ${change.id} external baseline Evidence is expired`)
+          }
+        } else {
+          const referenceType = change.baseline.subjectType
+          resolveExact({
+            recordType: referenceType,
+            recordId: change.baseline.subjectId,
+            revision: change.baseline.revision,
+            digest: change.baseline.digest,
+          })
+        }
+      }
+    }
+
+    const workItems = [...recordsByPath.entries()].filter(([path]) => path.startsWith("work-items/"))
+      .map(([, record]) => workItemSchema.parse(record))
+    for (const item of workItems) {
+      if (!changesById.has(item.changeId)) throw new Error(`Import Work Item ${item.id} has no Change`)
+    }
+    for (const change of changes) {
+      const items = workItems.filter((item) => item.changeId === change.id)
+      const byId = new Map(items.map((item) => [item.id, item]))
+      const visiting = new Set<string>()
+      const visited = new Set<string>()
+      const visit = (id: string): void => {
+        if (visiting.has(id)) throw new Error(`Import Work Item dependency graph contains a cycle in Change ${change.id}`)
+        if (visited.has(id)) return
+        const item = byId.get(id)
+        if (!item) throw new Error(`Import Work Item dependency ${id} is missing from Change ${change.id}`)
+        visiting.add(id)
+        for (const dependency of item.dependsOn) visit(dependency)
+        visiting.delete(id)
+        visited.add(id)
+      }
+      for (const item of items) visit(item.id)
+      if (change.state === "completed" && (items.length === 0 || items.some((item) => item.state !== "completed"))) {
+        throw new Error(`Import completed Change ${change.id} lacks a fully completed Work Item graph`)
+      }
+    }
+
+    const exactReferenceGroups: ExactDomainRecordReference[][] = []
+    for (const [, record] of recordsByPath) {
+      if (this.safeStartsWithKind(record, "requirement")) exactReferenceGroups.push(requirementSchema.parse(record).sourceRecords)
+      if (this.safeStartsWithKind(record, "decision")) exactReferenceGroups.push(decisionSchema.parse(record).affectedRecords)
+      if (this.safeStartsWithKind(record, "risk")) exactReferenceGroups.push(riskSchema.parse(record).evidence)
+      if (this.safeStartsWithKind(record, "architecture-record")) exactReferenceGroups.push(architectureRecordSchema.parse(record).affectedRecords)
+      if (this.safeStartsWithKind(record, "evidence")) exactReferenceGroups.push(evidenceRecordSchema.parse(record).subjects)
+    }
+    for (const references of exactReferenceGroups) for (const reference of references) resolveExact(reference)
+
+    const grants = [...recordsByPath.entries()].filter(([path]) => path.startsWith("instruction-grants/"))
+      .map(([, record]) => instructionPrivilegeGrantSchema.parse(record))
+    const currentGrantById = new Map(grants.map((grant) => [grant.id, grant]))
+    for (const grant of grants) {
+      const authority = resolveExact(grant.authority)
+      const authorityHistoryType = grant.authority.recordType === "architecture"
+        ? "architecture-record"
+        : grant.authority.recordType
+      const currentAuthority = currentByHistoryKey.get(`${authorityHistoryType}:${grant.authority.recordId}`)
+      if (!currentAuthority || canonicalDigest(currentAuthority) !== grant.authority.digest) {
+        throw new Error(`Import Instruction Privilege Grant ${grant.id} authority is not the current governed revision`)
+      }
+      if (
+        (grant.authority.recordType === "requirement" && !["accepted", "satisfied"].includes(requirementSchema.parse(authority).state)) ||
+        (grant.authority.recordType === "decision" && decisionSchema.parse(authority).state !== "decided") ||
+        (grant.authority.recordType === "architecture" && architectureRecordSchema.parse(authority).state !== "accepted")
+      ) throw new Error(`Import Instruction Privilege Grant ${grant.id} has non-authoritative lifecycle state`)
+    }
+
+    const contextPacks = [...recordsByPath.entries()].filter(([path]) => path.startsWith("context-packs/"))
+      .map(([, record]) => contextPackSchema.parse(record))
+    for (const pack of contextPacks) {
+      this.validateContextItemDigests(pack.items)
+      for (const item of pack.items) {
+        if (!item.instructionPrivilegeGrant) continue
+        const exactGrant = instructionPrivilegeGrantSchema.parse(resolveExact(item.instructionPrivilegeGrant))
+        const currentGrant = currentGrantById.get(exactGrant.id)
+        if (!currentGrant || currentGrant.revision !== exactGrant.revision || currentGrant.state !== "active") {
+          throw new Error(`Import Context Pack ${pack.id} references a stale or revoked Instruction Privilege Grant`)
+        }
+        if (exactGrant.expiresAt && Date.parse(exactGrant.expiresAt) <= Date.now()) {
+          throw new Error(`Import Context Pack ${pack.id} references an expired Instruction Privilege Grant`)
+        }
+        if (
+          canonicalDigest(exactGrant.source) !== canonicalDigest(item.source) ||
+          exactGrant.sourceDigest !== item.sourceDigest ||
+          exactGrant.privilege !== item.trust.instructionPrivilege ||
+          canonicalDigest(exactGrant.recipient) !== canonicalDigest(pack.recipient) ||
+          exactGrant.purpose !== pack.objective ||
+          item.trust.semanticAuthority.scope.some((scope) => !exactGrant.scope.includes(scope))
+        ) throw new Error(`Import Context Pack ${pack.id} Instruction Privilege Grant does not bind its exact use`)
+      }
+      const derived = this.deriveContextEvaluation({
+        objective: pack.objective,
+        recipient: pack.recipient,
+        items: pack.items,
+        omissions: pack.omissions,
+        warnings: pack.warnings,
+        conflicts: pack.conflicts,
+        classificationCombinationRisk: pack.classification.combinationRisk,
+        sufficiencyCriteria: pack.sufficiency.criteria,
+        sufficiencyEvaluator: pack.sufficiency.evaluator,
+        sufficiencyAssumptions: pack.sufficiency.assumptions.filter((assumption) => !assumption.startsWith("Warning retained:") && assumption !== "One or more context conflicts were accepted rather than resolved."),
+      })
+      if (canonicalDigest(derived) !== canonicalDigest({ classification: pack.classification, sufficiency: pack.sufficiency })) {
+        throw new Error(`Import Context Pack ${pack.id} carries forged classification or sufficiency`)
+      }
+    }
+
+    const plans = [...recordsByPath.entries()].filter(([path]) => path.startsWith("workflow-plans/"))
+      .map(([, record]) => workflowPlanSchema.parse(record))
+    for (const plan of plans) this.validateWorkflowInImport(plan, resolveExact)
+
+    for (const [, record] of recordsByPath) {
+      if (!this.safeStartsWithKind(record, "trace-link")) continue
+      const link = traceLinkSchema.parse(record)
+      for (const endpoint of [link.source, link.target]) {
+        if (endpoint.recordType === "external") continue
+        resolveExact({
+          recordType: endpoint.recordType,
+          recordId: endpoint.recordId,
+          revision: endpoint.revision!,
+          digest: endpoint.digest!,
+        })
+      }
+      this.assertTraceRelationship(link.source, link.relationship, link.target)
+    }
+
+    const runs = [...recordsByPath.entries()].filter(([path]) => /^sessions\/run-/.test(path))
+      .map(([, record]) => runSchema.parse(record))
+    const charters = [...recordsByPath.entries()].filter(([path]) => /^sessions\/charter-/.test(path))
+      .map(([, record]) => executionCharterSchema.parse(record))
+    const runsById = new Map(runs.map((run) => [run.id, run]))
+    const chartersById = new Map(charters.map((charter) => [charter.id, charter]))
+    for (const run of runs) {
+      const charter = chartersById.get(run.charterId)
+      if (!charter) throw new Error(`Import Run ${run.id} has no Execution Charter`)
+      if (
+        run.productId !== charter.productId ||
+        run.initiativeId !== charter.initiativeId ||
+        canonicalDigest(run.agent) !== canonicalDigest(charter.agent) ||
+        (run.charterDigest !== undefined && run.charterDigest !== canonicalDigest(charter))
+      ) throw new Error(`Import Run ${run.id} does not match its exact Execution Charter`)
+    }
+    for (const [, record] of recordsByPath) {
+      if (!this.safeStartsWithKind(record, "run-tool-selection")) continue
+      const selection = runToolSelectionSchema.parse(record)
+      const run = runsById.get(selection.runId)
+      if (!run) throw new Error(`Import Run Tool Selection ${selection.id} has no Run`)
+      const charter = chartersById.get(run.charterId)
+      if (!charter) throw new Error(`Import Run Tool Selection ${selection.id} has no Charter`)
+      const tools = selection.tools.map((reference) => toolDefinitionSchema.parse(resolveExact(reference)))
+      for (const tool of tools) {
+        for (const effect of tool.effectEnvelope) {
+          if (!selection.requestedEffects.includes(effect) || !charter.expectedEffects.includes(effect)) {
+            throw new Error(`Import Run Tool Selection ${selection.id} contains effect capability widening`)
+          }
+        }
+      }
+      for (const scope of selection.requestedScopes) {
+        if (!tools.some((tool) => tool.allowedScopes.some((allowed) => this.locatorContains(allowed, scope)))) {
+          throw new Error(`Import Run Tool Selection ${selection.id} contains an out-of-scope Tool grant`)
+        }
+      }
+    }
+
+    const managedRuns = [...recordsByPath.entries()].filter(([path]) => /^sessions\/managed-run-/.test(path))
+      .map(([, record]) => managedRunRecordSchema.parse(record))
+    const managedEvidence = [...recordsByPath.entries()].filter(([path]) => /^sessions\/managed-evidence-/.test(path))
+      .map(([, record]) => managedRunEvidenceSchema.parse(record))
+    const managedResults = [...recordsByPath.entries()].filter(([path]) => /^sessions\/managed-result-/.test(path))
+      .map(([, record]) => managedRunResultSchema.parse(record))
+    const managedById = new Map(managedRuns.map((record) => [record.id, record]))
+    const evidenceById = new Map(managedEvidence.map((record) => [record.id, record]))
+    const resultById = new Map(managedResults.map((record) => [record.id, record]))
+    for (const managed of managedRuns) {
+      if (
+        canonicalDigest(managed.bindingSnapshots.initiative) !== managed.bindings.initiative.digest ||
+        canonicalDigest(managed.bindingSnapshots.run) !== managed.bindings.run.digest
+      ) throw new Error(`Import Managed Run ${managed.id} binding snapshots do not match their exact digests`)
+      addExact("initiative", managed.bindingSnapshots.initiative)
+      addExact("run", managed.bindingSnapshots.run)
+    }
+    const resolveManagedBinding = (binding: ManagedRunRecord["bindings"]["product"]): unknown => {
+      if (binding.recordType === "execution-charter") {
+        const charter = chartersById.get(binding.recordId)
+        if (!charter || binding.revision !== 1 || canonicalDigest(charter) !== binding.digest) {
+          throw new Error(`Import Managed Run exact Charter binding is unresolved: ${binding.recordId}`)
+        }
+        return charter
+      }
+      const record = exactRecords.get(exactKey(binding.recordType, binding.recordId, binding.revision, binding.digest))
+      if (!record) throw new Error(`Import Managed Run exact binding is unresolved: ${binding.recordType}:${binding.recordId}@${binding.revision}`)
+      return record
+    }
+    for (const managed of managedRuns) {
+      if (managed.bindingsDigest !== canonicalDigest(managed.bindings)) {
+        throw new Error(`Import Managed Run ${managed.id} bindings digest does not match`)
+      }
+      const boundProduct = productSchema.parse(resolveManagedBinding(managed.bindings.product))
+      const boundInitiative = initiativeSchema.parse(resolveManagedBinding(managed.bindings.initiative))
+      const boundRun = runSchema.parse(resolveManagedBinding(managed.bindings.run))
+      const boundCharter = executionCharterSchema.parse(resolveManagedBinding(managed.bindings.charter))
+      for (const binding of managed.bindings.contextPacks) contextPackSchema.parse(resolveManagedBinding(binding))
+      for (const binding of managed.bindings.tools) toolDefinitionSchema.parse(resolveManagedBinding(binding))
+      if (managed.bindings.workflowPlan) workflowPlanSchema.parse(resolveManagedBinding(managed.bindings.workflowPlan))
+      if (managed.bindings.runToolSelection) runToolSelectionSchema.parse(resolveManagedBinding(managed.bindings.runToolSelection))
+      if (
+        boundProduct.id !== managed.productId ||
+        boundInitiative.id !== managed.initiativeId ||
+        boundRun.id !== managed.runId ||
+        boundRun.charterId !== boundCharter.id ||
+        boundCharter.productId !== boundProduct.id ||
+        boundCharter.initiativeId !== boundInitiative.id ||
+        boundRun.charterDigest !== canonicalDigest(boundCharter) ||
+        managed.bindings.agentSelectionDigest !== canonicalDigest(boundRun.agent)
+      ) throw new Error(`Import Managed Run ${managed.id} exact bindings do not match its execution identity`)
+      const intent = boundCharter.managedIntent
+      if (!intent) throw new Error(`Import Managed Run ${managed.id} Charter has no exact managed intent`)
+      const exactSetDigest = (values: ReadonlyArray<{ recordType: string; recordId: string; revision: number; digest: string }>) =>
+        canonicalDigest([...values].sort((left, right) =>
+          `${left.recordType}:${left.recordId}:${left.revision}:${left.digest}`
+            .localeCompare(`${right.recordType}:${right.recordId}:${right.revision}:${right.digest}`),
+        ))
+      if (
+        !managed.bindings.workflowPlan ||
+        canonicalDigest(managed.bindings.workflowPlan) !== canonicalDigest(intent.workflowPlan) ||
+        exactSetDigest(managed.bindings.contextPacks) !== exactSetDigest(intent.contextPacks) ||
+        exactSetDigest(managed.bindings.tools) !== exactSetDigest(intent.toolDefinitions)
+      ) throw new Error(`Import Managed Run ${managed.id} bindings substitute its confirmed Charter intent`)
+      if (managed.bindings.runToolSelection) {
+        const selection = runToolSelectionSchema.parse(resolveManagedBinding(managed.bindings.runToolSelection))
+        if (
+          selection.runId !== boundRun.id ||
+          canonicalDigest([...selection.requestedEffects].sort()) !== canonicalDigest([...intent.requestedEffects].sort()) ||
+          canonicalDigest([...selection.requestedScopes].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))) !==
+            canonicalDigest([...intent.requestedScopes].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))) ||
+          exactSetDigest(selection.tools) !== exactSetDigest(intent.toolDefinitions)
+        ) throw new Error(`Import Managed Run ${managed.id} Tool Selection does not match its confirmed Charter intent`)
+      } else if (intent.toolDefinitions.length > 0 || intent.requestedScopes.length > 0) {
+        throw new Error(`Import Managed Run ${managed.id} omits the Tool Selection required by its Charter intent`)
+      }
+      if (managed.previousManagedRunId) {
+        const previous = managedById.get(managed.previousManagedRunId)
+        if (!previous || previous.runId !== managed.runId || previous.productId !== managed.productId) {
+          throw new Error(`Import Managed Run ${managed.id} previous-run chain is unresolved`)
+        }
+      }
+      if (managed.resultId) {
+        const result = resultById.get(managed.resultId)
+        if (!result || canonicalDigest(result) !== managed.resultDigest) {
+          throw new Error(`Import Managed Run ${managed.id} result binding is unresolved`)
+        }
+      }
+    }
+    for (const evidence of managedEvidence) {
+      const managed = managedById.get(evidence.managedRunId)
+      if (
+        !managed ||
+        evidence.runId !== managed.runId ||
+        evidence.productId !== managed.productId ||
+        evidence.bindingsDigest !== managed.bindingsDigest ||
+        evidence.eventsDigest !== canonicalDigest(evidence.events)
+      ) throw new Error(`Import Managed Evidence ${evidence.id} is orphaned or internally inconsistent`)
+    }
+    for (const result of managedResults) {
+      const managed = managedById.get(result.managedRunId)
+      const evidence = evidenceById.get(result.evidenceId)
+      if (
+        !managed ||
+        !evidence ||
+        result.runId !== managed.runId ||
+        result.productId !== managed.productId ||
+        result.mode !== managed.mode ||
+        canonicalDigest(result.provider) !== canonicalDigest(managed.provider) ||
+        result.evidenceDigest !== canonicalDigest(evidence)
+      ) throw new Error(`Import Managed Result ${result.id} is orphaned or internally inconsistent`)
+      if (managed.resultId !== result.id || managed.resultDigest !== canonicalDigest(result)) {
+        throw new Error(`Import Managed Result ${result.id} is not bound by its Managed Run`)
+      }
+    }
+
+    if (bundle.manifest.productId !== product.id) throw new Error("Import graph Product identity mismatch")
   }
 
   private async readPortableMember(path: string): Promise<unknown> {
@@ -1818,9 +3139,17 @@ export class ProductStudioService {
     if (/^evidence\/[0-9a-f-]+\.json$/i.test(path)) return "evidence"
     if (/^trace\/[0-9a-f-]+\.json$/i.test(path)) return "trace-link"
     if (/^context-packs\/[0-9a-f-]+\.json$/i.test(path)) return "context-pack"
+    if (/^instruction-grants\/[0-9a-f-]+\.json$/i.test(path)) return "instruction-privilege-grant"
     if (/^workflow-plans\/[0-9a-f-]+\.json$/i.test(path)) return "workflow-plan"
     if (/^tools\/[0-9a-f-]+\.json$/i.test(path)) return "tool-definition"
     if (/^tool-selections\/[0-9a-f-]+\.json$/i.test(path)) return "run-tool-selection"
+    if (/^record-history\/[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) return "product-record-revision"
+    if (/^sessions\/charter-[0-9a-f-]+\.json$/i.test(path)) return "execution-charter"
+    if (/^sessions\/run-[0-9a-f-]+\.json$/i.test(path)) return "run"
+    if (/^sessions\/managed-run-[0-9a-f-]+\.json$/i.test(path)) return "managed-run"
+    if (/^sessions\/managed-evidence-[0-9a-f-]+\.json$/i.test(path)) return "managed-run-evidence"
+    if (/^sessions\/managed-result-[0-9a-f-]+\.json$/i.test(path)) return "managed-run-result"
+    if (/^handoffs\/[0-9a-f-]+\.json$/i.test(path)) return "handoff"
     throw new Error(`Import member path is unsupported or non-portable: ${path}`)
   }
 
@@ -1839,10 +3168,133 @@ export class ProductStudioService {
     if (/^evidence\/[0-9a-f-]+\.json$/i.test(path)) return evidenceRecordSchema
     if (/^trace\/[0-9a-f-]+\.json$/i.test(path)) return traceLinkSchema
     if (/^context-packs\/[0-9a-f-]+\.json$/i.test(path)) return contextPackSchema
+    if (/^instruction-grants\/[0-9a-f-]+\.json$/i.test(path)) return instructionPrivilegeGrantSchema
     if (/^workflow-plans\/[0-9a-f-]+\.json$/i.test(path)) return workflowPlanSchema
     if (/^tools\/[0-9a-f-]+\.json$/i.test(path)) return toolDefinitionSchema
     if (/^tool-selections\/[0-9a-f-]+\.json$/i.test(path)) return runToolSelectionSchema
+    if (/^record-history\/[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) return productRecordRevisionSchema
+    if (/^sessions\/charter-[0-9a-f-]+\.json$/i.test(path)) return executionCharterSchema
+    if (/^sessions\/run-[0-9a-f-]+\.json$/i.test(path)) return runSchema
+    if (/^sessions\/managed-run-[0-9a-f-]+\.json$/i.test(path)) return managedRunRecordSchema
+    if (/^sessions\/managed-evidence-[0-9a-f-]+\.json$/i.test(path)) return managedRunEvidenceSchema
+    if (/^sessions\/managed-result-[0-9a-f-]+\.json$/i.test(path)) return managedRunResultSchema
+    if (/^handoffs\/[0-9a-f-]+\.json$/i.test(path)) return handoffSchema
     throw new Error(`Import member path is unsupported or non-portable: ${path}`)
+  }
+
+  private schemaForHistoryType(recordType: ProductRecordRevision["recordType"]): ZodType<unknown> {
+    const schemas: Record<ProductRecordRevision["recordType"], ZodType<unknown>> = {
+      change: changeSchema,
+      "work-item": workItemSchema,
+      requirement: requirementSchema,
+      decision: decisionSchema,
+      risk: riskSchema,
+      "architecture-record": architectureRecordSchema,
+      evidence: evidenceRecordSchema,
+      "trace-link": traceLinkSchema,
+      "context-pack": contextPackSchema,
+      "workflow-plan": workflowPlanSchema,
+      "tool-definition": toolDefinitionSchema,
+      "instruction-privilege-grant": instructionPrivilegeGrantSchema,
+      "run-tool-selection": runToolSelectionSchema,
+    }
+    return schemas[recordType]
+  }
+
+  private safeStartsWithKind(value: unknown, kind: string): boolean {
+    return Boolean(value && typeof value === "object" && !Array.isArray(value) && (value as { kind?: unknown }).kind === kind)
+  }
+
+  private assertJsonDepth(value: unknown, maxDepth: number): void {
+    const stack: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }]
+    let nodes = 0
+    while (stack.length > 0) {
+      const current = stack.pop()!
+      nodes += 1
+      if (nodes > 250_000) throw new Error("Import preview JSON structure exceeds the 250,000-node safety limit")
+      if (current.depth > maxDepth) throw new Error(`Import preview JSON nesting exceeds the ${maxDepth}-level safety limit`)
+      if (Array.isArray(current.value)) {
+        for (const item of current.value) stack.push({ value: item, depth: current.depth + 1 })
+      } else if (current.value && typeof current.value === "object") {
+        for (const item of Object.values(current.value)) stack.push({ value: item, depth: current.depth + 1 })
+      }
+    }
+  }
+
+  private validateWorkflowInImport(
+    plan: WorkflowPlan,
+    resolveExact: (reference: ExactDomainRecordReference) => unknown,
+  ): void {
+    resolveExact(plan.subject)
+    const contextById = new Map<string, ContextPack>()
+    for (const reference of plan.contextPacks) {
+      if (reference.recordType !== "context-pack") throw new Error(`Import Workflow Plan ${plan.id} has a non-Context context reference`)
+      const pack = contextPackSchema.parse(resolveExact(reference))
+      if (pack.sufficiency.status === "insufficient") throw new Error(`Import Workflow Plan ${plan.id} uses insufficient Context`)
+      contextById.set(pack.id, pack)
+    }
+    const toolById = new Map<string, ToolDefinition>()
+    for (const reference of plan.toolDefinitions) {
+      if (reference.recordType !== "tool-definition") throw new Error(`Import Workflow Plan ${plan.id} has a non-Tool tool reference`)
+      const tool = toolDefinitionSchema.parse(resolveExact(reference))
+      toolById.set(tool.id, tool)
+    }
+    const byId = new Map(plan.steps.map((step) => [step.id, step]))
+    const visiting = new Set<string>()
+    const visited = new Set<string>()
+    const visit = (id: string): void => {
+      if (visiting.has(id)) throw new Error(`Import Workflow Plan ${plan.id} contains a cycle`)
+      if (visited.has(id)) return
+      const step = byId.get(id)
+      if (!step) throw new Error(`Import Workflow Plan ${plan.id} has a missing dependency ${id}`)
+      visiting.add(id)
+      for (const dependency of step.dependsOn) visit(dependency)
+      visiting.delete(id)
+      visited.add(id)
+    }
+    for (const step of plan.steps) {
+      visit(step.id)
+      for (const reference of step.contextPacks) {
+        const pack = contextById.get(reference.recordId)
+        if (!pack || pack.revision !== reference.revision || canonicalDigest(pack) !== reference.digest) {
+          throw new Error(`Import Workflow Step ${step.id} uses undeclared Context`)
+        }
+        if (pack.recipient.id !== step.responsibility.id) {
+          throw new Error(`Import Workflow Step ${step.id} Context recipient mismatch`)
+        }
+      }
+      const stepTools = step.toolDefinitions.map((reference) => {
+        const tool = toolById.get(reference.recordId)
+        if (!tool || tool.revision !== reference.revision || canonicalDigest(tool) !== reference.digest) {
+          throw new Error(`Import Workflow Step ${step.id} uses an undeclared Tool`)
+        }
+        return tool
+      })
+      if (step.responsibility.kind === "tool" && stepTools.length === 0) {
+        throw new Error(`Import Workflow Step ${step.id} assigns Tool responsibility without an exact Tool`)
+      }
+      if (stepTools.length > 0) {
+        const supportedEffects = new Set(stepTools.flatMap((tool) => tool.effectEnvelope))
+        if (step.effectEnvelope.some((effect) => !supportedEffects.has(effect))) {
+          throw new Error(`Import Workflow Step ${step.id} has unsupported effects`)
+        }
+        for (const scope of [...step.scope.read, ...step.scope.write, ...step.scope.effects]) {
+          if (!stepTools.some((tool) => tool.allowedScopes.some((allowed) => this.locatorContains(allowed, scope)))) {
+            throw new Error(`Import Workflow Step ${step.id} exceeds Tool scope`)
+          }
+        }
+      }
+    }
+    if (plan.strategy === "parallel-readonly") {
+      for (const step of plan.steps) {
+        if (step.scope.write.length > 0 || step.scope.effects.length > 0 || step.effectEnvelope.some((effect) => effect !== "observe")) {
+          throw new Error(`Import parallel Workflow Plan ${plan.id} is effectful`)
+        }
+      }
+      if ([...toolById.values()].some((tool) => tool.effectEnvelope.some((effect) => effect !== "observe"))) {
+        throw new Error(`Import parallel Workflow Plan ${plan.id} references an effectful Tool`)
+      }
+    }
   }
 
   private async createSimpleRecord<T extends { id: string; productId: string; revision: number; createdAt: string; updatedAt: string }>(
@@ -1873,7 +3325,7 @@ export class ProductStudioService {
     })
   }
 
-  private async reviseSimpleRecord<T extends { id: string; revision: number; updatedAt: string }>(
+  private async reviseSimpleRecord<T extends { id: string; productId: string; revision: number; updatedAt: string }>(
     directory: string,
     id: string,
     expectedRevision: number,
@@ -1881,6 +3333,7 @@ export class ProductStudioService {
     patch: Partial<T>,
     eventType: string,
     actorId: string,
+    transitionReason?: string,
   ): Promise<T> {
     return this.repository.withLock(async () => {
       this.assertNoReservedKeys(patch as Record<string, unknown>, "Record patch")
@@ -1899,27 +3352,105 @@ export class ProductStudioService {
         updatedAt: new Date().toISOString(),
       })
       this.assertMaterialChange(current, updated, "Record")
-      await this.commitRecord(directory, updated, schema, eventType, actorId)
+      await this.commitRecord(directory, updated, schema, eventType, actorId, transitionReason)
       return updated
     })
   }
 
-  private async commitRecord<T extends { id: string; revision: number }>(
+  private async commitRecord<T extends { id: string; productId: string; revision: number }>(
     directory: string,
     record: T,
     schema: ZodType<T>,
     eventType: string,
     actorId: string,
+    transitionReason?: string,
   ): Promise<void> {
+    const recordType = this.historyTypeForDirectory(directory)
+    const historyWrites: MutationWrite[] = []
+    let predecessorDigest: string | undefined
+    if (record.revision > 1) {
+      const previous = await this.repository.readJson(
+        this.repository.resolve(directory, `${record.id}.json`),
+        schema,
+      )
+      const previousRecord = previous as unknown as { revision: number }
+      if (previousRecord.revision !== record.revision - 1) {
+        throw new Error(`Record history is non-contiguous for ${recordType} ${record.id}`)
+      }
+      predecessorDigest = canonicalDigest(previous)
+      try {
+        const persistedPrevious = await this.readRecordHistory(recordType, record.id, previousRecord.revision)
+        if (persistedPrevious.recordDigest !== predecessorDigest) {
+          throw new Error(`Immutable history does not match current ${recordType} revision ${previousRecord.revision}`)
+        }
+      } catch (error) {
+        if (!this.isMissing(error)) throw error
+        if (previousRecord.revision !== 1) {
+          throw new Error(
+            `Immutable history migration is required for ${recordType} ${record.id}; revisions before ${previousRecord.revision} cannot be reconstructed safely`,
+          )
+        }
+        const previousHistory = this.recordHistoryEnvelope(recordType, previous as T, undefined)
+        historyWrites.push(this.governed(
+          this.recordHistoryPath(recordType, record.id, previousRecord.revision),
+          previousHistory,
+          productRecordRevisionSchema,
+        ))
+      }
+    }
+    const history = this.recordHistoryEnvelope(recordType, record, predecessorDigest)
+    historyWrites.push(this.governed(
+      this.recordHistoryPath(recordType, record.id, record.revision),
+      history,
+      productRecordRevisionSchema,
+    ))
     await this.repository.commitMutation({
-      writes: [this.governed(this.repository.resolve(directory, `${record.id}.json`), record, schema)],
+      writes: [
+        this.governed(this.repository.resolve(directory, `${record.id}.json`), record, schema),
+        ...historyWrites,
+      ],
       audit: {
         eventType,
         actor: { kind: "human", id: actorId },
         subjectId: record.id,
-        payload: { revision: record.revision, recordDigest: canonicalDigest(record) },
+        payload: {
+          revision: record.revision,
+          recordDigest: canonicalDigest(record),
+          ...(transitionReason ? { transitionReason } : {}),
+        },
       },
     })
+  }
+
+  async readRecordHistory(
+    recordType: ProductRecordRevision["recordType"],
+    recordId: string,
+    revision: number,
+  ): Promise<ProductRecordRevision> {
+    if (!Number.isInteger(revision) || revision < 1) throw new Error("Historical revision must be a positive integer")
+    const id = this.requireUuid(recordId, "Historical record ID")
+    const history = await this.repository.readJson(
+      this.recordHistoryPath(recordType, id, revision),
+      productRecordRevisionSchema,
+    )
+    if (history.recordType !== recordType || history.recordId !== id || history.revision !== revision) {
+      throw new Error("Historical record envelope does not match the requested identity")
+    }
+    return history
+  }
+
+  async listRecordHistory(
+    recordType: ProductRecordRevision["recordType"],
+    recordId: string,
+  ): Promise<ProductRecordRevision[]> {
+    const id = this.requireUuid(recordId, "Historical record ID")
+    const escapedType = recordType.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    return this.listRecords(
+      "record-history",
+      new RegExp(`^${escapedType}-${escapedId}-r[1-9][0-9]*\\.json$`, "i"),
+      productRecordRevisionSchema,
+    ).then((records) => records.sort((left, right) => right.revision - left.revision))
   }
 
   private governed<T>(path: string, value: T, schema: ZodType<T>): MutationWrite<T> {
@@ -1941,6 +3472,9 @@ export class ProductStudioService {
       if (this.isMissing(error)) return []
       throw error
     }
+    if (names.length > 10_000) {
+      throw new Error(`Product record directory ${directory} exceeds the 10,000-record portable safety limit`)
+    }
     const records = await Promise.all(names.map((name) =>
       this.repository.readJson(this.repository.resolve(directory, name), schema),
     ))
@@ -1954,6 +3488,54 @@ export class ProductStudioService {
 
   private designDraftPath(productId: string): string {
     return this.repository.resolve("runtime", `design-draft-${productId}.json`)
+  }
+
+  private historyTypeForDirectory(directory: string): ProductRecordRevision["recordType"] {
+    const recordTypes: Record<string, ProductRecordRevision["recordType"]> = {
+      changes: "change",
+      "work-items": "work-item",
+      requirements: "requirement",
+      decisions: "decision",
+      risks: "risk",
+      architecture: "architecture-record",
+      evidence: "evidence",
+      trace: "trace-link",
+      "context-packs": "context-pack",
+      "workflow-plans": "workflow-plan",
+      tools: "tool-definition",
+      "instruction-grants": "instruction-privilege-grant",
+      "tool-selections": "run-tool-selection",
+    }
+    const recordType = recordTypes[directory]
+    if (!recordType) throw new Error(`Immutable history is not registered for Product record directory ${directory}`)
+    return recordType
+  }
+
+  private recordHistoryEnvelope<T extends { id: string; productId: string; revision: number }>(
+    recordType: ProductRecordRevision["recordType"],
+    record: T,
+    predecessorDigest: string | undefined,
+  ): ProductRecordRevision {
+    return productRecordRevisionSchema.parse({
+      schemaVersion: 1,
+      kind: "product-record-revision",
+      productId: record.productId,
+      recordType,
+      recordId: record.id,
+      revision: record.revision,
+      recordDigest: canonicalDigest(record),
+      ...(predecessorDigest ? { predecessorDigest } : {}),
+      snapshot: record,
+      recordedAt: new Date().toISOString(),
+    })
+  }
+
+  private recordHistoryPath(
+    recordType: ProductRecordRevision["recordType"],
+    recordId: string,
+    revision: number,
+  ): string {
+    return this.repository.resolve("record-history", `${recordType}-${recordId}-r${revision}.json`)
   }
 
   private async requireProductRevision(expected: number): Promise<Product> {
@@ -1979,6 +3561,52 @@ export class ProductStudioService {
     if (canonicalDigest(withoutRevision(current)) === canonicalDigest(withoutRevision(updated))) {
       throw new Error(`${subject} revision has no material changes`)
     }
+  }
+
+  private assertDesignSectionsIntegrity(sections: ProductDesignDraft["sections"]): void {
+    for (const sectionId of productStudioSectionIds) {
+      const section = sections[sectionId]
+      const fields = new Map(section.fields.map((field) => [field.key, field]))
+      for (const [key, question] of fieldDefinitions[sectionId]) {
+        const field = fields.get(key)
+        if (!field) continue
+        if (field.question !== question) throw new Error(`Design field ${sectionId}.${key} changed its canonical question`)
+      }
+      for (const gap of section.gaps) {
+        if (gap.fieldKey && !fields.has(gap.fieldKey)) throw new Error(`Design gap ${gap.id} references an unknown field`)
+      }
+      for (const conflict of section.conflicts) {
+        if (conflict.fieldKeys.some((key) => !fields.has(key))) {
+          throw new Error(`Design conflict ${conflict.id} references an unknown field`)
+        }
+      }
+    }
+  }
+
+  private assertAcceptedDesignConflicts(sections: ProductDesignDraft["sections"], actorId: string): void {
+    for (const section of Object.values(sections)) {
+      for (const conflict of section.conflicts.filter((candidate) => candidate.state === "accepted")) {
+        if (conflict.acceptance?.acceptedBy.id !== actorId) {
+          throw new Error(`Accepted Design conflict ${conflict.id} must be attributed to the revision actor`)
+        }
+      }
+    }
+  }
+
+  private requireTransitionReason(reason: string | undefined, subject: string): string {
+    if (!reason || reason.trim().length < 2) throw new Error(`${subject} state transitions require a reason`)
+    return reason.trim()
+  }
+
+  private assertStateTransition<TState extends string>(
+    current: TState,
+    next: TState,
+    transitions: Record<TState, readonly TState[]>,
+    subject: string,
+    reason: string | undefined,
+  ): void {
+    if (!transitions[current].includes(next)) throw new Error(`Invalid ${subject} transition from ${current} to ${next}`)
+    this.requireTransitionReason(reason, subject)
   }
 
   private assertAllowedKeys(value: object, allowed: readonly string[], subject: string): void {
@@ -2021,6 +3649,43 @@ export class ProductStudioService {
         throw new Error("Design baseline revision or digest does not match")
       }
     }
+    if (baseline.subjectType === "architecture" || baseline.subjectType === "requirement") {
+      await this.validateExactDomainReference({
+        recordType: baseline.subjectType,
+        recordId: this.requireUuid(baseline.subjectId, `${baseline.subjectType} baseline ID`),
+        revision: baseline.revision,
+        digest: baseline.digest,
+      })
+    }
+    if (baseline.subjectType === "external") {
+      const attestation = baseline.externalAttestation
+      if (!attestation) throw new Error("External baselines require a verified Evidence attestation")
+      const evidence = await this.readEvidence(attestation.evidenceRecordId)
+      if (evidence.verification.status !== "verified" || evidence.artifactDigest !== baseline.digest) {
+        throw new Error("External baseline Evidence must be verified and bind the exact digest")
+      }
+      this.assertEvidenceFreshness(evidence)
+      if (evidence.freshness.status !== "fresh") {
+        throw new Error("External baseline Evidence must have an explicit fresh assessment")
+      }
+      if (
+        evidence.verification.verifier?.kind !== attestation.verifiedBy.kind ||
+        evidence.verification.verifier?.id !== attestation.verifiedBy.id ||
+        evidence.verification.verifiedAt !== attestation.verifiedAt
+      ) throw new Error("External baseline attestation does not match Evidence verification")
+      if (canonicalDigest(evidence.limitations) !== canonicalDigest(attestation.limitations)) {
+        throw new Error("External baseline attestation limitations do not match the Evidence record")
+      }
+      const locatorIdentity = evidence.origin.locator.kind === "external-uri"
+        ? evidence.origin.locator.uri
+        : evidence.origin.locator.kind === "logical"
+          ? evidence.origin.locator.value
+          : undefined
+      if (locatorIdentity !== baseline.subjectId) throw new Error("External baseline Evidence targets a different source")
+      if (evidence.validUntil && Date.parse(evidence.validUntil) <= Date.now()) {
+        throw new Error("External baseline Evidence is expired")
+      }
+    }
   }
 
   private async validateWorkGraph(candidate: WorkItem): Promise<void> {
@@ -2048,6 +3713,13 @@ export class ProductStudioService {
   }
 
   private assertEvidenceFreshness(input: MutableEvidence): void {
+    const maximumClockSkew = 5 * 60 * 1_000
+    const latestAccepted = Date.now() + maximumClockSkew
+    if (Date.parse(input.collectedAt) > latestAccepted) throw new Error("Evidence collection time is implausibly in the future")
+    if (Date.parse(input.freshness.assessedAt) > latestAccepted) throw new Error("Evidence freshness assessment is implausibly in the future")
+    if (input.verification.verifiedAt && Date.parse(input.verification.verifiedAt) > latestAccepted) {
+      throw new Error("Evidence verification time is implausibly in the future")
+    }
     if (
       input.freshness.status === "fresh" &&
       input.validUntil !== undefined &&
@@ -2065,36 +3737,45 @@ export class ProductStudioService {
 
   private async resolveTraceEndpoint(endpoint: TraceEndpoint): Promise<"valid" | "unresolved" | "stale" | "invalid"> {
     if (endpoint.recordType === "external") return "unresolved"
-    let record: unknown
     try {
-      switch (endpoint.recordType) {
-        case "product": record = await this.readProduct(); break
-        case "design-revision": record = await this.readDesignRevision(endpoint.recordId); break
-        case "initiative": record = await this.readInitiative(endpoint.recordId); break
-        case "change": record = await this.readChange(endpoint.recordId); break
-        case "work-item": record = await this.readWorkItem(endpoint.recordId); break
-        case "requirement": record = await this.readRequirement(endpoint.recordId); break
-        case "decision": record = await this.readDecision(endpoint.recordId); break
-        case "risk": record = await this.readRisk(endpoint.recordId); break
-        case "architecture": record = await this.readArchitectureRecord(endpoint.recordId); break
-        case "evidence": record = await this.readEvidence(endpoint.recordId); break
-        case "run": record = await this.repository.readJson(
-          this.repository.resolve("sessions", `run-${this.requireUuid(endpoint.recordId, "Run ID")}.json`),
-          runSchema,
-        ); break
-        case "context-pack":
-        case "workflow-plan":
-        case "tool-definition":
-          return "unresolved"
-      }
+      const reference = {
+        recordType: endpoint.recordType,
+        recordId: endpoint.recordId,
+        revision: endpoint.revision!,
+        digest: endpoint.digest!,
+      } satisfies ExactDomainRecordReference
+      await this.validateExactDomainReference(reference)
+      return await this.isExactReferenceCurrent(reference) ? "valid" : "stale"
     } catch (error) {
-      return this.isMissing(error) ? "unresolved" : "invalid"
+      if (this.isMissing(error)) return "unresolved"
+      if (error instanceof Error && /revision|digest|historical|stale/i.test(error.message)) return "stale"
+      return "invalid"
     }
-    const candidate = record as { id?: string; productId?: string; revision?: number }
-    if (candidate.id && candidate.id !== endpoint.recordId) return "invalid"
-    if (endpoint.revision !== undefined && (candidate.revision ?? 1) !== endpoint.revision) return "stale"
-    if (endpoint.digest !== undefined && canonicalDigest(record) !== endpoint.digest) return "stale"
-    return "valid"
+  }
+
+  private assertTraceRelationship(
+    source: TraceEndpoint,
+    relationship: TraceLink["relationship"],
+    target: TraceEndpoint,
+  ): void {
+    if (relationship === "related-to") return
+    const allowed: Partial<Record<TraceLink["relationship"], ReadonlyArray<readonly [TraceEndpoint["recordType"], TraceEndpoint["recordType"]]>>> = {
+      targets: [["initiative", "product"], ["change", "initiative"], ["work-item", "change"]],
+      "derives-from": [["requirement", "product"], ["change", "design-revision"], ["context-pack", "requirement"]],
+      "contributes-to": [["work-item", "change"], ["change", "initiative"]],
+      "depends-on": [["work-item", "work-item"], ["requirement", "requirement"], ["workflow-plan", "context-pack"]],
+      implements: [["work-item", "requirement"], ["change", "requirement"]],
+      satisfies: [["evidence", "requirement"], ["work-item", "requirement"]],
+      validates: [["evidence", "work-item"], ["evidence", "requirement"], ["evidence", "change"], ["evidence", "run"]],
+      mitigates: [["work-item", "risk"], ["evidence", "risk"], ["decision", "risk"]],
+      decides: [["decision", "requirement"], ["decision", "architecture"], ["decision", "risk"]],
+      affects: [["architecture", "requirement"], ["risk", "change"], ["decision", "change"], ["change", "architecture"]],
+      supersedes: [["requirement", "requirement"], ["decision", "decision"], ["architecture", "architecture"], ["workflow-plan", "workflow-plan"]],
+    }
+    const pairs = allowed[relationship] ?? []
+    if (!pairs.some(([sourceType, targetType]) => sourceType === source.recordType && targetType === target.recordType)) {
+      throw new Error(`Trace relationship ${relationship} is invalid from ${source.recordType} to ${target.recordType}`)
+    }
   }
 
   private recordLabel(kind: ProductDomainRecordKind, record: Record<string, unknown>): string {

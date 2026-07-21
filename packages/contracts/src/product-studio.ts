@@ -53,6 +53,10 @@ function hasUniqueValues(values: readonly string[]): boolean {
   return new Set(values).size === values.length
 }
 
+function canonicalStringList(values: readonly string[]): string {
+  return JSON.stringify([...values].sort())
+}
+
 export const productStudioSectionIds = [
   "overview",
   "direction",
@@ -88,6 +92,16 @@ export const designFieldSchema = z.object({
   if (field.state === "deferred" && !field.deferredReason) {
     context.addIssue({ code: "custom", path: ["deferredReason"], message: "Deferred fields require a reason" })
   }
+  if (field.state === "deferred" && !field.revisitTrigger) {
+    context.addIssue({ code: "custom", path: ["revisitTrigger"], message: "Deferred fields require a revisit trigger" })
+  }
+  if (field.state !== "deferred" && (field.deferredReason || field.revisitTrigger)) {
+    context.addIssue({
+      code: "custom",
+      path: ["state"],
+      message: "Deferral metadata is valid only while the field is deferred",
+    })
+  }
 })
 
 export const designGapSchema = z.object({
@@ -96,7 +110,15 @@ export const designGapSchema = z.object({
   kind: z.enum(["missing", "weak", "invalid", "dependency", "evidence"]),
   severity: z.enum(["info", "warning", "blocker"]),
   message: shortTextSchema,
+  state: z.enum(["open", "resolved"]).default("open"),
   resolution: shortTextSchema.optional(),
+}).superRefine((gap, context) => {
+  if (gap.state === "resolved" && !gap.resolution) {
+    context.addIssue({ code: "custom", path: ["resolution"], message: "Resolved gaps require a resolution" })
+  }
+  if (gap.state === "open" && gap.resolution) {
+    context.addIssue({ code: "custom", path: ["state"], message: "Open gaps cannot carry a resolution" })
+  }
 })
 
 export const designConflictSchema = z.object({
@@ -105,9 +127,24 @@ export const designConflictSchema = z.object({
   statement: shortTextSchema,
   state: z.enum(["open", "resolved", "accepted"]),
   resolution: shortTextSchema.optional(),
+  acceptance: z.object({
+    acceptedBy: z.object({ kind: z.literal("human"), id: shortTextSchema }),
+    rationale: shortTextSchema,
+    acceptedAt: z.string().datetime(),
+    revisitTrigger: shortTextSchema,
+  }).optional(),
 }).superRefine((conflict, context) => {
   if (conflict.state === "resolved" && !conflict.resolution) {
     context.addIssue({ code: "custom", path: ["resolution"], message: "Resolved conflicts require a resolution" })
+  }
+  if (conflict.state === "accepted" && !conflict.acceptance) {
+    context.addIssue({ code: "custom", path: ["acceptance"], message: "Accepted conflicts require human acceptance" })
+  }
+  if (conflict.state !== "accepted" && conflict.acceptance) {
+    context.addIssue({ code: "custom", path: ["acceptance"], message: "Conflict acceptance is valid only in the accepted state" })
+  }
+  if (conflict.state !== "resolved" && conflict.resolution) {
+    context.addIssue({ code: "custom", path: ["resolution"], message: "Conflict resolution is valid only in the resolved state" })
   }
 })
 
@@ -161,6 +198,7 @@ export const designSectionReadinessSchema = z.object({
   weakFields: z.array(identifierSchema),
   deferredFields: z.array(identifierSchema),
   openConflictIds: z.array(z.string().uuid()),
+  acceptedConflictIds: z.array(z.string().uuid()),
   blockerGapIds: z.array(z.string().uuid()),
 })
 
@@ -174,8 +212,30 @@ export const designReadinessReportSchema = z.object({
   blockingGapIds: z.array(z.string().uuid()),
   openConflictIds: z.array(z.string().uuid()),
   deferredFieldCount: z.number().int().nonnegative(),
+  acceptedConflictCount: z.number().int().nonnegative(),
   evaluatedAt: z.string().datetime(),
   claimBoundary: z.literal("design-readiness-is-not-implementation-approval"),
+}).superRefine((report, context) => {
+  const sectionIds = report.sections.map((section) => section.sectionId)
+  if (!hasUniqueValues(sectionIds) || productStudioSectionIds.some((sectionId) => !sectionIds.includes(sectionId))) {
+    context.addIssue({ code: "custom", path: ["sections"], message: "Readiness must contain every Product Studio section exactly once" })
+  }
+  const blocking = report.sections.flatMap((section) => section.blockerGapIds)
+  const conflicts = report.sections.flatMap((section) => section.openConflictIds)
+  if (canonicalStringList(blocking) !== canonicalStringList(report.blockingGapIds)) {
+    context.addIssue({ code: "custom", path: ["blockingGapIds"], message: "Readiness blocker summary must match section details" })
+  }
+  if (canonicalStringList(conflicts) !== canonicalStringList(report.openConflictIds)) {
+    context.addIssue({ code: "custom", path: ["openConflictIds"], message: "Readiness conflict summary must match section details" })
+  }
+  const deferredCount = report.sections.reduce((total, section) => total + section.deferredFields.length, 0)
+  if (deferredCount !== report.deferredFieldCount) {
+    context.addIssue({ code: "custom", path: ["deferredFieldCount"], message: "Readiness deferred count must match section details" })
+  }
+  const acceptedConflictCount = report.sections.reduce((total, section) => total + section.acceptedConflictIds.length, 0)
+  if (acceptedConflictCount !== report.acceptedConflictCount) {
+    context.addIssue({ code: "custom", path: ["acceptedConflictCount"], message: "Accepted conflict count must match section details" })
+  }
 })
 
 export const productDesignRevisionSchema = rejectSecrets(z.object({
@@ -193,6 +253,14 @@ export const productDesignRevisionSchema = rejectSecrets(z.object({
   snapshotDigest: digestSchema,
   createdBy: z.object({ kind: z.literal("human"), id: shortTextSchema }),
   createdAt: z.string().datetime(),
+}).superRefine((revision, context) => {
+  if (
+    revision.readiness.productId !== revision.productId ||
+    revision.readiness.draftId !== revision.sourceDraftId ||
+    revision.readiness.draftRevision !== revision.sourceDraftRevision
+  ) {
+    context.addIssue({ code: "custom", path: ["readiness"], message: "Design readiness identity must match its exact source draft" })
+  }
 }))
 
 export const productRevisionSchema = z.object({
@@ -219,6 +287,36 @@ export const exactBaselineSchema = z.object({
   subjectId: z.string().min(1).max(500),
   revision: z.number().int().positive(),
   digest: digestSchema,
+  externalAttestation: z.object({
+    evidenceRecordId: z.string().uuid(),
+    verifiedBy: z.object({ kind: z.enum(["human", "system"]), id: shortTextSchema }),
+    verifiedAt: z.string().datetime(),
+    limitations: z.array(shortTextSchema).min(1).max(64),
+  }).optional(),
+}).superRefine((baseline, context) => {
+  if (baseline.subjectType === "external") {
+    if (!baseline.externalAttestation) {
+      context.addIssue({
+        code: "custom",
+        path: ["externalAttestation"],
+        message: "External exact baselines require a verified Evidence attestation",
+      })
+    }
+    if (
+      baseline.subjectId.startsWith("/") ||
+      baseline.subjectId.startsWith("~") ||
+      /^[A-Za-z]:/.test(baseline.subjectId) ||
+      baseline.subjectId.includes("\\")
+    ) {
+      context.addIssue({ code: "custom", path: ["subjectId"], message: "External baselines cannot contain host paths" })
+    }
+  } else if (baseline.externalAttestation) {
+    context.addIssue({
+      code: "custom",
+      path: ["externalAttestation"],
+      message: "Local exact baselines cannot carry an external attestation",
+    })
+  }
 })
 
 export const genesisBaselineSchema = z.object({
@@ -234,6 +332,7 @@ export const workspaceRelativePathSchema = z.string().min(1).max(4_096).refine((
   const segments = value.split("/")
   return !value.startsWith("/") &&
     !/^[A-Za-z]:/.test(value) &&
+    !value.startsWith("~") &&
     !value.includes("\\") &&
     !value.includes("\0") &&
     !/%2e/i.test(value) &&
@@ -256,6 +355,32 @@ export const portableLocatorSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("logical"), value: identifierSchema }),
   z.object({ kind: z.literal("external-uri"), uri: externalUriSchema }),
 ])
+
+export const exactDomainRecordTypeSchema = z.enum([
+  "product",
+  "design-revision",
+  "initiative",
+  "change",
+  "work-item",
+  "requirement",
+  "decision",
+  "risk",
+  "architecture",
+  "evidence",
+  "context-pack",
+  "workflow-plan",
+  "tool-definition",
+  "instruction-privilege-grant",
+  "run-tool-selection",
+  "run",
+])
+
+export const exactDomainRecordReferenceSchema = z.object({
+  recordType: exactDomainRecordTypeSchema,
+  recordId: z.string().uuid(),
+  revision: z.number().int().positive(),
+  digest: digestSchema,
+})
 
 const recordBaseShape = {
   schemaVersion: z.literal(1),
@@ -316,7 +441,10 @@ export const requirementSchema = rejectSecrets(z.object({
   priority: z.enum(["must", "should", "could", "wont"]),
   state: z.enum(["proposed", "accepted", "deferred", "satisfied", "rejected"]),
   verificationCriteria: z.array(shortTextSchema).min(1).max(256),
-  sourceRecordIds: z.array(z.string().uuid()).max(256).refine(hasUniqueValues, "Requirement sources must be unique"),
+  sourceRecords: z.array(exactDomainRecordReferenceSchema).max(256).refine(
+    (references) => hasUniqueValues(references.map((reference) => `${reference.recordType}:${reference.recordId}`)),
+    "Requirement sources must be unique",
+  ),
 }))
 
 export const decisionOptionSchema = z.object({
@@ -347,7 +475,10 @@ export const decisionSchema = rejectSecrets(z.object({
     selectedAt: z.string().datetime(),
   }).optional(),
   dissentAndUncertainty: stringListSchema.default([]),
-  affectedRecordIds: z.array(z.string().uuid()).max(256).refine(hasUniqueValues, "Affected records must be unique"),
+  affectedRecords: z.array(exactDomainRecordReferenceSchema).max(256).refine(
+    (references) => hasUniqueValues(references.map((reference) => `${reference.recordType}:${reference.recordId}`)),
+    "Affected records must be unique",
+  ),
   state: z.enum(["open", "decided", "deferred", "superseded"]),
 }).superRefine((decision, context) => {
   const optionIds = new Set(decision.options.map((option) => option.id))
@@ -388,6 +519,10 @@ export const riskSchema = rejectSecrets(z.object({
   ),
   reviewTriggers: z.array(shortTextSchema).min(1).max(128),
   residualRisk: shortTextSchema,
+  evidence: z.array(exactDomainRecordReferenceSchema).max(256).refine(
+    (references) => hasUniqueValues(references.map((reference) => `${reference.recordType}:${reference.recordId}`)),
+    "Risk evidence references must be unique",
+  ).default([]),
   state: z.enum(["open", "treated", "accepted", "closed"]),
   acceptance: z.object({
     acceptedBy: z.object({ kind: z.literal("human"), id: shortTextSchema }),
@@ -412,14 +547,20 @@ export const architectureRecordSchema = rejectSecrets(z.object({
   rationale: longTextSchema,
   assumptions: stringListSchema.default([]),
   constraints: stringListSchema.default([]),
-  affectedRecordIds: z.array(z.string().uuid()).max(256).refine(hasUniqueValues, "Affected records must be unique"),
+  affectedRecords: z.array(exactDomainRecordReferenceSchema).max(256).refine(
+    (references) => hasUniqueValues(references.map((reference) => `${reference.recordType}:${reference.recordId}`)),
+    "Affected records must be unique",
+  ),
   state: z.enum(["proposed", "accepted", "deprecated", "superseded"]),
 }))
 
 export const evidenceRecordSchema = rejectSecrets(z.object({
   ...recordBaseShape,
   kind: z.literal("evidence"),
-  subjectRecordIds: z.array(z.string().uuid()).min(1).max(256).refine(hasUniqueValues, "Evidence subjects must be unique"),
+  subjects: z.array(exactDomainRecordReferenceSchema).min(1).max(256).refine(
+    (references) => hasUniqueValues(references.map((reference) => `${reference.recordType}:${reference.recordId}`)),
+    "Evidence subjects must be unique",
+  ),
   origin: z.object({
     kind: z.enum(["local-command", "manual-observation", "provider-output", "document", "external"]),
     locator: portableLocatorSchema,
@@ -441,6 +582,9 @@ export const evidenceRecordSchema = rejectSecrets(z.object({
     if (verification.status === "verified" && (!verification.verifier || !verification.method || !verification.verifiedAt)) {
       context.addIssue({ code: "custom", message: "Verified evidence requires verifier, method, and time" })
     }
+    if (verification.status !== "verified" && (verification.verifier || verification.method || verification.verifiedAt)) {
+      context.addIssue({ code: "custom", message: "Only verified evidence can carry verifier metadata" })
+    }
   }),
   freshness: z.object({
     status: z.enum(["fresh", "stale", "unknown"]),
@@ -449,6 +593,17 @@ export const evidenceRecordSchema = rejectSecrets(z.object({
   }),
   collectedAt: z.string().datetime(),
   validUntil: z.string().datetime().optional(),
+}).superRefine((evidence, context) => {
+  const collectedAt = Date.parse(evidence.collectedAt)
+  if (Date.parse(evidence.freshness.assessedAt) < collectedAt) {
+    context.addIssue({ code: "custom", path: ["freshness", "assessedAt"], message: "Freshness cannot be assessed before collection" })
+  }
+  if (evidence.validUntil && Date.parse(evidence.validUntil) <= collectedAt) {
+    context.addIssue({ code: "custom", path: ["validUntil"], message: "Evidence validity must end after collection" })
+  }
+  if (evidence.verification.verifiedAt && Date.parse(evidence.verification.verifiedAt) < collectedAt) {
+    context.addIssue({ code: "custom", path: ["verification", "verifiedAt"], message: "Evidence cannot be verified before collection" })
+  }
 }))
 
 export const traceRecordTypeSchema = z.enum([
@@ -465,6 +620,8 @@ export const traceRecordTypeSchema = z.enum([
   "context-pack",
   "workflow-plan",
   "tool-definition",
+  "instruction-privilege-grant",
+  "run-tool-selection",
   "run",
   "external",
 ])
@@ -474,6 +631,25 @@ export const traceEndpointSchema = z.object({
   recordId: z.string().min(1).max(500),
   revision: z.number().int().positive().optional(),
   digest: digestSchema.optional(),
+}).superRefine((endpoint, context) => {
+  if (endpoint.recordType === "external") {
+    if (
+      endpoint.recordId.startsWith("/") ||
+      endpoint.recordId.startsWith("~") ||
+      /^[A-Za-z]:/.test(endpoint.recordId) ||
+      endpoint.recordId.includes("\\")
+    ) context.addIssue({ code: "custom", path: ["recordId"], message: "External trace endpoints cannot contain host paths" })
+    if (endpoint.revision !== undefined || endpoint.digest !== undefined) {
+      context.addIssue({ code: "custom", message: "External trace endpoints use evidence links rather than local revision claims" })
+    }
+    return
+  }
+  if (!z.string().uuid().safeParse(endpoint.recordId).success) {
+    context.addIssue({ code: "custom", path: ["recordId"], message: "Internal trace endpoints require a UUID" })
+  }
+  if (endpoint.revision === undefined || endpoint.digest === undefined) {
+    context.addIssue({ code: "custom", message: "Internal trace endpoints require exact revision and digest" })
+  }
 })
 
 export const traceLinkSchema = rejectSecrets(z.object({
@@ -510,7 +686,11 @@ export const traceImpactSchema = z.object({
   validatingEvidence: z.array(traceLinkSchema),
   decisionsAndRisks: z.array(traceLinkSchema),
   unresolved: z.array(traceLinkSchema),
+  invalid: z.array(traceLinkSchema),
   stale: z.array(traceLinkSchema),
+  invalidatedByProposedRevision: z.array(traceLinkSchema),
+  coverageBoundary: z.literal("absence-of-a-trace-link-does-not-prove-absence-of-impact"),
+  truncated: z.boolean(),
   evaluatedAt: z.string().datetime(),
 })
 
@@ -528,6 +708,7 @@ export const productDomainRecordKindSchema = z.enum([
   "context-pack",
   "workflow-plan",
   "tool-definition",
+  "instruction-privilege-grant",
   "run-tool-selection",
 ])
 
@@ -582,7 +763,43 @@ export const contextTransformationSchema = z.object({
   outputDigest: digestSchema,
   omissions: stringListSchema.default([]),
   lossy: z.boolean(),
+}).superRefine((transformation, context) => {
+  if (transformation.lossy && transformation.omissions.length === 0) {
+    context.addIssue({ code: "custom", path: ["omissions"], message: "Lossy transformations must describe their omissions" })
+  }
 })
+
+export const instructionPrivilegeGrantSchema = rejectSecrets(z.object({
+  ...recordBaseShape,
+  kind: z.literal("instruction-privilege-grant"),
+  source: portableLocatorSchema,
+  sourceDigest: digestSchema,
+  privilege: z.enum(["governing-instruction", "capability-instruction"]),
+  purpose: shortTextSchema,
+  recipient: z.object({ kind: z.enum(["human", "agent", "tool"]), id: shortTextSchema }),
+  scope: z.array(shortTextSchema).min(1).max(128),
+  authority: exactDomainRecordReferenceSchema.superRefine((reference, context) => {
+    if (!["requirement", "decision", "architecture"].includes(reference.recordType)) {
+      context.addIssue({ code: "custom", path: ["recordType"], message: "Instruction authority must be a Requirement, Decision, or Architecture record" })
+    }
+  }),
+  state: z.enum(["active", "revoked", "superseded"]),
+  acceptedBy: z.object({ kind: z.literal("human"), id: shortTextSchema }),
+  acceptedAt: z.string().datetime(),
+  expiresAt: z.string().datetime().optional(),
+  revocationReason: shortTextSchema.optional(),
+  authorityBoundary: z.literal("instruction-privilege-is-exact-source-purpose-recipient-and-scope"),
+}).superRefine((grant, context) => {
+  if (grant.expiresAt && Date.parse(grant.expiresAt) <= Date.parse(grant.acceptedAt)) {
+    context.addIssue({ code: "custom", path: ["expiresAt"], message: "Instruction privilege expiry must follow acceptance" })
+  }
+  if (grant.state === "active" && grant.revocationReason) {
+    context.addIssue({ code: "custom", path: ["revocationReason"], message: "Active grants cannot carry a revocation reason" })
+  }
+  if (grant.state !== "active" && !grant.revocationReason) {
+    context.addIssue({ code: "custom", path: ["revocationReason"], message: "Revoked or superseded grants require a reason" })
+  }
+}))
 
 export const contextItemSchema = z.object({
   id: z.string().uuid(),
@@ -595,12 +812,10 @@ export const contextItemSchema = z.object({
   contentDigest: digestSchema,
   trust: contextTrustDimensionsSchema,
   transformations: z.array(contextTransformationSchema).max(64).default([]),
-  instructionPrivilegeGrant: z.object({
-    recordType: z.enum(["requirement", "decision", "architecture"]),
-    recordId: z.string().uuid(),
-    revision: z.number().int().positive(),
-    digest: digestSchema,
-    rationale: shortTextSchema,
+  instructionPrivilegeGrant: exactDomainRecordReferenceSchema.superRefine((reference, context) => {
+    if (reference.recordType !== "instruction-privilege-grant") {
+      context.addIssue({ code: "custom", path: ["recordType"], message: "Context privilege must reference an exact Instruction Privilege Grant" })
+    }
   }).optional(),
 }).superRefine((item, context) => {
   const privileged = item.trust.instructionPrivilege === "governing-instruction" ||
@@ -610,6 +825,13 @@ export const contextItemSchema = z.object({
       code: "custom",
       path: ["instructionPrivilegeGrant"],
       message: "Instruction privilege requires an exact governed grant",
+    })
+  }
+  if (!privileged && item.instructionPrivilegeGrant) {
+    context.addIssue({
+      code: "custom",
+      path: ["instructionPrivilegeGrant"],
+      message: "Non-privileged Context Items cannot carry an instruction grant",
     })
   }
 })
@@ -649,15 +871,39 @@ export const contextPackSchema = rejectSecrets(z.object({
   }),
   packDigest: digestSchema,
   authorityBoundary: z.literal("context-sufficiency-does-not-grant-authority"),
+}).superRefine((pack, context) => {
+  const encoder = new TextEncoder()
+  const aggregateBytes = pack.items.reduce((total, item) => total + encoder.encode(item.content).byteLength, 0)
+  if (aggregateBytes > 8 * 1024 * 1024) {
+    context.addIssue({ code: "custom", path: ["items"], message: "Context Pack content exceeds the 8 MiB portable limit" })
+  }
+  const itemIds = new Set(pack.items.map((item) => item.id))
+  for (const [index, conflict] of pack.conflicts.entries()) {
+    if (conflict.itemIds.some((id) => !itemIds.has(id))) {
+      context.addIssue({ code: "custom", path: ["conflicts", index, "itemIds"], message: "Context conflicts must reference items in this pack" })
+    }
+    if (conflict.state === "resolved" && !conflict.resolution) {
+      context.addIssue({ code: "custom", path: ["conflicts", index, "resolution"], message: "Resolved context conflicts require a resolution" })
+    }
+  }
+  for (const [index, item] of pack.items.entries()) {
+    if (
+      ["confidential", "restricted"].includes(item.trust.confidentiality.classification) &&
+      !item.trust.confidentiality.recipients.includes(pack.recipient.id)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["items", index, "trust", "confidentiality", "recipients"],
+        message: "Confidential Context Items must explicitly permit the Context Pack recipient",
+      })
+    }
+  }
 }))
 
-export const exactRecordReferenceSchema = z.object({
-  recordType: z.enum([
-    "context-pack", "tool-definition", "product", "design-revision", "change", "work-item", "requirement", "decision", "architecture",
-  ]),
-  recordId: z.string().min(1).max(500),
-  revision: z.number().int().positive(),
-  digest: digestSchema,
+export const exactRecordReferenceSchema = exactDomainRecordReferenceSchema.superRefine((reference, context) => {
+  if (!["context-pack", "tool-definition", "product", "design-revision", "change", "work-item", "requirement", "decision", "architecture"].includes(reference.recordType)) {
+    context.addIssue({ code: "custom", path: ["recordType"], message: "This workflow reference type is not supported" })
+  }
 })
 
 export const workflowStepSchema = z.object({
@@ -665,6 +911,8 @@ export const workflowStepSchema = z.object({
   title: z.string().trim().min(2).max(240),
   objective: longTextSchema,
   responsibility: z.object({ kind: z.enum(["human", "agent", "system", "tool"]), id: shortTextSchema }),
+  contextPacks: z.array(exactRecordReferenceSchema).max(32).default([]),
+  toolDefinitions: z.array(exactRecordReferenceSchema).max(32).default([]),
   dependsOn: z.array(z.string().uuid()).max(256).refine(hasUniqueValues, "Workflow dependencies must be unique"),
   preconditions: z.array(shortTextSchema).min(1).max(256),
   outputs: z.array(shortTextSchema).min(1).max(256),
@@ -754,15 +1002,57 @@ export const runToolSelectionSchema = rejectSecrets(z.object({
     "Selected Tool IDs must be unique",
   ),
   requestedEffects: z.array(effectDescriptorSchema).refine(hasUniqueValues, "Requested effects must be unique"),
+  requestedScopes: z.array(portableLocatorSchema).min(1).max(256).refine(
+    (scopes) => hasUniqueValues(scopes.map((scope) => JSON.stringify(scope))),
+    "Requested Tool scopes must be unique",
+  ),
   confirmedToolIds: z.array(z.string().uuid()).max(128).refine(hasUniqueValues, "Confirmed Tool IDs must be unique"),
-  workspaceTrusted: z.boolean(),
   readiness: z.object({
     status: z.enum(["ready", "blocked"]),
     issues: stringListSchema.default([]),
     evaluatedAt: z.string().datetime(),
   }),
   selectedBy: z.object({ kind: z.literal("human"), id: shortTextSchema }),
+  localTrustBoundary: z.literal("workspace-trust-must-be-revalidated-before-every-launch"),
   authorityBoundary: z.literal("tool-selection-does-not-grant-authority"),
+}))
+
+export const productRecordHistoryTypeSchema = z.enum([
+  "change",
+  "work-item",
+  "requirement",
+  "decision",
+  "risk",
+  "architecture-record",
+  "evidence",
+  "trace-link",
+  "context-pack",
+  "workflow-plan",
+  "tool-definition",
+  "instruction-privilege-grant",
+  "run-tool-selection",
+])
+
+export const productRecordRevisionSchema = rejectSecrets(z.object({
+  schemaVersion: z.literal(1),
+  kind: z.literal("product-record-revision"),
+  productId: z.string().uuid(),
+  recordType: productRecordHistoryTypeSchema,
+  recordId: z.string().uuid(),
+  revision: z.number().int().positive(),
+  recordDigest: digestSchema,
+  predecessorDigest: digestSchema.optional(),
+  snapshot: z.json(),
+  recordedAt: z.string().datetime(),
+}).superRefine((history, context) => {
+  if (!history.snapshot || typeof history.snapshot !== "object" || Array.isArray(history.snapshot)) {
+    context.addIssue({ code: "custom", path: ["snapshot"], message: "Record history requires an object snapshot" })
+    return
+  }
+  const snapshot = history.snapshot as Record<string, unknown>
+  if (snapshot.id !== history.recordId || snapshot.productId !== history.productId || snapshot.revision !== history.revision) {
+    context.addIssue({ code: "custom", path: ["snapshot"], message: "Record history identity and revision must match its snapshot" })
+  }
 }))
 
 export const productExportMemberSchema = z.object({
@@ -777,12 +1067,24 @@ export const productExportManifestSchema = z.object({
   kind: z.literal("product-export-manifest"),
   productId: z.string().uuid(),
   productRevision: z.number().int().positive(),
-  members: z.array(productExportMemberSchema).min(1).refine(
+  members: z.array(productExportMemberSchema).min(1).max(10_000).refine(
     (members) => hasUniqueValues(members.map((member) => member.path)),
     "Export member paths must be unique",
   ),
   membershipDigest: digestSchema,
-  excluded: z.array(z.object({ recordClass: identifierSchema, reason: shortTextSchema })),
+  excluded: z.array(z.object({ recordClass: identifierSchema, reason: shortTextSchema })).max(10_000),
+  disclosureReview: z.object({
+    includedClassifications: z.array(informationClassificationSchema).min(1).max(4),
+    reviewedRecordIds: z.array(z.string().uuid()).max(10_000).refine(hasUniqueValues, "Reviewed record IDs must be unique"),
+    excludedRecordIds: z.array(z.string().uuid()).max(10_000).refine(hasUniqueValues, "Excluded record IDs must be unique"),
+    reviewedBy: z.object({ kind: z.literal("human"), id: shortTextSchema }).optional(),
+    evaluatedAt: z.string().datetime(),
+    boundary: z.literal("confidential-and-restricted-records-require-explicit-human-review"),
+  }).superRefine((review, context) => {
+    if (review.reviewedRecordIds.length > 0 && !review.reviewedBy) {
+      context.addIssue({ code: "custom", path: ["reviewedBy"], message: "Explicitly disclosed records require a human reviewer" })
+    }
+  }),
   authorityBoundary: z.literal("export-does-not-assert-readiness-or-approval"),
 })
 
@@ -790,7 +1092,7 @@ export const productExportBundleSchema = z.object({
   schemaVersion: z.literal(1),
   kind: z.literal("product-export-bundle"),
   manifest: productExportManifestSchema,
-  records: z.array(z.object({ path: workspaceRelativePathSchema, content: z.json() })).min(1).refine(
+  records: z.array(z.object({ path: workspaceRelativePathSchema, content: z.json() })).min(1).max(10_000).refine(
     (records) => hasUniqueValues(records.map((record) => record.path)),
     "Export record paths must be unique",
   ),
@@ -822,6 +1124,8 @@ export type Decision = z.infer<typeof decisionSchema>
 export type Risk = z.infer<typeof riskSchema>
 export type ArchitectureRecord = z.infer<typeof architectureRecordSchema>
 export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>
+export type ExactDomainRecordType = z.infer<typeof exactDomainRecordTypeSchema>
+export type ExactDomainRecordReference = z.infer<typeof exactDomainRecordReferenceSchema>
 export type TraceEndpoint = z.infer<typeof traceEndpointSchema>
 export type TraceLink = z.infer<typeof traceLinkSchema>
 export type TraceImpact = z.infer<typeof traceImpactSchema>
@@ -830,11 +1134,13 @@ export type ProductDomainSearchResult = z.infer<typeof productDomainSearchResult
 export type ContextTrustDimensions = z.infer<typeof contextTrustDimensionsSchema>
 export type ContextItem = z.infer<typeof contextItemSchema>
 export type ContextPack = z.infer<typeof contextPackSchema>
+export type InstructionPrivilegeGrant = z.infer<typeof instructionPrivilegeGrantSchema>
 export type ExactRecordReference = z.infer<typeof exactRecordReferenceSchema>
 export type WorkflowStep = z.infer<typeof workflowStepSchema>
 export type WorkflowPlan = z.infer<typeof workflowPlanSchema>
 export type ToolDefinition = z.infer<typeof toolDefinitionSchema>
 export type RunToolSelection = z.infer<typeof runToolSelectionSchema>
+export type ProductRecordRevision = z.infer<typeof productRecordRevisionSchema>
 export type ProductExportManifest = z.infer<typeof productExportManifestSchema>
 export type ProductExportBundle = z.infer<typeof productExportBundleSchema>
 export type ProductImportPreview = z.infer<typeof productImportPreviewSchema>

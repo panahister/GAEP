@@ -18,7 +18,7 @@ import {
   type ExecutableFingerprint,
 } from "@gaep/agent-sdk"
 
-const executionStopLine = "Claude Code CLI execution is unavailable until GAEP can enforce an outer workspace, process, network, and per-call effect boundary"
+const executionStopLine = "Effectful direct Claude Code execution is unavailable; GAEP supports only the managed tool-free, context-only stream-JSON runtime"
 
 export class ClaudeAdapter implements AgentAdapter {
   readonly id = "gaep.claude-code-cli"
@@ -32,9 +32,9 @@ export class ClaudeAdapter implements AgentAdapter {
     let usable = false
     const limitations: string[] = [
       "The installed CLI does not expose a model-catalog command; GAEP accepts provider aliases or an explicit model identifier.",
-      "Claude permission mode is a provider control and never substitutes for a GAEP Authorization Grant.",
-      `${executionStopLine}. Detection and selection remain available for capability review only.`,
-      "Read, Glob, Grep, Edit, Write, and Bash cannot be proven exact-root bounded by the current CLI; Bash can also cross network and external-effect boundaries.",
+      "Managed Claude runs use a fresh empty directory, no tools, no MCP, no settings, no browser, no slash commands, and no session persistence.",
+      `${executionStopLine}.`,
+      "Read, Glob, Grep, Edit, Write, Bash, effectful execution, and resume are not exposed by this capability snapshot.",
     ]
     if (executablePath) {
       try {
@@ -57,13 +57,13 @@ export class ClaudeAdapter implements AgentAdapter {
       agentLabel: "Claude Code",
       runtimeVersion,
       detected: usable,
-      executionInterface: "unavailable",
-      interfaceMaturity: "unknown",
+      executionInterface: usable ? "cli-stream-json" : "unavailable",
+      interfaceMaturity: usable ? "stable" : "unknown",
       supportsResume: false,
-      supportsCancel: false,
+      supportsCancel: usable,
       supportsCheckpoints: false,
       supportsModelDiscovery: false,
-      supportsToolSelection: true,
+      supportsToolSelection: false,
       settings: [
         {
           key: "effort",
@@ -76,44 +76,14 @@ export class ClaudeAdapter implements AgentAdapter {
           truthClass: "provider-declared",
         },
         {
-          key: "permissionMode",
-          label: "Permission mode",
-          description: "Claude Code's native permission behavior; GAEP authorization remains separate.",
-          kind: "select",
-          required: true,
-          sensitive: false,
-          defaultValue: "default",
-          options: ["default", "plan"].map((value) => ({ value, label: value })),
-          truthClass: "provider-declared",
-        },
-        {
-          key: "allowedTools",
-          label: "Allowed Claude tools",
-          description: "Optional Claude Code tool allowlist.",
-          kind: "string-list",
-          required: false,
-          sensitive: false,
-          defaultValue: [],
-          truthClass: "configured",
-        },
-        {
-          key: "disallowedTools",
-          label: "Denied Claude tools",
-          description: "Optional Claude Code tool denylist.",
-          kind: "string-list",
-          required: false,
-          sensitive: false,
-          defaultValue: [],
-          truthClass: "configured",
-        },
-        {
           key: "maxBudgetUsd",
           label: "Maximum budget (USD)",
           description: "Optional provider-side budget ceiling for the run.",
           kind: "number",
           required: false,
           sensitive: false,
-          minimum: 0,
+          minimum: 0.01,
+          maximum: 100_000,
           truthClass: "configured",
         },
       ],
@@ -163,19 +133,14 @@ export class ClaudeAdapter implements AgentAdapter {
 
   validateSelection(selection: AgentSelection, capabilities: AdapterCapabilities): string[] {
     const errors = validateSelectionBase(selection, capabilities)
-    const permissionModes = ["default", "plan"]
-    if (!permissionModes.includes(String(selection.settings.permissionMode ?? "default"))) {
-      errors.push("Unsupported Claude Code permission mode")
+    const effort = selection.settings.effort
+    if (effort !== undefined && !["low", "medium", "high", "xhigh", "max"].includes(String(effort))) {
+      errors.push("Unsupported managed Claude effort")
     }
-    const allowedTools = Array.isArray(selection.settings.allowedTools)
-      ? selection.settings.allowedTools.filter((item): item is string => typeof item === "string")
-      : []
-    const disallowedTools = new Set(Array.isArray(selection.settings.disallowedTools)
-      ? selection.settings.disallowedTools.filter((item): item is string => typeof item === "string")
-      : [])
-    const overlap = allowedTools.filter((tool) => disallowedTools.has(tool))
-    if (overlap.length > 0) {
-      errors.push(`Claude tools cannot be both allowed and denied: ${overlap.join(", ")}`)
+    const maxBudgetUsd = selection.settings.maxBudgetUsd
+    if (maxBudgetUsd !== undefined &&
+        (typeof maxBudgetUsd !== "number" || !Number.isFinite(maxBudgetUsd) || maxBudgetUsd <= 0 || maxBudgetUsd > 100_000)) {
+      errors.push("Managed Claude maximum budget must be greater than zero and at most 100000 USD")
     }
     return errors
   }

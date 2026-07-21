@@ -7,10 +7,13 @@ import type { AgentInvocation } from "./types.js"
 
 export interface ManagedClaudeAnalysisRequest {
   executable: string
+  /** Local test/wrapper prefix placed before Claude CLI arguments; never persisted. */
+  executableArguments?: string[]
   model: string
   objective: string
   contextPack: string
   effort?: "low" | "medium" | "high" | "xhigh" | "max"
+  maxBudgetUsd?: number
   tempParent?: string
 }
 
@@ -26,12 +29,21 @@ export async function createManagedClaudeAnalysisInvocation(
   if (!request.model.trim()) throw new Error("A Claude model identifier is required")
   if (!request.objective.trim()) throw new Error("A non-empty analysis objective is required")
   if (!request.contextPack.trim()) throw new Error("A non-empty governed context pack is required")
+  if (request.maxBudgetUsd !== undefined &&
+      (!Number.isFinite(request.maxBudgetUsd) || request.maxBudgetUsd <= 0 || request.maxBudgetUsd > 100_000)) {
+    throw new Error("Managed Claude maximum budget must be greater than zero and at most 100000 USD")
+  }
   const cwd = await mkdtemp(join(request.tempParent ?? tmpdir(), "gaep-claude-analysis-"))
   let cleaned = false
+  if (request.executableArguments?.some((argument) => typeof argument !== "string" || Buffer.byteLength(argument) > 16 * 1_024)) {
+    throw new Error("Managed Claude executable argument prefixes must be bounded strings")
+  }
   const args = [
+    ...(request.executableArguments ?? []),
     "--print",
     "--output-format", "stream-json",
     "--verbose",
+    "--no-session-persistence",
     "--setting-sources", "",
     "--strict-mcp-config",
     "--disable-slash-commands",
@@ -41,6 +53,7 @@ export async function createManagedClaudeAnalysisInvocation(
     "--permission-mode", "dontAsk",
   ]
   if (request.effort) args.push("--effort", request.effort)
+  if (request.maxBudgetUsd !== undefined) args.push("--max-budget-usd", String(request.maxBudgetUsd))
   return {
     invocation: {
       executable: request.executable,

@@ -141,7 +141,7 @@ export class DeterministicManualAdapter implements AgentAdapter {
       }],
       limitations: [
         "This adapter has no executable path and can run only through the GAEP in-process managed-runtime contract.",
-        "Legacy AgentInvocation execution is intentionally unavailable; engine selection portability integration is separate.",
+        "This offline deterministic rehearsal runtime cannot perform arbitrary implementation, provider, network, Tool, or workspace effects.",
       ],
       observedAt: new Date().toISOString(),
     })

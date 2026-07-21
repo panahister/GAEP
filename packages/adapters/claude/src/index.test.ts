@@ -5,7 +5,7 @@ import { capabilityDigest, type AdapterRuntimeBinding } from "@gaep/agent-sdk"
 
 import { ClaudeAdapter } from "./index.js"
 
-const stopLine = "Claude Code CLI execution is unavailable until GAEP can enforce an outer workspace, process, network, and per-call effect boundary"
+const stopLine = "Effectful direct Claude Code execution is unavailable; GAEP supports only the managed tool-free, context-only stream-JSON runtime"
 
 function capabilities(): AdapterCapabilities {
   return {
@@ -16,41 +16,33 @@ function capabilities(): AdapterCapabilities {
     agentLabel: "Claude Code",
     runtimeVersion: "2.1.153",
     detected: true,
-    executionInterface: "unavailable",
-    interfaceMaturity: "unknown",
+    executionInterface: "cli-stream-json",
+    interfaceMaturity: "stable",
     supportsResume: false,
-    supportsCancel: false,
+    supportsCancel: true,
     supportsCheckpoints: false,
     supportsModelDiscovery: false,
-    supportsToolSelection: true,
+    supportsToolSelection: false,
     settings: [
       {
-        key: "permissionMode",
-        label: "Permission mode",
-        description: "Native permission mode",
+        key: "effort",
+        label: "Effort",
+        description: "Reasoning effort",
         kind: "select",
-        required: true,
+        required: false,
         sensitive: false,
-        defaultValue: "default",
-        options: ["default", "plan"].map((value) => ({ value, label: value })),
+        options: ["low", "medium", "high", "xhigh", "max"].map((value) => ({ value, label: value })),
         truthClass: "provider-declared",
       },
       {
-        key: "allowedTools",
-        label: "Allowed tools",
-        description: "Allowed tools",
-        kind: "string-list",
+        key: "maxBudgetUsd",
+        label: "Maximum budget",
+        description: "Maximum provider budget",
+        kind: "number",
         required: false,
         sensitive: false,
-        truthClass: "configured",
-      },
-      {
-        key: "disallowedTools",
-        label: "Denied tools",
-        description: "Denied tools",
-        kind: "string-list",
-        required: false,
-        sensitive: false,
+        minimum: 0.01,
+        maximum: 100_000,
         truthClass: "configured",
       },
     ],
@@ -105,34 +97,35 @@ function charter(expectedEffects: ExecutionCharter["expectedEffects"]): Executio
   } as ExecutionCharter
 }
 
-describe("Claude Code adapter stop-line", () => {
-  it("detects an executable for review but exposes no execution interface", async () => {
+describe("Claude Code managed context-only capability", () => {
+  it("detects a bounded stream-json runtime while keeping effectful execution unavailable", async () => {
     const { capabilities: observed, runtimeBinding: binding } = await new ClaudeAdapter(process.execPath).probe({ timeoutMs: 1_000, refreshModels: false })
 
     expect(observed.detected).toBe(true)
     expect(observed).not.toHaveProperty("executablePath")
     expect(binding).toMatchObject({ kind: "executable", executablePath: process.execPath })
-    expect(observed.executionInterface).toBe("unavailable")
-    expect(observed.interfaceMaturity).toBe("unknown")
+    expect(observed.executionInterface).toBe("cli-stream-json")
+    expect(observed.interfaceMaturity).toBe("stable")
     expect(observed.supportsResume).toBe(false)
-    expect(observed.supportsCancel).toBe(false)
+    expect(observed.supportsCancel).toBe(true)
+    expect(observed.supportsToolSelection).toBe(false)
     expect(observed.limitations.join(" ")).toContain(stopLine)
   })
 
-  it("keeps unavailable Claude capabilities selectable for explicit capability review", () => {
+  it("accepts only settings honored by the managed context runtime", () => {
     const observed = capabilities()
     expect(new ClaudeAdapter().validateSelection(
-      selection({ permissionMode: "plan", allowedTools: [] }),
+      selection({ effort: "high", maxBudgetUsd: 2 }),
       observed,
     )).toEqual([])
   })
 
   it.each([
-    ["plan", ["observe"]],
-    ["default", ["provisional", "reversible-change"]],
-  ] as const)("rejects new invocation mode=%s effects=%j before launch", (permissionMode, effects) => {
+    ["low", ["observe"]],
+    ["high", ["provisional", "reversible-change"]],
+  ] as const)("rejects direct invocation effort=%s effects=%j before launch", (effort, effects) => {
     expect(() => new ClaudeAdapter().buildInvocation(
-      selection({ permissionMode }),
+      selection({ effort }),
       charter([...effects]),
       "/workspace",
       "must never reach provider stdin",
@@ -142,7 +135,7 @@ describe("Claude Code adapter stop-line", () => {
 
   it("rejects resume before reconstructing or launching provider state", () => {
     expect(() => new ClaudeAdapter().buildResumeInvocation!(
-      selection({ permissionMode: "plan" }),
+      selection({ effort: "high" }),
       charter(["observe"]),
       "/workspace",
       "provider-session",
@@ -151,21 +144,23 @@ describe("Claude Code adapter stop-line", () => {
     )).toThrow(stopLine)
   })
 
-  it("still rejects unsafe, unknown, and contradictory review settings", () => {
+  it("rejects unsafe, unknown, and unhonored effectful settings", () => {
     const adapter = new ClaudeAdapter()
     const observed = capabilities()
     const unsafe = selection({
-      permissionMode: "bypassPermissions",
+      effort: "ultra",
+      maxBudgetUsd: 0,
       allowedTools: ["Bash"],
-      disallowedTools: ["Bash"],
       hiddenSetting: true,
     })
 
     expect(adapter.validateSelection(unsafe, observed)).toEqual(expect.arrayContaining([
-      "Unsupported value for agent setting permissionMode",
+      "Unsupported value for agent setting effort",
+      "Agent setting maxBudgetUsd must be at least 0.01",
+      "Unsupported agent setting: allowedTools",
       "Unsupported agent setting: hiddenSetting",
-      "Unsupported Claude Code permission mode",
-      "Claude tools cannot be both allowed and denied: Bash",
+      "Unsupported managed Claude effort",
+      "Managed Claude maximum budget must be greater than zero and at most 100000 USD",
     ]))
   })
 })

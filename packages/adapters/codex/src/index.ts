@@ -114,10 +114,12 @@ export class CodexAdapter implements AgentAdapter {
   async probe(options: AdapterProbeOptions = {}): Promise<AdapterProbeResult> {
     const executablePath = await findExecutable(this.preferredExecutable)
     const limitations: string[] = [
-      "Founder execution uses stable codex exec JSONL; rich-client approvals and event parity require a future migration to the experimental app-server transport.",
+      "Managed execution uses the stable Codex app-server v2 stdio RPC transport with isolated staging and Charter-derived shell/file gates.",
       "A model alias or provider-hidden attribute is not an immutable model revision.",
-      "Live web search is not exposed because codex exec provides no per-call approval channel.",
-      "Current Codex CLI execution is read-only analysis; workspace mutation requires a later isolated staging and effect mediator.",
+      "Apps, remote plugins, MCP, collaboration, web search, memories, and goals are disabled for managed runs.",
+      "Managed Tool Selection supports only exact gaep.codex-cli bindings for the intrinsic shell Tool and workspace-write capability; every other selected Tool fails closed.",
+      "Provider threads can be resumed only while their machine-local identity remains in the current engine process; GAEP does not persist that identity.",
+      "The legacy direct codex exec JSONL builder remains an explicitly read-only fallback and is not the interface described by this capability snapshot.",
     ]
     let runtimeVersion: string | undefined
     let executableFingerprint: ExecutableFingerprint | undefined
@@ -166,31 +168,6 @@ export class CodexAdapter implements AgentAdapter {
         truthClass: "observed",
       })
     }
-    settings.push(
-      {
-        key: "sandbox",
-        label: "Sandbox",
-        description: "Read-only operating-system sandbox for the current analysis-only CLI stop-line.",
-        kind: "select",
-        required: true,
-        sensitive: false,
-        defaultValue: "read-only",
-        options: [{ value: "read-only", label: "read-only" }],
-        truthClass: "provider-declared",
-      },
-      {
-        key: "approvalPolicy",
-        label: "Command approvals",
-        description: "Non-interactive execution fails denied operations closed instead of waiting for an unavailable approval channel.",
-        kind: "select",
-        required: true,
-        sensitive: false,
-        defaultValue: "fail-closed-noninteractive",
-        options: [{ value: "fail-closed-noninteractive", label: "Fail closed (non-interactive)" }],
-        truthClass: "configured",
-      },
-    )
-
     const capabilities = adapterCapabilitiesSnapshotSchema.parse({
       schemaVersion: 1,
       adapterId: this.id,
@@ -199,13 +176,13 @@ export class CodexAdapter implements AgentAdapter {
       agentLabel: "Codex",
       runtimeVersion,
       detected: usable,
-      executionInterface: usable ? "cli-jsonl" : "unavailable",
+      executionInterface: usable ? "stdio-rpc" : "unavailable",
       interfaceMaturity: usable ? "stable" : "unknown",
       supportsResume: usable,
       supportsCancel: usable,
       supportsCheckpoints: false,
       supportsModelDiscovery: models.length > 0,
-      supportsToolSelection: false,
+      supportsToolSelection: usable,
       settings,
       models,
       limitations,
@@ -234,14 +211,6 @@ export class CodexAdapter implements AgentAdapter {
 
   validateSelection(selection: AgentSelection, capabilities: AdapterCapabilities): string[] {
     const errors = validateSelectionBase(selection, capabilities)
-    const allowedSandboxes = ["read-only"]
-    const allowedApprovals = ["fail-closed-noninteractive"]
-    if (!allowedSandboxes.includes(String(selection.settings.sandbox ?? "read-only"))) {
-      errors.push("Unsupported Codex sandbox setting")
-    }
-    if (!allowedApprovals.includes(String(selection.settings.approvalPolicy ?? "fail-closed-noninteractive"))) {
-      errors.push("Unsupported Codex approval policy")
-    }
     const model = capabilities.models.find((candidate) => candidate.id === selection.modelId)
     const effort = selection.settings.reasoningEffort
     if (model && typeof effort === "string" && model.reasoningOptions.length > 0 && !model.reasoningOptions.includes(effort)) {

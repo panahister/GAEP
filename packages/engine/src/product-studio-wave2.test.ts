@@ -182,6 +182,8 @@ describe("Product Studio context, workflow, tools, and portability", () => {
       title: "Inspect bounded context",
       objective: "Read the selected context and produce one reviewable observation.",
       responsibility: { kind: "agent", id: "local-agent" },
+      contextPacks: [],
+      toolDefinitions: [],
       dependsOn: [],
       preconditions: ["The Context Pack is sufficient"],
       outputs: ["A bounded observation"],
@@ -278,21 +280,63 @@ describe("Product Studio context, workflow, tools, and portability", () => {
       rationale: "Exercise exact privilege assignment without trusting retrieval by default.",
       priority: "must",
       verificationCriteria: ["Context grant binds this exact requirement revision"],
-      sourceRecordIds: [],
+      sourceRecords: [],
+    }, product.revision ?? 1, "founder")
+    const acceptedRequirement = await engine.productStudio.reviseRequirement(
+      requirement.id,
+      requirement.revision,
+      { state: "accepted" },
+      "founder",
+      "The Founder accepts this exact instruction-authority boundary for the local test.",
+    )
+    const grant = await engine.productStudio.createInstructionPrivilegeGrant({
+      source: external.source,
+      sourceDigest: external.sourceDigest,
+      privilege: "governing-instruction",
+      purpose: "Provide sufficient bounded context for one local workflow.",
+      recipient: { kind: "agent", id: "local-agent" },
+      scope: ["Local Founder Edition"],
+      authority: {
+        recordType: "requirement",
+        recordId: acceptedRequirement.id,
+        revision: acceptedRequirement.revision,
+        digest: canonicalDigest(acceptedRequirement),
+      },
     }, product.revision ?? 1, "founder")
     external.instructionPrivilegeGrant = {
-      recordType: "requirement",
-      recordId: requirement.id,
-      revision: requirement.revision,
-      digest: canonicalDigest(requirement),
-      rationale: "The Founder explicitly binds this one source and purpose.",
+      recordType: "instruction-privilege-grant",
+      recordId: grant.id,
+      revision: grant.revision,
+      digest: canonicalDigest(grant),
     }
     const privileged = await createContextPack(external)
-    expect(privileged.items[0]?.instructionPrivilegeGrant?.recordId).toBe(requirement.id)
+    expect(privileged.items[0]?.instructionPrivilegeGrant?.recordId).toBe(grant.id)
 
-    await engine.productStudio.reviseRequirement(requirement.id, 1, {
+    await engine.productStudio.revokeInstructionPrivilegeGrant(
+      grant.id,
+      grant.revision,
+      "The external instruction source is no longer permitted for new Context Packs.",
+      "founder",
+    )
+    await expect(createContextPack(external)).rejects.toThrow(/stale or no longer active/i)
+
+    await engine.productStudio.reviseRequirement(requirement.id, acceptedRequirement.revision, {
       statement: "The external privilege grant has been materially revised and prior packs are stale.",
     }, "founder")
+    await expect(engine.productStudio.createInstructionPrivilegeGrant({
+      source: external.source,
+      sourceDigest: external.sourceDigest,
+      privilege: "governing-instruction",
+      purpose: "Provide sufficient bounded context for one local workflow.",
+      recipient: { kind: "agent", id: "local-agent" },
+      scope: ["Local Founder Edition"],
+      authority: {
+        recordType: "requirement",
+        recordId: acceptedRequirement.id,
+        revision: acceptedRequirement.revision,
+        digest: canonicalDigest(acceptedRequirement),
+      },
+    }, product.revision ?? 1, "founder")).rejects.toThrow(/current governed revision/i)
     const health = await engine.workspaceHealth()
     expect(health.status).toBe("degraded")
     expect(health.issues.some((issue) => issue.code === "product.context-stale")).toBe(true)
@@ -461,6 +505,7 @@ describe("Product Studio context, workflow, tools, and portability", () => {
       runId: run.id,
       tools: [reference],
       requestedEffects: ["observe"],
+      requestedScopes: [sourceScope],
       confirmedToolIds: [],
       workspaceTrusted: false,
     }, product.revision ?? 1, "founder")
@@ -469,12 +514,23 @@ describe("Product Studio context, workflow, tools, and portability", () => {
       expect.stringMatching(/untrusted workspace/),
       expect.stringMatching(/human confirmation/),
     ]))
-    const ready = await engine.productStudio.reviseRunToolSelection(blocked.id, 1, {
+    const outOfScope = await engine.productStudio.reviseRunToolSelection(blocked.id, 1, {
       confirmedToolIds: [tool.id],
+      requestedScopes: [workspaceRoot],
+      workspaceTrusted: true,
+    }, "founder")
+    expect(outOfScope.readiness.status).toBe("blocked")
+    expect(outOfScope.readiness.issues).toEqual(expect.arrayContaining([expect.stringMatching(/not allowed/i)]))
+    const ready = await engine.productStudio.reviseRunToolSelection(blocked.id, outOfScope.revision, {
+      requestedScopes: [sourceScope],
       workspaceTrusted: true,
     }, "founder")
     expect(ready.readiness.status).toBe("ready")
     expect(ready.authorityBoundary).toBe("tool-selection-does-not-grant-authority")
+    await engine.markRunState(run.id, "running", { kind: "human", id: "founder" })
+    await expect(engine.productStudio.reviseRunToolSelection(ready.id, ready.revision, {
+      workspaceTrusted: true,
+    }, "founder")).rejects.toThrow(/immutable while Run is running/i)
   })
 
   it("builds deterministic safe exports and previews imports without mutation", async () => {
@@ -503,6 +559,17 @@ describe("Product Studio context, workflow, tools, and portability", () => {
     tampered.manifest.members[0]!.digest = `sha256:${"0".repeat(64)}`
     await expect(engine.productStudio.previewImportBundle(tampered)).rejects.toThrow(/digest mismatch/i)
 
+    const forgedHistory = structuredClone(first)
+    const historyRecord = forgedHistory.records.find((record) => record.path.startsWith("record-history/"))!
+    ;(historyRecord.content as { predecessorDigest?: string }).predecessorDigest = `sha256:${"0".repeat(64)}`
+    const historyMember = forgedHistory.manifest.members.find((member) => member.path === historyRecord.path)!
+    historyMember.digest = canonicalDigest(historyRecord.content)
+    historyMember.byteLength = Buffer.byteLength(`${JSON.stringify(historyRecord.content, null, 2)}\n`)
+    forgedHistory.manifest.membershipDigest = canonicalDigest(
+      forgedHistory.manifest.members.map(({ path, digest }) => ({ path, digest })),
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedHistory)).rejects.toThrow(/first immutable history revision/i)
+
     const traversal = structuredClone(first) as unknown as { manifest: { members: Array<{ path: string }> }; records: Array<{ path: string }> }
     traversal.manifest.members[0]!.path = "../outside.json"
     traversal.records[0]!.path = "../outside.json"
@@ -513,6 +580,42 @@ describe("Product Studio context, workflow, tools, and portability", () => {
       await symlink(bundlePath, symlinkPath)
       await expect(engine.productStudio.previewImportFile(symlinkPath)).rejects.toThrow(/symbolic-link/i)
     }
+  })
+
+  it("requires explicit disclosure review and provides bounded true-count pages", async () => {
+    const { product } = await initialize()
+    const restricted = await createContextPack(contextItem({ trust: trust("restricted") }))
+    await expect(engine.productStudio.buildPortableExport()).rejects.toThrow(/explicit disclosure review/i)
+    const reviewedAt = new Date().toISOString()
+    const exported = await engine.productStudio.buildPortableExport({
+      reviewedRecordIds: [restricted.id],
+      actorId: "founder",
+      reviewedAt,
+    })
+    expect(exported.manifest.disclosureReview).toMatchObject({
+      reviewedRecordIds: [restricted.id],
+      reviewedBy: { kind: "human", id: "founder" },
+      evaluatedAt: reviewedAt,
+    })
+
+    for (const [index, key] of ["PAGE-001", "PAGE-002", "PAGE-003"].entries()) {
+      await engine.productStudio.createRequirement({
+        key,
+        statement: `Bounded pagination requirement number ${index + 1}.`,
+        rationale: "The host must know the true count without rendering an unbounded table.",
+        priority: "should",
+        verificationCriteria: ["The service returns a bounded page and total"],
+        sourceRecords: [],
+      }, product.revision ?? 1, "founder")
+    }
+    const firstPage = await engine.productStudio.listDomainPage("requirement", { limit: 2 })
+    expect(firstPage.items).toHaveLength(2)
+    expect(firstPage.total).toBe(3)
+    expect(firstPage.hasMore).toBe(true)
+    const secondPage = await engine.productStudio.listDomainPage("requirement", { offset: 2, limit: 2 })
+    expect(secondPage.items).toHaveLength(1)
+    expect(secondPage.hasMore).toBe(false)
+    await expect(engine.productStudio.listDomainPage("requirement", { limit: 201 })).rejects.toThrow(/between 1 and 200/i)
   })
 
   it("blocks conflicting Product identity during preview and rejects secret-shaped imported content", async () => {

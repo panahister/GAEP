@@ -764,7 +764,7 @@ describe("GAEP local engine", () => {
       },
       {
         path: join(workspace, ".gaep", "sessions", `run-${run.id}.json`),
-        mutate: (value) => { value.providerSessionId = "direct-edit" },
+        mutate: (value) => { value.providerSessionRef = `sha256:${"c".repeat(64)}` },
       },
       {
         path: join(workspace, ".gaep", "handoffs", `${handoff.id}.json`),
