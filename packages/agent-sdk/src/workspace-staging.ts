@@ -138,7 +138,20 @@ function isExcluded(relativePath: string, directory: boolean): boolean {
   const segments = relativePath.split("/").map((segment) => segment.toLowerCase())
   const name = segments.at(-1)!
   if (segments.some((segment) => [".git", "node_modules", ".cache", "coverage"].includes(segment))) return true
-  if (segments.some((segment, index) => segment === ".gaep" && ["runtime", "locks", "sessions", "local"].includes(segments[index + 1] ?? ""))) return true
+  if (segments.some((segment) => [
+    ".gaep",
+    ".codex",
+    ".claude",
+    ".vscode",
+    ".idea",
+    ".ssh",
+    ".aws",
+    ".azure",
+    ".gnupg",
+    ".kube",
+    ".secrets",
+    "secrets",
+  ].includes(segment))) return true
   if (directory) return false
   if (name === ".env" || (name.startsWith(".env.") && !name.endsWith(".example"))) return true
   if ([".npmrc", ".pypirc", "credentials.json", "id_rsa", "id_ed25519"].includes(name)) return true

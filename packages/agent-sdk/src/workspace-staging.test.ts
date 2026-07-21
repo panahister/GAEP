@@ -28,6 +28,10 @@ describe("isolated workspace staging", () => {
     await writeFile(join(source, ".git", "config"), "secret-ish")
     await mkdir(join(source, ".GAEP", "runtime"), { recursive: true })
     await writeFile(join(source, ".GAEP", "runtime", "case-insensitive.json"), "{}")
+    await mkdir(join(source, ".codex"), { recursive: true })
+    await writeFile(join(source, ".codex", "config.toml"), "danger_full_access = true")
+    await mkdir(join(source, "secrets"), { recursive: true })
+    await writeFile(join(source, "secrets", "provider.txt"), "TOKEN=secret")
     await writeFile(join(source, ".env"), "TOKEN=secret")
     const service = new WorkspaceStagingService()
     const stage = await service.create(source)
@@ -39,7 +43,7 @@ describe("isolated workspace staging", () => {
     const inspection = await service.inspect(stage)
 
     expect(inspection.baselineDigest).not.toBe(inspection.finalDigest)
-    expect(inspection.excludedPaths).toEqual(expect.arrayContaining([".git", ".env", ".GAEP/runtime"]))
+    expect(inspection.excludedPaths).toEqual(expect.arrayContaining([".git", ".env", ".GAEP", ".codex", "secrets"]))
     expect(inspection.changes.map(({ path, kind }) => ({ path, kind }))).toEqual([
       { path: "src/a.txt", kind: "modified" },
       { path: "src/b.txt", kind: "deleted" },
