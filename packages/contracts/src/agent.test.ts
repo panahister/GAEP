@@ -96,6 +96,22 @@ describe("portable agent contracts", () => {
     }).success).toBe(true)
   })
 
+  it("bounds and de-duplicates untrusted capability collections", () => {
+    const model = { id: "model", label: "Model", truthClass: "observed" }
+    expect(adapterCapabilitiesSnapshotSchema.safeParse({
+      ...capabilities(),
+      models: [model, model],
+    }).success).toBe(false)
+    expect(adapterCapabilitiesSnapshotSchema.safeParse({
+      ...capabilities(),
+      models: Array.from({ length: 513 }, (_value, index) => ({
+        id: `model-${index}`,
+        label: `Model ${index}`,
+        truthClass: "observed",
+      })),
+    }).success).toBe(false)
+  })
+
   it.each([
     [{ workspaceRoot: "/Users/example/project" }, "machine-local paths"],
     [{ apiKey: "not-even-a-real-secret" }, "machine-local credential binding"],

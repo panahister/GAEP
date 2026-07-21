@@ -93,7 +93,7 @@ export const agentSettingSchema = z.object({
   required: z.boolean().default(false),
   sensitive: z.boolean().default(false),
   defaultValue: portableAgentSettingValueSchema.optional(),
-  options: z.array(settingOptionSchema).optional(),
+  options: z.array(settingOptionSchema).max(256).optional(),
   minimum: z.number().optional(),
   maximum: z.number().optional(),
   truthClass: truthClassSchema,
@@ -111,9 +111,9 @@ export const modelDescriptorSchema = z.object({
   id: portableCapabilityText(1),
   label: portableCapabilityText(1),
   description: portableCapabilityText().optional(),
-  reasoningOptions: z.array(portableCapabilityText()).default([]),
+  reasoningOptions: z.array(portableCapabilityText()).max(64).default([]),
   contextWindow: z.number().int().positive().optional(),
-  inputModalities: z.array(portableCapabilityText()).default(["text"]),
+  inputModalities: z.array(portableCapabilityText()).max(32).default(["text"]),
   truthClass: truthClassSchema,
   alias: z.boolean().default(false),
 }).strict()
@@ -134,9 +134,15 @@ export const adapterCapabilitiesSnapshotSchema = z.object({
   supportsCheckpoints: z.boolean(),
   supportsModelDiscovery: z.boolean(),
   supportsToolSelection: z.boolean(),
-  settings: z.array(agentSettingSchema),
-  models: z.array(modelDescriptorSchema),
-  limitations: z.array(portableCapabilityText()),
+  settings: z.array(agentSettingSchema).max(256).refine(
+    (settings) => new Set(settings.map((setting) => setting.key)).size === settings.length,
+    "Capability setting keys must be unique",
+  ),
+  models: z.array(modelDescriptorSchema).max(512).refine(
+    (models) => new Set(models.map((model) => model.id)).size === models.length,
+    "Capability model IDs must be unique",
+  ),
+  limitations: z.array(portableCapabilityText()).max(512),
   observedAt: z.string().datetime(),
 }).strict()
 
