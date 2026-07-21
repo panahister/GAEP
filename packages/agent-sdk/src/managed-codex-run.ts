@@ -27,6 +27,8 @@ export interface ManagedCodexStagedRunRequest {
   model: string
   prompt: string
   developerInstructions?: string
+  /** Machine-local provider thread identity; never persist this value in GAEP records. */
+  resumeThreadId?: string
   runtimeVersion?: string
   capabilityDigest?: `sha256:${string}`
   timeoutMs?: number
@@ -34,7 +36,14 @@ export interface ManagedCodexStagedRunRequest {
   stagingService?: WorkspaceStagingService
   appServerOptions?: Omit<
     CodexAppServerOptions,
-    "executable" | "stagingService" | "processCwd" | "approvalMediator" | "runtimeVersion" | "capabilityDigest"
+    | "executable"
+    | "stagingService"
+    | "processCwd"
+    | "approvalMediator"
+    | "runtimeVersion"
+    | "capabilityDigest"
+    | "allowShellTool"
+    | "allowFileChanges"
   >
 }
 
@@ -244,6 +253,9 @@ export async function startManagedCodexStagedRun(
   const developerInstructions = request.developerInstructions === undefined
     ? undefined
     : requireBoundedText(request.developerInstructions, "Developer instructions", 256 * 1_024)
+  const resumeThreadId = request.resumeThreadId === undefined
+    ? undefined
+    : requireBoundedText(request.resumeThreadId, "Codex resume thread ID", 4 * 1_024)
   const timeoutMs = assertTimeout(request.timeoutMs ?? defaultRunTimeoutMs)
   if (!request.policy || typeof request.policy.allowCommands !== "boolean" || typeof request.policy.allowFileChanges !== "boolean") {
     throw new Error("Managed Codex stage policy must contain explicit boolean command and file-change decisions")
@@ -270,6 +282,8 @@ export async function startManagedCodexStagedRun(
       processCwd: stage.root,
       runtimeVersion,
       capabilityDigest,
+      allowShellTool: request.policy.allowCommands,
+      allowFileChanges: request.policy.allowFileChanges,
       approvalMediator: async (approval) => {
         const allowed = approval.kind === "command"
           ? request.policy.allowCommands
@@ -315,7 +329,9 @@ export async function startManagedCodexStagedRun(
     try {
       await supervisor.start()
       if (cancelRequested) throw new Error("Managed Codex run was cancelled before thread creation")
-      const thread = await supervisor.startStagedThread({ stage, model, developerInstructions })
+      const thread = resumeThreadId
+        ? await supervisor.resumeStagedThread({ stage, model, developerInstructions, threadId: resumeThreadId })
+        : await supervisor.startStagedThread({ stage, model, developerInstructions })
       threadId = thread.threadId
       if (cancelRequested) throw new Error("Managed Codex run was cancelled before turn creation")
       const turn = await supervisor.startStagedTurn({ stage, threadId, prompt, model })
@@ -380,9 +396,12 @@ export async function startManagedCodexStagedRun(
       terminalDisposition,
       postconditionStatus: "not-assessed",
     })
-    initialResult.portable.warnings.push(
-      "The Codex workspace-write sandbox confines staged writes and disables network access, but this result does not attest read confinement outside the staged workspace.",
-    )
+    initialResult.portable.warnings.push(request.policy.allowFileChanges
+      ? "Codex received a network-disabled workspace-write sandbox rooted at the isolated stage; this result does not attest read confinement outside that stage."
+      : "Codex received a network-disabled read-only sandbox; this result does not attest read confinement outside the staged workspace.")
+    if (!request.policy.allowCommands) {
+      initialResult.portable.warnings.push("The Codex shell tool was disabled for this run and command approval requests were fail-closed.")
+    }
     if (coordinatorFailure) {
       const maximumSequence = initialResult.portable.events.reduce(
         (maximum, event) => Math.max(maximum, event.sequence),

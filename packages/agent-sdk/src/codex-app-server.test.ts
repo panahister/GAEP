@@ -76,14 +76,79 @@ describe("Codex app-server managed transport", () => {
     await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })))
   })
 
-  it("pins a strict app-server launch with MCP, search, and shell inheritance disabled", () => {
-    expect(codexAppServerLaunchArgs()).toEqual([
+  it("pins a strict app-server launch with ambient integrations and project instructions disabled", () => {
+    expect(codexAppServerLaunchArgs(false)).toEqual([
       "--strict-config",
       "-c", "mcp_servers={}",
       "-c", 'web_search="disabled"',
       "-c", 'shell_environment_policy.inherit="none"',
+      "-c", "project_doc_max_bytes=0",
+      "-c", "project_doc_fallback_filenames=[]",
+      "-c", "features.apps=false",
+      "-c", "features.goals=false",
+      "-c", "features.hooks=false",
+      "-c", "features.memories=false",
+      "-c", "features.multi_agent=false",
+      "-c", "features.remote_plugin=false",
+      "-c", "features.shell_snapshot=false",
+      "-c", "features.shell_tool=false",
       "app-server", "--listen", "stdio://",
     ])
+  })
+
+  it("sends exact fail-closed thread and turn policies when commands and file changes are disabled", async () => {
+    const { supervisor, service, stage } = await setup(undefined, {
+      allowShellTool: false,
+      allowFileChanges: false,
+    })
+    const iterator = supervisor.events[Symbol.asyncIterator]()
+    const { threadId } = await supervisor.startStagedThread({ stage, model: "fake-model" })
+    await supervisor.startStagedTurn({ stage, threadId, prompt: "inspect-policy" })
+    const output = await nextMatching(iterator, (event) => event.type === "output-delta" && event.text.startsWith("policy="))
+    if (output.type !== "output-delta") throw new Error("Expected a policy inspection event")
+    const policy = JSON.parse(output.text.slice("policy=".length)) as Record<string, any>
+
+    expect(policy).toMatchObject({
+      threadSandbox: "read-only",
+      config: {
+        mcp_servers: {},
+        web_search: "disabled",
+        shell_environment_policy: { inherit: "none" },
+        project_doc_max_bytes: 0,
+        project_doc_fallback_filenames: [],
+        features: {
+          apps: false,
+          goals: false,
+          hooks: false,
+          memories: false,
+          multi_agent: false,
+          remote_plugin: false,
+          shell_snapshot: false,
+          shell_tool: false,
+        },
+      },
+      turnSandboxPolicy: { type: "readOnly", networkAccess: false },
+    })
+    await supervisor.stop()
+    await service.cleanup(stage)
+  })
+
+  it("denies command escalation even when a mediator allows it if the shell tool is disabled", async () => {
+    const { supervisor, service, stage } = await setup(async () => ({
+      outcome: "allow-once",
+      authorizationId: "must-not-be-used",
+      reason: "test mediator approval that policy must override",
+    }), { allowShellTool: false })
+    const iterator = supervisor.events[Symbol.asyncIterator]()
+    const { threadId } = await supervisor.startStagedThread({ stage, model: "fake-model" })
+    await supervisor.startStagedTurn({ stage, threadId, prompt: "approval" })
+    const approval = await nextMatching(iterator, (event) => event.type === "approval")
+    const response = await nextMatching(iterator, (event) => event.type === "output-delta" && event.text.startsWith("approval="))
+
+    expect(approval).toMatchObject({ approvalKind: "command", outcome: "denied" })
+    expect(response).toMatchObject({ text: "approval=decline" })
+    await supervisor.stop()
+    await service.cleanup(stage)
   })
 
   it("handshakes, starts only in managed staging, and normalizes streamed events", async () => {

@@ -14,7 +14,7 @@ import {
   type ManagedTerminalDisposition,
   type UnsequencedManagedRuntimeEvent,
 } from "./managed-runtime.js"
-import type { CodexStableRequestParams } from "./codex-app-server-v2.types.js"
+import type { CodexJsonValue, CodexStableRequestParams } from "./codex-app-server-v2.types.js"
 import {
   filterChildEnvironment,
   fingerprintExecutable,
@@ -35,6 +35,10 @@ interface PendingRequest {
 export interface CodexAppServerOptions {
   executable: string
   stagingService: WorkspaceStagingService
+  /** Expose the provider shell tool and permit command approval requests. Defaults to true for the low-level transport. */
+  allowShellTool?: boolean
+  /** Give the provider a staged workspace-write sandbox and permit file-change approvals. Defaults to true. */
+  allowFileChanges?: boolean
   runtimeVersion?: string
   capabilityDigest?: `sha256:${string}`
   args?: string[]
@@ -79,14 +83,44 @@ const defaultDenialMediator: ManagedApprovalMediator = async () => ({
   reason: "No GAEP managed approval mediator authorized this provider request",
 })
 
-export function codexAppServerLaunchArgs(): string[] {
+export function codexAppServerLaunchArgs(allowShellTool = true): string[] {
   return [
     "--strict-config",
     "-c", "mcp_servers={}",
     "-c", 'web_search="disabled"',
     "-c", 'shell_environment_policy.inherit="none"',
+    "-c", "project_doc_max_bytes=0",
+    "-c", "project_doc_fallback_filenames=[]",
+    "-c", "features.apps=false",
+    "-c", "features.goals=false",
+    "-c", "features.hooks=false",
+    "-c", "features.memories=false",
+    "-c", "features.multi_agent=false",
+    "-c", "features.remote_plugin=false",
+    "-c", "features.shell_snapshot=false",
+    "-c", `features.shell_tool=${String(allowShellTool)}`,
     "app-server", "--listen", "stdio://",
   ]
+}
+
+function managedThreadConfig(allowShellTool: boolean): { [key: string]: CodexJsonValue | undefined } {
+  return {
+    mcp_servers: {},
+    web_search: "disabled",
+    shell_environment_policy: { inherit: "none" },
+    project_doc_max_bytes: 0,
+    project_doc_fallback_filenames: [],
+    features: {
+      apps: false,
+      goals: false,
+      hooks: false,
+      memories: false,
+      multi_agent: false,
+      remote_plugin: false,
+      shell_snapshot: false,
+      shell_tool: allowShellTool,
+    },
+  }
 }
 
 function object(value: unknown, label: string): JsonObject {
@@ -121,6 +155,8 @@ export class CodexAppServerSupervisor {
   private readonly maxPendingRequests: number
   private readonly maxRecordedEventBytes: number
   private readonly maxEventTextBytes: number
+  private readonly allowShellTool: boolean
+  private readonly allowFileChanges: boolean
   private readonly pending = new Map<RpcId, PendingRequest>()
   private readonly recordedEvents: ManagedRuntimeEvent[] = []
   private readonly warnings: string[] = []
@@ -138,7 +174,15 @@ export class CodexAppServerSupervisor {
   private disposed = false
 
   constructor(private readonly options: CodexAppServerOptions) {
+    if (options.allowShellTool !== undefined && typeof options.allowShellTool !== "boolean") {
+      throw new Error("allowShellTool must be a boolean")
+    }
+    if (options.allowFileChanges !== undefined && typeof options.allowFileChanges !== "boolean") {
+      throw new Error("allowFileChanges must be a boolean")
+    }
     this.approvalMediator = options.approvalMediator ?? defaultDenialMediator
+    this.allowShellTool = options.allowShellTool ?? true
+    this.allowFileChanges = options.allowFileChanges ?? true
     this.requestTimeoutMs = options.requestTimeoutMs ?? 10_000
     this.terminationGraceMs = options.terminationGraceMs ?? 250
     this.maxFrameBytes = options.maxFrameBytes ?? 1024 * 1024
@@ -173,7 +217,7 @@ export class CodexAppServerSupervisor {
     this.localPathRedactions.add(this.fingerprint.canonicalPath)
     if (this.options.processCwd) this.localPathRedactions.add(resolveLocalPath(this.options.processCwd))
     if (this.disposed) throw new Error("Codex app-server supervisor was disposed during startup")
-    const args = this.options.args ?? codexAppServerLaunchArgs()
+    const args = this.options.args ?? codexAppServerLaunchArgs(this.allowShellTool)
     const childEnvironment = filterChildEnvironment(process.env, ["CODEX_HOME"])
     for (const key of [
       "HOME", "USERPROFILE", "TMPDIR", "TMP", "TEMP", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME",
@@ -227,12 +271,8 @@ export class CodexAppServerSupervisor {
       cwd: options.stage.root,
       approvalPolicy: "on-request",
       approvalsReviewer: "user",
-      sandbox: "workspace-write",
-      config: {
-        mcp_servers: {},
-        web_search: "disabled",
-        shell_environment_policy: { inherit: "none" },
-      },
+      sandbox: this.allowFileChanges ? "workspace-write" : "read-only",
+      config: managedThreadConfig(this.allowShellTool),
       developerInstructions: options.developerInstructions ?? null,
       ephemeral: false,
     }), "thread/start result")
@@ -251,12 +291,8 @@ export class CodexAppServerSupervisor {
       cwd: options.stage.root,
       approvalPolicy: "on-request",
       approvalsReviewer: "user",
-      sandbox: "workspace-write",
-      config: {
-        mcp_servers: {},
-        web_search: "disabled",
-        shell_environment_policy: { inherit: "none" },
-      },
+      sandbox: this.allowFileChanges ? "workspace-write" : "read-only",
+      config: managedThreadConfig(this.allowShellTool),
       developerInstructions: options.developerInstructions ?? null,
     }), "thread/resume result")
     const thread = object(result.thread, "thread/resume thread")
@@ -276,13 +312,15 @@ export class CodexAppServerSupervisor {
       cwd: options.stage.root,
       approvalPolicy: "on-request",
       approvalsReviewer: "user",
-      sandboxPolicy: {
-        type: "workspaceWrite",
-        writableRoots: [options.stage.root],
-        networkAccess: false,
-        excludeTmpdirEnvVar: true,
-        excludeSlashTmp: true,
-      },
+      sandboxPolicy: this.allowFileChanges
+        ? {
+            type: "workspaceWrite",
+            writableRoots: [options.stage.root],
+            networkAccess: false,
+            excludeTmpdirEnvVar: true,
+            excludeSlashTmp: true,
+          }
+        : { type: "readOnly", networkAccess: false },
       model: options.model ?? null,
     }), "turn/start result")
     const turn = object(result.turn, "turn/start turn")
@@ -500,7 +538,12 @@ export class CodexAppServerSupervisor {
       await this.write({ id, error: { code: -32_001, message: "Denied by GAEP managed runtime" } })
       return
     }
-    const decision = await this.approvalMediator(request)
+    const policyDenial = kind === "command" && !this.allowShellTool
+      ? { outcome: "deny" as const, reason: "The GAEP run policy disables provider shell commands" }
+      : kind === "file-change" && !this.allowFileChanges
+        ? { outcome: "deny" as const, reason: "The GAEP run policy disables provider file changes" }
+        : undefined
+    const decision = policyDenial ?? await this.approvalMediator(request)
     if (kind === "permissions") {
       this.emitApproval(request, decision, decision.outcome === "allow-once" ? "unsupported" : "denied")
       await this.write({ id, result: { permissions: {}, scope: "turn", strictAutoReview: true } })

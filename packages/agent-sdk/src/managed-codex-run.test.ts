@@ -84,7 +84,10 @@ describe("managed Codex staged-run coordinator", () => {
   it("applies exactly the approved staged inventory and keeps portable evidence path-free", async () => {
     const source = await sourceWorkspace()
     const service = new WorkspaceStagingService()
-    const { review } = await collect(await start(source, "write-stage", { stagingService: service }))
+    const { review } = await collect(await start(source, "write-stage", {
+      stagingService: service,
+      allowFileChanges: true,
+    }))
 
     expect(review.inspection.changes).toEqual([
       expect.objectContaining({ path: "source.txt", kind: "modified" }),
@@ -115,7 +118,7 @@ describe("managed Codex staged-run coordinator", () => {
 
   it("rejects an approval inventory that differs from the inspected change set", async () => {
     const source = await sourceWorkspace()
-    const { review } = await collect(await start(source, "write-stage"))
+    const { review } = await collect(await start(source, "write-stage", { allowFileChanges: true }))
 
     await expect(review.apply({ authorizationId: "test-authority", approvedPaths: [] }))
       .rejects.toThrow("exactly match")
@@ -127,7 +130,10 @@ describe("managed Codex staged-run coordinator", () => {
   it("fails closed on source-workspace races without overwriting concurrent changes", async () => {
     const source = await sourceWorkspace()
     const service = new WorkspaceStagingService()
-    const { review } = await collect(await start(source, "write-stage", { stagingService: service }))
+    const { review } = await collect(await start(source, "write-stage", {
+      stagingService: service,
+      allowFileChanges: true,
+    }))
     await writeFile(join(source, "source.txt"), "concurrent change")
 
     const result = await review.apply({ authorizationId: "test-authority", approvedPaths: ["source.txt"] })
@@ -201,6 +207,16 @@ describe("managed Codex staged-run coordinator", () => {
       outcome: expectedOutcome,
     }))
     expect(review.result.portable.terminalDisposition).toBe("completed")
+    await review.discard()
+  })
+
+  it("prevents staged writes when file changes are disabled", async () => {
+    const source = await sourceWorkspace()
+    const { review } = await collect(await start(source, "write-stage", { allowFileChanges: false }))
+
+    expect(review.result.portable.terminalDisposition).toBe("failed")
+    expect(review.inspection.changes).toEqual([])
+    expect(await readFile(join(source, "source.txt"), "utf8")).toBe("baseline")
     await review.discard()
   })
 })
