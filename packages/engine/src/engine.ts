@@ -5,12 +5,15 @@ import { promisify } from "node:util"
 import {
   agentSelectionSchema,
   adapterCapabilitiesSchema,
+  executionWorkspaceScopeSchema,
   executionCharterSchema,
   handoffSchema,
   initiativeSchema,
   productSchema,
+  productRevisionSchema,
   repositoryManifestSchema,
   runSchema,
+  workspaceHealthSchema,
   type AdapterCapabilities,
   type AgentSelection,
   type ExecutionCharter,
@@ -20,9 +23,17 @@ import {
   type Run,
   type ToolPermission,
 } from "@gaep/contracts"
-import { canonicalDigest, capabilityDigest, type AgentAdapter, type AgentInvocation } from "@gaep/agent-sdk"
+import {
+  canonicalDigest,
+  capabilityDigest,
+  type AdapterProbeOptions,
+  type AdapterProbeResult,
+  type AgentAdapter,
+  type AgentInvocation,
+} from "@gaep/agent-sdk"
 
 import { GaepRepository, type GaepRepositoryOptions } from "./repository.js"
+import { ProductStudioService } from "./product-studio.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -96,12 +107,25 @@ export interface HandoffInput {
   evidence: string[]
 }
 
+export interface LegacyAgentSelectionMigrationInput {
+  capabilities: AdapterCapabilities
+  modelId: string
+  settings: Record<string, unknown>
+  confirmation: "reconfirm-portable-agent-selection"
+}
+
 export class GaepEngine {
   readonly repository: GaepRepository
+  readonly productStudio: ProductStudioService
   readonly adapters = new Map<string, AgentAdapter>()
 
   constructor(readonly workspacePath: string, adapters: AgentAdapter[], repositoryOptions: GaepRepositoryOptions = {}) {
     this.repository = new GaepRepository(workspacePath, repositoryOptions)
+    this.productStudio = new ProductStudioService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+    )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
@@ -109,7 +133,10 @@ export class GaepEngine {
   }
 
   async probeAgents(): Promise<AdapterCapabilities[]> {
-    return Promise.all([...this.adapters.values()].map((adapter) => adapter.probe({ refreshModels: true })))
+    const results = await Promise.all(
+      [...this.adapters.values()].map((adapter) => this.probeAdapter(adapter, { refreshModels: true })),
+    )
+    return results.map((result) => result.capabilities)
   }
 
   async createProduct(input: ProductInput, actorId: string): Promise<Product> {
@@ -128,6 +155,16 @@ export class GaepEngine {
       await this.repository.assertCanCreateProduct()
       await this.repository.prepareLayout()
       const manifest = this.repository.createManifest(product.id)
+      const productRevision = productRevisionSchema.parse({
+        schemaVersion: 1,
+        kind: "product-revision",
+        productId: product.id,
+        revision: revisionOf(product),
+        product,
+        source: { kind: "initialization", id: product.id },
+        productDigest: canonicalDigest(product),
+        recordedAt: now,
+      })
       await this.repository.commitMutation({
         initialization: true,
         writes: [
@@ -141,6 +178,12 @@ export class GaepEngine {
             path: this.repository.resolve("product.json"),
             value: product,
             schema: productSchema,
+            governed: true,
+          },
+          {
+            path: this.repository.resolve("product-history", `product-${product.id}-r1.json`),
+            value: productRevision,
+            schema: productRevisionSchema,
             governed: true,
           },
         ],
@@ -165,7 +208,25 @@ export class GaepEngine {
   }
 
   async workspaceHealth() {
-    return this.repository.workspaceHealth()
+    const health = await this.repository.workspaceHealth()
+    if (!health.initialized || health.status === "invalid") return health
+    let domainIssues
+    try {
+      domainIssues = await this.productStudio.healthIssues()
+    } catch (error) {
+      domainIssues = [{
+        code: "product.health-evaluation-failed" as const,
+        severity: "error" as const,
+        message: error instanceof Error ? error.message : "Product-domain health evaluation failed.",
+      }]
+    }
+    const issues = [...health.issues, ...domainIssues]
+    const status = issues.some((issue) => issue.severity === "error")
+      ? "invalid"
+      : issues.length > 0
+        ? "degraded"
+        : "healthy"
+    return workspaceHealthSchema.parse({ ...health, status, issues })
   }
 
   async createInitiative(input: InitiativeInput, actorId: string): Promise<Initiative> {
@@ -279,15 +340,15 @@ export class GaepEngine {
     return this.repository.withLock(async () => {
       await this.assertAuditIntegrity()
       await this.readProduct()
-      const observedCapabilities = adapterCapabilitiesSchema.parse(await adapter.probe({ refreshModels: true }))
+      const { capabilities: observedCapabilities } = await this.probeAdapter(adapter, { refreshModels: true })
       if (capabilityDigest(observedCapabilities) !== capabilityDigest(suppliedCapabilities)) {
         throw new Error("Agent capabilities changed or were not produced by the registered adapter; probe again")
       }
       const model = observedCapabilities.models.find((candidate) => candidate.id === modelId)
       const selection = agentSelectionSchema.parse({
+        schemaVersion: 2,
         adapterId: observedCapabilities.adapterId,
         agentId: observedCapabilities.agentId,
-        runtimeExecutable: observedCapabilities.executablePath,
         modelId,
         modelTruthClass: model?.truthClass ?? "configured",
         modelAlias: model?.alias ?? null,
@@ -297,13 +358,7 @@ export class GaepEngine {
       })
       const errors = adapter.validateSelection(selection, observedCapabilities)
       if (errors.length > 0) throw new Error(errors.join("; "))
-      const capabilitiesPath = this.repository.resolve(
-        "runtime",
-        `capabilities-${canonicalDigest({
-          adapterId: observedCapabilities.adapterId,
-          agentId: observedCapabilities.agentId,
-        }).slice("sha256:".length)}.json`,
-      )
+      const capabilitiesPath = this.capabilitiesPath(observedCapabilities)
       await this.repository.commitMutation({
         writes: [
           {
@@ -336,7 +391,100 @@ export class GaepEngine {
   }
 
   async readSelection(): Promise<AgentSelection> {
-    return this.repository.readJson(this.repository.resolve("runtime", "selection.json"), agentSelectionSchema)
+    const compatibility = await this.repository.readAgentSelectionCompatibility()
+    if (compatibility.status === "current") return compatibility.selection
+    if (compatibility.status === "migration-required") {
+      throw new Error("The persisted Agent Selection is legacy and requires explicit re-probe and reconfirmation")
+    }
+    throw new Error(`The persisted Agent Selection is invalid: ${compatibility.issues.join("; ")}`)
+  }
+
+  async migrateLegacyAgentSelection(
+    input: LegacyAgentSelectionMigrationInput,
+    actorId: string,
+  ): Promise<AgentSelection> {
+    if (input.confirmation !== "reconfirm-portable-agent-selection") {
+      throw new Error("Legacy Agent Selection migration requires explicit capability reconfirmation")
+    }
+    const suppliedCapabilities = adapterCapabilitiesSchema.parse(input.capabilities)
+    const adapter = this.adapters.get(suppliedCapabilities.adapterId)
+    if (!adapter) throw new Error(`Adapter ${suppliedCapabilities.adapterId} is not registered`)
+    return this.repository.withLock(async () => {
+      await this.assertAuditIntegrity()
+      await this.readProduct()
+      const legacySelection = await this.repository.readAgentSelectionCompatibility()
+      if (legacySelection.status !== "migration-required") {
+        throw new Error("Agent Selection migration requires an existing valid legacy Selection")
+      }
+      if (
+        legacySelection.portableCandidate.adapterId !== suppliedCapabilities.adapterId ||
+        legacySelection.portableCandidate.agentId !== suppliedCapabilities.agentId
+      ) {
+        throw new Error("Migration cannot change the legacy Agent identity; perform a separate Agent Selection instead")
+      }
+      const capabilitiesPath = this.capabilitiesPath(suppliedCapabilities)
+      const legacyCapabilities = await this.repository.readAdapterCapabilitiesCompatibility(capabilitiesPath)
+      if (legacyCapabilities.status === "invalid") {
+        throw new Error(`Legacy capability snapshot is invalid: ${legacyCapabilities.issues.join("; ")}`)
+      }
+      const persistedCapabilities = legacyCapabilities.status === "current"
+        ? legacyCapabilities.capabilities
+        : legacyCapabilities.portableCandidate
+      if (
+        persistedCapabilities.adapterId !== suppliedCapabilities.adapterId ||
+        persistedCapabilities.agentId !== suppliedCapabilities.agentId
+      ) {
+        throw new Error("Persisted legacy capability identity does not match the Selection being migrated")
+      }
+      const { capabilities: observedCapabilities } = await this.probeAdapter(adapter, { refreshModels: true })
+      if (capabilityDigest(observedCapabilities) !== capabilityDigest(suppliedCapabilities)) {
+        throw new Error("Agent capabilities changed during migration; probe and reconfirm again")
+      }
+      const model = observedCapabilities.models.find((candidate) => candidate.id === input.modelId)
+      const selection = agentSelectionSchema.parse({
+        schemaVersion: 2,
+        adapterId: observedCapabilities.adapterId,
+        agentId: observedCapabilities.agentId,
+        modelId: input.modelId,
+        modelTruthClass: model?.truthClass ?? "configured",
+        modelAlias: model?.alias ?? null,
+        settings: input.settings,
+        selectedAt: new Date().toISOString(),
+        capabilityDigest: capabilityDigest(observedCapabilities),
+      })
+      const errors = adapter.validateSelection(selection, observedCapabilities)
+      if (errors.length > 0) throw new Error(errors.join("; "))
+      await this.repository.commitMutation({
+        writes: [
+          {
+            path: this.repository.resolve("runtime", "selection.json"),
+            value: selection,
+            schema: agentSelectionSchema,
+            governed: true,
+          },
+          {
+            path: capabilitiesPath,
+            value: observedCapabilities,
+            schema: adapterCapabilitiesSchema,
+            governed: true,
+          },
+        ],
+        audit: {
+          eventType: "agent.selection.migrated",
+          actor: { kind: "human", id: actorId },
+          subjectId: selection.agentId,
+          payload: {
+            adapterId: selection.adapterId,
+            modelId: selection.modelId,
+            capabilityDigest: selection.capabilityDigest,
+            selectionDigest: canonicalDigest(selection),
+            capabilityReconfirmed: true,
+            machineLocalDataPersisted: false,
+          },
+        },
+      })
+      return selection
+    })
   }
 
   async listRuns(): Promise<Run[]> {
@@ -473,14 +621,23 @@ export class GaepEngine {
       }
       const adapter = this.adapters.get(charter.agent.adapterId)
       if (!adapter) throw new Error(`Adapter ${charter.agent.adapterId} is unavailable`)
-      const observedCapabilities = adapterCapabilitiesSchema.parse(await adapter.probe({ refreshModels: true }))
+      const { capabilities: observedCapabilities, runtimeBinding } = await this.probeAdapter(
+        adapter,
+        { refreshModels: true },
+      )
       if (capabilityDigest(observedCapabilities) !== charter.agent.capabilityDigest) {
         throw new Error("Agent runtime capabilities changed after Charter confirmation; select again and recreate the Charter")
       }
       const selectionErrors = adapter.validateSelection(charter.agent, observedCapabilities)
       if (selectionErrors.length > 0) throw new Error(selectionErrors.join("; "))
       const prompt = this.buildPrompt(charter)
-      const invocation = adapter.buildInvocation(charter.agent, charter, this.workspacePath, prompt)
+      const invocation = adapter.buildInvocation(
+        charter.agent,
+        charter,
+        this.workspacePath,
+        prompt,
+        runtimeBinding,
+      )
       const run = runSchema.parse({
         schemaVersion: 1,
         id: randomUUID(),
@@ -508,9 +665,9 @@ export class GaepEngine {
             charterDigest: run.charterDigest,
             revision: revisionOf(run),
             recordDigest: canonicalDigest(run),
-            executable: invocation.executable,
-            args: invocation.args.map((value, index) => index === invocation.args.length - 1 ? "[PROMPT]" : value),
-            warnings: invocation.warnings,
+            adapterId: run.agent.adapterId,
+            modelId: run.agent.modelId,
+            runtimeBindingPersisted: false,
           },
         },
       })
@@ -571,13 +728,7 @@ export class GaepEngine {
       await this.assertAuditIntegrity()
       const { handoff, capabilities } = await this.buildHandoffWithCapabilities(input)
       const selection = handoff.toAgent
-      const capabilitiesPath = this.repository.resolve(
-        "runtime",
-        `capabilities-${canonicalDigest({
-          adapterId: capabilities.adapterId,
-          agentId: capabilities.agentId,
-        }).slice("sha256:".length)}.json`,
-      )
+      const capabilitiesPath = this.capabilitiesPath(capabilities)
       await this.repository.commitMutation({
         writes: [
           {
@@ -634,15 +785,15 @@ export class GaepEngine {
     const suppliedCapabilities = adapterCapabilitiesSchema.parse(input.toCapabilities)
     const adapter = this.adapters.get(suppliedCapabilities.adapterId)
     if (!adapter) throw new Error(`Adapter ${suppliedCapabilities.adapterId} is unavailable`)
-    const capabilities = adapterCapabilitiesSchema.parse(await adapter.probe({ refreshModels: true }))
+    const { capabilities } = await this.probeAdapter(adapter, { refreshModels: true })
     if (capabilityDigest(capabilities) !== capabilityDigest(suppliedCapabilities)) {
       throw new Error("Handoff target capabilities changed; review the switch again")
     }
     const model = capabilities.models.find((candidate) => candidate.id === input.toModelId)
     const toSelection = agentSelectionSchema.parse({
+      schemaVersion: 2,
       adapterId: capabilities.adapterId,
       agentId: capabilities.agentId,
-      runtimeExecutable: capabilities.executablePath,
       modelId: input.toModelId,
       modelTruthClass: model?.truthClass ?? "configured",
       modelAlias: model?.alias ?? null,
@@ -686,6 +837,40 @@ export class GaepEngine {
     if (!audit.valid) {
       throw new Error(`GAEP workspace audit is invalid; refusing mutation: ${audit.error ?? "unknown error"}`)
     }
+  }
+
+  private async probeAdapter(
+    adapter: AgentAdapter,
+    options: AdapterProbeOptions,
+  ): Promise<AdapterProbeResult> {
+    const result = await adapter.probe(options)
+    const capabilities = adapterCapabilitiesSchema.parse(result.capabilities)
+    const runtimeBinding = result.runtimeBinding
+    if (capabilities.adapterId !== adapter.id) {
+      throw new Error(`Adapter ${adapter.id} returned capabilities for ${capabilities.adapterId}`)
+    }
+    if (
+      !runtimeBinding ||
+      runtimeBinding.scope !== "machine-local" ||
+      runtimeBinding.adapterId !== capabilities.adapterId ||
+      runtimeBinding.agentId !== capabilities.agentId
+    ) {
+      throw new Error(`Adapter ${adapter.id} returned a mismatched machine-local runtime binding`)
+    }
+    if (capabilities.detected === (runtimeBinding.kind === "unavailable")) {
+      throw new Error(`Adapter ${adapter.id} returned inconsistent availability and runtime binding state`)
+    }
+    return { capabilities, runtimeBinding }
+  }
+
+  private capabilitiesPath(capabilities: Pick<AdapterCapabilities, "adapterId" | "agentId">): string {
+    return this.repository.resolve(
+      "runtime",
+      `capabilities-${canonicalDigest({
+        adapterId: capabilities.adapterId,
+        agentId: capabilities.agentId,
+      }).slice("sha256:".length)}.json`,
+    )
   }
 
   private async assertCharterBindings(charter: ExecutionCharter): Promise<void> {
@@ -763,21 +948,43 @@ export class GaepEngine {
     try {
       const [{ stdout: head }, { stdout: status }] = await Promise.all([
         execFileAsync("git", ["rev-parse", "HEAD"], { cwd: this.workspacePath }),
-        execFileAsync("git", ["status", "--porcelain=v1"], { cwd: this.workspacePath }),
+        execFileAsync("git", ["status", "--porcelain=v1", "-z", "--untracked-files=all"], { cwd: this.workspacePath }),
       ])
-      const changedFiles = status.split("\n").filter(Boolean).map((line) => line.slice(3))
+      const entries = status.split("\0").filter(Boolean)
+      const observedPaths: string[] = []
+      for (let index = 0; index < entries.length; index += 1) {
+        const entry = entries[index]!
+        const statusCode = entry.slice(0, 2)
+        observedPaths.push(entry.slice(3))
+        if (/[RC]/.test(statusCode) && entries[index + 1]) observedPaths.push(entries[++index]!)
+      }
+      const changedFiles: string[] = []
+      let omittedNonPortablePath = false
+      for (const path of observedPaths) {
+        const parsed = executionWorkspaceScopeSchema.safeParse(path)
+        if (parsed.success && parsed.data !== ".") changedFiles.push(parsed.data)
+        else omittedNonPortablePath = true
+      }
       return {
         gitHead: head.trim(),
-        dirty: changedFiles.length > 0,
-        changedFiles,
+        dirty: observedPaths.length > 0,
+        changedFiles: [...new Set(changedFiles)].sort(),
         truthClass: "observed",
+        observationError: omittedNonPortablePath
+          ? "One or more changed file paths were omitted because they were not portable."
+          : undefined,
       }
     } catch (error) {
       return {
         dirty: null,
         changedFiles: [],
         truthClass: "unknown",
-        observationError: error instanceof Error ? error.message : "Git workspace state could not be observed",
+        observationError: error instanceof Error &&
+          "code" in error &&
+          typeof error.code === "string" &&
+          /^[A-Z0-9_]+$/.test(error.code)
+          ? `Git workspace state could not be observed (${error.code}).`
+          : "Git workspace state could not be observed.",
       }
     }
   }

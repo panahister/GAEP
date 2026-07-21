@@ -1,21 +1,25 @@
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { AdapterCapabilities } from "@gaep/contracts"
+import {
+  fingerprintExecutable,
+  type AdapterProbeResult,
+} from "@gaep/agent-sdk"
+import type { AdapterCapabilities, ProductExportBundle } from "@gaep/contracts"
 
 import { EngineHost } from "./host.js"
 
 function codexCapabilities(): AdapterCapabilities {
   return {
+    schemaVersion: 1,
     adapterId: "gaep.codex-cli",
     adapterVersion: "0.1.0",
     agentId: "codex-cli",
     agentLabel: "Codex",
     runtimeVersion: "0.135.0",
-    executablePath: process.execPath,
     detected: true,
     executionInterface: "cli-jsonl",
     interfaceMaturity: "stable",
@@ -61,6 +65,21 @@ function codexCapabilities(): AdapterCapabilities {
   }
 }
 
+async function probeResult(executablePath = process.execPath): Promise<AdapterProbeResult> {
+  const executableFingerprint = await fingerprintExecutable(executablePath, "codex")
+  return {
+    capabilities: codexCapabilities(),
+    runtimeBinding: {
+      scope: "machine-local",
+      kind: "executable",
+      adapterId: "gaep.codex-cli",
+      agentId: "codex-cli",
+      executablePath: executableFingerprint.canonicalPath,
+      executableFingerprint,
+    },
+  }
+}
+
 describe("engine host protocol", () => {
   let workspace: string
   let host: EngineHost
@@ -71,44 +90,19 @@ describe("engine host protocol", () => {
   })
 
   afterEach(async () => {
+    vi.restoreAllMocks()
     await rm(workspace, { recursive: true, force: true })
   })
 
-  it("responds to a versioned JSON-RPC ping", async () => {
-    await expect(host.dispatch({ jsonrpc: "2.0", id: 1, method: "ping", params: {} })).resolves.toEqual({
-      engineVersion: "0.1.0",
-      protocolVersion: 1,
-    })
-  })
-
-  it("rejects unknown methods before dispatch", async () => {
-    await expect(host.dispatch({ jsonrpc: "2.0", id: 1, method: "eraseEverything", params: {} })).rejects.toMatchObject({
-      code: -32_601,
-      kind: "METHOD_NOT_FOUND",
-    })
-  })
-
-  it("returns structured parse and typed-parameter failures", async () => {
-    let parseError: unknown
-    try {
-      EngineHost.parse("not-json")
-    } catch (error) {
-      parseError = error
-    }
-    expect(parseError).toMatchObject({ code: -32_700, kind: "PARSE_ERROR" })
-    await expect(host.dispatch({
-      jsonrpc: "2.0",
-      id: 2,
-      method: "createProduct",
-      params: { product: { name: "x" } },
-    })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
-  })
-
-  it("owns capability snapshots and carries a safe selection through invocation preparation", async () => {
-    const observed = codexCapabilities()
-    const adapter = host.engine.adapters.get(observed.adapterId)
+  async function mockCodex(result = probeResult()): Promise<AdapterProbeResult> {
+    const resolved = await result
+    const adapter = host.engine.adapters.get("gaep.codex-cli")
     if (!adapter) throw new Error("Codex adapter is not registered")
-    vi.spyOn(adapter, "probe").mockResolvedValue(observed)
+    vi.spyOn(adapter, "probe").mockResolvedValue(resolved)
+    return resolved
+  }
+
+  async function createProductAndInitiative(): Promise<{ productId: string; productRevision: number; initiativeId: string }> {
     const product = await host.dispatch({
       jsonrpc: "2.0",
       id: 1,
@@ -119,14 +113,14 @@ describe("engine host protocol", () => {
           summary: "A bounded test Product",
           problem: "Cross-host selection must not trust caller capability objects.",
           affectedUsers: "GAEP host users",
-          desiredOutcome: "Only host-observed executable capabilities reach execution.",
-          successSignals: ["Tampered executable ignored"],
+          desiredOutcome: "Only host-observed capabilities reach execution.",
+          successSignals: ["Host-local runtime remains private"],
           firstWorkflow: "Probe, select, charter, and prepare a run.",
           exclusions: [],
           profile: "software",
         },
       },
-    }) as { id: string }
+    }) as { id: string; revision: number }
     const initiative = await host.dispatch({
       jsonrpc: "2.0",
       id: 2,
@@ -140,70 +134,242 @@ describe("engine host protocol", () => {
         },
       },
     }) as { id: string }
-    expect(product.id).toBeTruthy()
     await host.engine.updateInitiativeState(
       initiative.id,
       "active",
       "Activate the host integration-test Initiative",
       "gaep.host-test",
     )
-    await host.dispatch({ jsonrpc: "2.0", id: 3, method: "probeAgents", params: {} })
-    const selected = await host.dispatch({
+    return { productId: product.id, productRevision: product.revision, initiativeId: initiative.id }
+  }
+
+  async function selectAndConfirmCharter(initiativeId: string): Promise<string> {
+    await host.dispatch({
       jsonrpc: "2.0",
-      id: 4,
+      id: 3,
       method: "selectAgent",
       params: {
-        capabilities: { ...observed, executablePath: "/tmp/caller-controlled" },
+        adapterId: "gaep.codex-cli",
         modelId: "gpt-test",
         settings: { sandbox: "read-only", approvalPolicy: "fail-closed-noninteractive" },
       },
-    }) as { runtimeExecutable: string }
-    expect(selected.runtimeExecutable).toBe(process.execPath)
-
+    })
     const charter = await host.dispatch({
       jsonrpc: "2.0",
-      id: 5,
+      id: 4,
       method: "createCharter",
       params: {
         charter: {
-          initiativeId: initiative.id,
+          initiativeId,
           objective: "Prepare a safe non-interactive Codex invocation",
           permissions: [
-            { capability: "read-workspace", mode: "allow", scope: [workspace] },
-            { capability: "modify-workspace", mode: "deny", scope: [workspace] },
-            { capability: "run-local-commands", mode: "allow", scope: [workspace] },
+            { capability: "read-workspace", mode: "allow", scope: ["."] },
+            { capability: "modify-workspace", mode: "deny", scope: ["."] },
+            { capability: "run-local-commands", mode: "allow", scope: ["."] },
             { capability: "network-access", mode: "deny", scope: [] },
-            { capability: "commit", mode: "deny", scope: [workspace] },
+            { capability: "commit", mode: "deny", scope: ["."] },
             { capability: "push", mode: "deny", scope: [] },
             { capability: "deploy", mode: "deny", scope: [] },
             { capability: "publish", mode: "deny", scope: [] },
             { capability: "external-communication", mode: "deny", scope: [] },
-            { capability: "destructive-delete", mode: "deny", scope: [workspace] },
+            { capability: "destructive-delete", mode: "deny", scope: ["."] },
           ],
           expectedEffects: ["observe"],
           forbiddenActions: ["Do not publish"],
           stopConditions: ["Stop when scope changes"],
-          requiredEvidence: ["Invocation arguments"],
+          requiredEvidence: ["Invocation preparation"],
         },
       },
     }) as { id: string }
     await host.dispatch({
       jsonrpc: "2.0",
-      id: 6,
+      id: 5,
       method: "confirmCharter",
       params: { charterId: charter.id },
     })
+    return charter.id
+  }
+
+  it("negotiates protocol v2 while retaining safe omitted-version v1 behavior", async () => {
+    await expect(host.dispatch({ jsonrpc: "2.0", id: 1, method: "ping", params: {} })).resolves.toEqual({
+      engineVersion: "0.1.0",
+      protocolVersion: 2,
+      negotiatedProtocolVersion: 1,
+      supportedProtocolVersions: [1, 2],
+    })
+    await expect(host.dispatch({ jsonrpc: "2.0", id: 2, protocolVersion: 2, method: "ping", params: {} })).resolves.toMatchObject({
+      protocolVersion: 2,
+      negotiatedProtocolVersion: 2,
+    })
+    await expect(host.dispatch({ jsonrpc: "2.0", id: 3, protocolVersion: 3, method: "ping", params: {} })).rejects.toMatchObject({
+      kind: "UNSUPPORTED_PROTOCOL_VERSION",
+    })
+    await expect(host.dispatch({ jsonrpc: "2.0", id: 4, method: "workspaceHealth", params: {} })).rejects.toMatchObject({
+      kind: "PROTOCOL_UPGRADE_REQUIRED",
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 5,
+      method: "migrateLegacySelection",
+      params: {
+        adapterId: "gaep.codex-cli",
+        modelId: "gpt-test",
+        settings: {},
+        confirmation: "reconfirm-portable-agent-selection",
+      },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+  })
+
+  it("rejects unknown methods, malformed params, caller capability injection, and oversized direct requests", async () => {
+    await expect(host.dispatch({ jsonrpc: "2.0", id: 1, method: "eraseEverything", params: {} })).rejects.toMatchObject({
+      code: -32_601,
+      kind: "METHOD_NOT_FOUND",
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "selectAgent",
+      params: {
+        adapterId: "gaep.codex-cli",
+        modelId: "gpt-test",
+        settings: {},
+        capabilities: { executablePath: "/tmp/caller-controlled" },
+      },
+    })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 3,
+      method: "selectAgent",
+      params: { adapterId: "gaep.codex-cli", modelId: "gpt-test", settings: { workspaceRoot: "/tmp/injected" } },
+    })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 4,
+      protocolVersion: 2,
+      method: "migrateLegacySelection",
+      params: {
+        adapterId: "gaep.codex-cli",
+        modelId: "gpt-test",
+        settings: {},
+        confirmation: "reconfirm-portable-agent-selection",
+        runtimeExecutable: "/tmp/caller-controlled",
+      },
+    })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 5,
+      method: "createProduct",
+      params: { product: { name: "x" } },
+    })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 6,
+      method: "readProduct",
+      params: { padding: "x".repeat(1024 * 1024) },
+    })).rejects.toMatchObject({ code: -32_001, kind: "FRAME_TOO_LARGE" })
+  })
+
+  it("returns only path-free capability snapshots and ignores all caller runtime authority", async () => {
+    await mockCodex()
+    const probed = await host.dispatch({ jsonrpc: "2.0", id: 1, method: "probeAgents", params: {} })
+    const serialized = JSON.stringify(probed)
+    expect(serialized).not.toContain(process.execPath)
+    expect(serialized).not.toContain("executablePath")
+    expect(serialized).not.toContain("executableFingerprint")
+    expect(serialized).not.toMatch(/sha256:[0-9a-f]{64}/u)
+  })
+
+  it("does not leak absolute paths from adapter failures through direct host dispatch", async () => {
+    const adapter = host.engine.adapters.get("gaep.codex-cli")
+    if (!adapter) throw new Error("Codex adapter is not registered")
+    vi.spyOn(adapter, "probe").mockRejectedValue(new Error("failed at /Users/alice/private/agent token=top-secret"))
+
+    let failure: unknown
+    try {
+      await host.dispatch({ jsonrpc: "2.0", id: 1, method: "probeAgents", params: {} })
+    } catch (error) {
+      failure = error
+    }
+    expect(failure).toMatchObject({ kind: "INTERNAL_ERROR" })
+    expect(JSON.stringify(failure)).not.toContain("/Users/alice")
+    expect(JSON.stringify(failure)).not.toContain("top-secret")
+  })
+
+  it("keeps selection and prepared-run RPC results portable while binding execution server-side", async () => {
+    await mockCodex()
+    const { initiativeId } = await createProductAndInitiative()
+    const charterId = await selectAndConfirmCharter(initiativeId)
     const prepared = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 6,
+      method: "prepareRun",
+      params: { charterId },
+    }) as { run: { agent: Record<string, unknown> }; execution: { protocol: string; promptAttached: boolean } }
+
+    expect(prepared.run.agent).toMatchObject({ schemaVersion: 2, adapterId: "gaep.codex-cli", modelId: "gpt-test" })
+    expect(prepared.run.agent).not.toHaveProperty("runtimeExecutable")
+    expect(prepared.execution).toMatchObject({ protocol: "jsonl", promptAttached: true })
+    const serialized = JSON.stringify(prepared)
+    expect(serialized).not.toContain(workspace)
+    expect(serialized).not.toContain(process.execPath)
+    expect(serialized).not.toContain("executableFingerprint")
+  })
+
+  it("fails closed when the selected executable fingerprint changes before prepare-run", async () => {
+    const executable = join(workspace, "fake-codex")
+    await writeFile(executable, "first executable revision")
+    const observed = await probeResult(executable)
+    await mockCodex(Promise.resolve(observed))
+    const { initiativeId } = await createProductAndInitiative()
+    const charterId = await selectAndConfirmCharter(initiativeId)
+    await writeFile(executable, "second executable revision")
+
+    await expect(host.dispatch({
       jsonrpc: "2.0",
       id: 7,
       method: "prepareRun",
-      params: { charterId: charter.id },
-    }) as { invocation: { args: string[]; stdin?: string } }
+      params: { charterId },
+    })).rejects.toMatchObject({ kind: "EXECUTABLE_CHANGED" })
+  })
 
-    const execIndex = prepared.invocation.args.indexOf("exec")
-    expect(execIndex).toBeGreaterThan(prepared.invocation.args.indexOf("--strict-config"))
-    expect(prepared.invocation.args.slice(0, execIndex)).toEqual(expect.arrayContaining(["-a", "never"]))
-    expect(prepared.invocation.args.at(-1)).toBe("-")
-    expect(prepared.invocation.stdin).toContain("Prepare a safe non-interactive Codex invocation")
+  it("exposes strict workspace health and Product Studio readiness/search/export/import-preview methods in v2", async () => {
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 1,
+      protocolVersion: 2,
+      method: "workspaceHealth",
+      params: {},
+    })).resolves.toMatchObject({ status: "uninitialized" })
+
+    const { productId, productRevision } = await createProductAndInitiative()
+    await host.engine.productStudio.startOrResumeDesignDraft(productRevision)
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 2,
+      protocolVersion: 2,
+      method: "productStudio.designReadiness",
+      params: { productId },
+    })).resolves.toMatchObject({ status: "incomplete", claimBoundary: "design-readiness-is-not-implementation-approval" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 3,
+      protocolVersion: 2,
+      method: "productStudio.search",
+      params: { query: "host test", kinds: ["product-revision"] },
+    })).resolves.toEqual([expect.objectContaining({ kind: "product-revision" })])
+    const bundle = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 4,
+      protocolVersion: 2,
+      method: "productStudio.exportBuild",
+      params: {},
+    }) as ProductExportBundle
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 5,
+      protocolVersion: 2,
+      method: "productStudio.importPreview",
+      params: { bundle },
+    })).resolves.toMatchObject({ importMutation: "not-performed" })
   })
 })

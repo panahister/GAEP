@@ -1,7 +1,11 @@
 import type { AdapterCapabilities, AgentSelection, Initiative, Product, Run } from "@gaep/contracts"
 
 import { currentInitiative, initiativeRunEligibility, newestRun, unsafeSelectionReasons } from "./safety.js"
-import { runtimeBindingKey, type RuntimeBindingIndex } from "./runtime-binding.js"
+import {
+  resolveRuntimeBinding,
+  type RuntimeBindingIndex,
+  type RuntimeBindingResolution,
+} from "./runtime-binding.js"
 import type { StudioDataSource, StudioRequestContext } from "./studio-data-source.js"
 import {
   studioProtocolVersion,
@@ -74,6 +78,8 @@ interface ObservedStudioState {
   selection?: AgentSelection
   agents: AdapterCapabilities[]
   audit?: { valid: boolean; events: number; error?: string; warning?: string }
+  runtimeBinding?: RuntimeBindingResolution
+  selectionMigrationRequired?: boolean
   issues: StudioIssue[]
   productState: "available" | "absent" | "invalid"
 }
@@ -287,7 +293,13 @@ function prepareRunEligibility(state: ObservedStudioState): PrepareRunEligibilit
   const issues: StudioIssue[] = []
   let selectionReady = false
   if (!state.selection) {
-    issues.push(issue("agent-selection-missing", "Select a supported agent and model before preparing a run.", "blocker"))
+    issues.push(issue(
+      "agent-selection-missing",
+      state.selectionMigrationRequired
+        ? "A legacy path-bearing selection is blocked. Reconfirm the same agent through the explicit migration workflow before preparing a run."
+        : "Select a supported agent and model before preparing a run.",
+      "blocker",
+    ))
   } else if (state.selection.agentId !== "codex-cli") {
     issues.push(issue(
       "agent-selection-unsupported",
@@ -296,8 +308,28 @@ function prepareRunEligibility(state: ObservedStudioState): PrepareRunEligibilit
     ))
   } else {
     const unsafe = unsafeSelectionReasons(state.selection.agentId, state.selection.settings)
-    if (unsafe.length === 0) selectionReady = true
-    else issues.push(...unsafe.map((message, index) => issue(`selection-${index + 1}`, message, "blocker")))
+    if (unsafe.length > 0) {
+      issues.push(...unsafe.map((message, index) => issue(`selection-${index + 1}`, message, "blocker")))
+    } else if (state.runtimeBinding?.state !== "ready") {
+      const bindingMessage = state.runtimeBinding?.state === "legacy"
+        ? "The machine-local runtime binding uses the legacy path-bearing format. Explicitly select the agent again before preparing a run."
+        : state.runtimeBinding?.state === "invalid"
+          ? "The machine-local runtime binding is invalid. Explicitly select the agent again before preparing a run."
+          : "No machine-local executable fingerprint is bound to this selection. Explicitly select the agent again before preparing a run."
+      issues.push(issue("agent-binding-unavailable", bindingMessage, "blocker"))
+    } else if (
+      state.runtimeBinding.binding.adapterId !== state.selection.adapterId ||
+      state.runtimeBinding.binding.agentId !== state.selection.agentId ||
+      state.runtimeBinding.binding.capabilityDigest !== state.selection.capabilityDigest
+    ) {
+      issues.push(issue(
+        "agent-binding-stale",
+        "The machine-local runtime binding no longer matches the portable selection. Probe and select the agent again.",
+        "blocker",
+      ))
+    } else {
+      selectionReady = true
+    }
   }
 
   const selectedInitiative = currentInitiative(state.initiatives)
@@ -352,7 +384,12 @@ function uniqueIssues(issues: StudioIssue[]): StudioIssue[] {
 function primaryAction(state: ObservedStudioState, eligibility = prepareRunEligibility(state)): StudioActionControl | undefined {
   if (!state.product) return control("Initialize Product", { kind: "initialize-product" }, true, "primary")
   if (!state.selection || !eligibility.selectionReady) {
-    return control("Select agent and model", { kind: "select-agent", adapterId: "native-picker", agentId: "native-picker", modelId: "native-picker", settings: {} }, true, "primary")
+    return control(
+      state.selectionMigrationRequired ? "Reconfirm and migrate agent selection" : "Select agent and model",
+      { kind: "select-agent", adapterId: "native-picker", agentId: "native-picker", modelId: "native-picker", settings: {} },
+      true,
+      "primary",
+    )
   }
   const selected = eligibility.selectedInitiative
   if (!selected) return control("Create Initiative", { kind: "create-initiative" }, true, "primary")
@@ -472,12 +509,9 @@ function displaySettingValue(value: unknown): string {
 
 function agentPage(
   state: ObservedStudioState,
-  bindings: RuntimeBindingIndex,
-  workspacePath?: string,
 ): { page: AgentPageSnapshot; inspector?: StudioInspectorSnapshot } {
   const index = new Map(state.agents.map((candidate) => [candidate.adapterId, candidate]))
   const rows = state.agents.map((capability) => {
-    const binding = workspacePath ? bindings[runtimeBindingKey(workspacePath, capability.adapterId)] : undefined
     const selectable = capability.detected && capability.executionInterface !== "unavailable" && capability.agentId === "codex-cli"
     const modelId = capability.models[0]?.id ?? "provider-selected"
     return {
@@ -485,7 +519,6 @@ function agentPage(
       cells: {
         agent: capability.agentLabel,
         runtime: capability.runtimeVersion ?? "not observed",
-        executable: binding?.digest ? `${binding.digest.slice(0, 18)}…` : "no trusted fingerprint",
         interface: capability.executionInterface,
         maturity: capability.interfaceMaturity,
         status: agentStatus(capability),
@@ -526,7 +559,6 @@ function agentPage(
       columns: [
         { key: "agent", label: "Agent", identifier: true },
         { key: "runtime", label: "Runtime" },
-        { key: "executable", label: "Trusted fingerprint" },
         { key: "interface", label: "Interface" },
         { key: "maturity", label: "Maturity" },
         { key: "status", label: "Status" },
@@ -555,11 +587,14 @@ function agentPage(
     limitations,
     handoffs: emptyTable("handoffs", "Handoffs", "The current engine does not expose a handoff list to Product Studio."),
   }
+  const selectedBinding = state.runtimeBinding?.state === "ready" ? state.runtimeBinding.binding : undefined
   const inspector: StudioInspectorSnapshot | undefined = state.selection ? {
     title: "Machine-local runtime inspector",
     recordId: state.selection.adapterId,
     entries: [
-      { term: "Resolved executable", value: state.selection.runtimeExecutable },
+      { term: "Binding state", value: state.runtimeBinding?.state ?? "missing" },
+      { term: "Resolved executable", value: selectedBinding?.executable.canonicalPath ?? "not bound" },
+      { term: "Executable fingerprint", value: selectedBinding?.executable.digest ?? "not bound" },
       { term: "Capability digest", value: state.selection.capabilityDigest },
       { term: "Selected at", value: state.selection.selectedAt },
     ],
@@ -631,8 +666,6 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
 function pageFor(
   route: StudioRoute,
   state: ObservedStudioState,
-  bindings: RuntimeBindingIndex,
-  workspacePath?: string,
 ): { page: StudioPageSnapshot; inspector?: StudioInspectorSnapshot } {
   switch (route) {
     case "overview": return { page: overviewPage(state) }
@@ -644,7 +677,7 @@ function pageFor(
     case "delivery": return { page: deliveryPage(state) }
     case "risks-decisions": return { page: risksPage(state) }
     case "trace": return { page: tracePage(state) }
-    case "agents-tools": return agentPage(state, bindings, workspacePath)
+    case "agents-tools": return agentPage(state)
     case "runs-evidence": return { page: runPage(state) }
     case "readiness": return { page: readinessPage(state) }
   }
@@ -759,7 +792,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       throw new Error("Product Studio context changed while the snapshot was being read")
     }
     const workspace = this.context.workspace()
-    const page = pageFor(route, observed, this.context.runtimeBindings(), workspace?.path)
+    const page = pageFor(route, observed)
     const sections = sectionsFor(observed)
     return {
       protocolVersion: studioProtocolVersion,
@@ -830,8 +863,24 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     else this.recordObservationFailure(empty, "initiatives", initiatives.reason)
     if (runs.status === "fulfilled") empty.runs = runs.value
     else this.recordObservationFailure(empty, "runs", runs.reason)
-    if (selection.status === "fulfilled") empty.selection = selection.value
-    else empty.issues.push(issue("selection-unavailable", "No valid agent selection is currently available.", "information"))
+    if (selection.status === "fulfilled") {
+      empty.selection = selection.value
+      empty.runtimeBinding = resolveRuntimeBinding(
+        this.context.runtimeBindings(),
+        this.context.workspace()!.path,
+        selection.value.adapterId,
+      )
+    } else {
+      this.context.logDiagnostic("Product Studio portable agent selection observation failed", selection.reason)
+      empty.selectionMigrationRequired = selection.reason instanceof Error && /legacy|migrat/iu.test(selection.reason.message)
+      empty.issues.push(issue(
+        "agent-selection-missing",
+        empty.selectionMigrationRequired
+          ? "A legacy path-bearing selection is blocked. Reconfirm the same agent through the explicit migration workflow before preparing a run."
+          : "No valid portable agent selection is available. Invalid path-bearing selections remain blocked rather than being trusted or overwritten.",
+        "blocker",
+      ))
+    }
     if (audit.status === "fulfilled") empty.audit = audit.value
     else this.recordObservationFailure(empty, "audit", audit.reason)
     if (agents.status === "fulfilled") empty.agents = agents.value

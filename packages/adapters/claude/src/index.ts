@@ -1,12 +1,21 @@
-import type { AdapterCapabilities, AgentSelection, ExecutionCharter } from "@gaep/contracts"
+import {
+  adapterCapabilitiesSnapshotSchema,
+  type AdapterCapabilities,
+  type AgentSelection,
+  type ExecutionCharter,
+} from "@gaep/contracts"
 import {
   findExecutable,
+  fingerprintExecutable,
   firstVersionToken,
   runCommand,
   validateSelectionBase,
   type AgentAdapter,
   type AgentInvocation,
   type AdapterProbeOptions,
+  type AdapterProbeResult,
+  type AdapterRuntimeBinding,
+  type ExecutableFingerprint,
 } from "@gaep/agent-sdk"
 
 const executionStopLine = "Claude Code CLI execution is unavailable until GAEP can enforce an outer workspace, process, network, and per-call effect boundary"
@@ -16,9 +25,10 @@ export class ClaudeAdapter implements AgentAdapter {
 
   constructor(private readonly preferredExecutable = "claude") {}
 
-  async probe(options: AdapterProbeOptions = {}): Promise<AdapterCapabilities> {
+  async probe(options: AdapterProbeOptions = {}): Promise<AdapterProbeResult> {
     const executablePath = await findExecutable(this.preferredExecutable)
     let runtimeVersion: string | undefined
+    let executableFingerprint: ExecutableFingerprint | undefined
     let usable = false
     const limitations: string[] = [
       "The installed CLI does not expose a model-catalog command; GAEP accepts provider aliases or an explicit model identifier.",
@@ -27,20 +37,25 @@ export class ClaudeAdapter implements AgentAdapter {
       "Read, Glob, Grep, Edit, Write, and Bash cannot be proven exact-root bounded by the current CLI; Bash can also cross network and external-effect boundaries.",
     ]
     if (executablePath) {
-      const result = await runCommand(executablePath, ["--version"], { timeoutMs: options.timeoutMs })
-      runtimeVersion = firstVersionToken(`${result.stdout}\n${result.stderr}`)
-      usable = result.exitCode === 0 && !result.timedOut && runtimeVersion !== undefined
-      if (!usable) {
-        limitations.push("A Claude executable was found, but its version command did not complete successfully; execution is disabled.")
+      try {
+        executableFingerprint = await fingerprintExecutable(executablePath, this.preferredExecutable)
+        const result = await runCommand(executablePath, ["--version"], { timeoutMs: options.timeoutMs })
+        runtimeVersion = firstVersionToken(`${result.stdout}\n${result.stderr}`)
+        usable = result.exitCode === 0 && !result.timedOut && runtimeVersion !== undefined
+        if (!usable) {
+          limitations.push("A Claude executable was found, but its version command did not complete successfully; execution is disabled.")
+        }
+      } catch {
+        limitations.push("The detected Claude executable could not be fingerprinted safely; execution is disabled.")
       }
     }
-    return {
+    const capabilities = adapterCapabilitiesSnapshotSchema.parse({
+      schemaVersion: 1,
       adapterId: this.id,
       adapterVersion: "0.1.0",
       agentId: "claude-code-cli",
       agentLabel: "Claude Code",
       runtimeVersion,
-      executablePath: executablePath ?? undefined,
       detected: usable,
       executionInterface: "unavailable",
       interfaceMaturity: "unknown",
@@ -124,6 +139,25 @@ export class ClaudeAdapter implements AgentAdapter {
       ],
       limitations,
       observedAt: new Date().toISOString(),
+    })
+    return {
+      capabilities,
+      runtimeBinding: usable && executablePath && executableFingerprint
+        ? {
+            scope: "machine-local",
+            kind: "executable",
+            adapterId: this.id,
+            agentId: "claude-code-cli",
+            executablePath,
+            executableFingerprint,
+          }
+        : {
+            scope: "machine-local",
+            kind: "unavailable",
+            adapterId: this.id,
+            agentId: "claude-code-cli",
+            reason: "Claude executable detection, fingerprinting, or version verification failed",
+          },
     }
   }
 
@@ -151,6 +185,7 @@ export class ClaudeAdapter implements AgentAdapter {
     _charter: ExecutionCharter,
     _workspacePath: string,
     _prompt: string,
+    _runtimeBinding: AdapterRuntimeBinding,
   ): AgentInvocation {
     throw new Error(executionStopLine)
   }
@@ -161,6 +196,7 @@ export class ClaudeAdapter implements AgentAdapter {
     _workspacePath: string,
     _providerSessionId: string,
     _prompt: string,
+    _runtimeBinding: AdapterRuntimeBinding,
   ): AgentInvocation {
     throw new Error(executionStopLine)
   }

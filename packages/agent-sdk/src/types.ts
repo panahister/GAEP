@@ -1,5 +1,7 @@
 import type { AdapterCapabilities, AgentSelection, ExecutionCharter } from "@gaep/contracts"
 
+import type { ExecutableFingerprint } from "./process.js"
+
 export interface AgentInvocation {
   executable: string
   args: string[]
@@ -27,15 +29,45 @@ export interface AdapterProbeOptions {
   timeoutMs?: number
 }
 
+interface AdapterRuntimeBindingBase {
+  /** Explicitly prevents this object from being mistaken for portable repository state. */
+  scope: "machine-local"
+  adapterId: string
+  agentId: string
+}
+
+export type AdapterRuntimeBinding =
+  | (AdapterRuntimeBindingBase & {
+      kind: "executable"
+      executablePath: string
+      executableFingerprint: ExecutableFingerprint
+    })
+  | (AdapterRuntimeBindingBase & {
+      kind: "managed-in-process"
+      runtimeId: string
+    })
+  | (AdapterRuntimeBindingBase & {
+      kind: "unavailable"
+      reason: string
+    })
+
+export interface AdapterProbeResult {
+  /** Portable and repository-safe logical snapshot. */
+  capabilities: AdapterCapabilities
+  /** Host-only observation; never embed this in Selection, Charter, Run, or Handoff records. */
+  runtimeBinding: AdapterRuntimeBinding
+}
+
 export interface AgentAdapter {
   readonly id: string
-  probe(options?: AdapterProbeOptions): Promise<AdapterCapabilities>
+  probe(options?: AdapterProbeOptions): Promise<AdapterProbeResult>
   validateSelection(selection: AgentSelection, capabilities: AdapterCapabilities): string[]
   buildInvocation(
     selection: AgentSelection,
     charter: ExecutionCharter,
     workspacePath: string,
     prompt: string,
+    runtimeBinding: AdapterRuntimeBinding,
   ): AgentInvocation
   buildResumeInvocation?(
     selection: AgentSelection,
@@ -43,6 +75,7 @@ export interface AgentAdapter {
     workspacePath: string,
     providerSessionId: string,
     prompt: string,
+    runtimeBinding: AdapterRuntimeBinding,
   ): AgentInvocation
 }
 

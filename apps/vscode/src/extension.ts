@@ -7,6 +7,7 @@ import { ClaudeAdapter } from "@gaep/adapter-claude"
 import {
   capabilityDigest,
   fingerprintExecutable,
+  type AdapterProbeResult,
   type ExecutableFingerprint,
 } from "@gaep/agent-sdk"
 import {
@@ -23,8 +24,11 @@ import { ActiveRunRegistry } from "./run-registry.js"
 import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-source.js"
 import { resolveLocalActorPrincipal } from "./local-actor.js"
 import {
+  resolveRuntimeBinding,
   runtimeBindingKey,
   sameExecutableFingerprint,
+  verifiedExecutableBinding,
+  type RuntimeBinding,
   type RuntimeBindingIndex,
 } from "./runtime-binding.js"
 import { AgentRunTerminal } from "./run-terminal.js"
@@ -40,7 +44,8 @@ import { StudioProvider } from "./studio-provider.js"
 import { isStudioRoute } from "./studio-protocol.js"
 
 const selectedWorkspaceKey = "gaep.selectedWorkspaceUri"
-const runtimeBindingsKey = "gaep.runtimeBindings.v1"
+const runtimeBindingsKey = "gaep.runtimeBindings.v2"
+const legacyRuntimeBindingsKey = "gaep.runtimeBindings.v1"
 const activeAgentRuns = new ActiveRunRegistry()
 const productProfiles = [
   "software",
@@ -161,22 +166,42 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     studioContextGeneration = randomUUID()
   }
 
-  const runtimeBindings = (): RuntimeBindingIndex =>
-    context.globalState.get<RuntimeBindingIndex>(runtimeBindingsKey) ?? {}
+  const runtimeBindings = (): RuntimeBindingIndex => ({
+    ...(context.globalState.get<RuntimeBindingIndex>(legacyRuntimeBindingsKey) ?? {}),
+    ...(context.globalState.get<RuntimeBindingIndex>(runtimeBindingsKey) ?? {}),
+  })
 
   const rememberRuntimeBinding = async (
     workspacePath: string,
-    adapterId: string,
-    executablePath: string,
+    probe: AdapterProbeResult,
   ): Promise<ExecutableFingerprint> => {
-    const fingerprint = await fingerprintExecutable(executablePath)
+    const { capabilities, runtimeBinding } = probe
+    if (!capabilities.detected || runtimeBinding.kind !== "executable") {
+      throw new Error("The selected agent has no verified executable binding")
+    }
+    if (
+      runtimeBinding.adapterId !== capabilities.adapterId ||
+      runtimeBinding.agentId !== capabilities.agentId
+    ) {
+      throw new Error("The selected agent probe returned an inconsistent machine-local binding")
+    }
+    const fingerprint = await fingerprintExecutable(runtimeBinding.executablePath)
+    if (!sameExecutableFingerprint(fingerprint, runtimeBinding.executableFingerprint)) {
+      throw new Error("The selected agent executable changed before its machine-local binding could be recorded")
+    }
+    const record: RuntimeBinding = {
+      schemaVersion: 2,
+      scope: "machine-local",
+      kind: "executable",
+      adapterId: capabilities.adapterId,
+      agentId: capabilities.agentId,
+      capabilityDigest: capabilityDigest(capabilities),
+      executable: fingerprint,
+      observedAt: new Date().toISOString(),
+    }
     const next = {
-      ...runtimeBindings(),
-      [runtimeBindingKey(workspacePath, adapterId)]: {
-        ...fingerprint,
-        adapterId,
-        observedAt: new Date().toISOString(),
-      },
+      ...(context.globalState.get<RuntimeBindingIndex>(runtimeBindingsKey) ?? {}),
+      [runtimeBindingKey(workspacePath, capabilities.adapterId)]: record,
     }
     await context.globalState.update(runtimeBindingsKey, next)
     return fingerprint
@@ -394,7 +419,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return { engine, path: selectedFolder.uri.fsPath }
   }
 
-  const probeAgentsResilient = async (runtimeEngine: GaepEngine): Promise<AdapterCapabilities[]> => {
+  const probeAdaptersResilient = async (runtimeEngine: GaepEngine): Promise<AdapterProbeResult[]> => {
     const outcomes = await Promise.all([...runtimeEngine.adapters.values()].map(async (adapter) => {
       try {
         return await adapter.probe({ refreshModels: true })
@@ -403,7 +428,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return undefined
       }
     }))
-    return outcomes.filter((outcome): outcome is AdapterCapabilities => outcome !== undefined)
+    return outcomes.filter((outcome): outcome is AdapterProbeResult => outcome !== undefined)
   }
 
   const safely = (operation: () => Promise<void>): (() => Promise<void>) => async () => {
@@ -427,7 +452,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     recoveryDiagnostic: () => recoveryDiagnostic,
     hasGaepState: async () => selectedFolder ? exists(join(selectedFolder.uri.fsPath, ".gaep")) : false,
     listInitiatives: async () => selectedFolder ? readInitiatives(selectedFolder.uri.fsPath) : [],
-    probeAgents: async () => engine ? probeAgentsResilient(engine) : [],
+    probeAgents: async () => engine
+      ? (await probeAdaptersResilient(engine)).map((probe) => probe.capabilities)
+      : [],
     runtimeBindings,
     executeCommand: (expectedContextGeneration, command, ...args) => {
       if (expectedContextGeneration !== studioContextGeneration) {
@@ -457,6 +484,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       diagnostics.show(true)
     }),
     vscode.commands.registerCommand("gaep.manageWorkspaceTrust", () => vscode.commands.executeCommand("workbench.trust.manage")),
+    vscode.commands.registerCommand("gaep.migrateLegacyAgentSelection", () => vscode.commands.executeCommand("gaep.selectAgent")),
     vscode.commands.registerCommand("gaep.selectWorkspaceRoot", safely(selectWorkspaceRoot)),
     vscode.commands.registerCommand("gaep.retryRecovery", safely(async () => {
       if (!vscode.workspace.isTrusted) throw new Error("Trust the workspace before retrying GAEP recovery")
@@ -506,15 +534,34 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (running.length > 0 || activeAgentRuns.hasRoot(runtime.path)) {
       throw new Error("Stop the active agent process before changing agent, model, or settings")
     }
-    const capabilities = await vscode.window.withProgress(
+    let currentSelection
+    let legacySelectionPresent = false
+    try {
+      const compatibility = await runtime.engine.repository.readAgentSelectionCompatibility()
+      if (compatibility.status === "current") currentSelection = compatibility.selection
+      else if (compatibility.status === "migration-required") legacySelectionPresent = true
+      else {
+        throw new Error(`The stored Agent Selection is invalid: ${compatibility.issues.join("; ")}`)
+      }
+    } catch (error) {
+      if (await exists(join(runtime.path, ".gaep", "runtime", "selection.json"))) {
+        if (!legacySelectionPresent) throw error
+      }
+    }
+    if (legacySelectionPresent) {
+      diagnostics.warn("A legacy non-portable agent selection is present. Only the explicit engine migration path may replace it.")
+    }
+    const probes = await vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: "GAEP is detecting installed agents", cancellable: false },
-      () => probeAgentsResilient(runtime.engine),
+      () => probeAdaptersResilient(runtime.engine),
     )
-    const detected = capabilities.filter((capability) =>
-      capability.detected && capability.executionInterface !== "unavailable",
+    const detected = probes.filter((probe) =>
+      probe.capabilities.detected &&
+      probe.capabilities.executionInterface !== "unavailable" &&
+      probe.runtimeBinding.kind === "executable",
     )
     if (detected.length === 0) {
-      const reviewOnly = capabilities.filter((capability) => capability.detected)
+      const reviewOnly = probes.map((probe) => probe.capabilities).filter((capability) => capability.detected)
       if (reviewOnly.length > 0) {
         throw new Error(
           `${reviewOnly.map((capability) => capability.agentLabel).join(", ")} was detected for capability review, but this release has no technically enforceable execution boundary for it.`,
@@ -523,11 +570,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       throw new Error("No supported installed agent was detected. Configure a machine-scoped executable path in User Settings.")
     }
     const agent = await vscode.window.showQuickPick(
-      detected.map((capability) => ({
-        label: capability.agentLabel,
-        description: capability.runtimeVersion ?? "version unknown",
-        detail: `${capability.limitations.join(" ")} The VS Code safety boundary removes elevated permission modes and direct live-search enablement.`,
-        capability,
+      detected.map((probe) => ({
+        capability: probe.capabilities,
+        probe,
+        label: probe.capabilities.agentLabel,
+        description: probe.capabilities.runtimeVersion ?? "version unknown",
+        detail: `${probe.capabilities.limitations.join(" ")} The VS Code safety boundary removes elevated permission modes and direct live-search enablement.`,
       })),
       { title: "Select the agent that will execute GAEP work", ignoreFocusOut: true },
     )
@@ -545,11 +593,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
     const unsafe = unsafeSelectionReasons(agent.capability.agentId, settings)
     if (unsafe.length > 0) throw new Error(unsafe.join("; "))
-    let currentSelection
-    try {
-      currentSelection = await runtime.engine.readSelection()
-    } catch {
-      currentSelection = undefined
+    if (legacySelectionPresent) {
+      const accepted = await vscode.window.showWarningMessage(
+        [
+          "GAEP found a legacy path-bearing agent selection.",
+          `Reconfirm ${agent.capability.agentLabel} / ${modelId} and migrate it to the portable selection contract?`,
+          "The engine will require the same agent identity and an exact fresh capability match. It will not copy the executable path into governed records.",
+        ].join("\n\n"),
+        { modal: true },
+        "Reconfirm and Migrate",
+      )
+      if (accepted !== "Reconfirm and Migrate") throw new WorkflowCancelled()
+      await runtime.engine.migrateLegacyAgentSelection({
+        capabilities: agent.capability,
+        modelId,
+        settings,
+        confirmation: "reconfirm-portable-agent-selection",
+      }, actorId)
+      await rememberRuntimeBinding(runtime.path, agent.probe)
+      refresh()
+      await vscode.window.showInformationMessage(`${agent.capability.agentLabel} selection migrated and rebound for this machine`)
+      return
     }
     const priorRuns = await runtime.engine.listRuns()
     const selectionChanges = currentSelection && (
@@ -588,8 +652,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (!selectionCommittedByHandoff) {
       await runtime.engine.selectAgent(agent.capability, modelId, settings, actorId)
     }
-    if (!agent.capability.executablePath) throw new Error("The selected agent has no executable identity")
-    await rememberRuntimeBinding(runtime.path, agent.capability.adapterId, agent.capability.executablePath)
+    await rememberRuntimeBinding(runtime.path, agent.probe)
     refresh()
     await vscode.window.showInformationMessage(`${agent.capability.agentLabel} with ${modelId} is selected for GAEP`)
   })))
@@ -682,23 +745,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (unsafe.length > 0) throw new Error(`Reselect the agent before running: ${unsafe.join("; ")}`)
     const selectedAdapter = runtime.engine.adapters.get(currentSelection.adapterId)
     if (!selectedAdapter) throw new Error("The selected agent adapter is unavailable; select the agent again")
-    const selectedCapabilities = await vscode.window.withProgress(
+    const selectedProbe = await vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: "GAEP is revalidating the selected agent runtime", cancellable: false },
       () => selectedAdapter.probe({ refreshModels: true }),
     )
-    if (!selectedCapabilities.detected || selectedCapabilities.executablePath !== currentSelection.runtimeExecutable) {
-      throw new Error("The selected executable no longer matches the trusted machine-scoped agent configuration; select the agent again")
-    }
-    if (capabilityDigest(selectedCapabilities) !== currentSelection.capabilityDigest) {
-      throw new Error("The selected agent capabilities changed; review and select the agent/model/settings again before creating a charter")
-    }
-    const storedBinding = runtimeBindings()[runtimeBindingKey(runtime.path, currentSelection.adapterId)]
-    if (!storedBinding) {
-      throw new Error("No machine-local executable fingerprint is bound to this selection; select the agent again before running")
-    }
-    const currentFingerprint = await fingerprintExecutable(currentSelection.runtimeExecutable)
-    if (!sameExecutableFingerprint(storedBinding, currentFingerprint)) {
-      throw new Error("The selected agent executable changed after selection; probe and select it again before running")
+    const bindingResolution = resolveRuntimeBinding(runtimeBindings(), runtime.path, currentSelection.adapterId)
+    const observedFingerprint = verifiedExecutableBinding(currentSelection, selectedProbe, bindingResolution)
+    const currentFingerprint = await fingerprintExecutable(observedFingerprint.canonicalPath)
+    if (!sameExecutableFingerprint(observedFingerprint, currentFingerprint)) {
+      throw new Error("The selected agent executable changed during run preparation; probe and select it again")
     }
     if ((await runtime.engine.listRuns()).some((run) => run.state === "running") || activeAgentRuns.hasRoot(runtime.path)) {
       throw new Error("A GAEP agent process is already running in this Product root")
@@ -752,9 +807,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
     if (!executionProfile) throw new WorkflowCancelled()
     const permissions: ToolPermission[] = [
-      { capability: "read-workspace", mode: "allow", scope: [runtime.path] },
-      { capability: "modify-workspace", mode: executionProfile.modifyMode, scope: [runtime.path] },
-      { capability: "run-local-commands", mode: "allow", scope: [runtime.path] },
+      { capability: "read-workspace", mode: "allow", scope: ["."] },
+      { capability: "modify-workspace", mode: executionProfile.modifyMode, scope: ["."] },
+      { capability: "run-local-commands", mode: "allow", scope: ["."] },
       { capability: "network-access", mode: "deny", scope: [] },
       { capability: "commit", mode: "deny", scope: [] },
       { capability: "push", mode: "deny", scope: [] },
@@ -788,8 +843,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (confirmation !== "Confirm Charter") throw new WorkflowCancelled()
     await runtime.engine.confirmCharter(charter.id, actorId)
     const prepared = await runtime.engine.prepareRun(charter.id, actorId)
+    const preparedFingerprint = await fingerprintExecutable(prepared.invocation.executable)
+    if (!sameExecutableFingerprint(currentFingerprint, preparedFingerprint)) {
+      await runtime.engine.markRunState(prepared.run.id, "cancelled", { kind: "system", id: "gaep.vscode.binding" })
+      throw new Error("The engine-prepared runtime no longer matches the confirmed machine-local binding; GAEP cancelled the run")
+    }
     const finalConfirmation = await vscode.window.showWarningMessage(
-      `Start the resolved runtime ${prepared.invocation.executable}? This confirmation is mandatory and distinct from charter confirmation.`,
+      `Start the selected ${charter.agent.agentId} runtime? This confirmation is mandatory and distinct from charter confirmation.`,
       { modal: true },
       "Start Run",
     )

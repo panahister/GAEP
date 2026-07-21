@@ -3,121 +3,97 @@ import { ClaudeAdapter } from "@gaep/adapter-claude"
 import {
   capabilityDigest,
   fingerprintExecutable,
+  type AdapterProbeResult,
+  type AdapterRuntimeBinding,
   type ExecutableFingerprint,
 } from "@gaep/agent-sdk"
 import {
-  adapterCapabilitiesSchema,
-  effectDescriptorSchema,
+  adapterCapabilitiesSnapshotSchema,
+  hostMethodSchema,
   hostRequestSchema,
-  initiativeSchema,
-  productSchema,
-  toolPermissionSchema,
   type AdapterCapabilities,
   type HostRequest,
+  type Run,
 } from "@gaep/contracts"
 import { GaepEngine } from "@gaep/engine"
 import { z, ZodError } from "zod"
 
-import { HostRpcError, invalidParamsError } from "./rpc.js"
+import { HostRpcError, invalidParamsError, MAX_RPC_FRAME_BYTES, normalizeRpcError } from "./rpc.js"
 
-const actorIdSchema = z.string().trim().min(1).max(256).optional()
-const noParamsSchema = z.object({}).strict()
-const productInputSchema = productSchema.pick({
-  name: true,
-  summary: true,
-  problem: true,
-  affectedUsers: true,
-  desiredOutcome: true,
-  successSignals: true,
-  firstWorkflow: true,
-  exclusions: true,
-  profile: true,
-}).strict()
-const initiativeInputSchema = initiativeSchema.pick({
-  title: true,
-  outcome: true,
-  scope: true,
-  exclusions: true,
-}).strict()
-const capabilityReferenceSchema = z.object({ adapterId: z.string().min(1).max(200) }).passthrough()
-const selectAgentParamsSchema = z.object({
-  actorId: actorIdSchema,
-  adapterId: z.string().min(1).max(200).optional(),
-  capabilities: capabilityReferenceSchema.optional(),
-  modelId: z.string().trim().min(1).max(500),
-  settings: z.record(z.string(), z.unknown()).default({}),
-}).strict().refine((value) => value.adapterId !== undefined || value.capabilities !== undefined, {
-  message: "adapterId is required",
-  path: ["adapterId"],
-})
-const createCharterParamsSchema = z.object({
-  actorId: actorIdSchema,
-  charter: z.object({
-    initiativeId: z.string().uuid(),
-    objective: z.string().trim().min(4).max(20_000),
-    permissions: z.array(toolPermissionSchema).max(256),
-    expectedEffects: z.array(effectDescriptorSchema).max(16),
-    forbiddenActions: z.array(z.string().trim().min(1).max(2_000)).max(256),
-    stopConditions: z.array(z.string().trim().min(1).max(2_000)).min(1).max(256),
-    requiredEvidence: z.array(z.string().trim().min(1).max(2_000)).max(256),
-  }).strict(),
-}).strict()
-const createHandoffParamsSchema = z.object({
-  actorId: actorIdSchema,
-  handoff: z.object({
-    fromRunId: z.string().uuid(),
-    toAdapterId: z.string().min(1).max(200).optional(),
-    toCapabilities: capabilityReferenceSchema.optional(),
-    toModelId: z.string().trim().min(1).max(500),
-    toSettings: z.record(z.string(), z.unknown()).default({}),
-    reason: z.string().trim().min(2).max(5_000),
-    completedWork: z.array(z.string().trim().min(1).max(2_000)).max(256),
-    unresolvedMatters: z.array(z.string().trim().min(1).max(2_000)).max(256),
-    decisions: z.array(z.string().trim().min(1).max(2_000)).max(256),
-    evidence: z.array(z.string().trim().min(1).max(2_000)).max(256),
-  }).strict().refine((value) => value.toAdapterId !== undefined || value.toCapabilities !== undefined, {
-    message: "toAdapterId is required",
-    path: ["toAdapterId"],
-  }),
-}).strict()
+const PROTOCOL_VERSION = 2
+const SUPPORTED_PROTOCOL_VERSIONS = [1, 2] as const
+const v2OnlyMethods = new Set<HostRequest["method"]>([
+  "workspaceHealth",
+  "migrateLegacySelection",
+  "productStudio.designReadiness",
+  "productStudio.search",
+  "productStudio.exportBuild",
+  "productStudio.importPreview",
+])
 
 const requestEnvelopeSchema = z.object({
   jsonrpc: z.literal("2.0"),
   id: z.union([z.string().min(1).max(128), z.number().int().safe()]),
+  protocolVersion: z.number().int().positive().max(1_000).optional(),
   method: z.string().min(1).max(128),
-  params: z.record(z.string(), z.unknown()).default({}),
+  params: z.unknown().default({}),
 }).strict()
-
-const hostMethods = new Set([
-  "ping",
-  "probeAgents",
-  "readProduct",
-  "createProduct",
-  "createInitiative",
-  "selectAgent",
-  "createCharter",
-  "confirmCharter",
-  "prepareRun",
-  "listRuns",
-  "createHandoff",
-  "verifyAudit",
-])
 
 interface CapabilitySnapshot {
   capabilities: AdapterCapabilities
-  executable?: ExecutableFingerprint
+  runtimeBinding: AdapterRuntimeBinding
+}
+
+interface PortablePreparedRun {
+  run: Run
+  execution: {
+    inputMode?: "text-once" | "bidirectional-jsonl"
+    protocol: "jsonl" | "stream-json" | "json-rpc"
+    maturity: "stable" | "beta" | "experimental"
+    warnings: string[]
+    promptAttached: boolean
+  }
 }
 
 function actorId(value: string | undefined): string {
   return value ?? "gaep.local-founder"
 }
 
-function parseParams<T>(schema: z.ZodType<T>, value: unknown): T {
-  try {
-    return schema.parse(value)
-  } catch (error) {
-    if (error instanceof ZodError) throw invalidParamsError(error)
-    throw error
+function sameExecutable(left: ExecutableFingerprint, right: ExecutableFingerprint): boolean {
+  return left.canonicalPath === right.canonicalPath
+    && left.digest === right.digest
+    && left.size === right.size
+    && left.modifiedAtMs === right.modifiedAtMs
+}
+
+function sameRuntimeBinding(left: AdapterRuntimeBinding, right: AdapterRuntimeBinding): boolean {
+  if (left.kind !== right.kind || left.adapterId !== right.adapterId || left.agentId !== right.agentId) return false
+  if (left.kind === "executable" && right.kind === "executable") {
+    return left.executablePath === right.executablePath
+      && sameExecutable(left.executableFingerprint, right.executableFingerprint)
+  }
+  if (left.kind === "managed-in-process" && right.kind === "managed-in-process") {
+    return left.runtimeId === right.runtimeId
+  }
+  return left.kind === "unavailable" && right.kind === "unavailable"
+}
+
+function portablePreparedRun(value: { run: Run; invocation: {
+  inputMode?: "text-once" | "bidirectional-jsonl"
+  protocol: "jsonl" | "stream-json" | "json-rpc"
+  maturity: "stable" | "beta" | "experimental"
+  warnings: string[]
+  stdin?: string
+} }): PortablePreparedRun {
+  return {
+    run: value.run,
+    execution: {
+      inputMode: value.invocation.inputMode,
+      protocol: value.invocation.protocol,
+      maturity: value.invocation.maturity,
+      warnings: [...value.invocation.warnings],
+      promptAttached: value.invocation.stdin !== undefined,
+    },
   }
 }
 
@@ -125,6 +101,7 @@ export class EngineHost {
   readonly engine: GaepEngine
   private readonly recovery: Promise<unknown>
   private readonly capabilitySnapshots = new Map<string, CapabilitySnapshot>()
+  private readonly selectedRuntimeBindings = new Map<string, AdapterRuntimeBinding>()
 
   constructor(workspacePath: string) {
     this.engine = new GaepEngine(workspacePath, [new CodexAdapter(), new ClaudeAdapter()])
@@ -132,135 +109,190 @@ export class EngineHost {
   }
 
   async dispatch(rawRequest: unknown): Promise<unknown> {
+    try {
+      return await this.dispatchInternal(rawRequest)
+    } catch (error) {
+      throw normalizeRpcError(error)
+    }
+  }
+
+  private async dispatchInternal(rawRequest: unknown): Promise<unknown> {
     await this.recovery
     const request = EngineHost.validateRequest(rawRequest)
+    const requestProtocol = request.protocolVersion ?? 1
+    if (!SUPPORTED_PROTOCOL_VERSIONS.includes(requestProtocol as 1 | 2)) {
+      throw new HostRpcError(
+        -32_020,
+        "UNSUPPORTED_PROTOCOL_VERSION",
+        `GAEP engine protocol ${requestProtocol} is unsupported`,
+        { supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS] },
+      )
+    }
+    if (requestProtocol === 1 && v2OnlyMethods.has(request.method)) {
+      throw new HostRpcError(
+        -32_021,
+        "PROTOCOL_UPGRADE_REQUIRED",
+        "This GAEP engine method requires protocol version 2",
+        { supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS] },
+      )
+    }
 
     switch (request.method) {
       case "ping":
-        parseParams(noParamsSchema, request.params)
-        return { engineVersion: "0.1.0", protocolVersion: 1 }
+        return {
+          engineVersion: "0.1.0",
+          protocolVersion: PROTOCOL_VERSION,
+          negotiatedProtocolVersion: requestProtocol,
+          supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
+        }
       case "probeAgents":
-        parseParams(noParamsSchema, request.params)
         return this.refreshCapabilitySnapshots()
+      case "workspaceHealth":
+        return this.engine.workspaceHealth()
       case "readProduct":
-        parseParams(noParamsSchema, request.params)
         return this.engine.readProduct()
-      case "createProduct": {
-        const params = parseParams(z.object({ actorId: actorIdSchema, product: productInputSchema }).strict(), request.params)
-        return this.engine.createProduct(params.product, actorId(params.actorId))
-      }
-      case "createInitiative": {
-        const params = parseParams(z.object({ actorId: actorIdSchema, initiative: initiativeInputSchema }).strict(), request.params)
-        return this.engine.createInitiative(params.initiative, actorId(params.actorId))
-      }
+      case "createProduct":
+        return this.engine.createProduct(request.params.product, actorId(request.params.actorId))
+      case "createInitiative":
+        return this.engine.createInitiative(request.params.initiative, actorId(request.params.actorId))
       case "selectAgent": {
-        const params = parseParams(selectAgentParamsSchema, request.params)
-        const adapterId = params.adapterId ?? params.capabilities!.adapterId
-        const snapshot = await this.currentSnapshot(adapterId)
-        return this.engine.selectAgent(
+        const snapshot = await this.observeAdapter(request.params.adapterId)
+        const selection = await this.engine.selectAgent(
           structuredClone(snapshot.capabilities),
-          params.modelId,
-          params.settings,
-          actorId(params.actorId),
+          request.params.modelId,
+          request.params.settings,
+          actorId(request.params.actorId),
         )
+        this.selectedRuntimeBindings.set(request.params.adapterId, structuredClone(snapshot.runtimeBinding))
+        return selection
       }
-      case "createCharter": {
-        const params = parseParams(createCharterParamsSchema, request.params)
-        return this.engine.createCharter(params.charter, actorId(params.actorId))
+      case "migrateLegacySelection": {
+        const snapshot = await this.observeAdapter(request.params.adapterId)
+        const selection = await this.engine.migrateLegacyAgentSelection({
+          capabilities: structuredClone(snapshot.capabilities),
+          modelId: request.params.modelId,
+          settings: request.params.settings,
+          confirmation: request.params.confirmation,
+        }, actorId(request.params.actorId))
+        this.selectedRuntimeBindings.set(request.params.adapterId, structuredClone(snapshot.runtimeBinding))
+        return selection
       }
-      case "confirmCharter": {
-        const params = parseParams(
-          z.object({ actorId: actorIdSchema, charterId: z.string().uuid() }).strict(),
-          request.params,
-        )
-        return this.engine.confirmCharter(params.charterId, actorId(params.actorId))
-      }
+      case "createCharter":
+        return this.engine.createCharter(request.params.charter, actorId(request.params.actorId))
+      case "confirmCharter":
+        return this.engine.confirmCharter(request.params.charterId, actorId(request.params.actorId))
       case "prepareRun": {
-        const params = parseParams(
-          z.object({ actorId: actorIdSchema, charterId: z.string().uuid() }).strict(),
-          request.params,
-        )
         const selection = await this.engine.readSelection()
-        const snapshot = await this.currentSnapshot(selection.adapterId)
-        if (capabilityDigest(snapshot.capabilities) !== selection.capabilityDigest) {
+        const selectedBinding = this.selectedRuntimeBindings.get(selection.adapterId)
+        const fresh = await this.observeAdapter(selection.adapterId)
+        if (capabilityDigest(fresh.capabilities) !== selection.capabilityDigest) {
           throw new HostRpcError(
             -32_012,
             "CAPABILITIES_CHANGED",
             "Agent capabilities changed after selection; select the agent and model again",
           )
         }
-        return this.engine.prepareRun(params.charterId, actorId(params.actorId))
+        if (selectedBinding && !sameRuntimeBinding(selectedBinding, fresh.runtimeBinding)) {
+          throw new HostRpcError(
+            -32_014,
+            "EXECUTABLE_CHANGED",
+            "The selected agent runtime changed after selection; probe and select it again",
+          )
+        }
+        if (fresh.runtimeBinding.kind === "unavailable") {
+          throw new HostRpcError(-32_013, "EXECUTABLE_UNAVAILABLE", "The selected agent runtime is unavailable")
+        }
+        this.selectedRuntimeBindings.set(selection.adapterId, structuredClone(fresh.runtimeBinding))
+        return portablePreparedRun(await this.engine.prepareRun(request.params.charterId, actorId(request.params.actorId)))
       }
       case "listRuns":
-        parseParams(noParamsSchema, request.params)
         return this.engine.listRuns()
       case "createHandoff": {
-        const params = parseParams(createHandoffParamsSchema, request.params)
-        const adapterId = params.handoff.toAdapterId ?? params.handoff.toCapabilities!.adapterId
-        const snapshot = await this.currentSnapshot(adapterId)
+        const snapshot = await this.observeAdapter(request.params.handoff.toAdapterId)
         return this.engine.createHandoff({
-          fromRunId: params.handoff.fromRunId,
+          fromRunId: request.params.handoff.fromRunId,
           toCapabilities: structuredClone(snapshot.capabilities),
-          toModelId: params.handoff.toModelId,
-          toSettings: params.handoff.toSettings,
-          reason: params.handoff.reason,
-          completedWork: params.handoff.completedWork,
-          unresolvedMatters: params.handoff.unresolvedMatters,
-          decisions: params.handoff.decisions,
-          evidence: params.handoff.evidence,
-        }, actorId(params.actorId))
+          toModelId: request.params.handoff.toModelId,
+          toSettings: request.params.handoff.toSettings,
+          reason: request.params.handoff.reason,
+          completedWork: request.params.handoff.completedWork,
+          unresolvedMatters: request.params.handoff.unresolvedMatters,
+          decisions: request.params.handoff.decisions,
+          evidence: request.params.handoff.evidence,
+        }, actorId(request.params.actorId))
       }
       case "verifyAudit":
-        parseParams(noParamsSchema, request.params)
         return this.engine.repository.verifyAudit()
+      case "productStudio.designReadiness": {
+        const draft = await this.engine.productStudio.readDesignDraft(request.params.productId)
+        return this.engine.productStudio.evaluateDesignReadiness(draft)
+      }
+      case "productStudio.search":
+        return this.engine.productStudio.search(request.params)
+      case "productStudio.exportBuild":
+        return this.engine.productStudio.buildPortableExport()
+      case "productStudio.importPreview":
+        return this.engine.productStudio.previewImportBundle(request.params.bundle)
     }
   }
 
   private async refreshCapabilitySnapshots(): Promise<AdapterCapabilities[]> {
-    const probed = await this.engine.probeAgents()
-    const next = new Map<string, CapabilitySnapshot>()
-    for (const rawCapabilities of probed) {
-      const capabilities = adapterCapabilitiesSchema.parse(rawCapabilities)
-      let executable: ExecutableFingerprint | undefined
-      if (capabilities.detected) {
-        if (!capabilities.executablePath) {
-          throw new HostRpcError(-32_010, "INVALID_CAPABILITY_SNAPSHOT", "Detected agent has no executable identity")
-        }
-        executable = await fingerprintExecutable(capabilities.executablePath)
-      }
-      next.set(capabilities.adapterId, { capabilities: structuredClone(capabilities), executable })
-    }
-    this.capabilitySnapshots.clear()
-    for (const [adapterId, snapshot] of next) this.capabilitySnapshots.set(adapterId, snapshot)
-    return [...next.values()].map((snapshot) => structuredClone(snapshot.capabilities))
+    const observed = await Promise.all([...this.engine.adapters.keys()].map((adapterId) => this.observeAdapter(adapterId)))
+    return observed.map((snapshot) => structuredClone(snapshot.capabilities))
   }
 
-  private async currentSnapshot(adapterId: string): Promise<CapabilitySnapshot> {
-    if (!this.capabilitySnapshots.has(adapterId)) await this.refreshCapabilitySnapshots()
-    const snapshot = this.capabilitySnapshots.get(adapterId)
-    if (!snapshot) {
-      throw new HostRpcError(-32_011, "CAPABILITIES_NOT_AVAILABLE", `No host-observed capabilities exist for ${adapterId}`)
+  private async observeAdapter(adapterId: string): Promise<CapabilitySnapshot> {
+    const adapter = this.engine.adapters.get(adapterId)
+    if (!adapter) {
+      throw new HostRpcError(-32_011, "CAPABILITIES_NOT_AVAILABLE", "No host-observed capabilities exist for the requested adapter")
     }
-    if (snapshot.executable) {
+    const probed = await adapter.probe({ refreshModels: true })
+    const snapshot = await this.validateProbeResult(probed)
+    this.capabilitySnapshots.set(adapterId, snapshot)
+    return snapshot
+  }
+
+  private async validateProbeResult(probed: AdapterProbeResult): Promise<CapabilitySnapshot> {
+    const capabilities = adapterCapabilitiesSnapshotSchema.parse(probed.capabilities)
+    const rawBinding = probed.runtimeBinding
+    if (
+      !rawBinding
+      || rawBinding.scope !== "machine-local"
+      || rawBinding.adapterId !== capabilities.adapterId
+      || rawBinding.agentId !== capabilities.agentId
+    ) {
+      throw new HostRpcError(-32_010, "INVALID_CAPABILITY_SNAPSHOT", "Agent runtime binding identity is invalid")
+    }
+    let runtimeBinding: AdapterRuntimeBinding
+    if (rawBinding.kind === "executable") {
       let current: ExecutableFingerprint
       try {
-        current = await fingerprintExecutable(snapshot.executable.canonicalPath)
+        current = await fingerprintExecutable(rawBinding.executablePath, rawBinding.executableFingerprint.requested)
       } catch {
-        throw new HostRpcError(-32_013, "EXECUTABLE_UNAVAILABLE", "The selected agent executable is no longer available")
+        throw new HostRpcError(-32_013, "EXECUTABLE_UNAVAILABLE", "The observed agent executable is unavailable")
       }
-      if (
-        current.canonicalPath !== snapshot.executable.canonicalPath ||
-        current.digest !== snapshot.executable.digest ||
-        current.size !== snapshot.executable.size
-      ) {
+      if (!sameExecutable(current, rawBinding.executableFingerprint)) {
         throw new HostRpcError(
           -32_014,
           "EXECUTABLE_CHANGED",
-          "The selected agent executable changed after capability discovery; probe and select it again",
+          "The observed agent executable changed during capability discovery",
         )
       }
+      runtimeBinding = { ...rawBinding, executablePath: current.canonicalPath, executableFingerprint: current }
+    } else if (rawBinding.kind === "managed-in-process") {
+      if (!rawBinding.runtimeId.trim()) {
+        throw new HostRpcError(-32_010, "INVALID_CAPABILITY_SNAPSHOT", "Managed runtime identity is invalid")
+      }
+      runtimeBinding = structuredClone(rawBinding)
+    } else if (rawBinding.kind === "unavailable") {
+      runtimeBinding = structuredClone(rawBinding)
+    } else {
+      throw new HostRpcError(-32_010, "INVALID_CAPABILITY_SNAPSHOT", "Agent runtime binding kind is invalid")
     }
-    return snapshot
+    if (capabilities.detected && runtimeBinding.kind === "unavailable") {
+      throw new HostRpcError(-32_010, "INVALID_CAPABILITY_SNAPSHOT", "Detected agent has no usable local runtime binding")
+    }
+    return { capabilities: structuredClone(capabilities), runtimeBinding }
   }
 
   static parse(line: string): HostRequest {
@@ -274,6 +306,16 @@ export class EngineHost {
   }
 
   static validateRequest(rawRequest: unknown): HostRequest {
+    let serialized: string
+    try {
+      serialized = JSON.stringify(rawRequest)
+    } catch {
+      throw new HostRpcError(-32_600, "INVALID_REQUEST", "Invalid JSON-RPC 2.0 request")
+    }
+    if (Buffer.byteLength(serialized) > MAX_RPC_FRAME_BYTES) {
+      throw new HostRpcError(-32_001, "FRAME_TOO_LARGE", "JSON-RPC request exceeds the configured byte limit")
+    }
+
     let envelope: z.infer<typeof requestEnvelopeSchema>
     try {
       envelope = requestEnvelopeSchema.parse(rawRequest)
@@ -287,9 +329,16 @@ export class EngineHost {
           : undefined,
       )
     }
-    if (!hostMethods.has(envelope.method)) {
+    if (!hostMethodSchema.safeParse(envelope.method).success) {
       throw new HostRpcError(-32_601, "METHOD_NOT_FOUND", "Unknown GAEP engine method")
     }
-    return hostRequestSchema.parse(envelope)
+    try {
+      return hostRequestSchema.parse(envelope)
+    } catch (error) {
+      if (error instanceof ZodError && error.issues.every((issue) => issue.path[0] === "params")) {
+        throw invalidParamsError(error)
+      }
+      throw new HostRpcError(-32_600, "INVALID_REQUEST", "Invalid JSON-RPC 2.0 request")
+    }
   }
 }

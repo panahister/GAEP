@@ -1,4 +1,10 @@
-import type { AdapterCapabilities, AgentSelection, ExecutionCharter, ModelDescriptor } from "@gaep/contracts"
+import {
+  adapterCapabilitiesSnapshotSchema,
+  type AdapterCapabilities,
+  type AgentSelection,
+  type ExecutionCharter,
+  type ModelDescriptor,
+} from "@gaep/contracts"
 import {
   DEFAULT_CHILD_ENVIRONMENT_KEYS,
   assertNoUnsupportedEffects,
@@ -6,13 +12,18 @@ import {
   compileWorkspacePermission,
   filterChildEnvironment,
   findExecutable,
+  fingerprintExecutable,
   firstVersionToken,
+  requireExecutableRuntimeBinding,
   runCommand,
   requireExplicitWorkspacePermission,
   validateSelectionBase,
   type AgentAdapter,
   type AgentInvocation,
   type AdapterProbeOptions,
+  type AdapterProbeResult,
+  type AdapterRuntimeBinding,
+  type ExecutableFingerprint,
 } from "@gaep/agent-sdk"
 
 const supportedCodexPermissions = [
@@ -100,7 +111,7 @@ export class CodexAdapter implements AgentAdapter {
 
   constructor(private readonly preferredExecutable = "codex") {}
 
-  async probe(options: AdapterProbeOptions = {}): Promise<AdapterCapabilities> {
+  async probe(options: AdapterProbeOptions = {}): Promise<AdapterProbeResult> {
     const executablePath = await findExecutable(this.preferredExecutable)
     const limitations: string[] = [
       "Founder execution uses stable codex exec JSONL; rich-client approvals and event parity require a future migration to the experimental app-server transport.",
@@ -109,29 +120,35 @@ export class CodexAdapter implements AgentAdapter {
       "Current Codex CLI execution is read-only analysis; workspace mutation requires a later isolated staging and effect mediator.",
     ]
     let runtimeVersion: string | undefined
+    let executableFingerprint: ExecutableFingerprint | undefined
     let models: ModelDescriptor[] = []
     let usable = false
     if (executablePath) {
-      const version = await runCommand(executablePath, ["--version"], { timeoutMs: options.timeoutMs })
-      runtimeVersion = firstVersionToken(`${version.stdout}\n${version.stderr}`)
-      usable = version.exitCode === 0 && !version.timedOut && runtimeVersion !== undefined
-      if (!usable) {
-        limitations.push("A Codex executable was found, but its version command did not complete successfully; execution is disabled.")
-      }
-      if (usable && options.refreshModels !== false) {
-        const catalog = await runCommand(executablePath, ["debug", "models", "--bundled"], {
-          timeoutMs: options.timeoutMs ?? 15_000,
-          maxOutputBytes: 16 * 1024 * 1024,
-        })
-        if (catalog.exitCode === 0) {
-          try {
-            models = parseModelCatalog(catalog.stdout)
-          } catch {
-            limitations.push("The experimental bundled model catalog could not be parsed; enter a model identifier manually.")
-          }
-        } else {
-          limitations.push("Model catalog discovery is unavailable; enter a model identifier supported by this Codex installation.")
+      try {
+        executableFingerprint = await fingerprintExecutable(executablePath, this.preferredExecutable)
+        const version = await runCommand(executablePath, ["--version"], { timeoutMs: options.timeoutMs })
+        runtimeVersion = firstVersionToken(`${version.stdout}\n${version.stderr}`)
+        usable = version.exitCode === 0 && !version.timedOut && runtimeVersion !== undefined
+        if (!usable) {
+          limitations.push("A Codex executable was found, but its version command did not complete successfully; execution is disabled.")
         }
+        if (usable && options.refreshModels !== false) {
+          const catalog = await runCommand(executablePath, ["debug", "models", "--bundled"], {
+            timeoutMs: options.timeoutMs ?? 15_000,
+            maxOutputBytes: 16 * 1024 * 1024,
+          })
+          if (catalog.exitCode === 0) {
+            try {
+              models = parseModelCatalog(catalog.stdout)
+            } catch {
+              limitations.push("The experimental bundled model catalog could not be parsed; enter a model identifier manually.")
+            }
+          } else {
+            limitations.push("Model catalog discovery is unavailable; enter a model identifier supported by this Codex installation.")
+          }
+        }
+      } catch {
+        limitations.push("The detected Codex executable could not be fingerprinted safely; execution is disabled.")
       }
     }
 
@@ -174,13 +191,13 @@ export class CodexAdapter implements AgentAdapter {
       },
     )
 
-    return {
+    const capabilities = adapterCapabilitiesSnapshotSchema.parse({
+      schemaVersion: 1,
       adapterId: this.id,
       adapterVersion: "0.1.0",
       agentId: "codex-cli",
       agentLabel: "Codex",
       runtimeVersion,
-      executablePath: executablePath ?? undefined,
       detected: usable,
       executionInterface: usable ? "cli-jsonl" : "unavailable",
       interfaceMaturity: usable ? "stable" : "unknown",
@@ -193,6 +210,25 @@ export class CodexAdapter implements AgentAdapter {
       models,
       limitations,
       observedAt: new Date().toISOString(),
+    })
+    return {
+      capabilities,
+      runtimeBinding: usable && executablePath && executableFingerprint
+        ? {
+            scope: "machine-local",
+            kind: "executable",
+            adapterId: this.id,
+            agentId: "codex-cli",
+            executablePath,
+            executableFingerprint,
+          }
+        : {
+            scope: "machine-local",
+            kind: "unavailable",
+            adapterId: this.id,
+            agentId: "codex-cli",
+            reason: "Codex executable detection, fingerprinting, or version verification failed",
+          },
     }
   }
 
@@ -219,7 +255,9 @@ export class CodexAdapter implements AgentAdapter {
     charter: ExecutionCharter,
     workspacePath: string,
     prompt: string,
+    runtimeBinding: AdapterRuntimeBinding,
   ): AgentInvocation {
+    const runtime = requireExecutableRuntimeBinding(runtimeBinding, selection, "Codex")
     const compiled = compileCodexCharter(selection, charter, workspacePath)
     const approvalSetting = String(selection.settings.approvalPolicy ?? "fail-closed-noninteractive")
     if (approvalSetting !== "fail-closed-noninteractive") {
@@ -232,7 +270,7 @@ export class CodexAdapter implements AgentAdapter {
     }
     args.push("exec", "--ignore-user-config", "--ignore-rules", "--color", "never", "--json", "-")
     return {
-      executable: selection.runtimeExecutable,
+      executable: runtime.executablePath,
       args,
       cwd: workspacePath,
       stdin: prompt,
@@ -251,7 +289,9 @@ export class CodexAdapter implements AgentAdapter {
     workspacePath: string,
     providerSessionId: string,
     prompt: string,
+    runtimeBinding: AdapterRuntimeBinding,
   ): AgentInvocation {
+    const runtime = requireExecutableRuntimeBinding(runtimeBinding, _selection, "Codex")
     const compiled = compileCodexCharter(_selection, charter, workspacePath)
     const approvalSetting = String(_selection.settings.approvalPolicy ?? "fail-closed-noninteractive")
     if (approvalSetting !== "fail-closed-noninteractive") {
@@ -266,7 +306,7 @@ export class CodexAdapter implements AgentAdapter {
     }
     args.push("exec", "resume", "--ignore-user-config", "--ignore-rules", "--json", providerSessionId, "-")
     return {
-      executable: _selection.runtimeExecutable,
+      executable: runtime.executablePath,
       args,
       cwd: workspacePath,
       stdin: prompt,

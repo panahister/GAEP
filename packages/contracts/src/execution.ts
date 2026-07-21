@@ -2,6 +2,20 @@ import { z } from "zod"
 
 import { agentSelectionSchema, truthClassSchema } from "./agent.js"
 
+export const executionWorkspaceScopeSchema = z.string().min(1).max(4_096).refine((value) => {
+  if (value === ".") return true
+  const segments = value.split("/")
+  return !value.startsWith("/") &&
+    !/^[A-Za-z]:/.test(value) &&
+    !value.startsWith("~") &&
+    !value.includes("\\") &&
+    !value.includes("\0") &&
+    !/%2e/i.test(value) &&
+    !segments.includes("") &&
+    !segments.includes(".") &&
+    !segments.includes("..")
+}, "Execution scopes must be normalized workspace-relative paths")
+
 export const effectDescriptorSchema = z.enum([
   "observe",
   "provisional",
@@ -13,7 +27,10 @@ export const effectDescriptorSchema = z.enum([
 export const toolPermissionSchema = z.object({
   capability: z.string().min(1),
   mode: z.enum(["allow", "ask", "deny"]),
-  scope: z.array(z.string()).default([]),
+  scope: z.array(executionWorkspaceScopeSchema).default([]).refine(
+    (scopes) => new Set(scopes).size === scopes.length,
+    "Execution permission scopes must be unique",
+  ),
 })
 
 export const executionCharterSchema = z.object({
@@ -64,7 +81,7 @@ export const handoffSchema = z.object({
   workspaceBaseline: z.object({
     gitHead: z.string().optional(),
     dirty: z.boolean().nullable(),
-    changedFiles: z.array(z.string()),
+    changedFiles: z.array(executionWorkspaceScopeSchema.refine((path) => path !== ".", "Changed files must name a file")),
     truthClass: truthClassSchema.optional(),
     observationError: z.string().optional(),
   }),

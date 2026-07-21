@@ -1,20 +1,38 @@
 import { describe, expect, it } from "vitest"
 
 import type { AgentSelection, ExecutionCharter, ToolPermission } from "@gaep/contracts"
+import type { AdapterRuntimeBinding } from "@gaep/agent-sdk"
 
 import { CodexAdapter } from "./index.js"
 
 function selection(sandbox: string = "read-only"): AgentSelection {
   return {
+    schemaVersion: 2,
     adapterId: "gaep.codex-cli",
     agentId: "codex-cli",
-    runtimeExecutable: "/opt/codex/bin/codex",
     modelId: "model; touch /tmp/not-executed",
     modelTruthClass: "configured",
     modelAlias: null,
     settings: { sandbox, approvalPolicy: "fail-closed-noninteractive" },
     selectedAt: "2026-07-21T00:00:00.000Z",
     capabilityDigest: `sha256:${"0".repeat(64)}`,
+  }
+}
+
+function runtimeBinding(): AdapterRuntimeBinding {
+  return {
+    scope: "machine-local",
+    kind: "executable",
+    adapterId: "gaep.codex-cli",
+    agentId: "codex-cli",
+    executablePath: "/opt/codex/bin/codex",
+    executableFingerprint: {
+      requested: "codex",
+      canonicalPath: "/opt/codex/bin/codex",
+      digest: `sha256:${"1".repeat(64)}`,
+      size: 1,
+      modifiedAtMs: 1,
+    },
   }
 }
 
@@ -27,9 +45,9 @@ function charter(
   return {
     id: "00000000-0000-4000-8000-000000000000",
     permissions: [
-      { capability: "read-workspace", mode: read, scope: ["/workspace"] },
-      { capability: "modify-workspace", mode: modify, scope: ["/workspace"] },
-      { capability: "run-local-commands", mode: commands, scope: ["/workspace"] },
+      { capability: "read-workspace", mode: read, scope: ["."] },
+      { capability: "modify-workspace", mode: modify, scope: ["."] },
+      { capability: "run-local-commands", mode: commands, scope: ["."] },
       { capability: "network-access", mode: "deny", scope: [] },
     ],
     expectedEffects,
@@ -42,10 +60,12 @@ function sandboxArgument(args: string[]): string | undefined {
 
 describe("Codex adapter", () => {
   it("advertises an analysis-only execution stop-line", async () => {
-    const observed = await new CodexAdapter(process.execPath).probe({ timeoutMs: 1_000, refreshModels: false })
+    const { capabilities: observed, runtimeBinding: binding } = await new CodexAdapter(process.execPath).probe({ timeoutMs: 1_000, refreshModels: false })
     const sandbox = observed.settings.find((setting) => setting.key === "sandbox")
 
     expect(observed.detected).toBe(true)
+    expect(observed).not.toHaveProperty("executablePath")
+    expect(binding).toMatchObject({ kind: "executable", executablePath: process.execPath })
     expect(sandbox?.defaultValue).toBe("read-only")
     expect(sandbox?.options?.map((option) => option.value)).toEqual(["read-only"])
     expect(observed.limitations.join(" ")).toContain("read-only analysis")
@@ -57,6 +77,7 @@ describe("Codex adapter", () => {
       charter(),
       "/workspace",
       "inspect safely",
+      runtimeBinding(),
     )
 
     expect(invocation.executable).toBe("/opt/codex/bin/codex")
@@ -79,6 +100,7 @@ describe("Codex adapter", () => {
       charter(modify),
       "/workspace",
       "inspect safely",
+      runtimeBinding(),
     )
 
     expect(sandboxArgument(invocation.args)).toBe("read-only")
@@ -99,6 +121,7 @@ describe("Codex adapter", () => {
       constrained,
       "/workspace",
       "inspect safely",
+      runtimeBinding(),
     )).toThrow(`${capability}=allow exactly at the workspace root`)
   })
 
@@ -108,6 +131,7 @@ describe("Codex adapter", () => {
       charter(),
       "/workspace",
       "inspect safely",
+      runtimeBinding(),
     )).toThrow("requires read-only sandbox")
   })
 
@@ -117,6 +141,7 @@ describe("Codex adapter", () => {
       charter("allow"),
       "/workspace",
       "modify",
+      runtimeBinding(),
     )).toThrow("cannot enforce modify-workspace=allow")
   })
 
@@ -126,6 +151,7 @@ describe("Codex adapter", () => {
       charter("deny", "allow", "allow", [effect]),
       "/workspace",
       "mutate",
+      runtimeBinding(),
     )).toThrow(`cannot enforce mutation effects without an isolated staging and effect mediator: ${effect}`)
   })
 
@@ -136,19 +162,20 @@ describe("Codex adapter", () => {
       charter(),
       "/workspace",
       "do not expose me",
+      runtimeBinding(),
     )).toThrow("requires read-only sandbox")
 
     const networkCharter = charter()
     networkCharter.permissions = networkCharter.permissions.map((permission) =>
       permission.capability === "network-access" ? { ...permission, mode: "ask" } : permission,
     )
-    expect(() => adapter.buildInvocation(selection(), networkCharter, "/workspace", "network")).toThrow(
+    expect(() => adapter.buildInvocation(selection(), networkCharter, "/workspace", "network", runtimeBinding())).toThrow(
       "network-access=ask",
     )
 
     const commitCharter = charter()
-    commitCharter.permissions.push({ capability: "commit", mode: "allow", scope: ["/workspace"] })
-    expect(() => adapter.buildInvocation(selection(), commitCharter, "/workspace", "commit")).toThrow(
+    commitCharter.permissions.push({ capability: "commit", mode: "allow", scope: ["."] })
+    expect(() => adapter.buildInvocation(selection(), commitCharter, "/workspace", "commit", runtimeBinding())).toThrow(
       "commit=allow",
     )
     expect(() => adapter.buildInvocation(
@@ -156,6 +183,7 @@ describe("Codex adapter", () => {
       charter("deny", "allow", "allow", ["external-effect"]),
       "/workspace",
       "external",
+      runtimeBinding(),
     )).toThrow("external-effect")
   })
 
@@ -166,6 +194,7 @@ describe("Codex adapter", () => {
       "/workspace",
       "session-id",
       "continue safely",
+      runtimeBinding(),
     )
     expect(sandboxArgument(invocation.args)).toBe("read-only")
     expect(invocation.args).toEqual(expect.arrayContaining(["exec", "resume", "session-id", "-"]))

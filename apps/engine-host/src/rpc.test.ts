@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { HostRpcError, normalizeRpcError, RpcFrameDecoder } from "./rpc.js"
+import {
+  HostRpcError,
+  MAX_RPC_ERROR_MESSAGE_BYTES,
+  normalizeRpcError,
+  RpcFrameDecoder,
+} from "./rpc.js"
 
 describe("engine host RPC framing", () => {
   it("decodes frames split across chunks", () => {
@@ -25,5 +30,22 @@ describe("engine host RPC framing", () => {
     expect(normalized).toMatchObject({ code: -32_603, kind: "INTERNAL_ERROR" })
     expect(normalized.message).not.toContain("/private/workspace")
     expect(normalizeRpcError(new HostRpcError(-32_010, "KNOWN", "known"))).toMatchObject({ kind: "KNOWN" })
+  })
+
+  it("redacts and bounds explicitly classified host errors and their data", () => {
+    const normalized = normalizeRpcError(new HostRpcError(
+      -32_010,
+      "KNOWN",
+      `Failure at /Users/alice/private/workspace token=top-secret ${"x".repeat(10_000)}`,
+      { executablePath: "C:\\Users\\alice\\agent.exe", nested: { secret: "apiKey=top-secret" } },
+    ))
+    const serialized = JSON.stringify({ message: normalized.message, data: normalized.data })
+
+    expect(Buffer.byteLength(normalized.message)).toBeLessThanOrEqual(MAX_RPC_ERROR_MESSAGE_BYTES)
+    expect(serialized).not.toContain("/Users/alice")
+    expect(serialized).not.toContain("C:\\Users\\alice")
+    expect(serialized).not.toContain("top-secret")
+    expect(serialized).toContain("[ABSOLUTE_PATH]")
+    expect(serialized).toContain("[REDACTED]")
   })
 })

@@ -11,6 +11,7 @@ export interface CompiledPermission {
 }
 
 function isExactWorkspaceScope(scope: string, workspacePath: string): boolean {
+  if (scope !== "." || isAbsolute(scope) || scope.includes("\\")) return false
   const workspace = resolve(workspacePath)
   const target = resolve(workspace, scope)
   const difference = relative(workspace, target)

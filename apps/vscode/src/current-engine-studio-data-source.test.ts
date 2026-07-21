@@ -44,9 +44,9 @@ const initiative: Initiative = {
 }
 
 const selection: AgentSelection = {
+  schemaVersion: 2,
   adapterId: "codex-adapter",
   agentId: "codex-cli",
-  runtimeExecutable: "/opt/local/bin/codex",
   modelId: "gpt-test",
   modelTruthClass: "provider-declared",
   modelAlias: false,
@@ -70,12 +70,12 @@ const run: Run = {
 
 function capability(overrides: Partial<AdapterCapabilities>): AdapterCapabilities {
   return {
+    schemaVersion: 1,
     adapterId: "codex-adapter",
     adapterVersion: "0.1.0",
     agentId: "codex-cli",
     agentLabel: "Codex",
     runtimeVersion: "1.0.0",
-    executablePath: "/opt/local/bin/codex",
     detected: true,
     executionInterface: "cli-jsonl",
     interfaceMaturity: "stable",
@@ -105,9 +105,11 @@ interface HarnessOptions {
   withWorkspace?: boolean
   withProduct?: boolean
   selection?: AgentSelection | null
+  selectionError?: Error
   initiatives?: Initiative[]
   runs?: Run[]
   audit?: { valid: boolean; events: number; error?: string }
+  runtimeBindings?: Record<string, unknown>
   rotateContextDuringObservation?: boolean
 }
 
@@ -124,6 +126,7 @@ function harness(options: HarnessOptions = {}) {
       return product
     },
     readSelection: async () => {
+      if (options.selectionError) throw options.selectionError
       if (!selectedAgent) throw new Error("missing selection")
       return selectedAgent
     },
@@ -150,20 +153,26 @@ function harness(options: HarnessOptions = {}) {
         adapterId: "claude-adapter",
         agentId: "claude-code-cli",
         agentLabel: "Claude Code",
-        executablePath: "/opt/local/bin/claude",
         executionInterface: "unavailable",
         interfaceMaturity: "unknown",
         models: [],
       }),
     ],
-    runtimeBindings: () => ({
+    runtimeBindings: () => options.runtimeBindings ?? ({
       [`${workspacePath}\u0000codex-adapter`]: {
+        schemaVersion: 2,
+        scope: "machine-local",
+        kind: "executable",
         adapterId: "codex-adapter",
-        requested: "codex",
-        canonicalPath: "/opt/local/bin/codex",
-        digest: `sha256:${"b".repeat(64)}`,
-        size: 42,
-        modifiedAtMs: 1,
+        agentId: "codex-cli",
+        capabilityDigest: selection.capabilityDigest,
+        executable: {
+          requested: "codex",
+          canonicalPath: "/opt/local/bin/codex",
+          digest: `sha256:${"b".repeat(64)}`,
+          size: 42,
+          modifiedAtMs: 1,
+        },
         observedAt: "2026-07-21T00:00:00.000Z",
       },
     }),
@@ -206,11 +215,48 @@ describe("current-engine Product Studio data source", () => {
     const snapshot = await source.readSnapshot("agents-tools")
     expect(snapshot.page.kind).toBe("agents-tools")
     if (snapshot.page.kind !== "agents-tools") return
-    expect(JSON.stringify(snapshot.page.adapters)).not.toContain("/opt/local/bin")
+    const portableSnapshot = { ...snapshot, inspector: undefined }
+    expect(JSON.stringify(portableSnapshot)).not.toContain("/opt/local/bin")
+    expect(JSON.stringify(snapshot.page.adapters)).not.toContain(`sha256:${"b".repeat(64)}`)
     expect(snapshot.inspector?.title).toMatch(/Machine-local/i)
     expect(JSON.stringify(snapshot.inspector)).toContain("/opt/local/bin/codex")
     expect(JSON.stringify(snapshot.page.selection)).not.toContain("must-redact")
     expect(JSON.stringify(snapshot.page.selection)).toContain("[redacted]")
+  })
+
+  it("blocks run preparation when a machine-local binding is missing or legacy", async () => {
+    const missing = harness({ runtimeBindings: {} }).source
+    const missingRuns = await missing.readSnapshot("runs-evidence")
+    if (missingRuns.page.kind !== "runs-evidence") throw new Error("Expected runs page")
+    expect(missingRuns.page.actions[0]).toMatchObject({ enabled: false })
+    expect(missingRuns.page.actions[0]?.disabledReason).toMatch(/No machine-local executable fingerprint/i)
+
+    const key = `${workspacePath}\u0000codex-adapter`
+    const legacy = harness({
+      runtimeBindings: {
+        [key]: {
+          adapterId: "codex-adapter",
+          canonicalPath: "/legacy/machine/path/codex",
+          digest: `sha256:${"c".repeat(64)}`,
+          size: 1,
+          modifiedAtMs: 1,
+        },
+      },
+    }).source
+    const legacyOverview = await legacy.readSnapshot("overview")
+    if (legacyOverview.page.kind !== "overview") throw new Error("Expected overview")
+    expect(legacyOverview.page.blockers.some((blocker) => /legacy path-bearing format/i.test(blocker.message))).toBe(true)
+    expect(JSON.stringify(legacyOverview)).not.toContain("/legacy/machine/path")
+  })
+
+  it("offers an explicit migration stop-line for a legacy portable-selection read failure", async () => {
+    const { source } = harness({ selectionError: new Error("Legacy agent selection migration is required") })
+    const overview = await source.readSnapshot("overview")
+    if (overview.page.kind !== "overview") throw new Error("Expected overview")
+    expect(overview.page.primaryAction?.label).toMatch(/Reconfirm and migrate/i)
+    expect(overview.page.primaryAction?.action.kind).toBe("select-agent")
+    expect(overview.page.blockers.some((blocker) => /legacy path-bearing selection is blocked/i.test(blocker.message))).toBe(true)
+    expect(JSON.stringify(overview)).not.toContain("runtimeExecutable")
   })
 
   it("labels Claude detection-only and Codex direct execution observe-only", async () => {

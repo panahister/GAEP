@@ -3,19 +3,33 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { handoffSchema, type AdapterCapabilities, type AgentSelection, type ExecutionCharter } from "@gaep/contracts"
-import { capabilityDigest, type AgentAdapter, type AgentInvocation } from "@gaep/agent-sdk"
+import {
+  handoffSchema,
+  legacyAdapterCapabilitiesV1Schema,
+  legacyAgentSelectionV1Schema,
+  type AdapterCapabilities,
+  type AgentSelection,
+  type ExecutionCharter,
+} from "@gaep/contracts"
+import {
+  capabilityDigest,
+  requireExecutableRuntimeBinding,
+  type AdapterProbeResult,
+  type AdapterRuntimeBinding,
+  type AgentAdapter,
+  type AgentInvocation,
+} from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { GaepEngine } from "./engine.js"
 
 const capabilities: AdapterCapabilities = {
+  schemaVersion: 1,
   adapterId: "gaep.fake",
   adapterVersion: "1.0.0",
   agentId: "fake-agent",
   agentLabel: "Fake Agent",
   runtimeVersion: "1.0.0",
-  executablePath: "/usr/bin/true",
   detected: true,
   executionInterface: "cli-jsonl",
   interfaceMaturity: "stable",
@@ -37,10 +51,28 @@ const capabilities: AdapterCapabilities = {
   observedAt: "2026-07-21T00:00:00.000Z",
 }
 
+const runtimeBinding: AdapterRuntimeBinding = {
+  scope: "machine-local",
+  kind: "executable",
+  adapterId: capabilities.adapterId,
+  agentId: capabilities.agentId,
+  executablePath: "/usr/bin/true",
+  executableFingerprint: {
+    requested: "true",
+    canonicalPath: "/usr/bin/true",
+    digest: `sha256:${"b".repeat(64)}`,
+    size: 1,
+    modifiedAtMs: 1,
+  },
+}
+
 class FakeAdapter implements AgentAdapter {
   readonly id = "gaep.fake"
-  async probe(): Promise<AdapterCapabilities> {
-    return capabilities
+  observed: AdapterCapabilities = capabilities
+  runtimeBinding: AdapterRuntimeBinding = runtimeBinding
+
+  async probe(): Promise<AdapterProbeResult> {
+    return { capabilities: this.observed, runtimeBinding: this.runtimeBinding }
   }
   validateSelection(selection: AgentSelection, observed: AdapterCapabilities): string[] {
     return selection.capabilityDigest === capabilityDigest(observed) ? [] : ["capability mismatch"]
@@ -50,9 +82,11 @@ class FakeAdapter implements AgentAdapter {
     _charter: ExecutionCharter,
     workspacePath: string,
     prompt: string,
+    localBinding: AdapterRuntimeBinding,
   ): AgentInvocation {
+    const executable = requireExecutableRuntimeBinding(localBinding, _selection, "Fake Adapter")
     return {
-      executable: "/usr/bin/true",
+      executable: executable.executablePath,
       args: [prompt],
       cwd: workspacePath,
       environment: {},
@@ -64,11 +98,6 @@ class FakeAdapter implements AgentAdapter {
 }
 
 class MutableFakeAdapter extends FakeAdapter {
-  observed: AdapterCapabilities = capabilities
-
-  override async probe(): Promise<AdapterCapabilities> {
-    return this.observed
-  }
 }
 
 describe("GAEP local engine", () => {
@@ -104,6 +133,48 @@ describe("GAEP local engine", () => {
     }, "founder")
     await engine.selectAgent(capabilities, "fake-model", {}, "founder")
     return { product, initiative }
+  }
+
+  async function persistLegacyAgentRuntime(executablePath = "/opt/legacy/bin/fake-agent") {
+    const selection = await engine.readSelection()
+    const capabilityName = (await readdir(join(workspace, ".gaep", "runtime")))
+      .find((name) => /^capabilities-[0-9a-f]{64}\.json$/.test(name))
+    if (!capabilityName) throw new Error("Expected a persisted capability snapshot")
+    const { schemaVersion: _selectionVersion, ...selectionFields } = selection
+    const { schemaVersion: _capabilityVersion, ...capabilityFields } = capabilities
+    const legacySelection = legacyAgentSelectionV1Schema.parse({
+      ...selectionFields,
+      runtimeExecutable: executablePath,
+    })
+    const legacyCapabilities = legacyAdapterCapabilitiesV1Schema.parse({
+      ...capabilityFields,
+      executablePath,
+    })
+    await engine.repository.withLock(async () => {
+      await engine.repository.commitMutation({
+        writes: [
+          {
+            path: engine.repository.resolve("runtime", "selection.json"),
+            value: legacySelection,
+            schema: legacyAgentSelectionV1Schema,
+            governed: true,
+          },
+          {
+            path: engine.repository.resolve("runtime", capabilityName),
+            value: legacyCapabilities,
+            schema: legacyAdapterCapabilitiesV1Schema,
+            governed: true,
+          },
+        ],
+        audit: {
+          eventType: "test.legacy-runtime.persisted",
+          actor: { kind: "system", id: "test.fixture" },
+          subjectId: selection.agentId,
+          payload: { fixture: true },
+        },
+      })
+    })
+    return { capabilityName }
   }
 
   it("keeps Product and Initiative identities and lifecycle state separate", async () => {
@@ -164,7 +235,7 @@ describe("GAEP local engine", () => {
     const charterInput = {
       initiativeId: initiative.id,
       objective: "Run only while the bounded Initiative remains active.",
-      permissions: [{ capability: "read-workspace", mode: "allow" as const, scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow" as const, scope: ["."] }],
       expectedEffects: ["observe" as const],
       forbiddenActions: ["Do not mutate"],
       stopConditions: ["Stop if the Initiative is not active"],
@@ -201,7 +272,7 @@ describe("GAEP local engine", () => {
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Keep Initiative lifecycle truthful while Runs need reconciliation.",
-      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
       expectedEffects: ["observe"],
       forbiddenActions: ["Do not mutate"],
       stopConditions: ["Stop on lifecycle mismatch"],
@@ -244,7 +315,7 @@ describe("GAEP local engine", () => {
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Implement and verify the bounded workflow.",
-      permissions: [{ capability: "modify-workspace", mode: "ask", scope: [workspace] }],
+      permissions: [{ capability: "modify-workspace", mode: "ask", scope: ["."] }],
       expectedEffects: ["reversible-change"],
       forbiddenActions: ["Do not push or deploy"],
       stopConditions: ["Stop when authority is missing"],
@@ -268,7 +339,7 @@ describe("GAEP local engine", () => {
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Refuse execution after the selected runtime capabilities drift.",
-      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
       expectedEffects: ["observe"],
       forbiddenActions: ["Do not mutate"],
       stopConditions: ["Stop on capability drift"],
@@ -278,6 +349,144 @@ describe("GAEP local engine", () => {
     adapter.observed = { ...capabilities, runtimeVersion: "2.0.0" }
 
     await expect(engine.prepareRun(charter.id, "founder")).rejects.toThrow(/capabilities changed/i)
+  })
+
+  it("uses the exact freshly re-probed local binding without persisting its path or fingerprint", async () => {
+    const adapter = new MutableFakeAdapter()
+    engine = new GaepEngine(workspace, [adapter])
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Use only the runtime binding observed immediately before invocation.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop if the local runtime binding is invalid"],
+      requiredEvidence: ["Fresh binding observation"],
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    const changedBindingDigest = `sha256:${"d".repeat(64)}` as const
+    adapter.runtimeBinding = {
+      scope: "machine-local",
+      kind: "executable",
+      adapterId: capabilities.adapterId,
+      agentId: capabilities.agentId,
+      executablePath: "/opt/fresh/bin/fake-agent",
+      executableFingerprint: {
+        requested: "fake-agent",
+        canonicalPath: "/opt/fresh/bin/fake-agent",
+        digest: changedBindingDigest,
+        size: 2,
+        modifiedAtMs: 2,
+      },
+    }
+    const { run, invocation } = await engine.prepareRun(charter.id, "founder")
+    expect(invocation.executable).toBe("/opt/fresh/bin/fake-agent")
+
+    const freshBinding = adapter.runtimeBinding
+    if (freshBinding.kind !== "executable") throw new Error("Expected executable test binding")
+    adapter.runtimeBinding = {
+      ...freshBinding,
+      executableFingerprint: {
+        ...freshBinding.executableFingerprint,
+        canonicalPath: "/opt/stale/bin/fake-agent",
+      },
+    }
+    await expect(engine.prepareRun(charter.id, "founder")).rejects.toThrow(/fingerprint/i)
+    adapter.runtimeBinding = freshBinding
+
+    await engine.markRunState(run.id, "cancelled", { kind: "human", id: "founder" })
+    const handoff = await engine.createHandoff({
+      fromRunId: run.id,
+      toCapabilities: capabilities,
+      toModelId: "fake-model",
+      toSettings: {},
+      reason: "Verify portable handoff persistence",
+      completedWork: ["Fresh local binding used"],
+      unresolvedMatters: [],
+      decisions: [],
+      evidence: [],
+    }, "founder")
+    const capabilityName = (await readdir(join(workspace, ".gaep", "runtime")))
+      .find((name) => /^capabilities-[0-9a-f]{64}\.json$/.test(name))!
+    const persisted = await Promise.all([
+      readFile(join(workspace, ".gaep", "runtime", "selection.json"), "utf8"),
+      readFile(join(workspace, ".gaep", "runtime", capabilityName), "utf8"),
+      readFile(join(workspace, ".gaep", "sessions", `charter-${charter.id}.json`), "utf8"),
+      readFile(join(workspace, ".gaep", "sessions", `run-${run.id}.json`), "utf8"),
+      readFile(join(workspace, ".gaep", "handoffs", `${handoff.id}.json`), "utf8"),
+      readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"),
+    ])
+    for (const text of persisted) {
+      expect(text).not.toContain(workspace)
+      expect(text).not.toContain("/opt/fresh/bin/fake-agent")
+      expect(text).not.toContain(changedBindingDigest)
+      expect(text).not.toContain("executableFingerprint")
+      expect(text).not.toContain("runtimeExecutable")
+    }
+    const preparedAudit = persisted.at(-1)!.trim().split("\n")
+      .map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+      .find((event) => event.eventType === "run.prepared")
+    expect(preparedAudit?.payload).not.toHaveProperty("executable")
+    expect(preparedAudit?.payload).not.toHaveProperty("args")
+
+  })
+
+  it("keeps legacy runtime records readable for audit and requires explicit transactional migration", async () => {
+    await initialize()
+    const { capabilityName } = await persistLegacyAgentRuntime()
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+    const legacyHealth = await engine.workspaceHealth()
+    expect(legacyHealth.status).toBe("degraded")
+    expect(legacyHealth.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
+      "workspace.agent-selection-migration-required",
+      "workspace.agent-capabilities-migration-required",
+    ]))
+    await expect(engine.readSelection()).rejects.toThrow(/explicit re-probe and reconfirmation/i)
+    await expect(engine.migrateLegacyAgentSelection({
+      capabilities,
+      modelId: "fake-model",
+      settings: {},
+      confirmation: "wrong" as "reconfirm-portable-agent-selection",
+    }, "founder")).rejects.toThrow(/explicit capability reconfirmation/i)
+    await expect(engine.migrateLegacyAgentSelection({
+      capabilities: { ...capabilities, runtimeVersion: "changed" },
+      modelId: "fake-model",
+      settings: {},
+      confirmation: "reconfirm-portable-agent-selection",
+    }, "founder")).rejects.toThrow(/changed during migration/i)
+
+    const migrated = await engine.migrateLegacyAgentSelection({
+      capabilities,
+      modelId: "fake-model",
+      settings: {},
+      confirmation: "reconfirm-portable-agent-selection",
+    }, "founder")
+    expect(migrated.schemaVersion).toBe(2)
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+    expect((await engine.workspaceHealth()).status).toBe("healthy")
+    const selectionText = await readFile(join(workspace, ".gaep", "runtime", "selection.json"), "utf8")
+    const capabilitiesText = await readFile(join(workspace, ".gaep", "runtime", capabilityName), "utf8")
+    expect(selectionText).not.toContain("runtimeExecutable")
+    expect(capabilitiesText).not.toContain("executablePath")
+    expect(selectionText).not.toContain("/opt/legacy")
+    expect(capabilitiesText).not.toContain("/opt/legacy")
+  })
+
+  it("rejects absolute Charter permission scopes before persistence", async () => {
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    await expect(engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Reject host-bound permission scopes.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop on non-portable scope"],
+      requiredEvidence: ["Schema rejection"],
+    }, "founder")).rejects.toThrow(/workspace-relative/i)
+    expect(await readdir(join(workspace, ".gaep", "sessions"))).toEqual([])
   })
 
   it("maintains a verifiable append-only audit hash chain and detects tampering", async () => {
@@ -304,7 +513,7 @@ describe("GAEP local engine", () => {
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Exercise a governed switch.",
-      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
       expectedEffects: ["observe"],
       forbiddenActions: ["Do not mutate the workspace"],
       stopConditions: ["Stop if mutation is required"],
@@ -336,7 +545,7 @@ describe("GAEP local engine", () => {
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Verify interrupted-run recovery.",
-      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
       expectedEffects: ["observe"],
       forbiddenActions: ["Do not mutate"],
       stopConditions: ["Stop on interruption"],
@@ -358,7 +567,7 @@ describe("GAEP local engine", () => {
     const staleInitiativeCharter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Reject a Charter after its bounded Initiative changes.",
-      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
       expectedEffects: ["observe"],
       forbiddenActions: ["Do not mutate"],
       stopConditions: ["Stop on state drift"],
@@ -373,7 +582,7 @@ describe("GAEP local engine", () => {
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Reject execution after the selected agent configuration changes.",
-      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
       expectedEffects: ["observe"],
       forbiddenActions: ["Do not mutate"],
       stopConditions: ["Stop on selection drift"],
@@ -390,7 +599,7 @@ describe("GAEP local engine", () => {
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Exercise the explicit Run lifecycle.",
-      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
       expectedEffects: ["observe"],
       forbiddenActions: ["Do not mutate"],
       stopConditions: ["Stop after observation"],
@@ -429,7 +638,7 @@ describe("GAEP local engine", () => {
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Recover multiple interrupted Runs.",
-      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
       expectedEffects: ["observe"],
       forbiddenActions: ["Do not mutate"],
       stopConditions: ["Stop on restart"],
@@ -504,7 +713,7 @@ describe("GAEP local engine", () => {
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Create every governed runtime record for integrity testing.",
-      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
       expectedEffects: ["observe"],
       forbiddenActions: ["Do not mutate"],
       stopConditions: ["Stop after record creation"],
@@ -588,7 +797,7 @@ describe("GAEP local engine", () => {
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Create a source Run for an atomic agent switch.",
-      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
       expectedEffects: ["observe"],
       forbiddenActions: ["Do not mutate"],
       stopConditions: ["Stop before switching"],

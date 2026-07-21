@@ -14,19 +14,31 @@ import { hostname } from "node:os"
 import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from "node:path"
 
 import {
-  agentSelectionSchema,
-  adapterCapabilitiesSchema,
+  architectureRecordSchema,
   auditCheckpointSchema,
   auditEventSchema,
+  changeSchema,
+  contextPackSchema,
+  decisionSchema,
+  evidenceRecordSchema,
   executionCharterSchema,
   governedStateSchema,
   handoffSchema,
   initiativeSchema,
   productSchema,
+  productDesignRevisionSchema,
+  productRevisionSchema,
   repositoryManifestSchema,
   repositoryTransactionBodySchema,
   repositoryTransactionSchema,
   runSchema,
+  requirementSchema,
+  riskSchema,
+  runToolSelectionSchema,
+  traceLinkSchema,
+  toolDefinitionSchema,
+  workflowPlanSchema,
+  workItemSchema,
   workspaceHealthSchema,
   type AuditCheckpoint,
   type AuditEvent,
@@ -36,13 +48,22 @@ import {
   type WorkspaceHealth,
   type WorkspaceHealthIssue,
 } from "@gaep/contracts"
-import { canonicalDigest } from "@gaep/agent-sdk"
+import {
+  canonicalDigest,
+  parseAdapterCapabilitiesCompatibility,
+  parseAgentSelectionCompatibility,
+  type AdapterCapabilitiesCompatibilityResult,
+  type AgentSelectionCompatibilityResult,
+} from "@gaep/agent-sdk"
 import type { ZodType } from "zod"
 
 const directoryNames = [
   "profiles",
+  "design-revisions",
+  "product-history",
   "initiatives",
   "changes",
+  "work-items",
   "decisions",
   "requirements",
   "architecture",
@@ -51,6 +72,12 @@ const directoryNames = [
   "candidates",
   "sessions",
   "handoffs",
+  "trace",
+  "context-packs",
+  "workflow-plans",
+  "tools",
+  "tool-selections",
+  "exports",
   "audit",
   "policies",
   "runtime",
@@ -189,10 +216,29 @@ export class GaepRepository {
     return this.readJsonUnlocked(path, schema)
   }
 
+  async readAgentSelectionCompatibility(): Promise<AgentSelectionCompatibilityResult> {
+    await this.recoverIfNeeded()
+    return this.readAgentSelectionCompatibilityUnlocked()
+  }
+
+  async readAdapterCapabilitiesCompatibility(path: string): Promise<AdapterCapabilitiesCompatibilityResult> {
+    await this.recoverIfNeeded()
+    return this.readAdapterCapabilitiesCompatibilityUnlocked(path)
+  }
+
   async readDirectory(path: string): Promise<string[]> {
     await this.recoverIfNeeded()
     await this.assertSafePath(path)
     return readdir(path)
+  }
+
+  async writeLocalJson<T>(path: string, value: T, schema: ZodType<T>): Promise<T> {
+    if (!this.activeLockToken) {
+      throw new Error("Local repository writes require the owned GAEP workspace lock")
+    }
+    const validated = schema.parse(value)
+    await this.writeJsonAtomic(path, validated, schema)
+    return validated
   }
 
   async commitMutation(input: {
@@ -385,6 +431,64 @@ export class GaepRepository {
       })
     }
 
+    if (await this.exists(this.resolve("runtime", "selection.json"))) {
+      try {
+        const compatibility = await this.readAgentSelectionCompatibilityUnlocked()
+        if (compatibility.status === "migration-required") {
+          issues.push({
+            code: "workspace.agent-selection-migration-required",
+            severity: "warning",
+            message: "The persisted Agent Selection uses a legacy machine-local executable field and requires explicit re-probe and reconfirmation.",
+          })
+        } else if (compatibility.status === "invalid") {
+          issues.push({
+            code: "workspace.agent-selection-invalid",
+            severity: "error",
+            message: `The persisted Agent Selection is invalid: ${compatibility.issues.join("; ")}`,
+          })
+        }
+      } catch (error) {
+        issues.push({
+          code: "workspace.agent-selection-invalid",
+          severity: "error",
+          message: error instanceof Error ? error.message : "The persisted Agent Selection cannot be parsed.",
+        })
+      }
+    }
+    let capabilityNames: string[] = []
+    try {
+      capabilityNames = (await readdir(this.resolve("runtime")))
+        .filter((name) => /^capabilities-[0-9a-f]{64}\.json$/.test(name))
+    } catch (error) {
+      if (!hasCode(error, "ENOENT")) throw error
+    }
+    for (const name of capabilityNames) {
+      try {
+        const compatibility = await this.readAdapterCapabilitiesCompatibilityUnlocked(this.resolve("runtime", name))
+        if (compatibility.status === "migration-required") {
+          issues.push({
+            code: "workspace.agent-capabilities-migration-required",
+            severity: "warning",
+            message: `The persisted capability snapshot ${name} contains a legacy machine-local executable and requires explicit migration.`,
+          })
+        } else if (compatibility.status === "invalid") {
+          issues.push({
+            code: "workspace.agent-capabilities-invalid",
+            severity: "error",
+            message: `The persisted capability snapshot ${name} is invalid: ${compatibility.issues.join("; ")}`,
+          })
+        }
+      } catch (error) {
+        issues.push({
+          code: "workspace.agent-capabilities-invalid",
+          severity: "error",
+          message: error instanceof Error
+            ? `The persisted capability snapshot ${name} cannot be parsed: ${error.message}`
+            : `The persisted capability snapshot ${name} cannot be parsed.`,
+        })
+      }
+    }
+
     const lock = await this.inspectLock()
     if (lock.malformed) {
       issues.push({
@@ -452,9 +556,25 @@ export class GaepRepository {
   }
 
   private async readJsonUnlocked<T>(path: string, schema: ZodType<T>): Promise<T> {
+    return schema.parse(await this.readRawJsonUnlocked(path))
+  }
+
+  private async readRawJsonUnlocked(path: string): Promise<unknown> {
     await this.assertSafePath(path)
     const text = await readFile(path, "utf8")
-    return schema.parse(JSON.parse(text))
+    return JSON.parse(text)
+  }
+
+  private async readAgentSelectionCompatibilityUnlocked(): Promise<AgentSelectionCompatibilityResult> {
+    return parseAgentSelectionCompatibility(
+      await this.readRawJsonUnlocked(this.resolve("runtime", "selection.json")),
+    )
+  }
+
+  private async readAdapterCapabilitiesCompatibilityUnlocked(
+    path: string,
+  ): Promise<AdapterCapabilitiesCompatibilityResult> {
+    return parseAdapterCapabilitiesCompatibility(await this.readRawJsonUnlocked(path))
   }
 
   private async writeJsonAtomic<T>(path: string, value: T, schema: ZodType<T>): Promise<void> {
@@ -684,7 +804,21 @@ export class GaepRepository {
     if (await this.exists(this.resolve("product.json"))) paths.push("product.json")
     if (await this.exists(this.resolve("runtime", "selection.json"))) paths.push("runtime/selection.json")
     for (const [directory, pattern] of [
+      ["design-revisions", /^[0-9a-f-]+\.json$/i],
+      ["product-history", /^product-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["initiatives", /^[0-9a-f-]+\.json$/i],
+      ["changes", /^[0-9a-f-]+\.json$/i],
+      ["work-items", /^[0-9a-f-]+\.json$/i],
+      ["requirements", /^[0-9a-f-]+\.json$/i],
+      ["decisions", /^[0-9a-f-]+\.json$/i],
+      ["risks", /^[0-9a-f-]+\.json$/i],
+      ["architecture", /^[0-9a-f-]+\.json$/i],
+      ["evidence", /^[0-9a-f-]+\.json$/i],
+      ["trace", /^[0-9a-f-]+\.json$/i],
+      ["context-packs", /^[0-9a-f-]+\.json$/i],
+      ["workflow-plans", /^[0-9a-f-]+\.json$/i],
+      ["tools", /^[0-9a-f-]+\.json$/i],
+      ["tool-selections", /^[0-9a-f-]+\.json$/i],
       ["sessions", /^(?:charter|run)-[0-9a-f-]+\.json$/i],
       ["handoffs", /^[0-9a-f-]+\.json$/i],
       ["runtime", /^capabilities-[0-9a-f]{64}\.json$/],
@@ -709,12 +843,54 @@ export class GaepRepository {
     const path = this.fromRelativePath(relativePath)
     if (relativePath === "manifest.json") return this.readJsonUnlocked(path, repositoryManifestSchema)
     if (relativePath === "product.json") return this.readJsonUnlocked(path, productSchema)
-    if (relativePath === "runtime/selection.json") return this.readJsonUnlocked(path, agentSelectionSchema)
+    if (relativePath === "runtime/selection.json") {
+      const raw = await this.readRawJsonUnlocked(path)
+      const compatibility = parseAgentSelectionCompatibility(raw)
+      if (compatibility.status === "invalid") {
+        throw new Error(`Persisted Agent Selection is invalid: ${compatibility.issues.join("; ")}`)
+      }
+      return raw
+    }
     if (/^runtime\/capabilities-[0-9a-f]{64}\.json$/.test(relativePath)) {
-      return this.readJsonUnlocked(path, adapterCapabilitiesSchema)
+      const raw = await this.readRawJsonUnlocked(path)
+      const compatibility = parseAdapterCapabilitiesCompatibility(raw)
+      if (compatibility.status === "invalid") {
+        throw new Error(`Persisted capability snapshot is invalid: ${compatibility.issues.join("; ")}`)
+      }
+      return raw
     }
     if (/^initiatives\/[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, initiativeSchema)
+    }
+    if (/^design-revisions\/[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, productDesignRevisionSchema)
+    }
+    if (/^product-history\/product-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, productRevisionSchema)
+    }
+    if (/^changes\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, changeSchema)
+    if (/^work-items\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, workItemSchema)
+    if (/^requirements\/[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, requirementSchema)
+    }
+    if (/^decisions\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, decisionSchema)
+    if (/^risks\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, riskSchema)
+    if (/^architecture\/[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, architectureRecordSchema)
+    }
+    if (/^evidence\/[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, evidenceRecordSchema)
+    }
+    if (/^trace\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, traceLinkSchema)
+    if (/^context-packs\/[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, contextPackSchema)
+    }
+    if (/^workflow-plans\/[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, workflowPlanSchema)
+    }
+    if (/^tools\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, toolDefinitionSchema)
+    if (/^tool-selections\/[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, runToolSelectionSchema)
     }
     if (/^sessions\/charter-[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, executionCharterSchema)

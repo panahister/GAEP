@@ -1,7 +1,15 @@
 import { lstat, readFile, readdir } from "node:fs/promises"
 import { join } from "node:path"
 
-import { adapterCapabilitiesSchema, initiativeSchema, runSchema, type Initiative, type Run } from "@gaep/contracts"
+import {
+  adapterCapabilitiesSchema,
+  agentSelectionSchema,
+  initiativeSchema,
+  legacyAgentSelectionV1Schema,
+  runSchema,
+  type Initiative,
+  type Run,
+} from "@gaep/contracts"
 import { capabilityDigest } from "@gaep/agent-sdk"
 import * as vscode from "vscode"
 
@@ -258,30 +266,50 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
           command: { command: "gaep.selectAgent", title: "Select Agent and Model" },
         }]
       }
-      const selection = selectionResult.value
-      const settings = selection.settings && typeof selection.settings === "object"
-        ? selection.settings as Record<string, unknown>
-        : {}
-      const unsafe = unsafeSelectionReasons(String(selection.agentId), settings)
+      const parsedSelection = agentSelectionSchema.safeParse(selectionResult.value)
+      if (!parsedSelection.success) {
+        const legacy = legacyAgentSelectionV1Schema.safeParse(selectionResult.value)
+        const detail = legacy.success
+          ? "This path-bearing legacy selection is not executable. Use the explicit reconfirm-and-migrate workflow; automatic trust or overwrite is disabled."
+          : "The stored selection is not a valid portable selection. Automatic trust or overwrite is disabled; inspect diagnostics before changing state."
+        return [
+          ...recovery,
+          studioEntry("agents-tools"),
+          diagnosticEntry(legacy.success ? "Legacy Agent Selection Blocked" : "Agent Selection Needs Repair", detail),
+          ...(legacy.success ? [{
+            label: "Reconfirm and Migrate Legacy Selection",
+            description: "explicit migration",
+            tooltip: "Re-probe the same agent and explicitly reconfirm a path-free portable selection.",
+            icon: "sync",
+            command: {
+              command: "gaep.migrateLegacyAgentSelection",
+              title: "Reconfirm and Migrate Legacy Agent Selection",
+            },
+          }] : []),
+        ]
+      }
+      const selection = parsedSelection.data
+      const settings = selection.settings
+      const unsafe = unsafeSelectionReasons(selection.agentId, settings)
       const capabilities = await findCapabilities(
         join(root, "runtime"),
-        String(selection.adapterId),
-        String(selection.agentId),
-        typeof selection.capabilityDigest === "string" ? selection.capabilityDigest : undefined,
+        selection.adapterId,
+        selection.agentId,
+        selection.capabilityDigest,
       )
       const runtimeVersion = capabilities?.runtimeVersion
-      const nativeControls = String(selection.agentId) === "codex-cli"
+      const nativeControls = selection.agentId === "codex-cli"
         ? `sandbox=${String(settings.sandbox ?? "read-only")}, approvals=${String(settings.approvalPolicy ?? "fail-closed-noninteractive")}`
         : `permission mode=${String(settings.permissionMode ?? "default")}`
       return [
         ...recovery,
         studioEntry("agents-tools"),
         ...(unsafe.length > 0 ? [diagnosticEntry("Unsafe Stored Selection", unsafe.join("; "))] : []),
-        { label: String(selection.agentId), description: runtimeVersion ? `v${String(runtimeVersion)}` : "agent", icon: "hubot" },
-        { label: String(selection.modelId), description: "model", icon: "symbol-variable" },
+        { label: selection.agentId, description: runtimeVersion ? `v${String(runtimeVersion)}` : "agent", icon: "hubot" },
+        { label: selection.modelId, description: "model", icon: "symbol-variable" },
         {
           label: "Model identity",
-          description: `${String(selection.modelTruthClass ?? "configured")}${selection.modelAlias === true ? ", alias" : ""}`,
+          description: `${selection.modelTruthClass}${selection.modelAlias === true ? ", alias" : ""}`,
           icon: "inspect",
         },
         {

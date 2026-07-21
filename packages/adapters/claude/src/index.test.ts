@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import type { AdapterCapabilities, AgentSelection, ExecutionCharter } from "@gaep/contracts"
-import { capabilityDigest } from "@gaep/agent-sdk"
+import { capabilityDigest, type AdapterRuntimeBinding } from "@gaep/agent-sdk"
 
 import { ClaudeAdapter } from "./index.js"
 
@@ -9,12 +9,12 @@ const stopLine = "Claude Code CLI execution is unavailable until GAEP can enforc
 
 function capabilities(): AdapterCapabilities {
   return {
+    schemaVersion: 1,
     adapterId: "gaep.claude-code-cli",
     adapterVersion: "0.1.0",
     agentId: "claude-code-cli",
     agentLabel: "Claude Code",
     runtimeVersion: "2.1.153",
-    executablePath: "/opt/claude/bin/claude",
     detected: true,
     executionInterface: "unavailable",
     interfaceMaturity: "unknown",
@@ -67,12 +67,12 @@ function capabilities(): AdapterCapabilities {
   }
 }
 
-function selection(settings: Record<string, unknown>): AgentSelection {
+function selection(settings: AgentSelection["settings"]): AgentSelection {
   const observed = capabilities()
   return {
+    schemaVersion: 2,
     adapterId: observed.adapterId,
     agentId: observed.agentId,
-    runtimeExecutable: observed.executablePath!,
     modelId: "sonnet",
     modelTruthClass: "provider-declared",
     modelAlias: true,
@@ -82,13 +82,23 @@ function selection(settings: Record<string, unknown>): AgentSelection {
   }
 }
 
+function runtimeBinding(): AdapterRuntimeBinding {
+  return {
+    scope: "machine-local",
+    kind: "unavailable",
+    adapterId: "gaep.claude-code-cli",
+    agentId: "claude-code-cli",
+    reason: "Claude execution stop-line",
+  }
+}
+
 function charter(expectedEffects: ExecutionCharter["expectedEffects"]): ExecutionCharter {
   return {
     id: "00000000-0000-4000-8000-000000000000",
     permissions: [
-      { capability: "read-workspace", mode: "allow", scope: ["/workspace"] },
-      { capability: "modify-workspace", mode: "allow", scope: ["/workspace"] },
-      { capability: "run-local-commands", mode: "allow", scope: ["/workspace"] },
+      { capability: "read-workspace", mode: "allow", scope: ["."] },
+      { capability: "modify-workspace", mode: "allow", scope: ["."] },
+      { capability: "run-local-commands", mode: "allow", scope: ["."] },
       { capability: "network-access", mode: "deny", scope: [] },
     ],
     expectedEffects,
@@ -97,10 +107,11 @@ function charter(expectedEffects: ExecutionCharter["expectedEffects"]): Executio
 
 describe("Claude Code adapter stop-line", () => {
   it("detects an executable for review but exposes no execution interface", async () => {
-    const observed = await new ClaudeAdapter(process.execPath).probe({ timeoutMs: 1_000, refreshModels: false })
+    const { capabilities: observed, runtimeBinding: binding } = await new ClaudeAdapter(process.execPath).probe({ timeoutMs: 1_000, refreshModels: false })
 
     expect(observed.detected).toBe(true)
-    expect(observed.executablePath).toBe(process.execPath)
+    expect(observed).not.toHaveProperty("executablePath")
+    expect(binding).toMatchObject({ kind: "executable", executablePath: process.execPath })
     expect(observed.executionInterface).toBe("unavailable")
     expect(observed.interfaceMaturity).toBe("unknown")
     expect(observed.supportsResume).toBe(false)
@@ -125,6 +136,7 @@ describe("Claude Code adapter stop-line", () => {
       charter([...effects]),
       "/workspace",
       "must never reach provider stdin",
+      runtimeBinding(),
     )).toThrow(stopLine)
   })
 
@@ -135,6 +147,7 @@ describe("Claude Code adapter stop-line", () => {
       "/workspace",
       "provider-session",
       "must never reach provider stdin",
+      runtimeBinding(),
     )).toThrow(stopLine)
   })
 
