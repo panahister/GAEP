@@ -16,6 +16,7 @@ import {
   type StudioRoute,
   type StudioSnapshot,
   type StudioTableSnapshot,
+  type StudioToHostMessage,
 } from "./studio-protocol.js"
 
 const channelId = "accessibility_channel_1234567890"
@@ -116,7 +117,20 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         draft: { state: "saved-locally", materialChange: true, validation: "valid" },
       }
     case "delivery":
-      return { ...baseFor(route), kind: "delivery", initiatives: table("initiatives"), changes: table("changes"), workItems: table("work-items") }
+      return {
+        ...baseFor(route),
+        kind: "delivery",
+        initiatives: table("initiatives"),
+        changes: {
+          ...table("changes"),
+          pagination: { offset: 0, limit: 50, total: 75, hasPrevious: false, hasNext: true },
+          actions: [
+            { label: "Previous Changes page", enabled: false, disabledReason: "This is the first page.", action: { kind: "domain-page", recordKind: "change", offset: 0, limit: 50 } },
+            { label: "Next Changes page", enabled: true, action: { kind: "domain-page", recordKind: "change", offset: 50, limit: 50 } },
+          ],
+        },
+        workItems: table("work-items"),
+      }
     case "risks-decisions":
       return { ...baseFor(route), kind: "risks-decisions", risks: table("risks"), recommendations: table("recommendations"), decisions: table("decisions") }
     case "trace":
@@ -146,6 +160,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         limitations: [],
         handoffs: table("handoffs"),
         contextPacks: table("context-packs"),
+        instructionPrivilegeGrants: table("instruction-privilege-grants"),
         workflowPlans: table("workflow-plans"),
         toolDefinitions: table("tool-definitions"),
         runToolSelections: table("run-tool-selections"),
@@ -315,6 +330,32 @@ describe("Product Studio rendered accessibility", () => {
       expect(Number(element.getAttribute("tabindex")), element.outerHTML).toBeLessThanOrEqual(0)
     }
     for (const icon of document.querySelectorAll(".codicon")) expect(icon.getAttribute("aria-hidden")).toBe("true")
+  })
+
+  it("announces exact paged ranges and restores keyboard focus after navigation", async () => {
+    const candidate = snapshot("delivery", 99)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
+    const status = Array.from(dom.window.document.querySelectorAll<HTMLElement>(".table-pagination-status"))
+      .find((element) => element.textContent?.includes("Showing records 1–1 of 75"))
+    expect(status).toMatchObject({ role: "status" })
+    expect(status?.getAttribute("aria-live")).toBe("polite")
+    const next = Array.from(dom.window.document.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent === "Next Changes page")
+    expect(next?.disabled).toBe(false)
+    expect(next?.tabIndex).toBeGreaterThanOrEqual(0)
+    next?.click()
+    const request = captured.messages.at(-1) as Extract<StudioToHostMessage, { type: "studio.action" }> | undefined
+    if (!request || request.type !== "studio.action") throw new Error("Expected a page action")
+    send({
+      protocolVersion: studioProtocolVersion,
+      channelId,
+      type: "studio.action-result",
+      requestId: request.requestId,
+      result: { status: "accepted", announcement: "Loaded the next Changes page." },
+      snapshot: snapshot("delivery", 100),
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(dom.window.document.activeElement?.textContent).toBe("Next Changes page")
   })
 
   it("enforces the deny-by-default CSP and excludes forbidden decorative UI", () => {

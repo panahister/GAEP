@@ -205,6 +205,14 @@
         "title": "GAEP Product Studio: Edit Context Pack"
       },
       {
+        "command": "gaep.productStudio.create.instruction.privilege.grant",
+        "title": "GAEP Product Studio: Create Instruction Privilege Grant"
+      },
+      {
+        "command": "gaep.productStudio.revoke.instruction.privilege.grant",
+        "title": "GAEP Product Studio: Revoke Instruction Privilege Grant"
+      },
+      {
         "command": "gaep.productStudio.create.workflow.plan",
         "title": "GAEP Product Studio: Create Workflow Plan"
       },

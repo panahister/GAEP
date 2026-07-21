@@ -68,6 +68,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         limitations: [],
         handoffs: table("handoffs"),
         contextPacks: table("context-packs"),
+        instructionPrivilegeGrants: table("instruction-privilege-grants"),
         workflowPlans: table("workflow-plans"),
         toolDefinitions: table("tool-definitions"),
         runToolSelections: table("run-tool-selections"),
@@ -173,7 +174,13 @@ describe("Product Studio protocol", () => {
     })).toBe(true)
     expect(isStudioAction({ kind: "save-draft", route: "direction", values: {}, states: { problem: "approved" } })).toBe(false)
     expect(isStudioAction({ kind: "domain-workflow", workflow: "create-context-pack" })).toBe(true)
+    expect(isStudioAction({ kind: "domain-workflow", workflow: "create-instruction-privilege-grant" })).toBe(true)
+    expect(isStudioAction({ kind: "domain-workflow", workflow: "revoke-instruction-privilege-grant", recordId: "grant-1", expectedRevision: 2 })).toBe(true)
     expect(isStudioAction({ kind: "domain-workflow", workflow: "run-arbitrary-command" })).toBe(false)
+    expect(isStudioAction({ kind: "domain-page", recordKind: "requirement", offset: 50, limit: 50 })).toBe(true)
+    expect(isStudioAction({ kind: "domain-page", recordKind: "unknown", offset: 0, limit: 50 })).toBe(false)
+    expect(isStudioAction({ kind: "domain-page", recordKind: "requirement", offset: -1, limit: 50 })).toBe(false)
+    expect(isStudioAction({ kind: "domain-page", recordKind: "requirement", offset: 0, limit: 201 })).toBe(false)
     expect(isStudioAction({ kind: "save-draft", route: "direction", values: { problem: "x".repeat(50_001) } })).toBe(false)
     expect(isStudioAction({
       kind: "analyze-impact",
@@ -203,6 +210,29 @@ describe("Product Studio protocol", () => {
       page: {
         ...valid.page,
         searchResults: { ...valid.page.searchResults, truncation: { shown: 301, total: 300, message: "Invalid" } },
+      },
+    })).toBe(false)
+  })
+
+  it("validates bounded table pagination metadata", () => {
+    const trace = snapshot("trace")
+    if (trace.page.kind !== "trace") throw new Error("Expected Trace page")
+    const valid = {
+      ...trace,
+      page: {
+        ...trace.page,
+        relationships: {
+          ...trace.page.relationships,
+          pagination: { offset: 0, limit: 50, total: 0, hasPrevious: false, hasNext: false },
+        },
+      },
+    }
+    expect(isStudioSnapshot(valid)).toBe(true)
+    expect(isStudioSnapshot({
+      ...valid,
+      page: {
+        ...valid.page,
+        relationships: { ...valid.page.relationships, pagination: { ...valid.page.relationships.pagination, hasPrevious: true } },
       },
     })).toBe(false)
   })

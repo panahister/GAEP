@@ -10,9 +10,14 @@ import {
   type ContextItem,
   type ContextTrustDimensions,
   type ExecutionCharter,
+  type ManagedRunEvidence,
+  type ManagedRunRecord,
+  type ManagedRunResult,
+  type ProductExportBundle,
   type WorkflowStep,
 } from "@gaep/contracts"
 import {
+  DeterministicManualAdapter,
   canonicalDigest,
   capabilityDigest,
   requireExecutableRuntimeBinding,
@@ -239,6 +244,175 @@ describe("Product Studio context, workflow, tools, and portability", () => {
     }, 1, "founder")
   }
 
+  function refreshPortableMembership(bundle: ProductExportBundle): void {
+    bundle.manifest.membershipDigest = canonicalDigest(
+      bundle.manifest.members.map(({ path, digest }) => ({ path, digest })),
+    )
+  }
+
+  function refreshPortableMember(bundle: ProductExportBundle, path: string): void {
+    const record = bundle.records.find((candidate) => candidate.path === path)
+    const member = bundle.manifest.members.find((candidate) => candidate.path === path)
+    if (!record || !member) throw new Error(`Portable fixture member is missing: ${path}`)
+    member.digest = canonicalDigest(record.content)
+    member.byteLength = Buffer.byteLength(`${JSON.stringify(record.content, null, 2)}\n`)
+  }
+
+  function addPortableMember(
+    bundle: ProductExportBundle,
+    path: string,
+    recordType: string,
+    content: ProductExportBundle["records"][number]["content"],
+  ): void {
+    bundle.records.push({ path, content })
+    bundle.manifest.members.push({
+      path,
+      recordType,
+      digest: canonicalDigest(content),
+      byteLength: Buffer.byteLength(`${JSON.stringify(content, null, 2)}\n`),
+    })
+    bundle.records.sort((left, right) => left.path.localeCompare(right.path))
+    bundle.manifest.members.sort((left, right) => left.path.localeCompare(right.path))
+    refreshPortableMembership(bundle)
+  }
+
+  async function createManagedPortableFixture(options: { runCount?: number; stepCount?: number } = {}) {
+    const adapter = new DeterministicManualAdapter()
+    engine = new GaepEngine(workspace, [adapter])
+    const product = await engine.createProduct({
+      name: "Portable Managed Atlas",
+      summary: "A Product with complete portable Managed Run lineage.",
+      problem: "Portable import must reject cross-run and orphan execution evidence.",
+      affectedUsers: "Founders reviewing imported execution evidence",
+      desiredOutcome: "Every imported result is bound to its exact Managed Run and evidence.",
+      successSignals: ["Adversarial execution graphs fail closed"],
+      firstWorkflow: "Execute deterministic offline Workflow steps and export their evidence.",
+      exclusions: ["External effects"],
+      profile: "software",
+    }, "founder")
+    const probe = await adapter.probe()
+    await engine.selectAgent(probe.capabilities, "manual-deterministic-v1", { script: "success" }, "founder")
+    const managedRunIds: string[] = []
+    for (let runIndex = 0; runIndex < (options.runCount ?? 1); runIndex += 1) {
+      const initiative = await engine.createInitiative({
+        title: `Portable managed graph ${runIndex + 1}`,
+        outcome: "Produce one exact deterministic Managed Run graph.",
+        scope: ["Portable evidence validation"],
+        exclusions: ["Workspace mutation"],
+      }, "founder")
+      await engine.updateInitiativeState(initiative.id, "active", "Begin portable graph fixture", "founder")
+      const content = `Bounded deterministic Context for Managed Run ${runIndex + 1}.`
+      const manualTrust = trust()
+      manualTrust.confidentiality.recipients = ["manual"]
+      const pack = await engine.productStudio.createContextPack({
+        objective: `Provide exact Context for Managed Run ${runIndex + 1}.`,
+        recipient: { kind: "agent", id: "manual" },
+        items: [{
+          id: randomUUID(),
+          source: { kind: "logical", value: `portable-managed-${runIndex + 1}` },
+          sourceDigest: canonicalDigest(content),
+          selectionReason: "Required deterministic import fixture",
+          required: true,
+          content,
+          contentDigest: canonicalDigest(content),
+          trust: manualTrust,
+          transformations: [],
+        }],
+        omissions: [],
+        warnings: [],
+        conflicts: [],
+        classificationCombinationRisk: "One bounded internal fixture adds no combination risk.",
+        sufficiencyCriteria: ["The exact deterministic fixture is present"],
+        sufficiencyEvaluator: { kind: "system", id: "gaep.portable-import-test" },
+        sufficiencyAssumptions: [],
+      }, product.revision ?? 1, "founder")
+      const packReference = {
+        recordType: "context-pack" as const,
+        recordId: pack.id,
+        revision: pack.revision,
+        digest: canonicalDigest(pack),
+      }
+      const steps: WorkflowStep[] = []
+      for (let stepIndex = 0; stepIndex < (options.stepCount ?? 1); stepIndex += 1) {
+        steps.push(workflowStep({
+          id: randomUUID(),
+          title: `Portable deterministic step ${stepIndex + 1}`,
+          objective: `Produce exact offline evidence for step ${stepIndex + 1}.`,
+          responsibility: { kind: "agent", id: "manual" },
+          contextPacks: [packReference],
+          dependsOn: stepIndex === 0 ? [] : [steps[stepIndex - 1]!.id],
+          scope: { read: [workspaceRoot], write: [], effects: [] },
+        }))
+      }
+      const draftPlan = await engine.productStudio.createWorkflowPlan({
+        title: `Portable managed Workflow ${runIndex + 1}`,
+        objective: "Produce a complete deterministic result and evidence lineage.",
+        subject: {
+          recordType: "product",
+          recordId: product.id,
+          revision: product.revision ?? 1,
+          digest: canonicalDigest(product),
+        },
+        actor: { kind: "human", id: "founder" },
+        strategy: "sequential",
+        contextPacks: [packReference],
+        toolDefinitions: [],
+        steps,
+      }, product.revision ?? 1, "founder")
+      const plan = await engine.productStudio.reviseWorkflowPlan(
+        draftPlan.id,
+        draftPlan.revision,
+        { state: "resolved" },
+        "founder",
+        "The deterministic portable Workflow is exactly resolved",
+      )
+      const charter = await engine.createCharter({
+        initiativeId: initiative.id,
+        objective: "Produce deterministic offline evidence without Tool effects.",
+        permissions: [{ capability: "all-tools", mode: "deny", scope: [] }],
+        expectedEffects: ["observe"],
+        forbiddenActions: ["Do not use tools, network, or workspace mutation"],
+        stopConditions: ["Stop after the deterministic terminal fixture"],
+        requiredEvidence: ["Exact Workflow attempts and normalized events"],
+        managedIntent: {
+          workflowPlan: { recordType: "workflow-plan", recordId: plan.id, revision: plan.revision, digest: canonicalDigest(plan) },
+          contextPacks: [packReference],
+          toolDefinitions: [],
+          requestedEffects: ["observe"],
+          requestedScopes: [],
+        },
+      }, "founder")
+      await engine.confirmCharter(charter.id, "founder")
+      const run = await engine.prepareManagedRun(charter.id, "founder")
+      const handle = await engine.startManagedRun({
+        runId: run.id,
+        workflowPlanId: plan.id,
+        evaluateWorkflowGate: async (request) => ({
+          status: "satisfied",
+          basis: "system-evaluator",
+          evaluator: {
+            kind: "system",
+            id: "gaep.portable-fixture",
+            version: "1",
+            digest: canonicalDigest({ kind: "system", id: "gaep.portable-fixture", version: "1" }) as `sha256:${string}`,
+          },
+          evidenceDigest: canonicalDigest({
+            stepId: request.stepId,
+            attempt: request.attempt,
+            phase: request.phase,
+            criteriaDigest: request.criteriaDigest,
+          }) as `sha256:${string}`,
+        }),
+      }, "founder")
+      const draining = (async () => { for await (const _event of handle.events) { /* drain */ } })()
+      const review = await handle.completion
+      await draining
+      expect(review.record.state).toBe("completed")
+      managedRunIds.push(review.record.id)
+    }
+    return { bundle: await engine.productStudio.buildPortableExport(), managedRunIds }
+  }
+
   it("keeps context trust dimensions independent, derives classification, and computes sufficiency", async () => {
     await initialize()
     const item = contextItem({ trust: trust("restricted") })
@@ -311,6 +485,7 @@ describe("Product Studio context, workflow, tools, and portability", () => {
     }
     const privileged = await createContextPack(external)
     expect(privileged.items[0]?.instructionPrivilegeGrant?.recordId).toBe(grant.id)
+    await expect(engine.productStudio.assertContextPackExecutionAuthority(privileged, "local-agent")).resolves.toBeUndefined()
 
     await engine.productStudio.revokeInstructionPrivilegeGrant(
       grant.id,
@@ -318,6 +493,8 @@ describe("Product Studio context, workflow, tools, and portability", () => {
       "The external instruction source is no longer permitted for new Context Packs.",
       "founder",
     )
+    await expect(engine.productStudio.assertContextPackExecutionAuthority(privileged, "local-agent"))
+      .rejects.toThrow(/stale or no longer active/i)
     await expect(createContextPack(external)).rejects.toThrow(/stale or no longer active/i)
 
     await engine.productStudio.reviseRequirement(requirement.id, acceptedRequirement.revision, {
@@ -580,6 +757,93 @@ describe("Product Studio context, workflow, tools, and portability", () => {
       await symlink(bundlePath, symlinkPath)
       await expect(engine.productStudio.previewImportFile(symlinkPath)).rejects.toThrow(/symbolic-link/i)
     }
+  })
+
+  it("rejects a Managed Result that substitutes exact Evidence from another Managed Run", async () => {
+    const { bundle, managedRunIds } = await createManagedPortableFixture({ runCount: 2 })
+    const tampered = structuredClone(bundle)
+    const firstManagedPath = `sessions/managed-run-${managedRunIds[0]}.json`
+    const secondManagedPath = `sessions/managed-run-${managedRunIds[1]}.json`
+    const firstManaged = tampered.records.find((record) => record.path === firstManagedPath)!.content as ManagedRunRecord
+    const secondManaged = tampered.records.find((record) => record.path === secondManagedPath)!.content as ManagedRunRecord
+    const firstResultPath = `sessions/managed-result-${firstManaged.resultId}.json`
+    const secondResultPath = `sessions/managed-result-${secondManaged.resultId}.json`
+    const firstResult = tampered.records.find((record) => record.path === firstResultPath)!.content as ManagedRunResult
+    const secondResult = tampered.records.find((record) => record.path === secondResultPath)!.content as ManagedRunResult
+    const secondEvidence = tampered.records.find(
+      (record) => record.path === `sessions/managed-evidence-${secondResult.evidenceId}.json`,
+    )!.content as ManagedRunEvidence
+
+    firstResult.evidenceId = secondEvidence.id
+    firstResult.evidenceDigest = canonicalDigest(secondEvidence)
+    refreshPortableMember(tampered, firstResultPath)
+    firstManaged.resultDigest = canonicalDigest(firstResult)
+    refreshPortableMember(tampered, firstManagedPath)
+    refreshPortableMembership(tampered)
+
+    await expect(engine.productStudio.previewImportBundle(tampered))
+      .rejects.toThrow(/Managed Result .* orphaned or internally inconsistent/i)
+  })
+
+  it("requires an exact completed-step set and consistent Result/Workflow terminal state", async () => {
+    const { bundle, managedRunIds } = await createManagedPortableFixture({ stepCount: 2 })
+    const rewriteEvidenceChain = (
+      candidate: ProductExportBundle,
+      mutate: (evidence: ManagedRunEvidence) => void,
+    ): void => {
+      const managedPath = `sessions/managed-run-${managedRunIds[0]}.json`
+      const managed = candidate.records.find((record) => record.path === managedPath)!.content as ManagedRunRecord
+      const resultPath = `sessions/managed-result-${managed.resultId}.json`
+      const result = candidate.records.find((record) => record.path === resultPath)!.content as ManagedRunResult
+      const evidencePath = `sessions/managed-evidence-${result.evidenceId}.json`
+      const evidence = candidate.records.find((record) => record.path === evidencePath)!.content as ManagedRunEvidence
+      mutate(evidence)
+      refreshPortableMember(candidate, evidencePath)
+      result.evidenceDigest = canonicalDigest(evidence)
+      refreshPortableMember(candidate, resultPath)
+      managed.resultDigest = canonicalDigest(result)
+      refreshPortableMember(candidate, managedPath)
+      refreshPortableMembership(candidate)
+    }
+
+    const understated = structuredClone(bundle)
+    rewriteEvidenceChain(understated, (evidence) => {
+      evidence.workflow.completedStepIds = evidence.workflow.completedStepIds.slice(0, 1)
+    })
+    await expect(engine.productStudio.previewImportBundle(understated))
+      .rejects.toThrow(/completed Workflow step set is not exact|Completed Workflow steps must exactly equal/i)
+
+    const contradictoryTerminal = structuredClone(bundle)
+    rewriteEvidenceChain(contradictoryTerminal, (evidence) => {
+      evidence.workflow.terminalReasonCode = "workflow-step-failed"
+    })
+    await expect(engine.productStudio.previewImportBundle(contradictoryTerminal))
+      .rejects.toThrow(/terminal state contradicts its Workflow completion evidence/i)
+  })
+
+  it("rejects Managed Evidence that is not reachable from retained Result lineage", async () => {
+    const { bundle } = await createManagedPortableFixture()
+    const tampered = structuredClone(bundle)
+    const source = tampered.records.find((record) => record.path.startsWith("sessions/managed-evidence-"))!
+      .content as ManagedRunEvidence
+    const orphan = structuredClone(source)
+    orphan.id = randomUUID()
+    orphan.events = []
+    orphan.eventsDigest = canonicalDigest([])
+    orphan.workflow.attempts = []
+    orphan.workflow.completedStepIds = []
+    orphan.workflow.terminalReasonCode = "process-loss"
+    orphan.actualEffects = []
+    delete orphan.staging
+    addPortableMember(
+      tampered,
+      `sessions/managed-evidence-${orphan.id}.json`,
+      "managed-run-evidence",
+      orphan,
+    )
+
+    await expect(engine.productStudio.previewImportBundle(tampered))
+      .rejects.toThrow(/not bound by retained Managed Result lineage/i)
   })
 
   it("requires explicit disclosure review and provides bounded true-count pages", async () => {

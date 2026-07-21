@@ -7,6 +7,7 @@ import type {
   Decision,
   DesignReadinessReport,
   EvidenceRecord,
+  InstructionPrivilegeGrant,
   Initiative,
   Product,
   ProductDesignDraft,
@@ -26,7 +27,7 @@ import type {
   WorkspaceHealthIssue,
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
-import type { ProductStudioService } from "@gaep/engine"
+import type { ProductStudioPage, ProductStudioRecordMap, ProductStudioService } from "@gaep/engine"
 
 import { currentInitiative, initiativeRunEligibility, newestRun, unsafeSelectionReasons } from "./safety.js"
 import {
@@ -54,6 +55,7 @@ import {
   type StudioActionResult,
   type StudioDefinitionEntry,
   type StudioDesignSectionSnapshot,
+  type StudioDomainPageKind,
   type StudioFieldSnapshot,
   type StudioInspectorSnapshot,
   type StudioIssue,
@@ -126,6 +128,7 @@ interface ObservedStudioState {
   architecture: ArchitectureRecord[]
   evidence: EvidenceRecord[]
   contextPacks: ContextPack[]
+  instructionPrivilegeGrants: InstructionPrivilegeGrant[]
   workflowPlans: WorkflowPlan[]
   toolDefinitions: ToolDefinition[]
   runToolSelections: RunToolSelection[]
@@ -136,6 +139,14 @@ interface ObservedStudioState {
   searchResultTotal: number
   impact?: TraceImpact
   importPreview?: ProductImportPreview
+  domainPages: Partial<Record<StudioDomainPageKind, ProductStudioPageMetadata>>
+}
+
+interface ProductStudioPageMetadata {
+  offset: number
+  limit: number
+  total: number
+  hasMore: boolean
 }
 
 function control(
@@ -1025,6 +1036,61 @@ function agentPage(
         })),
         actions: [domainControl("Create Context Pack", "create-context-pack", undefined, undefined, "primary")],
       }
+  const instructionPrivilegeGrants: StudioTableSnapshot = state.instructionPrivilegeGrants.length === 0
+    ? recordEmpty(
+        "instruction-privilege-grants",
+        "Instruction Privilege Grants",
+        "Create Instruction Privilege Grant",
+        "create-instruction-privilege-grant",
+      )
+    : {
+        id: "instruction-privilege-grants",
+        title: "Instruction Privilege Grants",
+        columns: [
+          { key: "purpose", label: "Purpose", identifier: true },
+          { key: "privilege", label: "Privilege" },
+          { key: "recipient", label: "Recipient" },
+          { key: "authority", label: "Authority" },
+          { key: "state", label: "State" },
+          { key: "expires", label: "Expires" },
+          { key: "revision", label: "Revision" },
+        ],
+        rows: state.instructionPrivilegeGrants.map((record) => ({
+          id: record.id,
+          cells: {
+            purpose: record.purpose,
+            privilege: record.privilege,
+            recipient: `${record.recipient.kind}:${record.recipient.id}`,
+            authority: `${record.authority.recordType}:${record.authority.recordId}@${record.authority.revision}`,
+            state: record.state,
+            expires: record.expiresAt ?? "no expiry recorded",
+            revision: String(record.revision),
+          },
+          state: record.state,
+          actions: [
+            control("Inspect", { kind: "open-record", recordId: record.id }),
+            control(
+              "Revoke",
+              {
+                kind: "domain-workflow",
+                workflow: "revoke-instruction-privilege-grant",
+                recordId: record.id,
+                expectedRevision: record.revision,
+              },
+              record.state === "active",
+              record.state === "active" ? "danger" : "secondary",
+              record.state === "active" ? undefined : `This grant is already ${record.state}.`,
+            ),
+          ],
+        })),
+        actions: [domainControl(
+          "Create Instruction Privilege Grant",
+          "create-instruction-privilege-grant",
+          undefined,
+          undefined,
+          "primary",
+        )],
+      }
   const workflowPlans: StudioTableSnapshot = state.workflowPlans.length === 0
     ? recordEmpty("workflow-plans", "Workflow Plans", "Create Workflow Plan", "create-workflow-plan")
     : {
@@ -1145,6 +1211,7 @@ function agentPage(
     limitations,
     handoffs: emptyTable("handoffs", "Handoffs", "The current engine does not expose a handoff list to Product Studio."),
     contextPacks,
+    instructionPrivilegeGrants,
     workflowPlans,
     toolDefinitions,
     runToolSelections,
@@ -1383,12 +1450,92 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       adapters: capTable(page.adapters),
       handoffs: capTable(page.handoffs),
       contextPacks: capTable(page.contextPacks),
+      instructionPrivilegeGrants: capTable(page.instructionPrivilegeGrants),
       workflowPlans: capTable(page.workflowPlans),
       toolDefinitions: capTable(page.toolDefinitions),
       runToolSelections: capTable(page.runToolSelections),
     }
     case "runs-evidence": return { ...page, runs: capTable(page.runs), evidence: capTable(page.evidence) }
     case "readiness": return { ...page, designRevisions: capTable(page.designRevisions), productRevisions: capTable(page.productRevisions) }
+  }
+}
+
+function pagedTable(
+  table: StudioTableSnapshot,
+  kind: StudioDomainPageKind,
+  metadata: ProductStudioPageMetadata | undefined,
+): StudioTableSnapshot {
+  if (!metadata) return table
+  const hasPrevious = metadata.offset > 0
+  const hasNext = metadata.hasMore && metadata.offset + metadata.limit <= 1_000_000
+  return {
+    ...table,
+    actions: [
+      ...table.actions,
+      control(
+        `Previous ${table.title} page`,
+        { kind: "domain-page", recordKind: kind, offset: Math.max(0, metadata.offset - metadata.limit), limit: metadata.limit },
+        hasPrevious,
+        "secondary",
+        hasPrevious ? undefined : "This is the first page.",
+      ),
+      control(
+        `Next ${table.title} page`,
+        { kind: "domain-page", recordKind: kind, offset: Math.min(1_000_000, metadata.offset + metadata.limit), limit: metadata.limit },
+        hasNext,
+        "secondary",
+        hasNext ? undefined : "This is the last page.",
+      ),
+    ],
+    pagination: {
+      offset: metadata.offset,
+      limit: metadata.limit,
+      total: metadata.total,
+      hasPrevious,
+      hasNext,
+    },
+  }
+}
+
+function addDomainPagination(page: StudioPageSnapshot, state: ObservedStudioState): StudioPageSnapshot {
+  const pageTable = (table: StudioTableSnapshot, kind: StudioDomainPageKind) => pagedTable(table, kind, state.domainPages[kind])
+  switch (page.kind) {
+    case "overview": return page
+    case "record-form": return {
+      ...page,
+      ...(page.relatedRecords ? {
+        relatedRecords: page.relatedRecords.map((table) => {
+          if (table.id === "requirements") return pageTable(table, "requirement")
+          if (table.id === "architecture") return pageTable(table, "architecture-record")
+          return table
+        }),
+      } : {}),
+    }
+    case "delivery": return {
+      ...page,
+      changes: pageTable(page.changes, "change"),
+      workItems: pageTable(page.workItems, "work-item"),
+    }
+    case "risks-decisions": return {
+      ...page,
+      risks: pageTable(page.risks, "risk"),
+      decisions: pageTable(page.decisions, "decision"),
+    }
+    case "trace": return { ...page, relationships: pageTable(page.relationships, "trace-link") }
+    case "agents-tools": return {
+      ...page,
+      contextPacks: pageTable(page.contextPacks, "context-pack"),
+      instructionPrivilegeGrants: pageTable(page.instructionPrivilegeGrants, "instruction-privilege-grant"),
+      workflowPlans: pageTable(page.workflowPlans, "workflow-plan"),
+      toolDefinitions: pageTable(page.toolDefinitions, "tool-definition"),
+      runToolSelections: pageTable(page.runToolSelections, "run-tool-selection"),
+    }
+    case "runs-evidence": return { ...page, evidence: pageTable(page.evidence, "evidence") }
+    case "readiness": return {
+      ...page,
+      designRevisions: pageTable(page.designRevisions, "product-design-revision"),
+      productRevisions: pageTable(page.productRevisions, "product-revision"),
+    }
   }
 }
 
@@ -1402,6 +1549,7 @@ function inspectorFor(state: ObservedStudioState, recordId: string): StudioInspe
     ...state.architecture.map((value) => ({ type: "architecture", value })),
     ...state.evidence.map((value) => ({ type: "evidence", value })),
     ...state.contextPacks.map((value) => ({ type: "context-pack", value })),
+    ...state.instructionPrivilegeGrants.map((value) => ({ type: "instruction-privilege-grant", value })),
     ...state.workflowPlans.map((value) => ({ type: "workflow-plan", value })),
     ...state.toolDefinitions.map((value) => ({ type: "tool-definition", value })),
     ...state.runToolSelections.map((value) => ({ type: "run-tool-selection", value })),
@@ -1421,6 +1569,32 @@ function inspectorFor(state: ObservedStudioState, recordId: string): StudioInspe
     ...(typeof value.createdAt === "string" ? [{ term: "Created", value: value.createdAt }] : []),
     ...(typeof value.productId === "string" ? [{ term: "Product", value: value.productId }] : []),
   ]
+  if (match.type === "instruction-privilege-grant") {
+    const grant = value as InstructionPrivilegeGrant
+    const sourceValue = grant.source.kind === "workspace-relative"
+      ? grant.source.path
+      : grant.source.kind === "external-uri"
+        ? grant.source.uri
+        : grant.source.value
+    const joinedScope = grant.scope.join(" · ")
+    const scopeSummary = joinedScope.length <= 18_000
+      ? `${grant.scope.length} entries · ${joinedScope}`
+      : `${grant.scope.length} entries · ${joinedScope.slice(0, 18_000)}… [scope display truncated; inspect the governed record for the exact remainder]`
+    entries.push(
+      { term: "Source", value: `${grant.source.kind}:${sourceValue}` },
+      { term: "Source digest", value: grant.sourceDigest },
+      { term: "Privilege", value: grant.privilege },
+      { term: "Purpose", value: grant.purpose },
+      { term: "Recipient", value: `${grant.recipient.kind}:${grant.recipient.id}` },
+      { term: "Scope summary", value: scopeSummary },
+      { term: "Authority", value: `${grant.authority.recordType}:${grant.authority.recordId}@${grant.authority.revision} · ${grant.authority.digest}` },
+      { term: "Accepted by", value: `${grant.acceptedBy.kind}:${grant.acceptedBy.id}` },
+      { term: "Accepted at", value: grant.acceptedAt },
+      { term: "Expires at", value: grant.expiresAt ?? "No expiry recorded" },
+      { term: "Authority boundary", value: grant.authorityBoundary },
+      ...(grant.revocationReason ? [{ term: "Revocation reason", value: grant.revocationReason }] : []),
+    )
+  }
   const relationships = state.traceLinks.flatMap((link): StudioDefinitionEntry[] => {
     if (link.source.recordId === recordId) return [{ term: link.relationship, value: `${link.target.recordType}:${link.target.recordId}`, recordId: link.id }]
     if (link.target.recordId === recordId) return [{ term: `incoming ${link.relationship}`, value: `${link.source.recordType}:${link.source.recordId}`, recordId: link.id }]
@@ -1558,6 +1732,11 @@ function commandFor(action: StudioAction): { command: ExistingStudioCommand; arg
 
 export class CurrentEngineStudioDataSource implements StudioDataSource {
   private revision = 0
+  private offeredProductRevision?: number
+  private pageContextGeneration?: string
+  private readonly domainPageOffsets = new Map<StudioDomainPageKind, number>()
+  private readonly domainPageLimits = new Map<StudioDomainPageKind, number>()
+  private readonly domainPageLimit = 50
   private selectedRecordId?: string
   private searchResults: ProductDomainSearchResult[] = []
   private searchResultTotal = 0
@@ -1569,6 +1748,16 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
   async readSnapshot(route: StudioRoute, signal?: AbortSignal): Promise<StudioSnapshot> {
     signal?.throwIfAborted()
     const contextGeneration = this.context.contextGeneration()
+    if (this.pageContextGeneration !== contextGeneration) {
+      this.pageContextGeneration = contextGeneration
+      this.domainPageOffsets.clear()
+      this.domainPageLimits.clear()
+      this.selectedRecordId = undefined
+      this.searchResults = []
+      this.searchResultTotal = 0
+      this.impact = undefined
+      this.importPreview = undefined
+    }
     const observed = await this.observe(route)
     signal?.throwIfAborted()
     if (contextGeneration !== this.context.contextGeneration()) {
@@ -1576,9 +1765,10 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     }
     const workspace = this.context.workspace()
     const pageResult = pageFor(route, observed)
-    const page = { ...pageResult, page: capPageTables(pageResult.page) }
+    const page = { ...pageResult, page: addDomainPagination(capPageTables(pageResult.page), observed) }
     const selectedInspector = this.selectedRecordId ? inspectorFor(observed, this.selectedRecordId) : undefined
     const sections = sectionsFor(observed)
+    this.offeredProductRevision = observed.product?.revision ?? (observed.product ? 1 : undefined)
     return {
       protocolVersion: studioProtocolVersion,
       contextGeneration,
@@ -1626,6 +1816,16 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     }
     const engine = this.context.engine()
     const studio = engine?.productStudio
+    if (action.kind === "domain-page") {
+      if (!studio) return { status: "rejected", announcement: "The Product-domain service is unavailable. The page did not change." }
+      if (!Number.isInteger(action.offset) || action.offset < 0 || action.offset > 1_000_000 ||
+        !Number.isInteger(action.limit) || action.limit < 1 || action.limit > 200) {
+        return { status: "rejected", announcement: "The requested Product-domain page is outside the bounded paging contract." }
+      }
+      this.domainPageOffsets.set(action.recordKind, action.offset)
+      this.domainPageLimits.set(action.recordKind, action.limit)
+      return { status: "accepted", announcement: `Loaded the requested ${action.recordKind.replaceAll("-", " ")} page.` }
+    }
     if (action.kind === "start-design-draft") {
       if (!studio) return { status: "rejected", announcement: "The Product design service is unavailable. No state was changed." }
       await studio.startOrResumeDesignDraft(action.expectedProductRevision)
@@ -1712,12 +1912,22 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       })
       return { status: "accepted", announcement: "Reassessed persisted upstream, downstream, evidence, decision, risk, unresolved, and stale trace links." }
     }
-    const mapped = commandFor(action)
+    const mappedAction: StudioAction = action.kind === "domain-workflow"
+      ? {
+          ...action,
+          expectedContextGeneration: request.expectedContextGeneration,
+          ...(this.offeredProductRevision ? { expectedProductRevision: this.offeredProductRevision } : {}),
+        }
+      : action
+    const mapped = commandFor(mappedAction)
     if (!mapped) {
       return { status: "rejected", announcement: "This Product-domain operation is not available in the current engine. No state was changed." }
     }
     request.signal?.throwIfAborted()
     const result = await this.context.executeCommand(request.expectedContextGeneration, mapped.command, ...mapped.args)
+    if (request.expectedContextGeneration !== this.context.contextGeneration()) {
+      return { status: "rejected", announcement: "The Product root or trust context changed while the native workflow was open. Review the current Product before continuing." }
+    }
     if (action.kind === "domain-workflow" && result === undefined) {
       return { status: "rejected", announcement: "The native Product-domain workflow was cancelled. No state was changed." }
     }
@@ -1738,8 +1948,9 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     const empty: ObservedStudioState = {
       initiatives: [], runs: [], agents: [], issues: [], productState: "absent",
       designRevisions: [], productRevisions: [], changes: [], workItems: [], requirements: [], decisions: [], risks: [],
-      architecture: [], evidence: [], contextPacks: [], workflowPlans: [], toolDefinitions: [], runToolSelections: [], traceLinks: [],
+      architecture: [], evidence: [], contextPacks: [], instructionPrivilegeGrants: [], workflowPlans: [], toolDefinitions: [], runToolSelections: [], traceLinks: [],
       health: [], healthTotal: 0, searchResults: this.searchResults, searchResultTotal: this.searchResultTotal,
+      domainPages: {},
       ...(this.impact ? { impact: this.impact } : {}),
       ...(this.importPreview ? { importPreview: this.importPreview } : {}),
     }
@@ -1797,9 +2008,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     try {
       empty.designDraft = await studio.readDesignDraft(empty.product.id)
       empty.designReadiness = studio.evaluateDesignReadiness(empty.designDraft)
-      if (route === "readiness") {
-        empty.designRevisions = await studio.listDesignRevisions()
-      } else if (empty.designDraft.baseDesignRevisionId) {
+      if (route !== "readiness" && empty.designDraft.baseDesignRevisionId) {
         empty.designRevisions = [await studio.readDesignRevision(empty.designDraft.baseDesignRevisionId)]
       }
     } catch (error) {
@@ -1810,26 +2019,44 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     const add = (area: string, read: () => Promise<unknown>, assign: (value: unknown) => void): void => {
       domainTasks.push({ area, read, assign })
     }
+    const addPage = <K extends keyof ProductStudioRecordMap>(
+      area: string,
+      kind: K,
+      assign: (records: ProductStudioRecordMap[K][]) => void,
+    ): void => {
+      add(area, () => this.readDomainPage(studio, kind), (value) => {
+        const page = value as ProductStudioPage<ProductStudioRecordMap[K]>
+        assign(page.items)
+        empty.domainPages[kind] = {
+          offset: page.offset,
+          limit: page.limit,
+          total: page.total,
+          hasMore: page.hasMore,
+        }
+      })
+    }
     if (route === "delivery") {
-      add("changes", () => studio.listChanges(), (value) => { empty.changes = value as Change[] })
-      add("work-items", () => studio.listWorkItems(), (value) => { empty.workItems = value as WorkItem[] })
+      addPage("changes", "change", (value) => { empty.changes = value })
+      addPage("work-items", "work-item", (value) => { empty.workItems = value })
     }
-    if (route === "scope") add("requirements", () => studio.listRequirements(), (value) => { empty.requirements = value as Requirement[] })
-    if (route === "architecture") add("architecture", () => studio.listArchitectureRecords(), (value) => { empty.architecture = value as ArchitectureRecord[] })
+    if (route === "scope") addPage("requirements", "requirement", (value) => { empty.requirements = value })
+    if (route === "architecture") addPage("architecture", "architecture-record", (value) => { empty.architecture = value })
     if (route === "risks-decisions") {
-      add("decisions", () => studio.listDecisions(), (value) => { empty.decisions = value as Decision[] })
-      add("risks", () => studio.listRisks(), (value) => { empty.risks = value as Risk[] })
+      addPage("decisions", "decision", (value) => { empty.decisions = value })
+      addPage("risks", "risk", (value) => { empty.risks = value })
     }
-    if (route === "trace") add("trace", () => studio.listTraceLinks(), (value) => { empty.traceLinks = value as TraceLink[] })
+    if (route === "trace") addPage("trace", "trace-link", (value) => { empty.traceLinks = value })
     if (route === "agents-tools") {
-      add("context-packs", () => studio.listContextPacks(), (value) => { empty.contextPacks = value as ContextPack[] })
-      add("workflow-plans", () => studio.listWorkflowPlans(), (value) => { empty.workflowPlans = value as WorkflowPlan[] })
-      add("tool-definitions", () => studio.listToolDefinitions(), (value) => { empty.toolDefinitions = value as ToolDefinition[] })
-      add("run-tool-selections", () => studio.listRunToolSelections(), (value) => { empty.runToolSelections = value as RunToolSelection[] })
+      addPage("context-packs", "context-pack", (value) => { empty.contextPacks = value })
+      addPage("instruction-privilege-grants", "instruction-privilege-grant", (value) => { empty.instructionPrivilegeGrants = value })
+      addPage("workflow-plans", "workflow-plan", (value) => { empty.workflowPlans = value })
+      addPage("tool-definitions", "tool-definition", (value) => { empty.toolDefinitions = value })
+      addPage("run-tool-selections", "run-tool-selection", (value) => { empty.runToolSelections = value })
     }
-    if (route === "runs-evidence") add("evidence", () => studio.listEvidence(), (value) => { empty.evidence = value as EvidenceRecord[] })
+    if (route === "runs-evidence") addPage("evidence", "evidence", (value) => { empty.evidence = value })
     if (route === "readiness") {
-      add("product-revisions", () => studio.listProductRevisions(), (value) => { empty.productRevisions = value as ProductRevision[] })
+      addPage("design-revisions", "product-design-revision", (value) => { empty.designRevisions = value })
+      addPage("product-revisions", "product-revision", (value) => { empty.productRevisions = value })
       add("workspace-health", () => studio.healthIssues(), (value) => {
         const issues = value as WorkspaceHealthIssue[]
         empty.healthTotal = issues.length
@@ -1848,5 +2075,20 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
   private recordObservationFailure(state: ObservedStudioState, area: string, error: unknown): void {
     this.context.logDiagnostic(`Product Studio ${area} observation failed`, error)
     state.issues.push(issue(`${area}-unavailable`, `${area.replaceAll("-", " ")} could not be observed. Review GAEP diagnostics.`, "warning"))
+  }
+
+  private async readDomainPage<K extends keyof ProductStudioRecordMap>(
+    studio: ProductStudioService,
+    kind: K,
+  ): Promise<ProductStudioPage<ProductStudioRecordMap[K]>> {
+    const requestedOffset = this.domainPageOffsets.get(kind) ?? 0
+    const requestedLimit = this.domainPageLimits.get(kind) ?? this.domainPageLimit
+    let page = await studio.listDomainPage(kind, { offset: requestedOffset, limit: requestedLimit })
+    if (page.items.length === 0 && requestedOffset > 0) {
+      const lastOffset = page.total === 0 ? 0 : Math.floor((page.total - 1) / page.limit) * page.limit
+      this.domainPageOffsets.set(kind, lastOffset)
+      page = await studio.listDomainPage(kind, { offset: lastOffset, limit: page.limit })
+    }
+    return page
   }
 }

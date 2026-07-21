@@ -219,6 +219,216 @@ export const managedChangedFileEvidenceSchema = z.object({
   }
 })
 
+export const managedWorkflowGateAssessmentSchema = z.object({
+  phase: z.enum([
+    "preconditions",
+    "outputs",
+    "evidence",
+    "stop-conditions",
+    "charter-evidence",
+    "charter-stop-conditions",
+  ]),
+  interpretation: z.enum(["criteria-satisfied", "stop-boundary-complied"]),
+  criteriaDigest: digestSchema,
+  status: z.enum(["satisfied", "failed", "not-assessed"]),
+  basis: z.enum(["human-attestation", "system-evaluator", "deterministic-offline-runtime", "not-evaluated"]),
+  evidenceDigest: digestSchema.optional(),
+  actor: z.object({
+    kind: z.enum(["human", "system"]),
+    id: portableProviderTextSchema,
+  }).strict(),
+  evaluator: z.object({
+    kind: z.enum(["human", "system"]),
+    id: portableProviderTextSchema,
+    version: portableProviderTextSchema,
+    digest: digestSchema,
+  }).strict(),
+  assessedAt: z.string().datetime(),
+}).strict().superRefine((assessment, context) => {
+  const stopPhase = assessment.phase === "stop-conditions" || assessment.phase === "charter-stop-conditions"
+  if (stopPhase !== (assessment.interpretation === "stop-boundary-complied")) {
+    context.addIssue({
+      code: "custom",
+      path: ["interpretation"],
+      message: "Stop-condition gates must explicitly mean that the declared stop boundary was complied with",
+    })
+  }
+  if (assessment.status !== "not-assessed" && assessment.basis === "not-evaluated") {
+    context.addIssue({ code: "custom", path: ["basis"], message: "Assessed Workflow gates require an explicit assessment basis" })
+  }
+  if (assessment.status !== "not-assessed" && !assessment.evidenceDigest) {
+    context.addIssue({ code: "custom", path: ["evidenceDigest"], message: "Assessed Workflow gates require evidence" })
+  }
+  if (assessment.actor.kind !== assessment.evaluator.kind || assessment.actor.id !== assessment.evaluator.id) {
+    context.addIssue({ code: "custom", path: ["evaluator"], message: "Workflow gate attribution must match its exact evaluator identity" })
+  }
+  if ((assessment.basis === "human-attestation") !== (assessment.evaluator.kind === "human")) {
+    context.addIssue({ code: "custom", path: ["basis"], message: "Human attestations require a human evaluator and system assessments require a system evaluator" })
+  }
+})
+
+export const managedWorkflowStepAttemptSchema = z.object({
+  id: uuidSchema,
+  revision: z.number().int().positive(),
+  previousSnapshotDigest: digestSchema.optional(),
+  stepId: uuidSchema,
+  stepIndex: z.number().int().nonnegative().max(511),
+  attempt: z.number().int().positive().max(10),
+  state: z.enum(["blocked", "completed", "failed", "cancelled", "timed-out", "unknown", "review-required", "discarded"]),
+  dependencies: z.array(uuidSchema).max(256),
+  contextPacks: z.array(managedExactBindingSchema).max(32),
+  tools: z.array(managedExactBindingSchema).max(32),
+  effectEnvelope: z.array(effectDescriptorSchema).max(16),
+  eventRange: z.object({
+    startSequence: z.number().int().nonnegative(),
+    endSequence: z.number().int().nonnegative(),
+  }).strict().optional(),
+  providerDisposition: managedProviderDispositionSchema.optional(),
+  terminationCause: managedTerminationCauseSchema.optional(),
+  postconditionStatus: managedOutcomeStatusSchema,
+  retryReasonCode: portableCodeSchema.optional(),
+  gates: z.object({
+    preconditions: managedWorkflowGateAssessmentSchema,
+    outputs: managedWorkflowGateAssessmentSchema,
+    evidence: managedWorkflowGateAssessmentSchema,
+    stopConditions: managedWorkflowGateAssessmentSchema,
+  }).strict(),
+  startedAt: z.string().datetime(),
+  endedAt: z.string().datetime(),
+}).strict().superRefine((attempt, context) => {
+  if ((attempt.revision === 1) === (attempt.previousSnapshotDigest !== undefined)) {
+    context.addIssue({
+      code: "custom",
+      path: ["previousSnapshotDigest"],
+      message: "Workflow attempt revision 1 forbids a predecessor and later revisions require one",
+    })
+  }
+  const expectedPhases = {
+    preconditions: "preconditions",
+    outputs: "outputs",
+    evidence: "evidence",
+    stopConditions: "stop-conditions",
+  } as const
+  for (const [key, phase] of Object.entries(expectedPhases) as Array<[keyof typeof expectedPhases, typeof expectedPhases[keyof typeof expectedPhases]]>) {
+    if (attempt.gates[key].phase !== phase) {
+      context.addIssue({ code: "custom", path: ["gates", key, "phase"], message: `Workflow gate must use phase ${phase}` })
+    }
+  }
+  if (attempt.eventRange && attempt.eventRange.endSequence < attempt.eventRange.startSequence) {
+    context.addIssue({ code: "custom", path: ["eventRange"], message: "Workflow attempt event range must be ordered" })
+  }
+  if (Date.parse(attempt.endedAt) < Date.parse(attempt.startedAt)) {
+    context.addIssue({ code: "custom", path: ["endedAt"], message: "Workflow attempt cannot end before it starts" })
+  }
+  if (attempt.state === "completed" && (
+    attempt.gates.preconditions.status !== "satisfied" ||
+    attempt.gates.outputs.status !== "satisfied" ||
+    attempt.gates.evidence.status !== "satisfied" ||
+    attempt.gates.stopConditions.status !== "satisfied" ||
+    attempt.providerDisposition !== "completed" ||
+    attempt.postconditionStatus !== "satisfied"
+  )) {
+    context.addIssue({ code: "custom", path: ["state"], message: "A completed Workflow attempt requires every explicit gate and provider postcondition to be satisfied" })
+  }
+})
+
+export const managedWorkflowExecutionSchema = z.object({
+  plan: managedExactBindingSchema,
+  strategy: z.literal("sequential"),
+  orderedStepIds: z.array(uuidSchema).min(1).max(512),
+  attempts: z.array(managedWorkflowStepAttemptSchema).max(5_120),
+  completedStepIds: z.array(uuidSchema).max(512),
+  charterGates: z.object({
+    requiredEvidence: managedWorkflowGateAssessmentSchema,
+    stopConditions: managedWorkflowGateAssessmentSchema,
+  }).strict(),
+  terminalReasonCode: portableCodeSchema,
+  capabilityBoundary: z.literal("natural-language-gates-require-explicit-human-or-system-assessment"),
+}).strict().superRefine((workflow, context) => {
+  if (workflow.plan.recordType !== "workflow-plan") {
+    context.addIssue({ code: "custom", path: ["plan", "recordType"], message: "Workflow execution must bind a Workflow Plan" })
+  }
+  if (new Set(workflow.orderedStepIds).size !== workflow.orderedStepIds.length) {
+    context.addIssue({ code: "custom", path: ["orderedStepIds"], message: "Workflow execution step order must be unique" })
+  }
+  if (new Set(workflow.completedStepIds).size !== workflow.completedStepIds.length ||
+      workflow.completedStepIds.some((id) => !workflow.orderedStepIds.includes(id))) {
+    context.addIssue({ code: "custom", path: ["completedStepIds"], message: "Completed Workflow steps must be a unique subset of the compiled order" })
+  }
+  if (workflow.charterGates.requiredEvidence.phase !== "charter-evidence" ||
+      workflow.charterGates.stopConditions.phase !== "charter-stop-conditions") {
+    context.addIssue({ code: "custom", path: ["charterGates"], message: "Charter gates must use their exact phases" })
+  }
+  const attemptIds = new Set<string>()
+  const attemptsByStep = new Map<string, number[]>()
+  for (const attempt of workflow.attempts) {
+    if (attemptIds.has(attempt.id)) {
+      context.addIssue({ code: "custom", path: ["attempts"], message: "Workflow attempt identities must be unique" })
+      break
+    }
+    attemptIds.add(attempt.id)
+    if (!workflow.orderedStepIds.includes(attempt.stepId)) {
+      context.addIssue({ code: "custom", path: ["attempts"], message: "Workflow attempts must reference the compiled step order" })
+    }
+    const values = attemptsByStep.get(attempt.stepId) ?? []
+    values.push(attempt.attempt)
+    attemptsByStep.set(attempt.stepId, values)
+  }
+  for (const values of attemptsByStep.values()) {
+    values.sort((left, right) => left - right)
+    if (values.some((value, index) => value !== index + 1)) {
+      context.addIssue({ code: "custom", path: ["attempts"], message: "Workflow attempt numbers must be contiguous per step" })
+      break
+    }
+  }
+  const completedAttempts = [...new Set(workflow.attempts
+    .filter((attempt) => attempt.state === "completed")
+    .map((attempt) => attempt.stepId))].sort()
+  if (JSON.stringify(completedAttempts) !== JSON.stringify([...workflow.completedStepIds].sort())) {
+    context.addIssue({ code: "custom", path: ["completedStepIds"], message: "Completed Workflow steps must exactly equal completed attempt evidence" })
+  }
+  if (workflow.terminalReasonCode === "workflow-completed" && (
+    workflow.completedStepIds.length !== workflow.orderedStepIds.length ||
+    workflow.charterGates.requiredEvidence.status !== "satisfied" ||
+    workflow.charterGates.stopConditions.status !== "satisfied"
+  )) {
+    context.addIssue({ code: "custom", path: ["terminalReasonCode"], message: "Workflow completion requires every step and both Charter-level gates" })
+  }
+})
+
+export const managedApplyDecisionReceiptSchema = z.object({
+  schemaVersion: z.literal(1),
+  kind: z.literal("managed-apply-decision"),
+  id: uuidSchema,
+  managedRunId: uuidSchema,
+  managedRunRevision: z.number().int().positive(),
+  runId: uuidSchema,
+  productId: uuidSchema,
+  bindingsDigest: digestSchema,
+  reviewResultId: uuidSchema,
+  reviewResultDigest: digestSchema,
+  reviewEvidenceId: uuidSchema,
+  reviewEvidenceDigest: digestSchema,
+  changedInventory: z.array(managedChangedFileEvidenceSchema).max(20_000),
+  changedInventoryDigest: digestSchema,
+  writeEnvelope: z.array(executionWorkspaceScopeSchema).max(256),
+  writeEnvelopeDigest: digestSchema,
+  actor: z.object({ kind: z.literal("human"), id: portableProviderTextSchema }).strict(),
+  decision: z.literal("apply-exact-reviewed-inventory"),
+  decidedAt: z.string().datetime(),
+  authorityBoundary: z.literal("apply-decision-is-exact-run-evidence-inventory-actor-and-scope"),
+}).strict().superRefine((receipt, context) => {
+  if (new Set(receipt.changedInventory.map((change) => change.path)).size !== receipt.changedInventory.length) {
+    context.addIssue({ code: "custom", path: ["changedInventory"], message: "Apply decision changed paths must be unique" })
+  }
+  if (new Set(receipt.writeEnvelope).size !== receipt.writeEnvelope.length) {
+    context.addIssue({ code: "custom", path: ["writeEnvelope"], message: "Apply decision write scopes must be unique" })
+  }
+  if (receipt.changedInventory.length > 0 && receipt.writeEnvelope.length === 0) {
+    context.addIssue({ code: "custom", path: ["writeEnvelope"], message: "Changed files require a non-empty exact write envelope" })
+  }
+})
+
 export const managedStagingEvidenceSchema = z.object({
   baselineDigest: digestSchema,
   finalDigest: digestSchema,
@@ -227,12 +437,16 @@ export const managedStagingEvidenceSchema = z.object({
   excludedPathSetDigest: digestSchema,
   applyState: z.enum(["pending", "applied", "conflict", "discarded", "not-applied"]),
   applyJournalDigest: digestSchema.optional(),
+  applyDecision: z.object({ receiptId: uuidSchema, receiptDigest: digestSchema }).strict().optional(),
 }).strict().superRefine((evidence, context) => {
   if (new Set(evidence.changes.map((change) => change.path)).size !== evidence.changes.length) {
     context.addIssue({ code: "custom", path: ["changes"], message: "Changed-file evidence paths must be unique" })
   }
   if ((evidence.applyState === "applied" || evidence.applyState === "conflict") && !evidence.applyJournalDigest) {
     context.addIssue({ code: "custom", path: ["applyJournalDigest"], message: "Applied and conflicting stages require journal evidence" })
+  }
+  if (evidence.applyJournalDigest && !evidence.applyDecision) {
+    context.addIssue({ code: "custom", path: ["applyDecision"], message: "Apply journal evidence requires an exact apply-decision receipt" })
   }
 })
 
@@ -243,7 +457,7 @@ export const managedActualEffectSchema = z.object({
 }).strict()
 
 export const managedRunEvidenceSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   kind: z.literal("managed-run-evidence"),
   id: uuidSchema,
   managedRunId: uuidSchema,
@@ -252,6 +466,7 @@ export const managedRunEvidenceSchema = z.object({
   bindingsDigest: digestSchema,
   events: z.array(managedEvidenceEventSchema).max(4_096),
   eventsDigest: digestSchema,
+  workflow: managedWorkflowExecutionSchema,
   staging: managedStagingEvidenceSchema.optional(),
   actualEffects: z.array(managedActualEffectSchema).max(32),
   capturedAt: z.string().datetime(),
@@ -284,10 +499,18 @@ export const managedRunResultSchema = z.object({
   outcome: z.object({
     status: managedOutcomeStatusSchema,
     basis: z.enum(["postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure"]),
+    evaluator: z.object({
+      kind: z.enum(["human", "system"]),
+      id: portableProviderTextSchema,
+      version: portableProviderTextSchema,
+      digest: digestSchema,
+    }).strict().optional(),
   }).strict(),
   terminalState: managedRunStateSchema.exclude(["prepared", "running", "applying"]),
   evidenceId: uuidSchema,
   evidenceDigest: digestSchema,
+  previousResultId: uuidSchema.optional(),
+  previousResultDigest: digestSchema.optional(),
   warnings: z.array(managedWarningCodeSchema).max(128),
   startedAt: z.string().datetime(),
   endedAt: z.string().datetime(),
@@ -295,6 +518,15 @@ export const managedRunResultSchema = z.object({
 }).strict().superRefine((result, context) => {
   if (Date.parse(result.endedAt) < Date.parse(result.startedAt)) {
     context.addIssue({ code: "custom", path: ["endedAt"], message: "Managed Run cannot end before it starts" })
+  }
+  if ((result.previousResultId === undefined) !== (result.previousResultDigest === undefined)) {
+    context.addIssue({ code: "custom", path: ["previousResultId"], message: "Managed result predecessor identity and digest must be present together" })
+  }
+  if (result.previousResultId === result.id) {
+    context.addIssue({ code: "custom", path: ["previousResultId"], message: "Managed result cannot be its own predecessor" })
+  }
+  if ((result.outcome.basis === "postcondition-evaluator") !== (result.outcome.evaluator !== undefined)) {
+    context.addIssue({ code: "custom", path: ["outcome", "evaluator"], message: "Postcondition outcomes require an exact evaluator identity and other outcome bases forbid one" })
   }
   if (result.terminalState === "completed" &&
       (result.providerDisposition !== "completed" || result.outcome.status !== "satisfied")) {
@@ -312,7 +544,7 @@ export const managedRunResultSchema = z.object({
 })
 
 export const managedRunRecordSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   kind: z.literal("managed-run"),
   id: uuidSchema,
   revision: z.number().int().positive(),
@@ -328,7 +560,11 @@ export const managedRunRecordSchema = z.object({
     run: runSchema,
   }).strict(),
   provider: managedProviderBindingSchema,
+  rootManagedRunId: uuidSchema,
+  attemptNumber: z.number().int().positive().max(1_000_000),
   previousManagedRunId: uuidSchema.optional(),
+  applyDecisionId: uuidSchema.optional(),
+  applyDecisionDigest: digestSchema.optional(),
   resultId: uuidSchema.optional(),
   resultDigest: digestSchema.optional(),
   recovery: z.object({
@@ -346,6 +582,15 @@ export const managedRunRecordSchema = z.object({
   }
   if ((record.resultId === undefined) !== (record.resultDigest === undefined)) {
     context.addIssue({ code: "custom", path: ["resultId"], message: "Managed Run result identity and digest must be present together" })
+  }
+  if ((record.applyDecisionId === undefined) !== (record.applyDecisionDigest === undefined)) {
+    context.addIssue({ code: "custom", path: ["applyDecisionId"], message: "Managed Run apply-decision identity and digest must be present together" })
+  }
+  if (!record.previousManagedRunId && (record.rootManagedRunId !== record.id || record.attemptNumber !== 1)) {
+    context.addIssue({ code: "custom", path: ["rootManagedRunId"], message: "An initial Managed Run must be lineage root attempt 1" })
+  }
+  if (record.previousManagedRunId && (record.rootManagedRunId === record.id || record.attemptNumber < 2)) {
+    context.addIssue({ code: "custom", path: ["previousManagedRunId"], message: "A resumed Managed Run must continue an existing lineage" })
   }
   if (record.bindings.run.recordId !== record.runId || record.bindings.product.recordId !== record.productId) {
     context.addIssue({ code: "custom", path: ["bindings"], message: "Managed Run identity must match its exact bindings" })
@@ -365,6 +610,10 @@ export type ManagedRunState = z.infer<typeof managedRunStateSchema>
 export type ManagedRunBindings = z.infer<typeof managedRunBindingsSchema>
 export type ManagedProviderBinding = z.infer<typeof managedProviderBindingSchema>
 export type ManagedEvidenceEvent = z.infer<typeof managedEvidenceEventSchema>
+export type ManagedWorkflowGateAssessment = z.infer<typeof managedWorkflowGateAssessmentSchema>
+export type ManagedWorkflowStepAttempt = z.infer<typeof managedWorkflowStepAttemptSchema>
+export type ManagedWorkflowExecution = z.infer<typeof managedWorkflowExecutionSchema>
+export type ManagedApplyDecisionReceipt = z.infer<typeof managedApplyDecisionReceiptSchema>
 export type ManagedRunEvidence = z.infer<typeof managedRunEvidenceSchema>
 export type ManagedRunResult = z.infer<typeof managedRunResultSchema>
 export type ManagedRunRecord = z.infer<typeof managedRunRecordSchema>

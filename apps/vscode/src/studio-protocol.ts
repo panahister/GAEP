@@ -72,6 +72,7 @@ export const studioDomainWorkflows = [
   "create-architecture", "edit-architecture",
   "create-evidence", "edit-evidence",
   "create-context-pack", "edit-context-pack",
+  "create-instruction-privilege-grant", "revoke-instruction-privilege-grant",
   "create-workflow-plan", "edit-workflow-plan",
   "create-tool-definition", "edit-tool-definition",
   "create-run-tool-selection", "edit-run-tool-selection",
@@ -80,6 +81,14 @@ export const studioDomainWorkflows = [
 ] as const
 
 export type StudioDomainWorkflow = typeof studioDomainWorkflows[number]
+
+export const studioDomainPageKinds = [
+  "product-design-revision", "product-revision", "change", "work-item", "requirement", "decision", "risk",
+  "architecture-record", "evidence", "trace-link", "context-pack", "workflow-plan", "tool-definition",
+  "instruction-privilege-grant", "run-tool-selection",
+] as const
+
+export type StudioDomainPageKind = typeof studioDomainPageKinds[number]
 
 export interface StudioIssue {
   id: string
@@ -250,6 +259,13 @@ export interface StudioTableSnapshot {
     total: number
     message: string
   }
+  pagination?: {
+    offset: number
+    limit: number
+    total: number
+    hasPrevious: boolean
+    hasNext: boolean
+  }
 }
 
 export interface DeliveryPageSnapshot extends StudioPageBase {
@@ -306,6 +322,7 @@ export interface AgentPageSnapshot extends StudioPageBase {
   limitations: StudioIssue[]
   handoffs: StudioTableSnapshot
   contextPacks: StudioTableSnapshot
+  instructionPrivilegeGrants: StudioTableSnapshot
   workflowPlans: StudioTableSnapshot
   toolDefinitions: StudioTableSnapshot
   runToolSelections: StudioTableSnapshot
@@ -418,7 +435,15 @@ export type StudioAction =
   | { kind: "transition-record"; recordType: "initiative" | "change" | "work-item" | "risk" | "decision"; recordId: string; toState: string; reason: string }
   | { kind: "add-relationship"; sourceRecordId: string }
   | { kind: "analyze-impact"; recordId: string; recordType?: string; revision?: number; digest?: string }
-  | { kind: "domain-workflow"; workflow: StudioDomainWorkflow; recordId?: string; expectedRevision?: number }
+  | {
+      kind: "domain-workflow"
+      workflow: StudioDomainWorkflow
+      recordId?: string
+      expectedRevision?: number
+      expectedProductRevision?: number
+      expectedContextGeneration?: string
+    }
+  | { kind: "domain-page"; recordKind: StudioDomainPageKind; offset: number; limit: number }
   | { kind: "select-agent"; adapterId: string; agentId: string; modelId: string; settings: Record<string, string | number | boolean | string[]> }
   | { kind: "begin-handoff"; fromRunId: string; adapterId: string; agentId: string; modelId: string }
   | { kind: "set-run-stage"; preparedRunId: string; stage: RunStage }
@@ -463,6 +488,7 @@ export type HostToStudioMessage = StudioEnvelope & (
 const routeSet = new Set<string>(studioRoutes)
 const recordFormRouteSet = new Set<string>(["direction", "users-jobs", "outcomes", "scope", "architecture"])
 const domainWorkflowSet = new Set<string>(studioDomainWorkflows)
+const domainPageKindSet = new Set<string>(studioDomainPageKinds)
 const completionStateSet = new Set<string>(["not-started", "in-progress", "complete", "blocked", "invalid"])
 const surfaceKindSet = new Set<string>(studioSurfaceKinds)
 const draftStateSet = new Set<string>(studioDraftStates)
@@ -599,9 +625,16 @@ export function isStudioAction(value: unknown): value is StudioAction {
     case "add-relationship":
       return hasOnlyKeys(value, ["kind", "sourceRecordId"]) && isNonEmptyString(value.sourceRecordId)
     case "domain-workflow":
-      return hasOnlyKeys(value, ["kind", "workflow", "recordId", "expectedRevision"]) &&
+      return hasOnlyKeys(value, ["kind", "workflow", "recordId", "expectedRevision", "expectedProductRevision", "expectedContextGeneration"]) &&
         typeof value.workflow === "string" && domainWorkflowSet.has(value.workflow) && isOptionalString(value.recordId) &&
-        (value.expectedRevision === undefined || (isNonNegativeInteger(value.expectedRevision) && value.expectedRevision > 0))
+        (value.expectedRevision === undefined || (isNonNegativeInteger(value.expectedRevision) && value.expectedRevision > 0)) &&
+        (value.expectedProductRevision === undefined || (isNonNegativeInteger(value.expectedProductRevision) && value.expectedProductRevision > 0)) &&
+        isOptionalString(value.expectedContextGeneration)
+    case "domain-page":
+      return hasOnlyKeys(value, ["kind", "recordKind", "offset", "limit"]) &&
+        typeof value.recordKind === "string" && domainPageKindSet.has(value.recordKind) &&
+        isNonNegativeInteger(value.offset) && value.offset <= 1_000_000 &&
+        isNonNegativeInteger(value.limit) && value.limit >= 1 && value.limit <= 200
     case "select-agent":
       return hasOnlyKeys(value, ["kind", "adapterId", "agentId", "modelId", "settings"]) &&
         isNonEmptyString(value.adapterId) && isNonEmptyString(value.agentId) && isNonEmptyString(value.modelId) &&
@@ -675,7 +708,7 @@ function isOverviewSection(value: unknown): value is OverviewSectionStatus {
 }
 
 function isTableSnapshot(value: unknown): value is StudioTableSnapshot {
-  if (!isRecord(value) || !hasOnlyKeys(value, ["id", "title", "columns", "rows", "emptyState", "actions", "truncation"]) ||
+  if (!isRecord(value) || !hasOnlyKeys(value, ["id", "title", "columns", "rows", "emptyState", "actions", "truncation", "pagination"]) ||
     !isNonEmptyString(value.id) || !isNonEmptyString(value.title) || !Array.isArray(value.columns) || value.columns.length > 64 ||
     !Array.isArray(value.rows) || value.rows.length > 10_000 || !Array.isArray(value.actions) || value.actions.length > 100 ||
     !value.actions.every(isStudioActionControl) || (value.emptyState !== undefined && !isStudioSurfaceState(value.emptyState))) return false
@@ -683,6 +716,18 @@ function isTableSnapshot(value: unknown): value is StudioTableSnapshot {
     !hasOnlyKeys(value.truncation, ["shown", "total", "message"]) || !isNonNegativeInteger(value.truncation.shown) ||
     !isNonNegativeInteger(value.truncation.total) || value.truncation.shown > value.truncation.total ||
     !isNonEmptyString(value.truncation.message))) return false
+  if (value.pagination !== undefined && (!isRecord(value.pagination) ||
+    !hasOnlyKeys(value.pagination, ["offset", "limit", "total", "hasPrevious", "hasNext"]) ||
+    !isNonNegativeInteger(value.pagination.offset) || value.pagination.offset > 1_000_000 ||
+    !isNonNegativeInteger(value.pagination.limit) || value.pagination.limit < 1 ||
+    value.pagination.limit > 200 || !isNonNegativeInteger(value.pagination.total) ||
+    value.rows.length > value.pagination.limit || value.pagination.offset + value.rows.length > value.pagination.total ||
+    typeof value.pagination.hasPrevious !== "boolean" || typeof value.pagination.hasNext !== "boolean" ||
+    value.pagination.hasPrevious !== (value.pagination.offset > 0) ||
+    value.pagination.hasNext !== (
+      value.pagination.offset + value.rows.length < value.pagination.total &&
+      value.pagination.offset + value.pagination.limit <= 1_000_000
+    ))) return false
   const columnsValid = value.columns.every((column) => isRecord(column) && hasOnlyKeys(column, ["key", "label", "identifier"]) &&
     isNonEmptyString(column.key) && isNonEmptyString(column.label) &&
     (column.identifier === undefined || typeof column.identifier === "boolean"))
@@ -801,11 +846,11 @@ function isTracePage(page: Record<string, unknown>): boolean {
 function isAgentPage(page: Record<string, unknown>): boolean {
   if (!hasOnlyKeys(page, [
     "kind", "route", "title", "purpose", "source", "actions", "design", "adapters", "selection", "selectedAgent", "limitations", "handoffs",
-    "contextPacks", "workflowPlans", "toolDefinitions", "runToolSelections",
+    "contextPacks", "instructionPrivilegeGrants", "workflowPlans", "toolDefinitions", "runToolSelections",
   ]) || !isPageBase(page, "agents-tools") || page.kind !== "agents-tools" || !isTableSnapshot(page.adapters) ||
     !Array.isArray(page.selectedAgent) || !page.selectedAgent.every(isDefinitionEntry) ||
     !Array.isArray(page.limitations) || !page.limitations.every(isStudioIssue) || !isTableSnapshot(page.handoffs) ||
-    !isTableSnapshot(page.contextPacks) || !isTableSnapshot(page.workflowPlans) || !isTableSnapshot(page.toolDefinitions) ||
+    !isTableSnapshot(page.contextPacks) || !isTableSnapshot(page.instructionPrivilegeGrants) || !isTableSnapshot(page.workflowPlans) || !isTableSnapshot(page.toolDefinitions) ||
     !isTableSnapshot(page.runToolSelections)) return false
   if (page.selection === undefined) return true
   return isRecord(page.selection) && hasOnlyKeys(page.selection, [

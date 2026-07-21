@@ -26,6 +26,7 @@ import {
   handoffSchema,
   instructionPrivilegeGrantSchema,
   initiativeSchema,
+  managedApplyDecisionReceiptSchema,
   managedRunEvidenceSchema,
   managedRunRecordSchema,
   managedRunResultSchema,
@@ -563,7 +564,16 @@ export class GaepRepository {
   }
 
   private async readJsonUnlocked<T>(path: string, schema: ZodType<T>): Promise<T> {
-    return schema.parse(await this.readRawJsonUnlocked(path))
+    const value = await this.readRawJsonUnlocked(path)
+    const schemaIdentity = schema as unknown
+    if ((schemaIdentity === managedRunRecordSchema as unknown || schemaIdentity === managedRunEvidenceSchema as unknown) &&
+        value !== null && typeof value === "object" &&
+        (value as { schemaVersion?: unknown }).schemaVersion === 1) {
+      throw new Error(
+        "Legacy Managed Execution schemaVersion 1 requires an explicit evidence-preserving migration before this GAEP version can open it; automatic semantic inference is forbidden",
+      )
+    }
+    return schema.parse(value)
   }
 
   private async readRawJsonUnlocked(path: string): Promise<unknown> {
@@ -828,7 +838,7 @@ export class GaepRepository {
       ["workflow-plans", /^[0-9a-f-]+\.json$/i],
       ["tools", /^[0-9a-f-]+\.json$/i],
       ["tool-selections", /^[0-9a-f-]+\.json$/i],
-      ["sessions", /^(?:(?:charter|run|managed-run|managed-evidence|managed-result)-[0-9a-f-]+)\.json$/i],
+      ["sessions", /^(?:(?:charter|run|managed-run|managed-evidence|managed-result|managed-apply-decision)-[0-9a-f-]+)\.json$/i],
       ["handoffs", /^[0-9a-f-]+\.json$/i],
       ["runtime", /^capabilities-[0-9a-f]{64}\.json$/],
     ] as const) {
@@ -921,6 +931,9 @@ export class GaepRepository {
     }
     if (/^sessions\/managed-result-[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, managedRunResultSchema)
+    }
+    if (/^sessions\/managed-apply-decision-[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, managedApplyDecisionReceiptSchema)
     }
     if (/^handoffs\/[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, handoffSchema)

@@ -16,6 +16,7 @@ import {
   handoffSchema,
   instructionPrivilegeGrantSchema,
   initiativeSchema,
+  managedApplyDecisionReceiptSchema,
   managedRunEvidenceSchema,
   managedRunRecordSchema,
   managedRunResultSchema,
@@ -1093,6 +1094,23 @@ export class ProductStudioService {
     return this.listRecords("instruction-grants", /^[0-9a-f-]+\.json$/i, instructionPrivilegeGrantSchema)
   }
 
+  /**
+   * Re-evaluate every transitive instruction privilege immediately before a
+   * managed provider receives Context. Context Pack sufficiency is not an
+   * authority cache: grants may expire, be revoked, or lose their exact
+   * governing authority after the Pack was created.
+   */
+  async assertContextPackExecutionAuthority(pack: ContextPack, agentId: string): Promise<void> {
+    const current = await this.readContextPack(pack.id)
+    if (canonicalDigest(current) !== canonicalDigest(pack)) {
+      throw new Error(`Context Pack ${pack.id} changed before managed execution`)
+    }
+    if (current.recipient.kind !== "agent" || current.recipient.id !== agentId) {
+      throw new Error(`Context Pack ${pack.id} is not addressed to the exact selected Agent`)
+    }
+    await this.validateContextItems(current.items, current.recipient, current.objective)
+  }
+
   redactContextContent(content: string): { text: string; redactions: number } {
     if (content.length > 1_000_000) throw new Error("Context redaction input exceeds the local safety limit")
     return redactSecretShapedText(content)
@@ -1748,6 +1766,9 @@ export class ProductStudioService {
     append("sessions", "managed-run-result", await this.listRecords(
       "sessions", /^managed-result-[0-9a-f-]+\.json$/i, managedRunResultSchema,
     ), (record) => `sessions/managed-result-${record.id}.json`)
+    append("sessions", "managed-apply-decision", await this.listRecords(
+      "sessions", /^managed-apply-decision-[0-9a-f-]+\.json$/i, managedApplyDecisionReceiptSchema,
+    ), (record) => `sessions/managed-apply-decision-${record.id}.json`)
     append("handoffs", "handoff", await this.listRecords(
       "handoffs", /^[0-9a-f-]+\.json$/i, handoffSchema,
     ))
@@ -1887,7 +1908,7 @@ export class ProductStudioService {
           history.revision !== Number(recordHistoryMatch[3])
         ) throw new Error(`Import Record History filename does not match its envelope: ${member.path}`)
       }
-      const prefixedIdentityMatch = /^(?:sessions\/(?:charter|run|managed-run|managed-evidence|managed-result))-([0-9a-f-]+)\.json$/i.exec(member.path)
+      const prefixedIdentityMatch = /^(?:sessions\/(?:charter|run|managed-run|managed-evidence|managed-result|managed-apply-decision))-([0-9a-f-]+)\.json$/i.exec(member.path)
       if (prefixedIdentityMatch && record.id !== prefixedIdentityMatch[1]) {
         throw new Error(`Import session filename does not match record identity: ${member.path}`)
       }
@@ -3004,9 +3025,13 @@ export class ProductStudioService {
       .map(([, record]) => managedRunEvidenceSchema.parse(record))
     const managedResults = [...recordsByPath.entries()].filter(([path]) => /^sessions\/managed-result-/.test(path))
       .map(([, record]) => managedRunResultSchema.parse(record))
+    const managedApplyDecisions = [...recordsByPath.entries()].filter(([path]) => /^sessions\/managed-apply-decision-/.test(path))
+      .map(([, record]) => managedApplyDecisionReceiptSchema.parse(record))
     const managedById = new Map(managedRuns.map((record) => [record.id, record]))
     const evidenceById = new Map(managedEvidence.map((record) => [record.id, record]))
     const resultById = new Map(managedResults.map((record) => [record.id, record]))
+    const applyDecisionById = new Map(managedApplyDecisions.map((record) => [record.id, record]))
+    const successorCounts = new Map<string, number>()
     for (const managed of managedRuns) {
       if (
         canonicalDigest(managed.bindingSnapshots.initiative) !== managed.bindings.initiative.digest ||
@@ -3076,15 +3101,85 @@ export class ProductStudioService {
       }
       if (managed.previousManagedRunId) {
         const previous = managedById.get(managed.previousManagedRunId)
-        if (!previous || previous.runId !== managed.runId || previous.productId !== managed.productId) {
+        if (
+          !previous ||
+          previous.runId !== managed.runId ||
+          previous.productId !== managed.productId ||
+          previous.rootManagedRunId !== managed.rootManagedRunId ||
+          previous.attemptNumber + 1 !== managed.attemptNumber
+        ) {
           throw new Error(`Import Managed Run ${managed.id} previous-run chain is unresolved`)
         }
+        successorCounts.set(previous.id, (successorCounts.get(previous.id) ?? 0) + 1)
       }
       if (managed.resultId) {
         const result = resultById.get(managed.resultId)
         if (!result || canonicalDigest(result) !== managed.resultDigest) {
           throw new Error(`Import Managed Run ${managed.id} result binding is unresolved`)
         }
+      }
+      if (managed.applyDecisionId) {
+        const receipt = applyDecisionById.get(managed.applyDecisionId)
+        const reviewResult = receipt ? resultById.get(receipt.reviewResultId) : undefined
+        const reviewEvidence = receipt ? evidenceById.get(receipt.reviewEvidenceId) : undefined
+        if (
+          !receipt ||
+          canonicalDigest(receipt) !== managed.applyDecisionDigest ||
+          receipt.managedRunId !== managed.id ||
+          receipt.runId !== managed.runId ||
+          receipt.productId !== managed.productId ||
+          receipt.bindingsDigest !== managed.bindingsDigest ||
+          receipt.managedRunRevision >= managed.revision ||
+          !reviewResult ||
+          canonicalDigest(reviewResult) !== receipt.reviewResultDigest ||
+          reviewResult.managedRunId !== managed.id ||
+          reviewResult.runId !== managed.runId ||
+          reviewResult.productId !== managed.productId ||
+          !reviewEvidence ||
+          canonicalDigest(reviewEvidence) !== receipt.reviewEvidenceDigest ||
+          reviewEvidence.managedRunId !== managed.id ||
+          reviewEvidence.runId !== managed.runId ||
+          reviewEvidence.productId !== managed.productId ||
+          reviewEvidence.bindingsDigest !== managed.bindingsDigest ||
+          reviewResult.evidenceId !== reviewEvidence.id ||
+          reviewResult.terminalState !== "review-required" ||
+          reviewEvidence.staging?.applyState !== "pending" ||
+          canonicalDigest(receipt.changedInventory) !== receipt.changedInventoryDigest ||
+          canonicalDigest(receipt.writeEnvelope) !== receipt.writeEnvelopeDigest ||
+          canonicalDigest(reviewEvidence.staging?.changes ?? []) !== receipt.changedInventoryDigest ||
+          receipt.changedInventory.some((change) => !receipt.writeEnvelope.some((scope) =>
+            scope === "." || change.path === scope || change.path.startsWith(`${scope}/`)))
+        ) {
+          throw new Error(`Import Managed Run ${managed.id} apply-decision binding is unresolved`)
+        }
+      }
+    }
+    if ([...successorCounts.values()].some((count) => count > 1)) {
+      throw new Error("Import Managed Run resume lineage contains a forbidden branch")
+    }
+    for (const receipt of managedApplyDecisions) {
+      const managed = managedById.get(receipt.managedRunId)
+      if (managed?.applyDecisionId !== receipt.id || managed.applyDecisionDigest !== canonicalDigest(receipt)) {
+        throw new Error(`Import Managed Apply Decision ${receipt.id} is orphaned or not bound by its Managed Run`)
+      }
+    }
+    const retainedResultIds = new Set<string>()
+    const retainedEvidenceIds = new Set<string>()
+    for (const managed of managedRuns) {
+      let resultId = managed.resultId
+      let expectedDigest = managed.resultDigest
+      const lineage = new Set<string>()
+      while (resultId) {
+        if (lineage.has(resultId)) throw new Error(`Import Managed Run ${managed.id} result lineage contains a cycle`)
+        lineage.add(resultId)
+        const result = resultById.get(resultId)
+        if (!result || canonicalDigest(result) !== expectedDigest || result.managedRunId !== managed.id) {
+          throw new Error(`Import Managed Run ${managed.id} result lineage is unresolved`)
+        }
+        retainedResultIds.add(result.id)
+        retainedEvidenceIds.add(result.evidenceId)
+        resultId = result.previousResultId
+        expectedDigest = result.previousResultDigest
       }
     }
     for (const evidence of managedEvidence) {
@@ -3096,6 +3191,115 @@ export class ProductStudioService {
         evidence.bindingsDigest !== managed.bindingsDigest ||
         evidence.eventsDigest !== canonicalDigest(evidence.events)
       ) throw new Error(`Import Managed Evidence ${evidence.id} is orphaned or internally inconsistent`)
+      if (evidence.workflow.plan.digest !== managed.bindings.workflowPlan?.digest) {
+        throw new Error(`Import Managed Evidence ${evidence.id} substitutes its exact Workflow Plan`)
+      }
+      const workflowPlan = managed.bindings.workflowPlan
+        ? workflowPlanSchema.parse(resolveManagedBinding(managed.bindings.workflowPlan))
+        : undefined
+      const charter = executionCharterSchema.parse(resolveManagedBinding(managed.bindings.charter))
+      if (!workflowPlan || canonicalDigest(evidence.workflow.plan) !== canonicalDigest(managed.bindings.workflowPlan)) {
+        throw new Error(`Import Managed Evidence ${evidence.id} has no exact Workflow Plan`)
+      }
+      if (
+        evidence.workflow.charterGates.requiredEvidence.criteriaDigest !== canonicalDigest(charter.requiredEvidence) ||
+        evidence.workflow.charterGates.stopConditions.criteriaDigest !== canonicalDigest(charter.stopConditions)
+      ) {
+        throw new Error(`Import Managed Evidence ${evidence.id} substitutes its exact Charter gate criteria`)
+      }
+      const gateAssessments = [
+        evidence.workflow.charterGates.requiredEvidence,
+        evidence.workflow.charterGates.stopConditions,
+        ...evidence.workflow.attempts.flatMap((attempt) => [
+          attempt.gates.preconditions,
+          attempt.gates.outputs,
+          attempt.gates.evidence,
+          attempt.gates.stopConditions,
+        ]),
+      ]
+      for (const assessment of gateAssessments) {
+        if (assessment.evaluator.digest !== canonicalDigest({
+          kind: assessment.evaluator.kind,
+          id: assessment.evaluator.id,
+          version: assessment.evaluator.version,
+        })) {
+          throw new Error(`Import Managed Evidence ${evidence.id} has an invalid Workflow gate evaluator binding`)
+        }
+      }
+      const byStepId = new Map(workflowPlan.steps.map((step) => [step.id, step]))
+      const orderedStepIds: string[] = []
+      const completedForOrder = new Set<string>()
+      while (orderedStepIds.length < workflowPlan.steps.length) {
+        const next = workflowPlan.steps.find((step) =>
+          !completedForOrder.has(step.id) && step.dependsOn.every((dependency) => completedForOrder.has(dependency)))
+        if (!next) throw new Error(`Import Managed Evidence ${evidence.id} Workflow order cannot be compiled`)
+        orderedStepIds.push(next.id)
+        completedForOrder.add(next.id)
+      }
+      if (canonicalDigest(orderedStepIds) !== canonicalDigest(evidence.workflow.orderedStepIds)) {
+        throw new Error(`Import Managed Evidence ${evidence.id} carries a forged Workflow order`)
+      }
+      for (const attempt of evidence.workflow.attempts) {
+        const step = byStepId.get(attempt.stepId)
+        if (
+          !step ||
+          attempt.stepIndex !== orderedStepIds.indexOf(step.id) ||
+          canonicalDigest(attempt.dependencies) !== canonicalDigest(step.dependsOn) ||
+          canonicalDigest(attempt.contextPacks) !== canonicalDigest(step.contextPacks) ||
+          canonicalDigest(attempt.tools) !== canonicalDigest(step.toolDefinitions) ||
+          attempt.gates.preconditions.criteriaDigest !== canonicalDigest(step.preconditions) ||
+          attempt.gates.outputs.criteriaDigest !== canonicalDigest(step.outputs) ||
+          attempt.gates.evidence.criteriaDigest !== canonicalDigest(step.evidenceCriteria) ||
+          attempt.gates.stopConditions.criteriaDigest !== canonicalDigest(step.stopConditions) ||
+          (attempt.eventRange !== undefined && attempt.eventRange.endSequence >= evidence.events.length)
+        ) throw new Error(`Import Managed Evidence ${evidence.id} has inconsistent Workflow attempt ${attempt.id}`)
+      }
+      const actuallyCompleted = new Set(evidence.workflow.attempts
+        .filter((attempt) => attempt.state === "completed")
+        .map((attempt) => attempt.stepId))
+      const exactCompletedStepIds = evidence.workflow.orderedStepIds.filter((stepId) => actuallyCompleted.has(stepId))
+      if (canonicalDigest(evidence.workflow.completedStepIds) !== canonicalDigest(exactCompletedStepIds)) {
+        throw new Error(`Import Managed Evidence ${evidence.id} completed Workflow step set is not exact`)
+      }
+      if (canonicalDigest(evidence.workflow.completedStepIds) !==
+          canonicalDigest(evidence.workflow.orderedStepIds.slice(0, evidence.workflow.completedStepIds.length))) {
+        throw new Error(`Import Managed Evidence ${evidence.id} completed Workflow steps are not a sequential dependency prefix`)
+      }
+      if (evidence.staging?.applyDecision) {
+        const receipt = applyDecisionById.get(evidence.staging.applyDecision.receiptId)
+        if (
+          !receipt ||
+          canonicalDigest(receipt) !== evidence.staging.applyDecision.receiptDigest ||
+          managed.applyDecisionId !== receipt.id ||
+          managed.applyDecisionDigest !== canonicalDigest(receipt) ||
+          receipt.managedRunId !== managed.id ||
+          receipt.runId !== managed.runId ||
+          receipt.productId !== managed.productId ||
+          receipt.bindingsDigest !== managed.bindingsDigest
+        ) {
+          throw new Error(`Import Managed Evidence ${evidence.id} has an unresolved apply-decision receipt`)
+        }
+      }
+    }
+    const workflowAttemptHistories = new Map<string, Array<(typeof managedEvidence)[number]["workflow"]["attempts"][number]>>()
+    for (const evidence of managedEvidence) {
+      for (const attempt of evidence.workflow.attempts) {
+        const history = workflowAttemptHistories.get(attempt.id) ?? []
+        history.push(attempt)
+        workflowAttemptHistories.set(attempt.id, history)
+      }
+    }
+    for (const [attemptId, history] of workflowAttemptHistories) {
+      history.sort((left, right) => left.revision - right.revision)
+      for (const [index, attempt] of history.entries()) {
+        if (attempt.revision !== index + 1) {
+          throw new Error(`Import Workflow attempt ${attemptId} revision history is incomplete`)
+        }
+        if (index === 0 ? attempt.previousSnapshotDigest !== undefined :
+          attempt.previousSnapshotDigest !== canonicalDigest(history[index - 1])) {
+          throw new Error(`Import Workflow attempt ${attemptId} predecessor digest is invalid`)
+        }
+      }
     }
     for (const result of managedResults) {
       const managed = managedById.get(result.managedRunId)
@@ -3107,10 +3311,42 @@ export class ProductStudioService {
         result.productId !== managed.productId ||
         result.mode !== managed.mode ||
         canonicalDigest(result.provider) !== canonicalDigest(managed.provider) ||
+        evidence.managedRunId !== managed.id ||
+        evidence.runId !== result.runId ||
+        evidence.productId !== result.productId ||
+        evidence.bindingsDigest !== managed.bindingsDigest ||
         result.evidenceDigest !== canonicalDigest(evidence)
       ) throw new Error(`Import Managed Result ${result.id} is orphaned or internally inconsistent`)
-      if (managed.resultId !== result.id || managed.resultDigest !== canonicalDigest(result)) {
+      if (!retainedResultIds.has(result.id)) {
         throw new Error(`Import Managed Result ${result.id} is not bound by its Managed Run`)
+      }
+      if (result.outcome.evaluator && result.outcome.evaluator.digest !== canonicalDigest({
+        kind: result.outcome.evaluator.kind,
+        id: result.outcome.evaluator.id,
+        version: result.outcome.evaluator.version,
+      })) {
+        throw new Error(`Import Managed Result ${result.id} has an invalid postcondition evaluator binding`)
+      }
+      const workflowCompleted = evidence.workflow.terminalReasonCode === "workflow-completed" &&
+        canonicalDigest(evidence.workflow.completedStepIds) === canonicalDigest(evidence.workflow.orderedStepIds)
+      if ((result.terminalState === "completed") !== workflowCompleted) {
+        throw new Error(`Import Managed Result ${result.id} terminal state contradicts its Workflow completion evidence`)
+      }
+      const lastAttempt = evidence.workflow.attempts.at(-1)
+      if (result.terminalState === "review-required" &&
+          (evidence.workflow.terminalReasonCode !== "apply-review-required" || lastAttempt?.state !== "review-required")) {
+        throw new Error(`Import Managed Result ${result.id} review state contradicts its Workflow evidence`)
+      }
+      if (result.terminalState === "conflict" && evidence.workflow.terminalReasonCode !== "source-workspace-conflict") {
+        throw new Error(`Import Managed Result ${result.id} conflict state contradicts its Workflow evidence`)
+      }
+      if (result.terminalState === "discarded" && evidence.workflow.terminalReasonCode !== "staged-changes-discarded") {
+        throw new Error(`Import Managed Result ${result.id} discard state contradicts its Workflow evidence`)
+      }
+    }
+    for (const evidence of managedEvidence) {
+      if (!retainedEvidenceIds.has(evidence.id)) {
+        throw new Error(`Import Managed Evidence ${evidence.id} is not bound by retained Managed Result lineage`)
       }
     }
 
@@ -3149,6 +3385,7 @@ export class ProductStudioService {
     if (/^sessions\/managed-run-[0-9a-f-]+\.json$/i.test(path)) return "managed-run"
     if (/^sessions\/managed-evidence-[0-9a-f-]+\.json$/i.test(path)) return "managed-run-evidence"
     if (/^sessions\/managed-result-[0-9a-f-]+\.json$/i.test(path)) return "managed-run-result"
+    if (/^sessions\/managed-apply-decision-[0-9a-f-]+\.json$/i.test(path)) return "managed-apply-decision"
     if (/^handoffs\/[0-9a-f-]+\.json$/i.test(path)) return "handoff"
     throw new Error(`Import member path is unsupported or non-portable: ${path}`)
   }
@@ -3178,6 +3415,7 @@ export class ProductStudioService {
     if (/^sessions\/managed-run-[0-9a-f-]+\.json$/i.test(path)) return managedRunRecordSchema
     if (/^sessions\/managed-evidence-[0-9a-f-]+\.json$/i.test(path)) return managedRunEvidenceSchema
     if (/^sessions\/managed-result-[0-9a-f-]+\.json$/i.test(path)) return managedRunResultSchema
+    if (/^sessions\/managed-apply-decision-[0-9a-f-]+\.json$/i.test(path)) return managedApplyDecisionReceiptSchema
     if (/^handoffs\/[0-9a-f-]+\.json$/i.test(path)) return handoffSchema
     throw new Error(`Import member path is unsupported or non-portable: ${path}`)
   }

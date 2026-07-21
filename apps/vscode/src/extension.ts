@@ -171,9 +171,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   let lastStatusDiagnostic: string | undefined
   let studioProvider: StudioProvider | undefined
   let studioContextGeneration = randomUUID()
+  let productDomainMutationActive = false
+  const productDomainMutationWaiters = new Set<() => void>()
 
   const rotateStudioContext = (): void => {
     studioContextGeneration = randomUUID()
+  }
+
+  const waitForProductDomainMutation = (): Promise<void> => productDomainMutationActive
+    ? new Promise((resolve) => productDomainMutationWaiters.add(resolve))
+    : Promise.resolve()
+
+  const withProductDomainMutation = async <T>(operation: () => Promise<T>): Promise<T> => {
+    if (productDomainMutationActive) throw new Error("Another Product-domain mutation is already completing")
+    productDomainMutationActive = true
+    try {
+      return await operation()
+    } finally {
+      productDomainMutationActive = false
+      for (const resolve of productDomainMutationWaiters) resolve()
+      productDomainMutationWaiters.clear()
+    }
   }
 
   const runtimeBindings = (): RuntimeBindingIndex => ({
@@ -359,6 +377,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   const configureRoot = async (folder: vscode.WorkspaceFolder, recover: boolean): Promise<void> => {
+    if (productDomainMutationActive) throw new Error("GAEP cannot replace its Product root while a Product-domain mutation is completing")
     if (activeAgentRuns.size > 0) {
       throw new Error("GAEP cannot replace its Product root or runtime configuration while a provider process remains active")
     }
@@ -487,6 +506,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   type DomainWorkflowAction = Extract<StudioAction, { kind: "domain-workflow" }>
   const domainInputDrafts = new Map<string, Record<string, unknown>>()
   const recordLimit = 200
+  const instructionSourcePlaceholderDigest = canonicalDigest("replace-with-reviewed-instruction-source")
 
   const cloneStructured = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
@@ -654,23 +674,57 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return Object.fromEntries(fields.flatMap((field) => field in source ? [[field, source[field]]] : []))
   }
 
-  const readDomainRecords = async (workflow: StudioDomainWorkflow, runtimeEngine: GaepEngine): Promise<unknown[]> => {
+  const workflowRecordKind = (workflow: StudioDomainWorkflow): Parameters<GaepEngine["productStudio"]["listDomainPage"]>[0] | undefined => {
+    switch (workflow) {
+      case "edit-change": return "change"
+      case "edit-work-item": return "work-item"
+      case "edit-requirement": return "requirement"
+      case "edit-decision": return "decision"
+      case "edit-risk": return "risk"
+      case "edit-architecture": return "architecture-record"
+      case "edit-evidence": return "evidence"
+      case "edit-context-pack": return "context-pack"
+      case "edit-workflow-plan": return "workflow-plan"
+      case "edit-tool-definition": return "tool-definition"
+      case "edit-run-tool-selection": return "run-tool-selection"
+      case "reassess-trace-link": return "trace-link"
+      case "revoke-instruction-privilege-grant": return "instruction-privilege-grant"
+      default: return undefined
+    }
+  }
+
+  const readDomainRecord = async (
+    workflow: StudioDomainWorkflow,
+    runtimeEngine: GaepEngine,
+    id: string,
+  ): Promise<unknown> => {
     const studio = runtimeEngine.productStudio
     switch (workflow) {
-      case "edit-change": return studio.listChanges()
-      case "edit-work-item": return studio.listWorkItems()
-      case "edit-requirement": return studio.listRequirements()
-      case "edit-decision": return studio.listDecisions()
-      case "edit-risk": return studio.listRisks()
-      case "edit-architecture": return studio.listArchitectureRecords()
-      case "edit-evidence": return studio.listEvidence()
-      case "edit-context-pack": return studio.listContextPacks()
-      case "edit-workflow-plan": return studio.listWorkflowPlans()
-      case "edit-tool-definition": return studio.listToolDefinitions()
-      case "edit-run-tool-selection": return studio.listRunToolSelections()
-      case "reassess-trace-link": return studio.listTraceLinks()
-      default: return []
+      case "edit-change": return studio.readChange(id)
+      case "edit-work-item": return studio.readWorkItem(id)
+      case "edit-requirement": return studio.readRequirement(id)
+      case "edit-decision": return studio.readDecision(id)
+      case "edit-risk": return studio.readRisk(id)
+      case "edit-architecture": return studio.readArchitectureRecord(id)
+      case "edit-evidence": return studio.readEvidence(id)
+      case "edit-context-pack": return studio.readContextPack(id)
+      case "edit-workflow-plan": return studio.readWorkflowPlan(id)
+      case "edit-tool-definition": return studio.readToolDefinition(id)
+      case "edit-run-tool-selection": return studio.readRunToolSelection(id)
+      case "reassess-trace-link": return studio.readTraceLink(id)
+      case "revoke-instruction-privilege-grant": return studio.readInstructionPrivilegeGrant(id)
+      default: throw new Error(`No direct Product-domain reader is available for ${workflow}`)
     }
+  }
+
+  const readDomainRecords = async (
+    workflow: StudioDomainWorkflow,
+    runtimeEngine: GaepEngine,
+  ): Promise<{ records: unknown[]; total: number }> => {
+    const kind = workflowRecordKind(workflow)
+    if (!kind) return { records: [], total: 0 }
+    const page = await runtimeEngine.productStudio.listDomainPage(kind, { offset: 0, limit: recordLimit })
+    return { records: page.items, total: page.total }
   }
 
   const mutableDomainInput = (workflow: StudioDomainWorkflow, record: Record<string, unknown>): Record<string, unknown> => {
@@ -706,6 +760,93 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const product = await runtimeEngine.readProduct()
     const revision = await runtimeEngine.productStudio.readProductRevision(product.revision ?? 1)
     return { recordType: "product", recordId: product.id, revision: revision.revision, digest: revision.productDigest }
+  }
+
+  const instructionAuthorityReference = async (runtimeEngine: GaepEngine): Promise<Record<string, unknown>> => {
+    const candidates = [
+      { kind: "requirement" as const, recordType: "requirement", eligible: new Set(["accepted", "satisfied"]) },
+      { kind: "decision" as const, recordType: "decision", eligible: new Set(["decided"]) },
+      { kind: "architecture-record" as const, recordType: "architecture", eligible: new Set(["accepted"]) },
+    ]
+    const choices: Array<{ selectionKind: "record"; label: string; description: string; detail: string; reference: Record<string, unknown> }> = []
+    let authorityCorpusTruncated = false
+    for (const candidate of candidates) {
+      let offset = 0
+      while (choices.length < recordLimit) {
+        const page = await runtimeEngine.productStudio.listDomainPage(candidate.kind, { offset, limit: recordLimit })
+        for (const typedRecord of page.items) {
+          const record = typedRecord as Record<string, unknown>
+          if (!candidate.eligible.has(String(record.state))) continue
+          choices.push({
+            selectionKind: "record",
+            label: String(record.title ?? record.key ?? record.question ?? record.id),
+            description: `${candidate.recordType} · ${String(record.state)} · revision ${String(record.revision)}`,
+            detail: String(record.id),
+            reference: {
+              recordType: candidate.recordType,
+              recordId: record.id,
+              revision: record.revision,
+              digest: canonicalDigest(record),
+            },
+          })
+          if (choices.length >= recordLimit) break
+        }
+        if (!page.hasMore) break
+        offset += page.limit
+        if (offset >= 10_000) {
+          authorityCorpusTruncated = true
+          break
+        }
+      }
+      if (choices.length >= recordLimit) authorityCorpusTruncated = true
+    }
+    if (choices.length === 0) {
+      throw new Error("Create a governed Requirement, Decision, or Architecture record before granting instruction privilege")
+    }
+    if (authorityCorpusTruncated) {
+      await vscode.window.showWarningMessage(
+        `The eligible authority picker is bounded to ${choices.length} records and a 10,000-record scan per type. Use Product Studio paging to inspect records outside this boundary.`,
+      )
+    }
+    const selected = await vscode.window.showQuickPick([
+      ...choices,
+      {
+        selectionKind: "exact-id" as const,
+        label: "$(search) Use an exact authority record ID",
+        description: "Select any eligible current record beyond the bounded picker",
+        detail: "The record will be read and validated before review",
+      },
+    ], {
+      title: "Select the exact governed authority for this Instruction Privilege Grant",
+      placeHolder: "A grant cannot create its own authority",
+      ignoreFocusOut: true,
+    })
+    if (!selected) throw new WorkflowCancelled()
+    if (selected.selectionKind === "record") return selected.reference
+    const type = await vscode.window.showQuickPick(candidates.map((candidate) => ({
+      label: candidate.recordType,
+      candidate,
+    })), { title: "Select the exact authority record type", ignoreFocusOut: true })
+    if (!type) throw new WorkflowCancelled()
+    const id = await requiredInput("Exact current authority record UUID", {
+      validateInput: (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+        ? undefined
+        : "Enter a valid UUID",
+    })
+    const record = type.candidate.kind === "requirement"
+      ? await runtimeEngine.productStudio.readRequirement(id)
+      : type.candidate.kind === "decision"
+        ? await runtimeEngine.productStudio.readDecision(id)
+        : await runtimeEngine.productStudio.readArchitectureRecord(id)
+    if (!type.candidate.eligible.has(record.state)) {
+      throw new Error(`${type.candidate.recordType} ${id} is ${record.state}; it is not eligible to authorize instruction privilege`)
+    }
+    return {
+      recordType: type.candidate.recordType,
+      recordId: record.id,
+      revision: record.revision,
+      digest: canonicalDigest(record),
+    }
   }
 
   const createTemplate = async (workflow: StudioDomainWorkflow, runtimeEngine: GaepEngine): Promise<Record<string, unknown>> => {
@@ -781,6 +922,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           sufficiencyEvaluator: { kind: "human", id: actorId }, sufficiencyAssumptions: ["No omitted material dependency"],
         }
       }
+      case "create-instruction-privilege-grant": {
+        const authority = await instructionAuthorityReference(runtimeEngine)
+        return {
+          source: { kind: "logical", value: "replace-with-reviewed-instruction-source" },
+          sourceDigest: instructionSourcePlaceholderDigest,
+          privilege: "governing-instruction",
+          purpose: "Describe the exact purpose for which these instructions may be followed.",
+          recipient: { kind: "agent", id: "replace-with-exact-agent-id" },
+          scope: ["Describe the exact bounded instruction scope"],
+          authority,
+        }
+      }
       case "create-workflow-plan": return {
         title: "Bounded workflow plan", objective: "Describe the workflow objective.", subject: productReference,
         actor: { kind: "human", id: actorId }, strategy: "sequential", contextPacks: [], toolDefinitions: [],
@@ -816,35 +969,41 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     runtimeEngine: GaepEngine,
     input: Record<string, unknown>,
     record?: Record<string, unknown>,
+    revisionReason?: string,
+    expectedProductRevision?: number,
   ): Promise<unknown> => {
     const studio = runtimeEngine.productStudio
     const product = await runtimeEngine.readProduct()
     const productRevision = product.revision ?? 1
+    if (expectedProductRevision && productRevision !== expectedProductRevision) {
+      throw new Error(`Product is now revision ${productRevision}; refresh before changing revision ${expectedProductRevision}`)
+    }
     const id = action.recordId ?? String(record?.id ?? "")
     const expectedRevision = action.expectedRevision ?? Number(record?.revision)
     switch (action.workflow) {
       case "create-change": return studio.createChange(input as never, productRevision, actorId)
-      case "edit-change": return studio.reviseChange(id, expectedRevision, input as never, actorId)
+      case "edit-change": return studio.reviseChange(id, expectedRevision, input as never, actorId, revisionReason)
       case "create-work-item": return studio.createWorkItem(input as never, productRevision, actorId)
-      case "edit-work-item": return studio.reviseWorkItem(id, expectedRevision, input as never, actorId)
+      case "edit-work-item": return studio.reviseWorkItem(id, expectedRevision, input as never, actorId, revisionReason)
       case "create-requirement": return studio.createRequirement(input as never, productRevision, actorId)
-      case "edit-requirement": return studio.reviseRequirement(id, expectedRevision, input as never, actorId)
+      case "edit-requirement": return studio.reviseRequirement(id, expectedRevision, input as never, actorId, revisionReason)
       case "create-decision": return studio.createDecision(input as never, productRevision, actorId)
-      case "edit-decision": return studio.reviseDecision(id, expectedRevision, input as never, actorId)
+      case "edit-decision": return studio.reviseDecision(id, expectedRevision, input as never, actorId, revisionReason)
       case "create-risk": return studio.createRisk(input as never, productRevision, actorId)
-      case "edit-risk": return studio.reviseRisk(id, expectedRevision, input as never, actorId)
+      case "edit-risk": return studio.reviseRisk(id, expectedRevision, input as never, actorId, revisionReason)
       case "create-architecture": return studio.createArchitectureRecord(input as never, productRevision, actorId)
-      case "edit-architecture": return studio.reviseArchitectureRecord(id, expectedRevision, input as never, actorId)
+      case "edit-architecture": return studio.reviseArchitectureRecord(id, expectedRevision, input as never, actorId, revisionReason)
       case "create-evidence": return studio.createEvidence(input as never, productRevision, actorId)
       case "edit-evidence": return studio.reviseEvidence(id, expectedRevision, input as never, actorId)
       case "create-context-pack": return studio.createContextPack(input as never, productRevision, actorId)
       case "edit-context-pack": return studio.reviseContextPack(id, expectedRevision, input as never, actorId)
+      case "create-instruction-privilege-grant": return studio.createInstructionPrivilegeGrant(input as never, productRevision, actorId)
       case "create-workflow-plan": return studio.createWorkflowPlan(input as never, productRevision, actorId)
-      case "edit-workflow-plan": return studio.reviseWorkflowPlan(id, expectedRevision, input as never, actorId)
+      case "edit-workflow-plan": return studio.reviseWorkflowPlan(id, expectedRevision, input as never, actorId, revisionReason)
       case "create-tool-definition": return studio.createToolDefinition(input as never, productRevision, actorId)
       case "edit-tool-definition": return studio.reviseToolDefinition(id, expectedRevision, input as never, actorId)
-      case "create-run-tool-selection": return studio.createRunToolSelection(input as never, productRevision, actorId)
-      case "edit-run-tool-selection": return studio.reviseRunToolSelection(id, expectedRevision, input as never, actorId)
+      case "create-run-tool-selection": return studio.createRunToolSelection({ ...input, workspaceTrusted: vscode.workspace.isTrusted } as never, productRevision, actorId)
+      case "edit-run-tool-selection": return studio.reviseRunToolSelection(id, expectedRevision, { ...input, workspaceTrusted: vscode.workspace.isTrusted } as never, actorId)
       case "create-trace-link": return studio.createTraceLink(input as never, productRevision, actorId)
       default: throw new Error(`Unsupported Product-domain mutation: ${action.workflow}`)
     }
@@ -853,6 +1012,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const executeProductStudioWorkflow = async (action: DomainWorkflowAction): Promise<unknown> => {
     const runtime = await requireRuntime()
     const studio = runtime.engine.productStudio
+    const expectedContextGeneration = action.expectedContextGeneration ?? studioContextGeneration
+    const initialProduct = await runtime.engine.readProduct()
+    const expectedProductRevision = action.expectedProductRevision ?? (initialProduct.revision ?? 1)
+    const assertWorkflowContext = async (): Promise<void> => {
+      if (!vscode.workspace.isTrusted || recoveryDiagnostic || studioContextGeneration !== expectedContextGeneration ||
+        selectedFolder?.uri.fsPath !== runtime.path || engine !== runtime.engine) {
+        throw new Error("The Product root, trust, engine, or recovery context changed while this workflow was open; no Product-domain mutation was performed")
+      }
+      const current = await runtime.engine.readProduct()
+      if ((current.revision ?? 1) !== expectedProductRevision) {
+        throw new Error(`Product is now revision ${current.revision ?? 1}; refresh before continuing from revision ${expectedProductRevision}`)
+      }
+    }
+    await assertWorkflowContext()
     if (action.workflow === "search") {
       const query = await requiredInput("Search Product-domain records (at least two characters)")
       const results = await studio.search({ query })
@@ -870,7 +1043,42 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return issues.slice(0, recordLimit)
     }
     if (action.workflow === "export") {
-      const bundle = await studio.buildPortableExport()
+      const sensitiveContextPacks: Array<{ id: string; classification: string }> = []
+      let offset = 0
+      while (true) {
+        const page = await studio.listDomainPage("context-pack", { offset, limit: recordLimit })
+        sensitiveContextPacks.push(...page.items
+          .filter((pack) => ["confidential", "restricted"].includes(pack.classification.level))
+          .map((pack) => ({ id: pack.id, classification: pack.classification.level })))
+        if (!page.hasMore) break
+        offset += page.limit
+        if (offset >= 10_000) throw new Error("Context Pack disclosure review exceeds the portable export safety limit")
+      }
+      let reviewedAt: string | undefined
+      if (sensitiveContextPacks.length > 0) {
+        const exactInventory = sensitiveContextPacks
+          .map((record) => `${record.id} (${record.classification})`)
+          .join("\n")
+        const approval = await vscode.window.showWarningMessage(
+          `This export includes ${sensitiveContextPacks.length} confidential or restricted Context Pack(s). Review the exact IDs below. The disclosure decision will be attributed to ${actorId} with the confirmation time.\n\n${exactInventory}`,
+          { modal: true },
+          "I Reviewed These Exact IDs",
+        )
+        if (approval !== "I Reviewed These Exact IDs") throw new WorkflowCancelled()
+        reviewedAt = new Date().toISOString()
+      }
+      await assertWorkflowContext()
+      const bundle = await withProductDomainMutation(async () => {
+        await assertWorkflowContext()
+        return studio.buildPortableExport(sensitiveContextPacks.length > 0 ? {
+          reviewedRecordIds: sensitiveContextPacks.map((record) => record.id),
+          actorId,
+          reviewedAt: reviewedAt!,
+        } : {})
+      })
+      if (bundle.manifest.productRevision !== expectedProductRevision) {
+        throw new Error(`Portable export observed Product revision ${bundle.manifest.productRevision}; expected ${expectedProductRevision}. No file was saved.`)
+      }
       const target = await vscode.window.showSaveDialog({
         title: "Save portable GAEP Product export",
         filters: { "GAEP Product export": ["json"] },
@@ -903,12 +1111,57 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await vscode.window.showInformationMessage(`Import preview: ${preview.status}; ${preview.memberCount} member(s); ${preview.conflicts.length} conflict(s). No mutation was performed.`)
       return preview
     }
+    if (action.workflow === "revoke-instruction-privilege-grant") {
+      let record = action.recordId
+        ? await readDomainRecord(action.workflow, runtime.engine, action.recordId) as Awaited<ReturnType<typeof studio.readInstructionPrivilegeGrant>>
+        : undefined
+      if (!record) {
+        const page = await studio.listDomainPage("instruction-privilege-grant", { offset: 0, limit: recordLimit })
+        const active = page.items.filter((candidate) => candidate.state === "active")
+        if (active.length === 0) {
+          throw new Error(page.hasMore
+            ? "No active Instruction Privilege Grant is present on the bounded first page; open the paged Product Studio table and revoke the exact record"
+            : "No active Instruction Privilege Grant exists")
+        }
+        if (page.hasMore) {
+          await vscode.window.showWarningMessage(
+            `There are ${page.total} Instruction Privilege Grants. This picker shows the bounded first ${page.items.length}; use the paged Product Studio table for omitted records.`,
+          )
+        }
+        const picked = await vscode.window.showQuickPick(active.map((candidate) => ({
+          label: candidate.purpose,
+          description: `${candidate.privilege} · revision ${candidate.revision}`,
+          detail: candidate.id,
+          record: candidate,
+        })), { title: "Select an active Instruction Privilege Grant to revoke", ignoreFocusOut: true })
+        if (!picked) throw new WorkflowCancelled()
+        record = picked.record
+      }
+      if (action.expectedRevision && record.revision !== action.expectedRevision) {
+        throw new Error(`The selected Instruction Privilege Grant is now revision ${record.revision}; refresh before revoking revision ${action.expectedRevision}`)
+      }
+      if (record.state !== "active") throw new Error(`Instruction Privilege Grant is already ${record.state}`)
+      const reason = await requiredInput("Why must this exact Instruction Privilege Grant be revoked?")
+      const confirmation = await vscode.window.showWarningMessage(
+        `Revoke Instruction Privilege Grant ${record.id} revision ${record.revision}, attributed to ${actorId}?\n\nReason: ${reason}`,
+        { modal: true },
+        "Revoke Exact Grant",
+      )
+      if (confirmation !== "Revoke Exact Grant") throw new WorkflowCancelled()
+      await assertWorkflowContext()
+      const revoked = await withProductDomainMutation(async () => {
+        await assertWorkflowContext()
+        return studio.revokeInstructionPrivilegeGrant(record.id, record.revision, reason, actorId)
+      })
+      refresh()
+      return revoked
+    }
     if (action.workflow === "reassess-trace-link") {
       let id = action.recordId
       let expectedRevision = action.expectedRevision
       if (!id || !expectedRevision) {
-        const links = await studio.listTraceLinks()
-        const picked = await vscode.window.showQuickPick(links.slice(0, recordLimit).map((record) => ({
+        const page = await studio.listDomainPage("trace-link", { offset: 0, limit: recordLimit })
+        const picked = await vscode.window.showQuickPick(page.items.map((record) => ({
           label: `${record.source.recordType}:${record.source.recordId} ${record.relationship} ${record.target.recordType}:${record.target.recordId}`,
           description: `${record.state} · revision ${record.revision}`,
           record,
@@ -917,7 +1170,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         id = picked.record.id
         expectedRevision = picked.record.revision
       }
-      const result = await studio.reassessTraceLink(id, expectedRevision, actorId)
+      await assertWorkflowContext()
+      const result = await withProductDomainMutation(async () => {
+        await assertWorkflowContext()
+        return studio.reassessTraceLink(id, expectedRevision, actorId)
+      })
       refresh()
       return result
     }
@@ -925,13 +1182,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const editing = action.workflow.startsWith("edit-")
     let record: Record<string, unknown> | undefined
     if (editing) {
-      const records = await readDomainRecords(action.workflow, runtime.engine) as Record<string, unknown>[]
-      if (records.length === 0) throw new Error("No matching governed record exists")
-      if (records.length > recordLimit) {
-        await vscode.window.showWarningMessage(`There are ${records.length} matching records. The picker is bounded to ${recordLimit}; use Product-domain search to locate omitted records.`)
-      }
-      record = action.recordId ? records.find((candidate) => candidate.id === action.recordId) : undefined
+      record = action.recordId
+        ? await readDomainRecord(action.workflow, runtime.engine, action.recordId) as Record<string, unknown>
+        : undefined
       if (!record) {
+        const page = await readDomainRecords(action.workflow, runtime.engine)
+        const records = page.records as Record<string, unknown>[]
+        if (records.length === 0) throw new Error("No matching governed record exists")
+        if (page.total > records.length) {
+          await vscode.window.showWarningMessage(`There are ${page.total} matching records. The picker is bounded to ${records.length}; use Product-domain search or the paged Product Studio table to locate omitted records.`)
+        }
         const picked = await vscode.window.showQuickPick(records.slice(0, recordLimit).map((candidate) => ({
           label: String(candidate.title ?? candidate.key ?? candidate.question ?? candidate.objective ?? candidate.id),
           description: `revision ${String(candidate.revision)}${candidate.state ? ` · ${String(candidate.state)}` : ""}`,
@@ -948,13 +1208,62 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const template = editing && record ? mutableDomainInput(action.workflow, record) : await createTemplate(action.workflow, runtime.engine)
     const draftKey = `${runtime.path}\u0000${action.workflow}\u0000${String(record?.id ?? "new")}`
     const input = await collectStructuredObject(draftKey, `GAEP: ${action.workflow.replaceAll("-", " ")}`, template)
-    const confirmation = await vscode.window.showWarningMessage(
-      `Commit ${action.workflow.replaceAll("-", " ")} as local governed state attributed to ${actorId}? Engine validation, exact revision checks, audit recording, and transaction recovery apply.`,
-      { modal: true },
-      "Validate and Commit",
-    )
-    if (confirmation !== "Validate and Commit") throw new WorkflowCancelled()
-    const result = await performDomainMutation(action, runtime.engine, input, record)
+    const stateChanged = editing && record && "state" in input && input.state !== record.state
+    const revisionReason = stateChanged
+      ? await requiredInput(`Why should ${action.workflow.replaceAll("edit-", "").replaceAll("-", " ")} transition from ${String(record?.state)} to ${String(input.state)}?`)
+      : undefined
+    if (action.workflow === "create-instruction-privilege-grant") {
+      const serialized = JSON.stringify(input)
+      if (serialized.includes("replace-with") || input.sourceDigest === instructionSourcePlaceholderDigest) {
+        throw new Error("Replace every Instruction Privilege Grant placeholder, including the independently verified source digest, before authorization review")
+      }
+      if (typeof input.sourceDigest !== "string" || !/^sha256:[0-9a-f]{64}$/.test(input.sourceDigest)) {
+        throw new Error("Instruction Privilege Grant source digest must be an exact lowercase sha256 digest")
+      }
+      const scope = Array.isArray(input.scope) && input.scope.every((entry) => typeof entry === "string") ? input.scope : []
+      const authority = input.authority as Record<string, unknown> | undefined
+      const recipient = input.recipient as Record<string, unknown> | undefined
+      const source = input.source as Record<string, unknown> | undefined
+      const exactSummary = [
+        `Source: ${JSON.stringify(source)}`,
+        `Source digest: ${String(input.sourceDigest)}`,
+        `Privilege: ${String(input.privilege)}`,
+        `Purpose: ${String(input.purpose)}`,
+        `Recipient: ${String(recipient?.kind)}:${String(recipient?.id)}`,
+        `Scope (${scope.length}): ${scope.join(" | ")}`,
+        `Authority: ${String(authority?.recordType)}:${String(authority?.recordId)}@${String(authority?.revision)} · ${String(authority?.digest)}`,
+        `Expiry: ${typeof input.expiresAt === "string" ? input.expiresAt : "NO EXPIRY — explicitly reviewed"}`,
+        `Actor: ${actorId}`,
+      ].join("\n")
+      if (exactSummary.length > 20_000) {
+        throw new Error("The Instruction Privilege Grant is too large for exact authorization review; split it into narrower grants")
+      }
+      const confirmation = await vscode.window.showWarningMessage(
+        `Create this exact active Instruction Privilege Grant? A grant does not create its own authority.\n\n${exactSummary}`,
+        { modal: true },
+        "Create Exact Grant",
+      )
+      if (confirmation !== "Create Exact Grant") throw new WorkflowCancelled()
+    } else {
+      const confirmation = await vscode.window.showWarningMessage(
+        `Commit ${action.workflow.replaceAll("-", " ")} as local governed state attributed to ${actorId}? Engine validation, exact revision checks, audit recording, and transaction recovery apply.`,
+        { modal: true },
+        "Validate and Commit",
+      )
+      if (confirmation !== "Validate and Commit") throw new WorkflowCancelled()
+    }
+    await assertWorkflowContext()
+    const result = await withProductDomainMutation(async () => {
+      await assertWorkflowContext()
+      return performDomainMutation(
+        action,
+        runtime.engine,
+        input,
+        record,
+        revisionReason,
+        expectedProductRevision,
+      )
+    })
     domainInputDrafts.delete(draftKey)
     refresh()
     return result
@@ -1583,6 +1892,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       void (async () => {
         const folders = vscode.workspace.workspaceFolders ?? []
         if (selectedFolder && folders.some((folder) => folder.uri.toString() === selectedFolder?.uri.toString())) return
+        await waitForProductDomainMutation()
         rotateStudioContext()
         try {
           await stopActiveRuns("The selected Product root was removed from the workspace.", false)

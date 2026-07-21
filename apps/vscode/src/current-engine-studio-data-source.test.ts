@@ -141,6 +141,14 @@ function productStudioStub(): ProductStudioService {
     listToolDefinitions: async () => [],
     listRunToolSelections: async () => [],
     listTraceLinks: async () => [],
+    listInstructionPrivilegeGrants: async () => [],
+    listDomainPage: async (_kind: string, input: { offset?: number; limit?: number } = {}) => ({
+      items: [],
+      offset: input.offset ?? 0,
+      limit: input.limit ?? 50,
+      total: 0,
+      hasMore: false,
+    }),
     healthIssues: async () => [],
   } as unknown as ProductStudioService
 }
@@ -474,7 +482,7 @@ describe("current-engine Product Studio data source", () => {
     expect((await absent.readSnapshot("overview")).surface.kind).toBe("uninitialized")
   })
 
-  it("loads only route-relevant domain lists and visibly bounds large tables", async () => {
+  it("loads only route-relevant bounded pages with accurate totals and next/previous navigation", async () => {
     const requirements = Array.from({ length: 250 }, (_, index) => ({
       schemaVersion: 1 as const,
       kind: "requirement" as const,
@@ -492,19 +500,59 @@ describe("current-engine Product Studio data source", () => {
       updatedAt: "2026-07-21T00:00:00.000Z",
     }))
     const base = productStudioStub()
-    const listRequirements = vi.fn(async () => requirements)
-    const listChanges = vi.fn(async () => [])
+    let availableRequirements = requirements
+    const listDomainPage = vi.fn(async (kind: string, input: { offset?: number; limit?: number } = {}) => {
+      const offset = input.offset ?? 0
+      const limit = input.limit ?? 50
+      const records = kind === "requirement" ? availableRequirements : []
+      return { items: records.slice(offset, offset + limit), offset, limit, total: records.length, hasMore: offset + limit < records.length }
+    })
     const source = harness({
-      productStudio: { ...base, listRequirements, listChanges } as unknown as ProductStudioService,
+      productStudio: { ...base, listDomainPage } as unknown as ProductStudioService,
     }).source
     const snapshot = await source.readSnapshot("scope")
     if (snapshot.page.kind !== "record-form") throw new Error("Expected Scope form")
     const table = snapshot.page.relatedRecords?.find((candidate) => candidate.id === "requirements")
-    expect(table?.rows).toHaveLength(200)
-    expect(table?.truncation).toEqual(expect.objectContaining({ shown: 200, total: 250 }))
-    expect(table?.truncation?.message).toMatch(/deliberately bounded/i)
-    expect(listRequirements).toHaveBeenCalledOnce()
-    expect(listChanges).not.toHaveBeenCalled()
+    expect(table?.rows).toHaveLength(50)
+    expect(table?.pagination).toEqual({ offset: 0, limit: 50, total: 250, hasPrevious: false, hasNext: true })
+    expect(listDomainPage).toHaveBeenCalledWith("requirement", { offset: 0, limit: 50 })
+    const next = table?.actions.find((candidate) => candidate.label === "Next Requirements page")
+    expect(next).toMatchObject({ enabled: true, action: { kind: "domain-page", recordKind: "requirement", offset: 50, limit: 50 } })
+    if (!next) throw new Error("Expected next-page action")
+    expect(await source.execute(next.action, {
+      requestId: "requirements-next",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })).toMatchObject({ status: "accepted" })
+    const second = await source.readSnapshot("scope")
+    if (second.page.kind !== "record-form") throw new Error("Expected Scope form")
+    const secondTable = second.page.relatedRecords?.find((candidate) => candidate.id === "requirements")
+    expect(secondTable?.rows[0]?.cells.key).toBe("GAEP-REQ-051")
+    expect(secondTable?.pagination).toEqual({ offset: 50, limit: 50, total: 250, hasPrevious: true, hasNext: true })
+    expect(secondTable?.actions.find((candidate) => candidate.label === "Previous Requirements page")).toMatchObject({ enabled: true })
+    expect(listDomainPage.mock.calls.every(([kind]) => kind === "requirement")).toBe(true)
+
+    expect(await source.execute({ kind: "domain-page", recordKind: "requirement", offset: 200, limit: 25 }, {
+      requestId: "requirements-custom-page",
+      expectedContextGeneration: second.contextGeneration,
+      expectedSnapshotRevision: second.snapshotRevision,
+    })).toMatchObject({ status: "accepted" })
+    availableRequirements = []
+    const emptied = await source.readSnapshot("scope")
+    if (emptied.page.kind !== "record-form") throw new Error("Expected Scope form")
+    expect(emptied.page.relatedRecords?.find((candidate) => candidate.id === "requirements")?.pagination)
+      .toEqual({ offset: 0, limit: 25, total: 0, hasPrevious: false, hasNext: false })
+
+    availableRequirements = requirements.slice(0, 70)
+    expect(await source.execute({ kind: "domain-page", recordKind: "requirement", offset: 100, limit: 25 }, {
+      requestId: "requirements-shrunk-page",
+      expectedContextGeneration: emptied.contextGeneration,
+      expectedSnapshotRevision: emptied.snapshotRevision,
+    })).toMatchObject({ status: "accepted" })
+    const shrunk = await source.readSnapshot("scope")
+    if (shrunk.page.kind !== "record-form") throw new Error("Expected Scope form")
+    expect(shrunk.page.relatedRecords?.find((candidate) => candidate.id === "requirements")?.pagination)
+      .toEqual({ offset: 50, limit: 25, total: 70, hasPrevious: true, hasNext: false })
   })
 
   it("saves one design section with exact optimistic revisions and local actor provenance", async () => {
@@ -605,7 +653,7 @@ describe("current-engine Product Studio data source", () => {
       excerpt: "bounded search result",
       updatedAt: "2026-07-21T00:00:00.000Z",
     }
-    const { source } = harness({ commandResult: { kind: "search-results", results: [searchResult], total: 300 } })
+    const { source, commands } = harness({ commandResult: { kind: "search-results", results: [searchResult], total: 300 } })
     const snapshot = await source.readSnapshot("trace")
     const result = await source.execute({ kind: "domain-workflow", workflow: "search" }, {
       requestId: "search",
@@ -613,10 +661,84 @@ describe("current-engine Product Studio data source", () => {
       expectedSnapshotRevision: snapshot.snapshotRevision,
     })
     expect(result.status).toBe("accepted")
+    expect(commands[0]).toMatchObject({
+      command: "gaep.productStudio.domainWorkflow",
+      args: [{
+        kind: "domain-workflow",
+        workflow: "search",
+        expectedProductRevision: product.revision,
+        expectedContextGeneration: snapshot.contextGeneration,
+      }],
+    })
     const refreshed = await source.readSnapshot("trace")
     if (refreshed.page.kind !== "trace") throw new Error("Expected Trace page")
     expect(refreshed.page.searchResults.rows).toHaveLength(1)
     expect(refreshed.page.searchResults.truncation).toMatchObject({ shown: 1, total: 300 })
+  })
+
+  it("exposes inspectable and revocable Instruction Privilege Grants without treating them as authority", async () => {
+    const grant = {
+      schemaVersion: 1 as const,
+      kind: "instruction-privilege-grant" as const,
+      id: "88888888-8888-4888-8888-888888888888",
+      productId: product.id,
+      revision: 2,
+      source: { kind: "logical" as const, value: "reviewed-instruction-source" },
+      sourceDigest: `sha256:${"8".repeat(64)}`,
+      privilege: "governing-instruction" as const,
+      purpose: "Bounded Product design guidance",
+      recipient: { kind: "agent" as const, id: "codex-cli" },
+      scope: Array.from({ length: 128 }, (_, index) => `scope-${index}-${"s".repeat(300)}`),
+      authority: {
+        recordType: "requirement" as const,
+        recordId: "99999999-9999-4999-8999-999999999999",
+        revision: 1,
+        digest: `sha256:${"9".repeat(64)}`,
+      },
+      state: "active" as const,
+      acceptedBy: { kind: "human" as const, id: "local-actor-test" },
+      acceptedAt: "2026-07-21T00:00:00.000Z",
+      expiresAt: "2027-07-21T00:00:00.000Z",
+      authorityBoundary: "instruction-privilege-is-exact-source-purpose-recipient-and-scope" as const,
+      createdAt: "2026-07-21T00:00:00.000Z",
+      updatedAt: "2026-07-21T00:00:00.000Z",
+    }
+    const base = productStudioStub()
+    const listDomainPage = vi.fn(async (kind: string, input: { offset?: number; limit?: number } = {}) => ({
+      items: kind === "instruction-privilege-grant" ? [grant] : [],
+      offset: input.offset ?? 0,
+      limit: input.limit ?? 50,
+      total: kind === "instruction-privilege-grant" ? 1 : 0,
+      hasMore: false,
+    }))
+    const { source } = harness({ productStudio: { ...base, listDomainPage } as unknown as ProductStudioService })
+    const snapshot = await source.readSnapshot("agents-tools")
+    if (snapshot.page.kind !== "agents-tools") throw new Error("Expected Agents & Tools page")
+    const table = snapshot.page.instructionPrivilegeGrants
+    expect(table.rows[0]).toMatchObject({
+      id: grant.id,
+      state: "active",
+      cells: { privilege: "governing-instruction", state: "active", revision: "2" },
+    })
+    expect(table.actions.some((candidate) => candidate.action.kind === "domain-workflow" &&
+      candidate.action.workflow === "create-instruction-privilege-grant")).toBe(true)
+    const revoke = table.rows[0]?.actions.find((candidate) => candidate.label === "Revoke")
+    expect(revoke).toMatchObject({
+      enabled: true,
+      action: { workflow: "revoke-instruction-privilege-grant", recordId: grant.id, expectedRevision: 2 },
+    })
+    expect(await source.execute({ kind: "open-record", recordId: grant.id }, {
+      requestId: "inspect-grant",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })).toMatchObject({ status: "accepted" })
+    const inspected = await source.readSnapshot("agents-tools")
+    expect(isStudioSnapshot(inspected)).toBe(true)
+    expect(inspected.inspector).toMatchObject({
+      recordId: grant.id,
+      entries: expect.arrayContaining([{ term: "Record type", value: "instruction-privilege-grant" }]),
+    })
+    expect(inspected.inspector?.entries.find((entry) => entry.term === "Scope summary")?.value).toMatch(/display truncated/i)
   })
 
   it("exposes every Product-domain creation workflow from its keyboard-renderable route", async () => {
@@ -634,7 +756,7 @@ describe("current-engine Product Studio data source", () => {
     for (const workflow of [
       "create-change", "create-work-item", "create-requirement", "create-architecture", "create-decision", "create-risk",
       "create-context-pack", "create-workflow-plan", "create-tool-definition", "create-run-tool-selection", "create-evidence",
-      "create-trace-link",
+      "create-instruction-privilege-grant", "create-trace-link",
     ]) expect(actions, workflow).toContain(`\"workflow\":\"${workflow}\"`)
   })
 })

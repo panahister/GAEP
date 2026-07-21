@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   executionCharterSchema,
   handoffSchema,
+  managedApplyDecisionReceiptSchema,
   managedEvidenceEventSchema,
   managedRunEvidenceSchema,
   managedRunRecordSchema,
@@ -24,13 +25,24 @@ const portableSelection = {
   capabilityDigest: digest,
 }
 
+const gate = (phase: "charter-evidence" | "charter-stop-conditions") => ({
+  phase,
+  interpretation: phase === "charter-stop-conditions" ? "stop-boundary-complied" : "criteria-satisfied",
+  criteriaDigest: digest,
+  status: "not-assessed",
+  basis: "not-evaluated",
+  actor: { kind: "system", id: "contract-fixture" },
+  evaluator: { kind: "system", id: "contract-fixture", version: "1", digest },
+  assessedAt: "2026-01-01T00:00:01.000Z",
+})
+
 function exact(recordType: "product" | "initiative" | "execution-charter" | "run") {
   return { recordType, recordId: id({ product: 1, initiative: 2, "execution-charter": 3, run: 4 }[recordType]), revision: 1, digest }
 }
 
 function managedRecord(): Record<string, unknown> {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: "managed-run",
     id: id(5),
     revision: 1,
@@ -46,6 +58,7 @@ function managedRecord(): Record<string, unknown> {
       run: exact("run"),
       agentSelectionDigest: digest,
       contextPacks: [],
+      workflowPlan: { recordType: "workflow-plan", recordId: id(9), revision: 1, digest },
       tools: [],
     },
     bindingsDigest: digest,
@@ -82,6 +95,8 @@ function managedRecord(): Record<string, unknown> {
       capabilityDigest: digest,
       runtimeVersion: "1.0.0",
     },
+    rootManagedRunId: id(5),
+    attemptNumber: 1,
     recovery: { status: "not-required" },
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
@@ -90,7 +105,7 @@ function managedRecord(): Record<string, unknown> {
 
 function evidence(): Record<string, unknown> {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: "managed-run-evidence",
     id: id(6),
     managedRunId: id(5),
@@ -107,6 +122,19 @@ function evidence(): Record<string, unknown> {
       redactionCount: 0,
     }],
     eventsDigest: digest,
+    workflow: {
+      plan: { recordType: "workflow-plan", recordId: id(9), revision: 1, digest },
+      strategy: "sequential",
+      orderedStepIds: [id(10)],
+      attempts: [],
+      completedStepIds: [],
+      charterGates: {
+        requiredEvidence: gate("charter-evidence"),
+        stopConditions: gate("charter-stop-conditions"),
+      },
+      terminalReasonCode: "contract-fixture",
+      capabilityBoundary: "natural-language-gates-require-explicit-human-or-system-assessment",
+    },
     actualEffects: [{ effect: "observe", status: "observed-provisional", evidenceDigest: digest }],
     capturedAt: "2026-01-01T00:00:01.000Z",
     authorityBoundary: "evidence-does-not-self-assert-outcome-or-authorization",
@@ -195,6 +223,40 @@ describe("managed execution portable contracts", () => {
       ...result(),
       providerDisposition: "failed",
     }).success).toBe(false)
+  })
+
+  it("binds an apply decision to exact reviewed evidence, inventory, actor, and scope", () => {
+    const receipt = {
+      schemaVersion: 1,
+      kind: "managed-apply-decision",
+      id: id(11),
+      managedRunId: id(5),
+      managedRunRevision: 3,
+      runId: id(4),
+      productId: id(1),
+      bindingsDigest: digest,
+      reviewResultId: id(7),
+      reviewResultDigest: digest,
+      reviewEvidenceId: id(6),
+      reviewEvidenceDigest: digest,
+      changedInventory: [{
+        path: "src/a.ts",
+        kind: "added",
+        afterDigest: digest,
+        afterSize: 1,
+        afterMode: 0o600,
+      }],
+      changedInventoryDigest: digest,
+      writeEnvelope: ["src"],
+      writeEnvelopeDigest: digest,
+      actor: { kind: "human", id: "founder" },
+      decision: "apply-exact-reviewed-inventory",
+      decidedAt: "2026-01-01T00:00:01.000Z",
+      authorityBoundary: "apply-decision-is-exact-run-evidence-inventory-actor-and-scope",
+    }
+    expect(managedApplyDecisionReceiptSchema.parse(receipt).decision).toBe("apply-exact-reviewed-inventory")
+    expect(managedApplyDecisionReceiptSchema.safeParse({ ...receipt, writeEnvelope: [] }).success).toBe(false)
+    expect(managedApplyDecisionReceiptSchema.safeParse({ ...receipt, authorizationId: "caller-controlled" }).success).toBe(false)
   })
 })
 

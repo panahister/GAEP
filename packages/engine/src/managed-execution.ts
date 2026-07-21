@@ -5,10 +5,14 @@ import {
   agentSelectionSchema,
   executionCharterSchema,
   initiativeSchema,
+  managedApplyDecisionReceiptSchema,
   managedEvidenceEventSchema,
   managedRunEvidenceSchema,
   managedRunRecordSchema,
   managedRunResultSchema,
+  managedWorkflowGateAssessmentSchema,
+  managedWorkflowExecutionSchema,
+  managedWorkflowStepAttemptSchema,
   productSchema,
   runSchema,
   runToolSelectionSchema,
@@ -16,17 +20,22 @@ import {
   type ContextPack,
   type ExecutionCharter,
   type ManagedEvidenceEvent,
+  type ManagedApplyDecisionReceipt,
   type ManagedExecutionMode,
   type ManagedRunBindings,
   type ManagedRunEvidence,
   type ManagedRunRecord,
   type ManagedRunResult,
   type ManagedRunState,
+  type ManagedWorkflowGateAssessment,
+  type ManagedWorkflowExecution,
+  type ManagedWorkflowStepAttempt,
   type Initiative,
   type Run,
   type RunToolSelection,
   type ToolDefinition,
   type WorkflowPlan,
+  type WorkflowStep,
 } from "@gaep/contracts"
 import {
   BoundedAsyncQueue,
@@ -52,7 +61,7 @@ import type { ProductStudioService } from "./product-studio.js"
 import type { GaepRepository } from "./repository.js"
 
 export const managedRunTransitions = {
-  prepared: ["running", "failed", "cancelled"],
+  prepared: ["running", "failed", "cancelled", "unknown"],
   running: ["review-required", "completed", "failed", "cancelled", "timed-out", "unknown"],
   "review-required": ["applying", "discarded", "unknown"],
   applying: ["completed", "failed", "unknown", "conflict"],
@@ -71,12 +80,56 @@ export interface ManagedExecutionStartInput {
   runToolSelectionId?: string
   timeoutMs?: number
   previousManagedRunId?: string
+  evaluateWorkflowGate?: ManagedWorkflowGateEvaluator
+}
+
+export interface ManagedWorkflowGateEvaluationRequest {
+  readonly managedRunId: string
+  readonly runId: string
+  readonly stepId: string
+  readonly stepIndex: number
+  readonly attempt: number
+  readonly phase: ManagedWorkflowGateAssessment["phase"]
+  readonly criteria: readonly string[]
+  readonly criteriaDigest: `sha256:${string}`
+  readonly completedStepIds: readonly string[]
+  readonly providerDisposition?: ManagedRunResult["providerDisposition"]
+  readonly postconditionStatus?: ManagedRunResult["outcome"]["status"]
+  readonly eventsDigest?: `sha256:${string}`
+  readonly signal: AbortSignal
+}
+
+export interface ManagedWorkflowGateEvaluation {
+  status: "satisfied" | "failed" | "not-assessed"
+  basis: "human-attestation" | "system-evaluator"
+  evidenceDigest?: `sha256:${string}`
+  evaluator: ManagedEvaluatorIdentity
+}
+
+export interface ManagedEvaluatorIdentity {
+  kind: "human" | "system"
+  id: string
+  version: string
+  digest: `sha256:${string}`
+}
+
+export type ManagedWorkflowGateEvaluator = (
+  request: ManagedWorkflowGateEvaluationRequest,
+) => Promise<ManagedWorkflowGateEvaluation>
+
+export interface ManagedExecutionApplyConfirmation {
+  readonly decision: "apply-exact-reviewed-inventory"
+  readonly reviewEvidenceId: string
+  readonly reviewEvidenceDigest: `sha256:${string}`
+  readonly changedInventoryDigest: `sha256:${string}`
+  readonly writeEnvelope: readonly string[]
+  readonly writeEnvelopeDigest: `sha256:${string}`
 }
 
 export interface ManagedExecutionApplyInput {
-  authorizationId: string
-  approvedPaths: string[]
+  confirmation: ManagedExecutionApplyConfirmation
   evaluatePostconditions?: ManagedCodexPostconditionEvaluator
+  postconditionEvaluator?: ManagedEvaluatorIdentity
 }
 
 export interface ManagedExecutionReview {
@@ -84,9 +137,11 @@ export interface ManagedExecutionReview {
   readonly result: ManagedRunResult
   readonly evidence: ManagedRunEvidence
   readonly canApply: boolean
+  readonly canDiscard: boolean
   readonly hasLocalJournal: boolean
-  apply(input: ManagedExecutionApplyInput): Promise<ManagedExecutionReview>
-  discard(): Promise<ManagedExecutionReview>
+  readonly applyConfirmation?: ManagedExecutionApplyConfirmation
+  apply(input: ManagedExecutionApplyInput, actorId: string): Promise<ManagedExecutionReview>
+  discard(actorId: string): Promise<ManagedExecutionReview>
   disposeLocalJournal(): Promise<void>
 }
 
@@ -105,6 +160,7 @@ export interface ManagedExecutionHandle {
 export function compileManagedCodexPolicy(
   charter: ExecutionCharter,
   tools: readonly ToolDefinition[],
+  requestedWorkspaceScopes: readonly string[] = [],
 ): { allowCommands: boolean; allowFileChanges: boolean } {
   let shellSelected = false
   let workspaceWriteSelected = false
@@ -122,6 +178,7 @@ export function compileManagedCodexPolicy(
     }
     throw new Error(`Managed Codex cannot enforce selected Tool ${tool.key}; only intrinsic shell and workspace-write controls are supported`)
   }
+  assertCharterToolScopeAuthority(charter, tools, requestedWorkspaceScopes)
   const allowed = charter.permissions.filter((permission) => permission.mode === "allow")
   const capability = (pattern: RegExp): boolean => allowed.some((permission) => pattern.test(permission.capability))
   return {
@@ -129,6 +186,35 @@ export function compileManagedCodexPolicy(
     allowFileChanges: workspaceWriteSelected &&
       charter.expectedEffects.some((effect) => effect === "provisional" || effect === "reversible-change") &&
       capability(/(?:file|workspace|write|edit|change|modify)/iu),
+  }
+}
+
+function assertCharterToolScopeAuthority(
+  charter: ExecutionCharter,
+  tools: readonly ToolDefinition[],
+  requestedWorkspaceScopes: readonly string[],
+): void {
+  const permissionRank = { deny: 0, ask: 1, allow: 2 } as const
+  for (const tool of tools) {
+    for (const required of tool.requiredPermissions ?? []) {
+      const granted = charter.permissions.find((candidate) => candidate.capability === required.capability)
+      if (!granted || permissionRank[granted.mode] < permissionRank[required.mode]) {
+        throw new Error(`The Charter does not grant the selected Tool capability ${required.capability}`)
+      }
+      for (const scope of requestedWorkspaceScopes) {
+        if (!workspacePathWithinEnvelope(scope, granted.scope)) {
+          throw new Error(`Workspace scope ${scope} exceeds Charter permission ${required.capability}`)
+        }
+      }
+    }
+    const allowedWorkspaceScopes = (tool.allowedScopes ?? [])
+      .filter((scope): scope is { kind: "workspace-relative"; path: string } => scope.kind === "workspace-relative")
+      .map((scope) => scope.path)
+    for (const scope of requestedWorkspaceScopes) {
+      if (!workspacePathWithinEnvelope(scope, allowedWorkspaceScopes)) {
+        throw new Error(`Workspace scope ${scope} exceeds selected Tool ${tool.key}`)
+      }
+    }
   }
 }
 
@@ -144,20 +230,32 @@ interface ResolvedExecution {
   mode: ManagedExecutionMode
   adapter: AgentAdapter
   probe: AdapterProbeResult
-  localPrompt: string
-  localContext: string
+  orderedSteps: WorkflowStep[]
+  writeEnvelope: string[]
+  previousManagedRun?: ManagedRunRecord
 }
 
-interface RuntimeCompletion {
+interface StepRuntimeCompletion {
   runtime: ManagedRuntimeResultEnvelope
   codexReview?: ManagedCodexStageReview
   stagingService?: WorkspaceStagingService
   terminationCause: ManagedRunResult["terminationCause"]
 }
 
+interface RuntimeCompletion extends StepRuntimeCompletion {
+  workflow: ManagedWorkflowExecution
+  gateEvaluator: ManagedWorkflowGateEvaluator
+}
+
 interface RuntimeHandle {
   events: AsyncIterable<ManagedRuntimeEvent>
   completion: Promise<RuntimeCompletion>
+  cancel(reason?: string): Promise<void>
+}
+
+interface StepRuntimeHandle {
+  events: AsyncIterable<ManagedRuntimeEvent>
+  completion: Promise<StepRuntimeCompletion>
   cancel(reason?: string): Promise<void>
 }
 
@@ -180,6 +278,22 @@ interface JournalBinding {
   disposed: boolean
 }
 
+class WorkflowControlError extends Error {
+  constructor(readonly control: "cancel-request" | "timeout") {
+    super(control === "timeout" ? "Workflow Step deadline expired" : "Workflow gate assessment was cancelled")
+    this.name = "WorkflowControlError"
+  }
+}
+
+export interface ManagedPendingReviewStatus {
+  readonly managedRunId: string
+  readonly state: ManagedRunRecord["state"]
+  readonly canApply: boolean
+  readonly canDiscard: boolean
+  readonly hasLocalJournal: boolean
+  readonly applyConfirmation?: ManagedExecutionApplyConfirmation
+}
+
 const managedTerminalStates = new Set<ManagedRunState>([
   "completed", "failed", "cancelled", "timed-out", "unknown", "conflict", "discarded",
 ])
@@ -194,6 +308,16 @@ function assertTransition(current: ManagedRunState, next: ManagedRunState): void
   }
 }
 
+function assertEvaluatorIdentity(identity: ManagedEvaluatorIdentity, label: string): void {
+  if (identity.digest !== canonicalDigest({
+    kind: identity.kind,
+    id: identity.id,
+    version: identity.version,
+  })) {
+    throw new Error(`${label} identity digest is invalid`)
+  }
+}
+
 function ref(value: { id: string; revision?: number }, recordType: ManagedRunBindings["product"]["recordType"]): ManagedRunBindings["product"] {
   return {
     recordType,
@@ -201,6 +325,40 @@ function ref(value: { id: string; revision?: number }, recordType: ManagedRunBin
     revision: revisionOf(value),
     digest: canonicalDigest(value),
   }
+}
+
+export function compileManagedWorkflowOrder(plan: WorkflowPlan): WorkflowStep[] {
+  if (plan.strategy !== "sequential") {
+    throw new Error("Managed parallel-readonly execution is not implemented; the runtime fails closed instead of implying safe parallel orchestration")
+  }
+  const byId = new Map(plan.steps.map((step) => [step.id, step]))
+  if (byId.size !== plan.steps.length) throw new Error("Workflow Step identities must be unique")
+  const declaredIndex = new Map(plan.steps.map((step, index) => [step.id, index]))
+  const remainingDependencies = new Map<string, Set<string>>()
+  for (const step of plan.steps) {
+    const dependencies = new Set(step.dependsOn)
+    if (dependencies.has(step.id)) throw new Error(`Workflow Step ${step.id} cannot depend on itself`)
+    for (const dependency of dependencies) {
+      if (!byId.has(dependency)) throw new Error(`Workflow Step ${step.id} has missing dependency ${dependency}`)
+    }
+    remainingDependencies.set(step.id, dependencies)
+  }
+  const ordered: WorkflowStep[] = []
+  const completed = new Set<string>()
+  while (ordered.length < plan.steps.length) {
+    const ready = plan.steps
+      .filter((step) => !completed.has(step.id) && [...remainingDependencies.get(step.id)!].every((id) => completed.has(id)))
+      .sort((left, right) => declaredIndex.get(left.id)! - declaredIndex.get(right.id)!)
+    if (ready.length === 0) throw new Error("Workflow Step dependency graph contains a cycle")
+    const next = ready[0]!
+    ordered.push(next)
+    completed.add(next.id)
+  }
+  return ordered
+}
+
+export function workspacePathWithinEnvelope(path: string, envelope: readonly string[]): boolean {
+  return envelope.some((scope) => scope === "." || path === scope || path.startsWith(`${scope}/`))
 }
 
 function providerRef(value: string | undefined, kind: "thread" | "turn"): `sha256:${string}` | undefined {
@@ -335,6 +493,7 @@ function legacyState(state: ManagedRunState): Run["state"] | undefined {
 function managedStagingEvidence(
   source: ManagedStagingEvidence,
   applyState: "pending" | "applied" | "conflict" | "discarded" | "not-applied",
+  applyDecision?: ManagedApplyDecisionReceipt,
 ): NonNullable<ManagedRunEvidence["staging"]> {
   return {
     baselineDigest: source.baselineDigest,
@@ -344,6 +503,27 @@ function managedStagingEvidence(
     excludedPathSetDigest: canonicalDigest([...source.excludedPaths].sort()),
     applyState,
     applyJournalDigest: source.applyJournalDigest,
+    applyDecision: applyDecision
+      ? { receiptId: applyDecision.id, receiptDigest: canonicalDigest(applyDecision) }
+      : undefined,
+  }
+}
+
+function exactApplyConfirmation(
+  current: PersistedArtifacts,
+  resolved: ResolvedExecution,
+): ManagedExecutionApplyConfirmation {
+  if (current.record.state !== "review-required" || !current.evidence.staging) {
+    throw new Error("Managed Run is not awaiting an exact staged apply decision")
+  }
+  const changedInventory = [...current.evidence.staging.changes].sort((left, right) => left.path.localeCompare(right.path))
+  return {
+    decision: "apply-exact-reviewed-inventory",
+    reviewEvidenceId: current.evidence.id,
+    reviewEvidenceDigest: canonicalDigest(current.evidence) as `sha256:${string}`,
+    changedInventoryDigest: canonicalDigest(changedInventory) as `sha256:${string}`,
+    writeEnvelope: [...resolved.writeEnvelope],
+    writeEnvelopeDigest: canonicalDigest(resolved.writeEnvelope) as `sha256:${string}`,
   }
 }
 
@@ -367,15 +547,16 @@ function uniqueWarnings(
 
 export class ManagedExecutionService {
   private readonly active = new Map<string, RuntimeHandle>()
+  private readonly pendingReviews = new Map<string, ManagedExecutionReview>()
   private readonly resumeSources = new Map<string, ResumeSource>()
   private readonly journals = new Map<string, JournalBinding>()
-  private readonly stageRegistry = new ManagedStageRegistry()
 
   constructor(
     private readonly workspacePath: string,
     private readonly repository: GaepRepository,
     private readonly productStudio: ProductStudioService,
     private readonly adapters: Map<string, AgentAdapter>,
+    private readonly stageRegistry: ManagedStageRegistry = new ManagedStageRegistry(),
   ) {}
 
   async list(): Promise<ManagedRunRecord[]> {
@@ -408,13 +589,126 @@ export class ManagedExecutionService {
     return this.repository.readJson(this.evidencePath(evidenceId), managedRunEvidenceSchema)
   }
 
+  async readApplyDecision(id: string): Promise<ManagedApplyDecisionReceipt> {
+    const receiptId = managedApplyDecisionReceiptSchema.shape.id.parse(id)
+    return this.repository.readJson(this.applyDecisionPath(receiptId), managedApplyDecisionReceiptSchema)
+  }
+
+  async readCurrentArtifacts(managedRunId: string): Promise<PersistedArtifacts> {
+    const record = await this.read(managedRunId)
+    if (!record.resultId || !record.resultDigest) throw new Error("Managed Run has no committed result")
+    const result = await this.readResult(record.resultId)
+    if (canonicalDigest(result) !== record.resultDigest) throw new Error("Managed Run result binding is invalid")
+    const evidence = await this.readEvidence(result.evidenceId)
+    if (canonicalDigest(evidence) !== result.evidenceDigest) throw new Error("Managed Run evidence binding is invalid")
+    return { record, result, evidence }
+  }
+
+  getPendingReview(managedRunId: string): ManagedExecutionReview | undefined {
+    return this.pendingReviews.get(managedRunId)
+  }
+
+  async pendingReviewStatus(managedRunId: string): Promise<ManagedPendingReviewStatus> {
+    const record = await this.read(managedRunId)
+    const review = this.pendingReviews.get(record.id)
+    return {
+      managedRunId: record.id,
+      state: record.state,
+      canApply: review?.canApply ?? false,
+      canDiscard: review?.canDiscard ?? ["review-required", "conflict"].includes(record.state),
+      hasLocalJournal: review?.hasLocalJournal ?? false,
+      applyConfirmation: review?.applyConfirmation,
+    }
+  }
+
+  async listPendingReviewStatuses(): Promise<ManagedPendingReviewStatus[]> {
+    const durable = (await this.list())
+      .filter((record) => ["review-required", "conflict"].includes(record.state))
+      .map((record) => record.id)
+    const ids = [...new Set([...this.pendingReviews.keys(), ...durable])].sort()
+    return Promise.all(ids.map((id) => this.pendingReviewStatus(id)))
+  }
+
+  async applyPendingReview(
+    managedRunId: string,
+    input: ManagedExecutionApplyInput,
+    actorId: string,
+  ): Promise<ManagedExecutionReview> {
+    const review = this.pendingReviews.get(managedRunId)
+    if (!review) throw new Error("Managed Run has no in-process pending staged review")
+    const next = await review.apply(input, actorId)
+    if (!next.canApply && !next.canDiscard) this.pendingReviews.delete(managedRunId)
+    return next
+  }
+
+  async discardPendingReview(managedRunId: string, actorId: string): Promise<ManagedExecutionReview> {
+    const review = this.pendingReviews.get(managedRunId)
+    if (!review) return this.discardDurableReview(managedRunId, actorId)
+    const next = await review.discard(actorId)
+    this.pendingReviews.delete(managedRunId)
+    return next
+  }
+
+  private async discardDurableReview(managedRunId: string, actorId: string): Promise<ManagedExecutionReview> {
+    const current = await this.readCurrentArtifacts(managedRunId)
+    if (!["review-required", "conflict"].includes(current.record.state) || !current.evidence.staging) {
+      throw new Error("Managed Run has no durable staged review to discard")
+    }
+    const localRecovery = await this.stageRegistry.recover(current.record.id)
+    if (localRecovery.status === "absent") {
+      throw new Error("Managed Run durable staged review has no recoverable machine-local stage")
+    }
+    const now = new Date().toISOString()
+    const evidence = managedRunEvidenceSchema.parse({
+      ...current.evidence,
+      id: randomUUID(),
+      workflow: this.discardedWorkflow(current.evidence.workflow),
+      staging: { ...current.evidence.staging, applyState: "discarded" },
+      actualEffects: current.evidence.actualEffects.map((effect) => ({
+        ...effect,
+        status: "blocked" as const,
+        evidenceDigest: canonicalDigest({
+          priorEvidenceDigest: canonicalDigest(current.evidence),
+          effect: effect.effect,
+          disposition: "durable-review-discarded",
+        }),
+      })),
+      capturedAt: now,
+    })
+    const result = managedRunResultSchema.parse({
+      ...current.result,
+      id: randomUUID(),
+      evidenceId: evidence.id,
+      evidenceDigest: canonicalDigest(evidence),
+      previousResultId: current.result.id,
+      previousResultDigest: canonicalDigest(current.result),
+      outcome: { status: "not-assessed", basis: "not-evaluated" },
+      terminalState: "discarded",
+      warnings: localRecovery.status === "quarantined"
+        ? [...new Set([...current.result.warnings, "local-cleanup-pending" as const])]
+        : current.result.warnings,
+      endedAt: now,
+    })
+    const persisted = await this.commitArtifacts(current.record, result, evidence, actorId)
+    return new FinalManagedExecutionReview(this, persisted)
+  }
+
+  syncPendingReview(review: ManagedExecutionReview): void {
+    if (review.canApply || review.canDiscard) this.pendingReviews.set(review.record.id, review)
+    else this.pendingReviews.delete(review.record.id)
+  }
+
   async start(input: ManagedExecutionStartInput, actorId: string): Promise<ManagedExecutionHandle> {
     const resolved = await this.resolve(input)
+    if (!input.evaluateWorkflowGate) {
+      throw new Error("Managed execution requires an explicit Workflow gate evaluator; natural-language gates are never treated as machine-proven")
+    }
     const now = new Date().toISOString()
+    const managedRunId = randomUUID()
     const managedRun = managedRunRecordSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "managed-run",
-      id: randomUUID(),
+      id: managedRunId,
       revision: 1,
       runId: resolved.run.id,
       productId: resolved.run.productId,
@@ -434,6 +728,8 @@ export class ManagedExecutionService {
         capabilityDigest: resolved.run.agent.capabilityDigest,
         runtimeVersion: resolved.probe.capabilities.runtimeVersion,
       },
+      rootManagedRunId: resolved.previousManagedRun?.rootManagedRunId ?? managedRunId,
+      attemptNumber: resolved.previousManagedRun ? resolved.previousManagedRun.attemptNumber + 1 : 1,
       previousManagedRunId: input.previousManagedRunId,
       recovery: { status: "not-required" },
       createdAt: now,
@@ -445,7 +741,7 @@ export class ManagedExecutionService {
 
     let runtime: RuntimeHandle
     try {
-      runtime = await this.launch(resolved, input, managedRun.id)
+      runtime = await this.launch(resolved, input, managedRun.id, actorId)
     } catch (error) {
       await this.persistLaunchFailure(running, resolved, actorId)
       throw error
@@ -479,6 +775,7 @@ export class ManagedExecutionService {
           running,
           resolved,
           completed.runtime,
+          completed.workflow,
           initialState,
           completed.terminationCause,
           completed.codexReview ? "pending" : undefined,
@@ -493,13 +790,14 @@ export class ManagedExecutionService {
         if (providerThreadId && resolved.probe.capabilities.supportsResume) {
           this.resumeSources.set(managedRun.id, { mode: resolved.mode, providerThreadId, runId: managedRun.runId })
         }
-        return new ManagedExecutionReviewHandle(
+        const review = new ManagedExecutionReviewHandle(
           this,
           persisted,
           resolved,
           completed,
-          actorId,
         )
+        if (review.canApply || review.canDiscard) this.pendingReviews.set(managedRun.id, review)
+        return review
       } catch (error) {
         await this.persistRuntimeFailure(running, resolved, actorId).catch(() => undefined)
         throw error
@@ -524,11 +822,38 @@ export class ManagedExecutionService {
 
   async recoverInterrupted(actorId: string): Promise<ManagedRunRecord[]> {
     const interrupted = (await this.list()).filter((record) =>
-      ["running", "review-required", "applying"].includes(record.state) && !this.active.has(record.id),
+      ["prepared", "running", "applying"].includes(record.state) &&
+        !this.active.has(record.id) && !this.pendingReviews.has(record.id),
     )
     const recovered: ManagedRunRecord[] = []
     for (const record of interrupted) {
       const now = new Date().toISOString()
+      const boundPlan = record.bindings.workflowPlan
+        ? await this.productStudio.readWorkflowPlan(record.bindings.workflowPlan.recordId)
+        : undefined
+      if (!boundPlan || canonicalDigest(boundPlan) !== record.bindings.workflowPlan?.digest) {
+        throw new Error("Interrupted Managed Run has no intact exact Workflow Plan binding")
+      }
+      const boundCharter = await this.repository.readJson(
+        this.repository.resolve("sessions", `charter-${record.bindings.charter.recordId}.json`),
+        executionCharterSchema,
+      )
+      if (canonicalDigest(boundCharter) !== record.bindings.charter.digest) {
+        throw new Error("Interrupted Managed Run has no intact exact Charter binding")
+      }
+      const recoveryWorkflow = managedWorkflowExecutionSchema.parse({
+        plan: record.bindings.workflowPlan,
+        strategy: "sequential",
+        orderedStepIds: compileManagedWorkflowOrder(boundPlan).map((step) => step.id),
+        attempts: [],
+        completedStepIds: [],
+        charterGates: {
+          requiredEvidence: this.notAssessedGate("charter-evidence", boundCharter.requiredEvidence),
+          stopConditions: this.notAssessedGate("charter-stop-conditions", boundCharter.stopConditions),
+        },
+        terminalReasonCode: "process-loss",
+        capabilityBoundary: "natural-language-gates-require-explicit-human-or-system-assessment",
+      })
       let localRecoveryWarning: ManagedRunResult["warnings"][number] | undefined
       let localRecoveryStatus: "cleaned" | "quarantined" | "failed" = "cleaned"
       try {
@@ -542,7 +867,7 @@ export class ManagedExecutionService {
         localRecoveryWarning = "local-cleanup-failed"
       }
       const evidence = managedRunEvidenceSchema.parse({
-        schemaVersion: 1,
+        schemaVersion: 2,
         kind: "managed-run-evidence",
         id: randomUUID(),
         managedRunId: record.id,
@@ -551,6 +876,7 @@ export class ManagedExecutionService {
         bindingsDigest: record.bindingsDigest,
         events: [],
         eventsDigest: canonicalDigest([]),
+        workflow: recoveryWorkflow,
         actualEffects: [],
         capturedAt: now,
         authorityBoundary: "evidence-does-not-self-assert-outcome-or-authorization",
@@ -570,6 +896,8 @@ export class ManagedExecutionService {
         terminalState: "unknown",
         evidenceId: evidence.id,
         evidenceDigest: canonicalDigest(evidence),
+        previousResultId: record.resultId,
+        previousResultDigest: record.resultDigest,
         warnings: localRecoveryWarning ? [localRecoveryWarning] : [],
         startedAt: record.startedAt ?? record.updatedAt,
         endedAt: now,
@@ -636,14 +964,19 @@ export class ManagedExecutionService {
     const runId = runSchema.shape.id.parse(input.runId)
     const workflowPlanId = workflowPlanSchema.shape.id.parse(input.workflowPlanId)
     const run = await this.repository.readJson(this.runPath(runId), runSchema)
+    let previousManagedRun: ManagedRunRecord | undefined
     if (input.previousManagedRunId) {
       const previous = await this.read(input.previousManagedRunId)
+      previousManagedRun = previous
       const resume = this.resumeSources.get(previous.id)
       if (previous.runId !== run.id || previous.state !== "unknown") {
         throw new Error("Managed resume requires an unknown prior Managed Run for the same Run")
       }
       if (!resume || resume.runId !== run.id) {
         throw new Error("Managed resume is unavailable because its machine-local provider binding was not retained")
+      }
+      if ((await this.list()).some((candidate) => candidate.previousManagedRunId === previous.id)) {
+        throw new Error("Managed resume lineage already has a successor; branching is forbidden")
       }
       if (run.state !== "unknown") throw new Error("Managed resume requires the underlying Run to be unknown")
     } else if (run.state !== "prepared") {
@@ -704,6 +1037,8 @@ export class ManagedExecutionService {
       }
       return pack
     }))
+    await Promise.all(contextPacks.map((pack) =>
+      this.productStudio.assertContextPackExecutionAuthority(pack, run.agent.agentId)))
     const workflowTools = await Promise.all(workflowPlan.toolDefinitions.map(async (binding) => {
       if (binding.recordType !== "tool-definition") throw new Error("Workflow tool references must target Tool Definitions")
       const tool = await this.productStudio.readToolDefinition(binding.recordId)
@@ -778,9 +1113,14 @@ export class ManagedExecutionService {
     this.assertRuntimeBinding(probe.runtimeBinding, run)
     const mode = this.modeFor(adapter, probe.runtimeBinding)
     this.assertModeEnvelope(mode, charter, contextPacks, workflowTools)
-    this.assertWorkflowExecutable(workflowPlan, run, charter, contextPacks, workflowTools)
-    const localContext = this.buildLocalContext(contextPacks)
-    const localPrompt = this.buildLocalPrompt(charter, workflowPlan, localContext)
+    const orderedSteps = this.assertWorkflowExecutable(workflowPlan, run, charter, contextPacks, workflowTools, mode)
+    if (previousManagedRun && orderedSteps.length !== 1) {
+      throw new Error("Managed provider resume supports exactly one Workflow Step; multi-step checkpoint recovery is not implemented and fails closed")
+    }
+    const writeEnvelope = this.compileWriteEnvelope(workflowPlan, charter)
+    if (mode === "codex-staged") {
+      compileManagedCodexPolicy(charter, workflowTools, writeEnvelope)
+    }
     const tools = workflowTools
     const bindings = managedRunRecordSchema.shape.bindings.parse({
       product: ref(product, "product"),
@@ -798,15 +1138,38 @@ export class ManagedExecutionService {
       runToolSelection: toolSelection ? ref(toolSelection, "run-tool-selection") : undefined,
       tools: tools.map((tool) => ref(tool, "tool-definition")),
     })
-    return { run, initiative, charter, workflowPlan, contextPacks, toolSelection, tools, bindings, mode, adapter, probe, localPrompt, localContext }
+    return {
+      run,
+      initiative,
+      charter,
+      workflowPlan,
+      contextPacks,
+      toolSelection,
+      tools,
+      bindings,
+      mode,
+      adapter,
+      probe,
+      orderedSteps,
+      writeEnvelope,
+      previousManagedRun,
+    }
   }
 
   private async persistPrepared(record: ManagedRunRecord, resolved: ResolvedExecution, actorId: string): Promise<void> {
     await this.repository.withLock(async () => {
       await this.assertBindingsCurrent(resolved)
+      if ((await this.list()).some((candidate) =>
+        candidate.runId === record.runId && !managedTerminalStates.has(candidate.state))) {
+        throw new Error("The Run already has a non-terminal Managed Run")
+      }
       const currentRun = await this.repository.readJson(this.runPath(resolved.run.id), runSchema)
       if (canonicalDigest(currentRun) !== resolved.bindings.run.digest) {
         throw new Error("Run changed before Managed Run preparation")
+      }
+      if (record.previousManagedRunId && (await this.list()).some((candidate) =>
+        candidate.previousManagedRunId === record.previousManagedRunId)) {
+        throw new Error("Managed resume lineage already has a successor; branching is forbidden")
       }
       await this.repository.commitMutation({
         writes: [{ path: this.managedRunPath(record.id), value: record, schema: managedRunRecordSchema, governed: true }],
@@ -869,8 +1232,850 @@ export class ManagedExecutionService {
     resolved: ResolvedExecution,
     input: ManagedExecutionStartInput,
     managedRunId: string,
+    actorId: string,
   ): Promise<RuntimeHandle> {
+    const evaluator = input.evaluateWorkflowGate!
+    const queue = new BoundedAsyncQueue<ManagedRuntimeEvent>(4_096, 16 * 1024 * 1024)
+    const collectedEvents: ManagedRuntimeEvent[] = []
+    const attempts: ManagedWorkflowStepAttempt[] = []
+    const completedStepIds: string[] = []
+    let activeStep: StepRuntimeHandle | undefined
+    let cancellationRequested = false
+    const cancellation = new AbortController()
+    let releaseBackoff: (() => void) | undefined
+    let sequence = 0
+    let charterGates = this.unassessedCharterGates(resolved)
+    let finalStepDeadlineAt: number | undefined
+    let controlledAttempt: {
+      step: WorkflowStep
+      stepIndex: number
+      attempt: number
+      startedAt: string
+      eventStart: number
+      eventEnd?: number
+      preconditions: ManagedWorkflowGateAssessment
+      outputs: ManagedWorkflowGateAssessment
+      evidence: ManagedWorkflowGateAssessment
+      stopConditions: ManagedWorkflowGateAssessment
+      providerDisposition?: ManagedRunResult["providerDisposition"]
+      postconditionStatus: ManagedRunResult["outcome"]["status"]
+    } | undefined
+
+    const completion = (async (): Promise<RuntimeCompletion> => {
+      let last = this.syntheticStepCompletion(resolved, "failed", "provider-failure")
+      let terminalReasonCode = "workflow-not-started"
+      try {
+        for (const [stepIndex, step] of resolved.orderedSteps.entries()) {
+          if (step.dependsOn.some((dependency) => !completedStepIds.includes(dependency))) {
+            throw new Error(`Workflow Step ${step.id} dependency completion invariant failed`)
+          }
+          let stepCompleted = false
+          for (let attemptNumber = 1; attemptNumber <= step.retry.maxAttempts; attemptNumber += 1) {
+            if (cancellationRequested) {
+              return this.workflowCompletion(
+                this.syntheticStepCompletion(resolved, "cancelled", "cancel-request"),
+                resolved,
+                attempts,
+                completedStepIds,
+                "cancel-requested",
+                evaluator,
+                collectedEvents,
+              )
+            }
+            const startedAt = new Date().toISOString()
+            const configuredTimeoutMs = step.timeoutMs === undefined
+              ? input.timeoutMs
+              : input.timeoutMs === undefined
+                ? step.timeoutMs
+                : Math.min(step.timeoutMs, input.timeoutMs)
+            const deadlineAt = configuredTimeoutMs === undefined ? undefined : Date.now() + configuredTimeoutMs
+            finalStepDeadlineAt = deadlineAt
+            controlledAttempt = {
+              step,
+              stepIndex,
+              attempt: attemptNumber,
+              startedAt,
+              eventStart: sequence,
+              preconditions: this.notAssessedGate("preconditions", step.preconditions),
+              outputs: this.notAssessedGate("outputs", step.outputs),
+              evidence: this.notAssessedGate("evidence", step.evidenceCriteria),
+              stopConditions: this.notAssessedGate("stop-conditions", step.stopConditions),
+              postconditionStatus: "not-assessed",
+            }
+            const preconditions = await this.assessWorkflowGate({
+              evaluator,
+              managedRunId,
+              runId: resolved.run.id,
+              step,
+              stepIndex,
+              attempt: attemptNumber,
+              phase: "preconditions",
+              criteria: step.preconditions,
+              completedStepIds,
+              actorId,
+              deadlineAt,
+              signal: cancellation.signal,
+            })
+            controlledAttempt.preconditions = preconditions
+            if (cancellationRequested) {
+              throw new WorkflowControlError("cancel-request")
+            }
+            if (preconditions.status !== "satisfied") {
+              const endedAt = new Date().toISOString()
+              attempts.push(managedWorkflowStepAttemptSchema.parse({
+                id: randomUUID(),
+                revision: 1,
+                stepId: step.id,
+                stepIndex,
+                attempt: attemptNumber,
+                state: "blocked",
+                dependencies: step.dependsOn,
+                contextPacks: step.contextPacks.map((binding) => resolved.bindings.contextPacks.find((candidate) => candidate.recordId === binding.recordId)!),
+                tools: step.toolDefinitions.map((binding) => resolved.bindings.tools.find((candidate) => candidate.recordId === binding.recordId)!),
+                effectEnvelope: step.effectEnvelope,
+                postconditionStatus: "not-assessed",
+                retryReasonCode: "precondition-gate-blocked",
+                gates: {
+                  preconditions,
+                  outputs: this.notAssessedGate("outputs", step.outputs),
+                  evidence: this.notAssessedGate("evidence", step.evidenceCriteria),
+                  stopConditions: this.notAssessedGate("stop-conditions", step.stopConditions),
+                },
+                startedAt,
+                endedAt,
+              }))
+              controlledAttempt = undefined
+              terminalReasonCode = "precondition-gate-blocked"
+              return this.workflowCompletion(last, resolved, attempts, completedStepIds, terminalReasonCode, evaluator, collectedEvents)
+            }
+
+            activeStep = await this.launchStep(
+              resolved,
+              input,
+              managedRunId,
+              step,
+              stepIndex === 0 && attemptNumber === 1,
+              deadlineAt,
+            )
+            if (cancellationRequested) await activeStep.cancel("Managed Run cancellation requested before provider handoff")
+            const eventStart = sequence
+            const drain = (async (): Promise<void> => {
+              for await (const event of activeStep!.events) {
+                const normalized = { ...event, sequence: sequence++ }
+                collectedEvents.push(normalized)
+                queue.push(normalized)
+              }
+            })()
+            last = await activeStep.completion
+            await drain
+            activeStep = undefined
+            const eventEnd = sequence - 1
+            const disposition = last.runtime.portable.terminalDisposition
+            const postconditionStatus = last.runtime.portable.postconditionStatus
+            controlledAttempt.eventEnd = eventEnd
+            controlledAttempt.providerDisposition = disposition
+            controlledAttempt.postconditionStatus = postconditionStatus
+
+            if (last.terminationCause === "timeout" || last.terminationCause === "cancel-request" || cancellationRequested) {
+              const terminationCause = last.terminationCause === "timeout" ? "timeout" : "cancel-request"
+              attempts.push(managedWorkflowStepAttemptSchema.parse({
+                id: randomUUID(),
+                revision: 1,
+                stepId: step.id,
+                stepIndex,
+                attempt: attemptNumber,
+                state: terminationCause === "timeout" ? "timed-out" : "cancelled",
+                dependencies: step.dependsOn,
+                contextPacks: step.contextPacks.map((binding) => resolved.bindings.contextPacks.find((candidate) => candidate.recordId === binding.recordId)!),
+                tools: step.toolDefinitions.map((binding) => resolved.bindings.tools.find((candidate) => candidate.recordId === binding.recordId)!),
+                effectEnvelope: step.effectEnvelope,
+                eventRange: eventEnd >= eventStart ? { startSequence: eventStart, endSequence: eventEnd } : undefined,
+                providerDisposition: disposition,
+                terminationCause,
+                postconditionStatus,
+                retryReasonCode: terminationCause === "timeout" ? "step-timeout" : "cancel-requested",
+                gates: {
+                  preconditions,
+                  outputs: controlledAttempt.outputs,
+                  evidence: controlledAttempt.evidence,
+                  stopConditions: controlledAttempt.stopConditions,
+                },
+                startedAt,
+                endedAt: new Date().toISOString(),
+              }))
+              controlledAttempt = undefined
+              terminalReasonCode = terminationCause === "timeout" ? "step-timeout" : "cancel-requested"
+              return this.workflowCompletion(last, resolved, attempts, completedStepIds, terminalReasonCode, evaluator, collectedEvents)
+            }
+
+            if (last.codexReview) {
+              attempts.push(managedWorkflowStepAttemptSchema.parse({
+                id: randomUUID(),
+                revision: 1,
+                stepId: step.id,
+                stepIndex,
+                attempt: attemptNumber,
+                state: "review-required",
+                dependencies: step.dependsOn,
+                contextPacks: step.contextPacks.map((binding) => resolved.bindings.contextPacks.find((candidate) => candidate.recordId === binding.recordId)!),
+                tools: step.toolDefinitions.map((binding) => resolved.bindings.tools.find((candidate) => candidate.recordId === binding.recordId)!),
+                effectEnvelope: step.effectEnvelope,
+                eventRange: eventEnd >= eventStart ? { startSequence: eventStart, endSequence: eventEnd } : undefined,
+                providerDisposition: disposition,
+                terminationCause: last.terminationCause,
+                postconditionStatus,
+                gates: {
+                  preconditions,
+                  outputs: this.notAssessedGate("outputs", step.outputs),
+                  evidence: this.notAssessedGate("evidence", step.evidenceCriteria),
+                  stopConditions: this.notAssessedGate("stop-conditions", step.stopConditions),
+                },
+                startedAt,
+                endedAt: new Date().toISOString(),
+              }))
+              terminalReasonCode = "apply-review-required"
+              controlledAttempt = undefined
+              return this.workflowCompletion(last, resolved, attempts, completedStepIds, terminalReasonCode, evaluator, collectedEvents)
+            }
+
+            const eventsDigest = canonicalDigest(last.runtime.portable.events) as `sha256:${string}`
+            const gateBase = {
+              evaluator,
+              managedRunId,
+              runId: resolved.run.id,
+              step,
+              stepIndex,
+              attempt: attemptNumber,
+              completedStepIds,
+              actorId,
+              providerDisposition: disposition,
+              postconditionStatus,
+              eventsDigest,
+              deadlineAt,
+              signal: cancellation.signal,
+            }
+            let outputs = this.notAssessedGate("outputs", step.outputs)
+            let evidence = this.notAssessedGate("evidence", step.evidenceCriteria)
+            let stopConditions = this.notAssessedGate("stop-conditions", step.stopConditions)
+            const cancelledDuringGates = (): RuntimeCompletion => {
+              attempts.push(managedWorkflowStepAttemptSchema.parse({
+                id: randomUUID(),
+                revision: 1,
+                stepId: step.id,
+                stepIndex,
+                attempt: attemptNumber,
+                state: "cancelled",
+                dependencies: step.dependsOn,
+                contextPacks: step.contextPacks.map((binding) => resolved.bindings.contextPacks.find((candidate) => candidate.recordId === binding.recordId)!),
+                tools: step.toolDefinitions.map((binding) => resolved.bindings.tools.find((candidate) => candidate.recordId === binding.recordId)!),
+                effectEnvelope: step.effectEnvelope,
+                eventRange: eventEnd >= eventStart ? { startSequence: eventStart, endSequence: eventEnd } : undefined,
+                providerDisposition: disposition,
+                terminationCause: "cancel-request",
+                postconditionStatus,
+                retryReasonCode: "cancel-requested-during-gate-assessment",
+                gates: { preconditions, outputs, evidence, stopConditions },
+                startedAt,
+                endedAt: new Date().toISOString(),
+              }))
+              controlledAttempt = undefined
+              return this.workflowCompletion(
+                this.syntheticStepCompletion(resolved, "cancelled", "cancel-request"),
+                resolved,
+                attempts,
+                completedStepIds,
+                "cancel-requested",
+                evaluator,
+                collectedEvents,
+              )
+            }
+            outputs = await this.assessWorkflowGate({ ...gateBase, phase: "outputs", criteria: step.outputs })
+            controlledAttempt.outputs = outputs
+            if (cancellationRequested) return cancelledDuringGates()
+            evidence = await this.assessWorkflowGate({ ...gateBase, phase: "evidence", criteria: step.evidenceCriteria })
+            controlledAttempt.evidence = evidence
+            if (cancellationRequested) return cancelledDuringGates()
+            stopConditions = await this.assessWorkflowGate({ ...gateBase, phase: "stop-conditions", criteria: step.stopConditions })
+            controlledAttempt.stopConditions = stopConditions
+            if (cancellationRequested) return cancelledDuringGates()
+            const completed = disposition === "completed" && postconditionStatus === "satisfied" &&
+              outputs.status === "satisfied" && evidence.status === "satisfied" && stopConditions.status === "satisfied"
+            const retryReasonCode = completed
+              ? undefined
+              : this.workflowRetryReason(disposition, postconditionStatus, outputs, evidence, stopConditions)
+            const attemptState: ManagedWorkflowStepAttempt["state"] = completed
+              ? "completed"
+              : disposition === "unknown" || disposition === "interrupted"
+                ? "unknown"
+                : "failed"
+            attempts.push(managedWorkflowStepAttemptSchema.parse({
+              id: randomUUID(),
+              revision: 1,
+              stepId: step.id,
+              stepIndex,
+              attempt: attemptNumber,
+              state: attemptState,
+              dependencies: step.dependsOn,
+              contextPacks: step.contextPacks.map((binding) => resolved.bindings.contextPacks.find((candidate) => candidate.recordId === binding.recordId)!),
+              tools: step.toolDefinitions.map((binding) => resolved.bindings.tools.find((candidate) => candidate.recordId === binding.recordId)!),
+              effectEnvelope: step.effectEnvelope,
+              eventRange: eventEnd >= eventStart ? { startSequence: eventStart, endSequence: eventEnd } : undefined,
+              providerDisposition: disposition,
+              terminationCause: last.terminationCause,
+              postconditionStatus,
+              retryReasonCode,
+              gates: { preconditions, outputs, evidence, stopConditions },
+              startedAt,
+              endedAt: new Date().toISOString(),
+            }))
+            controlledAttempt = undefined
+            if (completed) {
+              completedStepIds.push(step.id)
+              stepCompleted = true
+              break
+            }
+            terminalReasonCode = retryReasonCode ?? "workflow-step-failed"
+            if (!this.shouldRetryWorkflowStep(step, attemptNumber, terminalReasonCode, last.runtime)) {
+              return this.workflowCompletion(last, resolved, attempts, completedStepIds, terminalReasonCode, evaluator, collectedEvents)
+            }
+            if (cancellationRequested) continue
+            if (step.retry.backoffMs > 0) {
+              await new Promise<void>((resolve) => {
+                const done = (): void => {
+                  clearTimeout(timer)
+                  releaseBackoff = undefined
+                  resolve()
+                }
+                const timer = setTimeout(done, step.retry.backoffMs)
+                releaseBackoff = done
+              })
+            }
+          }
+          if (!stepCompleted) {
+            terminalReasonCode = "workflow-retry-exhausted"
+            return this.workflowCompletion(last, resolved, attempts, completedStepIds, terminalReasonCode, evaluator, collectedEvents)
+          }
+        }
+        const finalAttempt = attempts.at(-1)
+        const finalStep = resolved.orderedSteps.at(-1)
+        if (!finalAttempt || !finalStep) throw new Error("Completed Workflow has no final step evidence")
+        const charterGateBase = {
+          evaluator,
+          managedRunId,
+          runId: resolved.run.id,
+          step: finalStep,
+          stepIndex: finalAttempt.stepIndex,
+          attempt: finalAttempt.attempt,
+          completedStepIds,
+          actorId,
+          providerDisposition: last.runtime.portable.terminalDisposition,
+          postconditionStatus: last.runtime.portable.postconditionStatus,
+          eventsDigest: canonicalDigest(collectedEvents) as `sha256:${string}`,
+          deadlineAt: finalStepDeadlineAt,
+          signal: cancellation.signal,
+        }
+        const requiredEvidence = await this.assessWorkflowGate({
+          ...charterGateBase,
+          phase: "charter-evidence",
+          criteria: resolved.charter.requiredEvidence,
+        })
+        if (cancellationRequested) {
+          return this.workflowCompletion(
+            this.syntheticStepCompletion(resolved, "cancelled", "cancel-request"),
+            resolved,
+            attempts,
+            completedStepIds,
+            "cancel-requested",
+            evaluator,
+            collectedEvents,
+            { requiredEvidence, stopConditions: this.notAssessedGate("charter-stop-conditions", resolved.charter.stopConditions) },
+          )
+        }
+        const charterStopConditions = await this.assessWorkflowGate({
+          ...charterGateBase,
+          phase: "charter-stop-conditions",
+          criteria: resolved.charter.stopConditions,
+        })
+        charterGates = { requiredEvidence, stopConditions: charterStopConditions }
+        if (cancellationRequested) {
+          return this.workflowCompletion(
+            this.syntheticStepCompletion(resolved, "cancelled", "cancel-request"),
+            resolved,
+            attempts,
+            completedStepIds,
+            "cancel-requested",
+            evaluator,
+            collectedEvents,
+            charterGates,
+          )
+        }
+        terminalReasonCode = requiredEvidence.status !== "satisfied"
+          ? "charter-evidence-gate-failed"
+          : charterStopConditions.status !== "satisfied"
+            ? "charter-stop-boundary-gate-failed"
+            : "workflow-completed"
+        return this.workflowCompletion(
+          last,
+          resolved,
+          attempts,
+          completedStepIds,
+          terminalReasonCode,
+          evaluator,
+          collectedEvents,
+          charterGates,
+        )
+      } catch (error) {
+        if (error instanceof WorkflowControlError) {
+          if (controlledAttempt) {
+            const attempt = controlledAttempt
+            attempts.push(managedWorkflowStepAttemptSchema.parse({
+              id: randomUUID(),
+              revision: 1,
+              stepId: attempt.step.id,
+              stepIndex: attempt.stepIndex,
+              attempt: attempt.attempt,
+              state: error.control === "timeout" ? "timed-out" : "cancelled",
+              dependencies: attempt.step.dependsOn,
+              contextPacks: attempt.step.contextPacks.map((binding) => resolved.bindings.contextPacks.find((candidate) => candidate.recordId === binding.recordId)!),
+              tools: attempt.step.toolDefinitions.map((binding) => resolved.bindings.tools.find((candidate) => candidate.recordId === binding.recordId)!),
+              effectEnvelope: attempt.step.effectEnvelope,
+              eventRange: attempt.eventEnd !== undefined && attempt.eventEnd >= attempt.eventStart
+                ? { startSequence: attempt.eventStart, endSequence: attempt.eventEnd }
+                : undefined,
+              providerDisposition: attempt.providerDisposition,
+              terminationCause: error.control,
+              postconditionStatus: attempt.postconditionStatus,
+              retryReasonCode: error.control === "timeout" ? "step-timeout" : "cancel-requested",
+              gates: {
+                preconditions: attempt.preconditions,
+                outputs: attempt.outputs,
+                evidence: attempt.evidence,
+                stopConditions: attempt.stopConditions,
+              },
+              startedAt: attempt.startedAt,
+              endedAt: new Date().toISOString(),
+            }))
+            controlledAttempt = undefined
+          }
+          const cause = error.control
+          return this.workflowCompletion(
+            this.syntheticStepCompletion(
+              resolved,
+              cause === "timeout" ? "cancelled" : "cancelled",
+              cause,
+            ),
+            resolved,
+            attempts,
+            completedStepIds,
+            cause === "timeout" ? "step-timeout" : "cancel-requested",
+            evaluator,
+            collectedEvents,
+            charterGates,
+          )
+        }
+        queue.fail(error instanceof Error ? error : new Error(String(error)))
+        throw error
+      } finally {
+        queue.close()
+      }
+    })()
+
+    return {
+      events: queue,
+      completion,
+      cancel: async (reason?: string): Promise<void> => {
+        cancellationRequested = true
+        cancellation.abort(reason ?? "Managed Run cancellation requested")
+        releaseBackoff?.()
+        await activeStep?.cancel(reason)
+      },
+    }
+  }
+
+  private syntheticStepCompletion(
+    resolved: ResolvedExecution,
+    disposition: ManagedTerminalDisposition,
+    terminationCause: ManagedRunResult["terminationCause"],
+  ): StepRuntimeCompletion {
+    return {
+      runtime: {
+        portable: {
+          schemaVersion: 1,
+          provider: {
+            adapterId: resolved.run.agent.adapterId,
+            agentId: resolved.run.agent.agentId,
+            runtimeVersion: resolved.probe.capabilities.runtimeVersion,
+            capabilityDigest: resolved.run.agent.capabilityDigest as `sha256:${string}`,
+          },
+          events: [],
+          terminalDisposition: disposition,
+          warnings: [],
+          postconditionStatus: disposition === "completed" ? "not-assessed" : "failed",
+        },
+        local: {},
+      },
+      terminationCause,
+    }
+  }
+
+  private workflowCompletion(
+    completion: StepRuntimeCompletion,
+    resolved: ResolvedExecution,
+    attempts: ManagedWorkflowStepAttempt[],
+    completedStepIds: string[],
+    terminalReasonCode: string,
+    gateEvaluator: ManagedWorkflowGateEvaluator,
+    events: ManagedRuntimeEvent[],
+    charterGates: ManagedWorkflowExecution["charterGates"] = this.unassessedCharterGates(resolved),
+  ): RuntimeCompletion {
+    const workflow = managedWorkflowExecutionSchema.parse({
+      plan: resolved.bindings.workflowPlan,
+      strategy: "sequential",
+      orderedStepIds: resolved.orderedSteps.map((step) => step.id),
+      attempts,
+      completedStepIds,
+      charterGates,
+      terminalReasonCode,
+      capabilityBoundary: "natural-language-gates-require-explicit-human-or-system-assessment",
+    })
+    const completed = terminalReasonCode === "workflow-completed" &&
+      completedStepIds.length === resolved.orderedSteps.length
+    const reviewRequired = terminalReasonCode === "apply-review-required"
+    const postconditionStatus = completed
+      ? "satisfied"
+      : reviewRequired
+        ? completion.runtime.portable.postconditionStatus
+        : completion.terminationCause === "cancel-request"
+          ? "not-assessed"
+          : completion.terminationCause === "process-loss"
+            ? "indeterminate"
+            : completion.runtime.portable.postconditionStatus === "indeterminate"
+              ? "indeterminate"
+              : completion.runtime.portable.postconditionStatus === "not-assessed"
+                ? "not-assessed"
+                : "failed"
+    return {
+      ...completion,
+      runtime: {
+        portable: {
+          ...completion.runtime.portable,
+          events: events.map((event, sequence) => ({ ...event, sequence })),
+          postconditionStatus,
+        },
+        local: completion.runtime.local,
+      },
+      workflow,
+      gateEvaluator,
+    }
+  }
+
+  private emptyWorkflow(resolved: ResolvedExecution, terminalReasonCode: string): ManagedWorkflowExecution {
+    return managedWorkflowExecutionSchema.parse({
+      plan: resolved.bindings.workflowPlan,
+      strategy: "sequential",
+      orderedStepIds: resolved.orderedSteps.map((step) => step.id),
+      attempts: [],
+      completedStepIds: [],
+      charterGates: this.unassessedCharterGates(resolved),
+      terminalReasonCode,
+      capabilityBoundary: "natural-language-gates-require-explicit-human-or-system-assessment",
+    })
+  }
+
+  private discardedWorkflow(workflow: ManagedWorkflowExecution): ManagedWorkflowExecution {
+    const attempts = workflow.attempts.map((attempt, index) =>
+      index === workflow.attempts.length - 1 && (
+        attempt.state === "review-required" ||
+        (workflow.terminalReasonCode === "source-workspace-conflict" && attempt.state === "unknown")
+      )
+        ? {
+            ...attempt,
+            revision: attempt.revision + 1,
+            previousSnapshotDigest: canonicalDigest(attempt),
+            state: "discarded" as const,
+            endedAt: new Date().toISOString(),
+          }
+        : attempt)
+    return managedWorkflowExecutionSchema.parse({
+      ...workflow,
+      attempts,
+      terminalReasonCode: "staged-changes-discarded",
+    })
+  }
+
+  private async finalizeAppliedWorkflow(
+    completion: RuntimeCompletion,
+    resolved: ResolvedExecution,
+    runtime: ManagedRuntimeResultEnvelope,
+    managedRunId: string,
+    actorId: string,
+  ): Promise<ManagedWorkflowExecution> {
+    const lastAttempt = completion.workflow.attempts.at(-1)
+    if (!lastAttempt || lastAttempt.state !== "review-required") {
+      throw new Error("Applied staged run has no exact review-required Workflow attempt")
+    }
+    const step = resolved.orderedSteps.find((candidate) => candidate.id === lastAttempt.stepId)
+    if (!step) throw new Error("Applied staged run Workflow Step binding is missing")
+    const conflict = runtime.portable.staging?.applyJournalDigest !== undefined && !runtime.portable.staging.applied
+    if (conflict) {
+      return managedWorkflowExecutionSchema.parse({
+        ...completion.workflow,
+        attempts: completion.workflow.attempts.map((attempt) => attempt.id === lastAttempt.id
+          ? {
+              ...attempt,
+              revision: attempt.revision + 1,
+              previousSnapshotDigest: canonicalDigest(attempt),
+              state: "unknown" as const,
+              providerDisposition: runtime.portable.terminalDisposition,
+              terminationCause: "normal" as const,
+              postconditionStatus: "indeterminate" as const,
+              retryReasonCode: "source-workspace-conflict",
+              endedAt: new Date().toISOString(),
+            }
+          : attempt),
+        terminalReasonCode: "source-workspace-conflict",
+      })
+    }
+    const eventsDigest = canonicalDigest(runtime.portable.events) as `sha256:${string}`
+    const gateControl = new AbortController()
+    const gateBase = {
+      evaluator: completion.gateEvaluator,
+      managedRunId,
+      runId: resolved.run.id,
+      step,
+      stepIndex: lastAttempt.stepIndex,
+      attempt: lastAttempt.attempt,
+      completedStepIds: completion.workflow.completedStepIds,
+      actorId,
+      providerDisposition: runtime.portable.terminalDisposition,
+      postconditionStatus: runtime.portable.postconditionStatus,
+      eventsDigest,
+      deadlineAt: step.timeoutMs === undefined ? undefined : Date.now() + step.timeoutMs,
+      signal: gateControl.signal,
+    }
+    const outputs = await this.assessWorkflowGate({ ...gateBase, phase: "outputs", criteria: step.outputs })
+    const evidence = await this.assessWorkflowGate({ ...gateBase, phase: "evidence", criteria: step.evidenceCriteria })
+    const stopConditions = await this.assessWorkflowGate({ ...gateBase, phase: "stop-conditions", criteria: step.stopConditions })
+    const stepCompleted = runtime.portable.terminalDisposition === "completed" &&
+      runtime.portable.postconditionStatus === "satisfied" &&
+      outputs.status === "satisfied" && evidence.status === "satisfied" && stopConditions.status === "satisfied"
+    const retryReasonCode = stepCompleted
+      ? undefined
+      : this.workflowRetryReason(
+          runtime.portable.terminalDisposition,
+          runtime.portable.postconditionStatus,
+          outputs,
+          evidence,
+          stopConditions,
+        )
+    const nextCompletedStepIds = stepCompleted
+      ? [...new Set([...completion.workflow.completedStepIds, step.id])]
+      : completion.workflow.completedStepIds
+    const charterGates = stepCompleted
+      ? {
+          requiredEvidence: await this.assessWorkflowGate({
+            ...gateBase,
+            phase: "charter-evidence",
+            criteria: resolved.charter.requiredEvidence,
+            completedStepIds: nextCompletedStepIds,
+          }),
+          stopConditions: await this.assessWorkflowGate({
+            ...gateBase,
+            phase: "charter-stop-conditions",
+            criteria: resolved.charter.stopConditions,
+            completedStepIds: nextCompletedStepIds,
+          }),
+        }
+      : completion.workflow.charterGates
+    const completed = stepCompleted &&
+      charterGates.requiredEvidence.status === "satisfied" &&
+      charterGates.stopConditions.status === "satisfied"
+    const attempts = completion.workflow.attempts.map((attempt) => attempt.id === lastAttempt.id
+      ? managedWorkflowStepAttemptSchema.parse({
+          ...attempt,
+          revision: attempt.revision + 1,
+          previousSnapshotDigest: canonicalDigest(attempt),
+          state: stepCompleted ? "completed" : "failed",
+          providerDisposition: runtime.portable.terminalDisposition,
+          terminationCause: "normal",
+          postconditionStatus: runtime.portable.postconditionStatus,
+          retryReasonCode,
+          gates: { ...attempt.gates, outputs, evidence, stopConditions },
+          endedAt: new Date().toISOString(),
+        })
+      : attempt)
+    return managedWorkflowExecutionSchema.parse({
+      ...completion.workflow,
+      attempts,
+      completedStepIds: nextCompletedStepIds,
+      charterGates,
+      terminalReasonCode: completed
+        ? "workflow-completed"
+        : retryReasonCode ?? (charterGates.requiredEvidence.status !== "satisfied"
+            ? "charter-evidence-gate-failed"
+            : "charter-stop-boundary-gate-failed"),
+    })
+  }
+
+  private async assessWorkflowGate(input: {
+    evaluator: ManagedWorkflowGateEvaluator
+    managedRunId: string
+    runId: string
+    step: WorkflowStep
+    stepIndex: number
+    attempt: number
+    phase: ManagedWorkflowGateAssessment["phase"]
+    criteria: readonly string[]
+    completedStepIds: readonly string[]
+    actorId: string
+    providerDisposition?: ManagedRunResult["providerDisposition"]
+    postconditionStatus?: ManagedRunResult["outcome"]["status"]
+    eventsDigest?: `sha256:${string}`
+    deadlineAt?: number
+    signal: AbortSignal
+  }): Promise<ManagedWorkflowGateAssessment> {
+    const criteriaDigest = canonicalDigest(input.criteria) as `sha256:${string}`
+    if (input.signal.aborted) throw new WorkflowControlError("cancel-request")
+    const remainingMs = input.deadlineAt === undefined ? undefined : input.deadlineAt - Date.now()
+    if (remainingMs !== undefined && remainingMs <= 0) throw new WorkflowControlError("timeout")
+    const evaluatorControl = new AbortController()
+    const cancelEvaluation = (): void => evaluatorControl.abort(input.signal.reason)
+    input.signal.addEventListener("abort", cancelEvaluation, { once: true })
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    let rejectCancellation: (() => void) | undefined
+    const controlled = new Promise<never>((_resolve, reject) => {
+      rejectCancellation = () => reject(new WorkflowControlError("cancel-request"))
+      input.signal.addEventListener("abort", rejectCancellation, { once: true })
+      if (remainingMs !== undefined) {
+        timeout = setTimeout(() => {
+          evaluatorControl.abort("Workflow Step deadline expired")
+          reject(new WorkflowControlError("timeout"))
+        }, remainingMs)
+      }
+    })
+    const evaluation = input.evaluator({
+      managedRunId: input.managedRunId,
+      runId: input.runId,
+      stepId: input.step.id,
+      stepIndex: input.stepIndex,
+      attempt: input.attempt,
+      phase: input.phase,
+      criteria: [...input.criteria],
+      criteriaDigest,
+      completedStepIds: [...input.completedStepIds],
+      providerDisposition: input.providerDisposition,
+      postconditionStatus: input.postconditionStatus,
+      eventsDigest: input.eventsDigest,
+      signal: evaluatorControl.signal,
+    })
+    let evaluated: ManagedWorkflowGateEvaluation
+    try {
+      evaluated = await Promise.race([evaluation, controlled])
+    } finally {
+      if (timeout) clearTimeout(timeout)
+      input.signal.removeEventListener("abort", cancelEvaluation)
+      if (rejectCancellation) input.signal.removeEventListener("abort", rejectCancellation)
+    }
+    assertEvaluatorIdentity(evaluated.evaluator, "Workflow gate evaluator")
+    return managedWorkflowGateAssessmentSchema.parse({
+      phase: input.phase,
+      interpretation: input.phase === "stop-conditions" || input.phase === "charter-stop-conditions"
+        ? "stop-boundary-complied"
+        : "criteria-satisfied",
+      criteriaDigest,
+      status: evaluated.status,
+      basis: evaluated.basis,
+      evidenceDigest: evaluated.evidenceDigest,
+      actor: {
+        kind: evaluated.evaluator.kind,
+        id: evaluated.evaluator.id,
+      },
+      evaluator: evaluated.evaluator,
+      assessedAt: new Date().toISOString(),
+    })
+  }
+
+  private notAssessedGate(
+    phase: ManagedWorkflowGateAssessment["phase"],
+    criteria: readonly string[],
+  ): ManagedWorkflowGateAssessment {
+    return managedWorkflowGateAssessmentSchema.parse({
+      phase,
+      interpretation: phase === "stop-conditions" || phase === "charter-stop-conditions"
+        ? "stop-boundary-complied"
+        : "criteria-satisfied",
+      criteriaDigest: canonicalDigest(criteria),
+      status: "not-assessed",
+      basis: "not-evaluated",
+      actor: { kind: "system", id: "gaep.workflow-coordinator" },
+      evaluator: {
+        kind: "system",
+        id: "gaep.workflow-coordinator",
+        version: "1",
+        digest: canonicalDigest({ kind: "system", id: "gaep.workflow-coordinator", version: "1" }),
+      },
+      assessedAt: new Date().toISOString(),
+    })
+  }
+
+  private unassessedCharterGates(resolved: ResolvedExecution): ManagedWorkflowExecution["charterGates"] {
+    return {
+      requiredEvidence: this.notAssessedGate("charter-evidence", resolved.charter.requiredEvidence),
+      stopConditions: this.notAssessedGate("charter-stop-conditions", resolved.charter.stopConditions),
+    }
+  }
+
+  private workflowRetryReason(
+    disposition: ManagedTerminalDisposition,
+    postconditionStatus: ManagedRunResult["outcome"]["status"],
+    outputs: ManagedWorkflowGateAssessment,
+    evidence: ManagedWorkflowGateAssessment,
+    stopConditions: ManagedWorkflowGateAssessment,
+  ): string {
+    if (disposition !== "completed") return safeEventCode(`provider-${disposition}`)
+    if (postconditionStatus !== "satisfied") return safeEventCode(`postcondition-${postconditionStatus}`)
+    if (outputs.status !== "satisfied") return "output-gate-failed"
+    if (evidence.status !== "satisfied") return "evidence-gate-failed"
+    if (stopConditions.status !== "satisfied") return "stop-boundary-gate-failed"
+    return "workflow-step-failed"
+  }
+
+  private shouldRetryWorkflowStep(
+    step: WorkflowStep,
+    attempt: number,
+    reasonCode: string,
+    runtime: ManagedRuntimeResultEnvelope,
+  ): boolean {
+    if (attempt >= step.retry.maxAttempts) return false
+    const configured = new Set(step.retry.retryOn.map((value) => safeEventCode(value)))
+    const observed = new Set([
+      safeEventCode(reasonCode),
+      safeEventCode(`provider-${runtime.portable.terminalDisposition}`),
+      ...runtime.portable.events
+        .filter((event): event is Extract<ManagedRuntimeEvent, { type: "error" }> => event.type === "error")
+        .map((event) => safeEventCode(event.code)),
+    ])
+    return [...observed].some((code) => configured.has(code))
+  }
+
+  private async launchStep(
+    resolved: ResolvedExecution,
+    input: ManagedExecutionStartInput,
+    managedRunId: string,
+    step: WorkflowStep,
+    allowResume: boolean,
+    deadlineAt?: number,
+  ): Promise<StepRuntimeHandle> {
+    const timeoutMs = deadlineAt === undefined ? undefined : deadlineAt - Date.now()
+    if (timeoutMs !== undefined && timeoutMs <= 0) throw new WorkflowControlError("timeout")
     const resume = input.previousManagedRunId ? this.resumeSources.get(input.previousManagedRunId) : undefined
+    if (resume && !allowResume) throw new Error("Managed provider resume can bind only the first Workflow Step attempt")
+    const stepPacks = step.contextPacks.map((binding) =>
+      resolved.contextPacks.find((pack) => pack.id === binding.recordId)!)
+    const stepTools = step.toolDefinitions.map((binding) =>
+      resolved.tools.find((tool) => tool.id === binding.recordId)!)
+    const stepContext = this.buildLocalContext(stepPacks)
+    const stepPrompt = this.buildStepLocalPrompt(resolved.charter, resolved.workflowPlan, step, stepContext)
     if (resolved.mode === "manual-offline") {
       if (!(resolved.adapter instanceof DeterministicManualAdapter)) {
         throw new Error("Manual managed execution requires DeterministicManualAdapter")
@@ -879,29 +2084,45 @@ export class ManagedExecutionService {
       const handle = resume
         ? resolved.adapter.resume(scriptId, resume.providerThreadId)
         : resolved.adapter.start({ scriptId })
+      let timedOut = false
+      const completion = (async (): Promise<StepRuntimeCompletion> => {
+        let timeout: ReturnType<typeof setTimeout> | undefined
+        if (timeoutMs !== undefined) {
+          timeout = setTimeout(() => {
+            timedOut = true
+            void handle.cancel("Workflow Step deadline expired")
+          }, timeoutMs)
+        }
+        try {
+          const runtime = await handle.completion
+          return {
+            runtime,
+            terminationCause: timedOut ? "timeout" : this.causeFromDisposition(runtime.portable.terminalDisposition),
+          }
+        } finally {
+          if (timeout) clearTimeout(timeout)
+        }
+      })()
       return {
         events: handle.events,
-        completion: handle.completion.then((runtime) => ({
-          runtime,
-          terminationCause: this.causeFromDisposition(runtime.portable.terminalDisposition),
-        })),
+        completion,
         cancel: (reason) => handle.cancel(reason),
       }
     }
     if (resolved.probe.runtimeBinding.kind !== "executable") throw new Error("Managed provider executable is unavailable")
     if (resolved.mode === "codex-staged") {
       const stagingService = new WorkspaceStagingService()
-      const policy = compileManagedCodexPolicy(resolved.charter, resolved.tools)
+      const policy = compileManagedCodexPolicy(resolved.charter, stepTools, resolved.writeEnvelope)
       const handle = await startManagedCodexStagedRun({
         executable: resolved.probe.runtimeBinding.executablePath,
         sourceWorkspacePath: this.workspacePath,
         model: resolved.run.agent.modelId,
-        prompt: resolved.localPrompt,
+        prompt: stepPrompt,
         developerInstructions: this.localDeveloperInstructions(resolved.charter),
         resumeThreadId: resume?.providerThreadId,
         runtimeVersion: resolved.probe.capabilities.runtimeVersion,
         capabilityDigest: resolved.run.agent.capabilityDigest as `sha256:${string}`,
-        timeoutMs: input.timeoutMs,
+        timeoutMs,
         policy,
         stagingService,
         managedRunId,
@@ -932,13 +2153,13 @@ export class ManagedExecutionService {
       runtimeVersion: resolved.probe.capabilities.runtimeVersion,
       capabilityDigest: resolved.run.agent.capabilityDigest as `sha256:${string}`,
       model: resolved.run.agent.modelId,
-      objective: resolved.charter.objective,
-      contextPack: resolved.localContext,
+      objective: stepPrompt,
+      contextPack: stepContext,
       effort: typeof effort === "string" && ["low", "medium", "high", "xhigh", "max"].includes(effort)
         ? effort as "low" | "medium" | "high" | "xhigh" | "max"
         : undefined,
       maxBudgetUsd: typeof maxBudgetUsd === "number" ? maxBudgetUsd : undefined,
-      timeoutMs: input.timeoutMs,
+      timeoutMs,
     })
     return {
       events: handle.events,
@@ -951,16 +2172,19 @@ export class ManagedExecutionService {
     current: ManagedRunRecord,
     resolved: ResolvedExecution,
     runtime: ManagedRuntimeResultEnvelope,
+    workflow: ManagedWorkflowExecution,
     state: ManagedRunResult["terminalState"],
     cause: ManagedRunResult["terminationCause"],
     stagingState: NonNullable<ManagedRunEvidence["staging"]>["applyState"] | undefined,
     outcomeBasis: ManagedRunResult["outcome"]["basis"],
     actorId: string,
+    applyDecision?: ManagedApplyDecisionReceipt,
+    outcomeEvaluator?: ManagedEvaluatorIdentity,
   ): Promise<PersistedArtifacts> {
     const events = normalizeManagedRuntimeEvents(runtime.portable.events)
     const now = new Date().toISOString()
     const staging = runtime.portable.staging && stagingState
-      ? managedStagingEvidence(runtime.portable.staging, stagingState)
+      ? managedStagingEvidence(runtime.portable.staging, stagingState, applyDecision)
       : undefined
     const effectsSeed = canonicalDigest({ events, staging, disposition: runtime.portable.terminalDisposition })
     const actualEffects = [...new Set(resolved.charter.expectedEffects)].map((effect) => ({
@@ -969,7 +2193,7 @@ export class ManagedExecutionService {
       evidenceDigest: canonicalDigest({ effectsSeed, effect }),
     }))
     const evidence = managedRunEvidenceSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "managed-run-evidence",
       id: randomUUID(),
       managedRunId: current.id,
@@ -978,6 +2202,7 @@ export class ManagedExecutionService {
       bindingsDigest: current.bindingsDigest,
       events,
       eventsDigest: canonicalDigest(events),
+      workflow,
       staging,
       actualEffects,
       capturedAt: now,
@@ -996,10 +2221,16 @@ export class ManagedExecutionService {
       providerTurnRef: providerRef(runtime.portable.providerTurnId, "turn"),
       providerDisposition: runtime.portable.terminalDisposition,
       terminationCause: cause,
-      outcome: { status: runtime.portable.postconditionStatus, basis: outcomeBasis },
+      outcome: {
+        status: runtime.portable.postconditionStatus,
+        basis: outcomeBasis,
+        ...(outcomeEvaluator ? { evaluator: outcomeEvaluator } : {}),
+      },
       terminalState: state,
       evidenceId: evidence.id,
       evidenceDigest: canonicalDigest(evidence),
+      previousResultId: current.resultId,
+      previousResultDigest: current.resultDigest,
       warnings: uniqueWarnings(runtime, events, current.mode),
       startedAt: current.startedAt ?? current.updatedAt,
       endedAt: now,
@@ -1067,10 +2298,47 @@ export class ManagedExecutionService {
     })
   }
 
-  private async transitionForApply(current: ManagedRunRecord, actorId: string): Promise<ManagedRunRecord> {
+  private async transitionForApply(
+    current: PersistedArtifacts,
+    resolved: ResolvedExecution,
+    confirmation: ManagedExecutionApplyConfirmation,
+    actorId: string,
+  ): Promise<{ record: ManagedRunRecord; receipt: ManagedApplyDecisionReceipt }> {
+    const expectedConfirmation = exactApplyConfirmation(current, resolved)
+    if (canonicalDigest(confirmation) !== canonicalDigest(expectedConfirmation)) {
+      throw new Error("Apply confirmation does not match the exact reviewed evidence, changed inventory, and write envelope")
+    }
+    const changedInventory = [...current.evidence.staging!.changes].sort((left, right) => left.path.localeCompare(right.path))
+    for (const change of changedInventory) {
+      if (!workspacePathWithinEnvelope(change.path, resolved.writeEnvelope)) {
+        throw new Error(`Staged change ${change.path} is outside the exact confirmed workspace write envelope`)
+      }
+    }
+    const receipt = managedApplyDecisionReceiptSchema.parse({
+      schemaVersion: 1,
+      kind: "managed-apply-decision",
+      id: randomUUID(),
+      managedRunId: current.record.id,
+      managedRunRevision: current.record.revision,
+      runId: current.record.runId,
+      productId: current.record.productId,
+      bindingsDigest: current.record.bindingsDigest,
+      reviewResultId: current.result.id,
+      reviewResultDigest: canonicalDigest(current.result),
+      reviewEvidenceId: current.evidence.id,
+      reviewEvidenceDigest: canonicalDigest(current.evidence),
+      changedInventory,
+      changedInventoryDigest: canonicalDigest(changedInventory),
+      writeEnvelope: resolved.writeEnvelope,
+      writeEnvelopeDigest: canonicalDigest(resolved.writeEnvelope),
+      actor: { kind: "human", id: actorId },
+      decision: "apply-exact-reviewed-inventory",
+      decidedAt: new Date().toISOString(),
+      authorityBoundary: "apply-decision-is-exact-run-evidence-inventory-actor-and-scope",
+    })
     return this.repository.withLock(async () => {
-      const persisted = await this.repository.readJson(this.managedRunPath(current.id), managedRunRecordSchema)
-      if (persisted.revision !== current.revision || persisted.state !== "review-required") {
+      const persisted = await this.repository.readJson(this.managedRunPath(current.record.id), managedRunRecordSchema)
+      if (persisted.revision !== current.record.revision || persisted.state !== "review-required") {
         throw new Error("Managed Run is no longer awaiting apply review")
       }
       assertTransition(persisted.state, "applying")
@@ -1078,18 +2346,32 @@ export class ManagedExecutionService {
         ...persisted,
         revision: persisted.revision + 1,
         state: "applying",
+        applyDecisionId: receipt.id,
+        applyDecisionDigest: canonicalDigest(receipt),
         updatedAt: new Date().toISOString(),
       })
       await this.repository.commitMutation({
-        writes: [{ path: this.managedRunPath(next.id), value: next, schema: managedRunRecordSchema, governed: true }],
+        writes: [
+          { path: this.applyDecisionPath(receipt.id), value: receipt, schema: managedApplyDecisionReceiptSchema, governed: true },
+          { path: this.managedRunPath(next.id), value: next, schema: managedRunRecordSchema, governed: true },
+        ],
         audit: {
           eventType: "managed-run.applying",
           actor: { kind: "human", id: actorId },
           subjectId: next.id,
-          payload: { from: "review-required", to: "applying", revision: next.revision, recordDigest: canonicalDigest(next) },
+          payload: {
+            from: "review-required",
+            to: "applying",
+            revision: next.revision,
+            recordDigest: canonicalDigest(next),
+            applyDecisionId: receipt.id,
+            applyDecisionDigest: canonicalDigest(receipt),
+            changedInventoryDigest: receipt.changedInventoryDigest,
+            writeEnvelopeDigest: receipt.writeEnvelopeDigest,
+          },
         },
       })
-      return next
+      return { record: next, receipt }
     })
   }
 
@@ -1100,15 +2382,22 @@ export class ManagedExecutionService {
     actorId: string,
   ): Promise<PersistedArtifacts> {
     if (!completion.codexReview) throw new Error("This Managed Run has no staged workspace to discard")
-    const runtime = await completion.codexReview.discard()
     if (current.record.state !== "review-required" && current.record.state !== "conflict") return current
+    const durable = await this.read(current.record.id)
+    if (durable.revision !== current.record.revision || durable.state !== current.record.state) {
+      throw new Error("Managed Run changed before staged discard")
+    }
+    const runtime = await completion.codexReview.discard()
     const events = normalizeManagedRuntimeEvents(runtime.portable.events)
     const now = new Date().toISOString()
+    const applyDecision = current.record.applyDecisionId
+      ? await this.readApplyDecision(current.record.applyDecisionId)
+      : undefined
     const staging = runtime.portable.staging
-      ? managedStagingEvidence(runtime.portable.staging, "discarded")
+      ? managedStagingEvidence(runtime.portable.staging, "discarded", applyDecision)
       : undefined
     const evidence = managedRunEvidenceSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "managed-run-evidence",
       id: randomUUID(),
       managedRunId: current.record.id,
@@ -1117,6 +2406,7 @@ export class ManagedExecutionService {
       bindingsDigest: current.record.bindingsDigest,
       events,
       eventsDigest: canonicalDigest(events),
+      workflow: this.discardedWorkflow(completion.workflow),
       staging,
       actualEffects: [...new Set(resolved.charter.expectedEffects)].map((effect) => ({
         effect,
@@ -1131,6 +2421,8 @@ export class ManagedExecutionService {
       id: randomUUID(),
       evidenceId: evidence.id,
       evidenceDigest: canonicalDigest(evidence),
+      previousResultId: current.result.id,
+      previousResultDigest: canonicalDigest(current.result),
       outcome: { status: "not-assessed", basis: "not-evaluated" },
       terminalState: "discarded",
       endedAt: now,
@@ -1168,6 +2460,7 @@ export class ManagedExecutionService {
       current,
       resolved,
       runtime,
+      this.emptyWorkflow(resolved, cause === "protocol-error" ? "launch-protocol-error" : "process-loss"),
       cause === "protocol-error" ? "failed" : "unknown",
       cause,
       undefined,
@@ -1269,23 +2562,28 @@ export class ManagedExecutionService {
     return content
   }
 
-  private buildLocalPrompt(charter: ExecutionCharter, plan: WorkflowPlan, context: string): string {
-    const workflowSteps = plan.steps.flatMap((step, index) => [
-      `Step ${index + 1}: ${step.title}`,
+  private buildStepLocalPrompt(
+    charter: ExecutionCharter,
+    plan: WorkflowPlan,
+    step: WorkflowStep,
+    context: string,
+  ): string {
+    const workflowStep = [
+      `Step: ${step.title}`,
       `- Objective: ${step.objective}`,
       `- Preconditions: ${step.preconditions.join("; ")}`,
       `- Required outputs: ${step.outputs.join("; ")}`,
       `- Evidence criteria: ${step.evidenceCriteria.join("; ")}`,
       `- Effects: ${step.effectEnvelope.join(", ") || "none"}`,
       `- Stop conditions: ${step.stopConditions.join("; ")}`,
-    ])
+    ]
     return [
       "Execute only the confirmed GAEP Managed Run in the isolated staging workspace.",
       `Objective: ${charter.objective}`,
       `Workflow: ${plan.title}`,
       `Workflow strategy: ${plan.strategy}`,
-      "Execute these Workflow steps in their declared dependency order:",
-      ...workflowSteps,
+      "Execute only this coordinator-authorized Workflow Step:",
+      ...workflowStep,
       "Stop conditions:",
       ...charter.stopConditions.map((condition) => `- ${condition}`),
       "Forbidden actions:",
@@ -1301,27 +2599,81 @@ export class ManagedExecutionService {
     charter: ExecutionCharter,
     packs: ContextPack[],
     tools: ToolDefinition[],
-  ): void {
-    if (plan.strategy !== "sequential") {
-      throw new Error("The current managed runtime supports only sequential Workflow Plans")
+    mode: ManagedExecutionMode,
+  ): WorkflowStep[] {
+    const ordered = compileManagedWorkflowOrder(plan)
+    if (mode === "codex-staged" && ordered.length !== 1) {
+      throw new Error("Managed Codex staging currently supports exactly one Workflow Step; multi-step staging fails closed until one isolated stage can be safely continued across steps")
     }
     const agentIds = new Set([run.agent.agentId, run.agent.adapterId])
     const packIds = new Set(packs.map((pack) => pack.id))
     const toolIds = new Set(tools.map((tool) => tool.id))
+    const usedPackIds = new Set<string>()
+    const usedToolIds = new Set<string>()
+    const usedEffects = new Set<ExecutionCharter["expectedEffects"][number]>()
     for (const step of plan.steps) {
       if (step.responsibility.kind !== "agent" || !agentIds.has(step.responsibility.id)) {
         throw new Error("Every managed Workflow step must be assigned to the exact selected Agent")
       }
-      if (step.contextPacks.some((binding) => !packIds.has(binding.recordId))) {
-        throw new Error("Workflow Step Context bindings must be included in the exact Plan Context inventory")
+      if (new Set(step.contextPacks.map((binding) => binding.recordId)).size !== step.contextPacks.length) {
+        throw new Error(`Workflow Step ${step.id} Context bindings must be unique`)
       }
-      if (step.toolDefinitions.some((binding) => !toolIds.has(binding.recordId))) {
-        throw new Error("Workflow Step Tool bindings must be included in the exact Plan Tool inventory")
+      if (new Set(step.toolDefinitions.map((binding) => binding.recordId)).size !== step.toolDefinitions.length) {
+        throw new Error(`Workflow Step ${step.id} Tool bindings must be unique`)
+      }
+      for (const binding of step.contextPacks) {
+        const pack = packs.find((candidate) => candidate.id === binding.recordId)
+        if (!packIds.has(binding.recordId) || !pack) {
+          throw new Error("Workflow Step Context bindings must be included in the exact Plan Context inventory")
+        }
+        this.assertExactReference(binding, pack, "Workflow Step Context Pack")
+        usedPackIds.add(pack.id)
+      }
+      for (const binding of step.toolDefinitions) {
+        const tool = tools.find((candidate) => candidate.id === binding.recordId)
+        if (!toolIds.has(binding.recordId) || !tool) {
+          throw new Error("Workflow Step Tool bindings must be included in the exact Plan Tool inventory")
+        }
+        this.assertExactReference(binding, tool, "Workflow Step Tool")
+        usedToolIds.add(tool.id)
       }
       if (step.effectEnvelope.some((effect) => !charter.expectedEffects.includes(effect))) {
         throw new Error("Workflow Step effects exceed the confirmed Charter")
       }
+      for (const effect of step.effectEnvelope) usedEffects.add(effect)
     }
+    if (canonicalDigest([...packIds].sort()) !== canonicalDigest([...usedPackIds].sort())) {
+      throw new Error("Workflow Plan Context inventory contains declarations that no Workflow Step uses")
+    }
+    if (canonicalDigest([...toolIds].sort()) !== canonicalDigest([...usedToolIds].sort())) {
+      throw new Error("Workflow Plan Tool inventory contains declarations that no Workflow Step uses")
+    }
+    if (canonicalDigest([...usedEffects].sort()) !== canonicalDigest([...charter.expectedEffects].sort())) {
+      throw new Error("Confirmed Charter effect inventory contains declarations that no Workflow Step uses")
+    }
+    return ordered
+  }
+
+  private compileWriteEnvelope(plan: WorkflowPlan, charter: ExecutionCharter): string[] {
+    if ((charter.managedIntent?.requestedScopes ?? []).some((scope) => scope.kind !== "workspace-relative")) {
+      throw new Error("The current local managed runtime cannot enforce logical or external requested scopes and fails closed")
+    }
+    const planScopes = [...new Set(plan.steps.flatMap((step) => step.scope.write.map((scope) => {
+      if (scope.kind !== "workspace-relative") {
+        throw new Error("Managed staged workspace writes require workspace-relative Workflow Step scopes")
+      }
+      return scope.path
+    })))].sort()
+    const intentScopes = [...new Set((charter.managedIntent?.requestedScopes ?? [])
+      .filter((scope): scope is { kind: "workspace-relative"; path: string } => scope.kind === "workspace-relative")
+      .map((scope) => scope.path))].sort()
+    if (canonicalDigest(planScopes) !== canonicalDigest(intentScopes)) {
+      throw new Error("Workflow Step write scopes must exactly match the confirmed managed workspace write envelope")
+    }
+    if (charter.expectedEffects.includes("reversible-change") && intentScopes.length === 0) {
+      throw new Error("Reversible managed change requires a non-empty exact workspace write envelope")
+    }
+    return intentScopes
   }
 
   private localDeveloperInstructions(charter: ExecutionCharter): string {
@@ -1369,6 +2721,10 @@ export class ManagedExecutionService {
     return this.repository.resolve("sessions", `managed-evidence-${id}.json`)
   }
 
+  private applyDecisionPath(id: string): string {
+    return this.repository.resolve("sessions", `managed-apply-decision-${id}.json`)
+  }
+
   private runPath(id: string): string {
     return this.repository.resolve("sessions", `run-${id}.json`)
   }
@@ -1381,48 +2737,87 @@ export class ManagedExecutionService {
     actorId: string,
   ): Promise<PersistedArtifacts> {
     if (!completion.codexReview || !completion.stagingService) throw new Error("This Managed Run has no staged changes to apply")
-    const applying = await this.transitionForApply(current.record, actorId)
-    let runtime: ManagedRuntimeResultEnvelope
+    if ((input.evaluatePostconditions === undefined) !== (input.postconditionEvaluator === undefined)) {
+      throw new Error("A postcondition evaluator callback and its exact identity must be supplied together")
+    }
+    if (input.postconditionEvaluator) assertEvaluatorIdentity(input.postconditionEvaluator, "Postcondition evaluator")
+    const stagedEvidence = current.evidence.staging
+    if (!stagedEvidence || stagedEvidence.applyState !== "pending") {
+      throw new Error("Managed Run has no exact pending staging evidence")
+    }
+    const inspected = completion.codexReview.inspection
+    if (
+      inspected.baselineDigest !== stagedEvidence.baselineDigest ||
+      inspected.finalDigest !== stagedEvidence.finalDigest ||
+      canonicalDigest(inspected.changes) !== canonicalDigest(stagedEvidence.changes)
+    ) {
+      throw new Error("Machine-local staged inspection no longer matches the exact persisted review evidence")
+    }
+    const { record: applying, receipt } = await this.transitionForApply(current, resolved, input.confirmation, actorId)
     try {
-      runtime = await completion.codexReview.apply(input)
+      const runtime = await completion.codexReview.apply({
+        authorizationId: canonicalDigest(receipt),
+        approvedPaths: receipt.changedInventory.map((change) => change.path),
+        evaluatePostconditions: input.evaluatePostconditions,
+      })
+      const applyState = runtime.portable.staging?.applied
+        ? "applied"
+        : runtime.portable.staging?.applyJournalDigest
+          ? "conflict"
+          : "not-applied"
+      const workflow = await this.finalizeAppliedWorkflow(completion, resolved, runtime, applying.id, actorId)
+      const governedRuntime = workflow.terminalReasonCode === "workflow-completed"
+        ? runtime
+        : {
+            ...runtime,
+            portable: {
+              ...runtime.portable,
+              postconditionStatus: applyState === "conflict"
+                ? "indeterminate" as const
+                : runtime.portable.postconditionStatus === "not-assessed"
+                  ? "not-assessed" as const
+                  : "failed" as const,
+            },
+          }
+      const state = applyState === "conflict"
+        ? "conflict"
+        : terminalState(
+            governedRuntime.portable.terminalDisposition,
+            "normal",
+            governedRuntime.portable.postconditionStatus,
+            false,
+          )
+      const persisted = await this.persistRuntimeResult(
+        applying,
+        resolved,
+        governedRuntime,
+        workflow,
+        state,
+        "normal",
+        applyState,
+        input.evaluatePostconditions ? "postcondition-evaluator" : "not-evaluated",
+        actorId,
+        receipt,
+        input.postconditionEvaluator,
+      )
+      const journalPath = runtime.local.applyJournalPath
+      const journalDigest = runtime.portable.staging?.applyJournalDigest
+      if (journalPath && journalDigest) {
+        this.journals.set(current.record.id, {
+          stagingService: completion.stagingService,
+          path: journalPath,
+          digest: journalDigest,
+          disposed: false,
+        })
+      }
+      return persisted
     } catch (error) {
-      await this.persistSyntheticFailure(applying, resolved, "process-loss", actorId).catch(() => undefined)
+      const latest = await this.read(applying.id).catch(() => applying)
+      if (latest.state === "applying") {
+        await this.persistSyntheticFailure(latest, resolved, "process-loss", actorId).catch(() => undefined)
+      }
       throw error
     }
-    const applyState = runtime.portable.staging?.applied
-      ? "applied"
-      : runtime.portable.staging?.applyJournalDigest
-        ? "conflict"
-        : "not-applied"
-    const state = applyState === "conflict"
-      ? "conflict"
-      : terminalState(
-          runtime.portable.terminalDisposition,
-          "normal",
-          runtime.portable.postconditionStatus,
-          false,
-        )
-    const persisted = await this.persistRuntimeResult(
-      applying,
-      resolved,
-      runtime,
-      state,
-      "normal",
-      applyState,
-      input.evaluatePostconditions ? "postcondition-evaluator" : "not-evaluated",
-      actorId,
-    )
-    const journalPath = runtime.local.applyJournalPath
-    const journalDigest = runtime.portable.staging?.applyJournalDigest
-    if (journalPath && journalDigest) {
-      this.journals.set(current.record.id, {
-        stagingService: completion.stagingService,
-        path: journalPath,
-        digest: journalDigest,
-        disposed: false,
-      })
-    }
-    return persisted
   }
 
   async discardReview(
@@ -1457,39 +2852,94 @@ export class ManagedExecutionService {
 }
 
 class ManagedExecutionReviewHandle implements ManagedExecutionReview {
+  private operationInProgress = false
+
   constructor(
     private readonly service: ManagedExecutionService,
     private persisted: PersistedArtifacts,
     private readonly resolved: ResolvedExecution,
     private readonly runtimeCompletion: RuntimeCompletion,
-    private readonly actorId: string,
   ) {}
 
   get record(): ManagedRunRecord { return structuredClone(this.persisted.record) }
   get result(): ManagedRunResult { return structuredClone(this.persisted.result) }
   get evidence(): ManagedRunEvidence { return structuredClone(this.persisted.evidence) }
   get canApply(): boolean { return this.persisted.record.state === "review-required" && this.runtimeCompletion.codexReview !== undefined }
+  get canDiscard(): boolean {
+    return ["review-required", "conflict"].includes(this.persisted.record.state) && this.runtimeCompletion.codexReview !== undefined
+  }
   get hasLocalJournal(): boolean { return this.service.hasJournal(this.persisted.record.id) }
+  get applyConfirmation(): ManagedExecutionApplyConfirmation | undefined {
+    return this.canApply ? exactApplyConfirmation(this.persisted, this.resolved) : undefined
+  }
 
-  async apply(input: ManagedExecutionApplyInput): Promise<ManagedExecutionReview> {
+  async apply(input: ManagedExecutionApplyInput, actorId: string): Promise<ManagedExecutionReview> {
     if (!this.canApply) throw new Error("Managed Run is not awaiting staged apply review")
-    this.persisted = await this.service.applyReview(
-      this.persisted,
-      this.resolved,
-      this.runtimeCompletion,
-      input,
-      this.actorId,
-    )
-    return this
+    if (this.operationInProgress) throw new Error("A Managed Run review decision is already in progress")
+    this.operationInProgress = true
+    try {
+      this.persisted = await this.service.applyReview(
+        this.persisted,
+        this.resolved,
+        this.runtimeCompletion,
+        input,
+        actorId,
+      )
+      this.runtimeCompletion.workflow = this.persisted.evidence.workflow
+      this.service.syncPendingReview(this)
+      return this
+    } catch (error) {
+      this.persisted = await this.service.readCurrentArtifacts(this.persisted.record.id).catch(() => this.persisted)
+      this.service.syncPendingReview(this)
+      throw error
+    } finally {
+      this.operationInProgress = false
+    }
+  }
+
+  async discard(actorId: string): Promise<ManagedExecutionReview> {
+    if (!this.canDiscard) throw new Error("Managed Run is not awaiting staged discard review")
+    if (this.operationInProgress) throw new Error("A Managed Run review decision is already in progress")
+    this.operationInProgress = true
+    try {
+      this.persisted = await this.service.discardReview(
+        this.persisted,
+        this.resolved,
+        this.runtimeCompletion,
+        actorId,
+      )
+      this.runtimeCompletion.workflow = this.persisted.evidence.workflow
+      this.service.syncPendingReview(this)
+      return this
+    } finally {
+      this.operationInProgress = false
+    }
+  }
+
+  async disposeLocalJournal(): Promise<void> {
+    await this.service.disposeJournal(this.persisted.record.id)
+  }
+}
+
+class FinalManagedExecutionReview implements ManagedExecutionReview {
+  constructor(
+    private readonly service: ManagedExecutionService,
+    private readonly persisted: PersistedArtifacts,
+  ) {}
+
+  get record(): ManagedRunRecord { return structuredClone(this.persisted.record) }
+  get result(): ManagedRunResult { return structuredClone(this.persisted.result) }
+  get evidence(): ManagedRunEvidence { return structuredClone(this.persisted.evidence) }
+  get canApply(): boolean { return false }
+  get canDiscard(): boolean { return false }
+  get hasLocalJournal(): boolean { return this.service.hasJournal(this.persisted.record.id) }
+  get applyConfirmation(): undefined { return undefined }
+
+  async apply(): Promise<ManagedExecutionReview> {
+    throw new Error("Managed Run review is already final")
   }
 
   async discard(): Promise<ManagedExecutionReview> {
-    this.persisted = await this.service.discardReview(
-      this.persisted,
-      this.resolved,
-      this.runtimeCompletion,
-      this.actorId,
-    )
     return this
   }
 

@@ -176,7 +176,7 @@ input.on("line", (line) => {
       })
       return
     }
-    if (text === "write-stage") {
+    if (text === "write-stage" || text.includes("Complete one staged receipt fixture")) {
       if (lastThreadParams.sandbox === "read-only") {
         complete(message.params.threadId, turnId, "failed")
         return

@@ -123,6 +123,7 @@ class StudioShell {
   private deferredReasons = new Map<string, string>()
   private revisitTriggers = new Map<string, string>()
   private draftDirty = false
+  private pendingActionFocusLabel?: string
   private readonly sortState = new Map<string, { key: string; direction: "ascending" | "descending" }>()
 
   constructor(
@@ -147,6 +148,7 @@ class StudioShell {
       case "studio.action-result":
         this.announce(message.result.announcement, message.result.status === "rejected" ? "assertive" : "polite")
         if (message.snapshot && message.result.status === "accepted") this.applySnapshot(message.snapshot)
+        else if (message.result.status === "rejected") this.pendingActionFocusLabel = undefined
         if (message.result.focusFieldId) {
           requestAnimationFrame(() => {
             const fieldId = message.result.focusFieldId!
@@ -202,7 +204,16 @@ class StudioShell {
     shell.append(workspace, this.renderFooter(snapshot))
     this.root.replaceChildren(shell)
     this.root.setAttribute("aria-busy", "false")
-    if (focusRoute || this.previousRoute !== snapshot.route) requestAnimationFrame(() => this.focusPageHeading())
+    const focusLabel = this.pendingActionFocusLabel
+    this.pendingActionFocusLabel = undefined
+    if (focusLabel && !focusRoute) {
+      requestAnimationFrame(() => {
+        const target = Array.from(this.root.querySelectorAll<HTMLButtonElement>("button"))
+          .find((button) => button.textContent === focusLabel)
+        const focusTarget = target ?? document.getElementById("studio-page-title")
+        focusTarget?.focus()
+      })
+    } else if (focusRoute || this.previousRoute !== snapshot.route) requestAnimationFrame(() => this.focusPageHeading())
     this.previousRoute = snapshot.route
   }
 
@@ -638,6 +649,7 @@ class StudioShell {
     if (page.limitations.length > 0) container.append(this.renderIssues("Capability limitations", page.limitations))
     container.append(
       this.renderTable(page.contextPacks),
+      this.renderTable(page.instructionPrivilegeGrants),
       this.renderTable(page.workflowPlans),
       this.renderTable(page.toolDefinitions),
       this.renderTable(page.runToolSelections),
@@ -740,6 +752,18 @@ class StudioShell {
     if (table.truncation) {
       const notice = element("p", "prose muted", `${table.truncation.message} Showing ${table.truncation.shown} of ${table.truncation.total}.`)
       notice.setAttribute("role", "status")
+      section.append(notice)
+    }
+    if (table.pagination) {
+      const first = table.pagination.total === 0 ? 0 : table.pagination.offset + 1
+      const last = Math.min(table.pagination.offset + table.rows.length, table.pagination.total)
+      const notice = element(
+        "p",
+        "prose muted table-pagination-status",
+        `Showing records ${first}–${last} of ${table.pagination.total}.`,
+      )
+      notice.setAttribute("role", "status")
+      notice.setAttribute("aria-live", "polite")
       section.append(notice)
     }
     if (table.actions.length > 0) section.append(this.renderActionRow(table.actions))
@@ -944,7 +968,10 @@ class StudioShell {
     }
     button.addEventListener("click", () => {
       if (control.action.kind === "navigate") this.navigate(control.action.route)
-      else this.perform(control.action)
+      else {
+        if (control.action.kind === "domain-page") this.pendingActionFocusLabel = control.label
+        this.perform(control.action)
+      }
     })
     return button
   }

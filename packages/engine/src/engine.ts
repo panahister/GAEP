@@ -21,6 +21,10 @@ import {
   type ExecutionManagedIntent,
   type Handoff,
   type Initiative,
+  type ManagedApplyDecisionReceipt,
+  type ManagedRunEvidence,
+  type ManagedRunRecord,
+  type ManagedRunResult,
   type Product,
   type Run,
   type ToolPermission,
@@ -28,6 +32,7 @@ import {
 import {
   canonicalDigest,
   capabilityDigest,
+  ManagedStageRegistry,
   type AdapterProbeOptions,
   type AdapterProbeResult,
   type AgentAdapter,
@@ -37,8 +42,11 @@ import {
 import { GaepRepository, type GaepRepositoryOptions } from "./repository.js"
 import {
   ManagedExecutionService,
+  type ManagedExecutionApplyInput,
   type ManagedExecutionHandle,
+  type ManagedExecutionReview,
   type ManagedExecutionStartInput,
+  type ManagedPendingReviewStatus,
 } from "./managed-execution.js"
 import { ProductStudioService } from "./product-studio.js"
 
@@ -127,7 +135,12 @@ export class GaepEngine {
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
-  constructor(readonly workspacePath: string, adapters: AgentAdapter[], repositoryOptions: GaepRepositoryOptions = {}) {
+  constructor(
+    readonly workspacePath: string,
+    adapters: AgentAdapter[],
+    repositoryOptions: GaepRepositoryOptions = {},
+    managedStageRegistry: ManagedStageRegistry = new ManagedStageRegistry(),
+  ) {
     this.repository = new GaepRepository(workspacePath, repositoryOptions)
     this.productStudio = new ProductStudioService(
       this.repository,
@@ -143,6 +156,7 @@ export class GaepEngine {
       this.repository,
       this.productStudio,
       this.adapters,
+      managedStageRegistry,
     )
   }
 
@@ -525,7 +539,11 @@ export class GaepEngine {
     const recoveredManagedRuns = await Promise.all(managedRecovered.map((managed) =>
       this.repository.readJson(this.repository.resolve("sessions", `run-${managed.runId}.json`), runSchema),
     ))
-    const interrupted = (await this.listRuns()).filter((run) => run.state === "running")
+    const durableReviews = new Set((await this.managedExecution.list())
+      .filter((managed) => managed.state === "review-required" || managed.state === "conflict")
+      .map((managed) => managed.runId))
+    const interrupted = (await this.listRuns()).filter((run) =>
+      run.state === "running" && !durableReviews.has(run.id))
     const recovered: Run[] = [...recoveredManagedRuns]
     for (const run of interrupted) {
       recovered.push(await this.markRunState(
@@ -766,6 +784,50 @@ export class GaepEngine {
 
   async startManagedRun(input: ManagedExecutionStartInput, actorId: string): Promise<ManagedExecutionHandle> {
     return this.managedExecution.start(input, actorId)
+  }
+
+  async listManagedRuns(): Promise<ManagedRunRecord[]> {
+    return this.managedExecution.list()
+  }
+
+  async readManagedRun(id: string): Promise<ManagedRunRecord> {
+    return this.managedExecution.read(id)
+  }
+
+  async readManagedRunResult(id: string): Promise<ManagedRunResult> {
+    return this.managedExecution.readResult(id)
+  }
+
+  async readManagedRunEvidence(id: string): Promise<ManagedRunEvidence> {
+    return this.managedExecution.readEvidence(id)
+  }
+
+  async readManagedApplyDecision(id: string): Promise<ManagedApplyDecisionReceipt> {
+    return this.managedExecution.readApplyDecision(id)
+  }
+
+  async listPendingManagedReviewStatuses(): Promise<ManagedPendingReviewStatus[]> {
+    return this.managedExecution.listPendingReviewStatuses()
+  }
+
+  async readPendingManagedReviewStatus(id: string): Promise<ManagedPendingReviewStatus> {
+    return this.managedExecution.pendingReviewStatus(id)
+  }
+
+  async applyPendingManagedReview(
+    id: string,
+    input: ManagedExecutionApplyInput,
+    actorId: string,
+  ): Promise<ManagedExecutionReview> {
+    return this.managedExecution.applyPendingReview(id, input, actorId)
+  }
+
+  async discardPendingManagedReview(id: string, actorId: string): Promise<ManagedExecutionReview> {
+    return this.managedExecution.discardPendingReview(id, actorId)
+  }
+
+  async cancelManagedRun(id: string, reason?: string): Promise<void> {
+    return this.managedExecution.cancel(id, reason)
   }
 
   async markRunState(

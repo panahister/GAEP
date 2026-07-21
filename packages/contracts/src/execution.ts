@@ -72,6 +72,9 @@ export const executionManagedIntentSchema = z.object({
   if (new Set(intent.requestedEffects).size !== intent.requestedEffects.length) {
     context.addIssue({ code: "custom", path: ["requestedEffects"], message: "Managed intent effects must be unique" })
   }
+  if (new Set(intent.requestedScopes.map((scope) => JSON.stringify(scope))).size !== intent.requestedScopes.length) {
+    context.addIssue({ code: "custom", path: ["requestedScopes"], message: "Managed intent scopes must be unique" })
+  }
 })
 
 export const toolPermissionSchema = z.object({
