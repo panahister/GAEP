@@ -42,6 +42,8 @@ describe("agent process safety", () => {
     const environment = filterChildEnvironment({
       PATH: "/bin",
       HOME: "/home/founder",
+      CODEX_HOME: "/private/codex",
+      CLAUDE_CONFIG_DIR: "/private/claude",
       GITHUB_TOKEN: "must-not-pass",
       PROVIDER_OPT_IN: "allowed",
     }, ["PROVIDER_OPT_IN"])
@@ -52,6 +54,13 @@ describe("agent process safety", () => {
       PROVIDER_OPT_IN: "allowed",
     })
     expect(environment).not.toHaveProperty("GITHUB_TOKEN")
+    expect(environment).not.toHaveProperty("CODEX_HOME")
+    expect(environment).not.toHaveProperty("CLAUDE_CONFIG_DIR")
+
+    expect(filterChildEnvironment({
+      CODEX_HOME: "/private/codex",
+      CLAUDE_CONFIG_DIR: "/private/claude",
+    }, ["CODEX_HOME"])).toEqual({ CODEX_HOME: "/private/codex" })
   })
 
   it("captures stdout and stderr split across real process events", async () => {

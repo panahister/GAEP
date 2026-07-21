@@ -53,8 +53,8 @@ export async function createManagedClaudeAnalysisInvocation(
         `Context pack:\n${request.contextPack}`,
       ].join("\n\n"),
       inputMode: "text-once",
-      environment: filterChildEnvironment(),
-      environmentPolicy: { inherit: "allowlist", allowedKeys: [...DEFAULT_CHILD_ENVIRONMENT_KEYS] },
+      environment: filterChildEnvironment(process.env, ["CLAUDE_CONFIG_DIR"]),
+      environmentPolicy: { inherit: "allowlist", allowedKeys: [...DEFAULT_CHILD_ENVIRONMENT_KEYS, "CLAUDE_CONFIG_DIR"] },
       protocol: "stream-json",
       maturity: "stable",
       warnings: [

@@ -177,7 +177,7 @@ export class CodexAppServerSupervisor {
     this.intentionalStop = false
     const child = spawn(this.fingerprint.canonicalPath, args, {
       cwd: this.options.processCwd,
-      env: filterChildEnvironment(),
+      env: filterChildEnvironment(process.env, ["CODEX_HOME"]),
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
       detached: true,
