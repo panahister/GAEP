@@ -41,7 +41,7 @@ describe("managed Workflow host compilation", () => {
       effectEnvelope: ["reversible-change"],
       allowedScopes: [{ kind: "workspace-relative", path: "src" }],
       policy: { requiresHumanConfirmation: true },
-    } as ToolDefinition
+    } as unknown as ToolDefinition
     const withTool = {
       ...plan,
       toolDefinitions: [{

@@ -51,6 +51,9 @@ export function buildManagedWorkflowEnvelope(
   }
   const expectedEffects = unique(plan.steps.flatMap((step) => step.effectEnvelope), (effect) => effect)
   const requestedScopes = unique(plan.steps.flatMap((step) => step.scope.write), (scope) => JSON.stringify(scope))
+  const requestedWorkspaceScopes = requestedScopes
+    .filter((scope): scope is { kind: "workspace-relative"; path: string } => scope.kind === "workspace-relative")
+    .map((scope) => scope.path)
   const managedIntent: ExecutionManagedIntent = {
     workflowPlan: {
       recordType: "workflow-plan",
@@ -81,7 +84,7 @@ export function buildManagedWorkflowEnvelope(
         byCapability.set(permission.capability, {
           capability: permission.capability,
           mode: permission.mode,
-          scope: [...new Set([...(existing?.scope ?? []), ...permission.scope])].sort(),
+          scope: [...new Set([...(existing?.scope ?? []), ...requestedWorkspaceScopes])].sort(),
         })
       }
     }
