@@ -12,7 +12,8 @@
     "dist/studio-client.js",
     "media/gaep.svg",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "engines": {
     "vscode": "^1.103.0"
