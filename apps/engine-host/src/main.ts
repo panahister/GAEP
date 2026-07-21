@@ -1,36 +1,67 @@
 #!/usr/bin/env node
-import { createInterface } from "node:readline"
+import { realpathSync, statSync } from "node:fs"
+import { isAbsolute } from "node:path"
 
 import { EngineHost } from "./host.js"
+import { normalizeRpcError, RpcFrameDecoder, type DecodedRpcFrame } from "./rpc.js"
 
 const workspaceFlag = process.argv.indexOf("--workspace")
-const workspacePath = workspaceFlag >= 0 ? process.argv[workspaceFlag + 1] : undefined
-if (!workspacePath) {
+const requestedWorkspace = workspaceFlag >= 0 ? process.argv[workspaceFlag + 1] : undefined
+if (!requestedWorkspace || !isAbsolute(requestedWorkspace)) {
   process.stderr.write("Usage: gaep-engine --workspace <absolute-path>\n")
   process.exit(64)
 }
 
+let workspacePath: string
+try {
+  workspacePath = realpathSync(requestedWorkspace)
+  if (!statSync(workspacePath).isDirectory()) throw new Error("not a directory")
+} catch {
+  process.stderr.write("GAEP workspace must be an existing directory\n")
+  process.exit(72)
+}
+
 const host = new EngineHost(workspacePath)
-const lines = createInterface({ input: process.stdin, crlfDelay: Number.POSITIVE_INFINITY })
+const decoder = new RpcFrameDecoder()
 let queue = Promise.resolve()
 
-lines.on("line", (line) => {
-  queue = queue.then(async () => {
-    let id: string | number | null = null
-    try {
-      const request = EngineHost.parse(line)
-      id = request.id
-      const result = await host.dispatch(request)
-      process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id, result })}\n`)
-    } catch (error) {
-      process.stdout.write(`${JSON.stringify({
-        jsonrpc: "2.0",
-        id,
-        error: {
-          code: -32_000,
-          message: error instanceof Error ? error.message : "Unknown engine error",
-        },
-      })}\n`)
-    }
-  })
-})
+function writeResult(id: string | number, result: unknown): void {
+  process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id, result })}\n`)
+}
+
+function writeError(id: string | number | null, error: unknown): void {
+  const normalized = normalizeRpcError(error)
+  process.stdout.write(`${JSON.stringify({
+    jsonrpc: "2.0",
+    id,
+    error: {
+      code: normalized.code,
+      message: normalized.message,
+      data: { kind: normalized.kind, ...(normalized.data === undefined ? {} : { detail: normalized.data }) },
+    },
+  })}\n`)
+}
+
+async function processFrame(frame: DecodedRpcFrame): Promise<void> {
+  if (frame.type === "error") {
+    writeError(null, frame.error)
+    return
+  }
+  let id: string | number | null = null
+  try {
+    const request = EngineHost.parse(frame.line)
+    id = request.id
+    writeResult(id, await host.dispatch(request))
+  } catch (error) {
+    writeError(id, error)
+  }
+}
+
+function enqueue(frames: DecodedRpcFrame[]): void {
+  for (const frame of frames) {
+    queue = queue.then(() => processFrame(frame), () => processFrame(frame))
+  }
+}
+
+process.stdin.on("data", (chunk: Buffer) => enqueue(decoder.push(chunk)))
+process.stdin.on("end", () => enqueue(decoder.end()))

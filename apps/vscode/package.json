@@ -19,14 +19,44 @@
   "categories": ["Other", "Machine Learning"],
   "keywords": ["gaep", "codex", "claude", "agent", "product design", "governance"],
   "main": "dist/extension.cjs",
-  "activationEvents": ["onView:gaep.overview"],
+  "activationEvents": [
+    "onView:gaep.overview",
+    "onView:gaep.agent",
+    "onView:gaep.governance",
+    "onCommand:gaep.initializeProduct",
+    "onCommand:gaep.selectWorkspaceRoot",
+    "onCommand:gaep.selectAgent",
+    "onCommand:gaep.createInitiative",
+    "onCommand:gaep.changeInitiativeState",
+    "onCommand:gaep.prepareRun",
+    "onCommand:gaep.verifyAudit",
+    "onCommand:gaep.showDiagnostics",
+    "onCommand:gaep.retryRecovery",
+    "onCommand:gaep.manageWorkspaceTrust",
+    "onCommand:gaep.refresh"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "GAEP shows a trust stop line but does not inspect agent executables, mutate Product state, recover runs, or start processes until the workspace is trusted.",
+      "restrictedConfigurations": [
+        "gaep.codex.executable",
+        "gaep.claude.executable"
+      ]
+    }
+  },
   "contributes": {
     "commands": [
       { "command": "gaep.initializeProduct", "title": "GAEP: Initialize Product" },
+      { "command": "gaep.selectWorkspaceRoot", "title": "GAEP: Select Product Root" },
       { "command": "gaep.selectAgent", "title": "GAEP: Select Agent and Model" },
       { "command": "gaep.createInitiative", "title": "GAEP: Create Initiative" },
+      { "command": "gaep.changeInitiativeState", "title": "GAEP: Change Initiative State" },
       { "command": "gaep.prepareRun", "title": "GAEP: Create Charter and Start Run" },
       { "command": "gaep.verifyAudit", "title": "GAEP: Verify Audit Chain" },
+      { "command": "gaep.showDiagnostics", "title": "GAEP: Show Diagnostics" },
+      { "command": "gaep.retryRecovery", "title": "GAEP: Retry Recovery" },
+      { "command": "gaep.manageWorkspaceTrust", "title": "GAEP: Manage Workspace Trust" },
       { "command": "gaep.refresh", "title": "GAEP: Refresh" }
     ],
     "viewsContainers": {
@@ -47,26 +77,24 @@
     },
     "menus": {
       "view/title": [
-        { "command": "gaep.refresh", "when": "view =~ /gaep\\./", "group": "navigation" }
+        { "command": "gaep.refresh", "when": "view =~ /gaep\\./", "group": "navigation" },
+        { "command": "gaep.selectWorkspaceRoot", "when": "view =~ /gaep\\./", "group": "navigation@2" }
       ]
     },
     "configuration": {
       "title": "GAEP",
       "properties": {
-        "gaep.confirmBeforeAgentRun": {
-          "type": "boolean",
-          "default": true,
-          "description": "Require a final VS Code confirmation before starting a prepared agent process."
-        },
         "gaep.codex.executable": {
           "type": "string",
           "default": "codex",
-          "description": "Codex executable name or absolute path. GAEP never reads Codex credentials."
+          "scope": "machine",
+          "description": "Machine-scoped Codex executable name or absolute path. Workspace overrides are ignored, and GAEP never reads Codex credentials."
         },
         "gaep.claude.executable": {
           "type": "string",
           "default": "claude",
-          "description": "Claude Code executable name or absolute path. GAEP never reads Claude credentials."
+          "scope": "machine",
+          "description": "Machine-scoped Claude Code executable name or absolute path. Workspace overrides are ignored, and GAEP never reads Claude credentials."
         }
       }
     }

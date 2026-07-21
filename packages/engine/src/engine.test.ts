@@ -1,8 +1,9 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { randomUUID } from "node:crypto"
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { AdapterCapabilities, AgentSelection, ExecutionCharter } from "@gaep/contracts"
+import { handoffSchema, type AdapterCapabilities, type AgentSelection, type ExecutionCharter } from "@gaep/contracts"
 import { capabilityDigest, type AgentAdapter, type AgentInvocation } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -62,6 +63,14 @@ class FakeAdapter implements AgentAdapter {
   }
 }
 
+class MutableFakeAdapter extends FakeAdapter {
+  observed: AdapterCapabilities = capabilities
+
+  override async probe(): Promise<AdapterCapabilities> {
+    return this.observed
+  }
+}
+
 describe("GAEP local engine", () => {
   let workspace: string
   let engine: GaepEngine
@@ -100,6 +109,7 @@ describe("GAEP local engine", () => {
   it("keeps Product and Initiative identities and lifecycle state separate", async () => {
     const { product, initiative } = await initialize()
     const productBefore = await readFile(join(workspace, ".gaep", "product.json"), "utf8")
+    await engine.updateInitiativeState(initiative.id, "active", "Work started", "founder")
     await engine.updateInitiativeState(initiative.id, "completed", "Outcome verified", "founder")
     const productAfter = await readFile(join(workspace, ".gaep", "product.json"), "utf8")
 
@@ -109,8 +119,128 @@ describe("GAEP local engine", () => {
     expect((await engine.readProduct()).lifecycleState).toBe("active")
   })
 
+  it("refuses Product reinitialization and preserves the original manifest identity", async () => {
+    const { product } = await initialize()
+    const manifestBefore = await readFile(join(workspace, ".gaep", "manifest.json"), "utf8")
+    const productBefore = await readFile(join(workspace, ".gaep", "product.json"), "utf8")
+
+    await expect(engine.createProduct({
+      name: "Replacement",
+      summary: "A replacement that must not be accepted.",
+      problem: "Replacing Product identity would orphan existing governed records.",
+      affectedUsers: "Existing Product participants",
+      desiredOutcome: "The original Product identity remains stable and protected.",
+      successSignals: ["Replacement is rejected"],
+      firstWorkflow: "Attempt to initialize the same workspace twice.",
+      exclusions: [],
+      profile: "software",
+    }, "founder")).rejects.toThrow(/already initialized/i)
+
+    expect(await readFile(join(workspace, ".gaep", "manifest.json"), "utf8")).toBe(manifestBefore)
+    expect(await readFile(join(workspace, ".gaep", "product.json"), "utf8")).toBe(productBefore)
+    expect((await engine.readProduct()).id).toBe(product.id)
+    expect((await engine.workspaceHealth()).status).toBe("healthy")
+  })
+
+  it("enforces explicit Initiative transitions and monotonically increases revisions", async () => {
+    const { initiative } = await initialize()
+    await expect(
+      engine.updateInitiativeState(initiative.id, "completed", "Skip directly", "founder"),
+    ).rejects.toThrow("Invalid Initiative transition")
+
+    const active = await engine.updateInitiativeState(initiative.id, "active", "Begin work", "founder")
+    const blocked = await engine.updateInitiativeState(initiative.id, "blocked", "Dependency unavailable", "founder")
+    const resumed = await engine.updateInitiativeState(initiative.id, "active", "Dependency restored", "founder")
+    const completed = await engine.updateInitiativeState(initiative.id, "completed", "Outcome verified", "founder")
+
+    expect([active.revision, blocked.revision, resumed.revision, completed.revision]).toEqual([2, 3, 4, 5])
+    await expect(
+      engine.updateInitiativeState(initiative.id, "active", "Attempt reopen", "founder"),
+    ).rejects.toThrow("Invalid Initiative transition")
+  })
+
+  it("requires an active Initiative for Charter creation and Run preparation", async () => {
+    const { initiative } = await initialize()
+    const charterInput = {
+      initiativeId: initiative.id,
+      objective: "Run only while the bounded Initiative remains active.",
+      permissions: [{ capability: "read-workspace", mode: "allow" as const, scope: [workspace] }],
+      expectedEffects: ["observe" as const],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop if the Initiative is not active"],
+      requiredEvidence: ["Initiative state"],
+    }
+
+    await expect(engine.createCharter(charterInput, "founder")).rejects.toThrow(/must be active.*proposed/i)
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const charter = await engine.createCharter(charterInput, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    await engine.updateInitiativeState(initiative.id, "blocked", "Dependency unavailable", "founder")
+    await expect(engine.createCharter(charterInput, "founder")).rejects.toThrow(/must be active.*blocked/i)
+    await expect(engine.prepareRun(charter.id, "founder")).rejects.toThrow(/Initiative changed|must be active/i)
+    await engine.updateInitiativeState(initiative.id, "active", "Dependency restored", "founder")
+    await engine.updateInitiativeState(initiative.id, "completed", "Outcome verified", "founder")
+    await expect(engine.createCharter(charterInput, "founder")).rejects.toThrow(/must be active.*completed/i)
+
+    const cancelled = await engine.createInitiative({
+      title: "Cancelled Initiative",
+      outcome: "Verify cancelled work remains non-executable.",
+      scope: ["Lifecycle gate"],
+      exclusions: [],
+    }, "founder")
+    await engine.updateInitiativeState(cancelled.id, "cancelled", "Work withdrawn", "founder")
+    await expect(engine.createCharter(
+      { ...charterInput, initiativeId: cancelled.id },
+      "founder",
+    )).rejects.toThrow(/must be active.*cancelled/i)
+  })
+
+  it("blocks Initiative completion or cancellation while associated Runs are non-terminal", async () => {
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Keep Initiative lifecycle truthful while Runs need reconciliation.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop on lifecycle mismatch"],
+      requiredEvidence: ["Run states"],
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    const prepared = await engine.prepareRun(charter.id, "founder")
+    const running = await engine.prepareRun(charter.id, "founder")
+    const paused = await engine.prepareRun(charter.id, "founder")
+    const unknown = await engine.prepareRun(charter.id, "founder")
+    await engine.markRunState(running.run.id, "running", { kind: "system", id: "test" })
+    await engine.markRunState(paused.run.id, "running", { kind: "system", id: "test" })
+    await engine.markRunState(paused.run.id, "paused", { kind: "system", id: "test" })
+    await engine.markRunState(unknown.run.id, "running", { kind: "system", id: "test" })
+    await engine.markRunState(unknown.run.id, "unknown", { kind: "system", id: "test" })
+
+    await expect(
+      engine.updateInitiativeState(initiative.id, "completed", "Attempt premature completion", "founder"),
+    ).rejects.toThrow(/Runs remain non-terminal/)
+    await expect(
+      engine.updateInitiativeState(initiative.id, "cancelled", "Attempt premature cancellation", "founder"),
+    ).rejects.toThrow(/Runs remain non-terminal/)
+    await expect(
+      engine.updateInitiativeState(initiative.id, "blocked", "Pause while Runs reconcile", "founder"),
+    ).resolves.toMatchObject({ state: "blocked" })
+
+    await engine.markRunState(prepared.run.id, "cancelled", { kind: "human", id: "founder" })
+    await engine.markRunState(running.run.id, "failed", { kind: "system", id: "test" })
+    await engine.markRunState(paused.run.id, "failed", { kind: "system", id: "test" })
+    await engine.markRunState(unknown.run.id, "failed", { kind: "system", id: "test" })
+    await engine.updateInitiativeState(initiative.id, "active", "Reconciliation complete", "founder")
+    await expect(
+      engine.updateInitiativeState(initiative.id, "completed", "All Runs are terminal", "founder"),
+    ).resolves.toMatchObject({ state: "completed" })
+  })
+
   it("requires charter confirmation before preparing a safe argument-array invocation", async () => {
     const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Implement and verify the bounded workflow.",
@@ -130,6 +260,26 @@ describe("GAEP local engine", () => {
     expect(prepared.invocation.args[0]).toContain("Technical access is not a GAEP Approval Determination")
   })
 
+  it("re-probes the selected runtime and rejects capability drift before preparing a Run", async () => {
+    const adapter = new MutableFakeAdapter()
+    engine = new GaepEngine(workspace, [adapter])
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Refuse execution after the selected runtime capabilities drift.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop on capability drift"],
+      requiredEvidence: ["Fresh runtime probe"],
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    adapter.observed = { ...capabilities, runtimeVersion: "2.0.0" }
+
+    await expect(engine.prepareRun(charter.id, "founder")).rejects.toThrow(/capabilities changed/i)
+  })
+
   it("maintains a verifiable append-only audit hash chain and detects tampering", async () => {
     await initialize()
     const before = await engine.repository.verifyAudit()
@@ -146,6 +296,7 @@ describe("GAEP local engine", () => {
 
   it("records model truth and blocks handoff while the prior agent process is running", async () => {
     const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
     const selection = await engine.readSelection()
     expect(selection.modelTruthClass).toBe("observed")
     expect(selection.modelAlias).toBe(false)
@@ -163,7 +314,7 @@ describe("GAEP local engine", () => {
     const { run } = await engine.prepareRun(charter.id, "founder")
     await engine.markRunState(run.id, "running", { kind: "system", id: "test" })
 
-    await expect(engine.createHandoff({
+    const input = {
       fromRunId: run.id,
       toCapabilities: capabilities,
       toModelId: "fake-model",
@@ -173,11 +324,15 @@ describe("GAEP local engine", () => {
       unresolvedMatters: ["Run is active"],
       decisions: [],
       evidence: [],
-    }, "founder")).rejects.toThrow("Stop or cancel")
+    }
+    await expect(engine.createHandoff(input, "founder")).rejects.toThrow(/Stop, cancel, or reconcile/)
+    await engine.markRunState(run.id, "unknown", { kind: "system", id: "test" })
+    await expect(engine.createHandoff(input, "founder")).rejects.toThrow(/Stop, cancel, or reconcile/)
   })
 
   it("marks a run left running across host restart as unknown, never completed", async () => {
     const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
     const charter = await engine.createCharter({
       initiativeId: initiative.id,
       objective: "Verify interrupted-run recovery.",
@@ -195,5 +350,307 @@ describe("GAEP local engine", () => {
     const recovered = await restarted.recoverInterruptedRuns("test.restart")
     expect(recovered).toHaveLength(1)
     expect((await restarted.listRuns())[0]?.state).toBe("unknown")
+  })
+
+  it("binds a Charter to exact Product, Initiative, and agent-selection state", async () => {
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const staleInitiativeCharter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Reject a Charter after its bounded Initiative changes.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop on state drift"],
+      requiredEvidence: ["Binding failure"],
+    }, "founder")
+    await engine.updateInitiativeState(initiative.id, "blocked", "Dependency became unavailable", "founder")
+    await expect(engine.confirmCharter(staleInitiativeCharter.id, "founder")).rejects.toThrow(
+      /Initiative changed/,
+    )
+
+    await engine.updateInitiativeState(initiative.id, "active", "Dependency restored", "founder")
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Reject execution after the selected agent configuration changes.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop on selection drift"],
+      requiredEvidence: ["Binding failure"],
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    await engine.selectAgent(capabilities, "fake-model", { changed: true }, "founder")
+    await expect(engine.prepareRun(charter.id, "founder")).rejects.toThrow(/Agent, model, or settings changed/)
+  })
+
+  it("enforces Run transitions and terminal-state immutability", async () => {
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Exercise the explicit Run lifecycle.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop after observation"],
+      requiredEvidence: ["Lifecycle events"],
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    const { run } = await engine.prepareRun(charter.id, "founder")
+
+    await expect(
+      engine.markRunState(run.id, "completed", { kind: "system", id: "test" }),
+    ).rejects.toThrow("Invalid Run transition")
+    const running = await engine.markRunState(run.id, "running", { kind: "system", id: "test" })
+    const completed = await engine.markRunState(run.id, "completed", { kind: "system", id: "test" })
+    expect(running.revision).toBe(2)
+    expect(completed.revision).toBe(3)
+    expect(completed.startedAt).toBeDefined()
+    expect(completed.endedAt).toBeDefined()
+    await expect(
+      engine.markRunState(run.id, "running", { kind: "system", id: "test" }),
+    ).rejects.toThrow("Invalid Run transition")
+
+    const launchFailure = await engine.prepareRun(charter.id, "founder")
+    const failed = await engine.markRunState(
+      launchFailure.run.id,
+      "failed",
+      { kind: "system", id: "test.launch" },
+    )
+    expect(failed.state).toBe("failed")
+    expect(failed.startedAt).toBeUndefined()
+    expect(failed.endedAt).toBeDefined()
+  })
+
+  it("recovers every interrupted Run sequentially without lock contention", async () => {
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Recover multiple interrupted Runs.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop on restart"],
+      requiredEvidence: ["Recovered states"],
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    const first = await engine.prepareRun(charter.id, "founder")
+    const second = await engine.prepareRun(charter.id, "founder")
+    await engine.markRunState(first.run.id, "running", { kind: "system", id: "test" })
+    await engine.markRunState(second.run.id, "running", { kind: "system", id: "test" })
+
+    const restarted = new GaepEngine(workspace, [new FakeAdapter()])
+    const recovered = await restarted.recoverInterruptedRuns("test.restart")
+    expect(recovered).toHaveLength(2)
+    expect(recovered.every((run) => run.state === "unknown")).toBe(true)
+  })
+
+  it("detects audit truncation and deletion and refuses mutation afterward", async () => {
+    const { initiative } = await initialize()
+    const auditPath = join(workspace, ".gaep", "audit", "events.jsonl")
+    const checkpointPath = join(workspace, ".gaep", "audit", "checkpoint.json")
+    const original = await readFile(auditPath, "utf8")
+    const checkpoint = await readFile(checkpointPath, "utf8")
+    const lines = original.trim().split("\n")
+    await writeFile(auditPath, `${lines.slice(0, -1).join("\n")}\n`)
+
+    const truncated = await engine.repository.verifyAudit()
+    expect(truncated.valid).toBe(false)
+    expect(truncated.error).toMatch(/checkpoint|count/i)
+    const initiativeBefore = await readFile(
+      join(workspace, ".gaep", "initiatives", `${initiative.id}.json`),
+      "utf8",
+    )
+    await expect(
+      engine.updateInitiativeState(initiative.id, "active", "Attempt mutation", "founder"),
+    ).rejects.toThrow(/audit is invalid/i)
+    expect(await readFile(
+      join(workspace, ".gaep", "initiatives", `${initiative.id}.json`),
+      "utf8",
+    )).toBe(initiativeBefore)
+
+    await writeFile(auditPath, original)
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+    await rm(checkpointPath)
+    const checkpointDeleted = await engine.repository.verifyAudit()
+    expect(checkpointDeleted.valid).toBe(false)
+    expect(checkpointDeleted.error).toMatch(/checkpoint is missing/i)
+    await writeFile(checkpointPath, checkpoint)
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+    await rm(auditPath)
+    const deleted = await engine.repository.verifyAudit()
+    expect(deleted.valid).toBe(false)
+    expect(deleted.error).toMatch(/missing/i)
+  })
+
+  it("reports manifest mismatch as invalid health and blocks Product reads", async () => {
+    await initialize()
+    const manifestPath = join(workspace, ".gaep", "manifest.json")
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as Record<string, unknown>
+    manifest.productId = randomUUID()
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+
+    const health = await engine.workspaceHealth()
+    expect(health.status).toBe("invalid")
+    expect(health.issues.some((issue) => issue.code === "workspace.product-id-mismatch")).toBe(true)
+    await expect(engine.readProduct()).rejects.toThrow(/identity do not match/i)
+  })
+
+  it("detects valid-JSON edits to every governed record class and fails closed", async () => {
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Create every governed runtime record for integrity testing.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop after record creation"],
+      requiredEvidence: ["Digest-index verification"],
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    const { run } = await engine.prepareRun(charter.id, "founder")
+    await engine.markRunState(run.id, "cancelled", { kind: "human", id: "founder" })
+    const handoff = await engine.createHandoff({
+      fromRunId: run.id,
+      toCapabilities: capabilities,
+      toModelId: "fake-model",
+      toSettings: { switched: true },
+      reason: "Create a governed handoff record",
+      completedWork: ["Integrity fixture"],
+      unresolvedMatters: [],
+      decisions: [],
+      evidence: [],
+    }, "founder")
+    const capabilitySnapshot = (await readdir(join(workspace, ".gaep", "runtime")))
+      .find((name) => /^capabilities-[0-9a-f]{64}\.json$/.test(name))
+    expect(capabilitySnapshot).toBeDefined()
+
+    const cases: Array<{ path: string; mutate: (value: Record<string, unknown>) => void }> = [
+      {
+        path: join(workspace, ".gaep", "manifest.json"),
+        mutate: (value) => { value.engineVersion = `${String(value.engineVersion)}-edited` },
+      },
+      {
+        path: join(workspace, ".gaep", "product.json"),
+        mutate: (value) => { value.summary = `${String(value.summary)} edited` },
+      },
+      {
+        path: join(workspace, ".gaep", "initiatives", `${initiative.id}.json`),
+        mutate: (value) => { value.title = `${String(value.title)} edited` },
+      },
+      {
+        path: join(workspace, ".gaep", "runtime", "selection.json"),
+        mutate: (value) => { value.settings = { directEdit: true } },
+      },
+      {
+        path: join(workspace, ".gaep", "runtime", capabilitySnapshot!),
+        mutate: (value) => { value.runtimeVersion = `${String(value.runtimeVersion)}-edited` },
+      },
+      {
+        path: join(workspace, ".gaep", "sessions", `charter-${charter.id}.json`),
+        mutate: (value) => { value.objective = `${String(value.objective)} edited` },
+      },
+      {
+        path: join(workspace, ".gaep", "sessions", `run-${run.id}.json`),
+        mutate: (value) => { value.providerSessionId = "direct-edit" },
+      },
+      {
+        path: join(workspace, ".gaep", "handoffs", `${handoff.id}.json`),
+        mutate: (value) => { value.reason = `${String(value.reason)} edited` },
+      },
+    ]
+
+    for (const testCase of cases) {
+      const original = await readFile(testCase.path, "utf8")
+      const edited = JSON.parse(original) as Record<string, unknown>
+      testCase.mutate(edited)
+      await writeFile(testCase.path, `${JSON.stringify(edited, null, 2)}\n`)
+      const health = await engine.workspaceHealth()
+      expect(health.status, testCase.path).toBe("invalid")
+      expect(health.audit.error, testCase.path).toMatch(/differs from its committed digest/)
+      await expect(engine.createInitiative({
+        title: "Mutation must fail",
+        outcome: "No new record is committed while integrity is invalid.",
+        scope: ["Integrity gate"],
+        exclusions: [],
+      }, "founder")).rejects.toThrow(/integrity|audit is invalid/i)
+      await writeFile(testCase.path, original)
+      expect((await engine.workspaceHealth()).status, testCase.path).toBe("healthy")
+    }
+  })
+
+  it("recovers an atomic Handoff and selection switch after an interrupted commit", async () => {
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Create a source Run for an atomic agent switch.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: [workspace] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop before switching"],
+      requiredEvidence: ["Atomic handoff"],
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    const { run } = await engine.prepareRun(charter.id, "founder")
+    await engine.markRunState(run.id, "cancelled", { kind: "human", id: "founder" })
+
+    let injected = false
+    const failing = new GaepEngine(workspace, [new FakeAdapter()], {
+      faultInjector: (point) => {
+        if (!injected && point === "after-record-writes") {
+          injected = true
+          throw new Error("Injected atomic-switch failure")
+        }
+      },
+    })
+    const input = {
+      fromRunId: run.id,
+      toCapabilities: capabilities,
+      toModelId: "fake-model",
+      toSettings: { switched: true },
+      reason: "Switch configuration atomically",
+      completedWork: ["Source Run stopped"],
+      unresolvedMatters: [],
+      decisions: [],
+      evidence: [],
+    }
+    const preview = await failing.previewHandoff(input)
+    expect(preview.workspaceBaseline.truthClass).toBe("unknown")
+    expect(preview.workspaceBaseline.dirty).toBeNull()
+    await expect(failing.createHandoff(input, "founder")).rejects.toThrow("Injected atomic-switch failure")
+
+    const journal = JSON.parse(
+      await readFile(join(workspace, ".gaep", "runtime", "transaction.json"), "utf8"),
+    ) as { writes: Array<{ relativePath: string }> }
+    const handoffPath = journal.writes.find((write) => write.relativePath.startsWith("handoffs/"))?.relativePath
+    expect(handoffPath).toBeDefined()
+
+    const recovered = new GaepEngine(workspace, [new FakeAdapter()])
+    expect((await recovered.workspaceHealth()).status).toBe("healthy")
+    expect((await recovered.readSelection()).settings).toEqual({ switched: true })
+    const handoff = await recovered.repository.readJson(
+      recovered.repository.resolve(...handoffPath!.split("/")),
+      handoffSchema,
+    )
+    expect(handoff.toAgent.settings).toEqual({ switched: true })
+    expect(handoff.workspaceBaseline.truthClass).toBe("unknown")
+    expect(handoff.workspaceBaseline.dirty).toBeNull()
+  })
+
+  it("rejects traversal identifiers and client-forged capability snapshots", async () => {
+    await initialize()
+    await expect(engine.readInitiative("../../outside")).rejects.toThrow(/must be a UUID/)
+    expect(() => engine.repository.resolve("..", "outside.json")).toThrow(/escapes/)
+
+    await expect(engine.selectAgent(
+      { ...capabilities, runtimeVersion: "forged" },
+      "fake-model",
+      {},
+      "founder",
+    )).rejects.toThrow(/not produced by the registered adapter/)
   })
 })

@@ -287,7 +287,7 @@ The rehearsal or migration analysis stops without inferred defaults when:
 
 ## Reversible migration rehearsal GAEP-MIG-REH-001
 
-This 2026-07-20 rehearsal applied the proposed transformation and stop rules to synthetic records and the exact legacy clauses already bound above. It changed no legacy file, authoritative record, routing, external system, or production state. The normalized migration-map input SHA-256 is `804383ef282be985ec0d920209fddc202b430ea71d3d63cbe13b8fd247592f08`, omitting this rehearsal section while retaining the migration gates; the broader normalized 46-file semantic input aggregate is `34b3adcae06d09216d5d9a4f518289e3e95a86ea135ca09d4c559728b7f3b3a0`.
+This 2026-07-20 rehearsal applied the proposed transformation and stop rules to synthetic records and the exact legacy clauses already bound above. It changed no legacy file, authoritative record, routing, external system, or production state. The normalized migration-map input SHA-256 is `804383ef282be985ec0d920209fddc202b430ea71d3d63cbe13b8fd247592f08`, omitting this rehearsal section while retaining the migration gates; the broader normalized 47-file semantic input aggregate is `1bae309eb7e937dc8f82acfbd26d4c9d4046f5ed2ec4ac661f7643f710b9adea`.
 
 | Rehearsal case | Synthetic input | Applied rule | Result | Evidence limitation |
 |---|---|---|---|---|

@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { agentSelectionSchema } from "./agent.js"
+import { agentSelectionSchema, truthClassSchema } from "./agent.js"
 
 export const effectDescriptorSchema = z.enum([
   "observe",
@@ -21,6 +21,11 @@ export const executionCharterSchema = z.object({
   id: z.string().uuid(),
   productId: z.string().uuid(),
   initiativeId: z.string().uuid(),
+  productRevision: z.number().int().positive().optional(),
+  initiativeRevision: z.number().int().positive().optional(),
+  productDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/).optional(),
+  initiativeDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/).optional(),
+  selectionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/).optional(),
   agent: agentSelectionSchema,
   objective: z.string().trim().min(4).max(20_000),
   permissions: z.array(toolPermissionSchema),
@@ -35,7 +40,9 @@ export const executionCharterSchema = z.object({
 export const runSchema = z.object({
   schemaVersion: z.literal(1),
   id: z.string().uuid(),
+  revision: z.number().int().positive().optional(),
   charterId: z.string().uuid(),
+  charterDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/).optional(),
   productId: z.string().uuid(),
   initiativeId: z.string().uuid(),
   agent: agentSelectionSchema,
@@ -56,8 +63,10 @@ export const handoffSchema = z.object({
   reason: z.string().trim().min(2).max(5_000),
   workspaceBaseline: z.object({
     gitHead: z.string().optional(),
-    dirty: z.boolean(),
+    dirty: z.boolean().nullable(),
     changedFiles: z.array(z.string()),
+    truthClass: truthClassSchema.optional(),
+    observationError: z.string().optional(),
   }),
   completedWork: z.array(z.string()),
   unresolvedMatters: z.array(z.string()),

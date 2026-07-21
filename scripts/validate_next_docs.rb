@@ -728,7 +728,7 @@ if candidate_checks_enabled
   errors << "repository gap severity distribution mismatch: expected #{expected_gap_severity_counts}, got #{repository_gap_severity_counts}" unless repository_gap_severity_counts == expected_gap_severity_counts
   expected_gap_status_counts = { "open-blocker" => 6, "open-needs-assignment" => 4, "open-needs-decision" => 11, "open-needs-evidence" => 15, "open-needs-validation" => 2, "resolved-by-candidate-structure" => 12 }
   errors << "repository gap status distribution mismatch: expected #{expected_gap_status_counts}, got #{repository_gap_status_counts}" unless repository_gap_status_counts == expected_gap_status_counts
-  errors << "semantic rehearsal subject-file count mismatch: expected 46, got #{semantic_input_paths.length}" unless semantic_input_paths.length == 46
+  errors << "semantic rehearsal subject-file count mismatch: expected 47, got #{semantic_input_paths.length}" unless semantic_input_paths.length == 47
 
   scenario_text = SCENARIO_CATALOG.read
   declared_semantic_digest = scenario_text[/deterministic aggregate SHA-256 `([0-9a-f]{64})`/, 1]
