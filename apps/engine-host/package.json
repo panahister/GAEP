@@ -1,0 +1,20 @@
+{
+  "name": "@gaep/engine-host",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "gaep-engine": "dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@gaep/adapter-claude": "0.1.0",
+    "@gaep/adapter-codex": "0.1.0",
+    "@gaep/contracts": "0.1.0",
+    "@gaep/engine": "0.1.0"
+  }
+}

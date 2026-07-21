@@ -1,0 +1,92 @@
+{
+  "name": "gaep-vscode",
+  "displayName": "GAEP",
+  "description": "Governed product design and multi-agent execution for VS Code.",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "publisher": "gaep",
+  "license": "UNLICENSED",
+  "files": [
+    "dist/extension.cjs",
+    "media/gaep.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "categories": ["Other", "Machine Learning"],
+  "keywords": ["gaep", "codex", "claude", "agent", "product design", "governance"],
+  "main": "dist/extension.cjs",
+  "activationEvents": ["onView:gaep.overview"],
+  "contributes": {
+    "commands": [
+      { "command": "gaep.initializeProduct", "title": "GAEP: Initialize Product" },
+      { "command": "gaep.selectAgent", "title": "GAEP: Select Agent and Model" },
+      { "command": "gaep.createInitiative", "title": "GAEP: Create Initiative" },
+      { "command": "gaep.prepareRun", "title": "GAEP: Create Charter and Start Run" },
+      { "command": "gaep.verifyAudit", "title": "GAEP: Verify Audit Chain" },
+      { "command": "gaep.refresh", "title": "GAEP: Refresh" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gaep",
+          "title": "GAEP",
+          "icon": "media/gaep.svg"
+        }
+      ]
+    },
+    "views": {
+      "gaep": [
+        { "id": "gaep.overview", "name": "Product" },
+        { "id": "gaep.agent", "name": "Agent" },
+        { "id": "gaep.governance", "name": "Governance" }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        { "command": "gaep.refresh", "when": "view =~ /gaep\\./", "group": "navigation" }
+      ]
+    },
+    "configuration": {
+      "title": "GAEP",
+      "properties": {
+        "gaep.confirmBeforeAgentRun": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require a final VS Code confirmation before starting a prepared agent process."
+        },
+        "gaep.codex.executable": {
+          "type": "string",
+          "default": "codex",
+          "description": "Codex executable name or absolute path. GAEP never reads Codex credentials."
+        },
+        "gaep.claude.executable": {
+          "type": "string",
+          "default": "claude",
+          "description": "Claude Code executable name or absolute path. GAEP never reads Claude credentials."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository -o dist/gaep-vscode.vsix",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@gaep/adapter-claude": "0.1.0",
+    "@gaep/adapter-codex": "0.1.0",
+    "@gaep/agent-sdk": "0.1.0",
+    "@gaep/contracts": "0.1.0",
+    "@gaep/engine": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.103.0",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.25.11"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@gaep/contracts": ["packages/contracts/src/index.ts"],
+      "@gaep/agent-sdk": ["packages/agent-sdk/src/index.ts"],
+      "@gaep/engine": ["packages/engine/src/index.ts"],
+      "@gaep/adapter-codex": ["packages/adapters/codex/src/index.ts"],
+      "@gaep/adapter-claude": ["packages/adapters/claude/src/index.ts"]
+    },
+    "types": ["node"],
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  }
+}

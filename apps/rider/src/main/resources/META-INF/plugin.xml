@@ -1,0 +1,13 @@
+<idea-plugin>
+    <id>dev.gaep.rider</id>
+    <name>GAEP</name>
+    <vendor>GAEP</vendor>
+    <description>Governed product design and multi-agent execution for Rider.</description>
+    <depends>com.intellij.modules.rider</depends>
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="GAEP"
+                    anchor="right"
+                    factoryClass="dev.gaep.rider.GaepToolWindowFactory"
+                    canCloseContents="false" />
+    </extensions>
+</idea-plugin>

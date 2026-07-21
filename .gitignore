@@ -8,3 +8,13 @@
 
 # Candidate validation output
 .gaep-validation/
+node_modules/
+**/dist/
+*.tsbuildinfo
+coverage/
+.vitest/
+**/.gradle/
+**/.intellijPlatform/
+**/build/
+**/bin/
+**/obj/

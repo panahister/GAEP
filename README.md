@@ -1,6 +1,35 @@
 # GAEP
 
-GAEP is currently a pre-implementation body of work for governed human-AI engineering. The repository contains documentation and candidate specification material; it does not contain or authorize a GAEP software implementation.
+GAEP is an IDE-native platform for designing Products and executing bounded Initiatives through installed AI agents under explicit governance. This branch contains the first local Founder Edition implementation alongside the proposed specification corpus.
+
+Visual Studio Code is the first usable host. Rider has a native tool-window host scaffold, and Visual Studio has a cross-platform engine-protocol client; both consume the same local engine rather than redefining GAEP semantics. The specification remains proposed, so working software does not by itself designate an approved GAEP baseline or authorize production deployment.
+
+## Founder Edition implementation
+
+The implementation is local-first and keeps portable records in the workspace `.gaep/` directory:
+
+- `packages/contracts`: versioned Product, Initiative, agent, charter, run, handoff, audit, and host-protocol contracts;
+- `packages/engine`: state transitions, atomic persistence, append-only hash-chained audit, charter gates, runs, and governed switching;
+- `packages/adapters`: capability-aware Codex CLI and Claude Code adapters using argument arrays rather than shell interpolation;
+- `apps/engine-host`: newline-delimited JSON-RPC process shared by non-TypeScript IDE hosts;
+- `apps/vscode`: native Product, Agent, and Governance views, guided onboarding, model/settings selection, charter confirmation, terminal execution, and handoff capture;
+- `apps/rider` and `apps/visual-studio`: additional host foundations against the same protocol;
+- `design/IDE_EXTENSION_UI_SPEC.md`: host-native interaction and accessibility baseline.
+
+No provider credentials are copied into GAEP records. Provider-native permissions remain distinct from a GAEP approval or Authorization Grant.
+
+### Build and verify
+
+Requires Node.js 22 or newer. From the repository root:
+
+```bash
+npm install
+npm run check
+npm run build
+npm run package:vscode
+```
+
+The packaged development VSIX is written to `apps/vscode/dist/gaep-vscode.vsix`. Install it in VS Code, open a workspace, select the GAEP Activity Bar view, and choose `Initialize Product`. Agent execution never starts during onboarding and requires both a confirmed charter and a separate launch confirmation.
 
 ## Documentation states
 
@@ -28,9 +57,9 @@ Neither corpus is an approved implementation baseline. The candidate remains `pr
 
 A passing gate is evidence assessment, not approval or authorization. Each later decision remains a separate, version-bound record.
 
-## Current restrictions
+## Candidate restrictions
 
-The repository does not currently authorize runtime/product code, provider integrations, production-data access, procurement, release, deployment, public conformance claims, or organizational mandates. Existing AI-assisted document authoring does not imply that an AI adapter, provider configuration, or GAEP workflow has passed candidate conformance.
+The proposed corpus does not authorize production-data access, procurement, release, deployment, public conformance claims, or organizational mandates. The local Founder Edition is development software and has not passed a formal candidate-baseline, cross-host conformance, signing, marketplace, or production-readiness determination.
 
 ## Candidate validation
 
