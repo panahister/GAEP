@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process"
-import { resolve } from "node:path"
+import { delimiter, isAbsolute, resolve } from "node:path"
 
 import {
   BoundedAsyncQueue,
@@ -174,10 +174,24 @@ export class CodexAppServerSupervisor {
     if (this.options.processCwd) this.localPathRedactions.add(resolveLocalPath(this.options.processCwd))
     if (this.disposed) throw new Error("Codex app-server supervisor was disposed during startup")
     const args = this.options.args ?? codexAppServerLaunchArgs()
+    const childEnvironment = filterChildEnvironment(process.env, ["CODEX_HOME"])
+    for (const key of [
+      "HOME", "USERPROFILE", "TMPDIR", "TMP", "TEMP", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME",
+      "CODEX_HOME", "SHELL",
+    ]) {
+      const value = childEnvironment[key]
+      if (!value) continue
+      this.localPathRedactions.add(value)
+      if (isAbsolute(value)) this.localPathRedactions.add(resolveLocalPath(value))
+    }
+    for (const path of (childEnvironment.PATH ?? "").split(delimiter).filter(Boolean)) {
+      this.localPathRedactions.add(path)
+      if (isAbsolute(path)) this.localPathRedactions.add(resolveLocalPath(path))
+    }
     this.intentionalStop = false
     const child = spawn(this.fingerprint.canonicalPath, args, {
       cwd: this.options.processCwd,
-      env: filterChildEnvironment(process.env, ["CODEX_HOME"]),
+      env: childEnvironment,
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
       detached: true,

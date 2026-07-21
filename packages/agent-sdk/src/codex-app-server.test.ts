@@ -152,21 +152,29 @@ describe("Codex app-server managed transport", () => {
   })
 
   it("redacts local paths, secret-shaped values, and control bytes before portable recording", async () => {
-    const { supervisor, service, stage } = await setup()
-    const iterator = supervisor.events[Symbol.asyncIterator]()
-    const { threadId } = await supervisor.startStagedThread({ stage, model: "fake-model" })
-    const { turnId } = await supervisor.startStagedTurn({ stage, threadId, prompt: "sensitive" })
-    await nextMatching(iterator, (event) => event.type === "lifecycle" && event.phase === "turn-completed")
-    const result = await supervisor.buildResult({ stage, providerThreadId: threadId, providerTurnId: turnId, terminalDisposition: "completed" })
-    const portable = JSON.stringify(result.portable)
+    const previousCodexHome = process.env.CODEX_HOME
+    process.env.CODEX_HOME = "/custom-provider-home-private"
+    try {
+      const { supervisor, service, stage } = await setup()
+      const iterator = supervisor.events[Symbol.asyncIterator]()
+      const { threadId } = await supervisor.startStagedThread({ stage, model: "fake-model" })
+      const { turnId } = await supervisor.startStagedTurn({ stage, threadId, prompt: "sensitive" })
+      await nextMatching(iterator, (event) => event.type === "lifecycle" && event.phase === "turn-completed")
+      const result = await supervisor.buildResult({ stage, providerThreadId: threadId, providerTurnId: turnId, terminalDisposition: "completed" })
+      const portable = JSON.stringify(result.portable)
 
-    expect(portable).not.toContain(stage.root)
-    expect(portable).not.toContain("top-secret")
-    expect(portable).not.toContain("\\u0000")
-    expect(portable).toContain("[LOCAL_PATH]")
-    expect(portable).toContain("[REDACTED]")
-    await supervisor.stop()
-    await service.cleanup(stage)
+      expect(portable).not.toContain(stage.root)
+      expect(portable).not.toContain("/custom-provider-home-private")
+      expect(portable).not.toContain("top-secret")
+      expect(portable).not.toContain("\\u0000")
+      expect(portable).toContain("[LOCAL_PATH]")
+      expect(portable).toContain("[REDACTED]")
+      await supervisor.stop()
+      await service.cleanup(stage)
+    } finally {
+      if (previousCodexHome === undefined) delete process.env.CODEX_HOME
+      else process.env.CODEX_HOME = previousCodexHome
+    }
   })
 
   it.runIf(process.platform !== "win32")("SIGKILLs surviving descendants after the app-server leader exits", async () => {

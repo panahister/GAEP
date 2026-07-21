@@ -67,7 +67,7 @@ input.on("line", (line) => {
       return
     }
     if (text === "sensitive") {
-      send({ method: "item/agentMessage/delta", params: { threadId: message.params.threadId, turnId, itemId: "sensitive", delta: `cwd=${message.params.cwd} token=top-secret\u0000` } })
+      send({ method: "item/agentMessage/delta", params: { threadId: message.params.threadId, turnId, itemId: "sensitive", delta: `cwd=${message.params.cwd} codexHome=${process.env.CODEX_HOME ?? "unset"} token=top-secret\u0000` } })
       complete(message.params.threadId, turnId)
       return
     }
