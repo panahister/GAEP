@@ -58,13 +58,35 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
     case "risks-decisions":
       return { ...baseFor(route), kind: "risks-decisions", risks: table("risks"), recommendations: table("recommendations"), decisions: table("decisions") }
     case "trace":
-      return { ...baseFor(route), kind: "trace", relationships: table("relationships"), impact: [] }
+      return { ...baseFor(route), kind: "trace", relationships: table("relationships"), searchResults: table("search-results"), impact: [] }
     case "agents-tools":
-      return { ...baseFor(route), kind: "agents-tools", adapters: table("adapters"), selectedAgent: [], limitations: [], handoffs: table("handoffs") }
+      return {
+        ...baseFor(route),
+        kind: "agents-tools",
+        adapters: table("adapters"),
+        selectedAgent: [],
+        limitations: [],
+        handoffs: table("handoffs"),
+        contextPacks: table("context-packs"),
+        workflowPlans: table("workflow-plans"),
+        toolDefinitions: table("tool-definitions"),
+        runToolSelections: table("run-tool-selections"),
+      }
     case "runs-evidence":
       return { ...baseFor(route), kind: "runs-evidence", runs: table("runs"), selectedRun: [], events: [], evidence: table("evidence"), recoveryActions: [] }
     case "readiness":
-      return { ...baseFor(route), kind: "readiness", statement: "Host supplied readiness", sections, gaps: [], conflicts: [] }
+      return {
+        ...baseFor(route),
+        kind: "readiness",
+        statement: "Host supplied readiness",
+        sections,
+        gaps: [],
+        conflicts: [],
+        health: [],
+        designRevisions: table("design-revisions"),
+        productRevisions: table("product-revisions"),
+        portability: [],
+      }
   }
 }
 
@@ -147,7 +169,42 @@ describe("Product Studio protocol", () => {
       kind: "save-draft",
       route: "direction",
       values: { problem: "Bounded content" },
+      states: { problem: "complete" },
     })).toBe(true)
+    expect(isStudioAction({ kind: "save-draft", route: "direction", values: {}, states: { problem: "approved" } })).toBe(false)
+    expect(isStudioAction({ kind: "domain-workflow", workflow: "create-context-pack" })).toBe(true)
+    expect(isStudioAction({ kind: "domain-workflow", workflow: "run-arbitrary-command" })).toBe(false)
+    expect(isStudioAction({ kind: "save-draft", route: "direction", values: { problem: "x".repeat(50_001) } })).toBe(false)
+    expect(isStudioAction({
+      kind: "analyze-impact",
+      recordType: "requirement",
+      recordId: "11111111-1111-4111-8111-111111111111",
+      revision: 2,
+      digest: `sha256:${"a".repeat(64)}`,
+    })).toBe(true)
+  })
+
+  it("accepts explicit table truncation metadata and rejects silent or inconsistent totals", () => {
+    const trace = snapshot("trace")
+    if (trace.page.kind !== "trace") throw new Error("Expected Trace page")
+    const valid = {
+      ...trace,
+      page: {
+        ...trace.page,
+        searchResults: {
+          ...trace.page.searchResults,
+          truncation: { shown: 0, total: 300, message: "Refine the bounded search." },
+        },
+      },
+    }
+    expect(isStudioSnapshot(valid)).toBe(true)
+    expect(isStudioSnapshot({
+      ...valid,
+      page: {
+        ...valid.page,
+        searchResults: { ...valid.page.searchResults, truncation: { shown: 301, total: 300, message: "Invalid" } },
+      },
+    })).toBe(false)
   })
 
   it("binds messages to the expected channel and rejects extra envelope fields", () => {

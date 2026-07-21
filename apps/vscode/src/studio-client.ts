@@ -19,6 +19,8 @@ import {
   type StudioAction,
   type StudioActionControl,
   type StudioDefinitionEntry,
+  type DesignFieldState,
+  type StudioDesignSectionSnapshot,
   type StudioFieldSnapshot,
   type StudioInspectorSnapshot,
   type StudioIssue,
@@ -117,6 +119,9 @@ class StudioShell {
   private snapshot?: StudioSnapshot
   private previousRoute?: StudioRoute
   private draftValues = new Map<string, string | string[]>()
+  private draftStates = new Map<string, DesignFieldState>()
+  private deferredReasons = new Map<string, string>()
+  private revisitTriggers = new Map<string, string>()
   private draftDirty = false
   private readonly sortState = new Map<string, { key: string; direction: "ascending" | "descending" }>()
 
@@ -164,9 +169,16 @@ class StudioShell {
     this.snapshot = snapshot
     this.bridge.setRoute(snapshot.route)
     this.draftValues.clear()
-    if (snapshot.page.kind === "record-form") {
-      for (const field of snapshot.page.fields) {
+    this.draftStates.clear()
+    this.deferredReasons.clear()
+    this.revisitTriggers.clear()
+    const fields = snapshot.page.design?.fields ?? (snapshot.page.kind === "record-form" ? snapshot.page.fields : [])
+    if (fields.length > 0) {
+      for (const field of fields) {
         this.draftValues.set(field.id, Array.isArray(field.value) ? [...field.value] : field.value)
+        if (field.designState) this.draftStates.set(field.id, field.designState)
+        if (field.deferredReason) this.deferredReasons.set(field.id, field.deferredReason)
+        if (field.revisitTrigger) this.revisitTriggers.set(field.id, field.revisitTrigger)
       }
     }
     this.draftDirty = false
@@ -292,6 +304,7 @@ class StudioShell {
       header.append(primary)
     }
     container.append(header)
+    if (page.design) container.append(this.renderDesignSection(page.design, page.route))
 
     const progress = element("section", "section")
     progress.append(element("h3", undefined, "Design sections"))
@@ -325,6 +338,11 @@ class StudioShell {
   private renderRecordForm(page: RecordFormPageSnapshot): HTMLElement {
     const container = element("div")
     container.append(this.renderPageHeader(page))
+    if (page.design) {
+      container.append(this.renderDesignSection(page.design, page.route))
+      for (const table of page.relatedRecords ?? []) container.append(this.renderTable(table))
+      return container
+    }
     const fields = element("section", "section field-list")
     fields.setAttribute("aria-label", page.title)
     for (const field of page.fields) fields.append(this.renderField(page, field))
@@ -344,6 +362,9 @@ class StudioShell {
       draftId: page.draftId,
       baseRevision: page.baseRevision,
       values: Object.fromEntries(this.draftValues),
+      states: Object.fromEntries(this.draftStates),
+      deferredReasons: Object.fromEntries(this.deferredReasons),
+      revisitTriggers: Object.fromEntries(this.revisitTriggers),
     }))
     const validate = element("button", "secondary", "Validate section")
     validate.type = "button"
@@ -390,6 +411,43 @@ class StudioShell {
       })
       control.append(input)
     }
+    if (field.designState && !field.readOnly) {
+      const stateLabel = element("label", "field-label", "Design field state")
+      stateLabel.htmlFor = `studio-field-state-${field.id}`
+      const state = element("select")
+      state.id = `studio-field-state-${field.id}`
+      for (const candidate of ["missing", "weak", "complete", "deferred"] as const) {
+        const option = element("option")
+        option.value = candidate
+        option.textContent = candidate
+        option.selected = (this.draftStates.get(field.id) ?? field.designState) === candidate
+        state.append(option)
+      }
+      state.addEventListener("change", () => {
+        this.draftStates.set(field.id, state.value as DesignFieldState)
+        this.draftDirty = true
+      })
+      control.append(stateLabel, state)
+      const deferredLabel = element("label", "field-label", "Deferred reason (required when deferred)")
+      deferredLabel.htmlFor = `studio-field-deferred-${field.id}`
+      const deferred = element("input")
+      deferred.id = `studio-field-deferred-${field.id}`
+      deferred.value = this.deferredReasons.get(field.id) ?? ""
+      deferred.addEventListener("input", () => {
+        this.deferredReasons.set(field.id, deferred.value)
+        this.draftDirty = true
+      })
+      const revisitLabel = element("label", "field-label", "Revisit trigger")
+      revisitLabel.htmlFor = `studio-field-revisit-${field.id}`
+      const revisit = element("input")
+      revisit.id = `studio-field-revisit-${field.id}`
+      revisit.value = this.revisitTriggers.get(field.id) ?? ""
+      revisit.addEventListener("input", () => {
+        this.revisitTriggers.set(field.id, revisit.value)
+        this.draftDirty = true
+      })
+      control.append(deferredLabel, deferred, revisitLabel, revisit)
+    }
     if (field.example) {
       const details = element("details")
       details.append(element("summary", undefined, "Show example"), element("p", "prose", field.example))
@@ -403,6 +461,55 @@ class StudioShell {
     control.append(element("p", "field-provenance", field.provenance))
     wrapper.append(label, control)
     return wrapper
+  }
+
+  private renderDesignSection(design: StudioDesignSectionSnapshot, route: StudioRoute): HTMLElement {
+    const section = element("section", "section grouped-section")
+    section.append(
+      element("h3", undefined, "Governed design draft"),
+      element("p", "source-line", `Draft revision ${design.draftRevision} · Product revision ${design.baseProductRevision} · ${design.readiness}`),
+    )
+    const page = { route } as RecordFormPageSnapshot
+    const fields = element("div", "field-list")
+    for (const field of design.fields) fields.append(this.renderField(page, field))
+    section.append(fields)
+    if (design.gaps.length > 0 || design.conflicts.length > 0) {
+      section.append(this.renderIssues("Design gaps and conflicts", [...design.gaps, ...design.conflicts]))
+    }
+    const actions = element("div", "action-row")
+    const save = element("button", undefined, "Save draft section")
+    save.type = "button"
+    save.addEventListener("click", () => this.perform({
+      kind: "save-draft",
+      route,
+      draftId: design.draftId,
+      draftRevision: design.draftRevision,
+      baseRevision: design.baseProductRevision,
+      values: Object.fromEntries(this.draftValues),
+      states: Object.fromEntries(this.draftStates),
+      deferredReasons: Object.fromEntries(this.deferredReasons),
+      revisitTriggers: Object.fromEntries(this.revisitTriggers),
+    }))
+    const readiness = element("button", "secondary", "Evaluate readiness")
+    readiness.type = "button"
+    readiness.addEventListener("click", () => this.perform({ kind: "validate-section", route, draftId: design.draftId }))
+    const revision = element("button", "secondary", "Create Product design revision")
+    revision.type = "button"
+    revision.disabled = !design.materialChange
+    if (revision.disabled) {
+      revision.title = "Save a material draft change before creating a revision."
+      revision.setAttribute("aria-label", "Create Product design revision. Unavailable: save a material draft change first.")
+    }
+    revision.addEventListener("click", () => this.perform({
+      kind: "create-revision",
+      route,
+      draftId: design.draftId,
+      draftRevision: design.draftRevision,
+      baseRevision: design.baseProductRevision,
+    }))
+    actions.append(save, readiness, revision)
+    section.append(actions)
+    return section
   }
 
   private renderRepeatableField(page: RecordFormPageSnapshot, field: StudioFieldSnapshot): HTMLElement {
@@ -434,6 +541,7 @@ class StudioShell {
   private renderDelivery(page: DeliveryPageSnapshot): HTMLElement {
     const container = element("div")
     container.append(this.renderPageHeader(page))
+    if (page.design) container.append(this.renderDesignSection(page.design, page.route))
     for (const table of [page.initiatives, page.changes, page.workItems]) container.append(this.renderTable(table))
     if (page.transitionPreview) {
       const preview = element("section", "section grouped-section")
@@ -477,7 +585,9 @@ class StudioShell {
 
   private renderRisksDecisions(page: RisksDecisionsPageSnapshot): HTMLElement {
     const container = element("div")
-    container.append(this.renderPageHeader(page), this.renderTable(page.risks))
+    container.append(this.renderPageHeader(page))
+    if (page.design) container.append(this.renderDesignSection(page.design, page.route))
+    container.append(this.renderTable(page.risks))
     const recommendations = element("section", "section")
     recommendations.append(element("h3", undefined, "Recommendations"), this.renderTable(page.recommendations, false))
     const decisions = element("section", "section")
@@ -488,7 +598,9 @@ class StudioShell {
 
   private renderTrace(page: TracePageSnapshot): HTMLElement {
     const container = element("div")
-    container.append(this.renderPageHeader(page), this.renderTable(page.relationships))
+    container.append(this.renderPageHeader(page))
+    if (page.design) container.append(this.renderDesignSection(page.design, page.route))
+    container.append(this.renderTable(page.relationships), this.renderTable(page.searchResults))
     if (page.caveat) container.append(element("p", "prose muted", page.caveat))
     if (page.impact.length > 0) {
       const impact = element("section", "section")
@@ -501,7 +613,9 @@ class StudioShell {
 
   private renderAgents(page: AgentPageSnapshot): HTMLElement {
     const container = element("div")
-    container.append(this.renderPageHeader(page), this.renderTable(page.adapters))
+    container.append(this.renderPageHeader(page))
+    if (page.design) container.append(this.renderDesignSection(page.design, page.route))
+    container.append(this.renderTable(page.adapters))
     if (page.selection) {
       const selection = element("section", "section grouped-section")
       selection.append(
@@ -522,13 +636,21 @@ class StudioShell {
     }
     if (page.selectedAgent.length > 0) container.append(this.renderDefinitionGroup("Selected agent and model", page.selectedAgent))
     if (page.limitations.length > 0) container.append(this.renderIssues("Capability limitations", page.limitations))
-    container.append(this.renderTable(page.handoffs))
+    container.append(
+      this.renderTable(page.contextPacks),
+      this.renderTable(page.workflowPlans),
+      this.renderTable(page.toolDefinitions),
+      this.renderTable(page.runToolSelections),
+      this.renderTable(page.handoffs),
+    )
     return container
   }
 
   private renderRuns(page: RunPageSnapshot): HTMLElement {
     const container = element("div")
-    container.append(this.renderPageHeader(page), this.renderTable(page.runs))
+    container.append(this.renderPageHeader(page))
+    if (page.design) container.append(this.renderDesignSection(page.design, page.route))
+    container.append(this.renderTable(page.runs))
     if (page.composer) {
       const composer = element("section", "section grouped-section")
       composer.append(element("h3", undefined, "Run preparation"))
@@ -583,6 +705,7 @@ class StudioShell {
   private renderReadiness(page: ReadinessPageSnapshot): HTMLElement {
     const container = element("div")
     container.append(this.renderPageHeader(page), element("p", "prose", page.statement))
+    if (page.design) container.append(this.renderDesignSection(page.design, page.route))
     if (page.nextAction) {
       const next = element("div", "primary-action")
       next.append(this.renderActionButton(page.nextAction))
@@ -602,12 +725,23 @@ class StudioShell {
     container.append(status)
     if (page.gaps.length > 0) container.append(this.renderIssues("Gaps", page.gaps))
     if (page.conflicts.length > 0) container.append(this.renderIssues("Conflicts", page.conflicts))
+    if (page.health.length > 0) container.append(this.renderIssues("Workspace health", page.health))
+    container.append(
+      this.renderTable(page.designRevisions),
+      this.renderTable(page.productRevisions),
+      this.renderDefinitionGroup("Portable export and import boundary", page.portability),
+    )
     return container
   }
 
   private renderTable(table: StudioTableSnapshot, includeHeading = true): HTMLElement {
     const section = element("section", "section")
     if (includeHeading) section.append(element("h3", undefined, table.title))
+    if (table.truncation) {
+      const notice = element("p", "prose muted", `${table.truncation.message} Showing ${table.truncation.shown} of ${table.truncation.total}.`)
+      notice.setAttribute("role", "status")
+      section.append(notice)
+    }
     if (table.actions.length > 0) section.append(this.renderActionRow(table.actions))
     if (table.rows.length === 0) {
       if (table.emptyState) section.append(this.renderSurfaceState(table.emptyState))
@@ -850,10 +984,17 @@ class StudioShell {
     if (!this.confirmDiscardDraft()) return
     event.preventDefault()
     const page = this.snapshot?.page
-    if (page?.kind === "record-form") {
+    const fields = page?.design?.fields ?? (page?.kind === "record-form" ? page.fields : [])
+    if (page && fields.length > 0) {
       this.draftValues.clear()
-      for (const field of page.fields) {
+      this.draftStates.clear()
+      this.deferredReasons.clear()
+      this.revisitTriggers.clear()
+      for (const field of fields) {
         this.draftValues.set(field.id, Array.isArray(field.value) ? [...field.value] : field.value)
+        if (field.designState) this.draftStates.set(field.id, field.designState)
+        if (field.deferredReason) this.deferredReasons.set(field.id, field.deferredReason)
+        if (field.revisitTrigger) this.revisitTriggers.set(field.id, field.revisitTrigger)
       }
       this.draftDirty = false
       this.render(false)

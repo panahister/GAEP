@@ -13,6 +13,14 @@ GAEP turns a workspace into a governed Product repository and lets the user sele
 
 GAEP writes portable records under `.gaep`. It does not read or copy credentials from Codex, Claude Code, VS Code, or another extension.
 
+## Product Studio
+
+`GAEP: Open Product Studio` opens the code-native twelve-section Product design surface. It can start or resume the local design draft, save exact sections with optimistic revision checks and local-actor provenance, evaluate bounded design readiness, and create attributable Product/design revisions. Design readiness never implies implementation approval.
+
+Delivery, scope, architecture, risks and decisions, agents and tools, runs and evidence, trace, and readiness expose live governed records rather than inferred file relationships. Changes, Work Items, Requirements, Decisions, Risks, Architecture records, Evidence, Context Packs, Workflow Plans, Tool Definitions, Run Tool Selections, and Trace links have create/edit or reassessment workflows in both Product Studio and the Command Palette. The native structured editor uses labeled fields, lists, and typed nested values; users do not need to edit repository JSON by hand. A rejected validation attempt remains resumable in extension memory, except secret-shaped input, which is rejected and discarded.
+
+Tables and searches are bounded to 200 displayed records and explicitly report the full observed count when truncated. Portable views exclude machine-local executable paths; only the labeled runtime inspector may show a local binding. Export uses a same-location temporary file and atomic rename, while import is preview-only and performs no mutation. Export, import preview, trace impact, and workspace health preserve their claim boundaries and display unresolved engine health issues rather than treating structural success as approval.
+
 Portable agent capabilities and selections do not contain executable paths. VS Code keeps the verified executable fingerprint only in machine-local global state and exposes its path only in Product Studio's explicitly labeled machine-local runtime inspector. A legacy path-bearing selection is never trusted automatically: `GAEP: Reconfirm and Migrate Legacy Agent Selection` re-probes the same agent and requires explicit reconfirmation before the engine writes the portable replacement.
 
 The extension requires a trusted VS Code workspace before it probes an executable, changes Product state, recovers a run, or starts an agent. In a multi-root workspace, select the folder that owns the Product with `GAEP: Select Product Root`. Agent executable paths are machine-scoped User Settings; repository and workspace overrides are ignored.

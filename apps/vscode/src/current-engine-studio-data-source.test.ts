@@ -1,5 +1,14 @@
-import type { AdapterCapabilities, AgentSelection, Initiative, Product, Run } from "@gaep/contracts"
-import { describe, expect, it } from "vitest"
+import {
+  productStudioSectionIds,
+  type AdapterCapabilities,
+  type AgentSelection,
+  type Initiative,
+  type Product,
+  type ProductDesignDraft,
+  type Run,
+} from "@gaep/contracts"
+import type { ProductStudioService } from "@gaep/engine"
+import { describe, expect, it, vi } from "vitest"
 
 import {
   CurrentEngineStudioDataSource,
@@ -68,6 +77,74 @@ const run: Run = {
   endedAt: "2026-07-21T00:01:00.000Z",
 }
 
+const designDraft: ProductDesignDraft = {
+  schemaVersion: 1,
+  kind: "product-design-draft",
+  id: "55555555-5555-4555-8555-555555555555",
+  productId: product.id,
+  revision: 2,
+  baseProductRevision: product.revision ?? 1,
+  sections: Object.fromEntries(productStudioSectionIds.map((sectionId) => [sectionId, {
+    sectionId,
+    summary: `${sectionId} summary`,
+    fields: [{
+      key: `${sectionId.replaceAll("-", ".")}.truth`,
+      question: `What is the governed ${sectionId} truth?`,
+      value: `${sectionId} truth`,
+      state: "complete" as const,
+      provenance: ["human:local-actor-test"],
+    }],
+    gaps: [],
+    conflicts: [],
+    updatedAt: "2026-07-21T00:00:00.000Z",
+  }])) as unknown as ProductDesignDraft["sections"],
+  createdAt: "2026-07-21T00:00:00.000Z",
+  updatedAt: "2026-07-21T00:00:00.000Z",
+}
+
+function productStudioStub(): ProductStudioService {
+  const readiness = {
+    schemaVersion: 1 as const,
+    productId: product.id,
+    draftId: designDraft.id,
+    draftRevision: designDraft.revision,
+    status: "ready" as const,
+    sections: productStudioSectionIds.map((sectionId) => ({
+      sectionId,
+      state: "complete" as const,
+      missingFields: [],
+      weakFields: [],
+      deferredFields: [],
+      openConflictIds: [],
+      blockerGapIds: [],
+    })),
+    blockingGapIds: [],
+    openConflictIds: [],
+    deferredFieldCount: 0,
+    evaluatedAt: "2026-07-21T00:00:00.000Z",
+    claimBoundary: "design-readiness-is-not-implementation-approval" as const,
+  }
+  return {
+    readDesignDraft: async () => designDraft,
+    evaluateDesignReadiness: () => readiness,
+    listDesignRevisions: async () => [],
+    listProductRevisions: async () => [],
+    listChanges: async () => [],
+    listWorkItems: async () => [],
+    listRequirements: async () => [],
+    listDecisions: async () => [],
+    listRisks: async () => [],
+    listArchitectureRecords: async () => [],
+    listEvidence: async () => [],
+    listContextPacks: async () => [],
+    listWorkflowPlans: async () => [],
+    listToolDefinitions: async () => [],
+    listRunToolSelections: async () => [],
+    listTraceLinks: async () => [],
+    healthIssues: async () => [],
+  } as unknown as ProductStudioService
+}
+
 function capability(overrides: Partial<AdapterCapabilities>): AdapterCapabilities {
   return {
     schemaVersion: 1,
@@ -111,6 +188,8 @@ interface HarnessOptions {
   audit?: { valid: boolean; events: number; error?: string }
   runtimeBindings?: Record<string, unknown>
   rotateContextDuringObservation?: boolean
+  productStudio?: ProductStudioService
+  commandResult?: unknown
 }
 
 function harness(options: HarnessOptions = {}) {
@@ -132,6 +211,7 @@ function harness(options: HarnessOptions = {}) {
     },
     listRuns: async () => options.runs ?? [run],
     repository: { verifyAudit: async () => options.audit ?? ({ valid: true, events: 8 }) },
+    productStudio: options.productStudio ?? productStudioStub(),
   }
   const context: CurrentEngineStudioContext = {
     contextGeneration: () => contextGeneration,
@@ -176,10 +256,11 @@ function harness(options: HarnessOptions = {}) {
         observedAt: "2026-07-21T00:00:00.000Z",
       },
     }),
+    actorId: () => "local-actor-test",
     executeCommand: (expectedContextGeneration, command, ...args) => {
       if (expectedContextGeneration !== contextGeneration) throw new Error("stale context")
       commands.push({ command, args })
-      return Promise.resolve()
+      return Promise.resolve(options.commandResult)
     },
     logDiagnostic: (message) => diagnostics.push(message),
   }
@@ -199,11 +280,11 @@ describe("current-engine Product Studio data source", () => {
       expect(isStudioSnapshot(snapshot), route).toBe(true)
     }
     const architecture = await source.readSnapshot("architecture")
-    expect(architecture.surface.kind).toBe("empty")
-    expect(architecture.surface.detail).toMatch(/no governed Architecture/i)
+    expect(architecture.surface.kind).toBe("ready")
+    expect(architecture.page.design?.sectionId).toBe("architecture")
     const readiness = await source.readSnapshot("readiness")
     expect(readiness.page.kind).toBe("readiness")
-    expect(readiness.page.kind === "readiness" && readiness.page.statement).toMatch(/Not formally ready/i)
+    expect(readiness.page.kind === "readiness" && readiness.page.statement).toMatch(/Design readiness is ready/i)
     const agents = await source.readSnapshot("agents-tools")
     expect(agents.surface.knownEffects).toEqual(expect.arrayContaining([
       expect.stringMatching(/invokes configured agent executables/i),
@@ -265,13 +346,13 @@ describe("current-engine Product Studio data source", () => {
     if (snapshot.page.kind !== "agents-tools") throw new Error("Expected agent page")
     const codex = snapshot.page.adapters.rows.find((row) => row.id === "codex-adapter")
     const claude = snapshot.page.adapters.rows.find((row) => row.id === "claude-adapter")
-    expect(codex?.cells.status).toMatch(/observe-only/i)
+    expect(codex?.cells.status).toMatch(/structured CLI capability/i)
     expect(codex?.actions[0]?.enabled).toBe(true)
     expect(claude?.cells.status).toMatch(/inspection only/i)
     expect(claude?.actions[0]?.enabled).toBe(false)
   })
 
-  it("maps only fixed semantic actions to existing native commands and rejects stale or unavailable operations", async () => {
+  it("maps native actions, opens portable inspectors, and rejects stale operations", async () => {
     const { source, commands } = harness()
     const snapshot = await source.readSnapshot("delivery")
     const accepted = await source.execute({ kind: "create-initiative" }, {
@@ -281,12 +362,12 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(accepted.status).toBe("accepted")
     expect(commands).toEqual([{ command: "gaep.createInitiative", args: [] }])
-    const unsupported = await source.execute({ kind: "open-record", recordId: "record-1" }, {
+    const inspected = await source.execute({ kind: "open-record", recordId: "record-1" }, {
       requestId: "request-2",
       expectedContextGeneration: snapshot.contextGeneration,
       expectedSnapshotRevision: snapshot.snapshotRevision,
     })
-    expect(unsupported.status).toBe("rejected")
+    expect(inspected.status).toBe("accepted")
     const stale = await source.execute({ kind: "show-diagnostics" }, {
       requestId: "request-3",
       expectedContextGeneration: snapshot.contextGeneration,
@@ -379,9 +460,181 @@ describe("current-engine Product Studio data source", () => {
   })
 
   it("uses blocked and uninitialized lifecycle states without probing untrusted roots", async () => {
-    const blocked = harness({ trusted: false }).source
-    expect((await blocked.readSnapshot("overview")).surface.kind).toBe("blocked")
+    const blockedHarness = harness({ trusted: false })
+    const blocked = blockedHarness.source
+    const blockedSnapshot = await blocked.readSnapshot("overview")
+    expect(blockedSnapshot.surface.kind).toBe("blocked")
+    expect(await blocked.execute({ kind: "start-design-draft", expectedProductRevision: 3 }, {
+      requestId: "untrusted-mutation",
+      expectedContextGeneration: blockedSnapshot.contextGeneration,
+      expectedSnapshotRevision: blockedSnapshot.snapshotRevision,
+    })).toMatchObject({ status: "rejected", announcement: expect.stringMatching(/trust/i) })
+    expect(blockedHarness.commands).toEqual([])
     const absent = harness({ withProduct: false }).source
     expect((await absent.readSnapshot("overview")).surface.kind).toBe("uninitialized")
+  })
+
+  it("loads only route-relevant domain lists and visibly bounds large tables", async () => {
+    const requirements = Array.from({ length: 250 }, (_, index) => ({
+      schemaVersion: 1 as const,
+      kind: "requirement" as const,
+      id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+      productId: product.id,
+      revision: 1,
+      key: `GAEP-REQ-${String(index + 1).padStart(3, "0")}`,
+      statement: `Requirement ${index + 1}`,
+      rationale: "Bounded test rationale",
+      priority: "must" as const,
+      state: "proposed" as const,
+      verificationCriteria: ["Observable criterion"],
+      sourceRecords: [],
+      createdAt: "2026-07-21T00:00:00.000Z",
+      updatedAt: "2026-07-21T00:00:00.000Z",
+    }))
+    const base = productStudioStub()
+    const listRequirements = vi.fn(async () => requirements)
+    const listChanges = vi.fn(async () => [])
+    const source = harness({
+      productStudio: { ...base, listRequirements, listChanges } as unknown as ProductStudioService,
+    }).source
+    const snapshot = await source.readSnapshot("scope")
+    if (snapshot.page.kind !== "record-form") throw new Error("Expected Scope form")
+    const table = snapshot.page.relatedRecords?.find((candidate) => candidate.id === "requirements")
+    expect(table?.rows).toHaveLength(200)
+    expect(table?.truncation).toEqual(expect.objectContaining({ shown: 200, total: 250 }))
+    expect(table?.truncation?.message).toMatch(/deliberately bounded/i)
+    expect(listRequirements).toHaveBeenCalledOnce()
+    expect(listChanges).not.toHaveBeenCalled()
+  })
+
+  it("saves one design section with exact optimistic revisions and local actor provenance", async () => {
+    const saveDesignDraft = vi.fn(async (input: unknown) => ({ ...designDraft, revision: 3, input }))
+    const source = harness({
+      productStudio: { ...productStudioStub(), saveDesignDraft } as unknown as ProductStudioService,
+    }).source
+    const snapshot = await source.readSnapshot("direction")
+    const result = await source.execute({
+      kind: "save-draft",
+      route: "direction",
+      draftId: designDraft.id,
+      draftRevision: designDraft.revision,
+      baseRevision: designDraft.baseProductRevision,
+      values: { "direction.truth": "Revised direction truth" },
+      states: { "direction.truth": "weak" },
+      deferredReasons: {},
+      revisitTriggers: {},
+    }, {
+      requestId: "save-design",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })
+    expect(result.status).toBe("accepted")
+    expect(saveDesignDraft).toHaveBeenCalledOnce()
+    const input = saveDesignDraft.mock.calls[0]?.[0] as {
+      expectedDraftRevision: number
+      expectedProductRevision: number
+      sections: ProductDesignDraft["sections"]
+    }
+    expect(input.expectedDraftRevision).toBe(2)
+    expect(input.expectedProductRevision).toBe(3)
+    expect(input.sections.direction.fields[0]).toMatchObject({
+      value: "Revised direction truth",
+      state: "weak",
+      provenance: expect.arrayContaining(["human:local-actor-test"]),
+    })
+  })
+
+  it("rejects a design save when the draft revision changed after the snapshot", async () => {
+    let reads = 0
+    const base = productStudioStub()
+    const readDesignDraft = vi.fn(async () => {
+      reads += 1
+      return reads === 1 ? designDraft : { ...designDraft, revision: designDraft.revision + 1 }
+    })
+    const saveDesignDraft = vi.fn()
+    const source = harness({
+      productStudio: { ...base, readDesignDraft, saveDesignDraft } as unknown as ProductStudioService,
+    }).source
+    const snapshot = await source.readSnapshot("direction")
+    const result = await source.execute({
+      kind: "save-draft",
+      route: "direction",
+      draftId: designDraft.id,
+      draftRevision: designDraft.revision,
+      baseRevision: designDraft.baseProductRevision,
+      values: { "direction.truth": "stale edit" },
+    }, {
+      requestId: "stale-design",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })
+    expect(result).toMatchObject({ status: "rejected", announcement: expect.stringMatching(/changed since/i) })
+    expect(saveDesignDraft).not.toHaveBeenCalled()
+  })
+
+  it("rejects secret-shaped design content before any repository mutation", async () => {
+    const saveDesignDraft = vi.fn()
+    const source = harness({
+      productStudio: { ...productStudioStub(), saveDesignDraft } as unknown as ProductStudioService,
+    }).source
+    const snapshot = await source.readSnapshot("direction")
+    const result = await source.execute({
+      kind: "save-draft",
+      route: "direction",
+      draftId: designDraft.id,
+      draftRevision: designDraft.revision,
+      baseRevision: designDraft.baseProductRevision,
+      values: { "direction.truth": "api_key=abcdefghijklmnopqrstuvwxyz123456" },
+    }, {
+      requestId: "secret-design",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })
+    expect(result).toMatchObject({ status: "rejected", announcement: expect.stringMatching(/secret-shaped/i) })
+    expect(saveDesignDraft).not.toHaveBeenCalled()
+  })
+
+  it("retains bounded native search results and their explicit total", async () => {
+    const searchResult = {
+      schemaVersion: 1 as const,
+      kind: "requirement" as const,
+      id: "77777777-7777-4777-8777-777777777777",
+      productId: product.id,
+      revision: 2,
+      label: "GAEP-REQ-777",
+      excerpt: "bounded search result",
+      updatedAt: "2026-07-21T00:00:00.000Z",
+    }
+    const { source } = harness({ commandResult: { kind: "search-results", results: [searchResult], total: 300 } })
+    const snapshot = await source.readSnapshot("trace")
+    const result = await source.execute({ kind: "domain-workflow", workflow: "search" }, {
+      requestId: "search",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })
+    expect(result.status).toBe("accepted")
+    const refreshed = await source.readSnapshot("trace")
+    if (refreshed.page.kind !== "trace") throw new Error("Expected Trace page")
+    expect(refreshed.page.searchResults.rows).toHaveLength(1)
+    expect(refreshed.page.searchResults.truncation).toMatchObject({ shown: 1, total: 300 })
+  })
+
+  it("exposes every Product-domain creation workflow from its keyboard-renderable route", async () => {
+    const { source } = harness()
+    const snapshots = await Promise.all([
+      source.readSnapshot("delivery"),
+      source.readSnapshot("scope"),
+      source.readSnapshot("architecture"),
+      source.readSnapshot("risks-decisions"),
+      source.readSnapshot("agents-tools"),
+      source.readSnapshot("runs-evidence"),
+      source.readSnapshot("trace"),
+    ])
+    const actions = JSON.stringify(snapshots.map((snapshot) => snapshot.page))
+    for (const workflow of [
+      "create-change", "create-work-item", "create-requirement", "create-architecture", "create-decision", "create-risk",
+      "create-context-pack", "create-workflow-plan", "create-tool-definition", "create-run-tool-selection", "create-evidence",
+      "create-trace-link",
+    ]) expect(actions, workflow).toContain(`\"workflow\":\"${workflow}\"`)
   })
 })

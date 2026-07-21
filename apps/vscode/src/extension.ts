@@ -6,11 +6,13 @@ import { CodexAdapter } from "@gaep/adapter-codex"
 import { ClaudeAdapter } from "@gaep/adapter-claude"
 import {
   capabilityDigest,
+  canonicalDigest,
   fingerprintExecutable,
   type AdapterProbeResult,
   type ExecutableFingerprint,
 } from "@gaep/agent-sdk"
 import {
+  containsSecretShapedValue,
   productProfileSchema,
   type AdapterCapabilities,
   type AgentSetting,
@@ -41,7 +43,15 @@ import {
 } from "./safety.js"
 import { GaepTreeProvider, readInitiatives, type GaepViewContext } from "./tree.js"
 import { StudioProvider } from "./studio-provider.js"
-import { isStudioRoute } from "./studio-protocol.js"
+import {
+  isStudioAction,
+  isStudioRoute,
+  studioDomainWorkflows,
+  studioRouteLabels,
+  studioRoutes,
+  type StudioAction,
+  type StudioDomainWorkflow,
+} from "./studio-protocol.js"
 
 const selectedWorkspaceKey = "gaep.selectedWorkspaceUri"
 const runtimeBindingsKey = "gaep.runtimeBindings.v2"
@@ -456,6 +466,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       ? (await probeAdaptersResilient(engine)).map((probe) => probe.capabilities)
       : [],
     runtimeBindings,
+    actorId: () => actorId,
     executeCommand: (expectedContextGeneration, command, ...args) => {
       if (expectedContextGeneration !== studioContextGeneration) {
         throw new Error("The Product Studio context changed before the native workflow could start")
@@ -471,6 +482,654 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("gaep.openProductStudio", async (route?: unknown) => {
       await studioProvider?.open(isStudioRoute(route) ? route : "overview")
     }),
+  )
+
+  type DomainWorkflowAction = Extract<StudioAction, { kind: "domain-workflow" }>
+  const domainInputDrafts = new Map<string, Record<string, unknown>>()
+  const recordLimit = 200
+
+  const cloneStructured = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+
+  const summarizeStructured = (value: unknown): string => {
+    if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? "" : "s"}`
+    if (value && typeof value === "object") return `${Object.keys(value).length} field${Object.keys(value).length === 1 ? "" : "s"}`
+    if (typeof value === "string") return value.length > 100 ? `${value.slice(0, 97)}...` : value || "empty string"
+    return String(value)
+  }
+
+  const editStructuredValue = async (value: unknown, path: string): Promise<unknown> => {
+    if (Array.isArray(value)) {
+      const current = cloneStructured(value)
+      while (true) {
+        const picked = await vscode.window.showQuickPick([
+          { label: "$(check) Done", description: summarizeStructured(current), operation: "done" as const },
+          { label: "$(add) Add item", description: "Add a typed array item", operation: "add" as const },
+          ...current.map((entry, index) => ({
+            label: `${index + 1}. ${summarizeStructured(entry)}`,
+            description: Array.isArray(entry) ? "array" : entry === null ? "null" : typeof entry,
+            operation: "edit" as const,
+            index,
+          })),
+        ], { title: `${path} — edit ordered items`, ignoreFocusOut: true })
+        if (!picked) throw new WorkflowCancelled()
+        if (picked.operation === "done") return current
+        if (picked.operation === "add") {
+          const type = await vscode.window.showQuickPick(["string", "object", "number", "boolean"], {
+            title: `${path} — new item type`,
+            ignoreFocusOut: true,
+          })
+          if (!type) throw new WorkflowCancelled()
+          const seed: unknown = type === "object" ? {} : type === "number" ? 0 : type === "boolean" ? false : ""
+          current.push(await editStructuredValue(seed, `${path}[${current.length}]`))
+          continue
+        }
+        const selectedIndex = picked.index
+        const operation = await vscode.window.showQuickPick([
+          { label: "Edit item", operation: "edit" as const },
+          { label: "Remove item", operation: "remove" as const },
+          { label: "Move item up", operation: "up" as const },
+          { label: "Move item down", operation: "down" as const },
+        ], { title: `${path}[${selectedIndex}]`, ignoreFocusOut: true })
+        if (!operation) throw new WorkflowCancelled()
+        if (operation.operation === "remove") current.splice(selectedIndex, 1)
+        else if (operation.operation === "up" && selectedIndex > 0) {
+          const [entry] = current.splice(selectedIndex, 1)
+          current.splice(selectedIndex - 1, 0, entry)
+        } else if (operation.operation === "down" && selectedIndex < current.length - 1) {
+          const [entry] = current.splice(selectedIndex, 1)
+          current.splice(selectedIndex + 1, 0, entry)
+        } else if (operation.operation === "edit") {
+          current[selectedIndex] = await editStructuredValue(current[selectedIndex], `${path}[${selectedIndex}]`)
+        }
+      }
+    }
+    if (value && typeof value === "object") {
+      const current = cloneStructured(value as Record<string, unknown>)
+      while (true) {
+        const picked = await vscode.window.showQuickPick([
+          { label: "$(check) Done", description: summarizeStructured(current), operation: "done" as const },
+          { label: "$(add) Add optional field", description: "Add a typed field that is not present", operation: "add" as const },
+          ...Object.entries(current).map(([key, entry]) => ({
+            label: key,
+            description: summarizeStructured(entry),
+            detail: Array.isArray(entry) ? "array" : entry === null ? "null" : typeof entry,
+            operation: "edit" as const,
+            key,
+          })),
+        ], { title: `${path} — edit structured fields`, ignoreFocusOut: true })
+        if (!picked) throw new WorkflowCancelled()
+        if (picked.operation === "done") return current
+        if (picked.operation === "add") {
+          const key = await requiredInput(`${path}: optional field name`)
+          if (Object.hasOwn(current, key)) {
+            await vscode.window.showWarningMessage(`${key} already exists in ${path}`)
+            continue
+          }
+          const type = await vscode.window.showQuickPick(["string", "object", "array", "number", "boolean"], {
+            title: `${path}.${key} — field type`,
+            ignoreFocusOut: true,
+          })
+          if (!type) throw new WorkflowCancelled()
+          const seed: unknown = type === "object" ? {} : type === "array" ? [] : type === "number" ? 0 : type === "boolean" ? false : ""
+          current[key] = await editStructuredValue(seed, `${path}.${key}`)
+          continue
+        }
+        const selectedKey = picked.key
+        const operation = await vscode.window.showQuickPick([
+          { label: "Edit field", operation: "edit" as const },
+          { label: "Remove optional field", operation: "remove" as const },
+        ], { title: `${path}.${selectedKey}`, ignoreFocusOut: true })
+        if (!operation) throw new WorkflowCancelled()
+        if (operation.operation === "remove") delete current[selectedKey]
+        else current[selectedKey] = await editStructuredValue(current[selectedKey], `${path}.${selectedKey}`)
+      }
+    }
+    if (typeof value === "boolean") {
+      const picked = await vscode.window.showQuickPick([
+        { label: "True", value: true },
+        { label: "False", value: false },
+      ], { title: path, ignoreFocusOut: true })
+      if (!picked) throw new WorkflowCancelled()
+      return picked.value
+    }
+    if (typeof value === "number") {
+      const input = await requiredInput(path, {
+        value: String(value),
+        validateInput: (candidate) => Number.isFinite(Number(candidate)) ? undefined : "Enter a finite number",
+      })
+      return Number(input)
+    }
+    return requiredInput(path, { value: typeof value === "string" ? value : "" })
+  }
+
+  const collectStructuredObject = async (
+    draftKey: string,
+    title: string,
+    template: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> => {
+    let current = cloneStructured(domainInputDrafts.get(draftKey) ?? template)
+    while (true) {
+      const picked = await vscode.window.showQuickPick([
+        { label: "$(check) Validate and continue", description: summarizeStructured(current), operation: "submit" as const },
+        ...Object.entries(current).map(([key, value]) => ({
+          label: key,
+          description: summarizeStructured(value),
+          detail: Array.isArray(value) ? "array" : value === null ? "null" : typeof value,
+          operation: "edit" as const,
+          key,
+        })),
+        { label: "$(add) Add optional field", description: "Add a field supported by the governed contract", operation: "add" as const },
+        { label: "$(discard) Reset this session draft", description: "Restore the engine-derived template", operation: "reset" as const },
+      ], { title: `${title} — structured editor`, placeHolder: "Choose a field; no JSON editing is required", ignoreFocusOut: true })
+      if (!picked) throw new WorkflowCancelled()
+      if (picked.operation === "submit") {
+        if (containsSecretShapedValue(current)) {
+          domainInputDrafts.delete(draftKey)
+          throw new Error("Portable Product-domain input contains a secret-shaped value and was not retained")
+        }
+        if (JSON.stringify(current).length > 8 * 1024 * 1024) {
+          domainInputDrafts.delete(draftKey)
+          throw new Error("Product Studio input exceeds the 8 MiB local safety limit and was not retained")
+        }
+        domainInputDrafts.set(draftKey, cloneStructured(current))
+        return current
+      }
+      if (picked.operation === "reset") {
+        current = cloneStructured(template)
+        domainInputDrafts.set(draftKey, cloneStructured(current))
+        continue
+      }
+      if (picked.operation === "add") {
+        current = await editStructuredValue(current, title) as Record<string, unknown>
+        domainInputDrafts.set(draftKey, cloneStructured(current))
+        continue
+      }
+      current[picked.key] = await editStructuredValue(current[picked.key], `${title}.${picked.key}`)
+      domainInputDrafts.set(draftKey, cloneStructured(current))
+    }
+  }
+
+  const recordFields = (record: unknown, fields: readonly string[]): Record<string, unknown> => {
+    const source = record as Record<string, unknown>
+    return Object.fromEntries(fields.flatMap((field) => field in source ? [[field, source[field]]] : []))
+  }
+
+  const readDomainRecords = async (workflow: StudioDomainWorkflow, runtimeEngine: GaepEngine): Promise<unknown[]> => {
+    const studio = runtimeEngine.productStudio
+    switch (workflow) {
+      case "edit-change": return studio.listChanges()
+      case "edit-work-item": return studio.listWorkItems()
+      case "edit-requirement": return studio.listRequirements()
+      case "edit-decision": return studio.listDecisions()
+      case "edit-risk": return studio.listRisks()
+      case "edit-architecture": return studio.listArchitectureRecords()
+      case "edit-evidence": return studio.listEvidence()
+      case "edit-context-pack": return studio.listContextPacks()
+      case "edit-workflow-plan": return studio.listWorkflowPlans()
+      case "edit-tool-definition": return studio.listToolDefinitions()
+      case "edit-run-tool-selection": return studio.listRunToolSelections()
+      case "reassess-trace-link": return studio.listTraceLinks()
+      default: return []
+    }
+  }
+
+  const mutableDomainInput = (workflow: StudioDomainWorkflow, record: Record<string, unknown>): Record<string, unknown> => {
+    switch (workflow) {
+      case "edit-change": return recordFields(record, ["title", "summary", "baseline", "state", "effectEnvelope"])
+      case "edit-work-item": return recordFields(record, ["title", "objective", "state", "dependsOn", "completionCriteria", "evidenceCriteria", "scope", "owner"])
+      case "edit-requirement": return recordFields(record, ["key", "statement", "rationale", "priority", "state", "verificationCriteria", "sourceRecords"])
+      case "edit-decision": return recordFields(record, ["question", "options", "recommendation", "selectedOutcome", "dissentAndUncertainty", "affectedRecords", "state"])
+      case "edit-risk": return recordFields(record, [
+        "title", "cause", "condition", "consequence", "likelihood", "impact", "uncertainty", "treatment", "owner",
+        "reviewTriggers", "residualRisk", "evidence", "state", "acceptance",
+      ])
+      case "edit-architecture": return recordFields(record, ["recordType", "title", "description", "rationale", "assumptions", "constraints", "affectedRecords", "state"])
+      case "edit-evidence": return recordFields(record, ["subjects", "origin", "method", "result", "artifactDigest", "limitations", "verification", "freshness", "collectedAt", "validUntil"])
+      case "edit-context-pack": return {
+        ...recordFields(record, ["objective", "recipient", "items", "omissions", "warnings", "conflicts"]),
+        classificationCombinationRisk: (record.classification as Record<string, unknown> | undefined)?.combinationRisk,
+        sufficiencyCriteria: (record.sufficiency as Record<string, unknown> | undefined)?.criteria,
+        sufficiencyEvaluator: (record.sufficiency as Record<string, unknown> | undefined)?.evaluator,
+        sufficiencyAssumptions: (record.sufficiency as Record<string, unknown> | undefined)?.assumptions,
+      }
+      case "edit-workflow-plan": return recordFields(record, ["title", "objective", "subject", "actor", "strategy", "contextPacks", "toolDefinitions", "steps", "state"])
+      case "edit-tool-definition": return recordFields(record, [
+        "definitionType", "key", "name", "binding", "purpose", "inputContract", "outputContract", "allowedScopes",
+        "requiredPermissions", "effectEnvelope", "trust", "limitations", "enabled", "policy",
+      ])
+      case "edit-run-tool-selection": return recordFields(record, ["tools", "requestedEffects", "requestedScopes", "confirmedToolIds"])
+      default: return record
+    }
+  }
+
+  const exactProductReference = async (runtimeEngine: GaepEngine): Promise<Record<string, unknown>> => {
+    const product = await runtimeEngine.readProduct()
+    const revision = await runtimeEngine.productStudio.readProductRevision(product.revision ?? 1)
+    return { recordType: "product", recordId: product.id, revision: revision.revision, digest: revision.productDigest }
+  }
+
+  const createTemplate = async (workflow: StudioDomainWorkflow, runtimeEngine: GaepEngine): Promise<Record<string, unknown>> => {
+    const now = new Date().toISOString()
+    const productReference = await exactProductReference(runtimeEngine).catch(() => ({
+      recordType: "product",
+      recordId: "replace-with-product-uuid",
+      revision: 1,
+      digest: `sha256:${"0".repeat(64)}`,
+    }))
+    switch (workflow) {
+      case "create-change": return {
+        initiativeId: "replace-with-initiative-uuid", title: "Bounded change", summary: "Describe the exact change.",
+        baseline: { kind: "exact", subjectType: "product", subjectId: productReference.recordId, revision: productReference.revision, digest: productReference.digest },
+        effectEnvelope: ["reversible-change"],
+      }
+      case "create-work-item": return {
+        changeId: "replace-with-change-uuid", title: "Bounded work item", objective: "Describe the exact objective.", dependsOn: [],
+        completionCriteria: ["An observable completion criterion"], evidenceCriteria: ["Evidence that supports the completion claim"],
+        scope: { read: [{ kind: "workspace-relative", path: "." }], write: [], effects: [] }, owner: { kind: "unassigned" },
+      }
+      case "create-requirement": return {
+        key: "GAEP-REQ-001", statement: "A testable requirement statement.", rationale: "Why this requirement matters.", priority: "must",
+        verificationCriteria: ["An observable verification criterion"], sourceRecords: [productReference],
+      }
+      case "create-decision": {
+        const first = randomUUID()
+        const second = randomUUID()
+        return {
+          question: "Which bounded option should be selected?",
+          options: [
+            { id: first, label: "Option A", description: "First bounded option", tradeoffs: ["Document a tradeoff"] },
+            { id: second, label: "Option B", description: "Second bounded option", tradeoffs: ["Document a tradeoff"] },
+          ],
+          recommendation: { optionId: first, rationale: "Why this option is recommended", proposedBy: { kind: "human", id: actorId }, proposedAt: now },
+          dissentAndUncertainty: ["Document material uncertainty"], affectedRecords: [productReference],
+        }
+      }
+      case "create-risk": return {
+        title: "Material risk", cause: "Describe the cause.", condition: "Describe the condition.", consequence: "Describe the consequence.",
+        likelihood: "unknown", impact: "unknown", uncertainty: "What remains uncertain", treatment: "Proposed treatment",
+        owner: { kind: "unassigned" }, reviewTriggers: ["A concrete review trigger"], residualRisk: "Describe residual risk", evidence: [],
+      }
+      case "create-architecture": return {
+        recordType: "direction", title: "Architecture direction", description: "Describe the bounded direction.", rationale: "Why this direction applies.",
+        assumptions: ["A material assumption"], constraints: ["A material constraint"], affectedRecords: [productReference],
+      }
+      case "create-evidence": return {
+        subjects: [productReference], origin: { kind: "manual-observation", locator: { kind: "logical", value: "manual-observation" }, actor: { kind: "human", id: actorId } },
+        method: "Describe how the observation was obtained.", result: { status: "observation", summary: "Describe the observed result." },
+        artifactDigest: canonicalDigest("replace-with-artifact-content"), limitations: ["State what this evidence does not prove"],
+        verification: { status: "unverified" }, freshness: { status: "unknown", assessedAt: now, basis: "Not independently assessed" }, collectedAt: now,
+      }
+      case "create-context-pack": {
+        const content = "Replace with selected, redacted context content."
+        const digest = canonicalDigest(content)
+        return {
+          objective: "Bounded context objective", recipient: { kind: "human", id: actorId },
+          items: [{
+            id: randomUUID(), source: { kind: "logical", value: "product-context" }, sourceDigest: digest,
+            selectionReason: "Why this context is necessary", required: true, content, contentDigest: digest,
+            trust: {
+              semanticAuthority: { standing: "advisory", domain: "product", scope: ["bounded objective"] }, epistemicRole: "reference",
+              sourceAuthenticity: "unknown", contentIntegrity: "unknown",
+              confidentiality: { classification: "internal", purpose: "Bounded Product design", recipients: [actorId], retention: "Local Product lifecycle" },
+              instructionPrivilege: "inert-evidence", freshness: { status: "unknown", assessedAt: now, basis: "Not assessed" },
+              validity: { status: "unknown", basis: "Not assessed" }, revisionDisposition: "unknown",
+              applicability: { status: "unknown", basis: "Not assessed" },
+            }, transformations: [],
+          }],
+          omissions: [], warnings: ["Context sufficiency does not grant authority"], conflicts: [],
+          classificationCombinationRisk: "Combination risk requires human review", sufficiencyCriteria: ["Required context is present"],
+          sufficiencyEvaluator: { kind: "human", id: actorId }, sufficiencyAssumptions: ["No omitted material dependency"],
+        }
+      }
+      case "create-workflow-plan": return {
+        title: "Bounded workflow plan", objective: "Describe the workflow objective.", subject: productReference,
+        actor: { kind: "human", id: actorId }, strategy: "sequential", contextPacks: [], toolDefinitions: [],
+        steps: [{
+          id: randomUUID(), title: "First bounded step", objective: "Describe this step.", responsibility: { kind: "human", id: actorId },
+          contextPacks: [], toolDefinitions: [], dependsOn: [], preconditions: ["A concrete precondition"], outputs: ["A concrete output"],
+          evidenceCriteria: ["A concrete evidence criterion"], retry: { maxAttempts: 1, backoffMs: 0, retryOn: [] },
+          stopConditions: ["Required authority or context is missing"], scope: { read: [], write: [], effects: [] }, effectEnvelope: ["observe"],
+        }],
+      }
+      case "create-tool-definition": return {
+        definitionType: "tool", key: "example-tool", name: "Example Tool", binding: { toolName: "example-tool" },
+        purpose: "Describe the bounded tool purpose.", inputContract: ["Document accepted input"], outputContract: ["Document produced output"],
+        allowedScopes: [], requiredPermissions: [], effectEnvelope: ["observe"],
+        trust: { source: "configured", maturity: "unknown", assessedAt: now, basis: "Requires review" },
+        limitations: ["Tool presence does not grant authority"], enabled: false,
+        policy: { requiresHumanConfirmation: true, forbiddenInUntrustedWorkspace: true, allowedProfiles: [] },
+      }
+      case "create-run-tool-selection": return {
+        runId: "replace-with-run-uuid", tools: [], requestedEffects: ["observe"],
+        requestedScopes: [{ kind: "workspace-relative", path: "." }], confirmedToolIds: [],
+      }
+      case "create-trace-link": return {
+        source: productReference, relationship: "related-to", target: { ...productReference },
+        provenance: { kind: "human", actorId, rationale: "Why this relationship is asserted" },
+      }
+      default: return {}
+    }
+  }
+
+  const performDomainMutation = async (
+    action: DomainWorkflowAction,
+    runtimeEngine: GaepEngine,
+    input: Record<string, unknown>,
+    record?: Record<string, unknown>,
+  ): Promise<unknown> => {
+    const studio = runtimeEngine.productStudio
+    const product = await runtimeEngine.readProduct()
+    const productRevision = product.revision ?? 1
+    const id = action.recordId ?? String(record?.id ?? "")
+    const expectedRevision = action.expectedRevision ?? Number(record?.revision)
+    switch (action.workflow) {
+      case "create-change": return studio.createChange(input as never, productRevision, actorId)
+      case "edit-change": return studio.reviseChange(id, expectedRevision, input as never, actorId)
+      case "create-work-item": return studio.createWorkItem(input as never, productRevision, actorId)
+      case "edit-work-item": return studio.reviseWorkItem(id, expectedRevision, input as never, actorId)
+      case "create-requirement": return studio.createRequirement(input as never, productRevision, actorId)
+      case "edit-requirement": return studio.reviseRequirement(id, expectedRevision, input as never, actorId)
+      case "create-decision": return studio.createDecision(input as never, productRevision, actorId)
+      case "edit-decision": return studio.reviseDecision(id, expectedRevision, input as never, actorId)
+      case "create-risk": return studio.createRisk(input as never, productRevision, actorId)
+      case "edit-risk": return studio.reviseRisk(id, expectedRevision, input as never, actorId)
+      case "create-architecture": return studio.createArchitectureRecord(input as never, productRevision, actorId)
+      case "edit-architecture": return studio.reviseArchitectureRecord(id, expectedRevision, input as never, actorId)
+      case "create-evidence": return studio.createEvidence(input as never, productRevision, actorId)
+      case "edit-evidence": return studio.reviseEvidence(id, expectedRevision, input as never, actorId)
+      case "create-context-pack": return studio.createContextPack(input as never, productRevision, actorId)
+      case "edit-context-pack": return studio.reviseContextPack(id, expectedRevision, input as never, actorId)
+      case "create-workflow-plan": return studio.createWorkflowPlan(input as never, productRevision, actorId)
+      case "edit-workflow-plan": return studio.reviseWorkflowPlan(id, expectedRevision, input as never, actorId)
+      case "create-tool-definition": return studio.createToolDefinition(input as never, productRevision, actorId)
+      case "edit-tool-definition": return studio.reviseToolDefinition(id, expectedRevision, input as never, actorId)
+      case "create-run-tool-selection": return studio.createRunToolSelection(input as never, productRevision, actorId)
+      case "edit-run-tool-selection": return studio.reviseRunToolSelection(id, expectedRevision, input as never, actorId)
+      case "create-trace-link": return studio.createTraceLink(input as never, productRevision, actorId)
+      default: throw new Error(`Unsupported Product-domain mutation: ${action.workflow}`)
+    }
+  }
+
+  const executeProductStudioWorkflow = async (action: DomainWorkflowAction): Promise<unknown> => {
+    const runtime = await requireRuntime()
+    const studio = runtime.engine.productStudio
+    if (action.workflow === "search") {
+      const query = await requiredInput("Search Product-domain records (at least two characters)")
+      const results = await studio.search({ query })
+      const bounded = results.slice(0, recordLimit)
+      if (results.length > bounded.length) {
+        await vscode.window.showWarningMessage(`Search returned ${results.length} records. Product Studio shows the newest ${bounded.length}; refine the query to inspect omitted matches.`)
+      }
+      return { kind: "search-results", results: bounded, total: results.length }
+    }
+    if (action.workflow === "workspace-health") {
+      const issues = await studio.healthIssues()
+      if (issues.length === 0) await vscode.window.showInformationMessage("GAEP Product-domain workspace health has no reported issues")
+      else await vscode.window.showWarningMessage(`GAEP Product-domain health reports ${issues.length} issue(s). Open Product Studio Readiness for the bounded list.`)
+      refresh()
+      return issues.slice(0, recordLimit)
+    }
+    if (action.workflow === "export") {
+      const bundle = await studio.buildPortableExport()
+      const target = await vscode.window.showSaveDialog({
+        title: "Save portable GAEP Product export",
+        filters: { "GAEP Product export": ["json"] },
+        defaultUri: vscode.Uri.joinPath(vscode.Uri.file(runtime.path), `${bundle.manifest.productId}-r${bundle.manifest.productRevision}.gaep.json`),
+      })
+      if (!target) throw new WorkflowCancelled()
+      const temporary = target.with({ path: `${target.path}.gaep-${randomUUID()}.tmp` })
+      try {
+        await vscode.workspace.fs.writeFile(temporary, new TextEncoder().encode(`${JSON.stringify(bundle, null, 2)}\n`))
+        await vscode.workspace.fs.rename(temporary, target, { overwrite: true })
+      } catch (error) {
+        await Promise.resolve(vscode.workspace.fs.delete(temporary, { recursive: false, useTrash: false })).catch(() => undefined)
+        throw error
+      }
+      await vscode.window.showInformationMessage(`Portable Product export saved with ${bundle.manifest.members.length} member(s). This does not grant authority or implementation approval.`)
+      return bundle.manifest
+    }
+    if (action.workflow === "import-preview") {
+      const selected = await vscode.window.showOpenDialog({
+        title: "Preview a portable GAEP Product export (no mutation)",
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        filters: { "GAEP Product export": ["json"] },
+      })
+      const source = selected?.[0]
+      if (!source) throw new WorkflowCancelled()
+      if (source.scheme !== "file") throw new Error("Import preview currently requires a local file URI; no mutation was performed")
+      const preview = await studio.previewImportFile(source.fsPath)
+      await vscode.window.showInformationMessage(`Import preview: ${preview.status}; ${preview.memberCount} member(s); ${preview.conflicts.length} conflict(s). No mutation was performed.`)
+      return preview
+    }
+    if (action.workflow === "reassess-trace-link") {
+      let id = action.recordId
+      let expectedRevision = action.expectedRevision
+      if (!id || !expectedRevision) {
+        const links = await studio.listTraceLinks()
+        const picked = await vscode.window.showQuickPick(links.slice(0, recordLimit).map((record) => ({
+          label: `${record.source.recordType}:${record.source.recordId} ${record.relationship} ${record.target.recordType}:${record.target.recordId}`,
+          description: `${record.state} · revision ${record.revision}`,
+          record,
+        })), { title: "Select a Trace link to reassess", ignoreFocusOut: true })
+        if (!picked) throw new WorkflowCancelled()
+        id = picked.record.id
+        expectedRevision = picked.record.revision
+      }
+      const result = await studio.reassessTraceLink(id, expectedRevision, actorId)
+      refresh()
+      return result
+    }
+
+    const editing = action.workflow.startsWith("edit-")
+    let record: Record<string, unknown> | undefined
+    if (editing) {
+      const records = await readDomainRecords(action.workflow, runtime.engine) as Record<string, unknown>[]
+      if (records.length === 0) throw new Error("No matching governed record exists")
+      if (records.length > recordLimit) {
+        await vscode.window.showWarningMessage(`There are ${records.length} matching records. The picker is bounded to ${recordLimit}; use Product-domain search to locate omitted records.`)
+      }
+      record = action.recordId ? records.find((candidate) => candidate.id === action.recordId) : undefined
+      if (!record) {
+        const picked = await vscode.window.showQuickPick(records.slice(0, recordLimit).map((candidate) => ({
+          label: String(candidate.title ?? candidate.key ?? candidate.question ?? candidate.objective ?? candidate.id),
+          description: `revision ${String(candidate.revision)}${candidate.state ? ` · ${String(candidate.state)}` : ""}`,
+          detail: String(candidate.id),
+          record: candidate,
+        })), { title: `Select a record for ${action.workflow.replaceAll("-", " ")}`, ignoreFocusOut: true })
+        if (!picked) throw new WorkflowCancelled()
+        record = picked.record
+      }
+      if (action.expectedRevision && Number(record.revision) !== action.expectedRevision) {
+        throw new Error(`The selected record is now revision ${String(record.revision)}; refresh before editing revision ${action.expectedRevision}`)
+      }
+    }
+    const template = editing && record ? mutableDomainInput(action.workflow, record) : await createTemplate(action.workflow, runtime.engine)
+    const draftKey = `${runtime.path}\u0000${action.workflow}\u0000${String(record?.id ?? "new")}`
+    const input = await collectStructuredObject(draftKey, `GAEP: ${action.workflow.replaceAll("-", " ")}`, template)
+    const confirmation = await vscode.window.showWarningMessage(
+      `Commit ${action.workflow.replaceAll("-", " ")} as local governed state attributed to ${actorId}? Engine validation, exact revision checks, audit recording, and transaction recovery apply.`,
+      { modal: true },
+      "Validate and Commit",
+    )
+    if (confirmation !== "Validate and Commit") throw new WorkflowCancelled()
+    const result = await performDomainMutation(action, runtime.engine, input, record)
+    domainInputDrafts.delete(draftKey)
+    refresh()
+    return result
+  }
+
+  context.subscriptions.push(vscode.commands.registerCommand("gaep.productStudio.domainWorkflow", async (candidate?: unknown) => {
+    if (!isStudioAction(candidate) || candidate.kind !== "domain-workflow") throw new Error("A valid Product Studio workflow action is required")
+    try {
+      return await executeProductStudioWorkflow(candidate)
+    } catch (error) {
+      if (error instanceof WorkflowCancelled) return undefined
+      logDiagnostic(`Product Studio ${candidate.workflow} failed`, error)
+      throw error
+    }
+  }))
+
+  const contributedDomainCommands: Array<{ command: string; workflow: StudioDomainWorkflow }> = studioDomainWorkflows.map((workflow) => ({
+    command: `gaep.productStudio.${workflow.replaceAll("-", ".")}`,
+    workflow,
+  }))
+  for (const contributed of contributedDomainCommands) {
+    context.subscriptions.push(vscode.commands.registerCommand(contributed.command, () => vscode.commands.executeCommand(
+      "gaep.productStudio.domainWorkflow",
+      { kind: "domain-workflow", workflow: contributed.workflow },
+    )))
+  }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("gaep.productStudio.startDesignDraft", safely(async () => {
+      const runtime = await requireRuntime()
+      const product = await runtime.engine.readProduct()
+      const draft = await runtime.engine.productStudio.startOrResumeDesignDraft(product.revision ?? 1)
+      refresh()
+      await vscode.window.showInformationMessage(`Product design draft ${draft.id} is available at local draft revision ${draft.revision}.`)
+    })),
+    vscode.commands.registerCommand("gaep.productStudio.editDesignSection", safely(async () => {
+      const runtime = await requireRuntime()
+      const product = await runtime.engine.readProduct()
+      const draft = await runtime.engine.productStudio.startOrResumeDesignDraft(product.revision ?? 1)
+      const picked = await vscode.window.showQuickPick(studioRoutes.map((route) => ({
+        label: studioRouteLabels[route],
+        description: runtime.engine.productStudio.evaluateDesignReadiness(draft).sections.find((section) => section.sectionId === route)?.state,
+        route,
+      })), { title: "Select the governed Product design section to edit", ignoreFocusOut: true })
+      if (!picked) throw new WorkflowCancelled()
+      const section = draft.sections[picked.route]
+      const template = {
+        fields: section.fields.map((field) => ({
+          key: field.key,
+          value: field.value,
+          state: field.state,
+          ...(field.deferredReason ? { deferredReason: field.deferredReason } : {}),
+          ...(field.revisitTrigger ? { revisitTrigger: field.revisitTrigger } : {}),
+        })),
+      }
+      const key = `${runtime.path}\u0000design\u0000${picked.route}`
+      const input = await collectStructuredObject(key, `Edit ${picked.label} design fields`, template)
+      if (!Array.isArray(input.fields)) throw new Error("Design input requires a fields array")
+      const byKey = new Map(input.fields.flatMap((candidate): Array<[string, Record<string, unknown>]> => {
+        if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return []
+        const field = candidate as Record<string, unknown>
+        return typeof field.key === "string" ? [[field.key, field]] : []
+      }))
+      const nextSection = {
+        ...section,
+        fields: section.fields.map((field) => {
+          const candidate = byKey.get(field.key)
+          if (!candidate) return field
+          const state = candidate.state
+          if (!["missing", "weak", "complete", "deferred"].includes(String(state))) {
+            throw new Error(`${field.key} has an invalid design state`)
+          }
+          const value = candidate.value
+          if (!(typeof value === "string" || (Array.isArray(value) && value.every((entry) => typeof entry === "string")))) {
+            throw new Error(`${field.key} value must be a string or string array`)
+          }
+          const deferredReason = typeof candidate.deferredReason === "string" ? candidate.deferredReason.trim() : undefined
+          const revisitTrigger = typeof candidate.revisitTrigger === "string" ? candidate.revisitTrigger.trim() : undefined
+          const clean = { ...field }
+          delete clean.deferredReason
+          delete clean.revisitTrigger
+          return {
+            ...clean,
+            value,
+            state: state as typeof field.state,
+            provenance: [...new Set([...field.provenance, `human:${actorId}`])],
+            ...(state === "deferred" && deferredReason ? { deferredReason } : {}),
+            ...(state === "deferred" && revisitTrigger ? { revisitTrigger } : {}),
+          }
+        }),
+        updatedAt: new Date().toISOString(),
+      }
+      const confirmation = await vscode.window.showWarningMessage(
+        `Save ${picked.label} against draft revision ${draft.revision} and Product revision ${draft.baseProductRevision}?`,
+        { modal: true },
+        "Save Draft Section",
+      )
+      if (confirmation !== "Save Draft Section") throw new WorkflowCancelled()
+      await runtime.engine.productStudio.saveDesignDraft({
+        draftId: draft.id,
+        sections: { ...draft.sections, [picked.route]: nextSection },
+        expectedDraftRevision: draft.revision,
+        expectedProductRevision: draft.baseProductRevision,
+      })
+      domainInputDrafts.delete(key)
+      refresh()
+    })),
+    vscode.commands.registerCommand("gaep.productStudio.evaluateDesignReadiness", safely(async () => {
+      const runtime = await requireRuntime()
+      const product = await runtime.engine.readProduct()
+      const draft = await runtime.engine.productStudio.readDesignDraft(product.id)
+      const report = runtime.engine.productStudio.evaluateDesignReadiness(draft)
+      const incomplete = report.sections.filter((section) => !["complete", "deferred"].includes(section.state))
+      await vscode.window.showInformationMessage(
+        `Product design readiness: ${report.status}; ${incomplete.length} incomplete section(s); ${report.deferredFieldCount} deferred field(s). This is not implementation approval.`,
+      )
+    })),
+    vscode.commands.registerCommand("gaep.productStudio.createDesignRevision", safely(async () => {
+      const runtime = await requireRuntime()
+      const product = await runtime.engine.readProduct()
+      const draft = await runtime.engine.productStudio.readDesignDraft(product.id)
+      const report = runtime.engine.productStudio.evaluateDesignReadiness(draft)
+      const confirmation = await vscode.window.showWarningMessage(
+        `Create immutable Product design history from local draft revision ${draft.revision}? Readiness is ${report.status}; this does not approve implementation.`,
+        { modal: true },
+        "Create Design Revision",
+      )
+      if (confirmation !== "Create Design Revision") throw new WorkflowCancelled()
+      const created = await runtime.engine.productStudio.createDesignRevision({
+        draftId: draft.id,
+        expectedDraftRevision: draft.revision,
+        expectedProductRevision: draft.baseProductRevision,
+      }, actorId)
+      refresh()
+      await vscode.window.showInformationMessage(`Created design revision ${created.revision.revision} and Product revision ${created.product.revision}.`)
+    })),
+    vscode.commands.registerCommand("gaep.productStudio.analyzeImpact", safely(async () => {
+      const runtime = await requireRuntime()
+      const recordType = await requiredInput("Exact trace record type")
+      const recordId = await requiredInput("Exact trace record ID")
+      const external = recordType === "external"
+      const revision = external ? undefined : Number(await requiredInput("Exact record revision", {
+        validateInput: (value) => Number.isInteger(Number(value)) && Number(value) > 0 ? undefined : "Enter a positive integer",
+      }))
+      const digest = external ? undefined : await requiredInput("Exact sha256 record digest")
+      const impact = await runtime.engine.productStudio.impactAnalysis({
+        recordType: recordType as never,
+        recordId,
+        ...(revision ? { revision } : {}),
+        ...(digest ? { digest } : {}),
+      })
+      await vscode.window.showInformationMessage(
+        `Impact analysis: ${impact.upstream.length} upstream, ${impact.downstream.length} downstream, ${impact.unresolved.length} unresolved, ${impact.invalid.length} invalid, ${impact.stale.length} stale.${impact.truncated ? " Results are explicitly truncated." : ""}`,
+      )
+    })),
+    vscode.commands.registerCommand("gaep.productStudio.inspectRecord", safely(async () => {
+      const runtime = await requireRuntime()
+      const query = await requiredInput("Search for a Product-domain record to inspect")
+      const results = await runtime.engine.productStudio.search({ query })
+      if (results.length === 0) throw new Error("No Product-domain records matched the search")
+      if (results.length > recordLimit) {
+        await vscode.window.showWarningMessage(`Search returned ${results.length} records. The inspector picker is bounded to ${recordLimit}; refine the query for omitted matches.`)
+      }
+      const picked = await vscode.window.showQuickPick(results.slice(0, recordLimit).map((record) => ({
+        label: record.label,
+        description: `${record.kind} · revision ${record.revision}`,
+        detail: record.excerpt,
+        record,
+      })), { title: "Inspect Product-domain record", ignoreFocusOut: true })
+      if (!picked) throw new WorkflowCancelled()
+      await vscode.window.showInformationMessage(
+        `${picked.record.kind} ${picked.record.id} revision ${picked.record.revision}: ${picked.record.excerpt}`,
+        { modal: true },
+      )
+    })),
   )
 
   context.subscriptions.push(

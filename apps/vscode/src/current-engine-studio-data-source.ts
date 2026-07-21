@@ -1,4 +1,32 @@
-import type { AdapterCapabilities, AgentSelection, Initiative, Product, Run } from "@gaep/contracts"
+import type {
+  AdapterCapabilities,
+  AgentSelection,
+  ArchitectureRecord,
+  Change,
+  ContextPack,
+  Decision,
+  DesignReadinessReport,
+  EvidenceRecord,
+  Initiative,
+  Product,
+  ProductDesignDraft,
+  ProductDesignRevision,
+  ProductDomainSearchResult,
+  ProductImportPreview,
+  ProductRevision,
+  Requirement,
+  Risk,
+  Run,
+  RunToolSelection,
+  ToolDefinition,
+  TraceImpact,
+  TraceLink,
+  WorkItem,
+  WorkflowPlan,
+  WorkspaceHealthIssue,
+} from "@gaep/contracts"
+import { containsSecretShapedValue } from "@gaep/contracts"
+import type { ProductStudioService } from "@gaep/engine"
 
 import { currentInitiative, initiativeRunEligibility, newestRun, unsafeSelectionReasons } from "./safety.js"
 import {
@@ -25,6 +53,7 @@ import {
   type StudioActionControl,
   type StudioActionResult,
   type StudioDefinitionEntry,
+  type StudioDesignSectionSnapshot,
   type StudioFieldSnapshot,
   type StudioInspectorSnapshot,
   type StudioIssue,
@@ -43,6 +72,7 @@ export interface CurrentStudioEngineReader {
   repository: {
     verifyAudit(): Promise<{ valid: boolean; events: number; error?: string; warning?: string }>
   }
+  productStudio?: ProductStudioService
 }
 
 export type ExistingStudioCommand =
@@ -56,6 +86,7 @@ export type ExistingStudioCommand =
   | "gaep.showDiagnostics"
   | "gaep.manageWorkspaceTrust"
   | "gaep.retryRecovery"
+  | "gaep.productStudio.domainWorkflow"
 
 export interface CurrentEngineStudioContext {
   contextGeneration(): string
@@ -67,6 +98,7 @@ export interface CurrentEngineStudioContext {
   listInitiatives(): Promise<Initiative[]>
   probeAgents(): Promise<AdapterCapabilities[]>
   runtimeBindings(): RuntimeBindingIndex
+  actorId(): string
   executeCommand(expectedContextGeneration: string, command: ExistingStudioCommand, ...args: unknown[]): PromiseLike<unknown>
   logDiagnostic(message: string, error?: unknown): void
 }
@@ -82,21 +114,28 @@ interface ObservedStudioState {
   selectionMigrationRequired?: boolean
   issues: StudioIssue[]
   productState: "available" | "absent" | "invalid"
-}
-
-const unavailableDomains: Readonly<Record<StudioRoute, string | undefined>> = {
-  overview: undefined,
-  direction: "A governed Direction section is not available in the current engine. Bootstrap Product fields are shown read-only.",
-  "users-jobs": "Governed User and Job records are not available in the current engine. Bootstrap Product fields are shown read-only.",
-  outcomes: "Governed Outcome records are not available in the current engine. Bootstrap Product fields are shown read-only.",
-  scope: "A governed Scope section is not available in the current engine. Bootstrap exclusions are shown read-only.",
-  delivery: "Change and Work Item domains are not available. Current Initiative records remain usable.",
-  architecture: "The current engine has no governed Architecture section.",
-  "risks-decisions": "The current engine has no governed Risk, Recommendation, or Decision records.",
-  trace: "The current engine has no persisted cross-domain trace graph.",
-  "agents-tools": undefined,
-  "runs-evidence": "Runs are available, but structured event and evidence records are not yet exposed by the current engine.",
-  readiness: "Formal readiness evaluation is not available until the missing governed sections and trace evidence exist.",
+  designDraft?: ProductDesignDraft
+  designReadiness?: DesignReadinessReport
+  designRevisions: ProductDesignRevision[]
+  productRevisions: ProductRevision[]
+  changes: Change[]
+  workItems: WorkItem[]
+  requirements: Requirement[]
+  decisions: Decision[]
+  risks: Risk[]
+  architecture: ArchitectureRecord[]
+  evidence: EvidenceRecord[]
+  contextPacks: ContextPack[]
+  workflowPlans: WorkflowPlan[]
+  toolDefinitions: ToolDefinition[]
+  runToolSelections: RunToolSelection[]
+  traceLinks: TraceLink[]
+  health: WorkspaceHealthIssue[]
+  healthTotal: number
+  searchResults: ProductDomainSearchResult[]
+  searchResultTotal: number
+  impact?: TraceImpact
+  importPreview?: ProductImportPreview
 }
 
 function control(
@@ -130,6 +169,33 @@ function emptyTable(id: string, title: string, detail: string): StudioTableSnaps
     rows: [],
     actions: [],
     emptyState: emptySurface(`${title} unavailable`, detail),
+  }
+}
+
+function domainControl(
+  label: string,
+  workflow: Extract<StudioAction, { kind: "domain-workflow" }>["workflow"],
+  recordId?: string,
+  expectedRevision?: number,
+  emphasis: StudioActionControl["emphasis"] = "secondary",
+): StudioActionControl {
+  return control(label, {
+    kind: "domain-workflow",
+    workflow,
+    ...(recordId ? { recordId } : {}),
+    ...(expectedRevision ? { expectedRevision } : {}),
+  }, true, emphasis)
+}
+
+function recordEmpty(id: string, title: string, createLabel: string, workflow: Extract<StudioAction, { kind: "domain-workflow" }>["workflow"]): StudioTableSnapshot {
+  const action = domainControl(createLabel, workflow, undefined, undefined, "primary")
+  return {
+    id,
+    title,
+    columns: [],
+    rows: [],
+    actions: [action],
+    emptyState: emptySurface(`No ${title}`, `Create the first governed ${title.toLocaleLowerCase()} record.`, [action]),
   }
 }
 
@@ -168,9 +234,64 @@ function purposeFor(route: StudioRoute): string {
   }
 }
 
-function domainIssue(route: StudioRoute): StudioIssue[] {
-  const message = unavailableDomains[route]
-  return message ? [issue(`domain-${route}`, message, "warning")] : []
+function titleForKey(key: string): string {
+  return key.split("-").map((part) => part ? `${part[0]!.toUpperCase()}${part.slice(1)}` : part).join(" ")
+}
+
+function portableProvenance(value: string): string {
+  return /^(?:human|agent|system|imported):[A-Za-z0-9._-]{1,200}$/.test(value)
+    ? value
+    : "[non-portable provenance withheld]"
+}
+
+function isMissingRecord(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "ENOENT"
+}
+
+function designPanel(route: StudioRoute, state: ObservedStudioState): StudioDesignSectionSnapshot | undefined {
+  const draft = state.designDraft
+  if (!draft) return undefined
+  const section = draft.sections[route]
+  const readiness = state.designReadiness?.sections.find((candidate) => candidate.sectionId === route)
+  const latest = state.designRevisions[0]
+  return {
+    sectionId: route,
+    draftId: draft.id,
+    draftRevision: draft.revision,
+    baseProductRevision: draft.baseProductRevision,
+    readiness: readiness?.state ?? "missing",
+    fields: section.fields.map((field) => ({
+      id: field.key,
+      label: titleForKey(field.key),
+      question: field.question,
+      kind: Array.isArray(field.value) ? "string-list" : field.value.length > 160 ? "long-text" : "long-text",
+      value: field.value,
+      required: true,
+      provenance: field.provenance.length > 0 ? field.provenance.map(portableProvenance).join(" · ") : "No provenance recorded",
+      validation: {
+        state: field.state === "complete" || field.state === "deferred" ? "valid" : "not-validated",
+        message: field.state === "deferred"
+          ? `Deferred: ${field.deferredReason ?? "reason missing"}${field.revisitTrigger ? ` · Revisit: ${field.revisitTrigger}` : ""}`
+          : `Design state: ${field.state}`,
+      },
+      designState: field.state,
+      ...(field.deferredReason ? { deferredReason: field.deferredReason } : {}),
+      ...(field.revisitTrigger ? { revisitTrigger: field.revisitTrigger } : {}),
+    })),
+    gaps: section.gaps.map((gap) => issue(
+      gap.id,
+      gap.resolution ? `${gap.message} · Resolved: ${gap.resolution}` : gap.message,
+      gap.severity === "info" ? "information" : gap.severity,
+      draft.id,
+    )),
+    conflicts: section.conflicts.map((conflict) => issue(
+      conflict.id,
+      conflict.resolution ? `${conflict.statement} · ${conflict.state}: ${conflict.resolution}` : `${conflict.statement} · ${conflict.state}`,
+      conflict.state === "open" ? "blocker" : "information",
+      draft.id,
+    )),
+    materialChange: !latest || JSON.stringify(latest.sections) !== JSON.stringify(draft.sections),
+  }
 }
 
 function textField(
@@ -229,35 +350,54 @@ function legacyForm(route: RecordFormRoute, product?: Product): RecordFormPageSn
     kind: "record-form",
     ...(product ? { recordId: product.id, baseRevision: product.revision } : {}),
     fields,
-    gaps: domainIssue(route),
+    gaps: [],
     conflicts: [],
     draft: { state: "clean", materialChange: false, validation: "not-validated" },
   }
 }
 
-function sectionsFor(state: ObservedStudioState): OverviewSectionStatus[] {
-  const hasProduct = Boolean(state.product)
-  const hasSelection = Boolean(state.selection)
-  const section = (route: StudioRoute, completion: CompletionState, gapCount: number): OverviewSectionStatus =>
-    ({ route, state: completion, gapCount })
-  return [
-    section("overview", hasProduct ? "complete" : "not-started", hasProduct ? 0 : 1),
-    section("direction", hasProduct ? "in-progress" : "not-started", 1),
-    section("users-jobs", hasProduct ? "in-progress" : "not-started", 1),
-    section("outcomes", hasProduct ? "in-progress" : "not-started", 1),
-    section("scope", hasProduct ? "in-progress" : "not-started", 1),
-    section("delivery", state.initiatives.length > 0 ? "in-progress" : "not-started", 2),
-    section("architecture", "not-started", 1),
-    section("risks-decisions", "not-started", 3),
-    section("trace", "not-started", 1),
-    section("agents-tools", hasSelection ? "in-progress" : "not-started", hasSelection ? 1 : 2),
-    section("runs-evidence", state.runs.length > 0 ? "in-progress" : "not-started", 2),
-    section("readiness", "blocked", unavailableDomainsCount()),
-  ]
+function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
+  const design = designPanel(route, state)
+  if (!design) return legacyForm(route, state.product)
+  const relatedRecords: StudioTableSnapshot[] = []
+  if (route === "scope") relatedRecords.push(requirementsTable(state.requirements))
+  if (route === "architecture") relatedRecords.push(architectureTable(state.architecture))
+  return {
+    ...base(route, state.product),
+    design,
+    kind: "record-form",
+    recordId: state.product?.id,
+    draftId: design.draftId,
+    baseRevision: design.baseProductRevision,
+    fields: design.fields,
+    gaps: design.gaps,
+    conflicts: design.conflicts,
+    draft: {
+      state: design.materialChange ? "revision-ready" : "clean",
+      materialChange: design.materialChange,
+      validation: ["complete", "deferred"].includes(design.readiness) ? "valid" : design.readiness === "conflicted" ? "blocked" : "not-validated",
+    },
+    ...(relatedRecords.length > 0 ? { relatedRecords } : {}),
+  }
 }
 
-function unavailableDomainsCount(): number {
-  return Object.values(unavailableDomains).filter(Boolean).length
+function sectionsFor(state: ObservedStudioState): OverviewSectionStatus[] {
+  const section = (route: StudioRoute, completion: CompletionState, gapCount: number): OverviewSectionStatus =>
+    ({ route, state: completion, gapCount })
+  if (!state.product) return studioRoutes.map((route) => section(route, "not-started", 1))
+  if (!state.designReadiness) {
+    return studioRoutes.map((route) => section(route, route === "overview" ? "in-progress" : "not-started", 1))
+  }
+  return state.designReadiness.sections.map((candidate) => {
+    const gapCount = candidate.missingFields.length + candidate.weakFields.length + candidate.openConflictIds.length +
+      candidate.blockerGapIds.length
+    const completion: CompletionState = candidate.state === "complete" || candidate.state === "deferred"
+      ? "complete"
+      : candidate.state === "conflicted"
+        ? "blocked"
+        : "in-progress"
+    return section(candidate.sectionId, completion, gapCount)
+  })
 }
 
 function selectedInitiativeEntries(initiatives: Initiative[]): StudioDefinitionEntry[] {
@@ -383,6 +523,12 @@ function uniqueIssues(issues: StudioIssue[]): StudioIssue[] {
 
 function primaryAction(state: ObservedStudioState, eligibility = prepareRunEligibility(state)): StudioActionControl | undefined {
   if (!state.product) return control("Initialize Product", { kind: "initialize-product" }, true, "primary")
+  if (!state.designDraft) {
+    return control("Start governed Product design", {
+      kind: "start-design-draft",
+      expectedProductRevision: state.product.revision ?? 1,
+    }, true, "primary")
+  }
   if (!state.selection || !eligibility.selectionReady) {
     return control(
       state.selectionMigrationRequired ? "Reconfirm and migrate agent selection" : "Select agent and model",
@@ -417,13 +563,16 @@ function overviewPage(state: ObservedStudioState): OverviewPageSnapshot {
   const primary = primaryAction(state, eligibility)
   return {
     ...base("overview", product),
+    ...(designPanel("overview", state) ? { design: designPanel("overview", state) } : {}),
     kind: "overview",
     product: {
       name: product?.name ?? "Product not initialized",
       lifecycle: product?.lifecycleState ?? "uninitialized",
       ...(product?.revision ? { revision: product.revision } : {}),
       readinessStatement: product
-        ? "Bootstrap Product truth is available; formal Product readiness is not assessed because governed design domains and trace evidence are incomplete."
+        ? state.designReadiness
+          ? `Design readiness: ${state.designReadiness.status}. This is not implementation approval.`
+          : "Product truth is available; start or resume the governed design draft to evaluate design readiness."
         : "Initialize a Product before readiness can be evaluated.",
     },
     ...(primary ? { primaryAction: primary } : {}),
@@ -461,39 +610,336 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
   }
   return {
     ...base("delivery", state.product),
+    ...(designPanel("delivery", state) ? { design: designPanel("delivery", state) } : {}),
     kind: "delivery",
-    actions: [control("Create Initiative", { kind: "create-initiative" }, true, "primary")],
+    actions: [
+      control("Create Initiative", { kind: "create-initiative" }, true, "primary"),
+      domainControl("Create Change", "create-change"),
+      domainControl("Create Work Item", "create-work-item"),
+    ],
     initiatives,
-    changes: emptyTable("changes", "Changes", "The current engine does not expose governed Change records."),
-    workItems: emptyTable("work-items", "Work Items", "The current engine does not expose governed Work Item records."),
+    changes: changesTable(state.changes),
+    workItems: workItemsTable(state.workItems),
+  }
+}
+
+function changesTable(records: Change[]): StudioTableSnapshot {
+  if (records.length === 0) return recordEmpty("changes", "Changes", "Create Change", "create-change")
+  return {
+    id: "changes",
+    title: "Changes",
+    columns: [
+      { key: "title", label: "Change", identifier: true },
+      { key: "initiative", label: "Initiative" },
+      { key: "baseline", label: "Baseline" },
+      { key: "effects", label: "Effects" },
+      { key: "state", label: "State" },
+      { key: "revision", label: "Revision" },
+    ],
+    rows: records.map((record) => ({
+      id: record.id,
+      cells: {
+        title: record.title,
+        initiative: record.initiativeId,
+        baseline: record.baseline.kind === "exact"
+          ? `${record.baseline.subjectType}:${record.baseline.subjectId}@${record.baseline.revision}`
+          : `genesis: ${record.baseline.declaration}`,
+        effects: record.effectEnvelope.join(", "),
+        state: record.state,
+        revision: String(record.revision),
+      },
+      state: record.state,
+      actions: [
+        control("Inspect", { kind: "open-record", recordId: record.id }),
+        domainControl("Edit", "edit-change", record.id, record.revision),
+      ],
+    })),
+    actions: [domainControl("Create Change", "create-change", undefined, undefined, "primary")],
+  }
+}
+
+function workItemsTable(records: WorkItem[]): StudioTableSnapshot {
+  if (records.length === 0) return recordEmpty("work-items", "Work Items", "Create Work Item", "create-work-item")
+  return {
+    id: "work-items",
+    title: "Work Items",
+    columns: [
+      { key: "title", label: "Work Item", identifier: true },
+      { key: "change", label: "Change" },
+      { key: "dependencies", label: "Dependencies" },
+      { key: "owner", label: "Owner" },
+      { key: "state", label: "State" },
+      { key: "revision", label: "Revision" },
+    ],
+    rows: records.map((record) => ({
+      id: record.id,
+      cells: {
+        title: record.title,
+        change: record.changeId,
+        dependencies: record.dependsOn.join(", ") || "none",
+        owner: record.owner.kind === "unassigned" ? "unassigned" : `${record.owner.kind}:${record.owner.id}`,
+        state: record.state,
+        revision: String(record.revision),
+      },
+      state: record.state,
+      actions: [
+        control("Inspect", { kind: "open-record", recordId: record.id }),
+        domainControl("Edit", "edit-work-item", record.id, record.revision),
+      ],
+    })),
+    actions: [domainControl("Create Work Item", "create-work-item", undefined, undefined, "primary")],
+  }
+}
+
+function requirementsTable(records: Requirement[]): StudioTableSnapshot {
+  if (records.length === 0) return recordEmpty("requirements", "Requirements", "Create Requirement", "create-requirement")
+  return {
+    id: "requirements",
+    title: "Requirements",
+    columns: [
+      { key: "key", label: "Requirement", identifier: true },
+      { key: "statement", label: "Statement" },
+      { key: "priority", label: "Priority" },
+      { key: "state", label: "State" },
+      { key: "revision", label: "Revision" },
+    ],
+    rows: records.map((record) => ({
+      id: record.id,
+      cells: { key: record.key, statement: record.statement, priority: record.priority, state: record.state, revision: String(record.revision) },
+      state: record.state,
+      actions: [
+        control("Inspect", { kind: "open-record", recordId: record.id }),
+        domainControl("Edit", "edit-requirement", record.id, record.revision),
+      ],
+    })),
+    actions: [domainControl("Create Requirement", "create-requirement", undefined, undefined, "primary")],
+  }
+}
+
+function architectureTable(records: ArchitectureRecord[]): StudioTableSnapshot {
+  if (records.length === 0) return recordEmpty("architecture-records", "Architecture records", "Create Architecture record", "create-architecture")
+  return {
+    id: "architecture-records",
+    title: "Architecture records",
+    columns: [
+      { key: "title", label: "Record", identifier: true },
+      { key: "type", label: "Type" },
+      { key: "state", label: "State" },
+      { key: "revision", label: "Revision" },
+    ],
+    rows: records.map((record) => ({
+      id: record.id,
+      cells: { title: record.title, type: record.recordType, state: record.state, revision: String(record.revision) },
+      state: record.state,
+      actions: [
+        control("Inspect", { kind: "open-record", recordId: record.id }),
+        domainControl("Edit", "edit-architecture", record.id, record.revision),
+      ],
+    })),
+    actions: [domainControl("Create Architecture record", "create-architecture", undefined, undefined, "primary")],
   }
 }
 
 function risksPage(state: ObservedStudioState): RisksDecisionsPageSnapshot {
+  const decisions: StudioTableSnapshot = state.decisions.length === 0
+    ? recordEmpty("decisions", "Decisions", "Create Decision", "create-decision")
+    : {
+        id: "decisions",
+        title: "Decisions",
+        columns: [
+          { key: "question", label: "Decision", identifier: true },
+          { key: "recommendation", label: "Recommendation" },
+          { key: "outcome", label: "Selected outcome" },
+          { key: "state", label: "State" },
+          { key: "revision", label: "Revision" },
+        ],
+        rows: state.decisions.map((record) => ({
+          id: record.id,
+          cells: {
+            question: record.question,
+            recommendation: record.recommendation?.optionId ?? "none",
+            outcome: record.selectedOutcome?.optionId ?? "not selected",
+            state: record.state,
+            revision: String(record.revision),
+          },
+          state: record.state,
+          actions: [
+            control("Inspect", { kind: "open-record", recordId: record.id }),
+            domainControl("Edit", "edit-decision", record.id, record.revision),
+          ],
+        })),
+        actions: [domainControl("Create Decision", "create-decision", undefined, undefined, "primary")],
+      }
+  const risks: StudioTableSnapshot = state.risks.length === 0
+    ? recordEmpty("risks", "Risks", "Create Risk", "create-risk")
+    : {
+        id: "risks",
+        title: "Risks",
+        columns: [
+          { key: "title", label: "Risk", identifier: true },
+          { key: "likelihood", label: "Likelihood" },
+          { key: "impact", label: "Impact" },
+          { key: "owner", label: "Owner" },
+          { key: "state", label: "State" },
+          { key: "revision", label: "Revision" },
+        ],
+        rows: state.risks.map((record) => ({
+          id: record.id,
+          cells: {
+            title: record.title,
+            likelihood: record.likelihood,
+            impact: record.impact,
+            owner: record.owner.kind === "unassigned" ? "unassigned" : `${record.owner.kind}:${record.owner.id}`,
+            state: record.state,
+            revision: String(record.revision),
+          },
+          state: record.state,
+          actions: [
+            control("Inspect", { kind: "open-record", recordId: record.id }),
+            domainControl("Edit", "edit-risk", record.id, record.revision),
+          ],
+        })),
+        actions: [domainControl("Create Risk", "create-risk", undefined, undefined, "primary")],
+      }
+  const recommendations: StudioTableSnapshot = {
+    id: "recommendations",
+    title: "Recommendations",
+    columns: [
+      { key: "decision", label: "Decision", identifier: true },
+      { key: "option", label: "Recommended option" },
+      { key: "rationale", label: "Rationale" },
+      { key: "proposedBy", label: "Proposed by" },
+    ],
+    rows: state.decisions.filter((record) => record.recommendation).map((record) => ({
+      id: record.id,
+      cells: {
+        decision: record.question,
+        option: record.recommendation!.optionId,
+        rationale: record.recommendation!.rationale,
+        proposedBy: `${record.recommendation!.proposedBy.kind}:${record.recommendation!.proposedBy.id}`,
+      },
+      actions: [control("Inspect decision", { kind: "open-record", recordId: record.id })],
+    })),
+    actions: [],
+    ...(state.decisions.every((record) => !record.recommendation)
+      ? { emptyState: emptySurface("No recommendations", "Recommendations remain distinct from attributable human decisions.") }
+      : {}),
+  }
   return {
     ...base("risks-decisions", state.product),
+    ...(designPanel("risks-decisions", state) ? { design: designPanel("risks-decisions", state) } : {}),
     kind: "risks-decisions",
-    risks: emptyTable("risks", "Risks", "Governed Risk records are not available."),
-    recommendations: emptyTable("recommendations", "Recommendations", "Governed Recommendation records are not available."),
-    decisions: emptyTable("decisions", "Decisions", "Governed Decision records are not available."),
+    actions: [domainControl("Create Risk", "create-risk", undefined, undefined, "primary"), domainControl("Create Decision", "create-decision")],
+    risks,
+    recommendations,
+    decisions,
   }
 }
 
 function tracePage(state: ObservedStudioState): TracePageSnapshot {
+  const relationships: StudioTableSnapshot = state.traceLinks.length === 0
+    ? recordEmpty("relationships", "Relationships", "Create Trace link", "create-trace-link")
+    : {
+        id: "relationships",
+        title: "Relationships",
+        columns: [
+          { key: "source", label: "Source", identifier: true },
+          { key: "relationship", label: "Relationship" },
+          { key: "target", label: "Target" },
+          { key: "state", label: "State" },
+          { key: "revision", label: "Revision" },
+        ],
+        rows: state.traceLinks.map((record) => ({
+          id: record.id,
+          cells: {
+            source: `${record.source.recordType}:${record.source.recordId}`,
+            relationship: record.relationship,
+            target: `${record.target.recordType}:${record.target.recordId}`,
+            state: record.state,
+            revision: String(record.revision),
+          },
+          state: record.state,
+          actions: [
+            control("Analyze source impact", {
+              kind: "analyze-impact",
+              recordId: record.source.recordId,
+              recordType: record.source.recordType,
+              ...(record.source.revision ? { revision: record.source.revision } : {}),
+              ...(record.source.digest ? { digest: record.source.digest } : {}),
+            }),
+            domainControl("Reassess", "reassess-trace-link", record.id, record.revision),
+          ],
+        })),
+        actions: [domainControl("Create Trace link", "create-trace-link", undefined, undefined, "primary")],
+      }
+  const searchResults: StudioTableSnapshot = {
+    id: "search-results",
+    title: "Product-domain search",
+    columns: [
+      { key: "label", label: "Record", identifier: true },
+      { key: "kind", label: "Kind" },
+      { key: "excerpt", label: "Excerpt" },
+      { key: "revision", label: "Revision" },
+    ],
+    rows: state.searchResults.map((record) => ({
+      id: record.id,
+      cells: { label: record.label, kind: record.kind, excerpt: record.excerpt, revision: String(record.revision) },
+      actions: [control("Inspect", { kind: "open-record", recordId: record.id })],
+    })),
+    actions: [domainControl("Search records", "search", undefined, undefined, "primary")],
+    ...(state.searchResultTotal > state.searchResults.length ? {
+      truncation: {
+        shown: state.searchResults.length,
+        total: state.searchResultTotal,
+        message: "Search results are bounded. Refine the query or record-kind filter to inspect omitted matches.",
+      },
+    } : {}),
+    ...(state.searchResults.length === 0 ? { emptyState: emptySurface("No search results", "Run an explicit Product-domain search; no relationship is inferred from co-location.") } : {}),
+  }
+  const impactRowLimit = 200
+  const impactArrays = state.impact ? [
+    state.impact.upstream,
+    state.impact.downstream,
+    state.impact.validatingEvidence,
+    state.impact.decisionsAndRisks,
+    state.impact.unresolved,
+    state.impact.invalid,
+    state.impact.stale,
+    state.impact.invalidatedByProposedRevision,
+  ] : []
+  const impactLocallyTruncated = impactArrays.some((links) => links.length > impactRowLimit)
+  const impact = state.impact ? [
+    { label: "Upstream", entries: state.impact.upstream.slice(0, impactRowLimit).map((link) => ({ term: link.relationship, value: `${link.source.recordType}:${link.source.recordId}`, recordId: link.id })) },
+    { label: "Downstream", entries: state.impact.downstream.slice(0, impactRowLimit).map((link) => ({ term: link.relationship, value: `${link.target.recordType}:${link.target.recordId}`, recordId: link.id })) },
+    { label: "Validating evidence", entries: state.impact.validatingEvidence.slice(0, impactRowLimit).map((link) => ({ term: link.relationship, value: `${link.source.recordType}:${link.source.recordId} -> ${link.target.recordType}:${link.target.recordId}`, recordId: link.id })) },
+    { label: "Decisions and risks", entries: state.impact.decisionsAndRisks.slice(0, impactRowLimit).map((link) => ({ term: link.relationship, value: `${link.source.recordType}:${link.source.recordId} -> ${link.target.recordType}:${link.target.recordId}`, recordId: link.id })) },
+    { label: "Unresolved", entries: state.impact.unresolved.slice(0, impactRowLimit).map((link) => ({ term: link.state, value: `${link.source.recordType}:${link.source.recordId} -> ${link.target.recordType}:${link.target.recordId}`, recordId: link.id })) },
+    { label: "Invalid", entries: state.impact.invalid.slice(0, impactRowLimit).map((link) => ({ term: link.state, value: `${link.source.recordType}:${link.source.recordId} -> ${link.target.recordType}:${link.target.recordId}`, recordId: link.id })) },
+    { label: "Stale", entries: state.impact.stale.slice(0, impactRowLimit).map((link) => ({ term: link.state, value: `${link.source.recordType}:${link.source.recordId} -> ${link.target.recordType}:${link.target.recordId}`, recordId: link.id })) },
+    { label: "Invalidated by proposed revision", entries: state.impact.invalidatedByProposedRevision.slice(0, impactRowLimit).map((link) => ({ term: link.state, value: `${link.source.recordType}:${link.source.recordId} -> ${link.target.recordType}:${link.target.recordId}`, recordId: link.id })) },
+  ] : []
   return {
     ...base("trace", state.product),
+    ...(designPanel("trace", state) ? { design: designPanel("trace", state) } : {}),
     kind: "trace",
-    relationships: emptyTable("relationships", "Relationships", "A persisted trace graph is not available in the current engine."),
-    impact: [],
-    caveat: "No relationship or impact claim is inferred from filenames or co-location.",
+    actions: [domainControl("Create Trace link", "create-trace-link", undefined, undefined, "primary"), domainControl("Search records", "search")],
+    relationships,
+    impact,
+    searchResults,
+    ...(state.impact ? { selectedRecordId: state.impact.subject.recordId } : {}),
+    caveat: state.impact?.truncated || impactLocallyTruncated
+      ? `Trace states are engine-assessed and this impact result is explicitly truncated${impactLocallyTruncated ? ` to ${impactRowLimit} entries per group in this view` : ""}. ${state.impact?.coverageBoundary ?? "Absence from the bounded view does not prove absence of impact"}.`
+      : "Trace states are engine-assessed. Unresolved endpoint kinds, stale revisions, and missing references remain visible; no relationship is inferred from filenames or co-location.",
   }
 }
 
 function agentStatus(capability: AdapterCapabilities): string {
   if (!capability.detected) return "Not detected"
-  if (capability.agentId === "claude-code-cli" || capability.executionInterface === "unavailable") return "Detected · inspection only"
-  if (capability.agentId === "codex-cli") return "Detected · observe-only direct runs"
-  return "Detected · execution not enabled by this VS Code release"
+  if (capability.executionInterface === "unavailable") return "Detected · inspection only"
+  if (capability.executionInterface === "managed-in-process") return "Detected · managed in-process capability"
+  if (capability.executionInterface === "cli-stream-json") return "Detected · managed stream capability"
+  if (capability.executionInterface === "cli-jsonl") return "Detected · structured CLI capability"
+  return `Detected · ${capability.executionInterface}`
 }
 
 function displaySettingValue(value: unknown): string {
@@ -512,7 +958,7 @@ function agentPage(
 ): { page: AgentPageSnapshot; inspector?: StudioInspectorSnapshot } {
   const index = new Map(state.agents.map((candidate) => [candidate.adapterId, candidate]))
   const rows = state.agents.map((capability) => {
-    const selectable = capability.detected && capability.executionInterface !== "unavailable" && capability.agentId === "codex-cli"
+    const selectable = capability.detected && capability.executionInterface !== "unavailable"
     const modelId = capability.models[0]?.id ?? "provider-selected"
     return {
       id: capability.adapterId,
@@ -529,7 +975,7 @@ function agentPage(
         { kind: "select-agent", adapterId: capability.adapterId, agentId: capability.agentId, modelId, settings: {} },
         selectable,
         "secondary",
-        selectable ? undefined : "Only Codex with the observe-only direct-execution boundary is selectable in this release.",
+        selectable ? undefined : "This capability is observation-only and cannot be selected for execution.",
       )],
     }
   })
@@ -543,14 +989,126 @@ function agentPage(
     : []
   const limitations: StudioIssue[] = state.agents.flatMap((capability) => capability.limitations.slice(0, 50).map((message, index) =>
     issue(`${capability.adapterId}-limitation-${index + 1}`, `${capability.agentLabel}: ${message}`, "information")))
-  if (state.agents.some((candidate) => candidate.agentId === "claude-code-cli" && candidate.detected)) {
-    limitations.unshift(issue("claude-inspection-only", "Claude Code is detected for inspection only; this extension will not launch it.", "warning"))
+  for (const capability of state.agents.filter((candidate) => candidate.detected)) {
+    limitations.unshift(issue(
+      `${capability.adapterId}-boundary`,
+      `${capability.agentLabel}: ${capability.executionInterface}; capability presence and selection do not grant execution authority.`,
+      capability.executionInterface === "unavailable" ? "warning" : "information",
+    ))
   }
-  if (state.agents.some((candidate) => candidate.agentId === "codex-cli" && candidate.detected)) {
-    limitations.unshift(issue("codex-observe-only", "Direct Codex runs are restricted to read-only workspace access with network and escalation denied.", "information"))
-  }
+  const contextPacks: StudioTableSnapshot = state.contextPacks.length === 0
+    ? recordEmpty("context-packs", "Context Packs", "Create Context Pack", "create-context-pack")
+    : {
+        id: "context-packs",
+        title: "Context Packs",
+        columns: [
+          { key: "objective", label: "Objective", identifier: true },
+          { key: "recipient", label: "Recipient" },
+          { key: "classification", label: "Classification" },
+          { key: "sufficiency", label: "Sufficiency" },
+          { key: "revision", label: "Revision" },
+        ],
+        rows: state.contextPacks.map((record) => ({
+          id: record.id,
+          cells: {
+            objective: record.objective,
+            recipient: `${record.recipient.kind}:${record.recipient.id}`,
+            classification: record.classification.level,
+            sufficiency: record.sufficiency.status,
+            revision: String(record.revision),
+          },
+          state: record.sufficiency.status,
+          actions: [
+            control("Inspect", { kind: "open-record", recordId: record.id }),
+            domainControl("Edit", "edit-context-pack", record.id, record.revision),
+          ],
+        })),
+        actions: [domainControl("Create Context Pack", "create-context-pack", undefined, undefined, "primary")],
+      }
+  const workflowPlans: StudioTableSnapshot = state.workflowPlans.length === 0
+    ? recordEmpty("workflow-plans", "Workflow Plans", "Create Workflow Plan", "create-workflow-plan")
+    : {
+        id: "workflow-plans",
+        title: "Workflow Plans",
+        columns: [
+          { key: "title", label: "Plan", identifier: true },
+          { key: "strategy", label: "Strategy" },
+          { key: "steps", label: "Steps" },
+          { key: "state", label: "State" },
+          { key: "revision", label: "Revision" },
+        ],
+        rows: state.workflowPlans.map((record) => ({
+          id: record.id,
+          cells: { title: record.title, strategy: record.strategy, steps: String(record.steps.length), state: record.state, revision: String(record.revision) },
+          state: record.state,
+          actions: [
+            control("Inspect", { kind: "open-record", recordId: record.id }),
+            domainControl("Edit", "edit-workflow-plan", record.id, record.revision),
+          ],
+        })),
+        actions: [domainControl("Create Workflow Plan", "create-workflow-plan", undefined, undefined, "primary")],
+      }
+  const toolDefinitions: StudioTableSnapshot = state.toolDefinitions.length === 0
+    ? recordEmpty("tool-definitions", "Tool Definitions", "Create Tool Definition", "create-tool-definition")
+    : {
+        id: "tool-definitions",
+        title: "Tool Definitions",
+        columns: [
+          { key: "name", label: "Tool", identifier: true },
+          { key: "binding", label: "Binding" },
+          { key: "effects", label: "Effects" },
+          { key: "enabled", label: "Enabled" },
+          { key: "revision", label: "Revision" },
+        ],
+        rows: state.toolDefinitions.map((record) => ({
+          id: record.id,
+          cells: {
+            name: record.name,
+            binding: record.binding.toolName,
+            effects: record.effectEnvelope.join(", ") || "none",
+            enabled: record.enabled ? "yes" : "no",
+            revision: String(record.revision),
+          },
+          state: record.enabled ? "enabled" : "disabled",
+          actions: [
+            control("Inspect", { kind: "open-record", recordId: record.id }),
+            domainControl("Edit", "edit-tool-definition", record.id, record.revision),
+          ],
+        })),
+        actions: [domainControl("Create Tool Definition", "create-tool-definition", undefined, undefined, "primary")],
+      }
+  const runToolSelections: StudioTableSnapshot = state.runToolSelections.length === 0
+    ? recordEmpty("run-tool-selections", "Run Tool Selections", "Create Run Tool Selection", "create-run-tool-selection")
+    : {
+        id: "run-tool-selections",
+        title: "Run Tool Selections",
+        columns: [
+          { key: "run", label: "Run", identifier: true },
+          { key: "tools", label: "Tools" },
+          { key: "effects", label: "Requested effects" },
+          { key: "readiness", label: "Readiness" },
+          { key: "revision", label: "Revision" },
+        ],
+        rows: state.runToolSelections.map((record) => ({
+          id: record.id,
+          cells: {
+            run: record.runId,
+            tools: String(record.tools.length),
+            effects: record.requestedEffects.join(", ") || "none",
+            readiness: record.readiness.status,
+            revision: String(record.revision),
+          },
+          state: record.readiness.status,
+          actions: [
+            control("Inspect", { kind: "open-record", recordId: record.id }),
+            domainControl("Edit", "edit-run-tool-selection", record.id, record.revision),
+          ],
+        })),
+        actions: [domainControl("Create Run Tool Selection", "create-run-tool-selection", undefined, undefined, "primary")],
+      }
   const page: AgentPageSnapshot = {
     ...base("agents-tools", state.product),
+    ...(designPanel("agents-tools", state) ? { design: designPanel("agents-tools", state) } : {}),
     kind: "agents-tools",
     actions: [control("Select agent and model", { kind: "select-agent", adapterId: "native-picker", agentId: "native-picker", modelId: "native-picker", settings: {} }, true, "primary")],
     adapters: {
@@ -586,6 +1144,10 @@ function agentPage(
     ] : [],
     limitations,
     handoffs: emptyTable("handoffs", "Handoffs", "The current engine does not expose a handoff list to Product Studio."),
+    contextPacks,
+    workflowPlans,
+    toolDefinitions,
+    runToolSelections,
   }
   const selectedBinding = state.runtimeBinding?.state === "ready" ? state.runtimeBinding.binding : undefined
   const inspector: StudioInspectorSnapshot | undefined = state.selection ? {
@@ -609,6 +1171,7 @@ function runPage(state: ObservedStudioState): RunPageSnapshot {
   const eligibility = prepareRunEligibility(state)
   return {
     ...base("runs-evidence", state.product),
+    ...(designPanel("runs-evidence", state) ? { design: designPanel("runs-evidence", state) } : {}),
     kind: "runs-evidence",
     actions: [prepareRunControl(eligibility)],
     runs: {
@@ -640,26 +1203,136 @@ function runPage(state: ObservedStudioState): RunPageSnapshot {
     },
     selectedRun: latestRunEntries(state.runs),
     events: [],
-    evidence: emptyTable("evidence", "Evidence", "Structured run evidence is not exposed by the current engine."),
+    evidence: evidenceTable(state.evidence),
     recoveryActions: unknownRuns.length > 0 ? [control("Show diagnostics", { kind: "show-diagnostics" })] : [],
+  }
+}
+
+function evidenceTable(records: EvidenceRecord[]): StudioTableSnapshot {
+  if (records.length === 0) return recordEmpty("evidence", "Evidence", "Create Evidence", "create-evidence")
+  return {
+    id: "evidence",
+    title: "Evidence",
+    columns: [
+      { key: "subjects", label: "Subjects", identifier: true },
+      { key: "origin", label: "Origin" },
+      { key: "result", label: "Result" },
+      { key: "verification", label: "Verification" },
+      { key: "freshness", label: "Freshness" },
+      { key: "revision", label: "Revision" },
+    ],
+    rows: records.map((record) => ({
+      id: record.id,
+      cells: {
+        subjects: record.subjects.map((subject) => `${subject.recordType}:${subject.recordId}@${subject.revision}`).join(", "),
+        origin: record.origin.kind,
+        result: record.result.status,
+        verification: record.verification.status,
+        freshness: record.freshness.status,
+        revision: String(record.revision),
+      },
+      state: record.verification.status,
+      actions: [
+        control("Inspect", { kind: "open-record", recordId: record.id }),
+        domainControl("Edit", "edit-evidence", record.id, record.revision),
+      ],
+    })),
+    actions: [domainControl("Create Evidence", "create-evidence", undefined, undefined, "primary")],
   }
 }
 
 function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
   const sections = sectionsFor(state)
-  const gaps = studioRoutes.flatMap((route) => domainIssue(route))
+  const gaps: StudioIssue[] = []
+  if (!state.designDraft) gaps.push(issue("design-draft-missing", "No governed Product design draft exists.", "blocker"))
+  for (const section of state.designReadiness?.sections ?? []) {
+    for (const field of section.missingFields) gaps.push(issue(`${section.sectionId}-${field}-missing`, `${studioRouteLabels[section.sectionId]}: ${field} is missing.`, "blocker"))
+    for (const field of section.weakFields) gaps.push(issue(`${section.sectionId}-${field}-weak`, `${studioRouteLabels[section.sectionId]}: ${field} is weak.`, "warning"))
+  }
   if (!state.selection) gaps.push(issue("agent-selection-missing", "No agent and model selection exists.", "blocker"))
   if (state.initiatives.length === 0) gaps.push(issue("initiative-missing", "No bounded Initiative exists.", "blocker"))
   gaps.push(...state.issues)
   const next = primaryAction(state)
+  const health = state.health.map((candidate) => issue(
+    `health-${candidate.code}`,
+    candidate.message,
+    candidate.severity === "error" ? "blocker" : "warning",
+  ))
+  if (state.healthTotal > state.health.length) {
+    health.push(issue(
+      "workspace-health-truncated",
+      `Workspace health returned ${state.healthTotal} issues; this snapshot shows the first ${state.health.length}. Use diagnostics or narrow the corpus before relying on completeness.`,
+      "warning",
+    ))
+  }
+  const designRevisions: StudioTableSnapshot = {
+    id: "design-revisions",
+    title: "Product design revisions",
+    columns: [
+      { key: "revision", label: "Revision", identifier: true },
+      { key: "productRevision", label: "Product revision" },
+      { key: "readiness", label: "Readiness" },
+      { key: "actor", label: "Created by" },
+      { key: "created", label: "Created" },
+    ],
+    rows: state.designRevisions.map((record) => ({
+      id: record.id,
+      cells: {
+        revision: String(record.revision),
+        productRevision: String(record.productRevision),
+        readiness: record.readiness.status,
+        actor: record.createdBy.id,
+        created: record.createdAt,
+      },
+      state: record.readiness.status,
+      actions: [control("Inspect", { kind: "open-record", recordId: record.id })],
+    })),
+    actions: [],
+    ...(state.designRevisions.length === 0 ? { emptyState: emptySurface("No design revisions", "A local draft is not governed Product history until an explicit design revision is created.") } : {}),
+  }
+  const productRevisions: StudioTableSnapshot = {
+    id: "product-revisions",
+    title: "Product revisions",
+    columns: [
+      { key: "revision", label: "Revision", identifier: true },
+      { key: "source", label: "Source" },
+      { key: "recorded", label: "Recorded" },
+    ],
+    rows: state.productRevisions.map((record) => ({
+      id: `${record.productId}-r${record.revision}`,
+      cells: { revision: String(record.revision), source: record.source.kind, recorded: record.recordedAt },
+      actions: [],
+    })),
+    actions: [],
+    ...(state.productRevisions.length === 0 ? { emptyState: emptySurface("No Product revision history", "Initialize or revise Product design to create immutable Product history.") } : {}),
+  }
   return {
     ...base("readiness", state.product),
+    ...(designPanel("readiness", state) ? { design: designPanel("readiness", state) } : {}),
     kind: "readiness",
-    statement: "Not formally ready. Current bootstrap, Initiative, agent-selection, run, and audit truth can be inspected, but missing governed design domains and trace evidence prevent a complete readiness claim.",
+    actions: [
+      domainControl("Build portable export", "export", undefined, undefined, "primary"),
+      domainControl("Preview import", "import-preview"),
+      domainControl("Refresh workspace health", "workspace-health"),
+    ],
+    statement: state.designReadiness
+      ? `Design readiness is ${state.designReadiness.status}. This claim is bounded to Product design and is not implementation approval. Workspace-health, trace, Tool Selection, export restriction, and import closure issues remain fail-closed when reported below.`
+      : "Design readiness is not assessed. Start or resume the local draft; a draft is not a governed Product revision or implementation approval.",
     sections,
     gaps,
-    conflicts: state.audit && !state.audit.valid ? [issue("audit-conflict", "Audit verification conflicts with a healthy governance claim.", "blocker")] : [],
+    conflicts: [
+      ...(state.audit && !state.audit.valid ? [issue("audit-conflict", "Audit verification conflicts with a healthy governance claim.", "blocker")] : []),
+      ...(state.designReadiness?.openConflictIds.map((id) => issue(id, "An open design conflict blocks a complete readiness claim.", "blocker")) ?? []),
+    ],
     ...(next ? { nextAction: next } : {}),
+    health,
+    designRevisions,
+    productRevisions,
+    portability: [
+      { term: "Export", value: "Portable bundle only; authority, readiness, runtime bindings, credentials, and implementation approval are not conferred." },
+      { term: "Import", value: state.importPreview ? `${state.importPreview.status}; preview only; no mutation performed.` : "No preview loaded; import mutation is not performed by Product Studio." },
+      { term: "Restricted context", value: "Review engine health and bundle exclusions before treating an export as distributable." },
+    ],
   }
 }
 
@@ -673,13 +1346,107 @@ function pageFor(
     case "users-jobs":
     case "outcomes":
     case "scope":
-    case "architecture": return { page: legacyForm(route, state.product) }
+    case "architecture": return { page: designForm(route, state) }
     case "delivery": return { page: deliveryPage(state) }
     case "risks-decisions": return { page: risksPage(state) }
     case "trace": return { page: tracePage(state) }
     case "agents-tools": return agentPage(state)
     case "runs-evidence": return { page: runPage(state) }
     case "readiness": return { page: readinessPage(state) }
+  }
+}
+
+const studioTableRowLimit = 200
+
+function capTable(table: StudioTableSnapshot): StudioTableSnapshot {
+  if (table.rows.length <= studioTableRowLimit) return table
+  return {
+    ...table,
+    rows: table.rows.slice(0, studioTableRowLimit),
+    truncation: {
+      shown: studioTableRowLimit,
+      total: table.rows.length,
+      message: "This snapshot is deliberately bounded. Use Product-domain search to narrow the corpus.",
+    },
+  }
+}
+
+function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
+  switch (page.kind) {
+    case "overview": return page
+    case "record-form": return { ...page, ...(page.relatedRecords ? { relatedRecords: page.relatedRecords.map(capTable) } : {}) }
+    case "delivery": return { ...page, initiatives: capTable(page.initiatives), changes: capTable(page.changes), workItems: capTable(page.workItems) }
+    case "risks-decisions": return { ...page, risks: capTable(page.risks), recommendations: capTable(page.recommendations), decisions: capTable(page.decisions) }
+    case "trace": return { ...page, relationships: capTable(page.relationships), searchResults: capTable(page.searchResults) }
+    case "agents-tools": return {
+      ...page,
+      adapters: capTable(page.adapters),
+      handoffs: capTable(page.handoffs),
+      contextPacks: capTable(page.contextPacks),
+      workflowPlans: capTable(page.workflowPlans),
+      toolDefinitions: capTable(page.toolDefinitions),
+      runToolSelections: capTable(page.runToolSelections),
+    }
+    case "runs-evidence": return { ...page, runs: capTable(page.runs), evidence: capTable(page.evidence) }
+    case "readiness": return { ...page, designRevisions: capTable(page.designRevisions), productRevisions: capTable(page.productRevisions) }
+  }
+}
+
+function inspectorFor(state: ObservedStudioState, recordId: string): StudioInspectorSnapshot | undefined {
+  const typedRecords: Array<{ type: string; value: Record<string, unknown> }> = [
+    ...state.changes.map((value) => ({ type: "change", value })),
+    ...state.workItems.map((value) => ({ type: "work-item", value })),
+    ...state.requirements.map((value) => ({ type: "requirement", value })),
+    ...state.decisions.map((value) => ({ type: "decision", value })),
+    ...state.risks.map((value) => ({ type: "risk", value })),
+    ...state.architecture.map((value) => ({ type: "architecture", value })),
+    ...state.evidence.map((value) => ({ type: "evidence", value })),
+    ...state.contextPacks.map((value) => ({ type: "context-pack", value })),
+    ...state.workflowPlans.map((value) => ({ type: "workflow-plan", value })),
+    ...state.toolDefinitions.map((value) => ({ type: "tool-definition", value })),
+    ...state.runToolSelections.map((value) => ({ type: "run-tool-selection", value })),
+    ...state.traceLinks.map((value) => ({ type: "trace-link", value })),
+    ...state.designRevisions.map((value) => ({ type: "design-revision", value })),
+  ]
+  const match = typedRecords.find((candidate) => candidate.value.id === recordId)
+  if (!match) return undefined
+  const value = match.value
+  const entries: StudioDefinitionEntry[] = [
+    { term: "Record type", value: match.type },
+    ...(typeof value.revision === "number" ? [{ term: "Revision", value: String(value.revision) }] : []),
+    ...(typeof value.state === "string" ? [{ term: "State", value: value.state }] : []),
+    ...(typeof value.title === "string" ? [{ term: "Title", value: value.title }] : []),
+    ...(typeof value.key === "string" ? [{ term: "Key", value: value.key }] : []),
+    ...(typeof value.updatedAt === "string" ? [{ term: "Updated", value: value.updatedAt }] : []),
+    ...(typeof value.createdAt === "string" ? [{ term: "Created", value: value.createdAt }] : []),
+    ...(typeof value.productId === "string" ? [{ term: "Product", value: value.productId }] : []),
+  ]
+  const relationships = state.traceLinks.flatMap((link): StudioDefinitionEntry[] => {
+    if (link.source.recordId === recordId) return [{ term: link.relationship, value: `${link.target.recordType}:${link.target.recordId}`, recordId: link.id }]
+    if (link.target.recordId === recordId) return [{ term: `incoming ${link.relationship}`, value: `${link.source.recordType}:${link.source.recordId}`, recordId: link.id }]
+    return []
+  })
+  const endpoint = state.traceLinks.flatMap((link) => [link.source, link.target]).find((candidate) => candidate.recordId === recordId)
+  return {
+    title: "Portable record inspector",
+    recordId,
+    entries,
+    relationships,
+    actions: match.type === "trace-link"
+      ? []
+      : [control(
+          "Analyze trace impact",
+          {
+            kind: "analyze-impact",
+            recordId,
+            recordType: endpoint?.recordType ?? match.type,
+            ...(endpoint?.revision ? { revision: endpoint.revision } : {}),
+            ...(endpoint?.digest ? { digest: endpoint.digest } : {}),
+          },
+          Boolean(endpoint),
+          "secondary",
+          endpoint ? undefined : "No exact persisted trace endpoint with revision and digest is available for this record.",
+        )],
   }
 }
 
@@ -732,15 +1499,6 @@ function surfaceFor(route: StudioRoute, context: CurrentEngineStudioContext, sta
       actions: [control("Show Diagnostics", { kind: "show-diagnostics" }, true, "primary")],
     }
   }
-  if (["architecture", "risks-decisions", "trace"].includes(route)) {
-    return {
-      kind: "empty",
-      title: `${studioRouteLabels[route]} is not available yet`,
-      detail: unavailableDomains[route],
-      issues: domainIssue(route),
-      actions: [],
-    }
-  }
   return {
     kind: "ready",
     title: `${studioRouteLabels[route]} loaded`,
@@ -753,7 +1511,9 @@ function surfaceFor(route: StudioRoute, context: CurrentEngineStudioContext, sta
           "It invokes configured agent executables for bounded version and model-catalog discovery; it does not start a governed provider run.",
         ]
       : ["This snapshot reads local GAEP state only."],
-    unknownEffects: unavailableDomains[route] ? [unavailableDomains[route]!] : [],
+    unknownEffects: state.health.length > 0
+      ? ["Engine health reports unresolved Product-domain issues. Review Readiness before relying on completeness claims."]
+      : [],
   }
 }
 
@@ -774,12 +1534,35 @@ function commandFor(action: StudioAction): { command: ExistingStudioCommand; arg
       return action.recordType === "initiative"
         ? { command: "gaep.changeInitiativeState", args: [action.recordId], announcement: "Opened the native Initiative transition workflow." }
         : undefined
+    case "domain-workflow":
+      return {
+        command: "gaep.productStudio.domainWorkflow",
+        args: [action],
+        announcement: `Completed ${action.workflow.replaceAll("-", " ")} workflow.`,
+      }
+    case "export-product":
+      return {
+        command: "gaep.productStudio.domainWorkflow",
+        args: [{ kind: "domain-workflow", workflow: "export", expectedRevision: action.sourceRevision }],
+        announcement: "Built and saved a portable Product export bundle.",
+      }
+    case "import-product-preview":
+      return {
+        command: "gaep.productStudio.domainWorkflow",
+        args: [{ kind: "domain-workflow", workflow: "import-preview" }],
+        announcement: "Import preview completed without mutation.",
+      }
     default: return undefined
   }
 }
 
 export class CurrentEngineStudioDataSource implements StudioDataSource {
   private revision = 0
+  private selectedRecordId?: string
+  private searchResults: ProductDomainSearchResult[] = []
+  private searchResultTotal = 0
+  private impact?: TraceImpact
+  private importPreview?: ProductImportPreview
 
   constructor(private readonly context: CurrentEngineStudioContext) {}
 
@@ -792,7 +1575,9 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       throw new Error("Product Studio context changed while the snapshot was being read")
     }
     const workspace = this.context.workspace()
-    const page = pageFor(route, observed)
+    const pageResult = pageFor(route, observed)
+    const page = { ...pageResult, page: capPageTables(pageResult.page) }
+    const selectedInspector = this.selectedRecordId ? inspectorFor(observed, this.selectedRecordId) : undefined
     const sections = sectionsFor(observed)
     return {
       protocolVersion: studioProtocolVersion,
@@ -808,11 +1593,15 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       navigation: sections,
       surface: surfaceFor(route, this.context, observed),
       page: page.page,
-      ...(page.inspector ? { inspector: page.inspector } : {}),
+      ...(selectedInspector ?? page.inspector ? { inspector: selectedInspector ?? page.inspector } : {}),
       footer: {
-        draftState: "clean",
+        draftState: observed.designDraft
+          ? (designPanel(route, observed)?.materialChange ? "revision-ready" : "clean")
+          : "clean",
         ...(observed.product?.revision ? { sourceRevision: observed.product.revision } : {}),
-        validationSummary: "Current engine state observed; formal Product-section validation not assessed.",
+        validationSummary: observed.designReadiness
+          ? `Design readiness ${observed.designReadiness.status}; not implementation approval.`
+          : "Design readiness not assessed.",
       },
     }
   }
@@ -826,18 +1615,133 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       return { status: "rejected", announcement: "Product Studio changed since this action was offered. Review the refreshed state and try again." }
     }
     if (action.kind === "navigate") return { status: "accepted", announcement: `Opened ${studioRouteLabels[action.route]}.` }
+    if (!this.context.trusted() && action.kind !== "manage-workspace-trust") {
+      return { status: "rejected", announcement: "Workspace trust changed or is absent. No Product state was inspected or changed." }
+    }
+    if (!this.context.workspace() && action.kind !== "select-product-root") {
+      return { status: "rejected", announcement: "No Product root is selected. No Product state was inspected or changed." }
+    }
+    if (this.context.recoveryDiagnostic() && !["retry-recovery", "show-diagnostics"].includes(action.kind)) {
+      return { status: "rejected", announcement: "Interrupted-run recovery is blocked. Resolve diagnostics before Product-domain operations." }
+    }
+    const engine = this.context.engine()
+    const studio = engine?.productStudio
+    if (action.kind === "start-design-draft") {
+      if (!studio) return { status: "rejected", announcement: "The Product design service is unavailable. No state was changed." }
+      await studio.startOrResumeDesignDraft(action.expectedProductRevision)
+      return { status: "accepted", announcement: "Started or resumed the local governed Product design draft." }
+    }
+    if (action.kind === "save-draft") {
+      if (!studio || !action.draftId || !action.draftRevision || !action.baseRevision) {
+        return { status: "rejected", announcement: "The exact draft and Product revisions are required. Refresh Product Studio before saving." }
+      }
+      if (containsSecretShapedValue(action.values)) {
+        return { status: "rejected", announcement: "The design draft contains a secret-shaped value. It was not persisted." }
+      }
+      const product = await engine.readProduct()
+      const draft = await studio.readDesignDraft(product.id)
+      if (draft.id !== action.draftId || draft.revision !== action.draftRevision || draft.baseProductRevision !== action.baseRevision) {
+        return { status: "rejected", announcement: "The design draft changed since this section was opened. Refresh before merging your edits." }
+      }
+      const section = draft.sections[action.route]
+      const actor = this.context.actorId()
+      const updatedSection = {
+        ...section,
+        fields: section.fields.map((field) => {
+          const value = action.values[field.key] ?? field.value
+          const populated = typeof value === "string" ? value.trim().length > 0 : value.some((entry) => entry.trim().length > 0)
+          const state = action.states?.[field.key] ?? (populated ? "complete" : "missing")
+          const deferredReason = action.deferredReasons?.[field.key]?.trim()
+          const revisitTrigger = action.revisitTriggers?.[field.key]?.trim()
+          return {
+            ...field,
+            value,
+            state,
+            provenance: [...new Set([...field.provenance, `human:${actor}`])],
+            ...(state === "deferred" && deferredReason ? { deferredReason } : { deferredReason: undefined }),
+            ...(state === "deferred" && revisitTrigger ? { revisitTrigger } : { revisitTrigger: undefined }),
+          }
+        }),
+        updatedAt: new Date().toISOString(),
+      }
+      await studio.saveDesignDraft({
+        draftId: draft.id,
+        sections: { ...draft.sections, [action.route]: updatedSection },
+        expectedDraftRevision: action.draftRevision,
+        expectedProductRevision: action.baseRevision,
+      })
+      return { status: "accepted", announcement: `Saved ${studioRouteLabels[action.route]} into local draft revision ${action.draftRevision + 1}.` }
+    }
+    if (action.kind === "validate-section") {
+      if (!studio || !action.draftId) return { status: "rejected", announcement: "No exact Product design draft is available to evaluate." }
+      const product = await engine.readProduct()
+      const draft = await studio.readDesignDraft(product.id)
+      if (draft.id !== action.draftId) return { status: "rejected", announcement: "The design draft identity changed. Refresh before evaluating readiness." }
+      const report = studio.evaluateDesignReadiness(draft)
+      const section = report.sections.find((candidate) => candidate.sectionId === action.route)
+      return {
+        status: "accepted",
+        announcement: `${studioRouteLabels[action.route]} is ${section?.state ?? "not assessed"}; overall design readiness is ${report.status}. This is not implementation approval.`,
+      }
+    }
+    if (action.kind === "create-revision") {
+      if (!studio || !action.draftRevision || !action.baseRevision) {
+        return { status: "rejected", announcement: "Exact draft and Product revisions are required before creating governed history." }
+      }
+      const created = await studio.createDesignRevision({
+        draftId: action.draftId,
+        expectedDraftRevision: action.draftRevision,
+        expectedProductRevision: action.baseRevision,
+      }, this.context.actorId())
+      return {
+        status: "accepted",
+        announcement: `Created Product design revision ${created.revision.revision} and Product revision ${created.product.revision}.`,
+      }
+    }
+    if (action.kind === "open-record" || action.kind === "select-record") {
+      this.selectedRecordId = action.recordId
+      return { status: "accepted", announcement: "Opened the portable record and provenance inspector." }
+    }
+    if (action.kind === "analyze-impact") {
+      if (!studio || !action.recordType) return { status: "rejected", announcement: "Impact analysis requires an explicit record type and identifier." }
+      this.impact = await studio.impactAnalysis({
+        recordType: action.recordType as TraceImpact["subject"]["recordType"],
+        recordId: action.recordId,
+        ...(action.revision ? { revision: action.revision } : {}),
+        ...(action.digest ? { digest: action.digest } : {}),
+      })
+      return { status: "accepted", announcement: "Reassessed persisted upstream, downstream, evidence, decision, risk, unresolved, and stale trace links." }
+    }
     const mapped = commandFor(action)
     if (!mapped) {
       return { status: "rejected", announcement: "This Product-domain operation is not available in the current engine. No state was changed." }
     }
     request.signal?.throwIfAborted()
-    await this.context.executeCommand(request.expectedContextGeneration, mapped.command, ...mapped.args)
+    const result = await this.context.executeCommand(request.expectedContextGeneration, mapped.command, ...mapped.args)
+    if (action.kind === "domain-workflow" && result === undefined) {
+      return { status: "rejected", announcement: "The native Product-domain workflow was cancelled. No state was changed." }
+    }
+    if (action.kind === "domain-workflow" && action.workflow === "search" && result && typeof result === "object") {
+      const bounded = result as { results?: unknown; total?: unknown }
+      if (Array.isArray(bounded.results) && typeof bounded.total === "number") {
+        this.searchResultTotal = bounded.total
+        this.searchResults = (bounded.results as ProductDomainSearchResult[]).slice(0, studioTableRowLimit)
+      }
+    }
+    if ((action.kind === "domain-workflow" && action.workflow === "import-preview") || action.kind === "import-product-preview") {
+      if (result && typeof result === "object") this.importPreview = result as ProductImportPreview
+    }
     return { status: "accepted", announcement: mapped.announcement }
   }
 
   private async observe(route: StudioRoute): Promise<ObservedStudioState> {
     const empty: ObservedStudioState = {
       initiatives: [], runs: [], agents: [], issues: [], productState: "absent",
+      designRevisions: [], productRevisions: [], changes: [], workItems: [], requirements: [], decisions: [], risks: [],
+      architecture: [], evidence: [], contextPacks: [], workflowPlans: [], toolDefinitions: [], runToolSelections: [], traceLinks: [],
+      health: [], healthTotal: 0, searchResults: this.searchResults, searchResultTotal: this.searchResultTotal,
+      ...(this.impact ? { impact: this.impact } : {}),
+      ...(this.importPreview ? { importPreview: this.importPreview } : {}),
     }
     if (!this.context.trusted() || !this.context.workspace() || !this.context.engine()) return empty
     const engine = this.context.engine()!
@@ -885,6 +1789,59 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     else this.recordObservationFailure(empty, "audit", audit.reason)
     if (agents.status === "fulfilled") empty.agents = agents.value
     else this.recordObservationFailure(empty, "agent-probe", agents.reason)
+    const studio = engine.productStudio
+    if (!studio) {
+      empty.issues.push(issue("product-studio-service-unavailable", "The Product-domain service is unavailable in this engine build.", "blocker"))
+      return empty
+    }
+    try {
+      empty.designDraft = await studio.readDesignDraft(empty.product.id)
+      empty.designReadiness = studio.evaluateDesignReadiness(empty.designDraft)
+      if (route === "readiness") {
+        empty.designRevisions = await studio.listDesignRevisions()
+      } else if (empty.designDraft.baseDesignRevisionId) {
+        empty.designRevisions = [await studio.readDesignRevision(empty.designDraft.baseDesignRevisionId)]
+      }
+    } catch (error) {
+      if (!isMissingRecord(error)) this.recordObservationFailure(empty, "design-draft", error)
+    }
+
+    const domainTasks: Array<{ area: string; read: () => Promise<unknown>; assign: (value: unknown) => void }> = []
+    const add = (area: string, read: () => Promise<unknown>, assign: (value: unknown) => void): void => {
+      domainTasks.push({ area, read, assign })
+    }
+    if (route === "delivery") {
+      add("changes", () => studio.listChanges(), (value) => { empty.changes = value as Change[] })
+      add("work-items", () => studio.listWorkItems(), (value) => { empty.workItems = value as WorkItem[] })
+    }
+    if (route === "scope") add("requirements", () => studio.listRequirements(), (value) => { empty.requirements = value as Requirement[] })
+    if (route === "architecture") add("architecture", () => studio.listArchitectureRecords(), (value) => { empty.architecture = value as ArchitectureRecord[] })
+    if (route === "risks-decisions") {
+      add("decisions", () => studio.listDecisions(), (value) => { empty.decisions = value as Decision[] })
+      add("risks", () => studio.listRisks(), (value) => { empty.risks = value as Risk[] })
+    }
+    if (route === "trace") add("trace", () => studio.listTraceLinks(), (value) => { empty.traceLinks = value as TraceLink[] })
+    if (route === "agents-tools") {
+      add("context-packs", () => studio.listContextPacks(), (value) => { empty.contextPacks = value as ContextPack[] })
+      add("workflow-plans", () => studio.listWorkflowPlans(), (value) => { empty.workflowPlans = value as WorkflowPlan[] })
+      add("tool-definitions", () => studio.listToolDefinitions(), (value) => { empty.toolDefinitions = value as ToolDefinition[] })
+      add("run-tool-selections", () => studio.listRunToolSelections(), (value) => { empty.runToolSelections = value as RunToolSelection[] })
+    }
+    if (route === "runs-evidence") add("evidence", () => studio.listEvidence(), (value) => { empty.evidence = value as EvidenceRecord[] })
+    if (route === "readiness") {
+      add("product-revisions", () => studio.listProductRevisions(), (value) => { empty.productRevisions = value as ProductRevision[] })
+      add("workspace-health", () => studio.healthIssues(), (value) => {
+        const issues = value as WorkspaceHealthIssue[]
+        empty.healthTotal = issues.length
+        empty.health = issues.slice(0, studioTableRowLimit)
+      })
+    }
+    const domainOutcomes = await Promise.allSettled(domainTasks.map((task) => task.read()))
+    domainOutcomes.forEach((outcome, index) => {
+      const task = domainTasks[index]!
+      if (outcome.status === "fulfilled") task.assign(outcome.value)
+      else this.recordObservationFailure(empty, task.area, outcome.reason)
+    })
     return empty
   }
 
