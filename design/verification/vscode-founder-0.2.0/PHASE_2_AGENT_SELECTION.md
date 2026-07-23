@@ -2,7 +2,7 @@
 
 Status: PASS
 
-Captured: 2026-07-23T11:01:48Z (`2026-07-23T14:31:48+03:30`)
+Captured: 2026-07-23T11:24:14Z (`2026-07-23T14:54:14+03:30`)
 
 ## Purpose
 
@@ -10,14 +10,17 @@ This record captures the completed Phase 2 selection, model, settings, machine-l
 
 ## Repository checkpoint
 
-- Branch: `codex/gaep-founder-edition`
+- Branch at final capture: `freez/codex-normal-phases`
 - Phase 2 base commit: `885f5fb50102cb02fe233ca226188e265a181877`
 - Base commit subject: `docs: record Founder 0.2.0 phase 1 checkpoint`
 - Base Git tree: `81aac8acac4f69a29bde52a23cfec08ea6045c06`
-- Upstream: `origin/codex/gaep-founder-edition`
+- Phase 2 integration commit present at capture: `3ba67f941990341220dd502a12b3d369eef3c1ca`
+- Integration commit subject: `feat: implement agent selection and diagnostic safety features`
+- Integration Git tree: `0d79ac6c2d5a18d4e25ff73e76c7f44dc97c3565`
+- Upstream: `origin/freez/codex-normal-phases`
 - Ahead/behind at capture: `0/0`
-- Phase 2 worktree: intentionally uncommitted pending the next explicit Git instruction
-- Commit or push performed during Phase 2: no
+- Final audit corrections after the integration commit: intentionally uncommitted pending the next explicit Git instruction
+- Codex commit or push performed in this Phase 2 task: no; the branch switch, integration commit, and upstream update occurred externally during final validation
 - `git diff --check`: PASS
 
 ## Approved Phase 2 boundary
@@ -67,16 +70,17 @@ Selection grants no Tool, effect, execution, approval, deployment, or applicatio
 - A material no-op does not rewrite selection time or governed state, but still requires exact current-state binding and no unresolved work.
 - Capability snapshots are content-addressed and immutable; observation time does not rewrite an existing logical snapshot.
 
-### Legacy v1 compatibility
+### Integrity-era legacy v1 compatibility
 
 - Legacy executable paths are separated from the portable candidate and never copied into the v2 selection.
-- Authentic Codex v1 settings (`reasoningEffort`, `sandbox`, `approvalPolicy`, `search`, and `profile`) and Claude v1 settings (`effort`, `permissionMode`, tool lists, and `maxBudgetUsd`) are covered by tests.
-- A path-valued Codex profile is quarantined as machine-local state; its raw value is not exposed by the portable candidate, protocol result, diagnostic output, or migration audit payload.
+- Integrity-era Codex v1 settings (`reasoningEffort`, read-only `sandbox`, and fail-closed `approvalPolicy`) and Claude v1 settings (`effort`, `permissionMode`, tool lists, and positive `maxBudgetUsd`) are covered by migration tests.
+- Earlier Codex `search` and path-valued `profile` state is recognized only as quarantined compatibility knowledge. A local profile value is removed from the portable candidate and is not exposed by the protocol, diagnostics, or migration audit.
 - Migration is server-derived. The caller cannot supply a replacement model or settings.
 - The exact adapter, agent, model, still-declared valid settings, current capability digest, model truth, and alias state are preserved or recomputed under the closed normalization rule.
 - Only the known obsolete v1 control keys may be retired, and the exact portable normalization must be explicitly accepted.
-- Unknown settings, invalid retained settings, changed legacy state, changed capabilities, changed preview, or a missing/conflicting historical capability snapshot fail closed.
-- Both historical capability filenames—agent-ID and adapter/agent identity-digest—are discovered, validated, and atomically rewritten without the executable path.
+- Unknown settings, invalid retained settings, changed legacy state, changed capabilities, changed preview, a historical selection/capability digest mismatch, or a missing/conflicting historical capability snapshot fail closed.
+- Supported integrity-era migration verifies the historical path-inclusive capability digest against the identity-digest capability snapshot before atomically rewriting it without the executable path.
+- The earlier agent-ID capability filename era predates audit checkpoint and governed-state support. A precise pre-integrity signature returns `MIGRATION_INTEGRITY_BOOTSTRAP_REQUIRED`; no checkpoint, governed state, or trusted inventory is synthesized inside selection migration. A damaged modern integrity workspace remains `AUDIT_INVALID` and is not mislabeled as pre-integrity.
 - Any existing Charter, Run, Handoff, or managed execution artifact blocks this narrow normalization. This prevents migration from becoming a handoff bypass; a workspace with dependent v1 history requires a dedicated corpus migration.
 - The migration audit records only portable provenance: previous portable selection digest, normalization profile and version, portable normalization digest, retained and dropped keys, current capability digest, and the no-bound-artifacts disposition.
 
@@ -84,7 +88,7 @@ Selection grants no Tool, effect, execution, approval, deployment, or applicatio
 
 - Engine-host protocol version 3 adds exact selection reads, guarded selection mutation, server-derived legacy migration preview/commit, and exact handoff preview/commit.
 - Protocol v1 and v2 clients receive a stable upgrade-required error for v3-only methods before obsolete parameter shapes are parsed.
-- Stable host errors distinguish stale selection, unresolved selection work, required handoff, stale migration preview, dependent legacy history, and incompatible retained settings.
+- Stable host errors distinguish stale selection, unresolved selection work, required handoff, stale migration preview, dependent legacy history, incompatible retained settings, invalid historical capability binding, unrecognized migration rules, and pre-integrity bootstrap requirements.
 - VS Code diagnostics redact secret-shaped text, bearer values, control bytes, Windows/UNC/file/tilde/POSIX machine paths, and output beyond 4,096 characters.
 - Product-root paths and provider failures pass through the central diagnostic sanitizer.
 
@@ -100,11 +104,12 @@ Result: PASS
 
 - TypeScript project-reference compilation: PASS
 - Vitest files: 40 passed
-- Tests: 384 passed, 1 skipped, 385 total
+- Tests: 392 passed, 1 skipped, 393 total
 - Expected skip: the root-only foreign-UID managed-stage-registry test cannot run as the non-root local user
-- Focused Phase 2 regression suite: 9 files, 148 tests passed
-- Authentic early-v1 Codex and Claude migration fixtures: PASS
-- Both historical capability filename eras: PASS
+- Focused Phase 2 regression suite: 9 files, 156 tests passed
+- Integrity-era Codex and Claude capability-evolution fixtures: PASS
+- Historical path-inclusive selection/capability binding verification: PASS
+- Pre-integrity agent-ID repository quarantine without trust synthesis: PASS
 - Invalid retained Claude zero budget: correctly blocked
 - Legacy dependent execution history: correctly blocked
 - Candidate documentation structural validation: PASS

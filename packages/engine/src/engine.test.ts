@@ -126,7 +126,7 @@ class HistoricalProviderFixtureAdapter implements AgentAdapter {
   }
 }
 
-function currentHistoricalProviderCapabilities(provider: "codex" | "claude"): AdapterCapabilities {
+function currentProviderCapabilities(provider: "codex" | "claude"): AdapterCapabilities {
   const codex = provider === "codex"
   return {
     schemaVersion: 1,
@@ -383,7 +383,7 @@ describe("GAEP local engine", () => {
   ) {
     const providerWorkspace = join(workspace, provider)
     await mkdir(providerWorkspace)
-    const currentCapabilities = currentHistoricalProviderCapabilities(provider)
+    const currentCapabilities = currentProviderCapabilities(provider)
     const historicalCapabilities = integrityEraHistoricalCapabilities(provider, currentCapabilities)
     const adapter = new HistoricalProviderFixtureAdapter(currentCapabilities.adapterId, currentCapabilities)
     const providerEngine = new GaepEngine(providerWorkspace, [adapter])
@@ -876,6 +876,25 @@ describe("GAEP local engine", () => {
     await expect(
       fixture.providerEngine.previewLegacyAgentSelectionMigration(fixture.currentCapabilities),
     ).rejects.toThrow(/capability digest does not match.*historical capability snapshot/iu)
+  })
+
+  it.each([
+    ["unknown key", {
+      reasoningEffort: "high",
+      sandbox: "read-only",
+      approvalPolicy: "fail-closed-noninteractive",
+      mysteryLegacyControl: true,
+    }],
+    ["invalid obsolete value", {
+      reasoningEffort: "high",
+      sandbox: "unconfined",
+      approvalPolicy: "fail-closed-noninteractive",
+    }],
+  ])("fails closed for a legacy migration rule gap: %s", async (_case, legacySettings) => {
+    const fixture = await legacyProviderFixture("codex", legacySettings)
+    await expect(
+      fixture.providerEngine.previewLegacyAgentSelectionMigration(fixture.currentCapabilities),
+    ).rejects.toThrow(/has no reviewed migration rule/iu)
   })
 
   it("quarantines the pre-integrity agent-id capability era instead of synthesizing trusted state", async () => {

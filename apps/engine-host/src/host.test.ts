@@ -562,6 +562,21 @@ describe("engine host protocol", () => {
     })).rejects.toMatchObject({ code: -32_028, kind: "LEGACY_CAPABILITY_BINDING_INVALID" })
   })
 
+  it("maps an unrecognized legacy setting rule to a stable host error", async () => {
+    await mockCodex()
+    vi.spyOn(host.engine, "previewLegacyAgentSelectionMigration").mockRejectedValue(
+      new Error("Legacy Agent Selection setting mysteryLegacyControl has no reviewed migration rule"),
+    )
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 80,
+      protocolVersion: 3,
+      method: "previewLegacySelectionMigration",
+      params: { adapterId: "gaep.codex-cli" },
+    })).rejects.toMatchObject({ code: -32_029, kind: "LEGACY_SETTING_UNRECOGNIZED" })
+  })
+
   it("returns only path-free capability snapshots and ignores all caller runtime authority", async () => {
     await mockCodex()
     const probed = await host.dispatch({ jsonrpc: "2.0", id: 1, method: "probeAgents", params: {} })

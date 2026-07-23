@@ -164,6 +164,13 @@ function throwLegacyMigrationHostError(error: unknown): never {
       "The legacy Agent Selection is not exactly bound to its recognized historical capability snapshot",
     )
   }
+  if (/Legacy Agent Selection setting .* has no reviewed migration rule/iu.test(message)) {
+    throw new HostRpcError(
+      -32_029,
+      "LEGACY_SETTING_UNRECOGNIZED",
+      "The legacy Agent Selection contains a setting key or value outside the closed migration rules",
+    )
+  }
   throw error
 }
 

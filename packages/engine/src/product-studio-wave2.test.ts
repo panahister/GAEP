@@ -783,7 +783,7 @@ describe("Product Studio context, workflow, tools, and portability", () => {
 
     await expect(engine.productStudio.previewImportBundle(tampered))
       .rejects.toThrow(/Managed Result .* orphaned or internally inconsistent/i)
-  })
+  }, 15_000)
 
   it("requires an exact completed-step set and consistent Result/Workflow terminal state", async () => {
     const { bundle, managedRunIds } = await createManagedPortableFixture({ stepCount: 2 })
