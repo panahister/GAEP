@@ -26,6 +26,18 @@ describe("engine host RPC framing", () => {
     expect(decoder.push(Buffer.from("discarded\nok\n"))).toEqual([{ type: "line", line: "ok" }])
   })
 
+  it("rejects malformed UTF-8 without interpreting replacement characters", () => {
+    const decoder = new RpcFrameDecoder(128)
+    const frames = decoder.push(Buffer.from([0x7b, 0x22, 0x78, 0x22, 0x3a, 0xc3, 0x28, 0x7d, 0x0a]))
+    expect(frames).toHaveLength(1)
+    expect(frames[0]?.type).toBe("error")
+    expect(frames[0]?.type === "error" ? frames[0].error : undefined).toMatchObject({
+      code: -32_700,
+      kind: "INVALID_UTF8",
+    })
+    expect(decoder.push(Buffer.from("ok\n"))).toEqual([{ type: "line", line: "ok" }])
+  })
+
   it("does not disclose internal error details", () => {
     const normalized = normalizeRpcError(new Error("secret path /private/workspace"))
     expect(normalized).toMatchObject({ code: -32_603, kind: "INTERNAL_ERROR" })

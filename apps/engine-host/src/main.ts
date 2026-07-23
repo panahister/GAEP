@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { once } from "node:events"
 import { realpathSync, statSync } from "node:fs"
 import { isAbsolute } from "node:path"
 
@@ -24,14 +25,20 @@ try {
 const host = new EngineHost(workspacePath)
 const decoder = new RpcFrameDecoder()
 let queue = Promise.resolve()
+let inputEnded = false
 
-function writeResult(id: string | number, result: unknown): void {
-  process.stdout.write(`${serializeRpcFrame({ jsonrpc: "2.0", id, result })}\n`)
+async function writeFrame(value: unknown): Promise<void> {
+  const frame = `${serializeRpcFrame(value)}\n`
+  if (!process.stdout.write(frame)) await once(process.stdout, "drain")
 }
 
-function writeError(id: string | number | null, error: unknown): void {
+async function writeResult(id: string | number, result: unknown): Promise<void> {
+  await writeFrame({ jsonrpc: "2.0", id, result })
+}
+
+async function writeError(id: string | number | null, error: unknown): Promise<void> {
   const normalized = normalizeRpcError(error)
-  process.stdout.write(`${serializeRpcFrame({
+  await writeFrame({
     jsonrpc: "2.0",
     id,
     error: {
@@ -39,29 +46,44 @@ function writeError(id: string | number | null, error: unknown): void {
       message: normalized.message,
       data: { kind: normalized.kind, ...(normalized.data === undefined ? {} : { detail: normalized.data }) },
     },
-  })}\n`)
+  })
 }
 
 async function processFrame(frame: DecodedRpcFrame): Promise<void> {
   if (frame.type === "error") {
-    writeError(null, frame.error)
+    await writeError(null, frame.error)
     return
   }
   let id: string | number | null = null
   try {
     const request = EngineHost.parse(frame.line)
     id = request.id
-    writeResult(id, await host.dispatch(request))
+    await writeResult(id, await host.dispatch(request))
   } catch (error) {
-    writeError(id, error)
+    await writeError(id, error)
   }
 }
 
-function enqueue(frames: DecodedRpcFrame[]): void {
-  for (const frame of frames) {
-    queue = queue.then(() => processFrame(frame), () => processFrame(frame))
-  }
+function enqueue(frames: DecodedRpcFrame[], resumeInput: boolean): void {
+  queue = queue
+    .then(async () => {
+      for (const frame of frames) await processFrame(frame)
+    })
+    .catch(() => {
+      inputEnded = true
+      process.stdin.destroy()
+      process.exitCode = 74
+    })
+    .then(() => {
+      if (resumeInput && !inputEnded) process.stdin.resume()
+    })
 }
 
-process.stdin.on("data", (chunk: Buffer) => enqueue(decoder.push(chunk)))
-process.stdin.on("end", () => enqueue(decoder.end()))
+process.stdin.on("data", (chunk: Buffer) => {
+  process.stdin.pause()
+  enqueue(decoder.push(chunk), true)
+})
+process.stdin.on("end", () => {
+  inputEnded = true
+  enqueue(decoder.end(), false)
+})

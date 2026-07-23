@@ -99,6 +99,21 @@ describe("engine host protocol", () => {
     const adapter = host.engine.adapters.get("gaep.codex-cli")
     if (!adapter) throw new Error("Codex adapter is not registered")
     vi.spyOn(adapter, "probe").mockResolvedValue(resolved)
+    vi.spyOn(adapter, "buildInvocation").mockImplementation((_selection, _charter, workspacePath, prompt, binding) => {
+      if (binding.kind !== "executable") throw new Error("Host test requires an exact executable binding")
+      return {
+        executable: binding.executablePath,
+        args: ["exec", "--json", "-"],
+        cwd: workspacePath,
+        stdin: prompt,
+        inputMode: "text-once",
+        environment: {},
+        environmentPolicy: { inherit: "allowlist", allowedKeys: [] },
+        protocol: "jsonl",
+        maturity: "stable",
+        warnings: [],
+      }
+    })
     return resolved
   }
 

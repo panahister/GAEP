@@ -159,7 +159,7 @@ export class RpcFrameDecoder {
         if (this.discardingOversizedFrame) {
           this.discardingOversizedFrame = false
         } else if (this.frameBytes > 0) {
-          frames.push({ type: "line", line: this.consumeLine() })
+          frames.push(this.consumeLine())
         }
         offset = newline + 1
       } else {
@@ -174,14 +174,24 @@ export class RpcFrameDecoder {
       this.discardingOversizedFrame = false
       return []
     }
-    return this.frameBytes > 0 ? [{ type: "line", line: this.consumeLine() }] : []
+    return this.frameBytes > 0 ? [this.consumeLine()] : []
   }
 
-  private consumeLine(): string {
+  private consumeLine(): DecodedRpcFrame {
     const combined = Buffer.concat(this.chunks, this.frameBytes)
     this.chunks = []
     this.frameBytes = 0
     const withoutCarriageReturn = combined.at(-1) === 0x0d ? combined.subarray(0, -1) : combined
-    return withoutCarriageReturn.toString("utf8")
+    try {
+      return {
+        type: "line",
+        line: new TextDecoder("utf-8", { fatal: true }).decode(withoutCarriageReturn),
+      }
+    } catch {
+      return {
+        type: "error",
+        error: new HostRpcError(-32_700, "INVALID_UTF8", "JSON-RPC frame is not valid UTF-8"),
+      }
+    }
   }
 }
