@@ -18,7 +18,7 @@
 | State | `IN_PROGRESS` |
 | Working branch | `codex/gaep-hardwork-completion` |
 | Starting commit | `eab8374cc5974eea25bcad4659f46e1b0da92108` |
-| Last stable checkpoint | `beab97cf5e102b04ed4a88718b49edbada2727dd` — portable, manifest-bound design import boundary |
+| Last stable checkpoint | `b661a0d1ef51ae233659ee0d22049570c2bd99e3` — fixed security ceilings for strict portable-design JSON parsing |
 | Active work | Wave 4 crash/concurrency/recovery remediation and Wave 5 Product Studio evidence-graph verification are running in parallel |
 | Blockers | Formal baseline/readiness remain human-governance blocked. Wave 4 is locally acceptance-blocked until the independent-review findings in Section 9 are fixed and revalidated |
 | Next exact action | Close Wave 4 write-ahead, lost-update, recovery-owner, disposal and effect-truth defects; close Wave 5 evidence-lineage and bounded-history defects; then run cross-workspace validation and checkpoint each slice separately |
@@ -108,6 +108,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | IDE host executable binding | PASS WITH NATIVE-RUNTIME LIMITS | Checkpoint `e909a2dec41881a7c1a79e441eeb8220c837ad12`; Visual Studio .NET build has 0 errors/warnings and Rider `compileKotlin` passes on the existing JRE 21; native Windows and Rider IDE runtime were not exercised |
 | 2026-07-24 | Engine-host transport pressure | PASS | Checkpoint `a6e82d96f8f82740fbf71e8ef90566ce0a347559`; 14 focused tests and package typecheck pass; strict UTF-8, bounded frames, serialized processing and stdout backpressure are covered |
 | 2026-07-24 | Portable design import boundary | PASS WITH DECLARED PRODUCT LIMITS | Checkpoint `beab97cf5e102b04ed4a88718b49edbada2727dd`; 11 focused tests, the 350-test aggregate suite with 1 conditional skip, root typecheck/build and an offline built-package smoke pass; Product Studio persistence/review UX and native Windows remain |
+| 2026-07-24 | Portable design strict-JSON ceilings | PASS | Checkpoint `b661a0d1ef51ae233659ee0d22049570c2bd99e3`; callers may narrow but cannot raise the fixed input, nesting, node, string or key ceilings; 12 focused tests and package typecheck pass |
 | 2026-07-24 | Wave 4 durable staged-review restart boundary | REVIEW FINDINGS — REMEDIATION ACTIVE | Initial aggregate validation passed 184 tests with 1 conditional skip, and the exact-reviewed-content repair passes 85 focused tests with 1 conditional skip. Acceptance is withheld pending crash-safe journal discovery, lost-update protection, idempotent disposal, live-owner recovery, discard ordering and actual-effect truth fixes |
 | 2026-07-24 | Wave 5 Product Studio evidence UX | REVIEW FINDINGS — REMEDIATION ACTIVE | Initial VS Code validation passed 79 tests plus build, accessibility, extension-host and rendered-browser checks. Acceptance is withheld pending complete evidence-graph verification, apply-decision lineage, bounded-history truth and bounded handoff loading |
 
@@ -128,6 +129,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | 7 | Bound Visual Studio and Rider hosts to verified engine executables | PARTIAL_COMPLETE | `e909a2dec41881a7c1a79e441eeb8220c837ad12`; .NET and Kotlin compilation pass; native Windows and Rider IDE runtime remain unexercised |
 | 2026-07-24 | 2 | Added bounded, backpressured engine-host transport with strict UTF-8 and coherent adapter-boundary tests | PARTIAL_COMPLETE | `a6e82d96f8f82740fbf71e8ef90566ce0a347559`; 14 focused tests and typecheck pass |
 | 2026-07-24 | 6 | Added a portable exact-manifest design import boundary for PNG, JPEG, WebP, PDF, passive SVG and DTCG tokens | PARTIAL_COMPLETE | `beab97cf5e102b04ed4a88718b49edbada2727dd`; imported outputs remain pending human review; persistence, workflow and UI remain |
+| 2026-07-24 | 6 | Prevented public strict-JSON callers from relaxing portable-design parser security ceilings | COMPLETE | `b661a0d1ef51ae233659ee0d22049570c2bd99e3`; focused suite increased to 12 passing tests and package typecheck passes |
 | 2026-07-24 | 4 | Added bounded restart-safe staged-review manifests, claimant leases, governed-binding revalidation, fail-closed discard and registry-owned journal disposal | REVIEW_BLOCKED | Independent review found crash-ordering, lost-update, recovery-owner, disposal and effect-truth defects; remediation and fault-injection tests are active; no commit yet |
 | 2026-07-24 | 5 | Added privacy-safe run, evidence, apply-decision, provider-truth and handoff projections to Product Studio | REVIEW_BLOCKED | Independent review found incomplete evidence-graph verification, apply-lineage, bounded-history and handoff-limit defects; remediation and production-valid fixtures are active; no commit yet |
 
