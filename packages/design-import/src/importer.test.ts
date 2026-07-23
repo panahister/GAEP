@@ -262,4 +262,12 @@ describe("strict design JSON", () => {
     const manifest = await readFile(join(root, "gaep-design-import.json"), "utf8")
     expect(parseStrictJson(manifest)).toMatchObject({ kind: "portable-design-bundle" })
   })
+
+  it("allows callers to tighten but never relax parser security ceilings", () => {
+    expect(parseStrictJson('["ok"]', { maxNodes: 2, maxStringLength: 2 })).toEqual(["ok"])
+    expect(() => parseStrictJson('["too-long"]', { maxStringLength: 2 })).toThrow(/string exceeds/u)
+    expect(() => parseStrictJson("[]", { maxNodes: 100_001 })).toThrow(/hard maximum/u)
+    expect(() => parseStrictJson("[]", { maxInputLength: 8 * 1024 * 1024 + 1 })).toThrow(/hard maximum/u)
+    expect(() => parseStrictJson("[]", { maxDepth: Number.NaN })).toThrow(/hard maximum/u)
+  })
 })

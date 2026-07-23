@@ -2,6 +2,7 @@ import type { JsonValue } from "./schema.js"
 import { PortableDesignImportError } from "./errors.js"
 
 export interface StrictJsonLimits {
+  readonly maxInputLength: number
   readonly maxDepth: number
   readonly maxNodes: number
   readonly maxStringLength: number
@@ -9,10 +10,36 @@ export interface StrictJsonLimits {
 }
 
 const defaultLimits: StrictJsonLimits = {
+  maxInputLength: 8 * 1024 * 1024,
   maxDepth: 32,
   maxNodes: 100_000,
   maxStringLength: 50_000,
   maxObjectKeyLength: 256,
+}
+
+function resolveLimits(overrides: Partial<StrictJsonLimits>): StrictJsonLimits {
+  const resolved: StrictJsonLimits = {
+    maxInputLength: overrides.maxInputLength ?? defaultLimits.maxInputLength,
+    maxDepth: overrides.maxDepth ?? defaultLimits.maxDepth,
+    maxNodes: overrides.maxNodes ?? defaultLimits.maxNodes,
+    maxStringLength: overrides.maxStringLength ?? defaultLimits.maxStringLength,
+    maxObjectKeyLength: overrides.maxObjectKeyLength ?? defaultLimits.maxObjectKeyLength,
+  }
+  for (const [name, value, hardMaximum] of [
+    ["maxInputLength", resolved.maxInputLength, defaultLimits.maxInputLength],
+    ["maxDepth", resolved.maxDepth, defaultLimits.maxDepth],
+    ["maxNodes", resolved.maxNodes, defaultLimits.maxNodes],
+    ["maxStringLength", resolved.maxStringLength, defaultLimits.maxStringLength],
+    ["maxObjectKeyLength", resolved.maxObjectKeyLength, defaultLimits.maxObjectKeyLength],
+  ] as const) {
+    if (!Number.isSafeInteger(value) || value <= 0 || value > hardMaximum) {
+      throw new PortableDesignImportError(
+        "limit-exceeded",
+        `${name} must be a positive value at or below the strict JSON hard maximum`,
+      )
+    }
+  }
+  return resolved
 }
 
 class StrictJsonParser {
@@ -25,6 +52,9 @@ class StrictJsonParser {
   ) {}
 
   parse(): JsonValue {
+    if (this.input.length > this.limits.maxInputLength) {
+      throw new PortableDesignImportError("limit-exceeded", "JSON input exceeds the strict parser hard limit")
+    }
     this.skipWhitespace()
     const result = this.parseValue(0)
     this.skipWhitespace()
@@ -168,5 +198,5 @@ export function parseStrictJson(
   input: string,
   limits: Partial<StrictJsonLimits> = {},
 ): JsonValue {
-  return new StrictJsonParser(input, { ...defaultLimits, ...limits }).parse()
+  return new StrictJsonParser(input, resolveLimits(limits)).parse()
 }

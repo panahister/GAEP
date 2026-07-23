@@ -11,6 +11,8 @@ The initial contract accepts an exact `gaep-design-import.json` manifest plus th
 
 Every artifact has a normalized relative path, declared byte size, SHA-256 digest, media type, semantic kind, and optional Product targets. Import rejects absolute/traversing/Windows-ambiguous paths, links and special files, undeclared inventory, case collisions, changing files, digest drift, size/count overflow, duplicate JSON keys, prototype keys, malformed UTF-8, secret-shaped text/token values, active SVG, and mismatched file signatures.
 
+Strict JSON parsing has fixed package security ceilings for input length, nesting, node count, string length, and key length. Callers may lower those limits for a narrower boundary but cannot raise them.
+
 The result contains portable metadata, normalized token values, exact provenance digests, validation evidence, and this non-escalation boundary:
 
 `import-validation-is-not-design-approval-or-baseline`
