@@ -315,7 +315,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         {
           label: "Provider-native controls",
           description: nativeControls,
-          tooltip: "This direct-execution release launches only when provider-native controls enforce the effective read-only, network-disabled boundary.",
+          tooltip: "Managed execution launches only when provider-native capabilities match the exact confirmed Workflow. Codex writes remain isolated for review; Claude remains tool-free and context-only.",
           icon: "shield",
         },
         {
@@ -331,9 +331,9 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
           command: { command: "gaep.selectAgent", title: "Change Agent or Model" },
         },
         {
-          label: "Create Charter and Start Run",
+          label: "Create Managed Charter and Start Run",
           icon: "play",
-          command: { command: "gaep.prepareRun", title: "Create Charter and Start Run" },
+          command: { command: "gaep.prepareRun", title: "Create Managed Charter and Start Run" },
         },
       ]
     }
@@ -363,15 +363,15 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         ...(unknown.length > 0 ? [diagnosticEntry("Unknown run effects", `${unknown.length} run(s) require investigation before their effects can be trusted.`)] : []),
         {
           label: "Structured evidence",
-          description: "not exposed by current engine",
-          tooltip: "Run lifecycle records are available. Structured event and evidence records remain an explicit Product Studio gap.",
+          description: "run records available; event feed pending",
+          tooltip: "Managed lifecycle and evidence records are durable, but the structured Product Studio event feed remains a tracked UI gap.",
           icon: "info",
         },
         {
-          label: "Create Charter and Start Run",
-          description: "Codex observe-only",
+          label: "Create Managed Charter and Start Run",
+          description: "exact Workflow and staged effects",
           icon: "play",
-          command: { command: "gaep.prepareRun", title: "Create Charter and Start Run" },
+          command: { command: "gaep.prepareRun", title: "Create Managed Charter and Start Run" },
         },
       ]
     }

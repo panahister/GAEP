@@ -6,10 +6,11 @@ GAEP turns a workspace into a governed Product repository and lets the user sele
 
 1. Open the GAEP activity-bar view.
 2. Run `Initialize Product` and answer the product-direction questions.
-3. Select a detected executable agent, model, and safe settings. Claude Code is currently detection-only until GAEP can enforce an outer execution boundary.
+3. Select a detected executable agent, model, and safe settings. Codex supports isolated staged execution; Claude Code supports only the tool-free, context-only managed mode.
 4. Create a bounded Initiative, then explicitly activate it when it is ready for execution.
-5. Run `Create Charter and Start Run` and review the observe-only profile.
-6. Review and confirm the charter, including its explicit workspace-root local-command allowance, then confirm the agent-process launch.
+5. Create and resolve an exact Workflow Plan with sufficient Context Packs and any enabled Tool Definitions needed by the run.
+6. Run `Create Managed Charter and Start Run`, review the exact Workflow, Context, Tool, effect, and scope bindings, then confirm the Charter and process launch separately.
+7. Explicitly assess each natural-language Workflow gate. For Codex changes, open the exact staged inventory and choose apply, discard, or keep pending; provider completion never self-asserts Product outcome completion.
 
 GAEP writes portable records under `.gaep`. It does not read or copy credentials from Codex, Claude Code, VS Code, or another extension.
 
@@ -25,13 +26,13 @@ Portable agent capabilities and selections do not contain executable paths. VS C
 
 The extension requires a trusted VS Code workspace before it probes an executable, changes Product state, recovers a run, or starts an agent. In a multi-root workspace, select the folder that owns the Product with `GAEP: Select Product Root`. Agent executable paths are machine-scoped User Settings; repository and workspace overrides are ignored.
 
-The separate launch confirmation is mandatory. Direct Codex execution is restricted to its read-only, network-disabled sandbox with the provider's `never` approval mode, so writes and unavailable escalation prompts fail closed. `workspace-write`, `danger-full-access`, and direct live-search enablement are not selectable through this host. Claude Code can be inspected but cannot launch until a managed outer workspace, process, network, and per-call effect boundary exists.
+The separate launch confirmation is mandatory. Managed Codex runs execute in an isolated staging workspace; only exact intrinsic shell and workspace-write Tool bindings can be compiled, and every source-workspace change waits for an inventory-bound human apply decision. Managed Claude runs use a fresh tool-free, context-only directory with no workspace access, MCP, settings, browser, slash commands, or resume. Unsupported permissions and effects fail closed.
 
 Only active Initiatives can prepare runs. Proposed and blocked Initiatives explain the transition needed before execution; completed and cancelled Initiatives remain terminal. Agent/model changes after a run use a reviewed handoff that atomically records both the handoff and new selection, so a partial switch cannot be presented as complete.
 
-CLI Charters contain no per-command `ask` mode because the current non-interactive transport has no GAEP approval callback. The supplied profile uses the portable `.` workspace-root scope for workspace analysis and local commands inside Codex's read-only sandbox. It denies all workspace modification, network access, and high-impact actions such as commit, push, deploy, publish, spend, privilege change, and deletion.
+Managed Charters exactly bind the resolved Workflow Plan, Context Packs, Tool Definitions, requested effects, and portable workspace scopes. Tool presence does not grant authority: any Tool selection is recorded separately, high-impact Tools require explicit human confirmation, and commit, push, deploy, publish, external communication, spend, privilege change, and destructive actions remain denied by the VS Code compiler.
 
-Agent-native permissions are the technical control boundary for direct execution. They do not substitute for GAEP approval or authorization records. GAEP refuses direct execution when that boundary cannot enforce the effective profile; effectful work will use an isolated staging workspace and controlled apply path rather than advisory denials.
+Agent-native permissions and the isolated stage are technical control boundaries; they do not substitute for GAEP approval or authorization records. Natural-language preconditions, outputs, evidence criteria, and stop conditions require an explicit human assessment and are never treated as machine-proven. The current review surface exposes the complete path/kind/digest/size/mode inventory but not staged file contents; durable restart recovery can discard a retained stage, while exact apply and provider resume currently require the same engine session.
 
 Provider processes receive a reduced environment. Common secret-bearing environment variables are not inherited; the installed CLI remains responsible for using its own authorized credential store.
 

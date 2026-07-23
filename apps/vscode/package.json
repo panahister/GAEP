@@ -45,6 +45,8 @@
     "onCommand:gaep.createInitiative",
     "onCommand:gaep.changeInitiativeState",
     "onCommand:gaep.prepareRun",
+    "onCommand:gaep.cancelActiveRun",
+    "onCommand:gaep.reviewManagedRun",
     "onCommand:gaep.verifyAudit",
     "onCommand:gaep.showDiagnostics",
     "onCommand:gaep.retryRecovery",
@@ -94,7 +96,15 @@
       },
       {
         "command": "gaep.prepareRun",
-        "title": "GAEP: Create Charter and Start Run"
+        "title": "GAEP: Create Managed Charter and Start Run"
+      },
+      {
+        "command": "gaep.cancelActiveRun",
+        "title": "GAEP: Cancel Active Managed Run"
+      },
+      {
+        "command": "gaep.reviewManagedRun",
+        "title": "GAEP: Review Pending Managed Run"
       },
       {
         "command": "gaep.verifyAudit",

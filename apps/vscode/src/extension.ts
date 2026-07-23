@@ -15,16 +15,28 @@ import {
   containsSecretShapedValue,
   productProfileSchema,
   type AdapterCapabilities,
+  type AgentSelection,
   type AgentSetting,
   type Initiative,
-  type ToolPermission,
 } from "@gaep/contracts"
-import { GaepEngine, initiativeTransitions } from "@gaep/engine"
+import {
+  GaepEngine,
+  initiativeTransitions,
+  type ManagedExecutionReview,
+} from "@gaep/engine"
 import * as vscode from "vscode"
 
 import { ActiveRunRegistry } from "./run-registry.js"
 import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-source.js"
 import { resolveLocalActorPrincipal } from "./local-actor.js"
+import { ManagedRunSession } from "./managed-run-session.js"
+import {
+  buildManagedWorkflowEnvelope,
+  buildRunToolSelectionInput,
+  createHumanWorkflowGateEvaluator,
+  humanWorkflowGatePrompt,
+  toolSelectionSummary,
+} from "./managed-workflow.js"
 import {
   resolveRuntimeBinding,
   runtimeBindingKey,
@@ -33,7 +45,6 @@ import {
   type RuntimeBinding,
   type RuntimeBindingIndex,
 } from "./runtime-binding.js"
-import { AgentRunTerminal } from "./run-terminal.js"
 import {
   constrainedSetting,
   currentInitiative,
@@ -157,6 +168,57 @@ async function exists(path: string): Promise<boolean> {
 function machineSetting(key: "codex.executable" | "claude.executable", fallback: string): string {
   const inspected = vscode.workspace.getConfiguration("gaep").inspect<string>(key)
   return machineScopedSettingValue(inspected, fallback)
+}
+
+type ManagedReviewSnapshot = Pick<ManagedExecutionReview, "record" | "result" | "evidence">
+
+function managedEvidenceEventDiagnostic(
+  event: ManagedExecutionReview["evidence"]["events"][number],
+): string {
+  const prefix = `Managed event ${event.sequence}`
+  switch (event.type) {
+    case "lifecycle": return `${prefix}: lifecycle ${event.phase}${event.turnStatus ? ` (${event.turnStatus})` : ""}`
+    case "output": return `${prefix}: ${event.channel} output, ${event.byteLength} byte(s), ${event.redactionCount} redaction(s)`
+    case "item": return `${prefix}: ${event.itemType} ${event.status}`
+    case "approval": return `${prefix}: ${event.approvalKind} approval ${event.outcome}`
+    case "warning": return `${prefix}: warning ${event.code}`
+    case "error": return `${prefix}: error ${event.code}${event.retryable ? " (retryable)" : ""}`
+  }
+}
+
+function managedReviewDocument(snapshot: ManagedReviewSnapshot): string {
+  const staging = snapshot.evidence.staging
+  const changes = staging?.changes ?? []
+  const inventory = changes.length > 0
+    ? changes.map((change, index) => [
+        `${index + 1}. **${change.kind.toUpperCase()}** \`${change.path}\``,
+        `   - Before: ${change.beforeDigest ?? "absent"}; ${change.beforeSize ?? 0} byte(s); mode ${change.beforeMode?.toString(8) ?? "absent"}`,
+        `   - After: ${change.afterDigest ?? "absent"}; ${change.afterSize ?? 0} byte(s); mode ${change.afterMode?.toString(8) ?? "absent"}`,
+      ].join("\n")).join("\n")
+    : "No staged workspace file changes were recorded."
+  return [
+    "# GAEP Managed Run Review",
+    "",
+    `- Managed Run: \`${snapshot.record.id}\``,
+    `- Underlying Run: \`${snapshot.record.runId}\``,
+    `- State: **${snapshot.record.state}**`,
+    `- Provider disposition: **${snapshot.result.providerDisposition}**`,
+    `- Outcome: **${snapshot.result.outcome.status}** (${snapshot.result.outcome.basis})`,
+    `- Evidence: \`${snapshot.evidence.id}\``,
+    `- Evidence digest: \`${canonicalDigest(snapshot.evidence)}\``,
+    `- Bindings digest: \`${snapshot.record.bindingsDigest}\``,
+    `- Apply state: **${staging?.applyState ?? "not-applicable"}**`,
+    `- Warnings: ${snapshot.result.warnings.join(", ") || "none"}`,
+    "",
+    "## Exact changed-file inventory",
+    "",
+    inventory,
+    "",
+    "## Review boundary",
+    "",
+    "This view contains the complete engine-recorded path, kind, digest, size, and mode inventory. Provider output remains redacted/digest-only, and the current engine does not expose staged file contents to the host. Applying confirms this exact inventory and write envelope; it does not convert provider completion into independently verified Product outcome completion.",
+    "",
+  ].join("\n")
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -380,6 +442,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (productDomainMutationActive) throw new Error("GAEP cannot replace its Product root while a Product-domain mutation is completing")
     if (activeAgentRuns.size > 0) {
       throw new Error("GAEP cannot replace its Product root or runtime configuration while a provider process remains active")
+    }
+    if (engine) {
+      const pendingReviews = await engine.listPendingManagedReviewStatuses()
+      if (pendingReviews.length > 0) {
+        throw new Error("Resolve or discard every pending Managed Run review before replacing the Product root or runtime configuration")
+      }
     }
     rotateStudioContext()
     selectedFolder = folder
@@ -1706,25 +1774,311 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })(),
   ))
 
+  type ManagedRuntimeContext = { engine: GaepEngine; path: string }
+  interface ManagedLaunchRequest {
+    runtime: ManagedRuntimeContext
+    selection: AgentSelection
+    runId: string
+    workflowPlanId: string
+    runToolSelectionId?: string
+    initiativeTitle: string
+    previousManagedRunId?: string
+  }
+
+  const revalidateManagedRuntime = async (
+    runtime: ManagedRuntimeContext,
+    selection: AgentSelection,
+  ): Promise<ExecutableFingerprint> => {
+    const adapter = runtime.engine.adapters.get(selection.adapterId)
+    if (!adapter) throw new Error("The selected agent adapter is unavailable; select the agent again")
+    const probe = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "GAEP is revalidating the exact managed runtime", cancellable: false },
+      () => adapter.probe({ refreshModels: true }),
+    )
+    const resolution = resolveRuntimeBinding(runtimeBindings(), runtime.path, selection.adapterId)
+    const observed = verifiedExecutableBinding(selection, probe, resolution)
+    const current = await fingerprintExecutable(observed.canonicalPath)
+    if (!sameExecutableFingerprint(observed, current)) {
+      throw new Error("The selected agent executable changed during managed run preparation; probe and select it again")
+    }
+    return current
+  }
+
+  const openManagedReview = async (snapshot: ManagedReviewSnapshot): Promise<void> => {
+    const document = await vscode.workspace.openTextDocument({
+      language: "markdown",
+      content: managedReviewDocument(snapshot),
+    })
+    await vscode.window.showTextDocument(document, { preview: true, preserveFocus: false })
+  }
+
+  const workflowGateEvaluator = createHumanWorkflowGateEvaluator(actorId, async (request) => {
+    if (request.signal.aborted) return "not-assessed"
+    const prompt = humanWorkflowGatePrompt(request)
+    const actions = [
+      ...(prompt.canAttest ? [prompt.satisfiedLabel] : []),
+      "Record Failed",
+      "Not Assessed",
+    ]
+    const decision = await vscode.window.showWarningMessage(
+      `${prompt.title}\n\n${prompt.message}`,
+      { modal: true },
+      ...actions,
+    )
+    if (request.signal.aborted) return "not-assessed"
+    if (decision === prompt.satisfiedLabel) return "satisfied"
+    if (decision === "Record Failed") return "failed"
+    return "not-assessed"
+  })
+
+  const maybeOfferManagedJournalDisposal = (review: ManagedExecutionReview): void => {
+    if (!review.hasLocalJournal || review.canApply || review.canDiscard) return
+    void vscode.window.showInformationMessage(
+      `Managed Run ${review.record.id} retained a machine-local recovery journal after ${review.record.state}. Keep it until you no longer need local recovery evidence.`,
+      "Dispose Local Recovery Journal",
+    ).then(async (action) => {
+      if (action !== "Dispose Local Recovery Journal") return
+      try {
+        await review.disposeLocalJournal()
+        diagnostics.info(`Disposed machine-local recovery journal for Managed Run ${review.record.id}`)
+      } catch (error) {
+        logDiagnostic(`Could not dispose recovery journal for Managed Run ${review.record.id}`, error)
+      }
+    })
+  }
+
+  const reviewManagedRun = async (
+    initial: ManagedExecutionReview,
+    runtime: ManagedRuntimeContext,
+    allowResume: boolean,
+  ): Promise<"done" | "resume"> => {
+    let review = initial
+    while (review.canApply || review.canDiscard) {
+      const changeCount = review.evidence.staging?.changes.length ?? 0
+      const actions = ["Open Exact Inventory"]
+      if (review.canApply) actions.push("Apply Exact Reviewed Inventory")
+      if (review.canDiscard) actions.push("Discard Staged Changes")
+      actions.push("Keep Pending")
+      const action = await vscode.window.showWarningMessage(
+        [
+          `Managed Run ${review.record.id} is ${review.record.state}.`,
+          `${changeCount} staged file change(s); outcome ${review.result.outcome.status}; evidence ${review.evidence.id}.`,
+          "No source-workspace mutation occurs unless you explicitly apply the exact reviewed inventory.",
+        ].join("\n\n"),
+        { modal: true },
+        ...actions,
+      )
+      if (action === "Open Exact Inventory") {
+        await openManagedReview(review)
+        continue
+      }
+      if (action === "Apply Exact Reviewed Inventory") {
+        if (!vscode.workspace.isTrusted || engine !== runtime.engine || selectedFolder?.uri.fsPath !== runtime.path) {
+          throw new Error("Workspace trust or Product root changed before apply; the staged review remains pending")
+        }
+        const confirmation = review.applyConfirmation
+        if (!confirmation) throw new Error("The engine did not expose an exact apply confirmation for this review")
+        review = await review.apply({ confirmation }, actorId)
+        diagnostics.info(`Managed Run ${review.record.id} apply decision ended in ${review.record.state}`)
+        scheduleRefresh()
+        continue
+      }
+      if (action === "Discard Staged Changes") {
+        review = await review.discard(actorId)
+        diagnostics.info(`Discarded staged changes for Managed Run ${review.record.id}`)
+        scheduleRefresh()
+        continue
+      }
+      void vscode.window.showWarningMessage(
+        "The review remains pending only in this engine session. After an extension restart the current engine can recover and discard the durable stage, but it cannot safely reconstruct apply authority.",
+      )
+      return "done"
+    }
+    void vscode.window.showInformationMessage(
+      `Managed Run ${review.record.id} ended ${review.record.state}; provider ${review.result.providerDisposition}; outcome ${review.result.outcome.status}.`,
+    )
+    maybeOfferManagedJournalDisposal(review)
+    if (allowResume && review.record.state === "unknown") {
+      const action = await vscode.window.showWarningMessage(
+        "This Managed Run is unknown. Resume is available only while the exact machine-local provider binding remains in this engine session; restart recovery cannot recreate it.",
+        { modal: true },
+        "Resume Exact Run",
+      )
+      if (action === "Resume Exact Run") return "resume"
+    }
+    return "done"
+  }
+
+  let launchManagedSession: (request: ManagedLaunchRequest) => Promise<void>
+  launchManagedSession = async (request): Promise<void> => {
+    const { runtime, selection } = request
+    if (!vscode.workspace.isTrusted || engine !== runtime.engine || selectedFolder?.uri.fsPath !== runtime.path) {
+      throw new Error("Workspace trust or Product root changed before managed process launch")
+    }
+    const persistedSelection = await runtime.engine.readSelection()
+    if (canonicalDigest(persistedSelection) !== canonicalDigest(selection)) {
+      throw new Error("Agent, model, or settings changed before managed process launch")
+    }
+    let handle: Awaited<ReturnType<GaepEngine["startManagedRun"]>>
+    try {
+      if (activeAgentRuns.hasRoot(runtime.path)) throw new Error("A GAEP managed provider is already active in this Product root")
+      const action = await vscode.window.showWarningMessage(
+        `${request.previousManagedRunId ? "Resume" : "Start"} the exact managed run for ${request.initiativeTitle}? Workflow gates require explicit human assessment. Codex writes remain isolated until exact apply; Claude remains context-only.`,
+        { modal: true },
+        request.previousManagedRunId ? "Resume Managed Run" : "Start Managed Run",
+      )
+      const expectedAction = request.previousManagedRunId ? "Resume Managed Run" : "Start Managed Run"
+      if (action !== expectedAction) throw new WorkflowCancelled()
+      await revalidateManagedRuntime(runtime, selection)
+      if (!vscode.workspace.isTrusted || engine !== runtime.engine || selectedFolder?.uri.fsPath !== runtime.path) {
+        throw new Error("Workspace trust or Product root changed during managed process confirmation")
+      }
+      handle = await runtime.engine.startManagedRun({
+        runId: request.runId,
+        workflowPlanId: request.workflowPlanId,
+        runToolSelectionId: request.runToolSelectionId,
+        previousManagedRunId: request.previousManagedRunId,
+        evaluateWorkflowGate: workflowGateEvaluator,
+      }, actorId)
+    } catch (error) {
+      if (!request.previousManagedRunId) {
+        await runtime.engine.markRunState(
+          request.runId,
+          "cancelled",
+          { kind: error instanceof WorkflowCancelled ? "human" : "system", id: actorId },
+        ).catch(() => undefined)
+      }
+      throw error
+    }
+    let unregister = (): void => undefined
+    let resumeRequested = false
+    const session = new ManagedRunSession(runtime.path, handle, {
+      onEvent: (event) => {
+        diagnostics.info(managedEvidenceEventDiagnostic(event))
+        scheduleRefresh()
+      },
+      onReview: async (review) => {
+        diagnostics.info(`Managed Run ${review.record.id} reached ${review.record.state}`)
+        resumeRequested = await reviewManagedRun(review, runtime, true) === "resume"
+      },
+      onError: (error) => {
+        logDiagnostic(`Managed Run ${handle.record.id} failed`, error)
+        void vscode.window.showErrorMessage(`Managed Run failed: ${error.message}`, "Show Diagnostics").then((selected) => {
+          if (selected === "Show Diagnostics") diagnostics.show(true)
+        })
+      },
+      onSettled: () => {
+        unregister()
+        scheduleRefresh()
+        if (resumeRequested) {
+          setTimeout(() => {
+            void safely(() => launchManagedSession({
+              ...request,
+              previousManagedRunId: handle.record.id,
+            }))()
+          }, 0)
+        }
+      },
+    })
+    try {
+      unregister = activeAgentRuns.register(session)
+    } catch (error) {
+      await session.stopAndWait().catch((stopError) => logDiagnostic("Managed provider cleanup after registry failure failed", stopError))
+      throw error
+    }
+    diagnostics.info(`Managed Run ${session.runId} started for underlying Run ${request.runId}`)
+    void vscode.window.showInformationMessage(
+      `Managed Run started for ${request.initiativeTitle}. Use “GAEP: Cancel Active Managed Run” to stop it.`,
+    )
+    refresh()
+  }
+
+  const resolvePendingManagedReview = async (runtime: ManagedRuntimeContext): Promise<boolean> => {
+    const statuses = await runtime.engine.listPendingManagedReviewStatuses()
+    if (statuses.length === 0) return false
+    const choices = await Promise.all(statuses.map(async (status) => {
+      const record = await runtime.engine.readManagedRun(status.managedRunId)
+      return {
+        label: `Managed Run ${record.id}`,
+        description: record.state,
+        detail: status.canApply
+          ? "In-session exact apply or discard is available"
+          : "Durable apply is unavailable; exact inspection and discard remain available",
+        status,
+        record,
+      }
+    }))
+    const picked = choices.length === 1 ? choices[0] : await vscode.window.showQuickPick(choices, {
+      title: "Resolve a pending Managed Run review",
+      ignoreFocusOut: true,
+    })
+    if (!picked) throw new WorkflowCancelled()
+    const record = picked.record
+    if (!record.resultId) throw new Error("Pending Managed Run has no exact result binding")
+    const result = await runtime.engine.readManagedRunResult(record.resultId)
+    const evidence = await runtime.engine.readManagedRunEvidence(result.evidenceId)
+    while (true) {
+      const actions = ["Open Exact Inventory"]
+      if (picked.status.canApply && picked.status.applyConfirmation) actions.push("Apply Exact Reviewed Inventory")
+      if (picked.status.canDiscard) actions.push("Discard Staged Changes")
+      actions.push("Keep Pending")
+      const action = await vscode.window.showWarningMessage(
+        `Managed Run ${record.id} is ${record.state} with ${evidence.staging?.changes.length ?? 0} staged file change(s).`,
+        { modal: true },
+        ...actions,
+      )
+      if (action === "Open Exact Inventory") {
+        await openManagedReview({ record, result, evidence })
+        continue
+      }
+      if (action === "Apply Exact Reviewed Inventory" && picked.status.applyConfirmation) {
+        if (!vscode.workspace.isTrusted || engine !== runtime.engine || selectedFolder?.uri.fsPath !== runtime.path) {
+          throw new Error("Workspace trust or Product root changed before apply; the staged review remains pending")
+        }
+        const review = await runtime.engine.applyPendingManagedReview(
+          record.id,
+          { confirmation: picked.status.applyConfirmation },
+          actorId,
+        )
+        await reviewManagedRun(review, runtime, false)
+        return true
+      }
+      if (action === "Discard Staged Changes") {
+        const review = await runtime.engine.discardPendingManagedReview(record.id, actorId)
+        void vscode.window.showInformationMessage(`Managed Run ${review.record.id} is now ${review.record.state}.`)
+        scheduleRefresh()
+        return true
+      }
+      return true
+    }
+  }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("gaep.cancelActiveRun", safely(async () => {
+      if (activeAgentRuns.size === 0) {
+        await vscode.window.showInformationMessage("No GAEP managed provider is active.")
+        return
+      }
+      await stopActiveRuns("Cancelling active Managed Run(s).", true)
+      refresh()
+    })),
+    vscode.commands.registerCommand("gaep.reviewManagedRun", safely(async () => {
+      const runtime = await requireRuntime()
+      if (!await resolvePendingManagedReview(runtime)) {
+        await vscode.window.showInformationMessage("No Managed Run is awaiting staged review.")
+      }
+    })),
+  )
+
   context.subscriptions.push(vscode.commands.registerCommand("gaep.prepareRun", safely(async () => {
     const runtime = await requireRuntime()
+    if (await resolvePendingManagedReview(runtime)) return
     const currentSelection = await runtime.engine.readSelection()
     const unsafe = unsafeSelectionReasons(currentSelection.agentId, currentSelection.settings)
     if (unsafe.length > 0) throw new Error(`Reselect the agent before running: ${unsafe.join("; ")}`)
-    const selectedAdapter = runtime.engine.adapters.get(currentSelection.adapterId)
-    if (!selectedAdapter) throw new Error("The selected agent adapter is unavailable; select the agent again")
-    const selectedProbe = await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: "GAEP is revalidating the selected agent runtime", cancellable: false },
-      () => selectedAdapter.probe({ refreshModels: true }),
-    )
-    const bindingResolution = resolveRuntimeBinding(runtimeBindings(), runtime.path, currentSelection.adapterId)
-    const observedFingerprint = verifiedExecutableBinding(currentSelection, selectedProbe, bindingResolution)
-    const currentFingerprint = await fingerprintExecutable(observedFingerprint.canonicalPath)
-    if (!sameExecutableFingerprint(observedFingerprint, currentFingerprint)) {
-      throw new Error("The selected agent executable changed during run preparation; probe and select it again")
-    }
+    await revalidateManagedRuntime(runtime, currentSelection)
     if ((await runtime.engine.listRuns()).some((run) => run.state === "running") || activeAgentRuns.hasRoot(runtime.path)) {
-      throw new Error("A GAEP agent process is already running in this Product root")
+      throw new Error("A GAEP managed provider or unresolved Run is already active in this Product root")
     }
     const initiativeFiles = (await readdir(join(runtime.path, ".gaep", "initiatives"))).filter((name) => name.endsWith(".json"))
     if (initiativeFiles.length === 0) throw new Error("Create an Initiative before preparing a run")
@@ -1754,116 +2108,117 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       kind: vscode.QuickPickItemKind.Separator,
       label: `Unavailable: ${initiative.title} (${initiative.state}) — ${initiativeRunEligibility(initiative).reason}`,
     })))
-    const picked = await vscode.window.showQuickPick(
+    const pickedInitiative = await vscode.window.showQuickPick(
       initiativeItems,
       { title: "Select an active bounded Initiative", ignoreFocusOut: true },
     )
-    if (!picked?.initiative) throw new WorkflowCancelled()
-    const eligibility = initiativeRunEligibility(picked.initiative)
+    if (!pickedInitiative?.initiative) throw new WorkflowCancelled()
+    const eligibility = initiativeRunEligibility(pickedInitiative.initiative)
     if (!eligibility.eligible) throw new Error(eligibility.reason ?? "The selected Initiative cannot prepare a run")
-    const objective = await requiredInput("What should the selected agent accomplish in this run?")
-    const executionProfile = await vscode.window.showQuickPick([{
-      label: "Observe-only",
-      description: "all writes and network access denied",
-      detail: "Allows workspace analysis and local commands inside Codex's read-only, network-disabled sandbox. Staged workspace changes require the managed execution boundary planned for the next completion wave.",
-      modifyMode: "deny" as const,
-      expectedEffects: ["observe"] as const,
-    }], {
-      title: "Choose the CLI Charter permission profile",
-      placeHolder: "Direct CLI execution is restricted to the technically enforced observe-only profile.",
-      ignoreFocusOut: true,
-    })
-    if (!executionProfile) throw new WorkflowCancelled()
-    const permissions: ToolPermission[] = [
-      { capability: "read-workspace", mode: "allow", scope: ["."] },
-      { capability: "modify-workspace", mode: executionProfile.modifyMode, scope: ["."] },
-      { capability: "run-local-commands", mode: "allow", scope: ["."] },
-      { capability: "network-access", mode: "deny", scope: [] },
-      { capability: "commit", mode: "deny", scope: [] },
-      { capability: "push", mode: "deny", scope: [] },
-      { capability: "deploy", mode: "deny", scope: [] },
-      { capability: "publish", mode: "deny", scope: [] },
-      { capability: "external-communication", mode: "deny", scope: [] },
-      { capability: "spend", mode: "deny", scope: [] },
-      { capability: "privilege-change", mode: "deny", scope: [] },
-      { capability: "delete", mode: "deny", scope: [] },
-      { capability: "destructive-delete", mode: "deny", scope: [] },
-    ]
+
+    const allPlans = await runtime.engine.productStudio.listWorkflowPlans()
+    const resolvedPlans = allPlans.filter((plan) => plan.state === "resolved")
+    const compatiblePlans = resolvedPlans.filter((plan) => plan.steps.every((step) =>
+      step.responsibility.kind === "agent" &&
+      (step.responsibility.id === currentSelection.agentId || step.responsibility.id === currentSelection.adapterId),
+    ))
+    if (compatiblePlans.length === 0) {
+      throw new Error(
+        resolvedPlans.length === 0
+          ? "Create and resolve a Workflow Plan before preparing a managed run"
+          : "No resolved Workflow Plan assigns every step to the exact selected agent; revise the Plan or selection",
+      )
+    }
+    const pickedPlan = await vscode.window.showQuickPick(
+      compatiblePlans.map((plan) => ({
+        label: plan.title,
+        description: `${plan.steps.length} step(s), ${plan.toolDefinitions.length} Tool(s), ${plan.contextPacks.length} Context Pack(s)`,
+        detail: plan.objective,
+        plan,
+      })),
+      { title: "Select the exact resolved Workflow Plan", ignoreFocusOut: true },
+    )
+    if (!pickedPlan) throw new WorkflowCancelled()
+    const plan = pickedPlan.plan
+    const tools = await Promise.all(plan.toolDefinitions.map((reference) =>
+      runtime.engine.productStudio.readToolDefinition(reference.recordId)))
+    const envelope = buildManagedWorkflowEnvelope(plan, tools, currentSelection.adapterId)
+    const objective = await requiredInput("Confirm or refine the bounded run objective", { value: plan.objective })
+    const scopeSummary = envelope.managedIntent.requestedScopes.map((scope) => JSON.stringify(scope)).join(", ") || "none"
+    const toolSummary = toolSelectionSummary(
+      { tools: plan.toolDefinitions },
+      tools,
+    )
     const charter = await runtime.engine.createCharter({
-      initiativeId: picked.initiative.id,
+      initiativeId: pickedInitiative.initiative.id,
       objective,
-      permissions,
-      expectedEffects: [...executionProfile.expectedEffects],
-      forbiddenActions: ["Push, deploy, delete, publish, spend, or change privileges without an exact Authorization Grant."],
-      stopConditions: ["Required authority is missing.", "The requested scope changes materially.", "An effect is partial, unknown, or cannot be verified."],
-      requiredEvidence: ["Relevant tests and validation output", "Changed-file inventory", "Unresolved risks and limitations"],
+      permissions: envelope.permissions,
+      expectedEffects: envelope.expectedEffects,
+      forbiddenActions: [
+        "Do not exceed the exact Workflow Plan, Context Pack, Tool, effect, or workspace scope bindings.",
+        "Do not push, deploy, publish, communicate externally, spend, elevate privilege, or perform destructive actions.",
+      ],
+      stopConditions: envelope.stopConditions.length > 0
+        ? envelope.stopConditions
+        : ["Stop when authority, scope, evidence, runtime identity, or outcome cannot be verified."],
+      requiredEvidence: envelope.requiredEvidence,
+      managedIntent: envelope.managedIntent,
     }, actorId)
-    const confirmation = await vscode.window.showWarningMessage(
+    const charterConfirmation = await vscode.window.showWarningMessage(
       [
-        `Confirm charter for ${picked.initiative.title} using ${charter.agent.agentId} / ${charter.agent.modelId}.`,
-        `Technical profile: ${executionProfile.label}. Workspace reads and local analysis commands are allowed; every workspace write and network effect is denied.`,
-        "Codex's OS sandbox is the technical read-only and network boundary. Non-interactive approval mode refuses escalation.",
-        "GAEP will not launch a provider whose declared interface cannot enforce this profile.",
+        `Confirm the exact managed Charter for ${pickedInitiative.initiative.title}.`,
+        `Agent/model: ${charter.agent.agentId} / ${charter.agent.modelId}`,
+        `Workflow: ${plan.title} revision ${plan.revision}`,
+        `Context Packs: ${plan.contextPacks.length}; Tools: ${tools.length}; effects: ${envelope.expectedEffects.join(", ") || "none"}; write scopes: ${scopeSummary}.`,
+        toolSummary.length > 0 ? `Tool inventory:\n${toolSummary.join("\n")}` : "No Tool Definition is selected.",
+        "This Charter grants only the displayed envelope. Tool selection, process start, Workflow gates, and staged apply remain separate decisions.",
       ].join("\n\n"),
       { modal: true },
-      "Confirm Charter",
+      "Confirm Managed Charter",
     )
-    if (confirmation !== "Confirm Charter") throw new WorkflowCancelled()
+    if (charterConfirmation !== "Confirm Managed Charter") throw new WorkflowCancelled()
     await runtime.engine.confirmCharter(charter.id, actorId)
-    const prepared = await runtime.engine.prepareRun(charter.id, actorId)
-    const preparedFingerprint = await fingerprintExecutable(prepared.invocation.executable)
-    if (!sameExecutableFingerprint(currentFingerprint, preparedFingerprint)) {
-      await runtime.engine.markRunState(prepared.run.id, "cancelled", { kind: "system", id: "gaep.vscode.binding" })
-      throw new Error("The engine-prepared runtime no longer matches the confirmed machine-local binding; GAEP cancelled the run")
+    const run = await runtime.engine.prepareManagedRun(charter.id, actorId)
+    let runToolSelectionId: string | undefined
+    if (tools.length > 0 || envelope.managedIntent.requestedScopes.length > 0) {
+      const confirmation = await vscode.window.showWarningMessage(
+        [
+          `Confirm the exact Tool selection for Run ${run.id}.`,
+          ...toolSummary,
+          `Requested scopes: ${scopeSummary}.`,
+          "Tools that require human confirmation will be bound only by this explicit decision.",
+        ].join("\n"),
+        { modal: true },
+        "Confirm Exact Tool Selection",
+      )
+      if (confirmation !== "Confirm Exact Tool Selection") {
+        await runtime.engine.markRunState(run.id, "cancelled", { kind: "human", id: actorId })
+        throw new WorkflowCancelled()
+      }
+      const product = await runtime.engine.readProduct()
+      const selection = await runtime.engine.productStudio.createRunToolSelection(
+        buildRunToolSelectionInput(run.id, plan, tools, envelope, vscode.workspace.isTrusted),
+        product.revision ?? 1,
+        actorId,
+      )
+      if (selection.readiness.status !== "ready") {
+        await runtime.engine.markRunState(run.id, "cancelled", { kind: "system", id: "gaep.vscode.tool-selection" })
+        throw new Error(`Run Tool Selection is not ready: ${selection.readiness.issues.join("; ")}`)
+      }
+      runToolSelectionId = selection.id
     }
-    const finalConfirmation = await vscode.window.showWarningMessage(
-      `Start the selected ${charter.agent.agentId} runtime? This confirmation is mandatory and distinct from charter confirmation.`,
-      { modal: true },
-      "Start Run",
-    )
-    if (finalConfirmation !== "Start Run") {
-      await runtime.engine.markRunState(prepared.run.id, "cancelled", { kind: "human", id: actorId })
-      throw new WorkflowCancelled()
+    if (!vscode.workspace.isTrusted || engine !== runtime.engine || selectedFolder?.uri.fsPath !== runtime.path) {
+      await runtime.engine.markRunState(run.id, "cancelled", { kind: "system", id: "gaep.vscode.root-context" })
+      throw new Error("Workspace trust or Product root changed before managed launch")
     }
-    if (!vscode.workspace.isTrusted) {
-      await runtime.engine.markRunState(prepared.run.id, "cancelled", { kind: "system", id: "gaep.vscode.trust" })
-      throw new Error("Workspace trust changed before process launch")
-    }
-    if (engine !== runtime.engine || selectedFolder?.uri.fsPath !== runtime.path) {
-      await runtime.engine.markRunState(prepared.run.id, "cancelled", { kind: "system", id: "gaep.vscode.root-context" })
-      throw new Error("The selected Product root changed before process launch; create a new charter in the current root")
-    }
-    let unregister = (): void => undefined
-    const runTerminal = new AgentRunTerminal(
-      runtime.engine,
-      prepared.run.id,
-      prepared.invocation,
-      currentFingerprint,
-      scheduleRefresh,
-      () => {
-        unregister()
-        scheduleRefresh()
-      },
-    )
-    try {
-      unregister = activeAgentRuns.register(runTerminal)
-    } catch (error) {
-      await runtime.engine.markRunState(prepared.run.id, "cancelled", { kind: "system", id: "gaep.vscode.run-registry" })
-      throw error
-    }
-    try {
-      const terminal = vscode.window.createTerminal({
-        name: `GAEP: ${picked.initiative.title}`,
-        pty: runTerminal,
-        iconPath: new vscode.ThemeIcon("hubot"),
-      })
-      terminal.show(true)
-    } catch (error) {
-      await runTerminal.stopAndWait().catch((stopError) => logDiagnostic("Provider cleanup after terminal creation failure failed", stopError))
-      unregister()
-      throw error
-    }
-    refresh()
+    await launchManagedSession({
+      runtime,
+      selection: currentSelection,
+      runId: run.id,
+      workflowPlanId: plan.id,
+      runToolSelectionId,
+      initiativeTitle: pickedInitiative.initiative.title,
+    })
   })))
 
   context.subscriptions.push(vscode.commands.registerCommand("gaep.verifyAudit", safely(async () => {

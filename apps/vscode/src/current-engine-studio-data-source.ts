@@ -1266,7 +1266,7 @@ function runPage(state: ObservedStudioState): RunPageSnapshot {
         actions: run.state === "unknown" ? [control("Inspect diagnostics", { kind: "show-diagnostics" })] : [],
       })),
       actions: [],
-      ...(state.runs.length === 0 ? { emptyState: emptySurface("No runs", "Create an active Initiative and select Codex before preparing an observe-only run.") } : {}),
+      ...(state.runs.length === 0 ? { emptyState: emptySurface("No runs", "Create an active Initiative, select an executable agent, and resolve a Workflow Plan before preparing a managed run.") } : {}),
     },
     selectedRun: latestRunEntries(state.runs),
     events: [],
