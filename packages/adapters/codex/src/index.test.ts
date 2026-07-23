@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 
-import type { AgentSelection, ExecutionCharter, ToolPermission } from "@gaep/contracts"
-import type { AdapterRuntimeBinding } from "@gaep/agent-sdk"
+import type { AdapterCapabilities, AgentSelection, ExecutionCharter, ToolPermission } from "@gaep/contracts"
+import { capabilityDigest, type AdapterRuntimeBinding, type CommandResult } from "@gaep/agent-sdk"
 
 import { CodexAdapter } from "./index.js"
 
@@ -19,21 +19,26 @@ function selection(sandbox: string = "read-only"): AgentSelection {
   }
 }
 
-function runtimeBinding(): AdapterRuntimeBinding {
-  return {
-    scope: "machine-local",
-    kind: "executable",
-    adapterId: "gaep.codex-cli",
-    agentId: "codex-cli",
-    executablePath: "/opt/codex/bin/codex",
-    executableFingerprint: {
-      requested: "codex",
-      canonicalPath: "/opt/codex/bin/codex",
-      digest: `sha256:${"1".repeat(64)}`,
-      size: 1,
-      modifiedAtMs: 1,
-    },
+function result(stdout: string, exitCode = 0): CommandResult {
+  return { exitCode, stdout, stderr: "", timedOut: false, outputExceeded: false }
+}
+
+async function verifiedRunner(_executable: string, args: string[]): Promise<CommandResult> {
+  if (args[0] === "--version") return result("codex-cli 0.135.0")
+  if (args.length === 1 && args[0] === "--help") {
+    return result("app-server [experimental] --strict-config --model --sandbox --cd --ask-for-approval")
   }
+  if (args[0] === "app-server" && args[1] === "--help") {
+    return result("[experimental] app-server --strict-config --listen stdio://")
+  }
+  if (args[0] === "exec" && args[1] === "--help") {
+    return result("exec --ignore-user-config --ignore-rules --color --json")
+  }
+  if (args[0] === "exec" && args[1] === "resume" && args[2] === "--help") {
+    return result("resume --strict-config --model --ignore-user-config --ignore-rules --json")
+  }
+  if (args[0] === "debug" && args[1] === "models") return result('{"models":[]}')
+  return result("", 1)
 }
 
 function charter(
@@ -59,31 +64,124 @@ function sandboxArgument(args: string[]): string | undefined {
 }
 
 describe("Codex adapter", () => {
-  it("advertises the managed app-server transport separately from the direct read-only fallback", async () => {
-    const { capabilities: observed, runtimeBinding: binding } = await new CodexAdapter(process.execPath).probe({ timeoutMs: 1_000, refreshModels: false })
+  let adapter: CodexAdapter
+  let observed: AdapterCapabilities
+  let binding: AdapterRuntimeBinding
 
+  beforeEach(async () => {
+    adapter = new CodexAdapter(process.execPath, verifiedRunner)
+    const probe = await adapter.probe({ timeoutMs: 1_000, refreshModels: false })
+    observed = probe.capabilities
+    binding = probe.runtimeBinding
+  })
+
+  it("advertises the managed app-server transport separately from the direct read-only fallback", async () => {
     expect(observed.detected).toBe(true)
     expect(observed).not.toHaveProperty("executablePath")
     expect(binding).toMatchObject({ kind: "executable", executablePath: process.execPath })
     expect(observed.executionInterface).toBe("stdio-rpc")
+    expect(observed.interfaceMaturity).toBe("experimental")
     expect(observed.supportsCancel).toBe(true)
     expect(observed.supportsResume).toBe(true)
     expect(observed.supportsCheckpoints).toBe(false)
     expect(observed.supportsToolSelection).toBe(true)
     expect(observed.settings.some((setting) => setting.key === "sandbox" || setting.key === "approvalPolicy")).toBe(false)
     expect(observed.limitations.join(" ")).toContain("legacy direct codex exec JSONL builder")
+    expect(observed.limitations.join(" ")).toContain("authentication")
   })
 
-  it("orders root flags before exec and transports the prompt only over stdin", () => {
-    const invocation = new CodexAdapter().buildInvocation(
+  it("fails closed when the managed app-server help contract is incomplete", async () => {
+    const incompleteRunner = async (_executable: string, args: string[]): Promise<CommandResult> => {
+      if (args[0] === "--version") return result("codex-cli 0.135.0")
+      if (args.length === 1 && args[0] === "--help") {
+        return result("app-server --strict-config --model --sandbox --cd --ask-for-approval")
+      }
+      if (args[0] === "app-server") return result("app-server --strict-config")
+      if (args[0] === "exec") return result("exec --ignore-user-config --ignore-rules --color --json")
+      return result("", 1)
+    }
+    const incomplete = new CodexAdapter(process.execPath, incompleteRunner)
+    const probe = await incomplete.probe({ refreshModels: false })
+
+    expect(probe.capabilities.detected).toBe(true)
+    expect(probe.capabilities.executionInterface).toBe("unavailable")
+    expect(probe.capabilities.limitations.join(" ")).toContain("does not advertise required managed options")
+    expect(probe.runtimeBinding).toMatchObject({ kind: "unavailable", reason: "Codex managed app-server interface verification failed" })
+    expect(incomplete.validateSelection({
+      ...selection(),
+      settings: {},
+      capabilityDigest: capabilityDigest(probe.capabilities),
+    }, probe.capabilities)).toContain("Managed Codex app-server execution interface is unavailable")
+  })
+
+  it("keeps managed detection available while separately disabling an unverified direct fallback", async () => {
+    const managedOnlyRunner = async (executable: string, args: string[]): Promise<CommandResult> => {
+      if (args[0] === "exec") return result("exec help without required isolation options")
+      return verifiedRunner(executable, args)
+    }
+    const managedOnly = new CodexAdapter(process.execPath, managedOnlyRunner)
+    const probe = await managedOnly.probe({ refreshModels: false })
+
+    expect(probe.capabilities.detected).toBe(true)
+    expect(probe.runtimeBinding.kind).toBe("executable")
+    expect(probe.capabilities.limitations.join(" ")).toContain("direct read-only fallback is disabled")
+    expect(() => managedOnly.buildInvocation(selection(), charter(), "/workspace", "inspect", probe.runtimeBinding)).toThrow(
+      "requires a fresh probe",
+    )
+  })
+
+  it("sanitizes, bounds, and deduplicates the executable-supplied model catalog", async () => {
+    const catalogRunner = async (executable: string, args: string[]): Promise<CommandResult> => {
+      if (args[0] === "debug") {
+        return result(JSON.stringify({ models: [
+          {
+            slug: "safe-model",
+            display_name: "Safe model",
+            description: "Bundled candidate",
+            supported_reasoning_levels: [{ effort: "low" }, { effort: "high" }, { effort: "high" }],
+            input_modalities: ["text", "text"],
+          },
+          { slug: "safe-model", display_name: "Duplicate", supported_reasoning_levels: [] },
+          { slug: "hidden-model", display_name: "Hidden", visibility: "hide" },
+          { slug: "poisoned-model", display_name: "Poisoned", description: "/Users/example/private" },
+          { slug: 42, display_name: "Invalid" },
+        ] }))
+      }
+      return verifiedRunner(executable, args)
+    }
+    const probe = await new CodexAdapter(process.execPath, catalogRunner).probe({ refreshModels: true })
+
+    expect(probe.capabilities.supportsModelDiscovery).toBe(true)
+    expect(probe.capabilities.models).toEqual([expect.objectContaining({
+      id: "safe-model",
+      reasoningOptions: ["low", "high"],
+      inputModalities: ["text"],
+      truthClass: "observed",
+      alias: false,
+    })])
+    expect(probe.capabilities.settings.map((setting) => setting.key)).toEqual(["reasoningEffort"])
+  })
+
+  it("refuses the direct fallback until the exact executable is freshly interface-probed", () => {
+    expect(() => new CodexAdapter().buildInvocation(
       selection(),
       charter(),
       "/workspace",
       "inspect safely",
-      runtimeBinding(),
+      binding,
+    )).toThrow("requires a fresh probe")
+  })
+
+  it("orders root flags before exec and transports the prompt only over stdin", () => {
+    const invocation = adapter.buildInvocation(
+      selection(),
+      charter(),
+      "/workspace",
+      "inspect safely",
+      binding,
     )
 
-    expect(invocation.executable).toBe("/opt/codex/bin/codex")
+    expect(invocation.executable).toBe(process.execPath)
     expect(invocation.args).toContain("model; touch /tmp/not-executed")
     expect(invocation.args.at(-1)).toBe("-")
     expect(invocation.stdin).toBe("inspect safely")
@@ -98,12 +196,12 @@ describe("Codex adapter", () => {
   })
 
   it.each(["ask", "deny"] as const)("downgrades modify-workspace=%s to read-only", (modify) => {
-    const invocation = new CodexAdapter().buildInvocation(
+    const invocation = adapter.buildInvocation(
       selection(),
       charter(modify),
       "/workspace",
       "inspect safely",
-      runtimeBinding(),
+      binding,
     )
 
     expect(sandboxArgument(invocation.args)).toBe("read-only")
@@ -119,66 +217,65 @@ describe("Codex adapter", () => {
     const constrained = capability === "read-workspace"
       ? charter("deny", "allow", mode)
       : charter("deny", mode, "allow")
-    expect(() => new CodexAdapter().buildInvocation(
+    expect(() => adapter.buildInvocation(
       selection(),
       constrained,
       "/workspace",
       "inspect safely",
-      runtimeBinding(),
+      binding,
     )).toThrow(`${capability}=allow exactly at the workspace root`)
   })
 
   it("rejects any selected workspace-write mode", () => {
-    expect(() => new CodexAdapter().buildInvocation(
+    expect(() => adapter.buildInvocation(
       selection("workspace-write"),
       charter(),
       "/workspace",
       "inspect safely",
-      runtimeBinding(),
+      binding,
     )).toThrow("requires read-only sandbox")
   })
 
   it("rejects modification authority instead of treating the read-only sandbox as an effect mediator", () => {
-    expect(() => new CodexAdapter().buildInvocation(
+    expect(() => adapter.buildInvocation(
       selection(),
       charter("allow"),
       "/workspace",
       "modify",
-      runtimeBinding(),
+      binding,
     )).toThrow("cannot enforce modify-workspace=allow")
   })
 
   it.each(["provisional", "reversible-change"] as const)("rejects mutation effect %s", (effect) => {
-    expect(() => new CodexAdapter().buildInvocation(
+    expect(() => adapter.buildInvocation(
       selection(),
       charter("deny", "allow", "allow", [effect]),
       "/workspace",
       "mutate",
-      runtimeBinding(),
+      binding,
     )).toThrow(`cannot enforce mutation effects without an isolated staging and effect mediator: ${effect}`)
   })
 
   it("rejects settings and Charter effects that the CLI cannot enforce", () => {
-    const adapter = new CodexAdapter()
     expect(() => adapter.buildInvocation(
       selection("danger-full-access"),
       charter(),
       "/workspace",
       "do not expose me",
-      runtimeBinding(),
+      binding,
     )).toThrow("requires read-only sandbox")
 
     const networkCharter = charter()
     networkCharter.permissions = networkCharter.permissions.map((permission) =>
       permission.capability === "network-access" ? { ...permission, mode: "ask" } : permission,
     )
-    expect(() => adapter.buildInvocation(selection(), networkCharter, "/workspace", "network", runtimeBinding())).toThrow(
+    expect(() => adapter.buildInvocation(selection(), networkCharter, "/workspace", "network", binding)).toThrow(
       "network-access=ask",
     )
 
     const commitCharter = charter()
     commitCharter.permissions.push({ capability: "commit", mode: "allow", scope: ["."] })
-    expect(() => adapter.buildInvocation(selection(), commitCharter, "/workspace", "commit", runtimeBinding())).toThrow(
+    expect(() => adapter.buildInvocation(selection(), commitCharter, "/workspace", "commit", binding)).toThrow(
       "commit=allow",
     )
     expect(() => adapter.buildInvocation(
@@ -186,18 +283,18 @@ describe("Codex adapter", () => {
       charter("deny", "allow", "allow", ["external-effect"]),
       "/workspace",
       "external",
-      runtimeBinding(),
+      binding,
     )).toThrow("external-effect")
   })
 
   it("recompiles the Charter boundary when resuming", () => {
-    const invocation = new CodexAdapter().buildResumeInvocation!(
+    const invocation = adapter.buildResumeInvocation!(
       selection(),
       charter("ask"),
       "/workspace",
       "session-id",
       "continue safely",
-      runtimeBinding(),
+      binding,
     )
     expect(sandboxArgument(invocation.args)).toBe("read-only")
     expect(invocation.args).toEqual(expect.arrayContaining(["exec", "resume", "session-id", "-"]))

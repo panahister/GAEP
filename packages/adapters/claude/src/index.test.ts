@@ -1,11 +1,37 @@
 import { describe, expect, it } from "vitest"
 
 import type { AdapterCapabilities, AgentSelection, ExecutionCharter } from "@gaep/contracts"
-import { capabilityDigest, type AdapterRuntimeBinding } from "@gaep/agent-sdk"
+import { capabilityDigest, type AdapterRuntimeBinding, type CommandResult } from "@gaep/agent-sdk"
 
 import { ClaudeAdapter } from "./index.js"
 
-const stopLine = "Effectful direct Claude Code execution is unavailable; GAEP supports only the managed tool-free, context-only stream-JSON runtime"
+const stopLine = "Direct Claude Code invocation through the adapter is unavailable; GAEP supports Claude only through the managed tool-free, context-only stream-JSON runtime"
+
+const verifiedHelp = [
+  "--print",
+  "--output-format",
+  "--verbose",
+  "--no-session-persistence",
+  "--setting-sources",
+  "--strict-mcp-config",
+  "--disable-slash-commands",
+  "--no-chrome",
+  "--tools",
+  "--model <model> aliases sonnet opus",
+  "--permission-mode",
+  "--effort <level> (low, medium, high, xhigh, max)",
+  "--max-budget-usd",
+].join(" ")
+
+function result(stdout: string, exitCode = 0): CommandResult {
+  return { exitCode, stdout, stderr: "", timedOut: false, outputExceeded: false }
+}
+
+async function verifiedRunner(_executable: string, args: string[]): Promise<CommandResult> {
+  if (args[0] === "--version") return result("2.1.153 (Claude Code)")
+  if (args[0] === "--help") return result(verifiedHelp)
+  return result("", 1)
+}
 
 function capabilities(): AdapterCapabilities {
   return {
@@ -43,7 +69,7 @@ function capabilities(): AdapterCapabilities {
         sensitive: false,
         minimum: 0.01,
         maximum: 100_000,
-        truthClass: "configured",
+        truthClass: "provider-declared",
       },
     ],
     models: [{
@@ -99,7 +125,7 @@ function charter(expectedEffects: ExecutionCharter["expectedEffects"]): Executio
 
 describe("Claude Code managed context-only capability", () => {
   it("detects a bounded stream-json runtime while keeping effectful execution unavailable", async () => {
-    const { capabilities: observed, runtimeBinding: binding } = await new ClaudeAdapter(process.execPath).probe({ timeoutMs: 1_000, refreshModels: false })
+    const { capabilities: observed, runtimeBinding: binding } = await new ClaudeAdapter(process.execPath, verifiedRunner).probe({ timeoutMs: 1_000, refreshModels: false })
 
     expect(observed.detected).toBe(true)
     expect(observed).not.toHaveProperty("executablePath")
@@ -110,6 +136,48 @@ describe("Claude Code managed context-only capability", () => {
     expect(observed.supportsCancel).toBe(true)
     expect(observed.supportsToolSelection).toBe(false)
     expect(observed.limitations.join(" ")).toContain(stopLine)
+    expect(observed.limitations.join(" ")).toContain("authentication")
+    expect(observed.models.map((model) => model.id)).toEqual(["sonnet", "opus"])
+    expect(observed.settings.map((setting) => setting.key)).toEqual(["effort", "maxBudgetUsd"])
+  })
+
+  it("fails closed when the executable version works but required context-only flags are absent", async () => {
+    const incompleteRunner = async (_executable: string, args: string[]): Promise<CommandResult> =>
+      args[0] === "--version" ? result("2.1.153") : result("--print --model")
+    const adapter = new ClaudeAdapter(process.execPath, incompleteRunner)
+    const { capabilities: observed, runtimeBinding: binding } = await adapter.probe()
+
+    expect(observed.detected).toBe(true)
+    expect(observed.executionInterface).toBe("unavailable")
+    expect(observed.models).toEqual([])
+    expect(observed.settings).toEqual([])
+    expect(observed.limitations.join(" ")).toContain("does not advertise required managed options")
+    expect(binding).toMatchObject({ kind: "unavailable", reason: "Claude managed context-only interface verification failed" })
+    expect(adapter.validateSelection({
+      schemaVersion: 2,
+      adapterId: observed.adapterId,
+      agentId: observed.agentId,
+      modelId: "manual-model",
+      modelTruthClass: "configured",
+      modelAlias: null,
+      settings: {},
+      selectedAt: "2026-07-24T00:00:00.000Z",
+      capabilityDigest: capabilityDigest(observed),
+    }, observed)).toContain("Managed Claude context-only execution interface is unavailable")
+  })
+
+  it("does not invent model aliases or settings that compatible help does not advertise", async () => {
+    const baseOnlyHelp = [
+      "--print", "--output-format", "--verbose", "--no-session-persistence", "--setting-sources",
+      "--strict-mcp-config", "--disable-slash-commands", "--no-chrome", "--tools", "--model", "--permission-mode",
+    ].join(" ")
+    const baseOnlyRunner = async (_executable: string, args: string[]): Promise<CommandResult> =>
+      args[0] === "--version" ? result("2.1.153") : result(baseOnlyHelp)
+    const { capabilities: observed } = await new ClaudeAdapter(process.execPath, baseOnlyRunner).probe()
+
+    expect(observed.detected).toBe(true)
+    expect(observed.models).toEqual([])
+    expect(observed.settings).toEqual([])
   })
 
   it("accepts only settings honored by the managed context runtime", () => {

@@ -1,5 +1,6 @@
 import {
   adapterCapabilitiesSnapshotSchema,
+  modelDescriptorSchema,
   type AdapterCapabilities,
   type AgentSelection,
   type ExecutionCharter,
@@ -32,6 +33,40 @@ const supportedCodexPermissions = [
   "run-local-commands",
 ] as const
 
+const requiredCodexRootOptions = [
+  "app-server",
+  "--strict-config",
+  "--model",
+  "--sandbox",
+  "--cd",
+  "--ask-for-approval",
+] as const
+
+const requiredCodexAppServerOptions = ["--strict-config", "--listen", "stdio://"] as const
+
+const requiredDirectExecOptions = [
+  "--ignore-user-config",
+  "--ignore-rules",
+  "--color",
+  "--json",
+] as const
+
+const requiredDirectResumeOptions = [
+  "--strict-config",
+  "--model",
+  "--ignore-user-config",
+  "--ignore-rules",
+  "--json",
+] as const
+
+function successfulCommand(result: Awaited<ReturnType<typeof runCommand>>): boolean {
+  return result.exitCode === 0 && !result.timedOut && !result.outputExceeded
+}
+
+function missingOptions(help: string, required: readonly string[]): string[] {
+  return required.filter((option) => !help.includes(option))
+}
+
 interface RawCodexModel {
   slug?: unknown
   display_name?: unknown
@@ -45,30 +80,37 @@ interface RawCodexModel {
 function parseModelCatalog(output: string): ModelDescriptor[] {
   const parsed = JSON.parse(output) as { models?: RawCodexModel[] }
   if (!Array.isArray(parsed.models)) return []
-  return parsed.models.flatMap((model) => {
-    if (typeof model.slug !== "string" || typeof model.display_name !== "string") return []
-    if (model.visibility === "hide") return []
+  const models: ModelDescriptor[] = []
+  const seen = new Set<string>()
+  for (const model of parsed.models.slice(0, 2_048)) {
+    if (typeof model.slug !== "string" || typeof model.display_name !== "string") continue
+    if (model.visibility === "hide" || seen.has(model.slug)) continue
     const reasoningOptions = Array.isArray(model.supported_reasoning_levels)
-      ? model.supported_reasoning_levels.flatMap((entry) => {
+      ? model.supported_reasoning_levels.slice(0, 256).flatMap((entry) => {
           if (entry && typeof entry === "object" && typeof (entry as { effort?: unknown }).effort === "string") {
             return [(entry as { effort: string }).effort]
           }
           return []
         })
       : []
-    return [{
+    const candidate = modelDescriptorSchema.safeParse({
       id: model.slug,
       label: model.display_name,
       description: typeof model.description === "string" ? model.description : undefined,
-      reasoningOptions,
+      reasoningOptions: [...new Set(reasoningOptions)],
       contextWindow: typeof model.context_window === "number" ? model.context_window : undefined,
       inputModalities: Array.isArray(model.input_modalities)
-        ? model.input_modalities.filter((item): item is string => typeof item === "string")
+        ? [...new Set(model.input_modalities.slice(0, 64).filter((item): item is string => typeof item === "string"))]
         : ["text"],
       truthClass: "observed" as const,
       alias: false,
-    }]
-  })
+    })
+    if (!candidate.success) continue
+    seen.add(candidate.data.id)
+    models.push(candidate.data)
+    if (models.length >= 512) break
+  }
+  return models
 }
 
 function compileCodexCharter(
@@ -108,40 +150,92 @@ function compileCodexCharter(
 
 export class CodexAdapter implements AgentAdapter {
   readonly id = "gaep.codex-cli"
+  private verifiedDirectExecutableDigest: string | undefined
 
-  constructor(private readonly preferredExecutable = "codex") {}
+  constructor(
+    private readonly preferredExecutable = "codex",
+    private readonly commandRunner: typeof runCommand = runCommand,
+  ) {}
 
   async probe(options: AdapterProbeOptions = {}): Promise<AdapterProbeResult> {
     const executablePath = await findExecutable(this.preferredExecutable)
     const limitations: string[] = [
-      "Managed execution uses the stable Codex app-server v2 stdio RPC transport with isolated staging and Charter-derived shell/file gates.",
+      "Detected means the executable was found, fingerprinted, and version-checked. The managed execution interface and direct read-only fallback are verified and reported separately; none of these states proves authentication, account entitlement, provider reachability, or model availability.",
+      "Probe-time verification checks the advertised CLI contract, not a live app-server v2 handshake; protocol or provider incompatibility remains a fail-closed managed-launch outcome.",
+      "Managed execution uses the Codex app-server v2 stdio RPC transport with isolated staging and Charter-derived shell/file gates; maturity follows the probed CLI's own experimental marker.",
       "A model alias or provider-hidden attribute is not an immutable model revision.",
+      "The bundled model catalog is an executable-supplied candidate catalog, not proof that the current account can access or route every listed model.",
       "Apps, remote plugins, MCP, collaboration, web search, memories, and goals are disabled for managed runs.",
       "Managed Tool Selection supports only exact gaep.codex-cli bindings for the intrinsic shell Tool and workspace-write capability; every other selected Tool fails closed.",
       "Provider threads can be resumed only while their machine-local identity remains in the current engine process; GAEP does not persist that identity.",
-      "The legacy direct codex exec JSONL builder remains an explicitly read-only fallback and is not the interface described by this capability snapshot.",
+      "The legacy direct codex exec JSONL builder remains an explicitly read-only fallback, requires a fresh same-instance probe of the exact executable, and is not the interface described by this capability snapshot.",
     ]
     let runtimeVersion: string | undefined
     let executableFingerprint: ExecutableFingerprint | undefined
     let models: ModelDescriptor[] = []
+    let detected = false
     let usable = false
+    let managedExperimental = true
+    let unavailableReason = "Codex executable was not found"
+    this.verifiedDirectExecutableDigest = undefined
     if (executablePath) {
       try {
         executableFingerprint = await fingerprintExecutable(executablePath, this.preferredExecutable)
-        const version = await runCommand(executablePath, ["--version"], { timeoutMs: options.timeoutMs })
+        const version = await this.commandRunner(executablePath, ["--version"], { timeoutMs: options.timeoutMs })
         runtimeVersion = firstVersionToken(`${version.stdout}\n${version.stderr}`)
-        usable = version.exitCode === 0 && !version.timedOut && runtimeVersion !== undefined
-        if (!usable) {
-          limitations.push("A Codex executable was found, but its version command did not complete successfully; execution is disabled.")
+        if (!successfulCommand(version) || runtimeVersion === undefined) {
+          unavailableReason = "Codex version verification failed"
+          limitations.push("A Codex executable was found, but its version command did not complete successfully with a bounded version token; execution is disabled.")
+        } else {
+          detected = true
+          const [rootHelp, appServerHelp, execHelp, resumeHelp] = await Promise.all([
+            this.commandRunner(executablePath, ["--help"], { timeoutMs: options.timeoutMs, maxOutputBytes: 2 * 1024 * 1024 }),
+            this.commandRunner(executablePath, ["app-server", "--help"], { timeoutMs: options.timeoutMs, maxOutputBytes: 2 * 1024 * 1024 }),
+            this.commandRunner(executablePath, ["exec", "--help"], { timeoutMs: options.timeoutMs, maxOutputBytes: 2 * 1024 * 1024 }),
+            this.commandRunner(executablePath, ["exec", "resume", "--help"], { timeoutMs: options.timeoutMs, maxOutputBytes: 2 * 1024 * 1024 }),
+          ])
+          const rootHelpText = `${rootHelp.stdout}\n${rootHelp.stderr}`
+          const appServerHelpText = `${appServerHelp.stdout}\n${appServerHelp.stderr}`
+          const execHelpText = `${execHelp.stdout}\n${execHelp.stderr}`
+          const resumeHelpText = `${resumeHelp.stdout}\n${resumeHelp.stderr}`
+          const missingManaged = [
+            ...missingOptions(rootHelpText, requiredCodexRootOptions),
+            ...missingOptions(appServerHelpText, requiredCodexAppServerOptions),
+          ]
+          const missingDirect = [
+            ...missingOptions(rootHelpText, requiredCodexRootOptions.filter((option) => option !== "app-server")),
+            ...missingOptions(execHelpText, requiredDirectExecOptions),
+            ...missingOptions(resumeHelpText, requiredDirectResumeOptions),
+          ]
+          usable = successfulCommand(rootHelp) && successfulCommand(appServerHelp) && missingManaged.length === 0
+          managedExperimental = /\bexperimental\b/iu.test(`${rootHelpText}\n${appServerHelpText}`)
+          if (!usable) {
+            unavailableReason = "Codex managed app-server interface verification failed"
+            limitations.push(
+              successfulCommand(rootHelp) && successfulCommand(appServerHelp)
+                ? `The detected Codex CLI does not advertise required managed options: ${[...new Set(missingManaged)].join(", ")}; execution is disabled.`
+                : "The detected Codex CLI help or app-server help command failed or exceeded its bounds; managed execution is disabled.",
+            )
+          }
+          if (successfulCommand(rootHelp) && successfulCommand(execHelp) && successfulCommand(resumeHelp) && missingDirect.length === 0) {
+            this.verifiedDirectExecutableDigest = executableFingerprint.digest
+          } else {
+            limitations.push(
+              successfulCommand(rootHelp) && successfulCommand(execHelp) && successfulCommand(resumeHelp)
+                ? `The direct read-only fallback is disabled because required options are absent: ${[...new Set(missingDirect)].join(", ")}.`
+                : "The direct read-only fallback is disabled because its help contract could not be verified.",
+            )
+          }
         }
         if (usable && options.refreshModels !== false) {
-          const catalog = await runCommand(executablePath, ["debug", "models", "--bundled"], {
+          const catalog = await this.commandRunner(executablePath, ["debug", "models", "--bundled"], {
             timeoutMs: options.timeoutMs ?? 15_000,
             maxOutputBytes: 16 * 1024 * 1024,
           })
-          if (catalog.exitCode === 0) {
+          if (successfulCommand(catalog)) {
             try {
               models = parseModelCatalog(catalog.stdout)
+              if (models.length === 0) limitations.push("The bundled model catalog contained no usable visible model entries; enter a model identifier manually.")
             } catch {
               limitations.push("The experimental bundled model catalog could not be parsed; enter a model identifier manually.")
             }
@@ -150,7 +244,9 @@ export class CodexAdapter implements AgentAdapter {
           }
         }
       } catch {
-        limitations.push("The detected Codex executable could not be fingerprinted safely; execution is disabled.")
+        unavailableReason = "Codex executable fingerprint or interface verification failed"
+        this.verifiedDirectExecutableDigest = undefined
+        limitations.push("The detected Codex executable could not be fingerprinted or interface-verified safely; execution is disabled.")
       }
     }
 
@@ -175,9 +271,9 @@ export class CodexAdapter implements AgentAdapter {
       agentId: "codex-cli",
       agentLabel: "Codex",
       runtimeVersion,
-      detected: usable,
+      detected,
       executionInterface: usable ? "stdio-rpc" : "unavailable",
-      interfaceMaturity: usable ? "stable" : "unknown",
+      interfaceMaturity: usable ? (managedExperimental ? "experimental" : "unknown") : "unknown",
       supportsResume: usable,
       supportsCancel: usable,
       supportsCheckpoints: false,
@@ -204,13 +300,16 @@ export class CodexAdapter implements AgentAdapter {
             kind: "unavailable",
             adapterId: this.id,
             agentId: "codex-cli",
-            reason: "Codex executable detection, fingerprinting, or version verification failed",
+            reason: unavailableReason,
           },
     }
   }
 
   validateSelection(selection: AgentSelection, capabilities: AdapterCapabilities): string[] {
     const errors = validateSelectionBase(selection, capabilities)
+    if (capabilities.executionInterface === "unavailable") {
+      errors.push("Managed Codex app-server execution interface is unavailable")
+    }
     const model = capabilities.models.find((candidate) => candidate.id === selection.modelId)
     const effort = selection.settings.reasoningEffort
     if (model && typeof effort === "string" && model.reasoningOptions.length > 0 && !model.reasoningOptions.includes(effort)) {
@@ -227,6 +326,7 @@ export class CodexAdapter implements AgentAdapter {
     runtimeBinding: AdapterRuntimeBinding,
   ): AgentInvocation {
     const runtime = requireExecutableRuntimeBinding(runtimeBinding, selection, "Codex")
+    this.requireVerifiedDirectFallback(runtime.executableFingerprint)
     const compiled = compileCodexCharter(selection, charter, workspacePath)
     const approvalSetting = String(selection.settings.approvalPolicy ?? "fail-closed-noninteractive")
     if (approvalSetting !== "fail-closed-noninteractive") {
@@ -261,6 +361,7 @@ export class CodexAdapter implements AgentAdapter {
     runtimeBinding: AdapterRuntimeBinding,
   ): AgentInvocation {
     const runtime = requireExecutableRuntimeBinding(runtimeBinding, _selection, "Codex")
+    this.requireVerifiedDirectFallback(runtime.executableFingerprint)
     const compiled = compileCodexCharter(_selection, charter, workspacePath)
     const approvalSetting = String(_selection.settings.approvalPolicy ?? "fail-closed-noninteractive")
     if (approvalSetting !== "fail-closed-noninteractive") {
@@ -288,6 +389,12 @@ export class CodexAdapter implements AgentAdapter {
         "Resume reuses provider conversation history; GAEP reapplies the selected model and compiled Charter boundary.",
         ...compiled.warnings,
       ],
+    }
+  }
+
+  private requireVerifiedDirectFallback(fingerprint: ExecutableFingerprint): void {
+    if (!this.verifiedDirectExecutableDigest || this.verifiedDirectExecutableDigest !== fingerprint.digest) {
+      throw new Error("Codex direct read-only fallback requires a fresh probe that verified the exact executable and exec option contract")
     }
   }
 }
