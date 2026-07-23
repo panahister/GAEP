@@ -2,7 +2,7 @@
 
 ## Current status
 
-GAEP is in pre-implementation product and specification design. Contributions should improve problem evidence, semantics, profiles, scenarios, trust, assurance, adoption, or governance. Product/runtime implementation proposals are premature until the readiness gate is approved.
+GAEP contains a local Founder Edition implementation alongside pre-implementation product and specification design. Contributions may improve the implementation when they are explicitly authorized for a bounded development scope, and may improve problem evidence, semantics, profiles, scenarios, trust, assurance, adoption, or governance. Existing code does not make the proposed specification approved, conformant, release-ready, or production-authorized; those determinations remain separately gated.
 
 ## Authority
 

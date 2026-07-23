@@ -35,6 +35,10 @@ supersedes: []
 
 # Pre-Implementation Candidate Closure Report
 
+## Historical subject notice
+
+This report records the `feature/rethink` candidate-closure checkpoint described below. The repository now contains a separately authorized local Founder implementation, so statements that implementation was absent, excluded, or unauthorized describe this report's historical subject and candidate-governance state, not the current file tree. The later implementation does not approve the candidate or establish baseline, conformance, release, or production authority.
+
 ## Closure outcome
 
 The autonomous candidate-authoring batches are complete for structured review. The repository now has a bounded Core, complete former-requirement trace, classified Open Decisions, extracted Profile contracts, self-authored paper evidence, deterministic exact-set mechanics, and validation modes that distinguish document integrity from governance readiness.
@@ -51,7 +55,7 @@ This is not candidate-baseline approval. The corpus remains Proposed and not app
 | Formal exact set | absent; a working-tree draft manifest can be reproduced but has no formal designation or effect |
 | Acting authority | user instruction authorized repository documentation/tooling work in this task; it is not represented as a GAEP Role Assignment, Authority Grant, Approval Determination, or Authorization Grant |
 | Legacy authority | unchanged; no legacy file is superseded, redirected, archived, or removed |
-| Platform/runtime implementation | absent and explicitly excluded |
+| Platform/runtime implementation | absent and explicitly excluded from this historical closure subject; a later local Founder implementation exists outside this report's assessed revision and authority state |
 
 ## Completed closure batches
 
@@ -72,7 +76,7 @@ This is not candidate-baseline approval. The corpus remains Proposed and not app
 
 ## Current machine-checkable result
 
-The final working-candidate run is expected to report 83 candidate documents, 868 requirement definitions, 8 active Core contracts, 160 active Core requirements, maximum 24, 48 Core concepts, 13 extraction rows, 135 former-ID dispositions, all 353 initial Core-source requirements reconciled, 19 Profiles with 244 requirements, 44 legacy documents mapped, 59 Product Strategy decisions crosswalked, 70 Core Open Decisions with 18/29/19/4 T0-T3 distribution and D0-D3 policies, 50 repository gaps with severity and status distributions, 36 paper scenario results, 7 migration cases, 10 GAEP-on-GAEP steps, a 47-file normalized semantic-rehearsal input digest of `sha256:1bae309eb7e937dc8f82acfbd26d4c9d4046f5ed2ec4ac661f7643f710b9adea`, zero stale declared-count findings, two explicit authority-blocker classes, and zero warnings. This report is part of that 83-document subject. The final validation section of the task must confirm these values after all edits.
+At the historical closure checkpoint, the final working-candidate run was expected to report 83 candidate documents, 868 requirement definitions, 8 active Core contracts, 160 active Core requirements, maximum 24, 48 Core concepts, 13 extraction rows, 135 former-ID dispositions, all 353 initial Core-source requirements reconciled, 19 Profiles with 244 requirements, 44 then-current legacy documents mapped, 59 Product Strategy decisions crosswalked, 70 Core Open Decisions with 18/29/19/4 T0-T3 distribution and D0-D3 policies, 50 repository gaps with severity and status distributions, 36 paper scenario results, 7 migration cases, 10 GAEP-on-GAEP steps, a then-current 47-file normalized semantic-rehearsal input digest of `sha256:1bae309eb7e937dc8f82acfbd26d4c9d4046f5ed2ec4ac661f7643f710b9adea`, zero stale declared-count findings, two explicit authority-blocker classes, and zero warnings. This report was part of that 83-document subject. Later repository changes require a fresh observation and must not reuse those counts or digests as current evidence.
 
 This count is working-tree evidence, not an immutable Candidate Revision Set or independently assessed Evidence Item. Any later byte or path change requires recount and, for gate use, a clean formal manifest and new exact observation.
 

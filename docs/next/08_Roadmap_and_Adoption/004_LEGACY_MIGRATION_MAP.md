@@ -77,6 +77,8 @@ No legacy file is superseded by this map. The selected intent is to prepare a ve
 | `06_Roadmap/051_IMPLEMENTATION_STRATEGY.md` | Preserve unchanged; defer technology, retain only readiness and future slice-charter inputs, and replace its lossless Product-workspace upgrade assumption in candidate planning with staged dual-read, explicit loss, and unresolved-mapping behavior |
 | `06_Roadmap/052_ADOPTION_GUIDE.md` | Rebuild around first workflow, burden, behavior, support and trust |
 | `06_Roadmap/053_FUTURE_EVOLUTION.md` | Retain extension points; move deferred capabilities out of Core commitments |
+| `06_Roadmap/054_GAEP_FEATURE_DELIVERY_TRACKER.md` | Preserve as an informative implementation inventory and planning aid; reconcile statuses against current repository evidence, but do not treat a tracker status as semantic approval, Candidate Revision Set membership, baseline designation, conformance evidence, or release authority |
+| `06_Roadmap/055_GAEP_CONTINUOUS_IMPLEMENTATION_CONTROL.md` | Preserve as an operational progress and interruption-recovery ledger for the separately authorized local implementation activity; it records execution state and evidence but does not amend this candidate, resolve its Decisions, assign GAEP authority, approve a baseline, or authorize release or deployment |
 | `99_References/990_REFERENCES.md` | Rebuild as complete, versioned standards/reference crosswalk |
 | `99_References/991_GLOSSARY.md` | Preserve unchanged for historical interpretation; map its Product-as-Initiative definition to versioned candidate terminology without silent replacement |
 | `99_References/992_TERMINOLOGY.md` | Preserve unchanged for historical interpretation; version Product/Initiative aliases, deprecations, and replacement guidance without reusing one identity for both meanings |
@@ -288,7 +290,7 @@ The rehearsal or migration analysis stops without inferred defaults when:
 
 ## Reversible migration rehearsal GAEP-MIG-REH-001
 
-This 2026-07-20 rehearsal applied the proposed transformation and stop rules to synthetic records and the exact legacy clauses already bound above. It changed no legacy file, authoritative record, routing, external system, or production state. The normalized migration-map input SHA-256 is `804383ef282be985ec0d920209fddc202b430ea71d3d63cbe13b8fd247592f08`, omitting this rehearsal section while retaining the migration gates; the broader normalized 47-file semantic input aggregate is `1bae309eb7e937dc8f82acfbd26d4c9d4046f5ed2ec4ac661f7643f710b9adea`.
+This 2026-07-20 rehearsal applied the proposed transformation and stop rules to synthetic records and the exact legacy clauses already bound above. It changed no legacy file, authoritative record, routing, external system, or production state. After the 2026-07-24 legacy-inventory additions, the normalized migration-map input SHA-256 is `77dde3577eea1265ed949c8cf14e8058b605cde334f3e953cd3959d1c7b4219c`, omitting this rehearsal section while retaining the migration gates; the broader normalized 47-file semantic input aggregate is recorded in `GAEP-PAPER-001` and must be recomputed whenever an included input changes.
 
 | Rehearsal case | Synthetic input | Applied rule | Result | Evidence limitation |
 |---|---|---|---|---|

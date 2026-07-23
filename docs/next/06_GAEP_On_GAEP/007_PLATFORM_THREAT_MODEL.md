@@ -24,7 +24,7 @@ supersedes: []
 
 ## Current system boundary
 
-The current repository is documentation-only. It contains no GAEP runtime, identity integration, production data connection or effectful adapter. AI-assisted authoring is nevertheless a current activity: a Codex desktop task is editing the local GAEP checkout on 2026-07-19. Exact provider, model, deployment and provider-side data-handling details are not established in-repository. The candidate threat model therefore separates present documentation/authoring risks from future runtime and ecosystem risks. Future implementation must refine this model for the approved slice and deployment context.
+The subject assessed when this candidate threat model was authored on 2026-07-19 was documentation-only and contained no GAEP runtime, identity integration, production data connection, or effectful adapter. AI-assisted authoring was nevertheless in scope at that checkpoint. The repository now contains a local Founder implementation, so this historical threat model does not cover the current engine, adapters, IDE hosts, staging, process, package, or update surfaces and must not be cited as their security assessment. Exact provider, model, deployment, and provider-side data-handling details also remain unestablished here. A current implementation threat model and adversarial validation are required for any conformance, distribution, or production-readiness claim.
 
 ## Security objectives
 

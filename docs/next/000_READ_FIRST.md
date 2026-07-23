@@ -125,7 +125,7 @@ Read the identity, policy, authorization, claim/evidence, and execution Core doc
 
 ### Implementer review
 
-Implementation is intentionally out of scope until the readiness gate is approved. Future implementers must first read the Core, applicable profiles, realizations, adapter conformance contract, GAEP-on-GAEP decisions, and the implementation-readiness gate.
+Implementation is intentionally outside this candidate corpus's authority until the readiness gate is approved. The repository now also contains a separately authorized local Founder realization. Its existence, tests, and packages are implementation evidence only: they do not retroactively approve this candidate, resolve its Open Decisions, select Profiles, establish conformance, or authorize release or production use. Implementers must read the Core, applicable profiles, realizations, adapter conformance contract, GAEP-on-GAEP decisions, and the implementation-readiness gate before claiming alignment with the candidate.
 
 ## Non-goals of this candidate
 

@@ -104,7 +104,7 @@ Measures span user value, engineering quality, governance, adoption, burden, tru
 
 ## GAEP-on-GAEP rehearsal GAEP-SELF-REH-001
 
-This 2026-07-20 activity is a manual documentation rehearsal, not the participant pilot described above. It used the candidate-closure work itself as the case and stopped before any approval, baseline designation, participant activity, implementation, migration, or external effect. The normalized plan SHA-256 is `c7b0346d57069535c1a5e0e85f19804574fa22459bf6c474587a9414a7347dd5`, omitting this result section; the broader normalized 47-file semantic input aggregate is `1bae309eb7e937dc8f82acfbd26d4c9d4046f5ed2ec4ac661f7643f710b9adea`.
+This 2026-07-20 activity is a manual documentation rehearsal, not the participant pilot described above. It used the candidate-closure work itself as the case and stopped before any approval, baseline designation, participant activity, implementation, migration, or external effect. The normalized plan SHA-256 is `c7b0346d57069535c1a5e0e85f19804574fa22459bf6c474587a9414a7347dd5`, omitting this result section; after the 2026-07-24 informative legacy-inventory additions, the broader normalized 47-file semantic input aggregate is `f6b29da797f454a7f5565b3f7fc876e720d37cdc6fb642c52b8c31c5e6afb2e8`.
 
 | Manual workflow step | Rehearsal observation | Result |
 |---|---|---|

@@ -44,7 +44,7 @@ This worksheet lacks a resolved exact subject, Base Policy Envelope revision, se
 | Other included target Managed Assets | the three governed-specification assets identified by `GAEP-SELF-001` | Their identity and lineage do not end when the Initiative closes; their proposed specialization still requires registry disposition. |
 | Excluded runtime asset | `urn:gaep:candidate:asset:runtime-product` | Possible future runtime Product or other Managed Asset whose exact type remains unresolved; excluded from the current Change, prototype, pilot, and implementation scope. |
 | Input storage checkpoint | Git commit `8289d11b2e2764dfedeb2b2e4a4a2817244a97e4` | Exact accepted Batch 2A checkpoint and input to the autonomous remaining closure batches; it is not a Candidate Revision Set or Baseline Set. |
-| Current candidate state | documentation-only working changes derived from the checkpoint | No immutable Candidate Revision Set, Baseline Proposal, Baseline Set, constitutional Approval, pilot authorization, or implementation authorization exists. |
+| Candidate-closure subject state at the recorded checkpoint | documentation-only working changes derived from the checkpoint | This row describes the candidate-closure subject, not the repository's later local Founder implementation. No immutable Candidate Revision Set, Baseline Proposal, Baseline Set, constitutional Approval, pilot authorization, conformance determination, or release authorization exists. |
 
 Applicability is evaluated for exact subject and scope references. Similar names, repository containment, or one Principal's selected roles do not merge the Organization Scope, Initiative, Managed Assets, Change, Workspace, or Product Profile into one subject and do not expand authority.
 
@@ -92,7 +92,7 @@ The dispositions below are Recommendations tied to `GAEP-DEC-016`; they are not 
 
 | Subject | Recommendation | Decision link | Reason |
 |---|---|---|---|
-| Runtime Realization `GAEP-REAL-002@0.1.0` | retain as paper boundary only | GAEP-DEC-016 | implementation is unauthorized |
+| Runtime Realization `GAEP-REAL-002@0.1.0` | retain as a paper boundary within this candidate | GAEP-DEC-016 | the repository's local implementation is outside this candidate's approval and conformance state |
 | Codex/Claude delta profiles | use only as informative evaluation inputs | GAEP-DEC-009, GAEP-DEC-015 | current provider conformance is not evaluated |
 | Multi-agent execution | defer from first-horizon scope | GAEP-DEC-016 | no first-workflow evidence and correlated assurance risk |
 | Knowledge graph | defer from first-horizon scope | GAEP-DEC-016 | no demonstrated query need |
