@@ -12,6 +12,8 @@ This repository defines the governance, knowledge, lifecycle, architecture, assu
 
 Read this file before creating, changing, approving, or generating any GAEP artifact.
 
+For a self-contained, source-code-independent overview suitable for stakeholder orientation and external Product evaluation, read the [GAEP Platform and Product Identity Manifest](GAEP_PLATFORM_PRODUCT_IDENTITY_MANIFEST.md). The Manifest is an informative Product-direction synthesis; it does not replace this guide, the Constitution, or an approved specification and explicitly discloses the pending Product/Initiative semantic transition.
+
 ## What GAEP Is
 
 GAEP is a vendor-, technology-, architecture-, tool-, and test-methodology-neutral platform for governing how artificial intelligence participates in engineering. Its generic unit of work is the **Engineering Initiative**, which may be a product, service, library, integration, migration, infrastructure capability, security improvement, defect fix, research activity, or another bounded engineering effort.

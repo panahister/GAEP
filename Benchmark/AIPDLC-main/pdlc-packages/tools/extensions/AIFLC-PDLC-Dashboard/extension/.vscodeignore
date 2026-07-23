@@ -1,0 +1,11 @@
+# Source & build config — not needed in the packaged extension
+src/**
+tsconfig.json
+**/*.ts
+**/*.map
+
+# Tooling / packaging artifacts
+.vscodeignore
+*.vsix
+node_modules/**
+package-lock.json

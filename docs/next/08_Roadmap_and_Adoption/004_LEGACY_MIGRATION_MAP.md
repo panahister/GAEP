@@ -37,6 +37,7 @@ No legacy file is superseded by this map. The selected intent is to prepare a ve
 | Current Draft | Candidate disposition |
 |---|---|
 | `000_READ_FIRST.md` | Preserve unchanged for historical interpretation; prepare a redirect to the candidate portal only for a separately approved and authorized supersession Change; map its Product-as-Initiative navigation statement under selected Option B |
+| `GAEP_PLATFORM_PRODUCT_IDENTITY_MANIFEST.md` | Preserve as an informative, shareable Product-identity synthesis; it does not supersede the Constitution, activate the Product Development Profile, designate a Candidate Revision Set, claim implementation completeness, or grant distribution rights; reconcile future revisions with approved Product Strategy, controlled terminology, capability truth, and lifecycle-profile decisions |
 | `01_Foundation/001_GAEP_CONSTITUTION.md` | Preserve unchanged; prepare an exact version-bound constitutional supersession package mapping Product-as-Initiative to selected Product-as-Managed-Asset semantics without claiming constitutional approval |
 | `01_Foundation/002_PROJECT_VISION.md` | Preserve unchanged; map Product-as-Initiative statements to Product Charter, problem evidence, and theory-of-change candidate surfaces under selected Option B |
 | `01_Foundation/003_PLATFORM_PHILOSOPHY.md` | Consolidate durable content into Constitution and Principle Catalog |
