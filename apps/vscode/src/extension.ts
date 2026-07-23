@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
-import { lstat, readdir } from "node:fs/promises"
+import { constants as fsConstants, type Stats } from "node:fs"
+import { lstat, open, readdir } from "node:fs/promises"
 import { join } from "node:path"
 
 import { CodexAdapter } from "@gaep/adapter-codex"
@@ -13,6 +14,7 @@ import {
 } from "@gaep/agent-sdk"
 import {
   containsSecretShapedValue,
+  handoffSchema,
   productProfileSchema,
   type AdapterCapabilities,
   type AgentSelection,
@@ -28,8 +30,10 @@ import * as vscode from "vscode"
 
 import { ActiveRunRegistry } from "./run-registry.js"
 import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-source.js"
+import { observePortableHandoffs } from "./handoff-observation.js"
 import { resolveLocalActorPrincipal } from "./local-actor.js"
 import { ManagedRunSession } from "./managed-run-session.js"
+import { manualModelEntryCopy } from "./provider-truth.js"
 import {
   buildManagedWorkflowEnvelope,
   buildRunToolSelectionInput,
@@ -68,6 +72,14 @@ const selectedWorkspaceKey = "gaep.selectedWorkspaceUri"
 const runtimeBindingsKey = "gaep.runtimeBindings.v2"
 const legacyRuntimeBindingsKey = "gaep.runtimeBindings.v1"
 const activeAgentRuns = new ActiveRunRegistry()
+
+function sameStableFile(left: Stats, right: Stats): boolean {
+  return left.isFile() && right.isFile() &&
+    left.dev !== 0 && left.ino !== 0 && right.dev !== 0 && right.ino !== 0 &&
+    left.dev === right.dev && left.ino === right.ino && left.size === right.size &&
+    left.mtimeMs === right.mtimeMs && left.ctimeMs === right.ctimeMs
+}
+
 const productProfiles = [
   "software",
   "saas",
@@ -137,7 +149,7 @@ async function collectSetting(setting: AgentSetting): Promise<unknown> {
 }
 
 async function chooseModel(capabilities: AdapterCapabilities): Promise<string> {
-  const custom = { label: "Enter model identifier...", description: "Use a model accepted by the installed agent", id: "" }
+  const custom = { label: manualModelEntryCopy.label, description: manualModelEntryCopy.description, id: "" }
   const picked = await vscode.window.showQuickPick(
     [
       ...capabilities.models.map((model) => ({
@@ -151,7 +163,7 @@ async function chooseModel(capabilities: AdapterCapabilities): Promise<string> {
     { title: `Select ${capabilities.agentLabel} model`, ignoreFocusOut: true },
   )
   if (!picked) throw new WorkflowCancelled()
-  return picked.id || requiredInput("Enter the exact model identifier")
+  return picked.id || requiredInput(manualModelEntryCopy.prompt)
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -549,6 +561,78 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     recoveryDiagnostic: () => recoveryDiagnostic,
     hasGaepState: async () => selectedFolder ? exists(join(selectedFolder.uri.fsPath, ".gaep")) : false,
     listInitiatives: async () => selectedFolder ? readInitiatives(selectedFolder.uri.fsPath) : [],
+    listHandoffs: async () => {
+      const runtimeEngine = engine
+      if (!runtimeEngine) return {
+        records: [], total: 0, selectedFileCount: 0, omittedOutsideWindow: 0, omittedForResourceSafety: 0,
+        platformAttestationUnavailable: false,
+      }
+      const handoffFile = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/iu
+      let names: string[]
+      try {
+        names = (await runtimeEngine.repository.readDirectory(runtimeEngine.repository.resolve("handoffs")))
+          .filter((name) => handoffFile.test(name))
+      } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "ENOENT") return {
+          records: [], total: 0, selectedFileCount: 0, omittedOutsideWindow: 0, omittedForResourceSafety: 0,
+          platformAttestationUnavailable: false,
+        }
+        throw error
+      }
+      const noFollowOpenFlags = process.platform === "win32" || typeof fsConstants.O_NOFOLLOW !== "number"
+        ? undefined
+        : fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW
+      if (noFollowOpenFlags === undefined) {
+        logDiagnostic("Portable handoff contents are withheld because this native platform cannot attest no-follow file identity")
+      }
+      const observation = await observePortableHandoffs(names, {
+        read: async (name, maxBytes) => {
+          if (noFollowOpenFlags === undefined) return { status: "omitted" }
+          try {
+            const path = runtimeEngine.repository.resolve("handoffs", name)
+            const before = await lstat(path)
+            if (!before.isFile() || before.isSymbolicLink() || !Number.isSafeInteger(before.size) ||
+                before.size < 0 || before.size > maxBytes) {
+              return { status: "omitted" }
+            }
+            const handle = await open(path, noFollowOpenFlags)
+            try {
+              const opened = await handle.stat()
+              if (!sameStableFile(before, opened) || !Number.isSafeInteger(opened.size) ||
+                  opened.size < 0 || opened.size > maxBytes) {
+                return { status: "omitted" }
+              }
+              const bytes = Buffer.alloc(opened.size + 1)
+              let byteLength = 0
+              while (byteLength < bytes.length) {
+                const chunk = await handle.read(bytes, byteLength, bytes.length - byteLength, byteLength)
+                if (chunk.bytesRead === 0) break
+                byteLength += chunk.bytesRead
+              }
+              const after = await handle.stat()
+              const currentPath = await lstat(path)
+              if (byteLength !== opened.size || !sameStableFile(opened, after) ||
+                  currentPath.isSymbolicLink() || !sameStableFile(after, currentPath)) {
+                return { status: "omitted" }
+              }
+              return {
+                status: "read",
+                record: handoffSchema.parse(JSON.parse(
+                  new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, byteLength)),
+                )),
+                byteLength,
+              }
+            } finally {
+              await handle.close()
+            }
+          } catch (error) {
+            logDiagnostic(`Portable handoff ${name} was withheld because stable bounded file identity could not be attested`, error)
+            return { status: "omitted" }
+          }
+        },
+      })
+      return { ...observation, platformAttestationUnavailable: noFollowOpenFlags === undefined }
+    },
     probeAgents: async () => engine
       ? (await probeAdaptersResilient(engine)).map((probe) => probe.capabilities)
       : [],

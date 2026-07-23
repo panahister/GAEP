@@ -26,15 +26,12 @@ describe("VS Code stop-line safety helpers", () => {
       .toEqual(["read-only"])
     expect(unsafeSelectionReasons("codex-cli", {
       sandbox: "danger-full-access",
-      approvalPolicy: "fail-closed-noninteractive",
     })).toHaveLength(1)
     expect(unsafeSelectionReasons("codex-cli", {
       sandbox: "read-only",
-      approvalPolicy: "fail-closed-noninteractive",
     })).toEqual([])
     expect(unsafeSelectionReasons("codex-cli", {
       sandbox: "read-only",
-      approvalPolicy: "fail-closed-noninteractive",
       search: true,
     })).toHaveLength(1)
 

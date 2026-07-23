@@ -348,7 +348,9 @@ export interface RunPageSnapshot extends StudioPageBase {
   composer?: RunComposerSnapshot
   selectedRun: StudioDefinitionEntry[]
   events: Array<{ id: string; time: string; kind: string; summary: string }>
+  managedEvidence: StudioTableSnapshot
   evidence: StudioTableSnapshot
+  handoffs: StudioTableSnapshot
   recoveryActions: StudioActionControl[]
 }
 
@@ -877,13 +879,14 @@ function isRunComposer(value: unknown): value is RunComposerSnapshot {
 
 function isRunPage(page: Record<string, unknown>): boolean {
   return hasOnlyKeys(page, [
-    "kind", "route", "title", "purpose", "source", "actions", "design", "runs", "composer", "selectedRun", "events", "evidence", "recoveryActions",
+    "kind", "route", "title", "purpose", "source", "actions", "design", "runs", "composer", "selectedRun", "events", "managedEvidence", "evidence", "handoffs", "recoveryActions",
   ]) && isPageBase(page, "runs-evidence") && page.kind === "runs-evidence" && isTableSnapshot(page.runs) &&
     (page.composer === undefined || isRunComposer(page.composer)) && Array.isArray(page.selectedRun) &&
     page.selectedRun.every(isDefinitionEntry) && Array.isArray(page.events) && page.events.length <= 10_000 &&
     page.events.every((event) => isRecord(event) && hasOnlyKeys(event, ["id", "time", "kind", "summary"]) &&
       isNonEmptyString(event.id) && isNonEmptyString(event.time) && isNonEmptyString(event.kind) && isBoundedString(event.summary)) &&
-    isTableSnapshot(page.evidence) && Array.isArray(page.recoveryActions) && page.recoveryActions.length <= 100 &&
+    isTableSnapshot(page.managedEvidence) && isTableSnapshot(page.evidence) && isTableSnapshot(page.handoffs) &&
+    Array.isArray(page.recoveryActions) && page.recoveryActions.length <= 100 &&
     page.recoveryActions.every(isStudioActionControl)
 }
 

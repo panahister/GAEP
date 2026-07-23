@@ -184,7 +184,9 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         },
         selectedRun: [{ term: "Run", value: "Prepared" }],
         events: [{ id: "event-1", time: "2026-07-21T00:00:00.000Z", kind: "prepared", summary: "Awaiting confirmation" }],
+        managedEvidence: table("managed-evidence"),
         evidence: table("evidence"),
+        handoffs: table("handoffs"),
         recoveryActions: [],
       }
     case "readiness":
@@ -317,6 +319,21 @@ describe("Product Studio rendered accessibility", () => {
       expect(result.violations.map((violation) => ({ id: violation.id, nodes: violation.nodes.map((node) => node.target) })), route).toEqual([])
     }
   }, 30_000)
+
+  it("gives durable run events semantic time values and a truthful empty state", () => {
+    const populated = snapshot("runs-evidence", 90)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: populated })
+    const timeline = dom.window.document.querySelector('ol[aria-label="Durable normalized Managed Run events"]')
+    expect(timeline).not.toBeNull()
+    expect(timeline?.querySelector("time")?.getAttribute("datetime")).toBe("2026-07-21T00:00:00.000Z")
+
+    if (populated.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    const empty: StudioSnapshot = { ...populated, snapshotRevision: 91, page: { ...populated.page, events: [] } }
+    expect(isStudioSnapshot(empty)).toBe(true)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: empty })
+    expect(dom.window.document.querySelector('ol[aria-label="Durable normalized Managed Run events"]')).toBeNull()
+    expect(dom.window.document.body.textContent).toMatch(/No durable normalized Managed Run events.*Legacy lifecycle state does not imply evidence/i)
+  })
 
   it("keeps names, focus order, and icon semantics explicit", () => {
     const document = dom.window.document

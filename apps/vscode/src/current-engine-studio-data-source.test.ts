@@ -1,12 +1,23 @@
 import {
+  handoffSchema,
+  managedApplyDecisionReceiptSchema,
+  managedRunEvidenceSchema,
+  managedRunRecordSchema,
+  managedRunResultSchema,
   productStudioSectionIds,
   type AdapterCapabilities,
   type AgentSelection,
+  type Handoff,
   type Initiative,
+  type ManagedApplyDecisionReceipt,
+  type ManagedRunEvidence,
+  type ManagedRunRecord,
+  type ManagedRunResult,
   type Product,
   type ProductDesignDraft,
   type Run,
 } from "@gaep/contracts"
+import { canonicalDigest } from "@gaep/agent-sdk"
 import type { ProductStudioService } from "@gaep/engine"
 import { describe, expect, it, vi } from "vitest"
 
@@ -64,11 +75,13 @@ const selection: AgentSelection = {
   capabilityDigest: `sha256:${"a".repeat(64)}`,
 }
 
+const charterDigest = `sha256:${"4".repeat(64)}`
 const run: Run = {
   schemaVersion: 1,
   id: "33333333-3333-4333-8333-333333333333",
   revision: 1,
   charterId: "44444444-4444-4444-8444-444444444444",
+  charterDigest,
   productId: product.id,
   initiativeId: initiative.id,
   agent: selection,
@@ -76,6 +89,323 @@ const run: Run = {
   startedAt: "2026-07-21T00:00:00.000Z",
   endedAt: "2026-07-21T00:01:00.000Z",
 }
+
+const managedRunId = "66666666-6666-4666-8666-666666666666"
+const managedResultId = "77777777-7777-4777-8777-777777777777"
+const managedEvidenceId = "88888888-8888-4888-8888-888888888888"
+const managedDecisionId = "99999999-9999-4999-8999-999999999999"
+const reviewResultId = "77777777-7777-4777-8777-777777777776"
+const reviewEvidenceId = "88888888-8888-4888-8888-888888888887"
+const workflowPlanId = "12121212-1212-4212-8212-121212121212"
+const workflowStepId = "13131313-1313-4313-8313-131313131313"
+const workflowAttemptId = "14141414-1414-4414-8414-141414141414"
+const workflowPlanDigest = `sha256:${"5".repeat(64)}`
+const provider = {
+  adapterId: selection.adapterId,
+  agentId: selection.agentId,
+  modelId: selection.modelId,
+  capabilityDigest: selection.capabilityDigest,
+  runtimeVersion: "0.135.0",
+}
+const bindings = {
+  product: { recordType: "product" as const, recordId: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+  initiative: { recordType: "initiative" as const, recordId: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative) },
+  charter: { recordType: "execution-charter" as const, recordId: run.charterId, revision: 1, digest: charterDigest },
+  run: { recordType: "run" as const, recordId: run.id, revision: run.revision ?? 1, digest: canonicalDigest(run) },
+  agentSelectionDigest: canonicalDigest(selection),
+  contextPacks: [{
+    recordType: "context-pack" as const,
+    recordId: "15151515-1515-4515-8515-151515151515",
+    revision: 1,
+    digest: `sha256:${"6".repeat(64)}`,
+  }],
+  workflowPlan: { recordType: "workflow-plan" as const, recordId: workflowPlanId, revision: 1, digest: workflowPlanDigest },
+  tools: [{
+    recordType: "tool-definition" as const,
+    recordId: "16161616-1616-4616-8616-161616161616",
+    revision: 1,
+    digest: `sha256:${"7".repeat(64)}`,
+  }],
+}
+const bindingsDigest = canonicalDigest(bindings)
+const evaluator = { kind: "human" as const, id: "local-reviewer", version: "1" }
+const evaluatorBinding = { ...evaluator, digest: canonicalDigest(evaluator) }
+const gate = (phase: "preconditions" | "outputs" | "evidence" | "stop-conditions" | "charter-evidence" | "charter-stop-conditions") => ({
+  phase,
+  interpretation: phase === "stop-conditions" || phase === "charter-stop-conditions"
+    ? "stop-boundary-complied" as const
+    : "criteria-satisfied" as const,
+  criteriaDigest: `sha256:${"8".repeat(64)}`,
+  status: "satisfied" as const,
+  basis: "human-attestation" as const,
+  evidenceDigest: `sha256:${"9".repeat(64)}`,
+  actor: { kind: "human" as const, id: evaluator.id },
+  evaluator: evaluatorBinding,
+  assessedAt: "2026-07-21T00:00:50.000Z",
+})
+const managedEvents = [{
+  sequence: 0,
+  observedAt: "2026-07-21T00:00:30.000Z",
+  type: "output" as const,
+  channel: "assistant" as const,
+  contentDigest: `sha256:${"c".repeat(64)}`,
+  byteLength: 512,
+  redactionCount: 2,
+}]
+const changedInventory = [{
+  path: "src/safe.ts",
+  kind: "modified" as const,
+  beforeDigest: `sha256:${"1".repeat(64)}`,
+  afterDigest: `sha256:${"2".repeat(64)}`,
+  beforeSize: 128,
+  afterSize: 256,
+  beforeMode: 0o644,
+  afterMode: 0o644,
+}]
+const reviewStaging = {
+  baselineDigest: `sha256:${"a".repeat(64)}`,
+  finalDigest: `sha256:${"b".repeat(64)}`,
+  changes: changedInventory,
+  excludedPathCount: 1,
+  excludedPathSetDigest: `sha256:${"d".repeat(64)}`,
+  applyState: "pending" as const,
+}
+const reviewAttempt = {
+  id: workflowAttemptId,
+  revision: 1,
+  stepId: workflowStepId,
+  stepIndex: 0,
+  attempt: 1,
+  state: "review-required" as const,
+  dependencies: [],
+  contextPacks: bindings.contextPacks,
+  tools: bindings.tools,
+  effectEnvelope: ["reversible-change" as const],
+  eventRange: { startSequence: 0, endSequence: 0 },
+  providerDisposition: "completed" as const,
+  terminationCause: "normal" as const,
+  postconditionStatus: "not-assessed" as const,
+  gates: {
+    preconditions: gate("preconditions"),
+    outputs: gate("outputs"),
+    evidence: gate("evidence"),
+    stopConditions: gate("stop-conditions"),
+  },
+  startedAt: "2026-07-21T00:00:05.000Z",
+  endedAt: "2026-07-21T00:01:00.000Z",
+}
+const reviewEvidence = managedRunEvidenceSchema.parse({
+  schemaVersion: 2,
+  kind: "managed-run-evidence",
+  id: reviewEvidenceId,
+  managedRunId,
+  runId: run.id,
+  productId: product.id,
+  bindingsDigest,
+  events: managedEvents,
+  eventsDigest: canonicalDigest(managedEvents),
+  workflow: {
+    plan: bindings.workflowPlan,
+    strategy: "sequential",
+    orderedStepIds: [workflowStepId],
+    attempts: [reviewAttempt],
+    completedStepIds: [],
+    charterGates: { requiredEvidence: gate("charter-evidence"), stopConditions: gate("charter-stop-conditions") },
+    terminalReasonCode: "apply-review-required",
+    capabilityBoundary: "natural-language-gates-require-explicit-human-or-system-assessment",
+  },
+  staging: reviewStaging,
+  actualEffects: [{
+    effect: "reversible-change",
+    status: "observed-provisional",
+    evidenceDigest: canonicalDigest({
+      effectsSeed: canonicalDigest({ events: managedEvents, staging: reviewStaging, disposition: "completed" }),
+      effect: "reversible-change",
+    }),
+  }],
+  capturedAt: "2026-07-21T00:01:01.000Z",
+  authorityBoundary: "evidence-does-not-self-assert-outcome-or-authorization",
+})
+const reviewResult = managedRunResultSchema.parse({
+  schemaVersion: 1,
+  kind: "managed-run-result",
+  id: reviewResultId,
+  managedRunId,
+  runId: run.id,
+  productId: product.id,
+  mode: "codex-staged",
+  provider,
+  providerDisposition: "completed",
+  terminationCause: "normal",
+  outcome: { status: "not-assessed", basis: "not-evaluated" },
+  terminalState: "review-required",
+  evidenceId: reviewEvidence.id,
+  evidenceDigest: canonicalDigest(reviewEvidence),
+  warnings: ["provider-output-redacted"],
+  startedAt: "2026-07-21T00:00:05.000Z",
+  endedAt: "2026-07-21T00:01:00.000Z",
+  authorityBoundary: "provider-completion-does-not-equal-outcome-completion",
+})
+const managedDecision = managedApplyDecisionReceiptSchema.parse({
+  schemaVersion: 1,
+  kind: "managed-apply-decision",
+  id: managedDecisionId,
+  managedRunId,
+  managedRunRevision: 3,
+  runId: run.id,
+  productId: product.id,
+  bindingsDigest,
+  reviewResultId: reviewResult.id,
+  reviewResultDigest: canonicalDigest(reviewResult),
+  reviewEvidenceId: reviewEvidence.id,
+  reviewEvidenceDigest: canonicalDigest(reviewEvidence),
+  changedInventory,
+  changedInventoryDigest: canonicalDigest(changedInventory),
+  writeEnvelope: ["src"],
+  writeEnvelopeDigest: canonicalDigest(["src"]),
+  actor: { kind: "human", id: "machine-local-actor-must-not-render" },
+  decision: "apply-exact-reviewed-inventory",
+  decidedAt: "2026-07-21T00:01:02.000Z",
+  authorityBoundary: "apply-decision-is-exact-run-evidence-inventory-actor-and-scope",
+})
+const completedAttempt = {
+  ...reviewAttempt,
+  revision: 2,
+  previousSnapshotDigest: canonicalDigest(reviewAttempt),
+  state: "completed" as const,
+  postconditionStatus: "satisfied" as const,
+}
+const appliedStaging = {
+  ...reviewStaging,
+  applyState: "applied" as const,
+  applyJournalDigest: `sha256:${"f".repeat(64)}`,
+  applyDecision: { receiptId: managedDecision.id, receiptDigest: canonicalDigest(managedDecision) },
+}
+const managedEvidence = managedRunEvidenceSchema.parse({
+  ...reviewEvidence,
+  id: managedEvidenceId,
+  workflow: {
+    ...reviewEvidence.workflow,
+    attempts: [completedAttempt],
+    completedStepIds: [workflowStepId],
+    terminalReasonCode: "workflow-completed",
+  },
+  staging: appliedStaging,
+  actualEffects: [{
+    effect: "reversible-change",
+    status: "applied",
+    evidenceDigest: canonicalDigest({
+      effectsSeed: canonicalDigest({ events: managedEvents, staging: appliedStaging, disposition: "completed" }),
+      effect: "reversible-change",
+    }),
+  }],
+  capturedAt: "2026-07-21T00:01:04.000Z",
+})
+const outcomeEvaluator = { kind: "human" as const, id: "postcondition-reviewer", version: "1" }
+const managedResult = managedRunResultSchema.parse({
+  ...reviewResult,
+  id: managedResultId,
+  outcome: { status: "satisfied", basis: "postcondition-evaluator", evaluator: {
+    ...outcomeEvaluator,
+    digest: canonicalDigest(outcomeEvaluator),
+  } },
+  terminalState: "completed",
+  evidenceId: managedEvidence.id,
+  evidenceDigest: canonicalDigest(managedEvidence),
+  previousResultId: reviewResult.id,
+  previousResultDigest: canonicalDigest(reviewResult),
+  endedAt: "2026-07-21T00:01:04.000Z",
+})
+const managedRun = managedRunRecordSchema.parse({
+  schemaVersion: 2,
+  kind: "managed-run",
+  id: managedRunId,
+  revision: 5,
+  runId: run.id,
+  productId: product.id,
+  initiativeId: initiative.id,
+  mode: "codex-staged",
+  state: "completed",
+  bindings,
+  bindingsDigest,
+  bindingSnapshots: { initiative, run },
+  provider,
+  rootManagedRunId: managedRunId,
+  attemptNumber: 1,
+  applyDecisionId: managedDecision.id,
+  applyDecisionDigest: canonicalDigest(managedDecision),
+  resultId: managedResult.id,
+  resultDigest: canonicalDigest(managedResult),
+  recovery: { status: "not-required" },
+  createdAt: "2026-07-21T00:00:05.000Z",
+  startedAt: "2026-07-21T00:00:05.000Z",
+  updatedAt: "2026-07-21T00:01:05.000Z",
+  endedAt: "2026-07-21T00:01:05.000Z",
+})
+
+function managedRecordWithoutArtifacts(id: string, boundRun: Run, updatedAt: string): ManagedRunRecord {
+  const recordBindings = {
+    ...bindings,
+    run: {
+      recordType: "run" as const,
+      recordId: boundRun.id,
+      revision: boundRun.revision ?? 1,
+      digest: canonicalDigest(boundRun),
+    },
+    agentSelectionDigest: canonicalDigest(boundRun.agent),
+  }
+  return managedRunRecordSchema.parse({
+    schemaVersion: 2,
+    kind: "managed-run",
+    id,
+    revision: 1,
+    runId: boundRun.id,
+    productId: product.id,
+    initiativeId: initiative.id,
+    mode: "codex-staged",
+    state: "prepared",
+    bindings: recordBindings,
+    bindingsDigest: canonicalDigest(recordBindings),
+    bindingSnapshots: { initiative, run: boundRun },
+    provider: {
+      adapterId: boundRun.agent.adapterId,
+      agentId: boundRun.agent.agentId,
+      modelId: boundRun.agent.modelId,
+      capabilityDigest: boundRun.agent.capabilityDigest,
+      runtimeVersion: "0.135.0",
+    },
+    rootManagedRunId: id,
+    attemptNumber: 1,
+    recovery: { status: "not-required" },
+    createdAt: updatedAt,
+    updatedAt,
+  })
+}
+
+const handoff = handoffSchema.parse({
+  schemaVersion: 1,
+  id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  productId: product.id,
+  initiativeId: initiative.id,
+  fromRunId: run.id,
+  toAgent: {
+    ...selection,
+    adapterId: "claude-adapter",
+    agentId: "claude-code-cli",
+    modelId: "sonnet",
+    modelAlias: true,
+    settings: { effort: "must-not-render-setting" },
+  },
+  reason: "Use a second provider for an independent review.",
+  workspaceBaseline: { dirty: true, changedFiles: ["src/safe.ts"], truthClass: "observed" },
+  completedWork: ["Completed the bounded implementation."],
+  evidence: ["digest-only reference"],
+  unresolvedMatters: ["free text must not render"],
+  decisions: ["Keep provider output private."],
+  capabilityDifferences: ["The target uses a provider alias."],
+  acknowledgedAt: "2026-07-21T00:02:00.000Z",
+  createdAt: "2026-07-21T00:01:30.000Z",
+})
 
 const designDraft: ProductDesignDraft = {
   schemaVersion: 1,
@@ -193,6 +523,18 @@ interface HarnessOptions {
   selectionError?: Error
   initiatives?: Initiative[]
   runs?: Run[]
+  managedRuns?: ManagedRunRecord[]
+  managedObservationError?: Error
+  managedResults?: Record<string, ManagedRunResult>
+  managedEvidence?: Record<string, ManagedRunEvidence>
+  managedApplyDecisions?: Record<string, ManagedApplyDecisionReceipt>
+  handoffs?: Handoff[]
+  handoffTotal?: number
+  handoffSelectedFileCount?: number
+  handoffOmittedOutsideWindow?: number
+  handoffOmittedForResourceSafety?: number
+  handoffPlatformAttestationUnavailable?: boolean
+  handoffObservationError?: Error
   audit?: { valid: boolean; events: number; error?: string }
   runtimeBindings?: Record<string, unknown>
   rotateContextDuringObservation?: boolean
@@ -218,6 +560,25 @@ function harness(options: HarnessOptions = {}) {
       return selectedAgent
     },
     listRuns: async () => options.runs ?? [run],
+    listManagedRuns: async () => {
+      if (options.managedObservationError) throw options.managedObservationError
+      return options.managedRuns ?? []
+    },
+    readManagedRunResult: async (id: string) => {
+      const result = options.managedResults?.[id]
+      if (!result) throw Object.assign(new Error("missing Managed Result"), { code: "ENOENT" })
+      return result
+    },
+    readManagedRunEvidence: async (id: string) => {
+      const evidence = options.managedEvidence?.[id]
+      if (!evidence) throw Object.assign(new Error("missing Managed Evidence"), { code: "ENOENT" })
+      return evidence
+    },
+    readManagedApplyDecision: async (id: string) => {
+      const decision = options.managedApplyDecisions?.[id]
+      if (!decision) throw Object.assign(new Error("missing apply decision"), { code: "ENOENT" })
+      return decision
+    },
     repository: { verifyAudit: async () => options.audit ?? ({ valid: true, events: 8 }) },
     productStudio: options.productStudio ?? productStudioStub(),
   }
@@ -234,6 +595,18 @@ function harness(options: HarnessOptions = {}) {
         contextRotatedDuringObservation = true
       }
       return options.initiatives ?? [initiative]
+    },
+    listHandoffs: async () => {
+      if (options.handoffObservationError) throw options.handoffObservationError
+      const records = options.handoffs ?? []
+      return {
+        records,
+        total: options.handoffTotal ?? records.length,
+        selectedFileCount: options.handoffSelectedFileCount ?? records.length,
+        omittedOutsideWindow: options.handoffOmittedOutsideWindow ?? 0,
+        omittedForResourceSafety: options.handoffOmittedForResourceSafety ?? 0,
+        platformAttestationUnavailable: options.handoffPlatformAttestationUnavailable ?? false,
+      }
     },
     probeAgents: async () => [
       capability({}),
@@ -348,16 +721,30 @@ describe("current-engine Product Studio data source", () => {
     expect(JSON.stringify(overview)).not.toContain("runtimeExecutable")
   })
 
-  it("labels Claude detection-only and Codex direct execution observe-only", async () => {
-    const { source } = harness()
+  it("separates detection, managed-interface support, maturity, and native-picker actions", async () => {
+    const { source, commands } = harness()
     const snapshot = await source.readSnapshot("agents-tools")
     if (snapshot.page.kind !== "agents-tools") throw new Error("Expected agent page")
     const codex = snapshot.page.adapters.rows.find((row) => row.id === "codex-adapter")
     const claude = snapshot.page.adapters.rows.find((row) => row.id === "claude-adapter")
-    expect(codex?.cells.status).toMatch(/structured CLI capability/i)
+    expect(codex?.cells.status).toMatch(/structured CLI capability.*interface maturity stable/i)
     expect(codex?.actions[0]?.enabled).toBe(true)
-    expect(claude?.cells.status).toMatch(/inspection only/i)
+    expect(codex?.actions[0]).toMatchObject({
+      label: "Open native agent/model picker",
+      action: { kind: "select-agent", adapterId: "native-picker", agentId: "native-picker", modelId: "native-picker" },
+    })
+    expect(claude?.cells.status).toMatch(/managed execution interface unsupported by this build.*interface maturity unknown/i)
     expect(claude?.actions[0]?.enabled).toBe(false)
+    expect(claude?.actions[0]?.disabledReason).toMatch(/cannot be selected for managed execution/i)
+    expect(JSON.stringify(snapshot.page.adapters)).not.toContain("provider-selected")
+    const nativePicker = codex?.actions[0]
+    if (!nativePicker) throw new Error("Expected native picker action")
+    expect(await source.execute(nativePicker.action, {
+      requestId: "open-native-agent-picker",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })).toMatchObject({ status: "accepted" })
+    expect(commands.at(-1)).toEqual({ command: "gaep.selectAgent", args: [] })
   })
 
   it("maps native actions, opens portable inspectors, and rejects stale operations", async () => {
@@ -739,6 +1126,636 @@ describe("current-engine Product Studio data source", () => {
       entries: expect.arrayContaining([{ term: "Record type", value: "instruction-privilege-grant" }]),
     })
     expect(inspected.inspector?.entries.find((entry) => entry.term === "Scope summary")?.value).toMatch(/display truncated/i)
+  })
+
+  it("projects durable Managed Run evidence and handoff lineage without private provider or machine-local content", async () => {
+    const newerRun = {
+      ...run,
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      createdAt: "2026-07-21T00:03:00.000Z",
+      updatedAt: "2026-07-21T00:03:00.000Z",
+    }
+    const { source } = harness({
+      runs: [run, newerRun],
+      managedRuns: [managedRun],
+      managedResults: { [managedResultId]: managedResult, [reviewResultId]: reviewResult },
+      managedEvidence: { [managedEvidenceId]: managedEvidence, [reviewEvidenceId]: reviewEvidence },
+      managedApplyDecisions: { [managedDecisionId]: managedDecision },
+      handoffs: [handoff],
+    })
+
+    const snapshot = await source.readSnapshot("runs-evidence")
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+
+    expect(snapshot.page.managedEvidence.rows[0]).toMatchObject({
+      id: managedRunId,
+      cells: {
+        run: run.id,
+        attempt: "1",
+        state: "completed",
+        outcome: "satisfied · postcondition-evaluator",
+        events: "1",
+        staging: "1 file(s) · applied",
+        applyDecision: "1 file(s) bound",
+        observation: "bound graph verified",
+      },
+    })
+    expect(snapshot.page.events.map((event) => event.kind)).toEqual(expect.arrayContaining([
+      "Managed attempt 1",
+      "output",
+      "durable result",
+      "durable evidence",
+      "apply decision",
+    ]))
+    expect(snapshot.page.events.find((event) => event.kind === "output")?.summary)
+      .toContain(`sha256:${"c".repeat(64)}`)
+    expect(snapshot.page.events.find((event) => event.kind === "output")?.summary).toMatch(/2 redaction\(s\)/i)
+    expect(snapshot.page.handoffs.rows[0]).toMatchObject({
+      id: handoff.id,
+      cells: {
+        fromRun: run.id,
+        target: "claude-code-cli / sonnet",
+        workspace: "1 workspace-relative change(s) · observed",
+        evidence: "1 evidence reference(s)",
+        unresolved: "1",
+        status: "acknowledged",
+      },
+    })
+
+    const serialized = JSON.stringify(snapshot)
+    for (const privateValue of [
+      "machine-local-actor-must-not-render",
+      "must-not-render",
+      "free text must not render",
+      "src/safe.ts",
+      "/machine-only",
+    ]) expect(serialized).not.toContain(privateValue)
+
+    const select = snapshot.page.managedEvidence.rows[0]?.actions[0]
+    if (!select) throw new Error("Expected Managed Run selection action")
+    expect(await source.execute(select.action, {
+      requestId: "select-managed-underlying-run",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })).toMatchObject({ status: "accepted" })
+    const selected = await source.readSnapshot("runs-evidence")
+    if (selected.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(selected.page.selectedRun).toEqual(expect.arrayContaining([
+      { term: "Run", value: run.id, recordId: run.id },
+      { term: "Managed lineage", value: `Latest observed attempt 1; 1 record(s) shown in the bounded window; complete lineage is not inferred; root ${managedRunId}` },
+      { term: "Handoff lineage", value: "1 portable handoff(s) originate from this Run." },
+    ]))
+  })
+
+  it("accepts the applying transition only when the exact current review Result and receipt are bound", async () => {
+    const applyingInput = structuredClone(managedRun)
+    delete applyingInput.endedAt
+    const applyingRun = managedRunRecordSchema.parse({
+      ...applyingInput,
+      revision: managedDecision.managedRunRevision + 1,
+      state: "applying",
+      resultId: reviewResult.id,
+      resultDigest: canonicalDigest(reviewResult),
+      updatedAt: "2026-07-21T00:01:03.000Z",
+    })
+    const { source } = harness({
+      managedRuns: [applyingRun],
+      managedResults: { [reviewResultId]: reviewResult },
+      managedEvidence: { [reviewEvidenceId]: reviewEvidence },
+      managedApplyDecisions: { [managedDecisionId]: managedDecision },
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.rows[0]?.cells).toMatchObject({
+      state: "applying",
+      outcome: "not-assessed · not-evaluated",
+      observation: "bound graph verified",
+    })
+    expect(snapshot.page.events.map((event) => event.kind)).toContain("apply decision")
+  })
+
+  it("rejects a schema-valid current Result whose terminal state contradicts its Managed Run", async () => {
+    const mismatchedRun = managedRunRecordSchema.parse({ ...managedRun, state: "failed" })
+    const { source } = harness({
+      managedRuns: [mismatchedRun],
+      managedResults: { [managedResultId]: managedResult, [reviewResultId]: reviewResult },
+      managedEvidence: { [managedEvidenceId]: managedEvidence, [reviewEvidenceId]: reviewEvidence },
+      managedApplyDecisions: { [managedDecisionId]: managedDecision },
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.rows[0]?.cells.observation).toMatch(/could not be verified/i)
+    for (const kind of ["durable result", "durable evidence", "apply decision"]) {
+      expect(snapshot.page.events.map((event) => event.kind)).not.toContain(kind)
+    }
+  })
+
+  it("preserves applied mutation truth when a later Workflow postcondition fails", async () => {
+    const failedAttempt = {
+      ...completedAttempt,
+      state: "failed" as const,
+      postconditionStatus: "failed" as const,
+    }
+    const failedEvidence = managedRunEvidenceSchema.parse({
+      ...managedEvidence,
+      workflow: {
+        ...managedEvidence.workflow,
+        attempts: [failedAttempt],
+        completedStepIds: [],
+        terminalReasonCode: "postcondition-failed",
+      },
+    })
+    const failedResult = managedRunResultSchema.parse({
+      ...managedResult,
+      outcome: { ...managedResult.outcome, status: "failed" },
+      terminalState: "failed",
+      evidenceDigest: canonicalDigest(failedEvidence),
+    })
+    const failedRun = managedRunRecordSchema.parse({
+      ...managedRun,
+      state: "failed",
+      resultDigest: canonicalDigest(failedResult),
+    })
+    const { source } = harness({
+      managedRuns: [failedRun],
+      managedResults: { [managedResultId]: failedResult, [reviewResultId]: reviewResult },
+      managedEvidence: { [managedEvidenceId]: failedEvidence, [reviewEvidenceId]: reviewEvidence },
+      managedApplyDecisions: { [managedDecisionId]: managedDecision },
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.rows[0]?.cells).toMatchObject({
+      state: "failed",
+      outcome: "failed · postcondition-evaluator",
+      observation: "bound graph verified",
+    })
+    expect(snapshot.page.events.find((event) => event.kind === "durable evidence")?.summary)
+      .toContain("reversible-change=applied")
+  })
+
+  it("accepts both exact current-engine discard encodings only with an exact review predecessor", async () => {
+    const discardEvidenceId = "abababab-abab-4bab-8bab-abababababab"
+    const discardResultId = "acacacac-acac-4cac-8cac-acacacacacac"
+    const discardedAttempt = {
+      ...reviewAttempt,
+      revision: reviewAttempt.revision + 1,
+      previousSnapshotDigest: canonicalDigest(reviewAttempt),
+      state: "discarded" as const,
+      endedAt: "2026-07-21T00:01:03.000Z",
+    }
+    const discardedStaging = { ...reviewStaging, applyState: "discarded" as const }
+    const discardDigests = [
+      canonicalDigest({
+        effect: "reversible-change",
+        disposition: "discarded",
+        eventsDigest: canonicalDigest(managedEvents),
+      }),
+      canonicalDigest({
+        priorEvidenceDigest: canonicalDigest(reviewEvidence),
+        effect: "reversible-change",
+        disposition: "durable-review-discarded",
+      }),
+    ]
+    for (const effectDigest of discardDigests) {
+      const discardedEvidence = managedRunEvidenceSchema.parse({
+        ...reviewEvidence,
+        id: discardEvidenceId,
+        workflow: {
+          ...reviewEvidence.workflow,
+          attempts: [discardedAttempt],
+          terminalReasonCode: "staged-changes-discarded",
+        },
+        staging: discardedStaging,
+        actualEffects: [{ effect: "reversible-change", status: "blocked", evidenceDigest: effectDigest }],
+        capturedAt: "2026-07-21T00:01:03.000Z",
+      })
+      const discardedResult = managedRunResultSchema.parse({
+        ...reviewResult,
+        id: discardResultId,
+        terminalState: "discarded",
+        evidenceId: discardedEvidence.id,
+        evidenceDigest: canonicalDigest(discardedEvidence),
+        previousResultId: reviewResult.id,
+        previousResultDigest: canonicalDigest(reviewResult),
+        endedAt: "2026-07-21T00:01:03.000Z",
+      })
+      const discardedRunInput = structuredClone(managedRun)
+      delete discardedRunInput.applyDecisionId
+      delete discardedRunInput.applyDecisionDigest
+      const discardedRun = managedRunRecordSchema.parse({
+        ...discardedRunInput,
+        revision: 3,
+        state: "discarded",
+        resultId: discardedResult.id,
+        resultDigest: canonicalDigest(discardedResult),
+        updatedAt: "2026-07-21T00:01:03.000Z",
+        endedAt: "2026-07-21T00:01:03.000Z",
+      })
+      const { source } = harness({
+        managedRuns: [discardedRun],
+        managedResults: { [discardResultId]: discardedResult, [reviewResultId]: reviewResult },
+        managedEvidence: { [discardEvidenceId]: discardedEvidence, [reviewEvidenceId]: reviewEvidence },
+      })
+      const snapshot = await source.readSnapshot("runs-evidence")
+      if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+      expect(snapshot.page.managedEvidence.rows[0]?.cells).toMatchObject({
+        state: "discarded",
+        observation: "bound graph verified",
+      })
+    }
+  })
+
+  it("rejects discard-only effect digests outside discarded staging", async () => {
+    const misusedEvidence = managedRunEvidenceSchema.parse({
+      ...managedEvidence,
+      actualEffects: [{
+        ...managedEvidence.actualEffects[0]!,
+        evidenceDigest: canonicalDigest({
+          effect: "reversible-change",
+          disposition: "discarded",
+          eventsDigest: managedEvidence.eventsDigest,
+        }),
+      }],
+    })
+    const reboundResult = managedRunResultSchema.parse({
+      ...managedResult,
+      evidenceDigest: canonicalDigest(misusedEvidence),
+    })
+    const reboundRun = managedRunRecordSchema.parse({
+      ...managedRun,
+      resultDigest: canonicalDigest(reboundResult),
+    })
+    const { source } = harness({
+      managedRuns: [reboundRun],
+      managedResults: { [managedResultId]: reboundResult, [reviewResultId]: reviewResult },
+      managedEvidence: { [managedEvidenceId]: misusedEvidence, [reviewEvidenceId]: reviewEvidence },
+      managedApplyDecisions: { [managedDecisionId]: managedDecision },
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.rows[0]?.cells.observation).toMatch(/could not be verified/i)
+    expect(snapshot.page.events.map((event) => event.kind)).not.toContain("durable evidence")
+  })
+
+  it("rejects a discarded Result whose exact predecessor was not a review or conflict", async () => {
+    const discardEvidenceId = "adadadad-adad-4dad-8dad-adadadadadad"
+    const discardResultId = "aeaeaeae-aeae-4eae-8eae-aeaeaeaeaeae"
+    const discardedAttempt = {
+      ...reviewAttempt,
+      revision: reviewAttempt.revision + 1,
+      previousSnapshotDigest: canonicalDigest(reviewAttempt),
+      state: "discarded" as const,
+      endedAt: "2026-07-21T00:01:06.000Z",
+    }
+    const discardedEvidence = managedRunEvidenceSchema.parse({
+      ...reviewEvidence,
+      id: discardEvidenceId,
+      workflow: {
+        ...reviewEvidence.workflow,
+        attempts: [discardedAttempt],
+        terminalReasonCode: "staged-changes-discarded",
+      },
+      staging: { ...reviewStaging, applyState: "discarded" },
+      actualEffects: [{
+        effect: "reversible-change",
+        status: "blocked",
+        evidenceDigest: canonicalDigest({
+          effect: "reversible-change",
+          disposition: "discarded",
+          eventsDigest: canonicalDigest(managedEvents),
+        }),
+      }],
+      capturedAt: "2026-07-21T00:01:06.000Z",
+    })
+    const discardedResult = managedRunResultSchema.parse({
+      ...reviewResult,
+      id: discardResultId,
+      terminalState: "discarded",
+      evidenceId: discardedEvidence.id,
+      evidenceDigest: canonicalDigest(discardedEvidence),
+      previousResultId: managedResult.id,
+      previousResultDigest: canonicalDigest(managedResult),
+      endedAt: "2026-07-21T00:01:06.000Z",
+    })
+    const discardedRunInput = structuredClone(managedRun)
+    delete discardedRunInput.applyDecisionId
+    delete discardedRunInput.applyDecisionDigest
+    const discardedRun = managedRunRecordSchema.parse({
+      ...discardedRunInput,
+      state: "discarded",
+      resultId: discardedResult.id,
+      resultDigest: canonicalDigest(discardedResult),
+      updatedAt: "2026-07-21T00:01:06.000Z",
+      endedAt: "2026-07-21T00:01:06.000Z",
+    })
+    const { source } = harness({
+      managedRuns: [discardedRun],
+      managedResults: { [discardResultId]: discardedResult, [managedResultId]: managedResult },
+      managedEvidence: { [discardEvidenceId]: discardedEvidence, [managedEvidenceId]: managedEvidence },
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.rows[0]?.cells.observation).toMatch(/could not be verified/i)
+    expect(snapshot.page.events.map((event) => event.kind)).not.toContain("durable result")
+  })
+
+  it("withholds all Managed and handoff semantic artifacts when the audit trust anchor is invalid", async () => {
+    const { source } = harness({
+      audit: { valid: false, events: 8, error: "tampered audit" },
+      managedRuns: [managedRun],
+      managedResults: { [managedResultId]: managedResult, [reviewResultId]: reviewResult },
+      managedEvidence: { [managedEvidenceId]: managedEvidence, [reviewEvidenceId]: reviewEvidence },
+      managedApplyDecisions: { [managedDecisionId]: managedDecision },
+      handoffs: [handoff],
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.rows).toEqual([])
+    expect(snapshot.page.managedEvidence.emptyState?.title).toBe("Managed execution evidence unavailable")
+    expect(snapshot.page.handoffs.rows).toEqual([])
+    expect(snapshot.page.handoffs.emptyState).toMatchObject({
+      title: "Portable handoff history unavailable",
+      detail: expect.stringMatching(/does not assert that handoff history is absent/i),
+    })
+    const serialized = JSON.stringify(snapshot)
+    expect(serialized).not.toContain(managedResultId)
+    expect(serialized).not.toContain(managedEvidenceId)
+    expect(serialized).not.toContain(managedDecisionId)
+    expect(serialized).not.toContain(handoff.id)
+    expect(serialized).not.toContain("claude-code-cli")
+    expect(serialized).not.toContain("machine-local-actor-must-not-render")
+  })
+
+  it("rejects a self-consistently rebound outer graph when its internal event-set digest is stale", async () => {
+    const staleEvidence = managedRunEvidenceSchema.parse({
+      ...managedEvidence,
+      eventsDigest: `sha256:${"3".repeat(64)}`,
+    })
+    const reboundResult = managedRunResultSchema.parse({
+      ...managedResult,
+      evidenceDigest: canonicalDigest(staleEvidence),
+    })
+    const reboundRun = managedRunRecordSchema.parse({
+      ...managedRun,
+      resultDigest: canonicalDigest(reboundResult),
+    })
+    const { source } = harness({
+      managedRuns: [reboundRun],
+      managedResults: { [managedResultId]: reboundResult, [reviewResultId]: reviewResult },
+      managedEvidence: { [managedEvidenceId]: staleEvidence, [reviewEvidenceId]: reviewEvidence },
+      managedApplyDecisions: { [managedDecisionId]: managedDecision },
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.rows[0]?.cells.observation).toMatch(/could not be verified/i)
+    for (const kind of ["durable result", "durable evidence", "apply decision"]) {
+      expect(snapshot.page.events.map((event) => event.kind)).not.toContain(kind)
+    }
+    expect(JSON.stringify(snapshot)).not.toContain(`sha256:${"c".repeat(64)}`)
+  })
+
+  it("rejects self-consistent outer bindings when provider or Workflow outcome semantics contradict the Run", async () => {
+    const wrongProviderResult = managedRunResultSchema.parse({
+      ...managedResult,
+      provider: { ...managedResult.provider, modelId: "different-model" },
+    })
+    const contradictoryWorkflowEvidence = managedRunEvidenceSchema.parse({
+      ...managedEvidence,
+      workflow: { ...managedEvidence.workflow, terminalReasonCode: "workflow-not-completed" },
+    })
+    const contradictoryWorkflowResult = managedRunResultSchema.parse({
+      ...managedResult,
+      evidenceDigest: canonicalDigest(contradictoryWorkflowEvidence),
+    })
+    for (const candidate of [
+      { result: wrongProviderResult, evidence: managedEvidence },
+      { result: contradictoryWorkflowResult, evidence: contradictoryWorkflowEvidence },
+    ]) {
+      const reboundRun = managedRunRecordSchema.parse({
+        ...managedRun,
+        resultDigest: canonicalDigest(candidate.result),
+      })
+      const { source } = harness({
+        managedRuns: [reboundRun],
+        managedResults: { [managedResultId]: candidate.result, [reviewResultId]: reviewResult },
+        managedEvidence: { [managedEvidenceId]: candidate.evidence, [reviewEvidenceId]: reviewEvidence },
+        managedApplyDecisions: { [managedDecisionId]: managedDecision },
+      })
+      const snapshot = await source.readSnapshot("runs-evidence")
+      if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+      expect(snapshot.page.managedEvidence.rows[0]?.cells.observation).toMatch(/could not be verified/i)
+      for (const kind of ["durable result", "durable evidence", "apply decision"]) {
+        expect(snapshot.page.events.map((event) => event.kind)).not.toContain(kind)
+      }
+    }
+  })
+
+  it("rejects a schema-valid Managed Run whose canonical bindings digest is stale", async () => {
+    const staleRun = managedRunRecordSchema.parse({
+      ...managedRun,
+      bindingsDigest: `sha256:${"3".repeat(64)}`,
+    })
+    const { source } = harness({
+      managedRuns: [staleRun],
+      managedResults: { [managedResultId]: managedResult, [reviewResultId]: reviewResult },
+      managedEvidence: { [managedEvidenceId]: managedEvidence, [reviewEvidenceId]: reviewEvidence },
+      managedApplyDecisions: { [managedDecisionId]: managedDecision },
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.rows[0]?.cells.observation).toMatch(/could not be verified/i)
+    expect(snapshot.page.events.map((event) => event.kind)).not.toContain("durable result")
+  })
+
+  it("rejects a rebound apply receipt whose inventory digest is not internally exact", async () => {
+    const staleDecision = managedApplyDecisionReceiptSchema.parse({
+      ...managedDecision,
+      changedInventoryDigest: `sha256:${"3".repeat(64)}`,
+    })
+    const reboundEvidence = managedRunEvidenceSchema.parse({
+      ...managedEvidence,
+      staging: {
+        ...managedEvidence.staging,
+        applyDecision: { receiptId: staleDecision.id, receiptDigest: canonicalDigest(staleDecision) },
+      },
+    })
+    const reboundResult = managedRunResultSchema.parse({
+      ...managedResult,
+      evidenceDigest: canonicalDigest(reboundEvidence),
+    })
+    const reboundRun = managedRunRecordSchema.parse({
+      ...managedRun,
+      applyDecisionDigest: canonicalDigest(staleDecision),
+      resultDigest: canonicalDigest(reboundResult),
+    })
+    const { source } = harness({
+      managedRuns: [reboundRun],
+      managedResults: { [managedResultId]: reboundResult, [reviewResultId]: reviewResult },
+      managedEvidence: { [managedEvidenceId]: reboundEvidence, [reviewEvidenceId]: reviewEvidence },
+      managedApplyDecisions: { [managedDecisionId]: staleDecision },
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.rows[0]?.cells.observation).toMatch(/could not be verified/i)
+    expect(snapshot.page.events.map((event) => event.kind)).not.toContain("apply decision")
+  })
+
+  it("uses the persisted attempt number and never promotes the bounded record count to complete lineage", async () => {
+    const initial = managedRecordWithoutArtifacts(
+      "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      run,
+      "2026-07-22T00:00:00.000Z",
+    )
+    const resumed = managedRunRecordSchema.parse({
+      ...initial,
+      rootManagedRunId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      previousManagedRunId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+      attemptNumber: 5,
+    })
+    const { source } = harness({ managedRuns: [resumed] })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.runs.rows[0]?.cells.attempts).toBe("latest attempt 5; 1 shown")
+    expect(snapshot.page.selectedRun.find((entry) => entry.term === "Managed lineage")?.value)
+      .toMatch(/Latest observed attempt 5; 1 record\(s\) shown.*complete lineage is not inferred/i)
+  })
+
+  it("keeps long composed handoff fields protocol-safe and exposes the exact observation boundary", async () => {
+    const longHandoff = handoffSchema.parse({
+      ...handoff,
+      id: "abababab-abab-4bab-8bab-abababababab",
+      toAgent: { ...handoff.toAgent, modelId: `m${"x".repeat(19_999)}` },
+    })
+    const { source } = harness({
+      handoffs: [longHandoff],
+      handoffTotal: 250,
+      handoffSelectedFileCount: 200,
+      handoffOmittedOutsideWindow: 50,
+      handoffOmittedForResourceSafety: 199,
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    const target = snapshot.page.handoffs.rows[0]?.cells.target ?? ""
+    expect(target.length).toBeLessThanOrEqual(20_000)
+    expect(target).toMatch(/display truncated/i)
+    expect(snapshot.page.handoffs.truncation).toMatchObject({ shown: 1, total: 250 })
+    expect(snapshot.page.handoffs.truncation?.message).toMatch(/deterministic filename window.*byte or stable-file identity limits.*does not assert global recency or absence/i)
+  })
+
+  it("states the native-Windows no-follow limitation when handoff contents are withheld", async () => {
+    const { source } = harness({
+      handoffTotal: 2,
+      handoffSelectedFileCount: 2,
+      handoffOmittedForResourceSafety: 2,
+      handoffPlatformAttestationUnavailable: true,
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.handoffs.emptyState).toMatchObject({
+      title: "Portable handoff details withheld by safety bounds",
+      detail: expect.stringMatching(/native Windows cannot attest no-follow file identity/i),
+    })
+    expect(snapshot.page.handoffs.truncation?.message).toMatch(/native Windows cannot attest no-follow file identity/i)
+  })
+
+  it("distinguishes an unavailable Managed Run observation from verified absence", async () => {
+    const { source } = harness({ managedObservationError: new Error("private reader failure must not render") })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.emptyState).toMatchObject({
+      title: "Managed execution evidence unavailable",
+      detail: expect.stringMatching(/does not assert that evidence is absent/i),
+    })
+    expect(snapshot.page.selectedRun.find((entry) => entry.term === "Managed evidence")?.value)
+      .toMatch(/observation is unavailable.*no absence claim/i)
+    expect(snapshot.page.runs.rows[0]?.cells).toMatchObject({ managed: "observation unavailable", attempts: "unavailable" })
+    expect(JSON.stringify(snapshot)).not.toContain("private reader failure must not render")
+  })
+
+  it("distinguishes unavailable portable handoff history from verified absence", async () => {
+    const { source } = harness({ handoffObservationError: new Error("private handoff failure must not render") })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.handoffs.emptyState).toMatchObject({
+      title: "Portable handoff history unavailable",
+      detail: expect.stringMatching(/does not assert that handoff history is absent/i),
+    })
+    expect(snapshot.page.selectedRun.find((entry) => entry.term === "Handoff lineage")?.value)
+      .toMatch(/observation is unavailable.*no absence claim/i)
+    expect(JSON.stringify(snapshot)).not.toContain("private handoff failure must not render")
+  })
+
+  it("does not claim a Run is unmanaged when its durable record may be outside the bounded view", async () => {
+    const otherRunId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+    const otherRun: Run = {
+      ...run,
+      id: otherRunId,
+      state: "prepared",
+      startedAt: undefined,
+      endedAt: undefined,
+    }
+    const newerRecords = Array.from({ length: 200 }, (_, index) => {
+      const id = `aaaa0000-0000-4000-8000-${index.toString(16).padStart(12, "0")}`
+      return managedRecordWithoutArtifacts(id, otherRun, "2026-07-22T00:00:00.000Z")
+    })
+    const omittedSelectedRecord = managedRecordWithoutArtifacts(
+      managedRunId,
+      run,
+      "2026-07-20T00:00:00.000Z",
+    )
+    const { source } = harness({ managedRuns: [...newerRecords, omittedSelectedRecord] })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.truncation).toMatchObject({ shown: 200, total: 201 })
+    expect(snapshot.page.selectedRun.find((entry) => entry.term === "Managed evidence")?.value)
+      .toMatch(/No Managed Run.*is present in the newest 200 of 201.*may or may not contain one/i)
+    expect(snapshot.page.runs.rows[0]?.cells).toMatchObject({
+      managed: "not present in newest bounded window",
+      attempts: "0 shown; older unknown",
+    })
+  })
+
+  it("does not invent an omitted binding for a Run merely because the global Managed window is truncated", async () => {
+    const otherRun: Run = {
+      ...run,
+      id: "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd",
+      state: "prepared",
+      startedAt: undefined,
+      endedAt: undefined,
+    }
+    const otherRecords = Array.from({ length: 201 }, (_, index) => managedRecordWithoutArtifacts(
+      `bbbb0000-0000-4000-8000-${index.toString(16).padStart(12, "0")}`,
+      otherRun,
+      "2026-07-22T00:00:00.000Z",
+    ))
+    const { source } = harness({ managedRuns: otherRecords })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    const claim = snapshot.page.selectedRun.find((entry) => entry.term === "Managed evidence")?.value ?? ""
+    expect(claim).toMatch(/omitted records may or may not contain one/i)
+    expect(claim).not.toMatch(/A bound Managed Run/i)
+  })
+
+  it("withholds every bound artifact when a Managed Run digest does not verify", async () => {
+    const tamperedResult = managedRunResultSchema.parse({
+      ...managedResult,
+      warnings: [...managedResult.warnings, "runtime-warning"],
+    })
+    const { source } = harness({
+      managedRuns: [managedRun],
+      managedResults: { [managedResultId]: tamperedResult },
+      managedEvidence: { [managedEvidenceId]: managedEvidence },
+      managedApplyDecisions: { [managedDecisionId]: managedDecision },
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    expect(snapshot.page.managedEvidence.rows[0]?.cells.observation).toMatch(/could not be verified/i)
+    for (const withheldKind of ["durable result", "durable evidence", "apply decision"]) {
+      expect(snapshot.page.events.map((event) => event.kind)).not.toContain(withheldKind)
+    }
+    expect(JSON.stringify(snapshot)).not.toContain("Provider failed")
   })
 
   it("exposes every Product-domain creation workflow from its keyboard-renderable route", async () => {

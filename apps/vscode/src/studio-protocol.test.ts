@@ -74,7 +74,17 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         runToolSelections: table("run-tool-selections"),
       }
     case "runs-evidence":
-      return { ...baseFor(route), kind: "runs-evidence", runs: table("runs"), selectedRun: [], events: [], evidence: table("evidence"), recoveryActions: [] }
+      return {
+        ...baseFor(route),
+        kind: "runs-evidence",
+        runs: table("runs"),
+        selectedRun: [],
+        events: [],
+        managedEvidence: table("managed-evidence"),
+        evidence: table("evidence"),
+        handoffs: table("handoffs"),
+        recoveryActions: [],
+      }
     case "readiness":
       return {
         ...baseFor(route),
@@ -134,6 +144,38 @@ describe("Product Studio protocol", () => {
     for (const route of studioRoutes) expect(isStudioSnapshot(snapshot(route)), route).toBe(true)
     expect(isStudioSnapshot({ ...snapshot("overview"), route: "trace" })).toBe(false)
     expect(isStudioSnapshot({ ...snapshot("overview"), unexpected: true })).toBe(false)
+  })
+
+  it("requires bounded Managed Run evidence, handoff history, and normalized event fields", () => {
+    const valid = snapshot("runs-evidence")
+    if (valid.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    const withEvent = {
+      ...valid,
+      page: {
+        ...valid.page,
+        events: [{ id: "event-1", time: "2026-07-21T00:00:00.000Z", kind: "output", summary: "Digest-only evidence." }],
+      },
+    }
+    expect(isStudioSnapshot(withEvent)).toBe(true)
+    expect(isStudioSnapshot({
+      ...withEvent,
+      page: { ...withEvent.page, events: [{ ...withEvent.page.events[0], rawOutput: "private provider output" }] },
+    })).toBe(false)
+    expect(isStudioSnapshot({
+      ...withEvent,
+      page: { ...withEvent.page, events: Array.from({ length: 10_001 }, (_, index) => ({
+        id: `event-${index}`,
+        time: "2026-07-21T00:00:00.000Z",
+        kind: "output",
+        summary: "Digest-only evidence.",
+      })) },
+    })).toBe(false)
+    const withoutManagedEvidence = { ...withEvent.page } as Record<string, unknown>
+    delete withoutManagedEvidence.managedEvidence
+    expect(isStudioSnapshot({ ...withEvent, page: withoutManagedEvidence })).toBe(false)
+    const withoutHandoffs = { ...withEvent.page } as Record<string, unknown>
+    delete withoutHandoffs.handoffs
+    expect(isStudioSnapshot({ ...withEvent, page: withoutHandoffs })).toBe(false)
   })
 
   it("deeply validates and bounds machine-local inspector entries", () => {

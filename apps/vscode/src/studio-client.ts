@@ -699,17 +699,27 @@ class StudioShell {
       const events = element("section", "section")
       events.append(element("h3", undefined, "Normalized events"))
       const list = element("ol", "event-list")
+      list.setAttribute("aria-label", "Durable normalized Managed Run events")
       for (const event of page.events) {
         const row = element("li", "event-row")
         const summary = element("div")
         summary.append(element("strong", undefined, event.kind), element("div", undefined, event.summary))
-        row.append(summary, element("time", "identifier", event.time))
+        const time = element("time", "identifier", event.time)
+        time.dateTime = event.time
+        row.append(summary, time)
         list.append(row)
       }
       events.append(list)
       container.append(events)
+    } else {
+      const events = element("section", "section")
+      events.append(
+        element("h3", undefined, "Normalized events"),
+        element("p", "muted", "No durable normalized Managed Run events are available for the selected Run. Legacy lifecycle state does not imply evidence."),
+      )
+      container.append(events)
     }
-    container.append(this.renderTable(page.evidence))
+    container.append(this.renderTable(page.managedEvidence), this.renderTable(page.evidence), this.renderTable(page.handoffs))
     if (page.recoveryActions.length > 0) container.append(this.renderActionRow(page.recoveryActions))
     return container
   }

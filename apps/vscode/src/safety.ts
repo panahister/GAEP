@@ -68,9 +68,6 @@ export function unsafeSelectionReasons(agentId: string, settings: Record<string,
   if (agentId === "codex-cli" && settings.search === true) {
     reasons.push("search=true is disabled because Codex live search has no per-call provider approval")
   }
-  if (agentId === "codex-cli" && settings.approvalPolicy !== "fail-closed-noninteractive") {
-    reasons.push("Codex CLI execution requires fail-closed-noninteractive approvals")
-  }
   return reasons
 }
 

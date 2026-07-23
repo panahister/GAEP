@@ -7,8 +7,14 @@ import type {
   Decision,
   DesignReadinessReport,
   EvidenceRecord,
+  Handoff,
   InstructionPrivilegeGrant,
   Initiative,
+  ManagedApplyDecisionReceipt,
+  ManagedEvidenceEvent,
+  ManagedRunEvidence,
+  ManagedRunRecord,
+  ManagedRunResult,
   Product,
   ProductDesignDraft,
   ProductDesignRevision,
@@ -29,6 +35,9 @@ import type {
 import { containsSecretShapedValue } from "@gaep/contracts"
 import type { ProductStudioPage, ProductStudioRecordMap, ProductStudioService } from "@gaep/engine"
 
+import type { PortableHandoffObservation } from "./handoff-observation.js"
+import { readVerifiedManagedArtifacts } from "./managed-evidence-verifier.js"
+import { agentStatus } from "./provider-truth.js"
 import { currentInitiative, initiativeRunEligibility, newestRun, unsafeSelectionReasons } from "./safety.js"
 import {
   resolveRuntimeBinding,
@@ -71,6 +80,10 @@ export interface CurrentStudioEngineReader {
   readProduct(): Promise<Product>
   readSelection(): Promise<AgentSelection>
   listRuns(): Promise<Run[]>
+  listManagedRuns?(): Promise<ManagedRunRecord[]>
+  readManagedRunResult?(id: string): Promise<ManagedRunResult>
+  readManagedRunEvidence?(id: string): Promise<ManagedRunEvidence>
+  readManagedApplyDecision?(id: string): Promise<ManagedApplyDecisionReceipt>
   repository: {
     verifyAudit(): Promise<{ valid: boolean; events: number; error?: string; warning?: string }>
   }
@@ -98,6 +111,7 @@ export interface CurrentEngineStudioContext {
   recoveryDiagnostic(): string | undefined
   hasGaepState(): Promise<boolean>
   listInitiatives(): Promise<Initiative[]>
+  listHandoffs?(): Promise<PortableHandoffObservation>
   probeAgents(): Promise<AdapterCapabilities[]>
   runtimeBindings(): RuntimeBindingIndex
   actorId(): string
@@ -109,6 +123,15 @@ interface ObservedStudioState {
   product?: Product
   initiatives: Initiative[]
   runs: Run[]
+  managedRuns: ManagedRunObservation[]
+  managedRunTotal: number
+  handoffs: Handoff[]
+  handoffTotal: number
+  handoffSelectedFileCount: number
+  handoffOmittedOutsideWindow: number
+  handoffOmittedForResourceSafety: number
+  handoffPlatformAttestationUnavailable: boolean
+  selectedRecordId?: string
   selection?: AgentSelection
   agents: AdapterCapabilities[]
   audit?: { valid: boolean; events: number; error?: string; warning?: string }
@@ -142,6 +165,14 @@ interface ObservedStudioState {
   domainPages: Partial<Record<StudioDomainPageKind, ProductStudioPageMetadata>>
 }
 
+interface ManagedRunObservation {
+  record: ManagedRunRecord
+  result?: ManagedRunResult
+  evidence?: ManagedRunEvidence
+  applyDecision?: ManagedApplyDecisionReceipt
+  issue?: string
+}
+
 interface ProductStudioPageMetadata {
   offset: number
   limit: number
@@ -170,17 +201,6 @@ function issue(
 
 function emptySurface(title: string, detail: string, actions: StudioActionControl[] = []): StudioSurfaceState {
   return { kind: "empty", title, detail, issues: [], actions }
-}
-
-function emptyTable(id: string, title: string, detail: string): StudioTableSnapshot {
-  return {
-    id,
-    title,
-    columns: [],
-    rows: [],
-    actions: [],
-    emptyState: emptySurface(`${title} unavailable`, detail),
-  }
 }
 
 function domainControl(
@@ -427,8 +447,302 @@ function latestRunEntries(runs: Run[]): StudioDefinitionEntry[] {
   return [
     { term: "Run", value: run.id, recordId: run.id },
     { term: "State", value: run.state, recordId: run.id },
-    { term: "Agent", value: `${run.agent.agentId} / ${run.agent.modelId}`, recordId: run.id },
+    { term: "Agent", value: boundedDisplay(`${run.agent.agentId} / ${run.agent.modelId}`), recordId: run.id },
   ]
+}
+
+const managedObservationLimit = 200
+const managedTimelineLimit = 10_000
+const studioTextLimit = 20_000
+
+function boundedDisplay(value: string): string {
+  if (value.length <= studioTextLimit) return value
+  const suffix = "… [display truncated]"
+  return `${value.slice(0, studioTextLimit - suffix.length)}${suffix}`
+}
+
+function managedObservationUnavailable(state: ObservedStudioState): boolean {
+  return state.issues.some((candidate) => candidate.id === "managed-runs-unavailable")
+}
+
+function handoffObservationUnavailable(state: ObservedStudioState): boolean {
+  return state.issues.some((candidate) => candidate.id === "handoffs-unavailable")
+}
+
+function managedAbsenceValue(state: ObservedStudioState): string {
+  if (managedObservationUnavailable(state)) {
+    return "Managed Run observation is unavailable; this view makes no absence claim."
+  }
+  if (state.managedRunTotal > state.managedRuns.length) {
+    return `No Managed Run for this legacy Run is present in the newest ${state.managedRuns.length} of ${state.managedRunTotal} observed records; omitted records may or may not contain one.`
+  }
+  return "No durable Managed Run is bound to this legacy Run."
+}
+
+function managedRunTableState(state: ObservedStudioState): string {
+  if (managedObservationUnavailable(state)) return "observation unavailable"
+  if (state.managedRunTotal > state.managedRuns.length) return "not present in newest bounded window"
+  return "not managed"
+}
+
+function managedObservationsForRun(state: ObservedStudioState, runId: string): ManagedRunObservation[] {
+  return state.managedRuns
+    .filter((observation) => observation.record.runId === runId)
+    .sort((left, right) => left.record.attemptNumber - right.record.attemptNumber)
+}
+
+function safeManagedEventSummary(event: ManagedEvidenceEvent): string {
+  switch (event.type) {
+    case "lifecycle":
+      return `${event.phase}${event.turnStatus ? `; turn ${event.turnStatus}` : ""}. Provider references remain digest-only.`
+    case "output":
+      return `${event.channel} output retained only as ${event.contentDigest}; ${event.byteLength} byte(s); ${event.redactionCount} redaction(s).`
+    case "item":
+      return `${event.itemType} ${event.status}; item reference ${event.itemRef}.`
+    case "approval":
+      return `${event.approvalKind} approval ${event.outcome}; request ${event.requestRef}${event.authorizationRef ? `; authorization ${event.authorizationRef}` : ""}.`
+    case "warning":
+      return `Warning ${event.code}${event.contentDigest ? `; redacted content ${event.contentDigest}` : ""}.`
+    case "error":
+      return `Error ${event.code}; ${event.retryable ? "retryable" : "not retryable"}${event.contentDigest ? `; redacted content ${event.contentDigest}` : ""}.`
+  }
+}
+
+function managedTimeline(state: ObservedStudioState, run: Run | undefined): RunPageSnapshot["events"] {
+  if (!run) return []
+  const lineage = managedObservationsForRun(state, run.id)
+  const latest = lineage.at(-1)
+  const events: RunPageSnapshot["events"] = []
+  for (const observation of lineage) {
+    const { record, result, evidence, applyDecision } = observation
+    events.push({
+      id: `managed-run:${record.id}`,
+      time: record.createdAt,
+      kind: `Managed attempt ${record.attemptNumber}`,
+      summary: `${record.mode}; state ${record.state}; recovery ${record.recovery.status}${record.previousManagedRunId ? `; resumed from ${record.previousManagedRunId}` : "; lineage root"}.`,
+    })
+    if (evidence) {
+      if (observation === latest) {
+        events.push(...evidence.events.map((event) => ({
+          id: `managed-event:${record.id}:${event.sequence}`,
+          time: event.observedAt,
+          kind: event.type,
+          summary: safeManagedEventSummary(event),
+        })))
+      }
+      events.push({
+        id: `managed-evidence:${evidence.id}`,
+        time: evidence.capturedAt,
+        kind: "durable evidence",
+        summary: [
+          `${evidence.events.length} normalized event(s); event-set ${evidence.eventsDigest}`,
+          `effects ${evidence.actualEffects.map((effect) => `${effect.effect}=${effect.status}`).join(", ") || "none"}`,
+          evidence.staging
+            ? `${evidence.staging.changes.length} workspace-relative staged change(s); apply ${evidence.staging.applyState}; ${evidence.staging.excludedPathCount} excluded path(s)`
+            : "no staged workspace inventory",
+          observation === latest
+            ? "normalized event detail shown for this latest attempt"
+            : "older-attempt normalized event detail is summarized, not expanded, in this bounded view",
+        ].join("; "),
+      })
+    }
+    if (result) {
+      events.push({
+        id: `managed-result:${result.id}`,
+        time: result.endedAt,
+        kind: "durable result",
+        summary: `Provider ${result.providerDisposition}; termination ${result.terminationCause}; outcome ${result.outcome.status} (${result.outcome.basis}); terminal state ${result.terminalState}; ${result.warnings.length} warning code(s).`,
+      })
+    }
+    if (applyDecision) {
+      events.push({
+        id: `managed-apply:${applyDecision.id}`,
+        time: applyDecision.decidedAt,
+        kind: "apply decision",
+        summary: `Human decision bound ${applyDecision.changedInventory.length} workspace-relative changed file(s) to inventory ${applyDecision.changedInventoryDigest} and write envelope ${applyDecision.writeEnvelopeDigest}. Actor identity is intentionally withheld.`,
+      })
+    }
+    if (observation.issue) {
+      events.push({
+        id: `managed-observation-warning:${record.id}`,
+        time: record.updatedAt,
+        kind: "observation warning",
+        summary: observation.issue,
+      })
+    }
+  }
+  return events
+    .sort((left, right) => left.time.localeCompare(right.time) || left.id.localeCompare(right.id))
+    .slice(-managedTimelineLimit)
+}
+
+function selectedRunEvidenceEntries(state: ObservedStudioState, run: Run | undefined): StudioDefinitionEntry[] {
+  if (!run) return []
+  const entries: StudioDefinitionEntry[] = [
+    { term: "Run", value: run.id, recordId: run.id },
+    { term: "Run state", value: run.state, recordId: run.id },
+    { term: "Agent", value: boundedDisplay(`${run.agent.agentId} / ${run.agent.modelId}`), recordId: run.id },
+  ]
+  const handoffs = state.handoffs.filter((handoff) => handoff.fromRunId === run.id)
+  entries.push({
+    term: "Handoff lineage",
+    value: handoffObservationUnavailable(state)
+      ? "Portable handoff observation is unavailable; this view makes no absence claim."
+      : state.handoffTotal > state.handoffs.length
+        ? `${handoffs.length} matching portable handoff(s) are shown in the bounded observation window; omitted records may or may not reference this Run.`
+        : `${handoffs.length} portable handoff(s) originate from this Run.`,
+  })
+  const lineage = managedObservationsForRun(state, run.id)
+  const managed = lineage.at(-1)
+  if (!managed) {
+    entries.push({ term: "Managed evidence", value: managedAbsenceValue(state) })
+    return entries
+  }
+  const { record, result, evidence, applyDecision } = managed
+  entries.push(
+    { term: "Managed lineage", value: `Latest observed attempt ${record.attemptNumber}; ${lineage.length} record(s) shown in the bounded window; complete lineage is not inferred; root ${record.rootManagedRunId}` },
+    { term: "Event detail boundary", value: "Normalized event detail is expanded for the latest observed attempt; earlier durable evidence remains visible as a digest-bound summary." },
+    { term: "Current managed attempt", value: `${record.attemptNumber}; ${record.id}`, recordId: record.id },
+    { term: "Managed mode / state", value: `${record.mode} / ${record.state}` },
+    { term: "Recovery", value: `${record.recovery.status}${record.recovery.reasonCode ? ` · ${record.recovery.reasonCode}` : ""}` },
+    { term: "Exact bindings", value: `${record.bindingsDigest}; ${record.bindings.contextPacks.length} Context Pack(s); ${record.bindings.tools.length} Tool(s)` },
+  )
+  if (result) entries.push(
+    { term: "Durable result", value: `${result.id}; provider ${result.providerDisposition}; ${result.terminationCause}` },
+    { term: "Outcome", value: `${result.outcome.status} · ${result.outcome.basis}` },
+  )
+  if (evidence) entries.push(
+    { term: "Durable evidence", value: `${evidence.id}; ${evidence.events.length} normalized event(s); ${evidence.eventsDigest}` },
+    { term: "Observed effects", value: evidence.actualEffects.map((effect) => `${effect.effect}=${effect.status}`).join(" · ") || "none" },
+    { term: "Staged inventory", value: evidence.staging
+      ? `${evidence.staging.changes.length} workspace-relative file(s); ${evidence.staging.applyState}; inventory content remains outside Product Studio`
+      : "not applicable" },
+  )
+  if (applyDecision) entries.push(
+    { term: "Apply decision", value: `${applyDecision.id}; ${applyDecision.changedInventory.length} file(s); ${applyDecision.changedInventoryDigest}` },
+  )
+  return entries
+}
+
+function managedEvidenceTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = state.managedRuns.map(({ record, result, evidence, applyDecision, issue: observationIssue }) => ({
+    id: record.id,
+    cells: {
+      managedRun: record.id,
+      run: record.runId,
+      attempt: String(record.attemptNumber),
+      state: record.state,
+      outcome: result ? `${result.outcome.status} · ${result.outcome.basis}` : "not available",
+      events: evidence ? String(evidence.events.length) : "not available",
+      staging: evidence?.staging ? `${evidence.staging.changes.length} file(s) · ${evidence.staging.applyState}` : "not applicable",
+      applyDecision: applyDecision ? `${applyDecision.changedInventory.length} file(s) bound` : "none",
+      observation: observationIssue ?? "bound graph verified",
+    },
+    state: observationIssue ? "warning" : record.state,
+    actions: [control("Select underlying Run", { kind: "select-record", recordId: record.runId })],
+  }))
+  return {
+    id: "managed-evidence",
+    title: "Managed execution evidence",
+    columns: [
+      { key: "managedRun", label: "Managed Run", identifier: true },
+      { key: "run", label: "Run" },
+      { key: "attempt", label: "Attempt" },
+      { key: "state", label: "State" },
+      { key: "outcome", label: "Outcome" },
+      { key: "events", label: "Events" },
+      { key: "staging", label: "Staging" },
+      { key: "applyDecision", label: "Apply decision" },
+      { key: "observation", label: "Observation" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: managedObservationUnavailable(state)
+        ? emptySurface(
+            "Managed execution evidence unavailable",
+            "The durable Managed Run reader could not be observed. Review diagnostics; this view does not assert that evidence is absent.",
+          )
+        : emptySurface(
+            "No managed execution evidence",
+            "No durable Managed Run is available. Legacy Run lifecycle state does not imply normalized evidence, verified outcome, or an apply decision.",
+          ),
+    } : {}),
+    ...(state.managedRunTotal > rows.length ? {
+      truncation: {
+        shown: rows.length,
+        total: state.managedRunTotal,
+        message: `Showing the ${rows.length} newest Managed Runs. Older durable records remain in the governed repository.`,
+      },
+    } : {}),
+  }
+}
+
+function handoffTable(state: ObservedStudioState): StudioTableSnapshot {
+  const records = state.handoffs
+  const rows = records.map((record) => ({
+    id: record.id,
+    cells: {
+      handoff: record.id,
+      fromRun: record.fromRunId,
+      target: boundedDisplay(`${record.toAgent.agentId} / ${record.toAgent.modelId}`),
+      workspace: `${record.workspaceBaseline.changedFiles.length} workspace-relative change(s) · ${record.workspaceBaseline.truthClass ?? "not classified"}`,
+      evidence: `${record.evidence.length} evidence reference(s)`,
+      unresolved: String(record.unresolvedMatters.length),
+      status: record.acknowledgedAt ? "acknowledged" : "recorded",
+      created: record.createdAt,
+    },
+    state: record.acknowledgedAt ? "acknowledged" : "recorded",
+    actions: [control("Select source Run", { kind: "select-record", recordId: record.fromRunId })],
+  }))
+  return {
+    id: "handoffs",
+    title: "Portable handoff history",
+    columns: [
+      { key: "handoff", label: "Handoff", identifier: true },
+      { key: "fromRun", label: "From Run" },
+      { key: "target", label: "Target agent / model" },
+      { key: "workspace", label: "Workspace baseline" },
+      { key: "evidence", label: "Evidence" },
+      { key: "unresolved", label: "Unresolved" },
+      { key: "status", label: "Status" },
+      { key: "created", label: "Created" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: handoffObservationUnavailable(state)
+        ? emptySurface(
+            "Portable handoff history unavailable",
+            "The governed handoff reader could not be observed. Review diagnostics; this view does not assert that handoff history is absent.",
+          )
+        : state.handoffTotal > 0
+          ? emptySurface(
+              "Portable handoff details withheld by safety bounds",
+              state.handoffPlatformAttestationUnavailable
+                ? "Governed handoff records exist, but native Windows cannot attest no-follow file identity, so their contents are withheld. No chronology or absence claim is made."
+                : "Governed handoff records exist, but none were loaded inside the deterministic count, byte, and stable-file observation boundary. No chronology or absence claim is made.",
+            )
+          : emptySurface(
+            "No portable handoff history",
+            "No governed agent/model handoff is recorded. Runtime paths, process identities, credentials, and free-text handoff content are never projected here.",
+          ),
+    } : {}),
+    ...(state.handoffTotal > rows.length ? {
+      truncation: {
+        shown: rows.length,
+        total: state.handoffTotal,
+        message: [
+          `Showing ${rows.length} parsed handoff record(s) from a deterministic filename window of ${state.handoffSelectedFileCount}.`,
+          `${state.handoffOmittedOutsideWindow} record(s) are outside that window and ${state.handoffOmittedForResourceSafety} selected record(s) were withheld by byte or stable-file identity limits.`,
+          ...(state.handoffPlatformAttestationUnavailable
+            ? ["Native Windows cannot attest no-follow file identity, so selected handoff contents are withheld."]
+            : []),
+          "The bounded view does not assert global recency or absence.",
+        ].join(" "),
+      },
+    } : {}),
+  }
 }
 
 interface PrepareRunEligibility {
@@ -944,15 +1258,6 @@ function tracePage(state: ObservedStudioState): TracePageSnapshot {
   }
 }
 
-function agentStatus(capability: AdapterCapabilities): string {
-  if (!capability.detected) return "Not detected"
-  if (capability.executionInterface === "unavailable") return "Detected · inspection only"
-  if (capability.executionInterface === "managed-in-process") return "Detected · managed in-process capability"
-  if (capability.executionInterface === "cli-stream-json") return "Detected · managed stream capability"
-  if (capability.executionInterface === "cli-jsonl") return "Detected · structured CLI capability"
-  return `Detected · ${capability.executionInterface}`
-}
-
 function displaySettingValue(value: unknown): string {
   if (value === undefined) return "undefined"
   if (typeof value === "string") return value.slice(0, 20_000)
@@ -970,7 +1275,6 @@ function agentPage(
   const index = new Map(state.agents.map((candidate) => [candidate.adapterId, candidate]))
   const rows = state.agents.map((capability) => {
     const selectable = capability.detected && capability.executionInterface !== "unavailable"
-    const modelId = capability.models[0]?.id ?? "provider-selected"
     return {
       id: capability.adapterId,
       cells: {
@@ -982,11 +1286,11 @@ function agentPage(
       },
       state: selectable ? "available" : capability.detected ? "detection-only" : "absent",
       actions: [control(
-        "Select",
-        { kind: "select-agent", adapterId: capability.adapterId, agentId: capability.agentId, modelId, settings: {} },
+        "Open native agent/model picker",
+        { kind: "select-agent", adapterId: "native-picker", agentId: "native-picker", modelId: "native-picker", settings: {} },
         selectable,
         "secondary",
-        selectable ? undefined : "This capability is observation-only and cannot be selected for execution.",
+        selectable ? undefined : "This executable cannot be selected for managed execution; review its limitations and re-probe after installing a supported interface.",
       )],
     }
   })
@@ -1209,7 +1513,7 @@ function agentPage(
       { term: "Model truth", value: state.selection.modelTruthClass },
     ] : [],
     limitations,
-    handoffs: emptyTable("handoffs", "Handoffs", "The current engine does not expose a handoff list to Product Studio."),
+    handoffs: handoffTable(state),
     contextPacks,
     instructionPrivilegeGrants,
     workflowPlans,
@@ -1236,6 +1540,7 @@ function agentPage(
 function runPage(state: ObservedStudioState): RunPageSnapshot {
   const unknownRuns = state.runs.filter((run) => run.state === "unknown")
   const eligibility = prepareRunEligibility(state)
+  const selectedRun = state.runs.find((run) => run.id === state.selectedRecordId) ?? newestRun(state.runs)
   return {
     ...base("runs-evidence", state.product),
     ...(designPanel("runs-evidence", state) ? { design: designPanel("runs-evidence", state) } : {}),
@@ -1249,28 +1554,45 @@ function runPage(state: ObservedStudioState): RunPageSnapshot {
         { key: "initiative", label: "Initiative" },
         { key: "agent", label: "Agent / model" },
         { key: "state", label: "State" },
+        { key: "managed", label: "Managed state" },
+        { key: "attempts", label: "Attempts" },
         { key: "started", label: "Started" },
         { key: "ended", label: "Ended" },
       ],
-      rows: state.runs.map((run) => ({
-        id: run.id,
-        cells: {
-          run: run.id,
-          initiative: run.initiativeId,
-          agent: `${run.agent.agentId} / ${run.agent.modelId}`,
-          state: run.state,
-          started: run.startedAt ?? "not started",
-          ended: run.endedAt ?? "not ended",
-        },
-        state: run.state,
-        actions: run.state === "unknown" ? [control("Inspect diagnostics", { kind: "show-diagnostics" })] : [],
-      })),
+      rows: state.runs.map((run) => {
+        const managed = managedObservationsForRun(state, run.id)
+        const latestManaged = managed.at(-1)
+        return {
+          id: run.id,
+          cells: {
+            run: run.id,
+            initiative: run.initiativeId,
+            agent: boundedDisplay(`${run.agent.agentId} / ${run.agent.modelId}`),
+            state: run.state,
+            managed: latestManaged?.record.state ?? managedRunTableState(state),
+            attempts: latestManaged
+              ? `latest attempt ${latestManaged.record.attemptNumber}; ${managed.length} shown`
+              : managedObservationUnavailable(state)
+                ? "unavailable"
+                : state.managedRunTotal > state.managedRuns.length ? "0 shown; older unknown" : "0",
+            started: run.startedAt ?? "not started",
+            ended: run.endedAt ?? "not ended",
+          },
+          state: latestManaged?.record.state ?? run.state,
+          actions: [
+            control("Select", { kind: "select-record", recordId: run.id }),
+            ...(run.state === "unknown" ? [control("Inspect diagnostics", { kind: "show-diagnostics" })] : []),
+          ],
+        }
+      }),
       actions: [],
       ...(state.runs.length === 0 ? { emptyState: emptySurface("No runs", "Create an active Initiative, select an executable agent, and resolve a Workflow Plan before preparing a managed run.") } : {}),
     },
-    selectedRun: latestRunEntries(state.runs),
-    events: [],
+    selectedRun: selectedRunEvidenceEntries(state, selectedRun),
+    events: managedTimeline(state, selectedRun),
+    managedEvidence: managedEvidenceTable(state),
     evidence: evidenceTable(state.evidence),
+    handoffs: handoffTable(state),
     recoveryActions: unknownRuns.length > 0 ? [control("Show diagnostics", { kind: "show-diagnostics" })] : [],
   }
 }
@@ -1455,7 +1777,13 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       toolDefinitions: capTable(page.toolDefinitions),
       runToolSelections: capTable(page.runToolSelections),
     }
-    case "runs-evidence": return { ...page, runs: capTable(page.runs), evidence: capTable(page.evidence) }
+    case "runs-evidence": return {
+      ...page,
+      runs: capTable(page.runs),
+      managedEvidence: capTable(page.managedEvidence),
+      evidence: capTable(page.evidence),
+      handoffs: capTable(page.handoffs),
+    }
     case "readiness": return { ...page, designRevisions: capTable(page.designRevisions), productRevisions: capTable(page.productRevisions) }
   }
 }
@@ -1946,11 +2274,15 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
 
   private async observe(route: StudioRoute): Promise<ObservedStudioState> {
     const empty: ObservedStudioState = {
-      initiatives: [], runs: [], agents: [], issues: [], productState: "absent",
+      initiatives: [], runs: [], managedRuns: [], managedRunTotal: 0, handoffs: [], handoffTotal: 0,
+      handoffSelectedFileCount: 0, handoffOmittedOutsideWindow: 0, handoffOmittedForResourceSafety: 0,
+      handoffPlatformAttestationUnavailable: false,
+      agents: [], issues: [], productState: "absent",
       designRevisions: [], productRevisions: [], changes: [], workItems: [], requirements: [], decisions: [], risks: [],
       architecture: [], evidence: [], contextPacks: [], instructionPrivilegeGrants: [], workflowPlans: [], toolDefinitions: [], runToolSelections: [], traceLinks: [],
       health: [], healthTotal: 0, searchResults: this.searchResults, searchResultTotal: this.searchResultTotal,
       domainPages: {},
+      ...(this.selectedRecordId ? { selectedRecordId: this.selectedRecordId } : {}),
       ...(this.impact ? { impact: this.impact } : {}),
       ...(this.importPreview ? { importPreview: this.importPreview } : {}),
     }
@@ -2000,6 +2332,21 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     else this.recordObservationFailure(empty, "audit", audit.reason)
     if (agents.status === "fulfilled") empty.agents = agents.value
     else this.recordObservationFailure(empty, "agent-probe", agents.reason)
+    const auditSemanticsVerified = empty.audit?.valid === true
+    if (!auditSemanticsVerified && route === "runs-evidence") {
+      empty.issues.push(issue(
+        "managed-runs-unavailable",
+        "Managed Run semantic artifacts are withheld because the audit chain is invalid or unavailable.",
+        "warning",
+      ))
+    }
+    if (!auditSemanticsVerified && (route === "agents-tools" || route === "runs-evidence")) {
+      empty.issues.push(issue(
+        "handoffs-unavailable",
+        "Portable handoff semantic artifacts are withheld because the audit chain is invalid or unavailable.",
+        "warning",
+      ))
+    }
     const studio = engine.productStudio
     if (!studio) {
       empty.issues.push(issue("product-studio-service-unavailable", "The Product-domain service is unavailable in this engine build.", "blocker"))
@@ -2052,8 +2399,43 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       addPage("workflow-plans", "workflow-plan", (value) => { empty.workflowPlans = value })
       addPage("tool-definitions", "tool-definition", (value) => { empty.toolDefinitions = value })
       addPage("run-tool-selections", "run-tool-selection", (value) => { empty.runToolSelections = value })
+      if (auditSemanticsVerified && this.context.listHandoffs) add("handoffs", async () => {
+        if (empty.audit?.valid !== true) {
+          throw new Error("The audit chain is invalid or unavailable; portable handoff semantic artifacts are withheld")
+        }
+        return this.context.listHandoffs!()
+      }, (value) => {
+        const observation = value as PortableHandoffObservation
+        empty.handoffs = observation.records
+        empty.handoffTotal = observation.total
+        empty.handoffSelectedFileCount = observation.selectedFileCount
+        empty.handoffOmittedOutsideWindow = observation.omittedOutsideWindow
+        empty.handoffOmittedForResourceSafety = observation.omittedForResourceSafety
+        empty.handoffPlatformAttestationUnavailable = observation.platformAttestationUnavailable
+      })
     }
-    if (route === "runs-evidence") addPage("evidence", "evidence", (value) => { empty.evidence = value })
+    if (route === "runs-evidence") {
+      addPage("evidence", "evidence", (value) => { empty.evidence = value })
+      if (auditSemanticsVerified) add("managed-runs", () => this.readManagedRunObservations(engine, true), (value) => {
+        const managed = value as { observations: ManagedRunObservation[]; total: number }
+        empty.managedRuns = managed.observations
+        empty.managedRunTotal = managed.total
+      })
+      if (auditSemanticsVerified && this.context.listHandoffs) add("handoffs", async () => {
+        if (empty.audit?.valid !== true) {
+          throw new Error("The audit chain is invalid or unavailable; portable handoff semantic artifacts are withheld")
+        }
+        return this.context.listHandoffs!()
+      }, (value) => {
+        const observation = value as PortableHandoffObservation
+        empty.handoffs = observation.records
+        empty.handoffTotal = observation.total
+        empty.handoffSelectedFileCount = observation.selectedFileCount
+        empty.handoffOmittedOutsideWindow = observation.omittedOutsideWindow
+        empty.handoffOmittedForResourceSafety = observation.omittedForResourceSafety
+        empty.handoffPlatformAttestationUnavailable = observation.platformAttestationUnavailable
+      })
+    }
     if (route === "readiness") {
       addPage("design-revisions", "product-design-revision", (value) => { empty.designRevisions = value })
       addPage("product-revisions", "product-revision", (value) => { empty.productRevisions = value })
@@ -2070,6 +2452,38 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       else this.recordObservationFailure(empty, task.area, outcome.reason)
     })
     return empty
+  }
+
+  private async readManagedRunObservations(
+    engine: CurrentStudioEngineReader,
+    auditVerified: boolean,
+  ): Promise<{ observations: ManagedRunObservation[]; total: number }> {
+    if (!auditVerified) {
+      throw new Error("The audit chain is invalid or unavailable; Managed Run semantic artifacts are withheld")
+    }
+    if (!engine.listManagedRuns || !engine.readManagedRunResult || !engine.readManagedRunEvidence || !engine.readManagedApplyDecision) {
+      throw new Error("This engine build does not expose the durable Managed Run evidence readers")
+    }
+    const records = (await engine.listManagedRuns())
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    const selected = records.slice(0, managedObservationLimit)
+    const observations = await Promise.all(selected.map(async (record): Promise<ManagedRunObservation> => {
+      try {
+        const artifacts = await readVerifiedManagedArtifacts(record, {
+          readResult: (id) => engine.readManagedRunResult!(id),
+          readEvidence: (id) => engine.readManagedRunEvidence!(id),
+          readApplyDecision: (id) => engine.readManagedApplyDecision!(id),
+        })
+        return { record, ...artifacts }
+      } catch (error) {
+        this.context.logDiagnostic(`Product Studio Managed Run ${record.id} evidence observation failed`, error)
+        return {
+          record,
+          issue: "One or more bound durable artifacts could not be verified. No unverified result, evidence, or apply-decision detail is displayed.",
+        }
+      }
+    }))
+    return { observations, total: records.length }
   }
 
   private recordObservationFailure(state: ObservedStudioState, area: string, error: unknown): void {
