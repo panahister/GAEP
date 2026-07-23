@@ -7,6 +7,7 @@ import { ClaudeAdapter } from "@gaep/adapter-claude"
 import {
   capabilityDigest,
   canonicalDigest,
+  DeterministicManualAdapter,
   fingerprintExecutable,
   type AdapterProbeResult,
   type ExecutableFingerprint,
@@ -15,15 +16,27 @@ import {
   containsSecretShapedValue,
   productProfileSchema,
   type AdapterCapabilities,
+  type AgentSelection,
   type AgentSetting,
   type Initiative,
+  type PortableAgentSettingValue,
   type ToolPermission,
 } from "@gaep/contracts"
-import { GaepEngine, initiativeTransitions } from "@gaep/engine"
+import { GaepEngine, handoffReviewDigest, initiativeTransitions, legacySelectionStateDigest } from "@gaep/engine"
 import * as vscode from "vscode"
 
+import {
+  allowsCustomModelIdentifier,
+  exactSelectionReviewText,
+  materialSelectionChange,
+  probeSelectionEligibility,
+  selectionSwitchBlockers,
+  settingForSelectedModel,
+} from "./agent-selection.js"
 import { ActiveRunRegistry } from "./run-registry.js"
 import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-source.js"
+import { safeErrorMessage, sanitizeDiagnosticText } from "./diagnostic-safety.js"
+import { assertManagedRunLaunchAvailable } from "./phase-gates.js"
 import { resolveLocalActorPrincipal } from "./local-actor.js"
 import {
   resolveRuntimeBinding,
@@ -39,6 +52,7 @@ import {
   currentInitiative,
   initiativeRunEligibility,
   machineScopedSettingValue,
+  newestRun,
   unsafeSelectionReasons,
 } from "./safety.js"
 import { GaepTreeProvider, readInitiatives, type GaepViewContext } from "./tree.js"
@@ -80,11 +94,21 @@ async function requiredInput(prompt: string, options: vscode.InputBoxOptions = {
   return value.trim()
 }
 
-async function collectSetting(setting: AgentSetting): Promise<unknown> {
+async function collectSetting(setting: AgentSetting): Promise<PortableAgentSettingValue | undefined> {
+  if (setting.sensitive) {
+    throw new Error(`${setting.label} is sensitive and requires a machine-local credential binding that this release does not persist in Product records`)
+  }
   if (setting.kind === "select" && setting.options) {
     if (setting.options.length === 0) throw new Error(`${setting.label} has no safe supported option`)
     const selected = await vscode.window.showQuickPick(
-      setting.options.map((option) => ({ label: option.label, description: option.description, value: option.value })),
+      [
+        ...(!setting.required ? [{
+          label: "Use provider default",
+          description: "Do not persist a value for this optional setting",
+          value: undefined,
+        }] : []),
+        ...setting.options.map((option) => ({ label: option.label, description: option.description, value: option.value })),
+      ],
       { title: setting.label, placeHolder: setting.description, ignoreFocusOut: true },
     )
     if (!selected) throw new WorkflowCancelled()
@@ -92,7 +116,11 @@ async function collectSetting(setting: AgentSetting): Promise<unknown> {
   }
   if (setting.kind === "boolean") {
     const selected = await vscode.window.showQuickPick(
-      [{ label: "Enabled", value: true }, { label: "Disabled", value: false }],
+      [
+        ...(!setting.required ? [{ label: "Use provider default", value: undefined }] : []),
+        { label: "Enabled", value: true },
+        { label: "Disabled", value: false },
+      ],
       { title: setting.label, placeHolder: setting.description, ignoreFocusOut: true },
     )
     if (!selected) throw new WorkflowCancelled()
@@ -126,21 +154,30 @@ async function collectSetting(setting: AgentSetting): Promise<unknown> {
 }
 
 async function chooseModel(capabilities: AdapterCapabilities): Promise<string> {
-  const custom = { label: "Enter model identifier...", description: "Use a model accepted by the installed agent", id: "" }
+  const discovered = capabilities.models.map((model) => ({
+    label: model.label,
+    description: `${model.id}${model.alias ? " (provider alias)" : ""}`,
+    detail: model.description,
+    id: model.id,
+    custom: false as const,
+  }))
+  const choices = allowsCustomModelIdentifier(capabilities)
+    ? [...discovered, {
+        label: "Enter model identifier...",
+        description: "Use a model identifier accepted by the installed agent",
+        id: "",
+        custom: true as const,
+      }]
+    : discovered
+  if (choices.length === 0) {
+    throw new Error(`${capabilities.agentLabel} has no selectable model and does not allow an unverified custom model identifier`)
+  }
   const picked = await vscode.window.showQuickPick(
-    [
-      ...capabilities.models.map((model) => ({
-        label: model.label,
-        description: `${model.id}${model.alias ? " (provider alias)" : ""}`,
-        detail: model.description,
-        id: model.id,
-      })),
-      custom,
-    ],
+    choices,
     { title: `Select ${capabilities.agentLabel} model`, ignoreFocusOut: true },
   )
   if (!picked) throw new WorkflowCancelled()
-  return picked.id || requiredInput("Enter the exact model identifier")
+  return picked.custom ? requiredInput("Enter the exact model identifier") : picked.id
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -172,6 +209,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   let studioProvider: StudioProvider | undefined
   let studioContextGeneration = randomUUID()
   let productDomainMutationActive = false
+  let agentSelectionWorkflowActive = false
   const productDomainMutationWaiters = new Set<() => void>()
 
   const rotateStudioContext = (): void => {
@@ -194,12 +232,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   }
 
+  const withAgentSelectionWorkflow = async <T>(operation: () => Promise<T>): Promise<T> => {
+    if (agentSelectionWorkflowActive) throw new Error("Another agent-selection workflow is already open")
+    agentSelectionWorkflowActive = true
+    try {
+      return await operation()
+    } finally {
+      agentSelectionWorkflowActive = false
+    }
+  }
+
   const runtimeBindings = (): RuntimeBindingIndex => ({
     ...(context.globalState.get<RuntimeBindingIndex>(legacyRuntimeBindingsKey) ?? {}),
     ...(context.globalState.get<RuntimeBindingIndex>(runtimeBindingsKey) ?? {}),
   })
 
-  const rememberRuntimeBinding = async (
+  const rememberExecutableRuntimeBinding = async (
     workspacePath: string,
     probe: AdapterProbeResult,
   ): Promise<ExecutableFingerprint> => {
@@ -235,8 +283,38 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return fingerprint
   }
 
+  const rememberSelectedRuntimeBinding = async (
+    workspacePath: string,
+    probe: AdapterProbeResult,
+  ): Promise<ExecutableFingerprint | undefined> => {
+    const eligibility = probeSelectionEligibility(probe)
+    if (!eligibility.selectable) throw new Error(eligibility.reason)
+    if (eligibility.runtimeKind === "managed-in-process") {
+      if (probe.runtimeBinding.kind !== "managed-in-process") {
+        throw new Error("The selected managed runtime binding changed before it could be recorded")
+      }
+      const next = {
+        ...(context.globalState.get<RuntimeBindingIndex>(runtimeBindingsKey) ?? {}),
+        [runtimeBindingKey(workspacePath, probe.capabilities.adapterId)]: {
+          schemaVersion: 2,
+          scope: "machine-local",
+          kind: "managed-in-process",
+          adapterId: probe.capabilities.adapterId,
+          agentId: probe.capabilities.agentId,
+          capabilityDigest: capabilityDigest(probe.capabilities),
+          runtimeId: probe.runtimeBinding.runtimeId,
+          observedAt: new Date().toISOString(),
+        },
+      }
+      await context.globalState.update(runtimeBindingsKey, next)
+      return undefined
+    }
+    return rememberExecutableRuntimeBinding(workspacePath, probe)
+  }
+
   const logDiagnostic = (message: string, error?: unknown): void => {
-    const detail = error instanceof Error ? `${message}: ${error.message}` : message
+    const safeMessage = sanitizeDiagnosticText(message)
+    const detail = error === undefined ? safeMessage : `${safeMessage}: ${safeErrorMessage(error, "Unknown failure")}`
     diagnostics.error(detail)
   }
 
@@ -319,7 +397,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       lastStatusDiagnostic = undefined
     } catch (error) {
       const gaepRootExists = await exists(join(selectedFolder.uri.fsPath, ".gaep"))
-      const message = error instanceof Error ? error.message : "Product is not initialized"
+      const message = safeErrorMessage(error, "Product is not initialized")
       if (gaepRootExists && message !== lastStatusDiagnostic) {
         logDiagnostic("Product state inspection failed", error)
         lastStatusDiagnostic = message
@@ -386,18 +464,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     recoveryDiagnostic = undefined
     lastStatusDiagnostic = undefined
     engine = new GaepEngine(folder.uri.fsPath, [
+      new DeterministicManualAdapter(),
       new CodexAdapter(machineSetting("codex.executable", "codex")),
       new ClaudeAdapter(machineSetting("claude.executable", "claude")),
     ])
     configureWatcher(folder)
     await context.workspaceState.update(selectedWorkspaceKey, folder.uri.toString())
-    diagnostics.info(`Selected Product root: ${folder.uri.fsPath}`)
+    diagnostics.info(sanitizeDiagnosticText(`Selected Product root: ${folder.uri.fsPath}`))
     if (recover && vscode.workspace.isTrusted) {
       try {
         const recovered = await engine.recoverInterruptedRuns("gaep.vscode.restart")
         if (recovered.length > 0) diagnostics.warn(`Recovered ${recovered.length} interrupted run(s) as unknown.`)
       } catch (error) {
-        recoveryDiagnostic = error instanceof Error ? error.message : "Unknown recovery failure"
+        recoveryDiagnostic = safeErrorMessage(error, "Unknown recovery failure")
         logDiagnostic("Interrupted-run recovery failed; GAEP remains in diagnostic mode", error)
       }
     }
@@ -448,6 +527,99 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return { engine, path: selectedFolder.uri.fsPath }
   }
 
+  const assertRuntimeContextCurrent = (
+    runtime: { engine: GaepEngine; path: string },
+    expectedContextGeneration: string,
+  ): void => {
+    if (!vscode.workspace.isTrusted) throw new Error("Workspace trust changed while the agent-selection workflow was open")
+    if (
+      studioContextGeneration !== expectedContextGeneration ||
+      engine !== runtime.engine ||
+      selectedFolder?.uri.fsPath !== runtime.path
+    ) {
+      throw new Error("The selected Product root changed while the agent-selection workflow was open; review the current Product before continuing")
+    }
+    if (recoveryDiagnostic) throw new Error(`GAEP recovery became blocked: ${recoveryDiagnostic}`)
+  }
+
+  const assertSelectionChangeAllowed = async (runtime: { engine: GaepEngine; path: string }): Promise<void> => {
+    let compatibility: Awaited<ReturnType<typeof runtime.engine.repository.readAgentSelectionCompatibility>> | undefined
+    try {
+      compatibility = await runtime.engine.repository.readAgentSelectionCompatibility()
+    } catch (error) {
+      if (await exists(join(runtime.path, ".gaep", "runtime", "selection.json"))) throw error
+    }
+    if (compatibility?.status === "migration-required") {
+      if (activeAgentRuns.hasRoot(runtime.path)) {
+        throw new Error("Legacy Agent Selection migration is blocked while a provider process remains active for this Product root")
+      }
+      return
+    }
+    if (compatibility?.status === "invalid") {
+      throw new Error(`The stored Agent Selection is invalid: ${compatibility.issues.join("; ")}`)
+    }
+    const [runs, managedRuns, pendingReviews] = await Promise.all([
+      runtime.engine.listRuns(),
+      runtime.engine.listManagedRuns(),
+      runtime.engine.listPendingManagedReviewStatuses(),
+    ])
+    const blockers = selectionSwitchBlockers({
+      runs,
+      managedRuns,
+      pendingReviews,
+      activeRoot: activeAgentRuns.hasRoot(runtime.path),
+    })
+    if (blockers.length > 0) {
+      throw new Error(`Agent, model, and settings cannot change yet: ${blockers.join("; ")}`)
+    }
+  }
+
+  const selectionStateMarker = async (runtime: { engine: GaepEngine; path: string }): Promise<string> => {
+    try {
+      const compatibility = await runtime.engine.repository.readAgentSelectionCompatibility()
+      if (compatibility.status === "current") return `current:${canonicalDigest(compatibility.selection)}`
+      if (compatibility.status === "migration-required") {
+        return `legacy:${legacySelectionStateDigest(compatibility)}`
+      }
+      throw new Error(`The stored Agent Selection is invalid: ${compatibility.issues.join("; ")}`)
+    } catch (error) {
+      if (await exists(join(runtime.path, ".gaep", "runtime", "selection.json"))) throw error
+      return "missing"
+    }
+  }
+
+  const revalidateSelectionProbe = async (
+    runtime: { engine: GaepEngine; path: string },
+    expected: AdapterProbeResult,
+  ): Promise<AdapterProbeResult> => {
+    const adapter = runtime.engine.adapters.get(expected.capabilities.adapterId)
+    if (!adapter) throw new Error("The selected agent adapter is no longer registered")
+    const fresh = await adapter.probe({ refreshModels: true })
+    const eligibility = probeSelectionEligibility(fresh)
+    if (!eligibility.selectable) throw new Error(eligibility.reason)
+    if (capabilityDigest(fresh.capabilities) !== capabilityDigest(expected.capabilities)) {
+      throw new Error("The selected agent capabilities changed while the selection workflow was open; review the agent, model, and settings again")
+    }
+    if (expected.runtimeBinding.kind !== fresh.runtimeBinding.kind) {
+      throw new Error("The selected agent runtime kind changed while the selection workflow was open")
+    }
+    if (
+      expected.runtimeBinding.kind === "executable" &&
+      fresh.runtimeBinding.kind === "executable" &&
+      !sameExecutableFingerprint(expected.runtimeBinding.executableFingerprint, fresh.runtimeBinding.executableFingerprint)
+    ) {
+      throw new Error("The selected agent executable changed while the selection workflow was open; review it again")
+    }
+    if (
+      expected.runtimeBinding.kind === "managed-in-process" &&
+      fresh.runtimeBinding.kind === "managed-in-process" &&
+      expected.runtimeBinding.runtimeId !== fresh.runtimeBinding.runtimeId
+    ) {
+      throw new Error("The selected managed runtime identity changed while the selection workflow was open")
+    }
+    return fresh
+  }
+
   const probeAdaptersResilient = async (runtimeEngine: GaepEngine): Promise<AdapterProbeResult[]> => {
     const outcomes = await Promise.all([...runtimeEngine.adapters.values()].map(async (adapter) => {
       try {
@@ -465,9 +637,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await operation()
     } catch (error) {
       if (error instanceof WorkflowCancelled) return
-      const message = error instanceof Error ? error.message : "Unknown GAEP failure"
+      const message = safeErrorMessage(error, "Unknown GAEP failure")
       logDiagnostic("Command failed", error)
-      await vscode.window.showErrorMessage(message, "Show Diagnostics").then((selected) => {
+      void vscode.window.showErrorMessage(message, "Show Diagnostics").then((selected) => {
         if (selected === "Show Diagnostics") diagnostics.show(true)
       })
     }
@@ -1445,7 +1617,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("gaep.refresh", refresh),
     vscode.commands.registerCommand("gaep.showDiagnostics", () => {
       diagnostics.info(`Workspace trusted: ${vscode.workspace.isTrusted}`)
-      diagnostics.info(`Selected Product root: ${selectedFolder?.uri.fsPath ?? "none"}`)
+      diagnostics.info(sanitizeDiagnosticText(`Selected Product root: ${selectedFolder?.uri.fsPath ?? "none"}`))
       diagnostics.info(`Recovery diagnostic: ${recoveryDiagnostic ?? "none"}`)
       diagnostics.info(`Managed active runs: ${activeAgentRuns.list().map((run) => run.runId).join(", ") || "none"}`)
       diagnostics.info(`Local actor: ${localActor.id} (machine-local attribution only; not an approval authority)`)
@@ -1495,109 +1667,140 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await vscode.commands.executeCommand("gaep.selectAgent")
   })))
 
-  context.subscriptions.push(vscode.commands.registerCommand("gaep.selectAgent", safely(async () => {
+  context.subscriptions.push(vscode.commands.registerCommand("gaep.selectAgent", safely(() => withAgentSelectionWorkflow(async () => {
     const runtime = await requireRuntime()
+    const expectedContextGeneration = studioContextGeneration
     await runtime.engine.readProduct()
-    const running = (await runtime.engine.listRuns()).filter((run) => run.state === "running")
-    if (running.length > 0 || activeAgentRuns.hasRoot(runtime.path)) {
-      throw new Error("Stop the active agent process before changing agent, model, or settings")
-    }
-    let currentSelection
-    let legacySelectionPresent = false
+    await assertSelectionChangeAllowed(runtime)
+    let currentSelection: AgentSelection | undefined
+    let legacySelection: AgentSelection | undefined
+    let expectedLegacySelectionDigest: `sha256:${string}` | undefined
     try {
       const compatibility = await runtime.engine.repository.readAgentSelectionCompatibility()
       if (compatibility.status === "current") currentSelection = compatibility.selection
-      else if (compatibility.status === "migration-required") legacySelectionPresent = true
+      else if (compatibility.status === "migration-required") {
+        legacySelection = compatibility.portableCandidate
+        expectedLegacySelectionDigest = legacySelectionStateDigest(compatibility)
+      }
       else {
         throw new Error(`The stored Agent Selection is invalid: ${compatibility.issues.join("; ")}`)
       }
     } catch (error) {
       if (await exists(join(runtime.path, ".gaep", "runtime", "selection.json"))) {
-        if (!legacySelectionPresent) throw error
+        if (!legacySelection) throw error
       }
     }
-    if (legacySelectionPresent) {
+    if (legacySelection) {
       diagnostics.warn("A legacy non-portable agent selection is present. Only the explicit engine migration path may replace it.")
     }
+    const expectedSelectionState = await selectionStateMarker(runtime)
     const probes = await vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: "GAEP is detecting installed agents", cancellable: false },
       () => probeAdaptersResilient(runtime.engine),
     )
-    const detected = probes.filter((probe) =>
-      probe.capabilities.detected &&
-      probe.capabilities.executionInterface !== "unavailable" &&
-      probe.runtimeBinding.kind === "executable",
-    )
+    const detected = probes.filter((probe) => {
+      const eligibility = probeSelectionEligibility(probe)
+      return eligibility.selectable && (!legacySelection || (
+        probe.capabilities.adapterId === legacySelection.adapterId &&
+        probe.capabilities.agentId === legacySelection.agentId
+      ))
+    })
     if (detected.length === 0) {
-      const reviewOnly = probes.map((probe) => probe.capabilities).filter((capability) => capability.detected)
-      if (reviewOnly.length > 0) {
-        throw new Error(
-          `${reviewOnly.map((capability) => capability.agentLabel).join(", ")} was detected for capability review, but this release has no technically enforceable execution boundary for it.`,
-        )
-      }
-      throw new Error("No supported installed agent was detected. Configure a machine-scoped executable path in User Settings.")
+      const observed = probes.map((probe) => {
+        const eligibility = probeSelectionEligibility(probe)
+        return `${probe.capabilities.agentLabel}: ${eligibility.selectable ? "available but not eligible for this migration" : eligibility.reason}`
+      })
+      throw new Error(
+        legacySelection
+          ? `The legacy Agent identity cannot be re-probed for explicit migration. ${observed.join("; ")}`
+          : `No supported agent runtime is selectable. ${observed.join("; ")}`,
+      )
     }
     const agent = await vscode.window.showQuickPick(
       detected.map((probe) => ({
         capability: probe.capabilities,
         probe,
         label: probe.capabilities.agentLabel,
-        description: probe.capabilities.runtimeVersion ?? "version unknown",
-        detail: `${probe.capabilities.limitations.join(" ")} The VS Code safety boundary removes elevated permission modes and direct live-search enablement.`,
+        description: `${probe.capabilities.runtimeVersion ?? "version unknown"} · ${probe.runtimeBinding.kind === "managed-in-process" ? "offline managed runtime" : "verified executable"}`,
+        detail: `${probe.capabilities.executionInterface} · ${probe.capabilities.limitations.slice(0, 4).join(" ")}`.slice(0, 2_000),
       })),
       { title: "Select the agent that will execute GAEP work", ignoreFocusOut: true },
     )
     if (!agent) throw new WorkflowCancelled()
-    const modelId = await chooseModel(agent.capability)
-    const settings: Record<string, unknown> = {}
-    for (const rawSetting of agent.capability.settings) {
-      if (agent.capability.agentId === "codex-cli" && rawSetting.key === "search") {
-        settings.search = false
-        continue
+    const legacyMigrationPreview = legacySelection
+      ? await runtime.engine.previewLegacyAgentSelectionMigration(agent.capability)
+      : undefined
+    const modelId = legacyMigrationPreview?.targetSelection.modelId ?? await chooseModel(agent.capability)
+    const selectedModel = agent.capability.models.find((model) => model.id === modelId)
+    const settings: AgentSelection["settings"] = legacyMigrationPreview
+      ? structuredClone(legacyMigrationPreview.targetSelection.settings)
+      : {}
+    if (!legacyMigrationPreview) {
+      for (const rawSetting of agent.capability.settings) {
+        const modelSetting = settingForSelectedModel(agent.capability.adapterId, rawSetting, selectedModel)
+        if (!modelSetting) continue
+        const setting = constrainedSetting(agent.capability.agentId, modelSetting)
+        const value = await collectSetting(setting)
+        if (value !== undefined) settings[setting.key] = value
       }
-      const setting = constrainedSetting(agent.capability.agentId, rawSetting)
-      const value = await collectSetting(setting)
-      if (value !== undefined) settings[setting.key] = value
     }
     const unsafe = unsafeSelectionReasons(agent.capability.agentId, settings)
     if (unsafe.length > 0) throw new Error(unsafe.join("; "))
-    if (legacySelectionPresent) {
-      const accepted = await vscode.window.showWarningMessage(
-        [
-          "GAEP found a legacy path-bearing agent selection.",
-          `Reconfirm ${agent.capability.agentLabel} / ${modelId} and migrate it to the portable selection contract?`,
-          "The engine will require the same agent identity and an exact fresh capability match. It will not copy the executable path into governed records.",
-        ].join("\n\n"),
-        { modal: true },
-        "Reconfirm and Migrate",
-      )
-      if (accepted !== "Reconfirm and Migrate") throw new WorkflowCancelled()
-      await runtime.engine.migrateLegacyAgentSelection({
-        capabilities: agent.capability,
+    const priorRuns = legacySelection ? [] : await runtime.engine.listRuns()
+    const targetSelection = legacyMigrationPreview?.targetSelection ?? {
+        schemaVersion: 2 as const,
+        adapterId: agent.capability.adapterId,
+        agentId: agent.capability.agentId,
         modelId,
+        modelTruthClass: selectedModel?.truthClass ?? ("configured" as const),
+        modelAlias: selectedModel?.alias ?? null,
         settings,
-        confirmation: "reconfirm-portable-agent-selection",
-      }, actorId)
-      await rememberRuntimeBinding(runtime.path, agent.probe)
-      refresh()
-      await vscode.window.showInformationMessage(`${agent.capability.agentLabel} selection migrated and rebound for this machine`)
-      return
-    }
-    const priorRuns = await runtime.engine.listRuns()
-    const selectionChanges = currentSelection && (
-      currentSelection.adapterId !== agent.capability.adapterId ||
-      currentSelection.modelId !== modelId ||
-      JSON.stringify(currentSelection.settings) !== JSON.stringify(settings)
-    )
-    let selectionCommittedByHandoff = false
-    if (currentSelection && selectionChanges && priorRuns.length > 0) {
+        selectedAt: new Date().toISOString(),
+        capabilityDigest: capabilityDigest(agent.capability),
+      }
+    const selectionChanges = currentSelection !== undefined && materialSelectionChange(currentSelection, targetSelection)
+    const currentSelectionDigest = currentSelection ? canonicalDigest(currentSelection) : undefined
+    const sourceRun = newestRun(priorRuns.filter((run) =>
+      (run.state === "completed" || run.state === "failed" || run.state === "cancelled") &&
+      currentSelectionDigest !== undefined && canonicalDigest(run.agent) === currentSelectionDigest))
+    let handoffDetails: {
+      fromRunId: string
+      reason: string
+      completedWork: string[]
+      unresolvedMatters: string[]
+      expectedReviewDigest: `sha256:${string}`
+      expectedCurrentSelectionDigest: `sha256:${string}`
+      expectedHandoffId: string
+      expectedCreatedAt: string
+    } | undefined
+    if (legacySelection && legacyMigrationPreview) {
+      const migrationReview = exactSelectionReviewText([
+        "Review the exact legacy normalization before GAEP replaces the path-bearing v1 selection.",
+        `Adapter / Agent / model remain: ${legacyMigrationPreview.targetSelection.adapterId} / ${legacyMigrationPreview.targetSelection.agentId} / ${legacyMigrationPreview.targetSelection.modelId}`,
+        `Legacy portable settings: ${Object.keys(legacySelection.settings).length === 0 ? "none" : JSON.stringify(legacySelection.settings)}`,
+        `Normalized current settings: ${Object.keys(settings).length === 0 ? "provider defaults" : JSON.stringify(settings)}`,
+        `Retired obsolete or machine-local setting keys: ${legacyMigrationPreview.retiredSettingKeys.join(", ") || "none"}`,
+        `Current capability digest: ${legacyMigrationPreview.targetSelection.capabilityDigest}`,
+        `Model truth after normalization: ${legacyMigrationPreview.targetSelection.modelTruthClass}; alias=${String(legacyMigrationPreview.targetSelection.modelAlias)}`,
+        `Previous portable selection digest: ${legacyMigrationPreview.previousPortableSelectionDigest}`,
+        `Exact migration preview digest: ${legacyMigrationPreview.expectedPreviewDigest}`,
+        "The engine verified that no Charter, Run, Handoff, or managed execution history depends on this legacy selection. Any later model or current-setting change is a separate governed selection workflow.",
+        "Executable paths and machine-local setting values are not copied into governed records.",
+      ])
+      const accepted = await vscode.window.showWarningMessage(
+        migrationReview,
+        { modal: true },
+        "Accept Exact Migration",
+      )
+      if (accepted !== "Accept Exact Migration") throw new WorkflowCancelled()
+    } else if (currentSelection && selectionChanges && sourceRun) {
       const reason = await requiredInput("Why are you switching agent, model, or settings?")
       const completedWork = (await requiredInput("Completed work to hand off, separated by commas"))
         .split(",").map((item) => item.trim()).filter(Boolean)
       const unresolvedMatters = (await requiredInput("Unresolved matters, separated by commas"))
         .split(",").map((item) => item.trim()).filter(Boolean)
       const handoffInput = {
-        fromRunId: priorRuns[0]!.id,
+        fromRunId: sourceRun.id,
         toCapabilities: agent.capability,
         toModelId: modelId,
         toSettings: settings,
@@ -1608,22 +1811,132 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         evidence: [],
       }
       const preview = await runtime.engine.previewHandoff(handoffInput)
+      const handoffReview = exactSelectionReviewText([
+        "Review the exact handoff record before GAEP atomically records it and changes the selection.",
+        `Handoff: ${preview.id} · created ${preview.createdAt}`,
+        `Product / Initiative: ${preview.productId} / ${preview.initiativeId}`,
+        `Source Run: ${preview.fromRunId}`,
+        `Target: ${preview.toAgent.adapterId} / ${preview.toAgent.agentId} / ${preview.toAgent.modelId}`,
+        `Target model truth: ${preview.toAgent.modelTruthClass}; alias=${String(preview.toAgent.modelAlias)}`,
+        `Settings: ${Object.keys(preview.toAgent.settings).length === 0 ? "provider defaults" : JSON.stringify(preview.toAgent.settings)}`,
+        `Reason: ${preview.reason}`,
+        `Workspace: HEAD ${preview.workspaceBaseline.gitHead ?? "not observed"}; dirty=${String(preview.workspaceBaseline.dirty)}; truth=${preview.workspaceBaseline.truthClass ?? "unknown"}; observation=${preview.workspaceBaseline.observationError ?? "none"}; changed files=${preview.workspaceBaseline.changedFiles.join(", ") || "none"}`,
+        `Completed work: ${preview.completedWork.join("; ") || "none recorded"}`,
+        `Unresolved matters: ${preview.unresolvedMatters.join("; ") || "none recorded"}`,
+        `Decisions: ${preview.decisions.join("; ") || "none recorded"}`,
+        `Evidence: ${preview.evidence.join("; ") || "none recorded"}`,
+        `Capability review: ${preview.capabilityDifferences.join(" ")}`,
+        `Exact review digest: ${handoffReviewDigest(preview)}`,
+      ])
       const accepted = await vscode.window.showWarningMessage(
-        `Review switch before GAEP atomically records the handoff and new selection: ${preview.capabilityDifferences.join(" ")}`,
+        handoffReview,
         { modal: true },
         "Accept Handoff and Switch",
       )
       if (accepted !== "Accept Handoff and Switch") throw new WorkflowCancelled()
-      await runtime.engine.createHandoff(handoffInput, actorId)
-      selectionCommittedByHandoff = true
+      handoffDetails = {
+        fromRunId: sourceRun.id,
+        reason,
+        completedWork,
+        unresolvedMatters,
+        expectedReviewDigest: handoffReviewDigest(preview),
+        expectedCurrentSelectionDigest: canonicalDigest(currentSelection) as `sha256:${string}`,
+        expectedHandoffId: preview.id,
+        expectedCreatedAt: preview.createdAt,
+      }
+    } else {
+      const eligibility = probeSelectionEligibility(agent.probe)
+      if (!eligibility.selectable) throw new Error(eligibility.reason)
+      const settingsSummary = Object.keys(settings).length === 0
+        ? "provider defaults"
+        : JSON.stringify(settings)
+      const action = currentSelection && !selectionChanges ? "Revalidate Binding" : "Confirm Selection"
+      const selectionReview = exactSelectionReviewText([
+        `Adapter / Agent: ${agent.capability.adapterId} / ${agent.capability.agentId}`,
+        `Model: ${modelId}`,
+        `Model truth: ${targetSelection.modelTruthClass}; alias=${String(targetSelection.modelAlias)}`,
+        `Settings: ${settingsSummary}`,
+        `Capability digest: ${targetSelection.capabilityDigest}`,
+        `Runtime boundary: ${eligibility.runtimeKind === "managed-in-process" ? "deterministic offline managed process" : "verified machine-local executable"}`,
+        `Limitations: ${agent.capability.limitations.join(" ") || "none declared"}`,
+        "Selection grants no Tool, effect, execution, or approval authority. Every future run still requires an exact Workflow and separately confirmed Charter.",
+      ])
+      const accepted = await vscode.window.showWarningMessage(
+        selectionReview,
+        { modal: true },
+        action,
+      )
+      if (accepted !== action) throw new WorkflowCancelled()
     }
-    if (!selectionCommittedByHandoff) {
-      await runtime.engine.selectAgent(agent.capability, modelId, settings, actorId)
-    }
-    await rememberRuntimeBinding(runtime.path, agent.probe)
+
+    let outcome: "migrated" | "switched" | "selected" | "revalidated" = "selected"
+    await withProductDomainMutation(async () => {
+      assertRuntimeContextCurrent(runtime, expectedContextGeneration)
+      await assertSelectionChangeAllowed(runtime)
+      if (await selectionStateMarker(runtime) !== expectedSelectionState) {
+        throw new Error("The current Agent Selection changed while this workflow was open; review the latest selection before continuing")
+      }
+      const freshProbe = await revalidateSelectionProbe(runtime, agent.probe)
+      assertRuntimeContextCurrent(runtime, expectedContextGeneration)
+      const previousRuntimeBindings = context.globalState.get<RuntimeBindingIndex>(runtimeBindingsKey)
+      await rememberSelectedRuntimeBinding(runtime.path, freshProbe)
+      try {
+      if (legacySelection) {
+        if (!expectedLegacySelectionDigest || !legacyMigrationPreview) {
+          throw new Error("The reviewed legacy Agent Selection migration preview is unavailable")
+        }
+        await runtime.engine.migrateLegacyAgentSelection({
+          capabilities: freshProbe.capabilities,
+          decision: legacyMigrationPreview.decision,
+          expectedPreviewDigest: legacyMigrationPreview.expectedPreviewDigest,
+          expectedLegacySelectionDigest,
+        }, actorId)
+        outcome = "migrated"
+        } else if (handoffDetails) {
+          const {
+          expectedReviewDigest,
+          expectedCurrentSelectionDigest,
+          expectedHandoffId,
+          expectedCreatedAt,
+          ...handoffInput
+          } = handoffDetails
+          await runtime.engine.createHandoff({
+            ...handoffInput,
+            toCapabilities: freshProbe.capabilities,
+            toModelId: modelId,
+            toSettings: settings,
+            decisions: [],
+            evidence: [],
+          }, actorId, {
+            decision: "accept-exact-handoff-preview",
+          expectedReviewDigest,
+          expectedCurrentSelectionDigest,
+          expectedHandoffId,
+          expectedCreatedAt,
+        })
+          outcome = "switched"
+        } else if (currentSelection && !selectionChanges) {
+          outcome = "revalidated"
+        } else {
+          await runtime.engine.selectAgent(freshProbe.capabilities, modelId, settings, actorId, {
+            expectedCurrentSelectionDigest: currentSelection
+              ? canonicalDigest(currentSelection) as `sha256:${string}`
+              : null,
+          })
+        }
+      } catch (error) {
+        await context.globalState.update(runtimeBindingsKey, previousRuntimeBindings)
+        throw error
+      }
+    })
     refresh()
-    await vscode.window.showInformationMessage(`${agent.capability.agentLabel} with ${modelId} is selected for GAEP`)
-  })))
+    const runtimeLabel = agent.probe.runtimeBinding.kind === "managed-in-process"
+      ? "the offline managed runtime"
+      : "this machine"
+    await vscode.window.showInformationMessage(
+      `${agent.capability.agentLabel} with ${modelId} was ${outcome} for ${runtimeLabel}`,
+    )
+  }))))
 
   context.subscriptions.push(vscode.commands.registerCommand("gaep.createInitiative", safely(async () => {
     const runtime = await requireRuntime()
@@ -1707,6 +2020,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   ))
 
   context.subscriptions.push(vscode.commands.registerCommand("gaep.prepareRun", safely(async () => {
+    assertManagedRunLaunchAvailable()
     const runtime = await requireRuntime()
     const currentSelection = await runtime.engine.readSelection()
     const unsafe = unsafeSelectionReasons(currentSelection.agentId, currentSelection.settings)
@@ -1897,7 +2211,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         try {
           await stopActiveRuns("The selected Product root was removed from the workspace.", false)
         } catch (error) {
-          recoveryDiagnostic = error instanceof Error ? error.message : "Unable to stop the provider process for the removed Product root"
+          recoveryDiagnostic = safeErrorMessage(error, "Unable to stop the provider process for the removed Product root")
           logDiagnostic("Selected Product root removal is blocked by an active provider process", error)
           refresh()
           return

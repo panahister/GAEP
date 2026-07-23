@@ -3,9 +3,11 @@ import {
   agentSelectionSchema,
   legacyAdapterCapabilitiesV1Schema,
   legacyAgentSelectionV1Schema,
+  portableAgentSettingValueSchema,
   type AdapterCapabilities,
   type AgentSelection,
   type AgentSetting,
+  type PortableAgentSettingValue,
 } from "@gaep/contracts"
 
 import { canonicalDigest } from "./digest.js"
@@ -26,6 +28,8 @@ export type AgentSelectionCompatibilityResult =
         scope: "machine-local"
         requestedExecutable: string
       }
+      machineLocalSettingKeys: string[]
+      machineLocalSettingsDigest: `sha256:${string}`
       capabilityReconfirmationRequired: true
     }
   | { status: "invalid"; issues: string[] }
@@ -35,6 +39,7 @@ export type AdapterCapabilitiesCompatibilityResult =
   | {
       status: "migration-required"
       portableCandidate: AdapterCapabilities
+      historicalCapabilityDigest: `sha256:${string}`
       localRuntimeHint: {
         scope: "machine-local"
         requestedExecutable: string
@@ -58,9 +63,11 @@ export function parseAdapterCapabilitiesCompatibility(input: unknown): AdapterCa
       schemaVersion: _legacySchemaVersion,
       ...portableFields
     } = legacy.data
+    const { observedAt: _observedAt, ...historicalStableCapabilities } = legacy.data
     return {
       status: "migration-required",
       portableCandidate: adapterCapabilitiesSnapshotSchema.parse({ schemaVersion: 1, ...portableFields }),
+      historicalCapabilityDigest: canonicalDigest(historicalStableCapabilities) as `sha256:${string}`,
       localRuntimeHint: { scope: "machine-local", requestedExecutable: executablePath },
       capabilityReconfirmationRequired: true,
     }
@@ -88,12 +95,27 @@ export function parseAgentSelectionCompatibility(input: unknown): AgentSelection
     const {
       runtimeExecutable,
       schemaVersion: _legacySchemaVersion,
+      settings,
       ...portableFields
     } = legacy.data
+    const portableSettings: Record<string, PortableAgentSettingValue> = {}
+    const machineLocalSettings: Record<string, unknown> = {}
+    for (const key of Object.keys(settings).sort()) {
+      const value = settings[key]!
+      const portable = portableAgentSettingValueSchema.safeParse(value)
+      if (portable.success) portableSettings[key] = portable.data
+      else machineLocalSettings[key] = value
+    }
     return {
       status: "migration-required",
-      portableCandidate: agentSelectionSchema.parse({ schemaVersion: 2, ...portableFields }),
+      portableCandidate: agentSelectionSchema.parse({
+        schemaVersion: 2,
+        ...portableFields,
+        settings: portableSettings,
+      }),
       localRuntimeHint: { scope: "machine-local", requestedExecutable: runtimeExecutable },
+      machineLocalSettingKeys: Object.keys(machineLocalSettings),
+      machineLocalSettingsDigest: canonicalDigest(machineLocalSettings) as `sha256:${string}`,
       capabilityReconfirmationRequired: true,
     }
   }
@@ -213,10 +235,16 @@ export function validateDeclaredSettings(
         }
         break
       case "string":
-        if (typeof value !== "string") errors.push(`Agent setting ${setting.key} must be a string`)
+        if (typeof value !== "string" || (setting.required && !value.trim())) {
+          errors.push(`Agent setting ${setting.key} must be a non-empty string`)
+        }
         break
       case "string-list":
-        if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || !item.trim())) {
+        if (
+          !Array.isArray(value) ||
+          (setting.required && value.length === 0) ||
+          value.some((item) => typeof item !== "string" || !item.trim())
+        ) {
           errors.push(`Agent setting ${setting.key} must be a list of non-empty strings`)
         }
         break

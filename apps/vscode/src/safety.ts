@@ -68,7 +68,11 @@ export function unsafeSelectionReasons(agentId: string, settings: Record<string,
   if (agentId === "codex-cli" && settings.search === true) {
     reasons.push("search=true is disabled because Codex live search has no per-call provider approval")
   }
-  if (agentId === "codex-cli" && settings.approvalPolicy !== "fail-closed-noninteractive") {
+  if (
+    agentId === "codex-cli" &&
+    settings.approvalPolicy !== undefined &&
+    settings.approvalPolicy !== "fail-closed-noninteractive"
+  ) {
     reasons.push("Codex CLI execution requires fail-closed-noninteractive approvals")
   }
   return reasons
@@ -122,6 +126,6 @@ export function newestRun(runs: readonly Run[]): Run | undefined {
   return [...runs].sort((left, right) => {
     const leftTime = left.endedAt ?? left.startedAt ?? ""
     const rightTime = right.endedAt ?? right.startedAt ?? ""
-    return rightTime.localeCompare(leftTime)
+    return rightTime.localeCompare(leftTime) || right.id.localeCompare(left.id)
   })[0]
 }

@@ -32,6 +32,10 @@ describe("VS Code stop-line safety helpers", () => {
       sandbox: "read-only",
       approvalPolicy: "fail-closed-noninteractive",
     })).toEqual([])
+    expect(unsafeSelectionReasons("codex-cli", {})).toEqual([])
+    expect(unsafeSelectionReasons("codex-cli", {
+      approvalPolicy: "interactive",
+    })).toEqual(["Codex CLI execution requires fail-closed-noninteractive approvals"])
     expect(unsafeSelectionReasons("codex-cli", {
       sandbox: "read-only",
       approvalPolicy: "fail-closed-noninteractive",

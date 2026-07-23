@@ -7,6 +7,7 @@ import {
   initiativeSchema,
   legacyAgentSelectionV1Schema,
   runSchema,
+  type AgentSelection,
   type Initiative,
   type Run,
 } from "@gaep/contracts"
@@ -28,6 +29,56 @@ interface TreeEntry {
   tooltip?: string
   icon?: string
   command?: vscode.Command
+}
+
+export interface AgentTreePresentation {
+  boundary: string
+  controls: string
+  bindingLabel: string
+  bindingTooltip: string
+  bindingIcon: string
+}
+
+export function modelIdentityDescription(selection: AgentSelection): string {
+  const aliasStatus = selection.modelAlias === null ? "alias status unknown" : selection.modelAlias ? "alias" : "not an alias"
+  return `${selection.modelTruthClass}, ${aliasStatus}`
+}
+
+export function agentTreePresentation(selection: AgentSelection): AgentTreePresentation {
+  if (selection.adapterId === "gaep.manual" && selection.agentId === "manual") {
+    return {
+      boundary: "deterministic offline · managed in-process",
+      controls: `script=${String(selection.settings.script ?? "provider default")} · no Tools or network`,
+      bindingLabel: "Machine-local managed runtime binding",
+      bindingTooltip: "The in-process runtime identity is shown only in the Product Studio machine-local runtime inspector.",
+      bindingIcon: "server-process",
+    }
+  }
+  if (selection.adapterId === "gaep.codex-cli" && selection.agentId === "codex-cli") {
+    return {
+      boundary: "isolated staging · exact reviewed apply",
+      controls: `reasoning=${String(selection.settings.reasoningEffort ?? "provider default")} · source writes require reviewed apply`,
+      bindingLabel: "Machine-local executable binding",
+      bindingTooltip: "The verified Codex executable path and fingerprint are shown only in the Product Studio machine-local runtime inspector.",
+      bindingIcon: "terminal",
+    }
+  }
+  if (selection.adapterId === "gaep.claude-code-cli" && selection.agentId === "claude-code-cli") {
+    return {
+      boundary: "tool-free · context-only",
+      controls: `effort=${String(selection.settings.effort ?? "provider default")} · budget=${String(selection.settings.maxBudgetUsd ?? "provider default")}`,
+      bindingLabel: "Machine-local executable binding",
+      bindingTooltip: "The verified Claude executable path and fingerprint are shown only in the Product Studio machine-local runtime inspector.",
+      bindingIcon: "terminal",
+    }
+  }
+  return {
+    boundary: "unsupported managed boundary",
+    controls: "reselect a supported adapter",
+    bindingLabel: "Machine-local runtime binding",
+    bindingTooltip: "Inspect the unsupported machine-local binding in Product Studio before changing selection.",
+    bindingIcon: "warning",
+  }
 }
 
 type JsonResult =
@@ -270,20 +321,20 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
       if (!parsedSelection.success) {
         const legacy = legacyAgentSelectionV1Schema.safeParse(selectionResult.value)
         const detail = legacy.success
-          ? "This path-bearing legacy selection is not executable. Use the explicit reconfirm-and-migrate workflow; automatic trust or overwrite is disabled."
+          ? "This path-bearing legacy selection is not executable. Use the exact normalization workflow; automatic trust, history bypass, model changes, and silent setting replacement are disabled."
           : "The stored selection is not a valid portable selection. Automatic trust or overwrite is disabled; inspect diagnostics before changing state."
         return [
           ...recovery,
           studioEntry("agents-tools"),
           diagnosticEntry(legacy.success ? "Legacy Agent Selection Blocked" : "Agent Selection Needs Repair", detail),
           ...(legacy.success ? [{
-            label: "Reconfirm and Migrate Legacy Selection",
-            description: "explicit migration",
-            tooltip: "Re-probe the same agent and explicitly reconfirm a path-free portable selection.",
+            label: "Review and Normalize Legacy Selection",
+            description: "exact migration preview",
+            tooltip: "Re-probe the same agent and accept the exact path-free normalization. Existing selection-bound execution history remains blocked for dedicated migration.",
             icon: "sync",
             command: {
               command: "gaep.migrateLegacyAgentSelection",
-              title: "Reconfirm and Migrate Legacy Agent Selection",
+              title: "Review and Normalize Legacy Agent Selection",
             },
           }] : []),
         ]
@@ -298,9 +349,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         selection.capabilityDigest,
       )
       const runtimeVersion = capabilities?.runtimeVersion
-      const nativeControls = selection.agentId === "codex-cli"
-        ? `sandbox=${String(settings.sandbox ?? "read-only")}, approvals=${String(settings.approvalPolicy ?? "fail-closed-noninteractive")}`
-        : `permission mode=${String(settings.permissionMode ?? "default")}`
+      const presentation = agentTreePresentation(selection)
       return [
         ...recovery,
         studioEntry("agents-tools"),
@@ -309,20 +358,20 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         { label: selection.modelId, description: "model", icon: "symbol-variable" },
         {
           label: "Model identity",
-          description: `${selection.modelTruthClass}${selection.modelAlias === true ? ", alias" : ""}`,
+          description: modelIdentityDescription(selection),
           icon: "inspect",
         },
         {
-          label: "Provider-native controls",
-          description: nativeControls,
-          tooltip: "This direct-execution release launches only when provider-native controls enforce the effective read-only, network-disabled boundary.",
+          label: "Managed execution boundary",
+          description: presentation.boundary,
+          tooltip: `${presentation.controls}. Selection and binding do not grant execution or effect authority.`,
           icon: "shield",
         },
         {
-          label: "Machine-local executable binding",
+          label: presentation.bindingLabel,
           description: "inspect in Product Studio",
-          tooltip: "Absolute executable paths are shown only in the Product Studio machine-local runtime inspector.",
-          icon: "terminal",
+          tooltip: presentation.bindingTooltip,
+          icon: presentation.bindingIcon,
           command: { command: "gaep.openProductStudio", title: "Open Product Studio", arguments: ["agents-tools"] },
         },
         {
@@ -332,8 +381,9 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         },
         {
           label: "Create Charter and Start Run",
+          description: "Phase 3 managed launch pending",
+          tooltip: "The Agent Selection and machine-local binding can be completed now. Managed Run launch remains blocked until Phase 3 host wiring is verified.",
           icon: "play",
-          command: { command: "gaep.prepareRun", title: "Create Charter and Start Run" },
         },
       ]
     }
@@ -369,9 +419,9 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         },
         {
           label: "Create Charter and Start Run",
-          description: "Codex observe-only",
+          description: "Phase 3 managed launch pending",
+          tooltip: "Manual offline, Codex staged, and Claude context-only launch remain blocked until Phase 3 host wiring is verified.",
           icon: "play",
-          command: { command: "gaep.prepareRun", title: "Create Charter and Start Run" },
         },
       ]
     }
@@ -405,8 +455,8 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
       { label: "Local source of truth", description: ".gaep", icon: "repo" },
       {
         label: "Policy enforcement",
-        description: "fail-closed provider boundary",
-        tooltip: "Direct provider execution is limited to an enforceable read-only, network-disabled profile. Workspace changes wait for isolated staging and controlled application.",
+        description: "fail-closed managed boundaries",
+        tooltip: "Manual is deterministic and offline, Codex uses isolated staging with exact reviewed apply, and Claude is tool-free and context-only. Selection alone grants no authority.",
         icon: "shield",
       },
       { label: "Current Initiative", description: selected ? `${selected.title} · ${selected.state}` : "none", icon: "target" },

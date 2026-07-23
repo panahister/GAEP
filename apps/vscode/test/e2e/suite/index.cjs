@@ -108,9 +108,11 @@ async function runOpenPhase() {
   const extension = await activateExtension()
   await assertCommandsAndViews(extension)
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
+  await vscode.commands.executeCommand("gaep.prepareRun")
+  await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
   await openStudio()
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
-  process.stdout.write("PASS open: activation, all contributed commands, four native views, and Product Studio open\n")
+  process.stdout.write("PASS open: activation, all contributed commands, four native views, Phase-2 Run stop line, and Product Studio open\n")
 }
 
 async function runMultiRootPhase() {

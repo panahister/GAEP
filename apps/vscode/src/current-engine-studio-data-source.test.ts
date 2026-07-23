@@ -54,7 +54,7 @@ const initiative: Initiative = {
 
 const selection: AgentSelection = {
   schemaVersion: 2,
-  adapterId: "codex-adapter",
+  adapterId: "gaep.codex-cli",
   agentId: "codex-cli",
   modelId: "gpt-test",
   modelTruthClass: "provider-declared",
@@ -62,6 +62,60 @@ const selection: AgentSelection = {
   settings: { sandbox: "read-only", approvalPolicy: "fail-closed-noninteractive", secretSetting: "must-redact" },
   selectedAt: "2026-07-21T00:00:00.000Z",
   capabilityDigest: `sha256:${"a".repeat(64)}`,
+}
+
+const manualSelection: AgentSelection = {
+  ...selection,
+  adapterId: "gaep.manual",
+  agentId: "manual",
+  modelId: "manual-deterministic-v1",
+  modelTruthClass: "configured",
+  modelAlias: false,
+  settings: { script: "success" },
+  capabilityDigest: `sha256:${"d".repeat(64)}`,
+}
+
+const claudeSelection: AgentSelection = {
+  ...selection,
+  adapterId: "gaep.claude-code-cli",
+  agentId: "claude-code-cli",
+  modelId: "sonnet",
+  modelTruthClass: "provider-declared",
+  modelAlias: true,
+  settings: { effort: "high", maxBudgetUsd: 10 },
+  capabilityDigest: `sha256:${"e".repeat(64)}`,
+}
+
+function executableBinding(selected: AgentSelection, executable: string): Record<string, unknown> {
+  return {
+    schemaVersion: 2,
+    scope: "machine-local",
+    kind: "executable",
+    adapterId: selected.adapterId,
+    agentId: selected.agentId,
+    capabilityDigest: selected.capabilityDigest,
+    executable: {
+      requested: executable,
+      canonicalPath: `/opt/local/bin/${executable}`,
+      digest: `sha256:${"b".repeat(64)}`,
+      size: 42,
+      modifiedAtMs: 1,
+    },
+    observedAt: "2026-07-21T00:00:00.000Z",
+  }
+}
+
+function managedBinding(selected: AgentSelection, runtimeId: string): Record<string, unknown> {
+  return {
+    schemaVersion: 2,
+    scope: "machine-local",
+    kind: "managed-in-process",
+    adapterId: selected.adapterId,
+    agentId: selected.agentId,
+    capabilityDigest: selected.capabilityDigest,
+    runtimeId,
+    observedAt: "2026-07-21T00:00:00.000Z",
+  }
 }
 
 const run: Run = {
@@ -156,13 +210,13 @@ function productStudioStub(): ProductStudioService {
 function capability(overrides: Partial<AdapterCapabilities>): AdapterCapabilities {
   return {
     schemaVersion: 1,
-    adapterId: "codex-adapter",
+    adapterId: "gaep.codex-cli",
     adapterVersion: "0.1.0",
     agentId: "codex-cli",
     agentLabel: "Codex",
     runtimeVersion: "1.0.0",
     detected: true,
-    executionInterface: "cli-jsonl",
+    executionInterface: "stdio-rpc",
     interfaceMaturity: "stable",
     supportsResume: false,
     supportsCancel: true,
@@ -236,22 +290,33 @@ function harness(options: HarnessOptions = {}) {
       return options.initiatives ?? [initiative]
     },
     probeAgents: async () => [
+      capability({
+        adapterId: "gaep.manual",
+        agentId: "manual",
+        agentLabel: "Deterministic Manual Agent",
+        runtimeVersion: "1",
+        executionInterface: "managed-in-process",
+        supportsResume: true,
+        supportsCheckpoints: true,
+        models: [{ id: "manual-deterministic-v1", label: "Deterministic Manual v1", reasoningOptions: [], inputModalities: ["text"], truthClass: "configured", alias: false }],
+      }),
       capability({}),
       capability({
-        adapterId: "claude-adapter",
+        adapterId: "gaep.claude-code-cli",
         agentId: "claude-code-cli",
         agentLabel: "Claude Code",
-        executionInterface: "unavailable",
-        interfaceMaturity: "unknown",
-        models: [],
+        executionInterface: "cli-stream-json",
+        supportsResume: false,
+        supportsToolSelection: false,
+        models: [{ id: "sonnet", label: "Sonnet alias", reasoningOptions: ["low", "medium", "high"], inputModalities: ["text"], truthClass: "provider-declared", alias: true }],
       }),
     ],
     runtimeBindings: () => options.runtimeBindings ?? ({
-      [`${workspacePath}\u0000codex-adapter`]: {
+      [`${workspacePath}\u0000gaep.codex-cli`]: {
         schemaVersion: 2,
         scope: "machine-local",
         kind: "executable",
-        adapterId: "codex-adapter",
+        adapterId: "gaep.codex-cli",
         agentId: "codex-cli",
         capabilityDigest: selection.capabilityDigest,
         executable: {
@@ -295,7 +360,7 @@ describe("current-engine Product Studio data source", () => {
     expect(readiness.page.kind === "readiness" && readiness.page.statement).toMatch(/Design readiness is ready/i)
     const agents = await source.readSnapshot("agents-tools")
     expect(agents.surface.knownEffects).toEqual(expect.arrayContaining([
-      expect.stringMatching(/invokes configured agent executables/i),
+      expect.stringMatching(/probes configured adapters/i),
     ]))
   })
 
@@ -318,13 +383,13 @@ describe("current-engine Product Studio data source", () => {
     const missingRuns = await missing.readSnapshot("runs-evidence")
     if (missingRuns.page.kind !== "runs-evidence") throw new Error("Expected runs page")
     expect(missingRuns.page.actions[0]).toMatchObject({ enabled: false })
-    expect(missingRuns.page.actions[0]?.disabledReason).toMatch(/No machine-local executable fingerprint/i)
+    expect(missingRuns.page.actions[0]?.disabledReason).toMatch(/No machine-local runtime binding/i)
 
-    const key = `${workspacePath}\u0000codex-adapter`
+    const key = `${workspacePath}\u0000gaep.codex-cli`
     const legacy = harness({
       runtimeBindings: {
         [key]: {
-          adapterId: "codex-adapter",
+          adapterId: "gaep.codex-cli",
           canonicalPath: "/legacy/machine/path/codex",
           digest: `sha256:${"c".repeat(64)}`,
           size: 1,
@@ -342,22 +407,62 @@ describe("current-engine Product Studio data source", () => {
     const { source } = harness({ selectionError: new Error("Legacy agent selection migration is required") })
     const overview = await source.readSnapshot("overview")
     if (overview.page.kind !== "overview") throw new Error("Expected overview")
-    expect(overview.page.primaryAction?.label).toMatch(/Reconfirm and migrate/i)
+    expect(overview.page.primaryAction?.label).toMatch(/Review and normalize/i)
     expect(overview.page.primaryAction?.action.kind).toBe("select-agent")
     expect(overview.page.blockers.some((blocker) => /legacy path-bearing selection is blocked/i.test(blocker.message))).toBe(true)
     expect(JSON.stringify(overview)).not.toContain("runtimeExecutable")
   })
 
-  it("labels Claude detection-only and Codex direct execution observe-only", async () => {
+  it("labels and offers all three supported Phase 2 selection boundaries", async () => {
     const { source } = harness()
     const snapshot = await source.readSnapshot("agents-tools")
     if (snapshot.page.kind !== "agents-tools") throw new Error("Expected agent page")
-    const codex = snapshot.page.adapters.rows.find((row) => row.id === "codex-adapter")
-    const claude = snapshot.page.adapters.rows.find((row) => row.id === "claude-adapter")
-    expect(codex?.cells.status).toMatch(/structured CLI capability/i)
+    const manual = snapshot.page.adapters.rows.find((row) => row.id === "gaep.manual")
+    const codex = snapshot.page.adapters.rows.find((row) => row.id === "gaep.codex-cli")
+    const claude = snapshot.page.adapters.rows.find((row) => row.id === "gaep.claude-code-cli")
+    expect(manual?.cells.status).toMatch(/deterministic offline managed runtime/i)
+    expect(manual?.actions[0]?.enabled).toBe(true)
+    expect(codex?.cells.status).toMatch(/isolated staged execution capability/i)
     expect(codex?.actions[0]?.enabled).toBe(true)
-    expect(claude?.cells.status).toMatch(/inspection only/i)
-    expect(claude?.actions[0]?.enabled).toBe(false)
+    expect(claude?.cells.status).toMatch(/tool-free context-only capability/i)
+    expect(claude?.actions[0]?.enabled).toBe(true)
+  })
+
+  it("shows executable and managed bindings only in the discriminated machine-local inspector", async () => {
+    const manual = harness({
+      selection: manualSelection,
+      runtimeBindings: {
+        [`${workspacePath}\u0000${manualSelection.adapterId}`]: managedBinding(manualSelection, "gaep.manual"),
+      },
+    }).source
+    const manualSnapshot = await manual.readSnapshot("agents-tools")
+    expect(manualSnapshot.inspector?.entries).toEqual(expect.arrayContaining([
+      { term: "Binding kind", value: "Managed in-process" },
+      { term: "Runtime ID", value: "gaep.manual" },
+    ]))
+    expect(JSON.stringify(manualSnapshot.inspector)).not.toContain("Resolved executable")
+    expect(JSON.stringify(manualSnapshot.page)).not.toContain("gaep.manual\u0000")
+
+    const claude = harness({
+      selection: claudeSelection,
+      runtimeBindings: {
+        [`${workspacePath}\u0000${claudeSelection.adapterId}`]: executableBinding(claudeSelection, "claude"),
+      },
+    }).source
+    const claudeSnapshot = await claude.readSnapshot("agents-tools")
+    expect(claudeSnapshot.inspector?.entries).toEqual(expect.arrayContaining([
+      { term: "Binding kind", value: "Executable" },
+      { term: "Resolved executable", value: "/opt/local/bin/claude" },
+    ]))
+    expect(JSON.stringify({ ...claudeSnapshot, inspector: undefined })).not.toContain("/opt/local/bin/claude")
+  })
+
+  it("preserves an unknown model-alias observation instead of displaying it as false", async () => {
+    const selected = { ...selection, modelAlias: null }
+    const snapshot = await harness({ selection: selected }).source.readSnapshot("agents-tools")
+    if (snapshot.page.kind !== "agents-tools") throw new Error("Expected agent page")
+    expect(snapshot.page.selection?.modelAlias).toBeNull()
+    expect(snapshot.page.selectedAgent).toContainEqual({ term: "Model alias", value: "unknown" })
   })
 
   it("maps native actions, opens portable inspectors, and rejects stale operations", async () => {
@@ -409,9 +514,9 @@ describe("current-engine Product Studio data source", () => {
   it("uses one fail-closed run eligibility result across Overview blockers and Runs actions", async () => {
     const cases: Array<{ name: string; options: HarnessOptions; reason: RegExp; overviewAction: string }> = [
       {
-        name: "inspection-only selection",
-        options: { selection: { ...selection, agentId: "claude-code-cli" } },
-        reason: /inspection-only/i,
+        name: "unsupported selection",
+        options: { selection: { ...selection, adapterId: "gaep.unknown", agentId: "unknown-agent" } },
+        reason: /no supported VS Code managed execution boundary/i,
         overviewAction: "select-agent",
       },
       {
@@ -461,10 +566,47 @@ describe("current-engine Product Studio data source", () => {
     const healthy = harness().source
     const healthyOverview = await healthy.readSnapshot("overview")
     if (healthyOverview.page.kind !== "overview") throw new Error("Expected healthy Overview")
-    expect(healthyOverview.page.primaryAction).toMatchObject({ enabled: true, action: { kind: "prepare-run" } })
+    expect(healthyOverview.page.primaryAction).toMatchObject({ enabled: false, action: { kind: "prepare-run" } })
+    expect(healthyOverview.page.primaryAction?.disabledReason).toMatch(/Phase-3-gated/i)
     const healthyRuns = await healthy.readSnapshot("runs-evidence")
     if (healthyRuns.page.kind !== "runs-evidence") throw new Error("Expected healthy Runs")
-    expect(healthyRuns.page.actions[0]).toMatchObject({ enabled: true, action: { kind: "prepare-run" } })
+    expect(healthyRuns.page.actions[0]).toMatchObject({ enabled: false, action: { kind: "prepare-run" } })
+    expect(healthyRuns.page.actions[0]?.disabledReason).toMatch(/Phase-3-gated/i)
+  })
+
+  it("treats Manual, Codex, and Claude as binding-ready while preserving the Phase 3 launch stop line", async () => {
+    const cases = [
+      {
+        selected: manualSelection,
+        binding: managedBinding(manualSelection, "gaep.manual"),
+        mode: /Manual deterministic offline/i,
+      },
+      {
+        selected: selection,
+        binding: executableBinding(selection, "codex"),
+        mode: /Codex staged/i,
+      },
+      {
+        selected: claudeSelection,
+        binding: executableBinding(claudeSelection, "claude"),
+        mode: /Claude context-only/i,
+      },
+    ]
+
+    for (const candidate of cases) {
+      const source = harness({
+        selection: candidate.selected,
+        runtimeBindings: {
+          [`${workspacePath}\u0000${candidate.selected.adapterId}`]: candidate.binding,
+        },
+      }).source
+      const overview = await source.readSnapshot("overview")
+      if (overview.page.kind !== "overview") throw new Error("Expected Overview")
+      expect(overview.page.primaryAction).toMatchObject({ enabled: false, action: { kind: "prepare-run" } })
+      expect(overview.page.primaryAction?.disabledReason).toMatch(candidate.mode)
+      expect(overview.page.primaryAction?.disabledReason).toMatch(/Phase-3-gated/i)
+      expect(overview.page.blockers.some((blocker) => /select the agent again|unsupported/i.test(blocker.message))).toBe(false)
+    }
   })
 
   it("uses blocked and uninitialized lifecycle states without probing untrusted roots", async () => {

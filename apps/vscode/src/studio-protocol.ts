@@ -313,7 +313,7 @@ export interface AgentPageSnapshot extends StudioPageBase {
     agent: string
     model: string
     modelTruthClass: string
-    modelAlias: boolean
+    modelAlias: boolean | null
     settings: StudioDefinitionEntry[]
     limitationsReviewed: boolean
     actions: StudioActionControl[]
@@ -856,7 +856,8 @@ function isAgentPage(page: Record<string, unknown>): boolean {
   return isRecord(page.selection) && hasOnlyKeys(page.selection, [
     "agent", "model", "modelTruthClass", "modelAlias", "settings", "limitationsReviewed", "actions",
   ]) && isNonEmptyString(page.selection.agent) && isNonEmptyString(page.selection.model) &&
-    isNonEmptyString(page.selection.modelTruthClass) && typeof page.selection.modelAlias === "boolean" &&
+    isNonEmptyString(page.selection.modelTruthClass) &&
+    (typeof page.selection.modelAlias === "boolean" || page.selection.modelAlias === null) &&
     Array.isArray(page.selection.settings) && page.selection.settings.every(isDefinitionEntry) &&
     typeof page.selection.limitationsReviewed === "boolean" && Array.isArray(page.selection.actions) &&
     page.selection.actions.every(isStudioActionControl)

@@ -1,6 +1,7 @@
 import { CodexAdapter } from "@gaep/adapter-codex"
 import { ClaudeAdapter } from "@gaep/adapter-claude"
 import {
+  canonicalDigest,
   capabilityDigest,
   fingerprintExecutable,
   type AdapterProbeResult,
@@ -9,26 +10,42 @@ import {
 } from "@gaep/agent-sdk"
 import {
   adapterCapabilitiesSnapshotSchema,
+  hostHandoffPreviewResultSchema,
+  hostLegacySelectionMigrationPreviewResultSchema,
   hostMethodSchema,
   hostRequestSchema,
+  hostSelectionResultSchema,
   type AdapterCapabilities,
+  type HostHandoffInput,
   type HostRequest,
   type Run,
 } from "@gaep/contracts"
-import { GaepEngine } from "@gaep/engine"
+import {
+  GaepEngine,
+  handoffReviewDigest,
+  legacySelectionStateDigest,
+  type HandoffInput,
+} from "@gaep/engine"
 import { z, ZodError } from "zod"
 
 import { HostRpcError, invalidParamsError, MAX_RPC_FRAME_BYTES, normalizeRpcError } from "./rpc.js"
 
-const PROTOCOL_VERSION = 2
-const SUPPORTED_PROTOCOL_VERSIONS = [1, 2] as const
+const PROTOCOL_VERSION = 3
+const SUPPORTED_PROTOCOL_VERSIONS = [1, 2, 3] as const
 const v2OnlyMethods = new Set<HostRequest["method"]>([
   "workspaceHealth",
-  "migrateLegacySelection",
   "productStudio.designReadiness",
   "productStudio.search",
   "productStudio.exportBuild",
   "productStudio.importPreview",
+])
+const v3OnlyMethods = new Set<HostRequest["method"]>([
+  "readSelection",
+  "selectAgent",
+  "previewLegacySelectionMigration",
+  "migrateLegacySelection",
+  "previewHandoff",
+  "createHandoff",
 ])
 
 const requestEnvelopeSchema = z.object({
@@ -97,6 +114,59 @@ function portablePreparedRun(value: { run: Run; invocation: {
   }
 }
 
+function engineHandoffInput(handoff: HostHandoffInput, capabilities: AdapterCapabilities): HandoffInput {
+  return {
+    fromRunId: handoff.fromRunId,
+    toCapabilities: structuredClone(capabilities),
+    toModelId: handoff.toModelId,
+    toSettings: handoff.toSettings,
+    reason: handoff.reason,
+    completedWork: handoff.completedWork,
+    unresolvedMatters: handoff.unresolvedMatters,
+    decisions: handoff.decisions,
+    evidence: handoff.evidence,
+  }
+}
+
+function throwLegacyMigrationHostError(error: unknown): never {
+  const message = error instanceof Error ? error.message : ""
+  if (/legacy Agent Selection changed after migration review|legacy selection.*changed|migration (?:preview )?requires an existing valid legacy Selection/iu.test(message)) {
+    throw new HostRpcError(-32_017, "SELECTION_CHANGED", "The legacy Agent Selection changed; preview the migration again")
+  }
+  if (/migration preview.*changed|changed after.*migration preview|preview.*no longer matches|capabilities changed.*migration/iu.test(message)) {
+    throw new HostRpcError(-32_024, "MIGRATION_PREVIEW_CHANGED", "The server-derived legacy migration preview changed; preview it again")
+  }
+  if (/dependent.*(?:Charter|Run|Handoff|history)|(?:Charter|Run|Handoff).*depend/iu.test(message)) {
+    throw new HostRpcError(
+      -32_025,
+      "MIGRATION_DEPENDENT_HISTORY",
+      "Legacy migration is blocked because governed Charter, Run, or Handoff history depends on the prior selection",
+    )
+  }
+  if (/Legacy current setting .* is no longer declared|Legacy retained settings are incompatible with current capabilities/iu.test(message)) {
+    throw new HostRpcError(
+      -32_026,
+      "CURRENT_SETTING_INCOMPATIBLE",
+      "The legacy selection contains a current setting that cannot be preserved under the observed capabilities",
+    )
+  }
+  if (/Legacy Agent Selection repository integrity is not current|dedicated reviewed integrity bootstrap/iu.test(message)) {
+    throw new HostRpcError(
+      -32_027,
+      "MIGRATION_INTEGRITY_BOOTSTRAP_REQUIRED",
+      "This pre-integrity legacy repository requires a separate reviewed integrity bootstrap before Agent Selection migration",
+    )
+  }
+  if (/legacy Agent Selection capability snapshot is already portable|capability digest does not match the recognized historical capability snapshot/iu.test(message)) {
+    throw new HostRpcError(
+      -32_028,
+      "LEGACY_CAPABILITY_BINDING_INVALID",
+      "The legacy Agent Selection is not exactly bound to its recognized historical capability snapshot",
+    )
+  }
+  throw error
+}
+
 export class EngineHost {
   readonly engine: GaepEngine
   private readonly recovery: Promise<unknown>
@@ -120,7 +190,7 @@ export class EngineHost {
     await this.recovery
     const request = EngineHost.validateRequest(rawRequest)
     const requestProtocol = request.protocolVersion ?? 1
-    if (!SUPPORTED_PROTOCOL_VERSIONS.includes(requestProtocol as 1 | 2)) {
+    if (!SUPPORTED_PROTOCOL_VERSIONS.includes(requestProtocol as 1 | 2 | 3)) {
       throw new HostRpcError(
         -32_020,
         "UNSUPPORTED_PROTOCOL_VERSION",
@@ -133,6 +203,14 @@ export class EngineHost {
         -32_021,
         "PROTOCOL_UPGRADE_REQUIRED",
         "This GAEP engine method requires protocol version 2",
+        { supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS] },
+      )
+    }
+    if (requestProtocol < 3 && v3OnlyMethods.has(request.method)) {
+      throw new HostRpcError(
+        -32_021,
+        "PROTOCOL_UPGRADE_REQUIRED",
+        "This GAEP engine method requires protocol version 3",
         { supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS] },
       )
     }
@@ -151,31 +229,81 @@ export class EngineHost {
         return this.engine.workspaceHealth()
       case "readProduct":
         return this.engine.readProduct()
+      case "readSelection": {
+        const compatibility = await this.engine.repository.readAgentSelectionCompatibility()
+        if (compatibility.status === "current") {
+          return hostSelectionResultSchema.parse({
+            status: "current",
+            selection: compatibility.selection,
+            selectionDigest: canonicalDigest(compatibility.selection),
+          })
+        }
+        if (compatibility.status === "migration-required") {
+          return hostSelectionResultSchema.parse({
+            status: "migration-required",
+            portableCandidate: compatibility.portableCandidate,
+            legacySelectionDigest: legacySelectionStateDigest(compatibility),
+            capabilityReconfirmationRequired: true,
+          })
+        }
+        throw new HostRpcError(-32_022, "SELECTION_INVALID", "The persisted Agent Selection is invalid")
+      }
       case "createProduct":
         return this.engine.createProduct(request.params.product, actorId(request.params.actorId))
       case "createInitiative":
         return this.engine.createInitiative(request.params.initiative, actorId(request.params.actorId))
       case "selectAgent": {
         const snapshot = await this.observeAdapter(request.params.adapterId)
-        const selection = await this.engine.selectAgent(
-          structuredClone(snapshot.capabilities),
-          request.params.modelId,
-          request.params.settings,
-          actorId(request.params.actorId),
-        )
-        this.selectedRuntimeBindings.set(request.params.adapterId, structuredClone(snapshot.runtimeBinding))
-        return selection
+        try {
+          const selection = await this.engine.selectAgent(
+            structuredClone(snapshot.capabilities),
+            request.params.modelId,
+            request.params.settings,
+            actorId(request.params.actorId),
+            {
+              expectedCurrentSelectionDigest: request.params.expectedCurrentSelectionDigest as `sha256:${string}` | null,
+            },
+          )
+          this.selectedRuntimeBindings.set(request.params.adapterId, structuredClone(snapshot.runtimeBinding))
+          return selection
+        } catch (error) {
+          const message = error instanceof Error ? error.message : ""
+          if (/changed or was not explicitly bound|created while the mutation was being prepared/iu.test(message)) {
+            throw new HostRpcError(-32_017, "SELECTION_CHANGED", "The current Agent Selection changed; read and confirm it again")
+          }
+          if (/work or staged review remains unresolved/iu.test(message)) {
+            throw new HostRpcError(-32_018, "SELECTION_WORK_UNRESOLVED", "Resolve active work and staged reviews before rebinding or changing Agent Selection")
+          }
+          if (/requires an exact accepted handoff/iu.test(message)) {
+            throw new HostRpcError(-32_019, "HANDOFF_REQUIRED", "This Agent Selection change requires an exact reviewed handoff")
+          }
+          throw error
+        }
+      }
+      case "previewLegacySelectionMigration": {
+        const snapshot = await this.observeAdapter(request.params.adapterId)
+        try {
+          return hostLegacySelectionMigrationPreviewResultSchema.parse(
+            await this.engine.previewLegacyAgentSelectionMigration(structuredClone(snapshot.capabilities)),
+          )
+        } catch (error) {
+          throwLegacyMigrationHostError(error)
+        }
       }
       case "migrateLegacySelection": {
         const snapshot = await this.observeAdapter(request.params.adapterId)
-        const selection = await this.engine.migrateLegacyAgentSelection({
-          capabilities: structuredClone(snapshot.capabilities),
-          modelId: request.params.modelId,
-          settings: request.params.settings,
-          confirmation: request.params.confirmation,
-        }, actorId(request.params.actorId))
-        this.selectedRuntimeBindings.set(request.params.adapterId, structuredClone(snapshot.runtimeBinding))
-        return selection
+        try {
+          const selection = await this.engine.migrateLegacyAgentSelection({
+            capabilities: structuredClone(snapshot.capabilities),
+            decision: request.params.decision,
+            expectedPreviewDigest: request.params.expectedPreviewDigest as `sha256:${string}`,
+            expectedLegacySelectionDigest: request.params.expectedLegacySelectionDigest as `sha256:${string}`,
+          }, actorId(request.params.actorId))
+          this.selectedRuntimeBindings.set(request.params.adapterId, structuredClone(snapshot.runtimeBinding))
+          return selection
+        } catch (error) {
+          throwLegacyMigrationHostError(error)
+        }
       }
       case "createCharter":
         return this.engine.createCharter(request.params.charter, actorId(request.params.actorId))
@@ -184,6 +312,13 @@ export class EngineHost {
       case "prepareRun": {
         const selection = await this.engine.readSelection()
         const selectedBinding = this.selectedRuntimeBindings.get(selection.adapterId)
+        if (!selectedBinding) {
+          throw new HostRpcError(
+            -32_016,
+            "RUNTIME_BINDING_MISSING",
+            "No machine-local runtime is bound in this engine-host process; explicitly select the current agent and model again",
+          )
+        }
         const fresh = await this.observeAdapter(selection.adapterId)
         if (capabilityDigest(fresh.capabilities) !== selection.capabilityDigest) {
           throw new HostRpcError(
@@ -192,7 +327,7 @@ export class EngineHost {
             "Agent capabilities changed after selection; select the agent and model again",
           )
         }
-        if (selectedBinding && !sameRuntimeBinding(selectedBinding, fresh.runtimeBinding)) {
+        if (!sameRuntimeBinding(selectedBinding, fresh.runtimeBinding)) {
           throw new HostRpcError(
             -32_014,
             "EXECUTABLE_CHANGED",
@@ -207,19 +342,36 @@ export class EngineHost {
       }
       case "listRuns":
         return this.engine.listRuns()
+      case "previewHandoff": {
+        const snapshot = await this.observeAdapter(request.params.handoff.toAdapterId)
+        const input = engineHandoffInput(request.params.handoff, snapshot.capabilities)
+        const handoff = await this.engine.previewHandoff(input)
+        const sourceRun = (await this.engine.listRuns()).find((run) => run.id === handoff.fromRunId)
+        if (!sourceRun) {
+          throw new HostRpcError(-32_015, "HANDOFF_SOURCE_CHANGED", "The reviewed handoff source Run is no longer available")
+        }
+        return hostHandoffPreviewResultSchema.parse({
+          handoff,
+          decision: "accept-exact-handoff-preview" as const,
+          expectedPreviewDigest: handoffReviewDigest(handoff),
+          expectedCurrentSelectionDigest: canonicalDigest(sourceRun.agent),
+        })
+      }
       case "createHandoff": {
         const snapshot = await this.observeAdapter(request.params.handoff.toAdapterId)
-        return this.engine.createHandoff({
-          fromRunId: request.params.handoff.fromRunId,
-          toCapabilities: structuredClone(snapshot.capabilities),
-          toModelId: request.params.handoff.toModelId,
-          toSettings: request.params.handoff.toSettings,
-          reason: request.params.handoff.reason,
-          completedWork: request.params.handoff.completedWork,
-          unresolvedMatters: request.params.handoff.unresolvedMatters,
-          decisions: request.params.handoff.decisions,
-          evidence: request.params.handoff.evidence,
-        }, actorId(request.params.actorId))
+        const handoff = await this.engine.createHandoff(
+          engineHandoffInput(request.params.handoff, snapshot.capabilities),
+          actorId(request.params.actorId),
+          {
+            decision: request.params.decision,
+            expectedReviewDigest: request.params.expectedPreviewDigest as `sha256:${string}`,
+            expectedCurrentSelectionDigest: request.params.expectedCurrentSelectionDigest as `sha256:${string}`,
+            expectedHandoffId: request.params.expectedHandoffId,
+            expectedCreatedAt: request.params.expectedHandoffCreatedAt,
+          },
+        )
+        this.selectedRuntimeBindings.set(request.params.handoff.toAdapterId, structuredClone(snapshot.runtimeBinding))
+        return handoff
       }
       case "verifyAudit":
         return this.engine.repository.verifyAudit()
@@ -331,6 +483,24 @@ export class EngineHost {
     }
     if (!hostMethodSchema.safeParse(envelope.method).success) {
       throw new HostRpcError(-32_601, "METHOD_NOT_FOUND", "Unknown GAEP engine method")
+    }
+    const requestProtocol = envelope.protocolVersion ?? 1
+    if (!SUPPORTED_PROTOCOL_VERSIONS.includes(requestProtocol as 1 | 2 | 3)) {
+      throw new HostRpcError(
+        -32_020,
+        "UNSUPPORTED_PROTOCOL_VERSION",
+        `GAEP engine protocol ${requestProtocol} is unsupported`,
+        { supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS] },
+      )
+    }
+    const method = envelope.method as HostRequest["method"]
+    if ((requestProtocol === 1 && v2OnlyMethods.has(method)) || (requestProtocol < 3 && v3OnlyMethods.has(method))) {
+      throw new HostRpcError(
+        -32_021,
+        "PROTOCOL_UPGRADE_REQUIRED",
+        `This GAEP engine method requires protocol version ${v3OnlyMethods.has(method) ? 3 : 2}`,
+        { supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS] },
+      )
     }
     try {
       return hostRequestSchema.parse(envelope)

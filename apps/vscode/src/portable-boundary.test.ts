@@ -32,7 +32,7 @@ describe("VS Code portable/local source boundary", () => {
     expect(packageJson.activationEvents).toContain("onCommand:gaep.migrateLegacyAgentSelection")
     expect(packageJson.contributes.commands).toContainEqual({
       command: "gaep.migrateLegacyAgentSelection",
-      title: "GAEP: Reconfirm and Migrate Legacy Agent Selection",
+      title: "GAEP: Review and Normalize Legacy Agent Selection",
     })
   })
 })

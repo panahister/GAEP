@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { AgentSelection, ExecutionCharter, ToolPermission } from "@gaep/contracts"
 import type { AdapterRuntimeBinding } from "@gaep/agent-sdk"
 
-import { CodexAdapter } from "./index.js"
+import { CodexAdapter, parseModelCatalog } from "./index.js"
 
 function selection(sandbox: string = "read-only"): AgentSelection {
   return {
@@ -59,6 +59,34 @@ function sandboxArgument(args: string[]): string | undefined {
 }
 
 describe("Codex adapter", () => {
+  it("canonicalizes discovered model, reasoning, and modality ordering", () => {
+    const first = {
+      models: [
+        {
+          slug: "z-model",
+          display_name: "Z",
+          supported_reasoning_levels: [{ effort: "high" }, { effort: "low" }, { effort: "high" }],
+          input_modalities: ["image", "text", "image"],
+        },
+        { slug: "a-model", display_name: "A", supported_reasoning_levels: [{ effort: "medium" }] },
+      ],
+    }
+    const second = {
+      models: [
+        { slug: "a-model", display_name: "A", supported_reasoning_levels: [{ effort: "medium" }] },
+        {
+          slug: "z-model",
+          display_name: "Z",
+          supported_reasoning_levels: [{ effort: "low" }, { effort: "high" }],
+          input_modalities: ["text", "image"],
+        },
+      ],
+    }
+
+    expect(parseModelCatalog(JSON.stringify(first))).toEqual(parseModelCatalog(JSON.stringify(second)))
+    expect(parseModelCatalog(JSON.stringify(first)).map((model) => model.id)).toEqual(["a-model", "z-model"])
+  })
+
   it("advertises the managed app-server transport separately from the direct read-only fallback", async () => {
     const { capabilities: observed, runtimeBinding: binding } = await new CodexAdapter(process.execPath).probe({ timeoutMs: 1_000, refreshModels: false })
 

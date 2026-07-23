@@ -82,7 +82,7 @@
       },
       {
         "command": "gaep.migrateLegacyAgentSelection",
-        "title": "GAEP: Reconfirm and Migrate Legacy Agent Selection"
+        "title": "GAEP: Review and Normalize Legacy Agent Selection"
       },
       {
         "command": "gaep.createInitiative",

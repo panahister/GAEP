@@ -440,24 +440,57 @@ interface PrepareRunEligibility {
   selectedInitiative?: Initiative
 }
 
+interface SupportedAgentMode {
+  bindingKind: "executable" | "managed-in-process"
+  label: string
+  selectionBoundary: string
+}
+
+function supportedAgentMode(adapterId: string, agentId: string): SupportedAgentMode | undefined {
+  if (adapterId === "gaep.manual" && agentId === "manual") {
+    return {
+      bindingKind: "managed-in-process",
+      label: "Manual deterministic offline",
+      selectionBoundary: "managed in-process runtime",
+    }
+  }
+  if (adapterId === "gaep.codex-cli" && agentId === "codex-cli") {
+    return {
+      bindingKind: "executable",
+      label: "Codex staged",
+      selectionBoundary: "verified executable with isolated staging and reviewed apply",
+    }
+  }
+  if (adapterId === "gaep.claude-code-cli" && agentId === "claude-code-cli") {
+    return {
+      bindingKind: "executable",
+      label: "Claude context-only",
+      selectionBoundary: "verified executable with a tool-free context-only boundary",
+    }
+  }
+  return undefined
+}
+
 function prepareRunEligibility(state: ObservedStudioState): PrepareRunEligibility {
   const issues: StudioIssue[] = []
   let selectionReady = false
+  let selectedMode: SupportedAgentMode | undefined
   if (!state.selection) {
     issues.push(issue(
       "agent-selection-missing",
       state.selectionMigrationRequired
-        ? "A legacy path-bearing selection is blocked. Reconfirm the same agent through the explicit migration workflow before preparing a run."
+        ? "A legacy path-bearing selection is blocked. Review the exact same-agent normalization; dependent execution history requires a dedicated migration."
         : "Select a supported agent and model before preparing a run.",
       "blocker",
     ))
-  } else if (state.selection.agentId !== "codex-cli") {
+  } else if (!supportedAgentMode(state.selection.adapterId, state.selection.agentId)) {
     issues.push(issue(
       "agent-selection-unsupported",
-      `${state.selection.agentId} is inspection-only in this release and cannot start a governed run.`,
+      `${state.selection.adapterId} / ${state.selection.agentId} has no supported VS Code managed execution boundary.`,
       "blocker",
     ))
   } else {
+    const mode = supportedAgentMode(state.selection.adapterId, state.selection.agentId)!
     const unsafe = unsafeSelectionReasons(state.selection.agentId, state.selection.settings)
     if (unsafe.length > 0) {
       issues.push(...unsafe.map((message, index) => issue(`selection-${index + 1}`, message, "blocker")))
@@ -466,7 +499,7 @@ function prepareRunEligibility(state: ObservedStudioState): PrepareRunEligibilit
         ? "The machine-local runtime binding uses the legacy path-bearing format. Explicitly select the agent again before preparing a run."
         : state.runtimeBinding?.state === "invalid"
           ? "The machine-local runtime binding is invalid. Explicitly select the agent again before preparing a run."
-          : "No machine-local executable fingerprint is bound to this selection. Explicitly select the agent again before preparing a run."
+          : "No machine-local runtime binding is bound to this selection. Explicitly select the agent again before preparing a run."
       issues.push(issue("agent-binding-unavailable", bindingMessage, "blocker"))
     } else if (
       state.runtimeBinding.binding.adapterId !== state.selection.adapterId ||
@@ -478,8 +511,15 @@ function prepareRunEligibility(state: ObservedStudioState): PrepareRunEligibilit
         "The machine-local runtime binding no longer matches the portable selection. Probe and select the agent again.",
         "blocker",
       ))
+    } else if (state.runtimeBinding.binding.kind !== mode.bindingKind) {
+      issues.push(issue(
+        "agent-binding-kind-mismatch",
+        `${mode.label} requires a machine-local ${mode.bindingKind} binding. Probe and select the agent again.`,
+        "blocker",
+      ))
     } else {
       selectionReady = true
+      selectedMode = mode
     }
   }
 
@@ -507,6 +547,13 @@ function prepareRunEligibility(state: ObservedStudioState): PrepareRunEligibilit
   }
   if (!state.audit) issues.push(issue("audit-unavailable", "The local audit chain could not be verified.", "blocker"))
   else if (!state.audit.valid) issues.push(issue("audit-invalid", "The local audit chain did not verify.", "blocker"))
+  if (selectionReady && selectedMode) {
+    issues.push(issue(
+      "managed-run-host-pending",
+      `${selectedMode.label} selection and its ${selectedMode.selectionBoundary} are ready. VS Code managed Run launch remains Phase-3-gated in this build.`,
+      "blocker",
+    ))
+  }
 
   return {
     eligible: selectionReady && initiativeReady && issues.length === 0,
@@ -542,7 +589,7 @@ function primaryAction(state: ObservedStudioState, eligibility = prepareRunEligi
   }
   if (!state.selection || !eligibility.selectionReady) {
     return control(
-      state.selectionMigrationRequired ? "Reconfirm and migrate agent selection" : "Select agent and model",
+      state.selectionMigrationRequired ? "Review and normalize agent selection" : "Select agent and model",
       { kind: "select-agent", adapterId: "native-picker", agentId: "native-picker", modelId: "native-picker", settings: {} },
       true,
       "primary",
@@ -947,6 +994,10 @@ function tracePage(state: ObservedStudioState): TracePageSnapshot {
 function agentStatus(capability: AdapterCapabilities): string {
   if (!capability.detected) return "Not detected"
   if (capability.executionInterface === "unavailable") return "Detected · inspection only"
+  const mode = supportedAgentMode(capability.adapterId, capability.agentId)
+  if (mode?.label === "Manual deterministic offline") return "Detected · deterministic offline managed runtime"
+  if (mode?.label === "Codex staged") return "Detected · isolated staged execution capability"
+  if (mode?.label === "Claude context-only") return "Detected · tool-free context-only capability"
   if (capability.executionInterface === "managed-in-process") return "Detected · managed in-process capability"
   if (capability.executionInterface === "cli-stream-json") return "Detected · managed stream capability"
   if (capability.executionInterface === "cli-jsonl") return "Detected · structured CLI capability"
@@ -969,7 +1020,11 @@ function agentPage(
 ): { page: AgentPageSnapshot; inspector?: StudioInspectorSnapshot } {
   const index = new Map(state.agents.map((candidate) => [candidate.adapterId, candidate]))
   const rows = state.agents.map((capability) => {
-    const selectable = capability.detected && capability.executionInterface !== "unavailable"
+    const mode = supportedAgentMode(capability.adapterId, capability.agentId)
+    const interfaceMatches = mode?.bindingKind === "managed-in-process"
+      ? capability.executionInterface === "managed-in-process"
+      : mode?.bindingKind === "executable" && capability.executionInterface !== "managed-in-process" && capability.executionInterface !== "unavailable"
+    const selectable = capability.detected && Boolean(mode) && interfaceMatches
     const modelId = capability.models[0]?.id ?? "provider-selected"
     return {
       id: capability.adapterId,
@@ -986,7 +1041,7 @@ function agentPage(
         { kind: "select-agent", adapterId: capability.adapterId, agentId: capability.agentId, modelId, settings: {} },
         selectable,
         "secondary",
-        selectable ? undefined : "This capability is observation-only and cannot be selected for execution.",
+        selectable ? undefined : "This adapter has no currently supported selectable runtime boundary.",
       )],
     }
   })
@@ -1196,7 +1251,7 @@ function agentPage(
         agent: state.selection.agentId,
         model: state.selection.modelId,
         modelTruthClass: state.selection.modelTruthClass,
-        modelAlias: state.selection.modelAlias === true,
+        modelAlias: state.selection.modelAlias,
         settings,
         limitationsReviewed: false,
         actions: [control("Change selection", { kind: "select-agent", adapterId: "native-picker", agentId: "native-picker", modelId: "native-picker", settings: {} })],
@@ -1207,6 +1262,8 @@ function agentPage(
       { term: "Agent", value: state.selection.agentId },
       { term: "Model", value: state.selection.modelId },
       { term: "Model truth", value: state.selection.modelTruthClass },
+      { term: "Model alias", value: state.selection.modelAlias === null ? "unknown" : state.selection.modelAlias ? "yes" : "no" },
+      { term: "Execution mode", value: supportedAgentMode(state.selection.adapterId, state.selection.agentId)?.label ?? "unsupported" },
     ] : [],
     limitations,
     handoffs: emptyTable("handoffs", "Handoffs", "The current engine does not expose a handoff list to Product Studio."),
@@ -1217,13 +1274,24 @@ function agentPage(
     runToolSelections,
   }
   const selectedBinding = state.runtimeBinding?.state === "ready" ? state.runtimeBinding.binding : undefined
+  const bindingEntries: StudioDefinitionEntry[] = selectedBinding?.kind === "executable"
+    ? [
+        { term: "Binding kind", value: "Executable" },
+        { term: "Resolved executable", value: selectedBinding.executable.canonicalPath },
+        { term: "Executable fingerprint", value: selectedBinding.executable.digest },
+      ]
+    : selectedBinding?.kind === "managed-in-process"
+      ? [
+          { term: "Binding kind", value: "Managed in-process" },
+          { term: "Runtime ID", value: selectedBinding.runtimeId },
+        ]
+      : [{ term: "Binding kind", value: "not bound" }]
   const inspector: StudioInspectorSnapshot | undefined = state.selection ? {
     title: "Machine-local runtime inspector",
     recordId: state.selection.adapterId,
     entries: [
       { term: "Binding state", value: state.runtimeBinding?.state ?? "missing" },
-      { term: "Resolved executable", value: selectedBinding?.executable.canonicalPath ?? "not bound" },
-      { term: "Executable fingerprint", value: selectedBinding?.executable.digest ?? "not bound" },
+      ...bindingEntries,
       { term: "Capability digest", value: state.selection.capabilityDigest },
       { term: "Selected at", value: state.selection.selectedAt },
     ],
@@ -1266,7 +1334,7 @@ function runPage(state: ObservedStudioState): RunPageSnapshot {
         actions: run.state === "unknown" ? [control("Inspect diagnostics", { kind: "show-diagnostics" })] : [],
       })),
       actions: [],
-      ...(state.runs.length === 0 ? { emptyState: emptySurface("No runs", "Create an active Initiative and select Codex before preparing an observe-only run.") } : {}),
+      ...(state.runs.length === 0 ? { emptyState: emptySurface("No runs", "Create an active Initiative and select a supported managed agent boundary. Managed Run launch remains Phase-3-gated in this build.") } : {}),
     },
     selectedRun: latestRunEntries(state.runs),
     events: [],
@@ -1682,7 +1750,7 @@ function surfaceFor(route: StudioRoute, context: CurrentEngineStudioContext, sta
     knownEffects: route === "agents-tools"
       ? [
           "This snapshot reads local GAEP state.",
-          "It invokes configured agent executables for bounded version and model-catalog discovery; it does not start a governed provider run.",
+          "It probes configured adapters for bounded capability discovery. Executable-backed adapters may run version or model-catalog checks; no governed provider run starts.",
         ]
       : ["This snapshot reads local GAEP state only."],
     unknownEffects: state.health.length > 0
@@ -1991,7 +2059,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       empty.issues.push(issue(
         "agent-selection-missing",
         empty.selectionMigrationRequired
-          ? "A legacy path-bearing selection is blocked. Reconfirm the same agent through the explicit migration workflow before preparing a run."
+          ? "A legacy path-bearing selection is blocked. Review the exact same-agent normalization; dependent execution history requires a dedicated migration."
           : "No valid portable agent selection is available. Invalid path-bearing selections remain blocked rather than being trusted or overwritten.",
         "blocker",
       ))

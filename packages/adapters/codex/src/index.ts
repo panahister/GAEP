@@ -42,7 +42,7 @@ interface RawCodexModel {
   visibility?: unknown
 }
 
-function parseModelCatalog(output: string): ModelDescriptor[] {
+export function parseModelCatalog(output: string): ModelDescriptor[] {
   const parsed = JSON.parse(output) as { models?: RawCodexModel[] }
   if (!Array.isArray(parsed.models)) return []
   return parsed.models.flatMap((model) => {
@@ -54,7 +54,7 @@ function parseModelCatalog(output: string): ModelDescriptor[] {
             return [(entry as { effort: string }).effort]
           }
           return []
-        })
+        }).filter((value, index, values) => values.indexOf(value) === index).sort()
       : []
     return [{
       id: model.slug,
@@ -63,12 +63,15 @@ function parseModelCatalog(output: string): ModelDescriptor[] {
       reasoningOptions,
       contextWindow: typeof model.context_window === "number" ? model.context_window : undefined,
       inputModalities: Array.isArray(model.input_modalities)
-        ? model.input_modalities.filter((item): item is string => typeof item === "string")
+        ? model.input_modalities
+            .filter((item): item is string => typeof item === "string")
+            .filter((value, index, values) => values.indexOf(value) === index)
+            .sort()
         : ["text"],
       truthClass: "observed" as const,
       alias: false,
     }]
-  })
+  }).sort((left, right) => left.id.localeCompare(right.id))
 }
 
 function compileCodexCharter(
@@ -154,7 +157,7 @@ export class CodexAdapter implements AgentAdapter {
       }
     }
 
-    const reasoningOptions = [...new Set(models.flatMap((model) => model.reasoningOptions))]
+    const reasoningOptions = [...new Set(models.flatMap((model) => model.reasoningOptions))].sort()
     const settings: AdapterCapabilities["settings"] = []
     if (reasoningOptions.length > 0) {
       settings.push({

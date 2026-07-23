@@ -636,7 +636,9 @@ class StudioShell {
           { term: "Model", value: page.selection.model },
           {
             term: "Model identity",
-            value: `${page.selection.modelTruthClass}${page.selection.modelAlias ? " · alias" : ""}`,
+            value: page.selection.modelAlias === null
+              ? `${page.selection.modelTruthClass} · alias status unknown`
+              : `${page.selection.modelTruthClass}${page.selection.modelAlias ? " · alias" : " · not an alias"}`,
           },
           ...page.selection.settings,
           { term: "Capability limitations review", value: page.selection.limitationsReviewed ? "Reviewed" : "Required" },

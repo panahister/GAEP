@@ -39,7 +39,7 @@ import {
   type AgentInvocation,
 } from "@gaep/agent-sdk"
 
-import { GaepRepository, type GaepRepositoryOptions } from "./repository.js"
+import { GaepRepository, type GaepRepositoryOptions, type MutationWrite } from "./repository.js"
 import {
   ManagedExecutionService,
   type ManagedExecutionApplyInput,
@@ -122,11 +122,149 @@ export interface HandoffInput {
   evidence: string[]
 }
 
+export interface AgentSelectionMutationGuard {
+  expectedCurrentSelectionDigest: `sha256:${string}` | null
+}
+
+export interface HandoffConfirmation {
+  decision: "accept-exact-handoff-preview"
+  expectedReviewDigest: `sha256:${string}`
+  expectedCurrentSelectionDigest: `sha256:${string}`
+  expectedHandoffId: string
+  expectedCreatedAt: string
+}
+
+function selectionMaterialDigest(selection: AgentSelection): `sha256:${string}` {
+  return canonicalDigest({
+    adapterId: selection.adapterId,
+    agentId: selection.agentId,
+    modelId: selection.modelId,
+    modelTruthClass: selection.modelTruthClass,
+    modelAlias: selection.modelAlias,
+    settings: selection.settings,
+    capabilityDigest: selection.capabilityDigest,
+  }) as `sha256:${string}`
+}
+
+export function handoffReviewDigest(handoff: Handoff): `sha256:${string}` {
+  return canonicalDigest({
+    schemaVersion: handoff.schemaVersion,
+    id: handoff.id,
+    createdAt: handoff.createdAt,
+    productId: handoff.productId,
+    initiativeId: handoff.initiativeId,
+    fromRunId: handoff.fromRunId,
+    toAgent: {
+      adapterId: handoff.toAgent.adapterId,
+      agentId: handoff.toAgent.agentId,
+      modelId: handoff.toAgent.modelId,
+      modelTruthClass: handoff.toAgent.modelTruthClass,
+      modelAlias: handoff.toAgent.modelAlias,
+      settings: handoff.toAgent.settings,
+      capabilityDigest: handoff.toAgent.capabilityDigest,
+    },
+    reason: handoff.reason,
+    workspaceBaseline: handoff.workspaceBaseline,
+    completedWork: handoff.completedWork,
+    unresolvedMatters: handoff.unresolvedMatters,
+    decisions: handoff.decisions,
+    evidence: handoff.evidence,
+    capabilityDifferences: handoff.capabilityDifferences,
+  }) as `sha256:${string}`
+}
+
+export function legacySelectionStateDigest(state: {
+  portableCandidate: AgentSelection
+  localRuntimeHint: { scope: "machine-local"; requestedExecutable: string }
+  machineLocalSettingKeys: string[]
+  machineLocalSettingsDigest: `sha256:${string}`
+}): `sha256:${string}` {
+  return canonicalDigest({
+    portableCandidate: state.portableCandidate,
+    localRuntimeHint: state.localRuntimeHint,
+    machineLocalSettingKeys: state.machineLocalSettingKeys,
+    machineLocalSettingsDigest: state.machineLocalSettingsDigest,
+  }) as `sha256:${string}`
+}
+
+export interface LegacyAgentSelectionMigrationPreview {
+  targetSelection: AgentSelection
+  retiredSettingKeys: string[]
+  legacySelectionDigest: `sha256:${string}`
+  previousPortableSelectionDigest: `sha256:${string}`
+  decision: "accept-exact-legacy-migration-preview"
+  expectedPreviewDigest: `sha256:${string}`
+}
+
 export interface LegacyAgentSelectionMigrationInput {
   capabilities: AdapterCapabilities
-  modelId: string
-  settings: Record<string, unknown>
-  confirmation: "reconfirm-portable-agent-selection"
+  decision: "accept-exact-legacy-migration-preview"
+  expectedPreviewDigest: `sha256:${string}`
+  expectedLegacySelectionDigest: `sha256:${string}`
+}
+
+const retainedHistoricalSettingKeys: Readonly<Record<string, ReadonlySet<string>>> = {
+  "gaep.codex-cli": new Set(["reasoningEffort"]),
+  "gaep.claude-code-cli": new Set(["effort", "maxBudgetUsd"]),
+}
+
+function isReviewedObsoleteLegacySetting(adapterId: string, key: string, value: unknown): boolean {
+  if (adapterId === "gaep.codex-cli") {
+    if (key === "sandbox") return ["read-only", "workspace-write", "danger-full-access"].includes(String(value))
+    if (key === "approvalPolicy") {
+      return ["untrusted", "on-request", "never", "fail-closed-noninteractive"].includes(String(value))
+    }
+    if (key === "search") return typeof value === "boolean"
+    if (key === "profile") return typeof value === "string"
+  }
+  if (adapterId === "gaep.claude-code-cli") {
+    if (key === "permissionMode") {
+      return ["default", "acceptEdits", "auto", "dontAsk", "plan"].includes(String(value))
+    }
+    if (key === "allowedTools" || key === "disallowedTools") {
+      return Array.isArray(value) && value.every((entry) => typeof entry === "string")
+    }
+  }
+  return false
+}
+
+function normalizedLegacySettings(
+  legacySelection: AgentSelection,
+  capabilities: AdapterCapabilities,
+  machineLocalSettingKeys: readonly string[],
+): { settings: AgentSelection["settings"]; retiredSettingKeys: string[] } {
+  const declared = new Set(capabilities.settings.map((setting) => setting.key))
+  const retained = retainedHistoricalSettingKeys[legacySelection.adapterId] ?? new Set<string>()
+  const settings: AgentSelection["settings"] = {}
+  const retired = new Set(machineLocalSettingKeys)
+  for (const [key, value] of Object.entries(legacySelection.settings)) {
+    if (retained.has(key)) {
+      if (!declared.has(key)) {
+        throw new Error(`Legacy current setting ${key} is no longer declared by the installed adapter`)
+      }
+      settings[key] = value
+      continue
+    }
+    if (isReviewedObsoleteLegacySetting(legacySelection.adapterId, key, value)) {
+      retired.add(key)
+      continue
+    }
+    throw new Error(`Legacy Agent Selection setting ${key} has no reviewed migration rule`)
+  }
+  return { settings, retiredSettingKeys: [...retired].sort() }
+}
+
+export function legacyAgentSelectionMigrationReviewDigest(
+  preview: Omit<LegacyAgentSelectionMigrationPreview, "expectedPreviewDigest">,
+): `sha256:${string}` {
+  // The exact legacy-state digest is checked separately and may bind machine-local
+  // hints. Keep the review/normalization digest portable so it is safe to audit.
+  return canonicalDigest({
+    targetSelection: preview.targetSelection,
+    retiredSettingKeys: preview.retiredSettingKeys,
+    previousPortableSelectionDigest: preview.previousPortableSelectionDigest,
+    decision: preview.decision,
+  }) as `sha256:${string}`
 }
 
 export class GaepEngine {
@@ -361,6 +499,7 @@ export class GaepEngine {
     modelId: string,
     settings: Record<string, unknown>,
     actorId: string,
+    guard?: AgentSelectionMutationGuard,
   ): Promise<AgentSelection> {
     const suppliedCapabilities = adapterCapabilitiesSchema.parse(capabilities)
     const adapter = this.adapters.get(suppliedCapabilities.adapterId)
@@ -386,7 +525,21 @@ export class GaepEngine {
       })
       const errors = adapter.validateSelection(selection, observedCapabilities)
       if (errors.length > 0) throw new Error(errors.join("; "))
-      const capabilitiesPath = this.capabilitiesPath(observedCapabilities)
+      const current = await this.currentSelectionOptional()
+      if (current) {
+        if (!guard || guard.expectedCurrentSelectionDigest !== canonicalDigest(current)) {
+          throw new Error("Agent Selection changed or was not explicitly bound before mutation; re-read and confirm the current selection")
+        }
+        await this.assertNoUnresolvedSelectionWork()
+        if (selectionMaterialDigest(current) === selectionMaterialDigest(selection)) return current
+        const currentSelectionDigest = canonicalDigest(current)
+        if ((await this.listRuns()).some((run) => canonicalDigest(run.agent) === currentSelectionDigest)) {
+          throw new Error("A material Agent Selection change after a bound Run requires an exact accepted handoff")
+        }
+      } else if (guard?.expectedCurrentSelectionDigest) {
+        throw new Error("Agent Selection was created while the mutation was being prepared; re-read and confirm it")
+      }
+      const capabilityWrite = await this.capabilitySnapshotWrite(observedCapabilities)
       await this.repository.commitMutation({
         writes: [
           {
@@ -395,12 +548,7 @@ export class GaepEngine {
             schema: agentSelectionSchema,
             governed: true,
           },
-          {
-            path: capabilitiesPath,
-            value: observedCapabilities,
-            schema: adapterCapabilitiesSchema,
-            governed: true,
-          },
+          ...(capabilityWrite ? [capabilityWrite] : []),
         ],
         audit: {
           eventType: "agent.selected",
@@ -411,6 +559,7 @@ export class GaepEngine {
             adapterId: selection.adapterId,
             capabilityDigest: selection.capabilityDigest,
             selectionDigest: canonicalDigest(selection),
+            previousSelectionDigest: current ? canonicalDigest(current) : undefined,
           },
         },
       })
@@ -427,22 +576,52 @@ export class GaepEngine {
     throw new Error(`The persisted Agent Selection is invalid: ${compatibility.issues.join("; ")}`)
   }
 
+  async previewLegacyAgentSelectionMigration(
+    supplied: AdapterCapabilities,
+  ): Promise<LegacyAgentSelectionMigrationPreview> {
+    const suppliedCapabilities = adapterCapabilitiesSchema.parse(supplied)
+    const adapter = this.adapters.get(suppliedCapabilities.adapterId)
+    if (!adapter) throw new Error(`Adapter ${suppliedCapabilities.adapterId} is not registered`)
+    return this.repository.withLock(async () => {
+      const legacySelection = await this.repository.readAgentSelectionCompatibility()
+      if (legacySelection.status !== "migration-required") {
+        throw new Error("Agent Selection migration preview requires an existing valid legacy Selection")
+      }
+      await this.assertLegacyMigrationIntegrity()
+      await this.readProduct()
+      await this.assertNoLegacySelectionDependents()
+      await this.assertNoUnresolvedSelectionWork()
+      await this.legacyCapabilityPathsForMigration(
+        suppliedCapabilities,
+        legacySelection.portableCandidate.capabilityDigest,
+      )
+      const { capabilities: observedCapabilities } = await this.probeAdapter(adapter, { refreshModels: true })
+      if (capabilityDigest(observedCapabilities) !== capabilityDigest(suppliedCapabilities)) {
+        throw new Error("Agent capabilities changed during migration preview; probe and review again")
+      }
+      return this.buildLegacyAgentSelectionMigrationPreview(legacySelection, observedCapabilities, adapter)
+    })
+  }
+
   async migrateLegacyAgentSelection(
     input: LegacyAgentSelectionMigrationInput,
     actorId: string,
   ): Promise<AgentSelection> {
-    if (input.confirmation !== "reconfirm-portable-agent-selection") {
-      throw new Error("Legacy Agent Selection migration requires explicit capability reconfirmation")
+    if (input.decision !== "accept-exact-legacy-migration-preview") {
+      throw new Error("Legacy Agent Selection migration requires acceptance of the exact migration preview")
     }
     const suppliedCapabilities = adapterCapabilitiesSchema.parse(input.capabilities)
     const adapter = this.adapters.get(suppliedCapabilities.adapterId)
     if (!adapter) throw new Error(`Adapter ${suppliedCapabilities.adapterId} is not registered`)
     return this.repository.withLock(async () => {
-      await this.assertAuditIntegrity()
-      await this.readProduct()
       const legacySelection = await this.repository.readAgentSelectionCompatibility()
       if (legacySelection.status !== "migration-required") {
         throw new Error("Agent Selection migration requires an existing valid legacy Selection")
+      }
+      await this.assertLegacyMigrationIntegrity()
+      await this.readProduct()
+      if (legacySelectionStateDigest(legacySelection) !== input.expectedLegacySelectionDigest) {
+        throw new Error("The legacy Agent Selection changed after migration review; re-read and reconfirm it")
       }
       if (
         legacySelection.portableCandidate.adapterId !== suppliedCapabilities.adapterId ||
@@ -450,38 +629,28 @@ export class GaepEngine {
       ) {
         throw new Error("Migration cannot change the legacy Agent identity; perform a separate Agent Selection instead")
       }
-      const capabilitiesPath = this.capabilitiesPath(suppliedCapabilities)
-      const legacyCapabilities = await this.repository.readAdapterCapabilitiesCompatibility(capabilitiesPath)
-      if (legacyCapabilities.status === "invalid") {
-        throw new Error(`Legacy capability snapshot is invalid: ${legacyCapabilities.issues.join("; ")}`)
-      }
-      const persistedCapabilities = legacyCapabilities.status === "current"
-        ? legacyCapabilities.capabilities
-        : legacyCapabilities.portableCandidate
-      if (
-        persistedCapabilities.adapterId !== suppliedCapabilities.adapterId ||
-        persistedCapabilities.agentId !== suppliedCapabilities.agentId
-      ) {
-        throw new Error("Persisted legacy capability identity does not match the Selection being migrated")
-      }
+      const legacyCapabilityPaths = await this.legacyCapabilityPathsForMigration(
+        suppliedCapabilities,
+        legacySelection.portableCandidate.capabilityDigest,
+      )
       const { capabilities: observedCapabilities } = await this.probeAdapter(adapter, { refreshModels: true })
       if (capabilityDigest(observedCapabilities) !== capabilityDigest(suppliedCapabilities)) {
         throw new Error("Agent capabilities changed during migration; probe and reconfirm again")
       }
-      const model = observedCapabilities.models.find((candidate) => candidate.id === input.modelId)
-      const selection = agentSelectionSchema.parse({
-        schemaVersion: 2,
-        adapterId: observedCapabilities.adapterId,
-        agentId: observedCapabilities.agentId,
-        modelId: input.modelId,
-        modelTruthClass: model?.truthClass ?? "configured",
-        modelAlias: model?.alias ?? null,
-        settings: input.settings,
-        selectedAt: new Date().toISOString(),
-        capabilityDigest: capabilityDigest(observedCapabilities),
-      })
-      const errors = adapter.validateSelection(selection, observedCapabilities)
-      if (errors.length > 0) throw new Error(errors.join("; "))
+      await this.assertNoLegacySelectionDependents()
+      await this.assertNoUnresolvedSelectionWork()
+      const preview = this.buildLegacyAgentSelectionMigrationPreview(legacySelection, observedCapabilities, adapter)
+      if (preview.expectedPreviewDigest !== input.expectedPreviewDigest) {
+        throw new Error("The exact legacy migration preview changed; review and accept it again")
+      }
+      const selection = preview.targetSelection
+      const capabilityWrite = await this.capabilitySnapshotWrite(observedCapabilities)
+      const rewrittenLegacyCapabilities = legacyCapabilityPaths.map((path) => ({
+        path,
+        value: observedCapabilities,
+        schema: adapterCapabilitiesSchema,
+        governed: true,
+      }))
       await this.repository.commitMutation({
         writes: [
           {
@@ -490,12 +659,8 @@ export class GaepEngine {
             schema: agentSelectionSchema,
             governed: true,
           },
-          {
-            path: capabilitiesPath,
-            value: observedCapabilities,
-            schema: adapterCapabilitiesSchema,
-            governed: true,
-          },
+          ...rewrittenLegacyCapabilities,
+          ...(capabilityWrite && !legacyCapabilityPaths.includes(capabilityWrite.path) ? [capabilityWrite] : []),
         ],
         audit: {
           eventType: "agent.selection.migrated",
@@ -506,7 +671,17 @@ export class GaepEngine {
             modelId: selection.modelId,
             capabilityDigest: selection.capabilityDigest,
             selectionDigest: canonicalDigest(selection),
+            previousPortableSelectionDigest: preview.previousPortableSelectionDigest,
+            normalizationProfileId: "gaep.legacy-agent-selection.v1-to-v2",
+            normalizationProfileVersion: 1,
+            normalizationDigest: preview.expectedPreviewDigest,
+            retainedSettingKeys: Object.keys(selection.settings).sort(),
+            droppedSettingKeys: preview.retiredSettingKeys,
+            rewrittenLegacyCapabilitySnapshots: legacyCapabilityPaths.length,
+            currentCapabilityDigest: selection.capabilityDigest,
+            historyDisposition: "no-bound-artifacts",
             capabilityReconfirmed: true,
+            exactMigrationPreviewAccepted: true,
             machineLocalDataPersisted: false,
           },
         },
@@ -530,7 +705,7 @@ export class GaepEngine {
     return runs.sort((left, right) => {
       const leftTime = left.endedAt ?? left.startedAt ?? ""
       const rightTime = right.endedAt ?? right.startedAt ?? ""
-      return rightTime.localeCompare(leftTime)
+      return rightTime.localeCompare(leftTime) || right.id.localeCompare(left.id)
     })
   }
 
@@ -883,12 +1058,32 @@ export class GaepEngine {
     })
   }
 
-  async createHandoff(input: HandoffInput, actorId: string): Promise<Handoff> {
+  async createHandoff(
+    input: HandoffInput,
+    actorId: string,
+    confirmation: HandoffConfirmation,
+  ): Promise<Handoff> {
     return this.repository.withLock(async () => {
       await this.assertAuditIntegrity()
-      const { handoff, capabilities } = await this.buildHandoffWithCapabilities(input)
+      if (confirmation.decision !== "accept-exact-handoff-preview") {
+        throw new Error("Handoff commit requires acceptance of the exact reviewed preview")
+      }
+      const currentSelection = await this.currentSelectionOptional()
+      if (!currentSelection || canonicalDigest(currentSelection) !== confirmation.expectedCurrentSelectionDigest) {
+        throw new Error("The current Agent Selection changed after handoff review")
+      }
+      const { handoff: rebuilt, capabilities } = await this.buildHandoffWithCapabilities(input)
+      const candidate = handoffSchema.parse({
+        ...rebuilt,
+        id: confirmation.expectedHandoffId,
+        createdAt: confirmation.expectedCreatedAt,
+      })
+      if (handoffReviewDigest(candidate) !== confirmation.expectedReviewDigest) {
+        throw new Error("The handoff source, target, capabilities, settings, or workspace baseline changed after review")
+      }
+      const handoff = handoffSchema.parse({ ...candidate, acknowledgedAt: new Date().toISOString() })
       const selection = handoff.toAgent
-      const capabilitiesPath = this.capabilitiesPath(capabilities)
+      const capabilityWrite = await this.capabilitySnapshotWrite(capabilities)
       await this.repository.commitMutation({
         writes: [
           {
@@ -903,12 +1098,7 @@ export class GaepEngine {
             schema: agentSelectionSchema,
             governed: true,
           },
-          {
-            path: capabilitiesPath,
-            value: capabilities,
-            schema: adapterCapabilitiesSchema,
-            governed: true,
-          },
+          ...(capabilityWrite ? [capabilityWrite] : []),
         ],
         audit: {
           eventType: "handoff.committed",
@@ -919,6 +1109,8 @@ export class GaepEngine {
             toAgent: selection.agentId,
             toModel: selection.modelId,
             selectionDigest: canonicalDigest(selection),
+            previousSelectionDigest: confirmation.expectedCurrentSelectionDigest,
+            reviewDigest: confirmation.expectedReviewDigest,
             recordDigest: canonicalDigest(handoff),
           },
         },
@@ -934,13 +1126,25 @@ export class GaepEngine {
   private async buildHandoffWithCapabilities(
     input: HandoffInput,
   ): Promise<{ handoff: Handoff; capabilities: AdapterCapabilities }> {
+    await this.assertNoUnresolvedSelectionWork()
     const fromRunId = requireUuid(input.fromRunId, "Source Run ID")
     const fromRun = await this.repository.readJson(
       this.repository.resolve("sessions", `run-${fromRunId}.json`),
       runSchema,
     )
-    if (fromRun.state === "running" || fromRun.state === "unknown") {
-      throw new Error("Stop, cancel, or reconcile the active agent process before creating a switch handoff")
+    if (!["completed", "failed", "cancelled"].includes(fromRun.state)) {
+      throw new Error("Complete, fail, or cancel the source Run before creating a switch handoff")
+    }
+    const currentSelection = await this.currentSelectionOptional()
+    if (!currentSelection || canonicalDigest(fromRun.agent) !== canonicalDigest(currentSelection)) {
+      throw new Error("The handoff source Run is not bound to the exact current Agent Selection")
+    }
+    const currentSelectionDigest = canonicalDigest(currentSelection)
+    const newestBoundTerminalRun = (await this.listRuns()).find((run) =>
+      ["completed", "failed", "cancelled"].includes(run.state) &&
+      canonicalDigest(run.agent) === currentSelectionDigest)
+    if (!newestBoundTerminalRun || newestBoundTerminalRun.id !== fromRun.id) {
+      throw new Error("The handoff source must be the newest terminal Run bound to the exact current Agent Selection")
     }
     const suppliedCapabilities = adapterCapabilitiesSchema.parse(input.toCapabilities)
     const adapter = this.adapters.get(suppliedCapabilities.adapterId)
@@ -963,14 +1167,31 @@ export class GaepEngine {
     })
     const validationErrors = adapter.validateSelection(toSelection, capabilities)
     if (validationErrors.length > 0) throw new Error(validationErrors.join("; "))
+    if (selectionMaterialDigest(currentSelection) === selectionMaterialDigest(toSelection)) {
+      throw new Error("A handoff requires a material Agent, model, setting, or capability change")
+    }
     const baseline = await this.workspaceBaseline()
     const capabilityDifferences = [
-      fromRun.agent.adapterId !== toSelection.adapterId
-        ? `Agent adapter changes from ${fromRun.agent.adapterId} to ${toSelection.adapterId}.`
+      currentSelection.adapterId !== toSelection.adapterId
+        ? `Agent adapter changes from ${currentSelection.adapterId} to ${toSelection.adapterId}.`
         : "Agent adapter is unchanged.",
-      fromRun.agent.modelId !== toSelection.modelId
-        ? `Model changes from ${fromRun.agent.modelId} to ${toSelection.modelId}.`
+      currentSelection.agentId !== toSelection.agentId
+        ? `Agent identity changes from ${currentSelection.agentId} to ${toSelection.agentId}.`
+        : "Agent identity is unchanged.",
+      currentSelection.modelId !== toSelection.modelId
+        ? `Model changes from ${currentSelection.modelId} to ${toSelection.modelId}.`
         : "Model is unchanged.",
+      currentSelection.modelTruthClass !== toSelection.modelTruthClass || currentSelection.modelAlias !== toSelection.modelAlias
+        ? `Model truth changes from ${currentSelection.modelTruthClass}/alias=${String(currentSelection.modelAlias)} to ${toSelection.modelTruthClass}/alias=${String(toSelection.modelAlias)}.`
+        : "Model truth and alias status are unchanged.",
+      canonicalDigest(currentSelection.settings) !== canonicalDigest(toSelection.settings)
+        ? "Adapter-declared settings change."
+        : "Adapter-declared settings are unchanged.",
+      currentSelection.capabilityDigest !== toSelection.capabilityDigest
+        ? `Capability snapshot changes from ${currentSelection.capabilityDigest} to ${toSelection.capabilityDigest}.`
+        : "Capability snapshot is unchanged.",
+      `Target execution interface is ${capabilities.executionInterface} (${capabilities.interfaceMaturity}).`,
+      `Target resume=${capabilities.supportsResume}, cancel=${capabilities.supportsCancel}, checkpoints=${capabilities.supportsCheckpoints}, tool-selection=${capabilities.supportsToolSelection}.`,
       ...capabilities.limitations,
     ]
     const handoff = handoffSchema.parse({
@@ -990,6 +1211,138 @@ export class GaepEngine {
       createdAt: new Date().toISOString(),
     })
     return { handoff, capabilities }
+  }
+
+  private async currentSelectionOptional(): Promise<AgentSelection | undefined> {
+    try {
+      const compatibility = await this.repository.readAgentSelectionCompatibility()
+      if (compatibility.status === "current") return compatibility.selection
+      if (compatibility.status === "migration-required") {
+        throw new Error("The persisted Agent Selection is legacy and requires explicit migration before it can change")
+      }
+      throw new Error(`The persisted Agent Selection is invalid: ${compatibility.issues.join("; ")}`)
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") return undefined
+      throw error
+    }
+  }
+
+  private buildLegacyAgentSelectionMigrationPreview(
+    legacySelection: {
+      portableCandidate: AgentSelection
+      localRuntimeHint: { scope: "machine-local"; requestedExecutable: string }
+      machineLocalSettingKeys: string[]
+      machineLocalSettingsDigest: `sha256:${string}`
+    },
+    capabilities: AdapterCapabilities,
+    adapter: AgentAdapter,
+  ): LegacyAgentSelectionMigrationPreview {
+    const legacy = legacySelection.portableCandidate
+    if (legacy.adapterId !== capabilities.adapterId || legacy.agentId !== capabilities.agentId) {
+      throw new Error("Migration cannot change the legacy Agent identity")
+    }
+    const normalization = normalizedLegacySettings(
+      legacy,
+      capabilities,
+      legacySelection.machineLocalSettingKeys,
+    )
+    const model = capabilities.models.find((candidate) => candidate.id === legacy.modelId)
+    const targetSelection = agentSelectionSchema.parse({
+      schemaVersion: 2,
+      adapterId: capabilities.adapterId,
+      agentId: capabilities.agentId,
+      modelId: legacy.modelId,
+      modelTruthClass: model?.truthClass ?? "configured",
+      modelAlias: model?.alias ?? null,
+      settings: normalization.settings,
+      selectedAt: legacy.selectedAt,
+      capabilityDigest: capabilityDigest(capabilities),
+    })
+    const errors = adapter.validateSelection(targetSelection, capabilities)
+    if (errors.length > 0) {
+      throw new Error(`Legacy retained settings are incompatible with current capabilities: ${errors.join("; ")}`)
+    }
+    const previewWithoutDigest = {
+      targetSelection,
+      retiredSettingKeys: normalization.retiredSettingKeys,
+      legacySelectionDigest: legacySelectionStateDigest(legacySelection),
+      previousPortableSelectionDigest: canonicalDigest(legacy) as `sha256:${string}`,
+      decision: "accept-exact-legacy-migration-preview" as const,
+    }
+    return {
+      ...previewWithoutDigest,
+      expectedPreviewDigest: legacyAgentSelectionMigrationReviewDigest(previewWithoutDigest),
+    }
+  }
+
+  private async assertNoLegacySelectionDependents(): Promise<void> {
+    const readNames = async (directory: "sessions" | "handoffs"): Promise<string[]> => {
+      try {
+        return await this.repository.readDirectory(this.repository.resolve(directory))
+      } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "ENOENT") return []
+        throw error
+      }
+    }
+    const [sessionNames, handoffNames] = await Promise.all([readNames("sessions"), readNames("handoffs")])
+    const selectionBoundArtifacts = [
+      ...sessionNames.filter((name) => name.endsWith(".json")),
+      ...handoffNames.filter((name) => name.endsWith(".json")),
+    ]
+    if (selectionBoundArtifacts.length > 0) {
+      throw new Error(
+        "Legacy Agent Selection has dependent Charter, Run, Handoff, or managed history; a dedicated handoff-compatible corpus migration is required",
+      )
+    }
+  }
+
+  private async assertLegacyMigrationIntegrity(): Promise<void> {
+    try {
+      await this.assertAuditIntegrity()
+    } catch (error) {
+      const manifest = await this.repository.readJson(
+        this.repository.resolve("manifest.json"),
+        repositoryManifestSchema,
+      )
+      let auditNames: string[] = []
+      try {
+        auditNames = await this.repository.readDirectory(this.repository.resolve("audit"))
+      } catch (directoryError) {
+        if (!(directoryError instanceof Error && "code" in directoryError && directoryError.code === "ENOENT")) {
+          throw directoryError
+        }
+      }
+      const preIntegritySignature =
+        manifest.auditCheckpointRequired === undefined &&
+        manifest.governedStateRequired === undefined &&
+        !auditNames.includes("checkpoint.json") &&
+        !auditNames.includes("state.json")
+      if (preIntegritySignature) {
+        throw new Error(
+          "Legacy Agent Selection repository integrity predates checkpoint and governed-state support; a dedicated reviewed integrity bootstrap is required before selection migration",
+        )
+      }
+      throw error
+    }
+  }
+
+  private async assertNoUnresolvedSelectionWork(): Promise<void> {
+    const [runs, managedRuns, pendingReviews] = await Promise.all([
+      this.listRuns(),
+      this.managedExecution.list(),
+      this.managedExecution.listPendingReviewStatuses(),
+    ])
+    const blockedRuns = runs.filter((run) => ["prepared", "running", "paused", "unknown"].includes(run.state))
+    const settledManaged = new Set(["completed", "failed", "cancelled", "timed-out", "discarded"])
+    const blockedManaged = managedRuns.filter((run) => !settledManaged.has(run.state))
+    if (blockedRuns.length > 0 || blockedManaged.length > 0 || pendingReviews.length > 0) {
+      const details = [
+        ...blockedRuns.map((run) => `Run ${run.id} is ${run.state}`),
+        ...blockedManaged.map((run) => `Managed Run ${run.id} is ${run.state}`),
+        ...pendingReviews.map((review) => `Managed Run ${review.managedRunId} has an unresolved ${review.state} review`),
+      ]
+      throw new Error(`Agent Selection cannot change while work or staged review remains unresolved: ${[...new Set(details)].join("; ")}`)
+    }
   }
 
   private async assertAuditIntegrity(): Promise<void> {
@@ -1023,14 +1376,76 @@ export class GaepEngine {
     return { capabilities, runtimeBinding }
   }
 
-  private capabilitiesPath(capabilities: Pick<AdapterCapabilities, "adapterId" | "agentId">): string {
+  private capabilitiesPath(capabilities: AdapterCapabilities): string {
     return this.repository.resolve(
       "runtime",
-      `capabilities-${canonicalDigest({
-        adapterId: capabilities.adapterId,
-        agentId: capabilities.agentId,
-      }).slice("sha256:".length)}.json`,
+      `capabilities-${capabilityDigest(capabilities).slice("sha256:".length)}.json`,
     )
+  }
+
+  private async capabilitySnapshotWrite(
+    capabilities: AdapterCapabilities,
+  ): Promise<MutationWrite<AdapterCapabilities> | undefined> {
+    const path = this.capabilitiesPath(capabilities)
+    try {
+      const existing = await this.repository.readJson(path, adapterCapabilitiesSchema)
+      if (capabilityDigest(existing) !== capabilityDigest(capabilities)) {
+        throw new Error("The immutable capability snapshot path contains mismatched governed content")
+      }
+      return undefined
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error
+      return {
+        path,
+        value: capabilities,
+        schema: adapterCapabilitiesSchema,
+        governed: true,
+      }
+    }
+  }
+
+  private async legacyCapabilityPathsForMigration(
+    capabilities: Pick<AdapterCapabilities, "adapterId" | "agentId">,
+    expectedHistoricalCapabilityDigest: string,
+  ): Promise<string[]> {
+    const identityName = `capabilities-${canonicalDigest({
+          adapterId: capabilities.adapterId,
+          agentId: capabilities.agentId,
+        }).slice("sha256:".length)}.json`
+    const candidateNames = [identityName]
+    let runtimeNames: string[]
+    try {
+      runtimeNames = await this.repository.readDirectory(this.repository.resolve("runtime"))
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") runtimeNames = []
+      else throw error
+    }
+    const existing: string[] = []
+    for (const name of [...new Set(candidateNames)]) {
+      if (!runtimeNames.includes(name)) continue
+      const path = this.repository.resolve("runtime", name)
+      const compatibility = await this.repository.readAdapterCapabilitiesCompatibility(path)
+      if (compatibility.status === "invalid") {
+        throw new Error(`Legacy capability snapshot is invalid: ${compatibility.issues.join("; ")}`)
+      }
+      if (compatibility.status !== "migration-required") {
+        throw new Error("The legacy Agent Selection capability snapshot is already portable and cannot prove its historical binding")
+      }
+      const persisted = compatibility.portableCandidate
+      if (persisted.adapterId !== capabilities.adapterId || persisted.agentId !== capabilities.agentId) {
+        throw new Error("Persisted legacy capability identity does not match the Selection being migrated")
+      }
+      if (compatibility.historicalCapabilityDigest !== expectedHistoricalCapabilityDigest) {
+        throw new Error(
+          "Legacy Agent Selection capability digest does not match the recognized historical capability snapshot",
+        )
+      }
+      existing.push(path)
+    }
+    if (existing.length === 0) {
+      throw new Error("The legacy Agent Selection has no recognized same-identity capability snapshot")
+    }
+    return existing
   }
 
   private async assertCharterBindings(charter: ExecutionCharter): Promise<void> {

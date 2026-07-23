@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -12,8 +12,10 @@ import {
   type ExecutionCharter,
 } from "@gaep/contracts"
 import {
+  canonicalDigest,
   capabilityDigest,
   requireExecutableRuntimeBinding,
+  validateSelectionBase,
   type AdapterProbeResult,
   type AdapterRuntimeBinding,
   type AgentAdapter,
@@ -21,7 +23,7 @@ import {
 } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { GaepEngine } from "./engine.js"
+import { GaepEngine, handoffReviewDigest, legacySelectionStateDigest } from "./engine.js"
 
 const capabilities: AdapterCapabilities = {
   schemaVersion: 1,
@@ -100,6 +102,183 @@ class FakeAdapter implements AgentAdapter {
 class MutableFakeAdapter extends FakeAdapter {
 }
 
+class HistoricalProviderFixtureAdapter implements AgentAdapter {
+  readonly runtimeBinding: AdapterRuntimeBinding
+
+  constructor(readonly id: string, readonly observed: AdapterCapabilities) {
+    this.runtimeBinding = {
+      ...runtimeBinding,
+      adapterId: observed.adapterId,
+      agentId: observed.agentId,
+    }
+  }
+
+  async probe(): Promise<AdapterProbeResult> {
+    return { capabilities: this.observed, runtimeBinding: this.runtimeBinding }
+  }
+
+  validateSelection(selection: AgentSelection, observed: AdapterCapabilities): string[] {
+    return validateSelectionBase(selection, observed)
+  }
+
+  buildInvocation(): AgentInvocation {
+    throw new Error("Historical migration fixtures never execute")
+  }
+}
+
+function currentHistoricalProviderCapabilities(provider: "codex" | "claude"): AdapterCapabilities {
+  const codex = provider === "codex"
+  return {
+    schemaVersion: 1,
+    adapterId: codex ? "gaep.codex-cli" : "gaep.claude-code-cli",
+    adapterVersion: "0.1.0",
+    agentId: codex ? "codex-cli" : "claude-code-cli",
+    agentLabel: codex ? "Codex" : "Claude Code",
+    runtimeVersion: "fixture-current",
+    detected: true,
+    executionInterface: codex ? "stdio-rpc" : "cli-stream-json",
+    interfaceMaturity: "stable",
+    supportsResume: codex,
+    supportsCancel: true,
+    supportsCheckpoints: false,
+    supportsModelDiscovery: codex,
+    supportsToolSelection: codex,
+    settings: codex
+      ? [{
+          key: "reasoningEffort",
+          label: "Reasoning effort",
+          description: "Current observed reasoning effort",
+          kind: "select",
+          required: false,
+          sensitive: false,
+          options: [{ value: "high", label: "high" }],
+          truthClass: "observed",
+        }]
+      : [
+          {
+            key: "effort",
+            label: "Effort",
+            description: "Current Claude effort",
+            kind: "select",
+            required: false,
+            sensitive: false,
+            options: [{ value: "high", label: "high" }],
+            truthClass: "provider-declared",
+          },
+          {
+            key: "maxBudgetUsd",
+            label: "Maximum budget",
+            description: "Current positive budget ceiling",
+            kind: "number",
+            required: false,
+            sensitive: false,
+            minimum: 0.01,
+            maximum: 100_000,
+            truthClass: "configured",
+          },
+        ],
+    models: [{
+      id: codex ? "gpt-5.6" : "sonnet",
+      label: codex ? "GPT-5.6" : "Sonnet alias",
+      reasoningOptions: ["high"],
+      inputModalities: ["text"],
+      truthClass: codex ? "observed" : "provider-declared",
+      alias: !codex,
+    }],
+    limitations: ["Migration fixture only"],
+    observedAt: "2026-07-23T00:00:00.000Z",
+  }
+}
+
+function integrityEraHistoricalCapabilities(
+  provider: "codex" | "claude",
+  current: AdapterCapabilities,
+): AdapterCapabilities {
+  const codex = provider === "codex"
+  return {
+    ...current,
+    runtimeVersion: "fixture-v1",
+    executionInterface: codex ? "cli-jsonl" : "unavailable",
+    interfaceMaturity: codex ? "stable" : "unknown",
+    supportsResume: codex,
+    supportsCancel: codex,
+    supportsModelDiscovery: codex,
+    supportsToolSelection: !codex,
+    settings: codex
+      ? [
+          ...current.settings.filter((setting) => setting.key === "reasoningEffort"),
+          {
+            key: "sandbox",
+            label: "Sandbox",
+            description: "Historical read-only operating-system sandbox",
+            kind: "select",
+            required: true,
+            sensitive: false,
+            defaultValue: "read-only",
+            options: [{ value: "read-only", label: "read-only" }],
+            truthClass: "provider-declared",
+          },
+          {
+            key: "approvalPolicy",
+            label: "Command approvals",
+            description: "Historical non-interactive fail-closed approval policy",
+            kind: "select",
+            required: true,
+            sensitive: false,
+            defaultValue: "fail-closed-noninteractive",
+            options: [{ value: "fail-closed-noninteractive", label: "Fail closed" }],
+            truthClass: "configured",
+          },
+        ]
+      : [
+          ...current.settings.filter((setting) => setting.key === "effort"),
+          {
+            key: "permissionMode",
+            label: "Permission mode",
+            description: "Historical Claude native permission behavior",
+            kind: "select",
+            required: true,
+            sensitive: false,
+            defaultValue: "default",
+            options: ["default", "plan"].map((value) => ({ value, label: value })),
+            truthClass: "provider-declared",
+          },
+          {
+            key: "allowedTools",
+            label: "Allowed tools",
+            description: "Historical Claude tool allowlist",
+            kind: "string-list",
+            required: false,
+            sensitive: false,
+            defaultValue: [],
+            truthClass: "configured",
+          },
+          {
+            key: "disallowedTools",
+            label: "Denied tools",
+            description: "Historical Claude tool denylist",
+            kind: "string-list",
+            required: false,
+            sensitive: false,
+            defaultValue: [],
+            truthClass: "configured",
+          },
+          {
+            key: "maxBudgetUsd",
+            label: "Maximum budget",
+            description: "Historical nonnegative budget ceiling",
+            kind: "number",
+            required: false,
+            sensitive: false,
+            minimum: 0,
+            truthClass: "configured",
+          },
+        ],
+    limitations: [codex ? "Historical cli-jsonl boundary" : "Historical Claude execution unavailable"],
+    observedAt: "2026-07-21T10:00:00.000Z",
+  }
+}
+
 describe("GAEP local engine", () => {
   let workspace: string
   let engine: GaepEngine
@@ -135,20 +314,40 @@ describe("GAEP local engine", () => {
     return { product, initiative }
   }
 
+  async function acceptedHandoffConfirmation(
+    target: GaepEngine,
+    input: Parameters<GaepEngine["previewHandoff"]>[0],
+  ) {
+    const preview = await target.previewHandoff(input)
+    return {
+      preview,
+      confirmation: {
+        decision: "accept-exact-handoff-preview" as const,
+        expectedReviewDigest: handoffReviewDigest(preview),
+        expectedCurrentSelectionDigest: canonicalDigest(await target.readSelection()) as `sha256:${string}`,
+        expectedHandoffId: preview.id,
+        expectedCreatedAt: preview.createdAt,
+      },
+    }
+  }
+
   async function persistLegacyAgentRuntime(executablePath = "/opt/legacy/bin/fake-agent") {
     const selection = await engine.readSelection()
-    const capabilityName = (await readdir(join(workspace, ".gaep", "runtime")))
-      .find((name) => /^capabilities-[0-9a-f]{64}\.json$/.test(name))
-    if (!capabilityName) throw new Error("Expected a persisted capability snapshot")
+    const capabilityName = `capabilities-${canonicalDigest({
+      adapterId: capabilities.adapterId,
+      agentId: capabilities.agentId,
+    }).slice("sha256:".length)}.json`
     const { schemaVersion: _selectionVersion, ...selectionFields } = selection
     const { schemaVersion: _capabilityVersion, ...capabilityFields } = capabilities
-    const legacySelection = legacyAgentSelectionV1Schema.parse({
-      ...selectionFields,
-      runtimeExecutable: executablePath,
-    })
     const legacyCapabilities = legacyAdapterCapabilitiesV1Schema.parse({
       ...capabilityFields,
       executablePath,
+    })
+    const { observedAt: _observedAt, ...historicalStableCapabilities } = legacyCapabilities
+    const legacySelection = legacyAgentSelectionV1Schema.parse({
+      ...selectionFields,
+      capabilityDigest: canonicalDigest(historicalStableCapabilities),
+      runtimeExecutable: executablePath,
     })
     await engine.repository.withLock(async () => {
       await engine.repository.commitMutation({
@@ -175,6 +374,77 @@ describe("GAEP local engine", () => {
       })
     })
     return { capabilityName }
+  }
+
+  async function legacyProviderFixture(
+    provider: "codex" | "claude",
+    legacySettings: Record<string, unknown>,
+    capabilityFileEra: "agent-id" | "identity-digest" = "identity-digest",
+  ) {
+    const providerWorkspace = join(workspace, provider)
+    await mkdir(providerWorkspace)
+    const currentCapabilities = currentHistoricalProviderCapabilities(provider)
+    const historicalCapabilities = integrityEraHistoricalCapabilities(provider, currentCapabilities)
+    const adapter = new HistoricalProviderFixtureAdapter(currentCapabilities.adapterId, currentCapabilities)
+    const providerEngine = new GaepEngine(providerWorkspace, [adapter])
+    await providerEngine.createProduct({
+      name: `${currentCapabilities.agentLabel} migration fixture`,
+      summary: "An authentic legacy Agent Selection migration fixture.",
+      problem: "Historical provider settings must not block or bypass safe migration.",
+      affectedUsers: "Existing GAEP Founder users",
+      desiredOutcome: "A path-free current selection with attributable normalization.",
+      successSignals: ["The exact migration preview is accepted"],
+      firstWorkflow: "Re-probe and normalize the legacy provider selection.",
+      exclusions: ["Execution history migration"],
+      profile: "software",
+    }, "founder")
+    const { schemaVersion: _schemaVersion, ...capabilityFields } = historicalCapabilities
+    const legacyCapabilities = legacyAdapterCapabilitiesV1Schema.parse({
+      ...capabilityFields,
+      executablePath: `/opt/legacy/bin/${currentCapabilities.agentId}`,
+    })
+    const { observedAt: _observedAt, ...historicalStableCapabilities } = legacyCapabilities
+    const model = historicalCapabilities.models[0]!
+    const legacySelection = legacyAgentSelectionV1Schema.parse({
+      adapterId: currentCapabilities.adapterId,
+      agentId: currentCapabilities.agentId,
+      modelId: model.id,
+      modelTruthClass: model.truthClass,
+      modelAlias: model.alias,
+      settings: legacySettings,
+      selectedAt: "2026-07-21T10:00:00.000Z",
+      capabilityDigest: canonicalDigest(historicalStableCapabilities),
+      runtimeExecutable: `/opt/legacy/bin/${currentCapabilities.agentId}`,
+    })
+    const capabilityName = capabilityFileEra === "agent-id"
+      ? `capabilities-${currentCapabilities.agentId}.json`
+      : `capabilities-${canonicalDigest({
+          adapterId: currentCapabilities.adapterId,
+          agentId: currentCapabilities.agentId,
+        }).slice("sha256:".length)}.json`
+    await providerEngine.repository.withLock(() => providerEngine.repository.commitMutation({
+      writes: [
+        {
+          path: providerEngine.repository.resolve("runtime", "selection.json"),
+          value: legacySelection,
+          schema: legacyAgentSelectionV1Schema,
+          governed: true,
+        },
+        {
+          path: providerEngine.repository.resolve("runtime", capabilityName),
+          value: legacyCapabilities,
+          schema: legacyAdapterCapabilitiesV1Schema,
+          governed: true,
+        },
+      ],
+      audit: {
+        eventType: "test.legacy-v1-provider.persisted",
+        actor: { kind: "system", id: "test.fixture" },
+        subjectId: currentCapabilities.agentId,
+        payload: { provider, capabilityFileEra },
+      },
+    }))
+    return { providerWorkspace, providerEngine, currentCapabilities, historicalCapabilities, capabilityName }
   }
 
   it("keeps Product and Initiative identities and lifecycle state separate", async () => {
@@ -397,17 +667,22 @@ describe("GAEP local engine", () => {
     adapter.runtimeBinding = freshBinding
 
     await engine.markRunState(run.id, "cancelled", { kind: "human", id: "founder" })
-    const handoff = await engine.createHandoff({
+    const handoffInput = {
       fromRunId: run.id,
       toCapabilities: capabilities,
       toModelId: "fake-model",
-      toSettings: {},
+      toSettings: { switched: true },
       reason: "Verify portable handoff persistence",
       completedWork: ["Fresh local binding used"],
       unresolvedMatters: [],
       decisions: [],
       evidence: [],
-    }, "founder")
+    }
+    const { preview, confirmation } = await acceptedHandoffConfirmation(engine, handoffInput)
+    const handoff = await engine.createHandoff(handoffInput, "founder", confirmation)
+    expect(handoff.acknowledgedAt).toBeDefined()
+    expect(handoff.id).toBe(preview.id)
+    expect(handoff.createdAt).toBe(preview.createdAt)
     const capabilityName = (await readdir(join(workspace, ".gaep", "runtime")))
       .find((name) => /^capabilities-[0-9a-f]{64}\.json$/.test(name))!
     const persisted = await Promise.all([
@@ -436,6 +711,9 @@ describe("GAEP local engine", () => {
   it("keeps legacy runtime records readable for audit and requires explicit transactional migration", async () => {
     await initialize()
     const { capabilityName } = await persistLegacyAgentRuntime()
+    const legacyCompatibility = await engine.repository.readAgentSelectionCompatibility()
+    if (legacyCompatibility.status !== "migration-required") throw new Error("Expected legacy selection fixture")
+    const expectedLegacySelectionDigest = legacySelectionStateDigest(legacyCompatibility)
     expect((await engine.repository.verifyAudit()).valid).toBe(true)
     const legacyHealth = await engine.workspaceHealth()
     expect(legacyHealth.status).toBe("degraded")
@@ -444,24 +722,43 @@ describe("GAEP local engine", () => {
       "workspace.agent-capabilities-migration-required",
     ]))
     await expect(engine.readSelection()).rejects.toThrow(/explicit re-probe and reconfirmation/i)
+    const preview = await engine.previewLegacyAgentSelectionMigration(capabilities)
+    expect(preview).toMatchObject({
+      targetSelection: { modelId: "fake-model", settings: {} },
+      retiredSettingKeys: [],
+      legacySelectionDigest: expectedLegacySelectionDigest,
+      decision: "accept-exact-legacy-migration-preview",
+    })
     await expect(engine.migrateLegacyAgentSelection({
       capabilities,
-      modelId: "fake-model",
-      settings: {},
-      confirmation: "wrong" as "reconfirm-portable-agent-selection",
-    }, "founder")).rejects.toThrow(/explicit capability reconfirmation/i)
+      decision: "wrong" as "accept-exact-legacy-migration-preview",
+      expectedPreviewDigest: preview.expectedPreviewDigest,
+      expectedLegacySelectionDigest,
+    }, "founder")).rejects.toThrow(/exact migration preview/i)
+    await expect(engine.migrateLegacyAgentSelection({
+      capabilities,
+      decision: preview.decision,
+      expectedPreviewDigest: preview.expectedPreviewDigest,
+      expectedLegacySelectionDigest: `sha256:${"0".repeat(64)}`,
+    }, "founder")).rejects.toThrow(/changed after migration review/i)
+    await expect(engine.migrateLegacyAgentSelection({
+      capabilities,
+      decision: preview.decision,
+      expectedPreviewDigest: `sha256:${"1".repeat(64)}`,
+      expectedLegacySelectionDigest,
+    }, "founder")).rejects.toThrow(/preview changed/i)
     await expect(engine.migrateLegacyAgentSelection({
       capabilities: { ...capabilities, runtimeVersion: "changed" },
-      modelId: "fake-model",
-      settings: {},
-      confirmation: "reconfirm-portable-agent-selection",
+      decision: preview.decision,
+      expectedPreviewDigest: preview.expectedPreviewDigest,
+      expectedLegacySelectionDigest,
     }, "founder")).rejects.toThrow(/changed during migration/i)
 
     const migrated = await engine.migrateLegacyAgentSelection({
       capabilities,
-      modelId: "fake-model",
-      settings: {},
-      confirmation: "reconfirm-portable-agent-selection",
+      decision: preview.decision,
+      expectedPreviewDigest: preview.expectedPreviewDigest,
+      expectedLegacySelectionDigest,
     }, "founder")
     expect(migrated.schemaVersion).toBe(2)
     expect((await engine.repository.verifyAudit()).valid).toBe(true)
@@ -472,6 +769,181 @@ describe("GAEP local engine", () => {
     expect(capabilitiesText).not.toContain("executablePath")
     expect(selectionText).not.toContain("/opt/legacy")
     expect(capabilitiesText).not.toContain("/opt/legacy")
+    const migrationEvent = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+      .find((event) => event.eventType === "agent.selection.migrated")
+    expect(migrationEvent?.payload).toMatchObject({
+      previousPortableSelectionDigest: preview.previousPortableSelectionDigest,
+      normalizationProfileId: "gaep.legacy-agent-selection.v1-to-v2",
+      normalizationProfileVersion: 1,
+      normalizationDigest: preview.expectedPreviewDigest,
+      retainedSettingKeys: [],
+      droppedSettingKeys: [],
+      currentCapabilityDigest: migrated.capabilityDigest,
+      historyDisposition: "no-bound-artifacts",
+      exactMigrationPreviewAccepted: true,
+      machineLocalDataPersisted: false,
+    })
+  })
+
+  it.each([
+    {
+      provider: "codex" as const,
+      legacySettings: {
+        reasoningEffort: "high",
+        sandbox: "read-only",
+        approvalPolicy: "fail-closed-noninteractive",
+      },
+      expectedSettings: { reasoningEffort: "high" },
+      retiredSettingKeys: ["approvalPolicy", "sandbox"],
+    },
+    {
+      provider: "claude" as const,
+      legacySettings: {
+        effort: "high",
+        permissionMode: "plan",
+        allowedTools: ["Read", "Grep"],
+        disallowedTools: ["Write", "Bash"],
+        maxBudgetUsd: 12,
+      },
+      expectedSettings: { effort: "high", maxBudgetUsd: 12 },
+      retiredSettingKeys: ["allowedTools", "disallowedTools", "permissionMode"],
+    },
+  ])("normalizes integrity-era v1 $provider settings", async ({
+    provider,
+    legacySettings,
+    expectedSettings,
+    retiredSettingKeys,
+  }) => {
+    const fixture = await legacyProviderFixture(provider, legacySettings, "identity-digest")
+    const compatibility = await fixture.providerEngine.repository.readAgentSelectionCompatibility()
+    if (compatibility.status !== "migration-required") throw new Error("Expected authentic v1 selection")
+    const preview = await fixture.providerEngine.previewLegacyAgentSelectionMigration(fixture.currentCapabilities)
+    expect(preview.targetSelection).toMatchObject({
+      adapterId: fixture.currentCapabilities.adapterId,
+      agentId: fixture.currentCapabilities.agentId,
+      modelId: fixture.currentCapabilities.models[0]!.id,
+      settings: expectedSettings,
+      selectedAt: "2026-07-21T10:00:00.000Z",
+    })
+    expect(preview.retiredSettingKeys).toEqual(retiredSettingKeys)
+    await fixture.providerEngine.migrateLegacyAgentSelection({
+      capabilities: fixture.currentCapabilities,
+      decision: preview.decision,
+      expectedPreviewDigest: preview.expectedPreviewDigest,
+      expectedLegacySelectionDigest: preview.legacySelectionDigest,
+    }, "founder")
+
+    const runtimeNames = await readdir(join(fixture.providerWorkspace, ".gaep", "runtime"))
+    expect(runtimeNames).toContain(fixture.capabilityName)
+    const persistedRuntime = await Promise.all(runtimeNames
+      .filter((name) => name.endsWith(".json"))
+      .map((name) => readFile(join(fixture.providerWorkspace, ".gaep", "runtime", name), "utf8")))
+    for (const text of persistedRuntime) {
+      expect(text).not.toContain("runtimeExecutable")
+      expect(text).not.toContain("executablePath")
+      expect(text).not.toContain("/opt/legacy")
+    }
+    const auditText = await readFile(join(fixture.providerWorkspace, ".gaep", "audit", "events.jsonl"), "utf8")
+    expect(auditText).not.toContain("/opt/legacy")
+  })
+
+  it("rejects a legacy selection that is not bound to its historical capability snapshot", async () => {
+    const fixture = await legacyProviderFixture("codex", {
+      reasoningEffort: "high",
+      sandbox: "read-only",
+      approvalPolicy: "fail-closed-noninteractive",
+    })
+    const selectionPath = fixture.providerEngine.repository.resolve("runtime", "selection.json")
+    const rawSelection = JSON.parse(await readFile(selectionPath, "utf8")) as Record<string, unknown>
+    const mismatchedSelection = legacyAgentSelectionV1Schema.parse({
+      ...rawSelection,
+      capabilityDigest: `sha256:${"0".repeat(64)}`,
+    })
+    await fixture.providerEngine.repository.withLock(() => fixture.providerEngine.repository.commitMutation({
+      writes: [{
+        path: selectionPath,
+        value: mismatchedSelection,
+        schema: legacyAgentSelectionV1Schema,
+        governed: true,
+      }],
+      audit: {
+        eventType: "test.legacy-capability-binding.mismatched",
+        actor: { kind: "system", id: "test.fixture" },
+        payload: { expectedFailure: true },
+      },
+    }))
+    await expect(
+      fixture.providerEngine.previewLegacyAgentSelectionMigration(fixture.currentCapabilities),
+    ).rejects.toThrow(/capability digest does not match.*historical capability snapshot/iu)
+  })
+
+  it("quarantines the pre-integrity agent-id capability era instead of synthesizing trusted state", async () => {
+    const fixture = await legacyProviderFixture("codex", {
+      reasoningEffort: "high",
+      sandbox: "workspace-write",
+      approvalPolicy: "on-request",
+      search: false,
+      profile: "/Users/founder/.codex/config.toml",
+    }, "agent-id")
+    const manifestPath = join(fixture.providerWorkspace, ".gaep", "manifest.json")
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as Record<string, unknown>
+    delete manifest.auditCheckpointRequired
+    delete manifest.governedStateRequired
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+    await Promise.all([
+      rm(join(fixture.providerWorkspace, ".gaep", "audit", "checkpoint.json")),
+      rm(join(fixture.providerWorkspace, ".gaep", "audit", "state.json")),
+    ])
+    await expect(
+      fixture.providerEngine.previewLegacyAgentSelectionMigration(fixture.currentCapabilities),
+    ).rejects.toThrow(/predates checkpoint and governed-state support.*integrity bootstrap/iu)
+  })
+
+  it("does not misclassify a damaged modern integrity workspace as a pre-integrity legacy repository", async () => {
+    const fixture = await legacyProviderFixture("codex", {
+      reasoningEffort: "high",
+      sandbox: "read-only",
+      approvalPolicy: "fail-closed-noninteractive",
+    })
+    await rm(join(fixture.providerWorkspace, ".gaep", "audit", "state.json"))
+    await expect(
+      fixture.providerEngine.previewLegacyAgentSelectionMigration(fixture.currentCapabilities),
+    ).rejects.toThrow(/audit is invalid|governed-state|state/iu)
+    await expect(
+      fixture.providerEngine.previewLegacyAgentSelectionMigration(fixture.currentCapabilities),
+    ).rejects.not.toThrow(/integrity bootstrap/iu)
+  })
+
+  it("blocks legacy current-setting normalization when the historical value is no longer valid", async () => {
+    const fixture = await legacyProviderFixture("claude", {
+      effort: "high",
+      permissionMode: "default",
+      allowedTools: [],
+      disallowedTools: [],
+      maxBudgetUsd: 0,
+    })
+    await expect(
+      fixture.providerEngine.previewLegacyAgentSelectionMigration(fixture.currentCapabilities),
+    ).rejects.toThrow(/retained settings are incompatible.*at least 0\.01/iu)
+  })
+
+  it("blocks legacy normalization when any selection-bound execution artifact exists", async () => {
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Create selection-bound history before legacy normalization.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop after creating the fixture"],
+      requiredEvidence: [],
+    }, "founder")
+    await persistLegacyAgentRuntime()
+    await expect(engine.previewLegacyAgentSelectionMigration(capabilities)).rejects.toThrow(
+      /dependent Charter, Run, Handoff, or managed history/iu,
+    )
   })
 
   it("rejects absolute Charter permission scopes before persistence", async () => {
@@ -534,9 +1006,150 @@ describe("GAEP local engine", () => {
       decisions: [],
       evidence: [],
     }
-    await expect(engine.createHandoff(input, "founder")).rejects.toThrow(/Stop, cancel, or reconcile/)
+    const confirmation = {
+      decision: "accept-exact-handoff-preview" as const,
+      expectedReviewDigest: `sha256:${"0".repeat(64)}` as const,
+      expectedCurrentSelectionDigest: canonicalDigest(await engine.readSelection()) as `sha256:${string}`,
+      expectedHandoffId: "00000000-0000-4000-8000-000000000099",
+      expectedCreatedAt: "2026-07-23T00:00:00.000Z",
+    }
+    await expect(engine.createHandoff(input, "founder", confirmation)).rejects.toThrow(/Run|complete|cancel|reconcile/i)
     await engine.markRunState(run.id, "unknown", { kind: "system", id: "test" })
-    await expect(engine.createHandoff(input, "founder")).rejects.toThrow(/Stop, cancel, or reconcile/)
+    await expect(engine.createHandoff(input, "founder", confirmation)).rejects.toThrow(/Run|complete|cancel|reconcile/i)
+  })
+
+  it("treats identical selection as a no-op and requires an exact optimistic guard for material changes", async () => {
+    await initialize()
+    const before = await engine.readSelection()
+    const selectionPath = join(workspace, ".gaep", "runtime", "selection.json")
+    const persistedBefore = await readFile(selectionPath, "utf8")
+
+    await expect(engine.selectAgent(capabilities, "fake-model", {}, "founder")).rejects.toThrow(/explicitly bound/i)
+    expect(await engine.selectAgent(capabilities, "fake-model", {}, "founder", {
+      expectedCurrentSelectionDigest: canonicalDigest(before) as `sha256:${string}`,
+    })).toEqual(before)
+    expect(await readFile(selectionPath, "utf8")).toBe(persistedBefore)
+    await expect(engine.selectAgent(capabilities, "fake-model", { changed: true }, "founder"))
+      .rejects.toThrow(/explicitly bound/i)
+    await expect(engine.selectAgent(capabilities, "fake-model", { changed: true }, "founder", {
+      expectedCurrentSelectionDigest: `sha256:${"0".repeat(64)}`,
+    })).rejects.toThrow(/explicitly bound/i)
+
+    const changed = await engine.selectAgent(capabilities, "fake-model", { changed: true }, "founder", {
+      expectedCurrentSelectionDigest: canonicalDigest(before) as `sha256:${string}`,
+    })
+    expect(changed.settings).toEqual({ changed: true })
+    expect(await readFile(selectionPath, "utf8")).not.toBe(persistedBefore)
+  })
+
+  it("prevents direct selection from bypassing unresolved work or the required terminal-Run handoff", async () => {
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Prove selection switching cannot bypass execution history.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop before switching"],
+      requiredEvidence: ["Engine rejection"],
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    const { run } = await engine.prepareRun(charter.id, "founder")
+    const expectedCurrentSelectionDigest = canonicalDigest(await engine.readSelection()) as `sha256:${string}`
+
+    await expect(engine.selectAgent(capabilities, "fake-model", {}, "founder", {
+      expectedCurrentSelectionDigest,
+    })).rejects.toThrow(/work.*unresolved|Run .*prepared/i)
+    await expect(engine.selectAgent(capabilities, "fake-model", { changed: true }, "founder", {
+      expectedCurrentSelectionDigest,
+    })).rejects.toThrow(/work.*unresolved|Run .*prepared/i)
+    await engine.markRunState(run.id, "cancelled", { kind: "human", id: "founder" })
+    await expect(engine.selectAgent(capabilities, "fake-model", { changed: true }, "founder", {
+      expectedCurrentSelectionDigest,
+    })).rejects.toThrow(/requires an exact accepted handoff/i)
+
+    const handoffInput = {
+      fromRunId: run.id,
+      toCapabilities: capabilities,
+      toModelId: "fake-model",
+      toSettings: { changed: true },
+      reason: "Complete the exact required handoff",
+      completedWork: ["Source Run cancelled"],
+      unresolvedMatters: [],
+      decisions: [],
+      evidence: [],
+    }
+    const { confirmation } = await acceptedHandoffConfirmation(engine, handoffInput)
+    await engine.createHandoff(handoffInput, "founder", confirmation)
+    const handedOffSelection = await engine.readSelection()
+    const changedAgain = await engine.selectAgent(capabilities, "fake-model", { changedAgain: true }, "founder", {
+      expectedCurrentSelectionDigest: canonicalDigest(handedOffSelection) as `sha256:${string}`,
+    })
+    expect(changedAgain.settings).toEqual({ changedAgain: true })
+  })
+
+  it("requires a handoff to use the newest terminal Run for the current selection", async () => {
+    const { initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Create two terminal Runs and preserve the latest continuity evidence.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop before switching"],
+      requiredEvidence: ["Newest Run enforcement"],
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    const first = await engine.prepareRun(charter.id, "founder")
+    const second = await engine.prepareRun(charter.id, "founder")
+    await engine.markRunState(first.run.id, "cancelled", { kind: "human", id: "founder" })
+    await engine.markRunState(second.run.id, "cancelled", { kind: "human", id: "founder" })
+    const terminal = (await engine.listRuns()).filter((run) => run.state === "cancelled")
+    expect(terminal).toHaveLength(2)
+    const inputFor = (fromRunId: string) => ({
+      fromRunId,
+      toCapabilities: capabilities,
+      toModelId: "fake-model",
+      toSettings: { switched: true },
+      reason: "Switch from the latest completed context",
+      completedWork: ["Both Runs are terminal"],
+      unresolvedMatters: [],
+      decisions: [],
+      evidence: [],
+    })
+
+    await expect(engine.previewHandoff(inputFor(terminal[1]!.id))).rejects.toThrow(/newest terminal Run/i)
+    await expect(engine.previewHandoff(inputFor(terminal[0]!.id))).resolves.toMatchObject({ fromRunId: terminal[0]!.id })
+  })
+
+  it("preserves immutable capability snapshots across capability changes and repeat observations", async () => {
+    const adapter = new MutableFakeAdapter()
+    engine = new GaepEngine(workspace, [adapter])
+    await initialize()
+    const firstSelection = await engine.readSelection()
+    const firstName = `capabilities-${firstSelection.capabilityDigest.slice("sha256:".length)}.json`
+    const firstPath = join(workspace, ".gaep", "runtime", firstName)
+    const firstText = await readFile(firstPath, "utf8")
+
+    adapter.observed = { ...capabilities, runtimeVersion: "2.0.0", observedAt: "2026-07-23T01:00:00.000Z" }
+    const secondSelection = await engine.selectAgent(adapter.observed, "fake-model", {}, "founder", {
+      expectedCurrentSelectionDigest: canonicalDigest(firstSelection) as `sha256:${string}`,
+    })
+    const secondName = `capabilities-${secondSelection.capabilityDigest.slice("sha256:".length)}.json`
+    const secondPath = join(workspace, ".gaep", "runtime", secondName)
+    const secondText = await readFile(secondPath, "utf8")
+    expect(secondName).not.toBe(firstName)
+    expect(await readFile(firstPath, "utf8")).toBe(firstText)
+
+    adapter.observed = { ...adapter.observed, observedAt: "2026-07-23T02:00:00.000Z" }
+    expect(await engine.selectAgent(adapter.observed, "fake-model", {}, "founder", {
+      expectedCurrentSelectionDigest: canonicalDigest(secondSelection) as `sha256:${string}`,
+    })).toEqual(secondSelection)
+    expect(await readFile(secondPath, "utf8")).toBe(secondText)
+    expect((await readdir(join(workspace, ".gaep", "runtime"))).filter((name) =>
+      /^capabilities-[0-9a-f]{64}\.json$/u.test(name))).toEqual(expect.arrayContaining([firstName, secondName]))
   })
 
   it("marks a run left running across host restart as unknown, never completed", async () => {
@@ -589,7 +1202,9 @@ describe("GAEP local engine", () => {
       requiredEvidence: ["Binding failure"],
     }, "founder")
     await engine.confirmCharter(charter.id, "founder")
-    await engine.selectAgent(capabilities, "fake-model", { changed: true }, "founder")
+    await engine.selectAgent(capabilities, "fake-model", { changed: true }, "founder", {
+      expectedCurrentSelectionDigest: canonicalDigest(await engine.readSelection()) as `sha256:${string}`,
+    })
     await expect(engine.prepareRun(charter.id, "founder")).rejects.toThrow(/Agent, model, or settings changed/)
   })
 
@@ -722,7 +1337,7 @@ describe("GAEP local engine", () => {
     await engine.confirmCharter(charter.id, "founder")
     const { run } = await engine.prepareRun(charter.id, "founder")
     await engine.markRunState(run.id, "cancelled", { kind: "human", id: "founder" })
-    const handoff = await engine.createHandoff({
+    const handoffInput = {
       fromRunId: run.id,
       toCapabilities: capabilities,
       toModelId: "fake-model",
@@ -732,7 +1347,9 @@ describe("GAEP local engine", () => {
       unresolvedMatters: [],
       decisions: [],
       evidence: [],
-    }, "founder")
+    }
+    const { confirmation } = await acceptedHandoffConfirmation(engine, handoffInput)
+    const handoff = await engine.createHandoff(handoffInput, "founder", confirmation)
     const capabilitySnapshot = (await readdir(join(workspace, ".gaep", "runtime")))
       .find((name) => /^capabilities-[0-9a-f]{64}\.json$/.test(name))
     expect(capabilitySnapshot).toBeDefined()
@@ -827,10 +1444,18 @@ describe("GAEP local engine", () => {
       decisions: [],
       evidence: [],
     }
-    const preview = await failing.previewHandoff(input)
+    const { preview, confirmation } = await acceptedHandoffConfirmation(failing, input)
     expect(preview.workspaceBaseline.truthClass).toBe("unknown")
     expect(preview.workspaceBaseline.dirty).toBeNull()
-    await expect(failing.createHandoff(input, "founder")).rejects.toThrow("Injected atomic-switch failure")
+    await expect(failing.createHandoff(input, "founder", {
+      ...confirmation,
+      expectedCurrentSelectionDigest: `sha256:${"0".repeat(64)}`,
+    })).rejects.toThrow(/Agent Selection changed after handoff review/)
+    await expect(failing.createHandoff(input, "founder", {
+      ...confirmation,
+      expectedReviewDigest: `sha256:${"0".repeat(64)}`,
+    })).rejects.toThrow(/changed after review/)
+    await expect(failing.createHandoff(input, "founder", confirmation)).rejects.toThrow("Injected atomic-switch failure")
 
     const journal = JSON.parse(
       await readFile(join(workspace, ".gaep", "runtime", "transaction.json"), "utf8"),
