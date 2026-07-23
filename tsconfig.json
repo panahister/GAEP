@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "packages/contracts" },
+    { "path": "packages/design-import" },
     { "path": "packages/agent-sdk" },
     { "path": "packages/engine" },
     { "path": "packages/adapters/codex" },

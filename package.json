@@ -5,6 +5,7 @@
   "type": "module",
   "workspaces": [
     "packages/contracts",
+    "packages/design-import",
     "packages/agent-sdk",
     "packages/engine",
     "packages/adapters/*",

@@ -9,6 +9,7 @@ Visual Studio Code is the first usable host. Rider has a native tool-window host
 The implementation is local-first and keeps portable records in the workspace `.gaep/` directory:
 
 - `packages/contracts`: versioned Product, Initiative, agent, charter, run, handoff, audit, and host-protocol contracts;
+- `packages/design-import`: bounded, link-free import of manifest-bound portable design exports and DTCG-style tokens;
 - `packages/engine`: state transitions, atomic persistence, append-only hash-chained audit, charter gates, runs, and governed switching;
 - `packages/adapters`: capability-aware Codex CLI and Claude Code adapters using argument arrays rather than shell interpolation;
 - `apps/engine-host`: newline-delimited JSON-RPC process shared by non-TypeScript IDE hosts;
