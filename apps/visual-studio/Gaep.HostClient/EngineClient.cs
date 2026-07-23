@@ -7,8 +7,10 @@ public sealed class EngineClient : IAsyncDisposable
 {
     private readonly string workspacePath;
     private readonly string engineExecutable;
+    private readonly SemaphoreSlim requestGate = new(1, 1);
     private Process? process;
     private long nextId;
+    private bool disposed;
 
     public EngineClient(string workspacePath, string? engineExecutable = null)
     {
@@ -23,31 +25,42 @@ public sealed class EngineClient : IAsyncDisposable
         IReadOnlyDictionary<string, object?>? parameters = null,
         CancellationToken cancellationToken = default)
     {
-        EnsureStarted();
-        var id = Interlocked.Increment(ref nextId);
-        var request = JsonSerializer.Serialize(new
+        ObjectDisposedException.ThrowIf(disposed, this);
+        await requestGate.WaitAsync(cancellationToken);
+        try
         {
-            jsonrpc = "2.0",
-            id,
-            method,
-            @params = parameters ?? new Dictionary<string, object?>(),
-        });
-        await process!.StandardInput.WriteLineAsync(request.AsMemory(), cancellationToken);
-        await process.StandardInput.FlushAsync(cancellationToken);
-        var response = await process.StandardOutput.ReadLineAsync(cancellationToken)
-            ?? throw new InvalidOperationException("GAEP engine closed before responding.");
-        var document = JsonDocument.Parse(response);
-        if (!document.RootElement.TryGetProperty("id", out var responseId) || responseId.GetInt64() != id)
-        {
-            document.Dispose();
-            throw new InvalidOperationException("GAEP engine returned an unexpected response identity.");
+            ObjectDisposedException.ThrowIf(disposed, this);
+            EnsureStarted();
+            var id = Interlocked.Increment(ref nextId);
+            var request = JsonSerializer.Serialize(new
+            {
+                jsonrpc = "2.0",
+                id,
+                method,
+                @params = parameters ?? new Dictionary<string, object?>(),
+            });
+            await process!.StandardInput.WriteLineAsync(request.AsMemory(), cancellationToken);
+            await process.StandardInput.FlushAsync(cancellationToken);
+            var response = await process.StandardOutput.ReadLineAsync(cancellationToken)
+                ?? throw new InvalidOperationException("GAEP engine closed before responding.");
+            var document = JsonDocument.Parse(response);
+            if (!document.RootElement.TryGetProperty("id", out var responseId) || responseId.GetInt64() != id)
+            {
+                document.Dispose();
+                throw new InvalidOperationException("GAEP engine returned an unexpected response identity.");
+            }
+            return document;
         }
-        return document;
+        finally
+        {
+            requestGate.Release();
+        }
     }
 
     private void EnsureStarted()
     {
         if (process is { HasExited: false }) return;
+        process?.Dispose();
         var start = new ProcessStartInfo
         {
             FileName = engineExecutable,
@@ -60,17 +73,31 @@ public sealed class EngineClient : IAsyncDisposable
         start.ArgumentList.Add("--workspace");
         start.ArgumentList.Add(workspacePath);
         process = Process.Start(start) ?? throw new InvalidOperationException("Unable to start the GAEP engine host.");
+        process.ErrorDataReceived += static (_, _) => { };
+        process.BeginErrorReadLine();
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (process is null) return;
-        process.StandardInput.Close();
-        if (!process.HasExited)
+        if (disposed) return;
+        await requestGate.WaitAsync();
+        try
         {
-            process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync();
+            if (disposed) return;
+            disposed = true;
+            if (process is null) return;
+            process.StandardInput.Close();
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync();
+            }
+            process.Dispose();
+            process = null;
         }
-        process.Dispose();
+        finally
+        {
+            requestGate.Release();
+        }
     }
 }

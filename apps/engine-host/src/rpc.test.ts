@@ -5,6 +5,7 @@ import {
   MAX_RPC_ERROR_MESSAGE_BYTES,
   normalizeRpcError,
   RpcFrameDecoder,
+  serializeRpcFrame,
 } from "./rpc.js"
 
 describe("engine host RPC framing", () => {
@@ -47,5 +48,18 @@ describe("engine host RPC framing", () => {
     expect(serialized).not.toContain("top-secret")
     expect(serialized).toContain("[ABSOLUTE_PATH]")
     expect(serialized).toContain("[REDACTED]")
+  })
+
+  it("bounds outbound result frames", () => {
+    expect(serializeRpcFrame({ jsonrpc: "2.0", id: 1, result: "ok" }, 128)).toContain('"result":"ok"')
+    expect(() => serializeRpcFrame({ jsonrpc: "2.0", id: 1, result: "x".repeat(256) }, 128))
+      .toThrowError(expect.objectContaining({ kind: "RESPONSE_TOO_LARGE" }))
+  })
+
+  it("fails closed when an outbound result cannot be serialized", () => {
+    const cycle: Record<string, unknown> = {}
+    cycle.self = cycle
+    expect(() => serializeRpcFrame({ jsonrpc: "2.0", id: 1, result: cycle }))
+      .toThrowError(expect.objectContaining({ kind: "RESPONSE_SERIALIZATION_FAILED" }))
   })
 })

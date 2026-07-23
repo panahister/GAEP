@@ -87,6 +87,31 @@ export function invalidParamsError(error: ZodError): HostRpcError {
   })
 }
 
+/** Serialize one outbound JSON-RPC frame without allowing a response to bypass the transport bound. */
+export function serializeRpcFrame(value: unknown, maxFrameBytes = MAX_RPC_FRAME_BYTES): string {
+  if (!Number.isSafeInteger(maxFrameBytes) || maxFrameBytes < 1) {
+    throw new Error("maxFrameBytes must be a positive safe integer")
+  }
+  let serialized: string
+  try {
+    serialized = JSON.stringify(value)
+  } catch {
+    throw new HostRpcError(
+      -32_603,
+      "RESPONSE_SERIALIZATION_FAILED",
+      "The GAEP engine could not serialize the response",
+    )
+  }
+  if (Buffer.byteLength(serialized) > maxFrameBytes) {
+    throw new HostRpcError(
+      -32_002,
+      "RESPONSE_TOO_LARGE",
+      `JSON-RPC response exceeds ${maxFrameBytes} bytes`,
+    )
+  }
+  return serialized
+}
+
 export type DecodedRpcFrame =
   | { type: "line"; line: string }
   | { type: "error"; error: HostRpcError }

@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto"
 import { constants, lstatSync, realpathSync, type BigIntStats } from "node:fs"
 import { lstat, mkdir, open, readdir, realpath, rename, rm, unlink } from "node:fs/promises"
-import { tmpdir } from "node:os"
+import { tmpdir, userInfo } from "node:os"
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 
 import type { WorkspaceStage } from "./workspace-staging.js"
@@ -95,7 +95,24 @@ export interface ManagedStageRegistryOptions {
   lockWaitMs?: number
   staleLockMs?: number
   isProcessAlive?: (pid: number) => boolean
+  /** @internal Allows the platform boundary to be exercised without mutating process globals. */
+  hostPlatform?: "posix" | "windows"
 }
+
+interface PosixHostSecurity {
+  kind: "posix"
+  ownerUid: bigint
+  directoryOpenFlag: number
+  noFollowOpenFlag: number
+}
+
+interface WindowsHostSecurity {
+  kind: "windows"
+  trustedTempRoot: string
+  trustedTempRootIdentity: FileIdentity
+}
+
+type ManagedStageHostSecurity = PosixHostSecurity | WindowsHostSecurity
 
 interface RunLockRecord {
   schemaVersion: 1
@@ -205,38 +222,65 @@ export class ManagedStageRegistry {
   readonly root: string
   private readonly tempParent: string
   private readonly tempParentIdentity: FileIdentity
-  private readonly ownerUid: bigint
+  private readonly hostSecurity: ManagedStageHostSecurity
   private readonly lockWaitMs: number
   private readonly staleLockMs: number
   private readonly isProcessAlive: (pid: number) => boolean
   private registryRootIdentity: FileIdentity | undefined
 
   constructor(tempParent = tmpdir(), options: ManagedStageRegistryOptions = {}) {
-    if (typeof process.getuid !== "function") {
-      throw new Error("Managed stage registry cannot establish current-user filesystem ownership on this host")
-    }
-    if (typeof constants.O_NOFOLLOW !== "number" || typeof constants.O_DIRECTORY !== "number") {
-      throw new Error("Managed stage registry requires no-follow directory filesystem operations")
-    }
-    const uid = process.getuid()
-    if (!Number.isSafeInteger(uid) || uid < 0) {
-      throw new Error("Managed stage registry cannot establish current-user filesystem ownership on this host")
-    }
-    this.ownerUid = BigInt(uid)
     const requestedParent = resolve(tempParent)
     this.tempParent = realpathSync(requestedParent)
     const parentMetadata = lstatSync(this.tempParent, { bigint: true })
     if (!parentMetadata.isDirectory() || parentMetadata.isSymbolicLink()) {
       throw new Error("Managed stage registry temporary parent is unsafe")
     }
-    const parentMode = Number(parentMetadata.mode & 0o7777n)
-    const privateOwnedParent = parentMetadata.uid === this.ownerUid && (parentMode & 0o077) === 0
-    const protectedSharedParent = parentMetadata.uid === 0n && (parentMode & 0o1000) !== 0 && (parentMode & 0o002) !== 0
-    if (!privateOwnedParent && !protectedSharedParent) {
-      throw new Error("Managed stage registry temporary parent lacks a trusted ownership and permission boundary")
-    }
     this.tempParentIdentity = identityOf(parentMetadata)
-    this.root = join(this.tempParent, `gaep-managed-stage-registry-v2-u${uid}`)
+    const hostPlatform = options.hostPlatform ?? (process.platform === "win32" ? "windows" : "posix")
+    if (hostPlatform === "posix") {
+      if (typeof process.getuid !== "function") {
+        throw new Error("Managed stage registry cannot establish current-user filesystem ownership on this host")
+      }
+      if (typeof constants.O_NOFOLLOW !== "number" || typeof constants.O_DIRECTORY !== "number") {
+        throw new Error("Managed stage registry requires no-follow directory filesystem operations")
+      }
+      const uid = process.getuid()
+      if (!Number.isSafeInteger(uid) || uid < 0) {
+        throw new Error("Managed stage registry cannot establish current-user filesystem ownership on this host")
+      }
+      const ownerUid = BigInt(uid)
+      const parentMode = Number(parentMetadata.mode & 0o7777n)
+      const privateOwnedParent = parentMetadata.uid === ownerUid && (parentMode & 0o077) === 0
+      const protectedSharedParent = parentMetadata.uid === 0n && (parentMode & 0o1000) !== 0 && (parentMode & 0o002) !== 0
+      if (!privateOwnedParent && !protectedSharedParent) {
+        throw new Error("Managed stage registry temporary parent lacks a trusted ownership and permission boundary")
+      }
+      this.hostSecurity = {
+        kind: "posix",
+        ownerUid,
+        directoryOpenFlag: constants.O_DIRECTORY,
+        noFollowOpenFlag: constants.O_NOFOLLOW,
+      }
+      this.root = join(this.tempParent, `gaep-managed-stage-registry-v2-u${uid}`)
+    } else {
+      const trustedTempRoot = realpathSync(resolve(tmpdir()))
+      const trustedTempRootMetadata = lstatSync(trustedTempRoot, { bigint: true })
+      if (!trustedTempRootMetadata.isDirectory() || trustedTempRootMetadata.isSymbolicLink() ||
+          (this.tempParent !== trustedTempRoot && !contained(trustedTempRoot, this.tempParent))) {
+        throw new Error("Managed stage registry temporary parent is outside the Windows user temporary boundary")
+      }
+      const user = userInfo()
+      const userScope = createHash("sha256")
+        .update(`${user.username}\0${user.homedir}`)
+        .digest("hex")
+        .slice(0, 24)
+      this.hostSecurity = {
+        kind: "windows",
+        trustedTempRoot,
+        trustedTempRootIdentity: identityOf(trustedTempRootMetadata),
+      }
+      this.root = join(this.tempParent, `gaep-managed-stage-registry-v2-w${userScope}`)
+    }
     this.lockWaitMs = options.lockWaitMs ?? defaultLockWaitMs
     this.staleLockMs = options.staleLockMs ?? defaultStaleLockMs
     if (!Number.isSafeInteger(this.lockWaitMs) || this.lockWaitMs < 1 ||
@@ -501,7 +545,7 @@ export class ManagedStageRegistry {
       try {
         let handle = await open(
           lockPath,
-          constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+          constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | this.noFollowOpenFlag(),
           0o600,
         )
         try {
@@ -650,7 +694,7 @@ export class ManagedStageRegistry {
     try {
       handle = await open(
         temporary,
-        constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+        constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | this.noFollowOpenFlag(),
         0o600,
       )
       await handle.chmod(0o600)
@@ -889,13 +933,14 @@ export class ManagedStageRegistry {
     while (stack.length > 0) {
       const directory = stack.pop()!
       const metadata = await lstat(directory, { bigint: true })
-      if (!metadata.isDirectory() || metadata.isSymbolicLink() || metadata.uid !== this.ownerUid || await realpath(directory) !== directory) {
+      if (!metadata.isDirectory() || metadata.isSymbolicLink() || !this.isCurrentUserOwned(metadata) ||
+          await realpath(directory) !== directory) {
         throw new Error("Managed stage quarantine tree contains an unsafe directory")
       }
       for (const entry of await readdir(directory, { withFileTypes: true })) {
         const path = join(directory, entry.name)
         const entryMetadata = await lstat(path, { bigint: true })
-        if (entryMetadata.isSymbolicLink() || entryMetadata.uid !== this.ownerUid || await realpath(path) !== path) {
+        if (entryMetadata.isSymbolicLink() || !this.isCurrentUserOwned(entryMetadata) || await realpath(path) !== path) {
           throw new Error("Managed stage quarantine tree contains an unsafe entry")
         }
         if (entryMetadata.isDirectory()) {
@@ -1005,19 +1050,33 @@ export class ManagedStageRegistry {
   }
 
   private async assertSafeTempParent(expectedIdentity = this.tempParentIdentity): Promise<FileIdentity> {
+    await this.assertWindowsTempBoundary()
     const metadata = await lstat(this.tempParent, { bigint: true })
     if (!metadata.isDirectory() || metadata.isSymbolicLink() || await realpath(this.tempParent) !== this.tempParent) {
       throw new Error("Managed stage registry temporary parent is unsafe")
     }
     const identity = identityOf(metadata)
     if (!sameIdentity(identity, expectedIdentity)) throw new Error("Managed stage registry temporary parent was replaced")
-    const mode = Number(metadata.mode & 0o7777n)
-    const privateOwnedParent = metadata.uid === this.ownerUid && (mode & 0o077) === 0
-    const protectedSharedParent = metadata.uid === 0n && (mode & 0o1000) !== 0 && (mode & 0o002) !== 0
-    if (!privateOwnedParent && !protectedSharedParent) {
-      throw new Error("Managed stage registry temporary parent lost its trusted ownership or permission boundary")
+    if (this.hostSecurity.kind === "posix") {
+      const mode = Number(metadata.mode & 0o7777n)
+      const privateOwnedParent = metadata.uid === this.hostSecurity.ownerUid && (mode & 0o077) === 0
+      const protectedSharedParent = metadata.uid === 0n && (mode & 0o1000) !== 0 && (mode & 0o002) !== 0
+      if (!privateOwnedParent && !protectedSharedParent) {
+        throw new Error("Managed stage registry temporary parent lost its trusted ownership or permission boundary")
+      }
     }
     return identity
+  }
+
+  private async assertWindowsTempBoundary(): Promise<void> {
+    if (this.hostSecurity.kind !== "windows") return
+    const metadata = await lstat(this.hostSecurity.trustedTempRoot, { bigint: true })
+    if (!metadata.isDirectory() || metadata.isSymbolicLink() ||
+        await realpath(this.hostSecurity.trustedTempRoot) !== this.hostSecurity.trustedTempRoot ||
+        !sameIdentity(identityOf(metadata), this.hostSecurity.trustedTempRootIdentity) ||
+        (this.tempParent !== this.hostSecurity.trustedTempRoot && !contained(this.hostSecurity.trustedTempRoot, this.tempParent))) {
+      throw new Error("Managed stage registry Windows user temporary boundary is unsafe or was replaced")
+    }
   }
 
   private async pathExists(path: string): Promise<boolean> {
@@ -1055,7 +1114,16 @@ export class ManagedStageRegistry {
   }
 
   private async normalizeCreatedDirectory(path: string, label: string): Promise<void> {
-    const handle = await open(path, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
+    if (this.hostSecurity.kind === "windows") {
+      const metadata = await lstat(path, { bigint: true })
+      this.assertOwnedPrivateMetadata(metadata, label, "directory", 0o700, false)
+      if (await realpath(path) !== path) throw new Error(`${label} resolves through an unsafe path`)
+      return
+    }
+    const handle = await open(
+      path,
+      constants.O_RDONLY | this.hostSecurity.directoryOpenFlag | this.hostSecurity.noFollowOpenFlag,
+    )
     try {
       await handle.chmod(0o700)
       const metadata = await handle.stat({ bigint: true })
@@ -1079,7 +1147,7 @@ export class ManagedStageRegistry {
     const beforeIdentity = identityOf(before)
     if (expectedIdentity && !sameIdentity(beforeIdentity, expectedIdentity)) throw new Error(`${label} was replaced`)
     if (before.size > BigInt(maximumBytes)) throw new Error(`${label} exceeds its bounded size`)
-    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
+    const handle = await open(path, constants.O_RDONLY | this.noFollowOpenFlag())
     try {
       const opened = await handle.stat({ bigint: true })
       this.assertOwnedPrivateMetadata(opened, label, "file", mode, true)
@@ -1110,8 +1178,10 @@ export class ManagedStageRegistry {
   ): void {
     const correctKind = kind === "directory" ? metadata.isDirectory() : metadata.isFile()
     if (!correctKind || metadata.isSymbolicLink()) throw new Error(`${label} is not a safe ${kind}`)
-    if (metadata.uid !== this.ownerUid) throw new Error(`${label} is not owned by the current user`)
-    if (Number(metadata.mode & 0o777n) !== mode) throw new Error(`${label} must have mode ${mode.toString(8)}`)
+    if (!this.isCurrentUserOwned(metadata)) throw new Error(`${label} is not owned by the current user`)
+    if (this.hostSecurity.kind === "posix" && Number(metadata.mode & 0o777n) !== mode) {
+      throw new Error(`${label} must have mode ${mode.toString(8)}`)
+    }
     if (requireSingleLink && metadata.nlink !== 1n) throw new Error(`${label} has an unsafe link count`)
   }
 
@@ -1122,13 +1192,25 @@ export class ManagedStageRegistry {
     privateMode?: number,
     requireOwner = false,
   ): Promise<void> {
-    const handle = await open(path, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
+    if (this.hostSecurity.kind === "windows") {
+      await this.assertWindowsTempBoundary()
+      const metadata = await lstat(path, { bigint: true })
+      if (!metadata.isDirectory() || metadata.isSymbolicLink() || !sameIdentity(identityOf(metadata), expectedIdentity) ||
+          await realpath(path) !== path) {
+        throw new Error(`${label} was replaced before durable synchronization`)
+      }
+      return
+    }
+    const handle = await open(
+      path,
+      constants.O_RDONLY | this.hostSecurity.directoryOpenFlag | this.hostSecurity.noFollowOpenFlag,
+    )
     try {
       const metadata = await handle.stat({ bigint: true })
       if (!metadata.isDirectory() || metadata.isSymbolicLink() || !sameIdentity(identityOf(metadata), expectedIdentity)) {
         throw new Error(`${label} was replaced before durable synchronization`)
       }
-      if (requireOwner && metadata.uid !== this.ownerUid) throw new Error(`${label} is not owned by the current user`)
+      if (requireOwner && metadata.uid !== this.hostSecurity.ownerUid) throw new Error(`${label} is not owned by the current user`)
       if (privateMode !== undefined && Number(metadata.mode & 0o777n) !== privateMode) {
         throw new Error(`${label} must have mode ${privateMode.toString(8)}`)
       }
@@ -1136,6 +1218,14 @@ export class ManagedStageRegistry {
     } finally {
       await handle.close()
     }
+  }
+
+  private noFollowOpenFlag(): number {
+    return this.hostSecurity.kind === "posix" ? this.hostSecurity.noFollowOpenFlag : 0
+  }
+
+  private isCurrentUserOwned(metadata: BigIntStats): boolean {
+    return this.hostSecurity.kind === "windows" || metadata.uid === this.hostSecurity.ownerUid
   }
 
   private recordPath(managedRunId: string): string {

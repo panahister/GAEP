@@ -3,7 +3,7 @@ import { realpathSync, statSync } from "node:fs"
 import { isAbsolute } from "node:path"
 
 import { EngineHost } from "./host.js"
-import { normalizeRpcError, RpcFrameDecoder, type DecodedRpcFrame } from "./rpc.js"
+import { normalizeRpcError, RpcFrameDecoder, serializeRpcFrame, type DecodedRpcFrame } from "./rpc.js"
 
 const workspaceFlag = process.argv.indexOf("--workspace")
 const requestedWorkspace = workspaceFlag >= 0 ? process.argv[workspaceFlag + 1] : undefined
@@ -26,12 +26,12 @@ const decoder = new RpcFrameDecoder()
 let queue = Promise.resolve()
 
 function writeResult(id: string | number, result: unknown): void {
-  process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id, result })}\n`)
+  process.stdout.write(`${serializeRpcFrame({ jsonrpc: "2.0", id, result })}\n`)
 }
 
 function writeError(id: string | number | null, error: unknown): void {
   const normalized = normalizeRpcError(error)
-  process.stdout.write(`${JSON.stringify({
+  process.stdout.write(`${serializeRpcFrame({
     jsonrpc: "2.0",
     id,
     error: {

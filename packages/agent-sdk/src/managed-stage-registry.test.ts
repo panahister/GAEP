@@ -53,14 +53,50 @@ describe("machine-local managed stage registry", () => {
     const stage = await staging.create(source)
     await registry.register(managedRunId, stage)
 
-    expect(basename(registry.root)).toBe(`gaep-managed-stage-registry-v2-u${process.getuid!()}`)
     const rootMetadata = await lstat(registry.root, { bigint: true })
     const recordMetadata = await lstat(recordPath(), { bigint: true })
-    expect(rootMetadata.uid).toBe(BigInt(process.getuid!()))
-    expect(rootMetadata.mode & 0o777n).toBe(0o700n)
-    expect(recordMetadata.uid).toBe(BigInt(process.getuid!()))
-    expect(recordMetadata.mode & 0o777n).toBe(0o600n)
+    if (process.platform === "win32") {
+      expect(basename(registry.root)).toMatch(/^gaep-managed-stage-registry-v2-w[0-9a-f]{24}$/)
+    } else {
+      expect(basename(registry.root)).toBe(`gaep-managed-stage-registry-v2-u${process.getuid!()}`)
+      expect(rootMetadata.uid).toBe(BigInt(process.getuid!()))
+      expect(rootMetadata.mode & 0o777n).toBe(0o700n)
+      expect(recordMetadata.uid).toBe(BigInt(process.getuid!()))
+      expect(recordMetadata.mode & 0o777n).toBe(0o600n)
+    }
     expect(recordMetadata.nlink).toBe(1n)
+  })
+
+  it("uses the Windows host boundary without requiring Unix ownership or open flags", async () => {
+    const windowsRegistry = new ManagedStageRegistry(temporary, {
+      hostPlatform: "windows",
+      isProcessAlive: () => false,
+    })
+    const stage = await staging.create(source)
+    await windowsRegistry.register(managedRunId, stage)
+    await windowsRegistry.markReview(managedRunId)
+
+    expect(basename(windowsRegistry.root)).toMatch(/^gaep-managed-stage-registry-v2-w[0-9a-f]{24}$/)
+    const restarted = new ManagedStageRegistry(temporary, {
+      hostPlatform: "windows",
+      isProcessAlive: () => false,
+    })
+    await expect(restarted.recover(managedRunId)).resolves.toEqual({ status: "cleaned" })
+    await expect(access(stage.root)).rejects.toMatchObject({ code: "ENOENT" })
+    await expect(restarted.recover(managedRunId)).resolves.toEqual({ status: "absent" })
+  })
+
+  it("keeps link-identity defenses enabled under the Windows host boundary", async () => {
+    const windowsRegistry = new ManagedStageRegistry(temporary, { hostPlatform: "windows" })
+    const stage = await staging.create(source)
+    await windowsRegistry.register(managedRunId, stage)
+    const windowsRecordPath = join(windowsRegistry.root, `${managedRunId}.json`)
+    const outsideLink = join(temporary, "windows-record-hard-link.json")
+    await link(windowsRecordPath, outsideLink)
+
+    await expect(windowsRegistry.markReview(managedRunId)).rejects.toThrow(/unsafe link count/)
+    await expect(access(outsideLink)).resolves.toBeUndefined()
+    await staging.cleanup(stage)
   })
 
   it("cleans an orphaned review stage after restart and removes its local registry record", async () => {
