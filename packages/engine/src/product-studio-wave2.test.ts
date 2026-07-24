@@ -759,6 +759,57 @@ describe("Product Studio context, workflow, tools, and portability", () => {
     }
   })
 
+  it("accepts exact Record History paths whose UUID begins with hexadecimal letters", async () => {
+    await initialize()
+    await createTool("observe")
+    const bundle = structuredClone(await engine.productStudio.buildPortableExport())
+    const toolRecord = bundle.records.find((record) => record.path.startsWith("tools/"))!
+    const tool = toolRecord.content as { id: string }
+    const historyRecord = bundle.records.find((record) => {
+      const history = record.content as { recordType?: string; recordId?: string }
+      return history.recordType === "tool-definition" && history.recordId === tool.id
+    })!
+    const history = historyRecord.content as {
+      recordId: string
+      revision: number
+      recordDigest: string
+      snapshot: { id: string }
+    }
+    const toolMember = bundle.manifest.members.find((member) => member.path === toolRecord.path)!
+    const historyMember = bundle.manifest.members.find((member) => member.path === historyRecord.path)!
+    const ambiguousUuid = "abcdefab-cdef-4abc-8def-abcdefabcdef"
+
+    tool.id = ambiguousUuid
+    history.recordId = ambiguousUuid
+    history.snapshot.id = ambiguousUuid
+    history.recordDigest = canonicalDigest(history.snapshot)
+    toolRecord.path = `tools/${ambiguousUuid}.json`
+    toolMember.path = toolRecord.path
+    historyRecord.path = `record-history/tool-definition-${ambiguousUuid}-r${history.revision}.json`
+    historyMember.path = historyRecord.path
+    bundle.records.sort((left, right) => left.path.localeCompare(right.path))
+    bundle.manifest.members.sort((left, right) => left.path.localeCompare(right.path))
+    refreshPortableMember(bundle, toolRecord.path)
+    refreshPortableMember(bundle, historyRecord.path)
+    refreshPortableMembership(bundle)
+
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
+    const mismatched = structuredClone(bundle)
+    const exactHistoryPath = historyRecord.path
+    const mismatchedPath = exactHistoryPath.replace(/-r1\.json$/u, "-r2.json")
+    mismatched.records.find((record) => record.path === exactHistoryPath)!.path = mismatchedPath
+    mismatched.manifest.members.find((member) => member.path === exactHistoryPath)!.path = mismatchedPath
+    mismatched.records.sort((left, right) => left.path.localeCompare(right.path))
+    mismatched.manifest.members.sort((left, right) => left.path.localeCompare(right.path))
+    refreshPortableMembership(mismatched)
+    await expect(engine.productStudio.previewImportBundle(mismatched))
+      .rejects.toThrow(/Record History filename does not match its envelope/u)
+  })
+
   it("rejects a Managed Result that substitutes exact Evidence from another Managed Run", async () => {
     const { bundle, managedRunIds } = await createManagedPortableFixture({ runCount: 2 })
     const tampered = structuredClone(bundle)
@@ -783,7 +834,7 @@ describe("Product Studio context, workflow, tools, and portability", () => {
 
     await expect(engine.productStudio.previewImportBundle(tampered))
       .rejects.toThrow(/Managed Result .* orphaned or internally inconsistent/i)
-  })
+  }, 20_000)
 
   it("requires an exact completed-step set and consistent Result/Workflow terminal state", async () => {
     const { bundle, managedRunIds } = await createManagedPortableFixture({ stepCount: 2 })

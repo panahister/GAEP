@@ -2057,14 +2057,12 @@ export class ProductStudioService {
       ) {
         throw new Error(`Import Product history filename does not match record identity: ${member.path}`)
       }
-      const recordHistoryMatch = /^record-history\/([a-z-]+)-([0-9a-f-]+)-r([1-9][0-9]*)\.json$/i.exec(member.path)
-      if (recordHistoryMatch) {
+      if (member.path.startsWith("record-history/")) {
         const history = validated as ProductRecordRevision
-        if (
-          history.recordType !== recordHistoryMatch[1] ||
-          history.recordId !== recordHistoryMatch[2] ||
-          history.revision !== Number(recordHistoryMatch[3])
-        ) throw new Error(`Import Record History filename does not match its envelope: ${member.path}`)
+        const expectedHistoryPath = `record-history/${history.recordType}-${history.recordId}-r${history.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Record History filename does not match its envelope: ${member.path}`)
+        }
       }
       const prefixedIdentityMatch = /^(?:sessions\/(?:charter|run|managed-run|managed-evidence|managed-result|managed-apply-decision))-([0-9a-f-]+)\.json$/i.exec(member.path)
       if (prefixedIdentityMatch && record.id !== prefixedIdentityMatch[1]) {
