@@ -13,15 +13,15 @@
 
 | Field | Current value |
 |---|---|
-| Overall progress | `58%` |
-| Wave | `Wave 4 critical path; Waves 5–7 partial completion — durable recovery, Product Studio evidence, and governed portable-design workflows across VS Code, engine-host, Visual Studio, and Rider` |
+| Overall progress | `63%` |
+| Wave | `Wave 4 single-step durability accepted for the declared local POSIX scope; Waves 5–7 partial completion now include a packageable Kiro-compatible host alongside VS Code, engine-host, Visual Studio, and Rider` |
 | State | `IN_PROGRESS` |
 | Working branch | `codex/gaep-hardwork-completion` |
 | Starting commit | `eab8374cc5974eea25bcad4659f46e1b0da92108` |
-| Last stable checkpoint | `b305fec` — strict protocol-v2 Rider portable-design client with hostile-response stdio integration coverage |
-| Active work | Wave 4 crash/concurrency/recovery remediation remains the critical path; Kiro package/parity work is active after verified Visual Studio and Rider client checkpoints; multi-step recovery and native-host parity remain |
-| Blockers | Formal baseline/readiness remain human-governance blocked. Wave 4 is locally acceptance-blocked until the independent-review findings in Section 9 are fixed and revalidated |
-| Next exact action | Close and independently re-review every Wave 4 write-ahead, confinement, lost-update, recovery-owner, disposal and effect-truth defect while building the narrowest verified Kiro package; then run frozen cross-workspace and security-diff validation |
+| Last stable checkpoint | `338b7c8` — independently reviewed managed-execution WAL, confinement, crash-recovery and effect-truth hardening; Kiro-compatible package checkpoint is `7541940` |
+| Active work | Exact Codex Security review of `7541940..338b7c8`, aggregate cross-workspace validation, and the next Wave 4 slice for durable multi-step restart/resume and bounded parallel-readonly orchestration |
+| Blockers | Formal baseline/readiness remain human-governance blocked. Codex Security workspace `5f837098-1741-42a0-8682-d203f98354b8` is waiting for the required human Start action. Native Kiro, native Windows, power-loss and hostile same-UID guarantees remain unverified |
+| Next exact action | Complete the frozen security-diff workflow and aggregate validation, then implement durable multi-step restart/resume without weakening the accepted single-step WAL and recovery boundary |
 
 Progress is earned only when an exit condition has current validation evidence. Starting work does not advance the percentage.
 
@@ -117,6 +117,8 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | Wave 5 VS Code managed-recovery truth UX | PASS WITH INVENTORY-PAGINATION LIMIT | Checkpoint `0e9ef5a`; root independently reran 19 files and 116 tests plus the consolidated linked typecheck, production build, 12 DOM/accessibility tests, Extension Development Host activation/commands/four views/Product Studio, and multi-root no-mutation verification. Recovery rows are bounded to the newest 200 after read, but the current public `engine.listManagedRuns()` inventory read remains unpaginated and is not end-to-end resource bounded; the Electron harness also disables workspace-trust automation |
 | 2026-07-24 | Wave 7 Visual Studio portable-design client | PASS WITH NATIVE-HOST LIMIT | Checkpoint `72305c3`; root independently reran the two-project Release build with zero warnings, the self-hosted stdio harness with 35 checks, formatting verification for both projects, and diff validation. Protocol-v2 import/list/read, exact metadata/governance/error parsing and privacy boundaries pass. Native Visual Studio/VSIX execution, Windows path/process behavior and real Windows engine integration remain untested |
 | 2026-07-24 | Wave 7 Rider portable-design client | PASS WITH RIDER-RUNTIME LIMIT | Checkpoint `b305fec`; root independently forced all Gradle test and build tasks to rerun successfully, including the real serialized stdio client against the hostile fake engine, strict JSON/UTF-8/frame/privacy/governance checks, and diff validation. Native interactive Rider, Windows launcher/path behavior and packaged engine integration remain untested |
+| 2026-07-24 | Wave 7 Kiro-compatible portable-design package | PASS WITH NATIVE-KIRO LIMIT | Checkpoint `7541940`; root reran typecheck, 2 hostile stdio unit tests, build and six-file VSIX packaging; the exact VSIX installed and listed as `gaep.gaep-kiro@0.1.0` in isolated profile/extension roots; compatible-host activation registered four commands and created no `.gaep`; dependency audit found zero vulnerabilities. No Kiro binary was available, so native Kiro, native Windows and packaged real-engine execution remain unverified |
+| 2026-07-24 | Wave 4 durable managed execution | PASS FOR DECLARED LOCAL POSIX SLICE | Checkpoint `338b7c8`; root serially reran five files with 157 passed and 1 platform-conditional skip, both affected package typechecks and diff validation pass, and an independent frozen review found no remaining correctness, truth, confinement, rollback or per-operation-bound blocker. Native Windows, sudden power loss, hostile same-UID resistance, PID reuse and aggregate orphan quota remain explicit limits |
 
 ## 8. Change Ledger
 
@@ -136,7 +138,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | 2 | Added bounded, backpressured engine-host transport with strict UTF-8 and coherent adapter-boundary tests | PARTIAL_COMPLETE | `a6e82d96f8f82740fbf71e8ef90566ce0a347559`; 14 focused tests and typecheck pass |
 | 2026-07-24 | 6 | Added a portable exact-manifest design import boundary for PNG, JPEG, WebP, PDF, passive SVG and DTCG tokens | PARTIAL_COMPLETE | `beab97cf5e102b04ed4a88718b49edbada2727dd`; imported outputs remain pending human review; persistence, workflow and UI remain |
 | 2026-07-24 | 6 | Prevented public strict-JSON callers from relaxing portable-design parser security ceilings | COMPLETE | `b661a0d1ef51ae233659ee0d22049570c2bd99e3`; focused suite increased to 12 passing tests and package typecheck passes |
-| 2026-07-24 | 4 | Added bounded restart-safe staged-review manifests, claimant leases, governed-binding revalidation, fail-closed discard and registry-owned journal disposal | REVIEW_BLOCKED | Independent review found crash-ordering, lost-update, recovery-owner, disposal and effect-truth defects; remediation and fault-injection tests are active; no commit yet |
+| 2026-07-24 | 4 | Added bounded restart-safe staged-review manifests, claimant leases, governed-binding revalidation, write-ahead apply/rollback journals, crash-idempotent disposal, conservative effect truth and public-engine managed-run recovery exclusion | PARTIAL_COMPLETE | `338b7c8`; independent frozen review and root serial gate pass with 157 tests plus 1 platform-conditional skip. This accepts the declared local POSIX single-step slice only; multi-step, native Windows, power-loss, PID-reuse and aggregate orphan controls remain |
 | 2026-07-24 | 5 | Added audit-gated, privacy-safe run, evidence, apply-decision, provider-truth and bounded handoff projections to Product Studio | PARTIAL_COMPLETE | `0a024bd3e6444c68a99096777e198deb5e0e02f8`; all review findings are closed with 96 unit tests and full VS Code verification; broader recovery UX and native-platform conformance remain |
 | 2026-07-24 | 6 | Persisted exact portable-design import results as immutable governed candidates without promoting approval, baseline or readiness | PARTIAL_COMPLETE | `fa7e0a8`; import/read/list, final Product revision and Initiative checks, canonical lowercase inventory, audit integrity, timestamp/evidence invariants, privacy and tamper regressions pass; host workflow/UI remains |
 | 2026-07-24 | 6 | Added the VS Code local portable-design import, bounded audit-gated review table and exact privacy-safe inspector | PARTIAL_COMPLETE | `972faa8`; 107 tests, typecheck, build and extension-host smokes pass; imported sourceReview remains an upstream claim and cannot promote approval, baseline, implementation or release readiness |
@@ -144,8 +146,9 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | 5 | Added an audit-gated restart/recovery table, conservative persisted-state explanations, privacy-safe diagnostics, and an exact revision-bound discard-only bridge to the native Managed Run review | PARTIAL_COMPLETE | `0e9ef5a`; 116 tests and the full VS Code verification pipeline pass. Recovery/apply/cleanup/provider success is never inferred, post-commit discard ambiguity is reread against persisted state and audit, and the unpaginated Managed Run inventory read remains an explicit engine limit |
 | 2026-07-24 | 7 | Added a typed Visual Studio protocol-v2 portable-design client with bounded local import, list/read DTOs, exact non-escalating governance, privacy-safe stable errors, and a dependency-free fake-engine harness | PARTIAL_COMPLETE | `72305c3`; Release build passes with zero warnings, 35 harness checks pass, both projects are format-clean, and diff validation passes. Rider parity is active; native Visual Studio/Windows host integration remains |
 | 2026-07-24 | 7 | Added a typed Rider protocol-v2 portable-design client with duplicate-aware strict JSON, exact metadata/governance/error parsing, bounded local import/list/read, and hostile fake-engine stdio coverage | PARTIAL_COMPLETE | `b305fec`; root forced the complete Gradle test/build graph to execute successfully and diff validation passes. Kiro parity is active; interactive Rider sandbox, native Windows and packaged engine integration remain |
+| 2026-07-24 | 7 | Added an independent Code OSS/Open VSX-compatible Kiro VSIX with a static Product Studio boundary and governed local portable-design import/list/read commands | PARTIAL_COMPLETE | `7541940`; root verify, exact isolated VSIX install/list, compatible extension-host activation and zero-vulnerability dependency audit pass. Native Kiro, native Windows and real packaged-engine execution remain unverified |
 
-## 9. Wave 4 Durable Review Boundary — Acceptance Remediation
+## 9. Wave 4 Durable Review Boundary — Accepted Local POSIX Slice
 
 This checkpoint persists only bounded machine-local recovery metadata: canonical source/stage paths, relative file names, digests, sizes, modes, excluded-path names, provider identity and the governed bindings digest. It does not persist prompts, provider raw output, file bytes, environment values or secrets. The private manifest is capped at 16 MiB and rehydration is capped at 20,000 files and a 512 MiB baseline.
 
@@ -158,22 +161,25 @@ Verified behavior to date:
 5. stale in-memory review handles and stale leases cannot race a newer restart claimant; and
 6. exact reviewed content is digest-bound: changing bytes while retaining the same staged path is rejected before source mutation.
 
-Acceptance defects under active remediation:
+Accepted closure evidence:
 
-1. make apply-journal discovery and mutation checkpoints truly write-ahead so process death cannot orphan an applied mutation;
-2. prevent a same-path concurrent source edit from being silently overwritten between baseline validation and mutation, while declaring any remaining platform-native compare-and-swap limit;
-3. make discard and journal disposal crash-idempotent, with deterministic recoverable state rather than deletion-first ordering;
-4. defer recovery when a live stage owner still holds the claim instead of reclassifying its run;
-5. preserve truthful actual effects when workspace bytes were applied but a later Workflow/postcondition gate failed; and
-6. cover each boundary with crash/fault/concurrency tests and rerun the aggregate suite before integration.
+1. write-ahead apply and rollback checkpoints predeclare exact source, temporary, backup and directory intent identities before mutation;
+2. source, stage, journal, backup and recovery claims are identity-bound and revalidated against same-path replacement, parent replacement and same-content substitution;
+3. process death after file replacement, unlink, directory creation, manifest publication, record publication, quarantine and partial tombstone cleanup converges conservatively on restart;
+4. discard commits portable terminal truth before machine-local cleanup and records `local-cleanup-pending` rather than inferring successful finalization;
+5. live stage ownership defers recovery, and public engine recovery excludes every durable managed Run from generic running-to-unknown classification;
+6. entry, directory, journal-write and projected rewrite-byte work remain independently bounded, with streamed bounded inventories and hostile residue tests; and
+7. root and independent acceptance passed 157 tests with 1 platform-conditional skip, both affected package typechecks and diff validation at `338b7c8`.
 
 Remaining limits:
 
 1. this closes single-step Codex staged-review restart only; multi-step restart/resume and bounded parallel workflow recovery remain Wave 4 work;
 2. recovery is intentionally machine-local and requires the private temporary stage to remain available;
-3. the bound adapter must still be installed and its runtime/capability identity must remain exact;
-4. callers must supply an explicit Workflow gate evaluator for post-restart apply; and
-5. native Windows restart execution has not yet run on a Windows test host, although the Windows policy boundary is covered conditionally.
+3. final path-based rename, unlink and recursive removal retain an irreducible same-UID race without descriptor-relative native primitives;
+4. native Windows DACL/ownership, directory durability and crash behavior, plus sudden power-loss/filesystem-specific semantics, remain untested;
+5. PID-only owner liveness retains PID-reuse risk, and individually bounded orphan roots have no global scavenger or aggregate disk quota;
+6. the bound adapter must remain installed with exact runtime/capability identity, and restarted apply still requires an explicit Workflow gate evaluator; and
+7. hostile same-UID resistance, native-Windows parity, power-loss proof and globally bounded unattended temporary storage must not be claimed.
 
 ## 10. Resume Point
 
@@ -182,6 +188,7 @@ If work stops at this checkpoint, resume by:
 1. checking out `codex/gaep-hardwork-completion`;
 2. verifying that it descends from `eab8374cc5974eea25bcad4659f46e1b0da92108`;
 3. reading this document and `054_GAEP_FEATURE_DELIVERY_TRACKER.md`;
-4. preserving the uncommitted ownership split: `packages/agent-sdk` and `packages/engine/src/managed-execution*` plus the narrow managed-run recovery fix in `packages/engine/src/engine.ts` belong to Wave 4 remediation; `apps/kiro/**` belongs to active Kiro parity; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, the Rider client is clean at `b305fec`, and this ledger belongs to root integration;
-5. closing and independently reviewing every acceptance defect listed in Section 9, then rerunning focused and aggregate validation; and
-6. checkpointing Wave 4 and Wave 5 separately before continuing multi-step restart/resume, design-import persistence and the remaining Product Studio UX.
+4. treating Wave 4 single-step durability as clean at `338b7c8` and Kiro-compatible packaging as clean at `7541940`; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, and the Rider client is clean at `b305fec`;
+5. reopening or completing Codex Security workspace `5f837098-1741-42a0-8682-d203f98354b8` for exact diff `7541940..338b7c8`, which is currently waiting for the required human Start action;
+6. rerunning aggregate cross-workspace validation after the security verdict; and
+7. continuing with durable multi-step restart/resume and bounded parallel-readonly orchestration without weakening the accepted single-step boundary.

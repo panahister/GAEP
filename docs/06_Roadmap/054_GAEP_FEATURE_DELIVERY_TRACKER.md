@@ -83,13 +83,13 @@ This table must be recounted and updated after every status change.
 
 | Registry | Total | ✅ Done | 🟡 In Progress | 🧪 Ready for Test | 🔎 In Review | ⛔ Blocked | ⏸ Deferred | ❌ Backlog |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Cross-platform capabilities | 35 | 3 | 19 | 0 | 0 | 0 | 0 | 13 |
+| Cross-platform capabilities | 35 | 3 | 21 | 0 | 0 | 0 | 0 | 11 |
 | Phase 1 — Product P0–P4 | 36 | 1 | 21 | 0 | 0 | 0 | 0 | 14 |
 | Phase 2 — UX and Figma | 26 | 0 | 8 | 0 | 0 | 0 | 0 | 18 |
 | Phase 3A — Backlog and Readiness | 24 | 0 | 8 | 0 | 0 | 0 | 0 | 16 |
 | Phase 3B — Implementation and QA | 30 | 0 | 14 | 0 | 0 | 0 | 0 | 16 |
 | Phase 4 — Release and Learning | 17 | 0 | 8 | 0 | 0 | 0 | 0 | 9 |
-| **All tracked features** | **168** | **4** | **78** | **0** | **0** | **0** | **0** | **86** |
+| **All tracked features** | **168** | **4** | **80** | **0** | **0** | **0** | **0** | **84** |
 
 ## 6. Cross-Platform Capability Registry
 
@@ -128,8 +128,8 @@ These capabilities are cross-cutting. The target milestone is the first phase in
 | PLT-29 | Per-Phase Package and Acceptance Report | Phase 0 / 1A | Package, checksum, test report, and known gaps for every phase | `❌ Backlog` | A phase-oriented delivery pipeline does not exist |
 | PLT-30 | Governed Figma MCP Adapter | Phase 2 | Governed Figma read, import, write, and synchronization | `❌ Backlog` | A complete adapter and contract do not exist |
 | PLT-31 | Rider Native Plugin | Phase 0 / 1A | Native JetBrains/Rider plugin with sandbox and installation tests | `🟡 In Progress` | A Kotlin scaffold exists; workflow and packaging are incomplete |
-| PLT-32 | Kiro Installable Package | Phase 0 / 1A | Independent Kiro installation and compatibility validation | `❌ Backlog` | An independent GAEP package and install flow do not exist |
-| PLT-33 | Kiro Compatibility and Smoke Tests | Phase 0 / 1A | Installation, workflow, provider, model, and dashboard smoke tests in Kiro | `❌ Backlog` | The test harness and evidence do not exist |
+| PLT-32 | Kiro Installable Package | Phase 0 / 1A | Independent Kiro installation and compatibility validation | `🟡 In Progress` | `7541940` provides an independent six-file VSIX; root typecheck, hostile stdio tests, packaging and exact isolated VSIX install/list pass. Native Kiro installation remains unverified because no Kiro binary is available |
+| PLT-33 | Kiro Compatibility and Smoke Tests | Phase 0 / 1A | Installation, workflow, provider, model, and dashboard smoke tests in Kiro | `🟡 In Progress` | A Code OSS-compatible isolated extension-host smoke activates four bounded commands, machine-only configuration and static Product Studio without workspace mutation. Native Kiro, provider/model switching and complete dashboard parity remain |
 | PLT-34 | Visual Studio Windows Installation Tests | Phase 0 / 1A | CI or manual evidence for VSIX installation on Windows | `❌ Backlog` | A Windows test environment and report do not exist |
 | PLT-35 | Rider Sandbox and Installation Tests | Phase 0 / 1A | `runIde`, installable artifact, and workflow smoke testing | `❌ Backlog` | Sandbox and installation acceptance do not exist |
 
@@ -426,6 +426,7 @@ Every status change must add a new row. Previous rows must not be deleted or rew
 | 2026-07-24 | Codex | All | PLT-01..35, P1-01..36, P2-01..26, P3A-01..24, P3B-01..30, P4-01..17 | Initial baseline recorded | Codebase and Manifest assessment | Baseline structure requested by Product Owner; feature completion not newly accepted | Initial 168-feature delivery tracker created |
 | 2026-07-24 | Codex | All | None | No feature status changes | Full-language scan and repository documentation validation | Product Owner requested an English-only tracker | Translated all narrative text and table content to English; IDs, phase assignments, and statuses were preserved |
 | 2026-07-24 | Codex | Phase 0 / 1A foundation audit | None | No feature status changes | `ruby scripts/validate_next_docs.rb --mode structural` and `--mode candidate`: PASS; baseline and implementation-readiness modes: BLOCKED only by their declared human/governance prerequisites | Product Owner approved continuous local implementation, not feature completion or baseline/release acceptance | Added Roadmap 054/055 migration dispositions, rebound deterministic documentation digests, and corrected stale documentation-only descriptions; no Feature ID implementation was changed |
+| 2026-07-24 | Codex | Phase 0 / 1A foundation | PLT-32, PLT-33 | `❌ Backlog` -> `🟡 In Progress` | Kiro-compatible source and package checkpoint `7541940`; root `npm run verify`, exact isolated VSIX install/list, compatible extension-host smoke and zero-vulnerability dependency audit pass | Product Owner approved continuous local implementation, not native-Kiro or feature completion acceptance | Native Kiro, native Windows, provider/model switching and complete dashboard parity remain unverified; no feature advanced to Ready for Test or Done |
 
 ## 19. Integrity Checks for This File
 
