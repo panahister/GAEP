@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-0-provider-behavior-evidence-v1",
+  "phase": "phase-0-local",
+  "recordedAt": "2026-07-24T23:28:39Z",
+  "definitionDigest": "sha256:4d328c1c9793158f514957995b553cf9a7e7f06fc0cb755bd878c8284a7c3315",
+  "providers": [
+    {
+      "id": "claude",
+      "label": "Claude Code",
+      "executionBoundary": "deterministic-offline-staged-contract-live-readiness-blocked",
+      "sourceSnapshotDigest": "sha256:9de6929b9ebfbd6bd070216a40800e14274e42c0b03dd3b15a768e32658a360e",
+      "check": {
+        "id": "claude-adapter-preflight-and-isolated-staged-contract",
+        "result": "pass",
+        "requiredMarkersVerified": 2
+      },
+      "result": "pass",
+      "liveAcceptance": "not-established",
+      "limitations": [
+        "The gate uses deterministic fake streaming, isolated local staging and offline preflight fixtures; it does not make a live Claude provider request.",
+        "Live Claude staging remains blocked until a supported runtime, non-persisted authentication and effective managed-policy readiness are attested."
+      ]
+    },
+    {
+      "id": "codex",
+      "label": "Codex",
+      "executionBoundary": "deterministic-offline-staged-contract",
+      "sourceSnapshotDigest": "sha256:8b021b221d606196ae1795dddc4f7ddd682f607521d7f00d400f90a77c6a1a53",
+      "check": {
+        "id": "codex-adapter-transport-and-staged-run-contract",
+        "result": "pass",
+        "requiredMarkersVerified": 2
+      },
+      "result": "pass",
+      "liveAcceptance": "not-established",
+      "limitations": [
+        "The gate uses deterministic fake transport and local staged workspaces; it does not make a live Codex provider request.",
+        "Real-account authentication, service behavior, quotas, supported-version coverage and human acceptance remain unverified."
+      ]
+    }
+  ],
+  "claimBoundary": "This receipt proves deterministic local adapter, transport, preflight and staged-run contracts only. It does not prove a live provider request, account readiness, service behavior, supported-version coverage, Product readiness, release approval, or security review."
+}

@@ -37,6 +37,8 @@ describe("Phase 0 IDE conformance matrix", () => {
         notImplemented: report.summary["not-implemented"],
         producedPackages: report.summary.producedPackages,
         acceptedHosts: report.summary.acceptedHosts,
+        providers: report.summary.providers,
+        acceptedProviders: report.summary.acceptedProviders,
       },
       {
         hosts: 4,
@@ -47,10 +49,16 @@ describe("Phase 0 IDE conformance matrix", () => {
         notImplemented: 0,
         producedPackages: 3,
         acceptedHosts: 0,
+        providers: 2,
+        acceptedProviders: 0,
       },
     )
     assert.deepEqual(report.hosts.map((host) => host.id).sort(), ["kiro", "rider", "visual-studio", "vscode"])
     assert.equal(report.hosts.every((host) => host.acceptance === "incomplete" && host.remainingRequirements.length > 0), true)
+    assert.equal(report.providerEvidence.providers, 2)
+    assert.equal(report.providerEvidence.checksPassed, 2)
+    assert.equal(report.providerEvidence.liveAcceptedProviders, 0)
+    assert.equal(report.providerEvidence.remainingRequirements.length > 0, true)
     assert.equal(JSON.stringify(report).includes(repositoryRoot), false)
   })
 
