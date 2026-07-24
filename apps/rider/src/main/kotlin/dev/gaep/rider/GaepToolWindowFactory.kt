@@ -3,6 +3,7 @@ package dev.gaep.rider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
+import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.ToolWindow
@@ -14,6 +15,7 @@ import com.intellij.ui.content.ContentFactory
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.GridLayout
+import java.awt.datatransfer.StringSelection
 import java.nio.file.Path
 import java.util.UUID
 import javax.swing.JButton
@@ -86,6 +88,14 @@ class GaepToolWindowFactory : ToolWindowFactory {
         actions.add(changeImpactButton)
 
         addAction("Show Agent and model") { controller.readAgentModel() }
+
+        val accessibleTablesButton = JButton("Browse accessible dashboard tables…").apply {
+            addActionListener {
+                beginAccessibleDashboardTables(project, controller, status, output, buttons)
+            }
+        }
+        buttons += accessibleTablesButton
+        actions.add(accessibleTablesButton)
 
         addAction("Refresh agent readiness") { controller.readAgentReadiness() }
 
@@ -197,6 +207,8 @@ class GaepToolWindowFactory : ToolWindowFactory {
                 "and provider completion is reported separately from the governed outcome. " +
                 "Managed Run evidence is an audit-gated, snapshot-bounded read-only view of portable counts and digests; " +
                 "it cannot start, resume, cancel, apply, discard, approve, or infer outcome success. " +
+                "Accessible dashboard tables use native keyboard dialogs and this screen-reader named result area to sort and filter " +
+                "only already-verified metadata, then optionally copy only visible rows as formula-neutralized CSV. They write no file. " +
                 "Exact staged review is a separate two-confirmation flow bound to one Managed Run revision, preview digest, " +
                 "complete changed-file inventory, and host-owned write envelope. Post-apply Workflow gates remain not assessed, " +
                 "and persisted state does not prove machine-local cleanup. " +
@@ -224,6 +236,273 @@ class GaepToolWindowFactory : ToolWindowFactory {
         val content = ContentFactory.getInstance().createContent(panel, "Product", false)
         content.setDisposer(client)
         toolWindow.contentManager.addContent(content)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun beginAccessibleDashboardTables(
+        project: Project,
+        controller: RiderProductController,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+    ) {
+        val groups = arrayOf(
+            "Phase dashboard tables — exact phase-panel metadata",
+            "Change and impact tables — exact Work Item, artifact, effect, trace, Decision, and Risk metadata",
+            "Agent and model tables — exact capability, selection, Run, handoff, and unavailable-metric metadata",
+        )
+        val selectedGroup = Messages.showChooseDialog(
+            project,
+            "Select one accessible dashboard table group. All rows remain read-only verified metadata.",
+            "Browse Accessible GAEP Dashboard Tables",
+            Messages.getQuestionIcon(),
+            groups,
+            groups.first(),
+        )
+        if (selectedGroup < 0) return
+        buttons.forEach { it.isEnabled = false }
+        when (selectedGroup) {
+            0 -> loadAccessibleTables(
+                status,
+                output,
+                buttons,
+                project,
+                "Loading exact Phase dashboard tables…",
+                controller::readPhaseDashboardTables,
+            )
+            1 -> beginAccessibleChangeImpactTables(project, controller, status, output, buttons)
+            2 -> loadAccessibleTables(
+                status,
+                output,
+                buttons,
+                project,
+                "Loading exact Agent/Model dashboard tables…",
+                controller::readAgentModelTables,
+            )
+            else -> finishRequest(
+                status,
+                output,
+                buttons,
+                "GAEP request stopped",
+                "Select one verified accessible dashboard table group.",
+            )
+        }
+    }
+
+    private fun loadAccessibleTables(
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+        project: Project,
+        loadingStatus: String,
+        task: () -> List<AccessibleMetadataTable>,
+    ) {
+        status.text = loadingStatus
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching(task)
+                .onSuccess { tables ->
+                    ApplicationManager.getApplication().invokeLater {
+                        promptAccessibleTable(project, tables, status, output, buttons)
+                    }
+                }
+                .onFailure { error ->
+                    ApplicationManager.getApplication().invokeLater {
+                        finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                    }
+                }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun beginAccessibleChangeImpactTables(
+        project: Project,
+        controller: RiderProductController,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+    ) {
+        status.text = "Loading exact current Change catalog…"
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching { controller.readChangeImpactContext() }
+                .onSuccess { context ->
+                    ApplicationManager.getApplication().invokeLater {
+                        if (context.catalog.items.isEmpty()) {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "GAEP Change/Impact catalog is empty",
+                                "No current Change metadata is available for accessible Change/Impact tables.",
+                            )
+                            return@invokeLater
+                        }
+                        val labels = context.catalog.items.map { change ->
+                            "${change.recordId} · ${change.state} · revision ${change.revision} · " +
+                                change.effectEnvelope.joinToString(", ")
+                        }.toTypedArray()
+                        val selected = Messages.showChooseDialog(
+                            project,
+                            "Select one exact current Change (${context.catalog.items.size} of ${context.catalog.total}; " +
+                                "${context.catalog.omitted} omitted). Table selection grants no approval or effect authority.",
+                            "Browse Accessible Change/Impact Tables",
+                            Messages.getQuestionIcon(),
+                            labels,
+                            labels.first(),
+                        )
+                        val change = context.catalog.items.getOrNull(selected)
+                        if (change == null) {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "GAEP accessible table selection cancelled",
+                                "No table was opened, nothing was copied, and no authority was granted.",
+                            )
+                            return@invokeLater
+                        }
+                        loadAccessibleTables(
+                            status,
+                            output,
+                            buttons,
+                            project,
+                            "Loading exact Change/Impact dashboard tables…",
+                        ) { controller.readChangeImpactTables(context, change) }
+                    }
+                }
+                .onFailure { error ->
+                    ApplicationManager.getApplication().invokeLater {
+                        finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                    }
+                }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun promptAccessibleTable(
+        project: Project,
+        tables: List<AccessibleMetadataTable>,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+    ) {
+        if (tables.isEmpty()) {
+            finishRequest(status, output, buttons, "GAEP accessible tables unavailable", "No verified table was returned.")
+            return
+        }
+        val tableLabels = tables.map { table ->
+            "${table.title} — ${table.rows.size} verified row${if (table.rows.size == 1) "" else "s"}; " +
+                "${table.omitted} omitted upstream"
+        }.toTypedArray()
+        val selectedTableIndex = Messages.showChooseDialog(
+            project,
+            "Select one accessible metadata table. Sorting and filtering use only its already-visible columns.",
+            "Select Accessible Metadata Table",
+            Messages.getQuestionIcon(),
+            tableLabels,
+            tableLabels.first(),
+        )
+        val table = tables.getOrNull(selectedTableIndex)
+        if (table == null) {
+            finishRequest(
+                status,
+                output,
+                buttons,
+                "GAEP accessible table selection cancelled",
+                "No table was opened, nothing was copied, and no authority was granted.",
+            )
+            return
+        }
+        val sortLabels = (listOf("Keep verified source order") + table.columns.map { "Sort by ${it.label}" }).toTypedArray()
+        val selectedSort = Messages.showChooseDialog(
+            project,
+            "Choose a visible column for deterministic text sorting with row-ID tie breaking.",
+            "Sort ${table.title}",
+            Messages.getQuestionIcon(),
+            sortLabels,
+            sortLabels.first(),
+        )
+        if (selectedSort < 0) {
+            finishRequest(
+                status,
+                output,
+                buttons,
+                "GAEP accessible table selection cancelled",
+                "No table was opened, nothing was copied, and no authority was granted.",
+            )
+            return
+        }
+        val sortKey = if (selectedSort == 0) null else table.columns.getOrNull(selectedSort - 1)?.key
+            ?: throw IllegalArgumentException("Select one visible table column.")
+        val direction = if (sortKey == null) {
+            null
+        } else {
+            val directions = arrayOf("Ascending — A to Z", "Descending — Z to A")
+            when (
+                Messages.showChooseDialog(
+                    project,
+                    "Choose the deterministic sort direction.",
+                    "Sort ${table.title}",
+                    Messages.getQuestionIcon(),
+                    directions,
+                    directions.first(),
+                )
+            ) {
+                0 -> AccessibleTableSortDirection.ASCENDING
+                1 -> AccessibleTableSortDirection.DESCENDING
+                else -> {
+                    finishRequest(
+                        status,
+                        output,
+                        buttons,
+                        "GAEP accessible table selection cancelled",
+                        "No table was opened, nothing was copied, and no authority was granted.",
+                    )
+                    return
+                }
+            }
+        }
+        val filter = promptAccessibleFilter(project, table.title) ?: run {
+            finishRequest(
+                status,
+                output,
+                buttons,
+                "GAEP accessible table selection cancelled",
+                "No table was opened, nothing was copied, and no authority was granted.",
+            )
+            return
+        }
+        val view = AccessibleDashboardTables.view(table, filter, sortKey, direction)
+        output.text = AccessibleDashboardTables.render(view)
+        output.caretPosition = 0
+        status.text = "${table.title}: showing ${view.rows.size} of ${table.rows.size} verified rows"
+        buttons.forEach { it.isEnabled = true }
+        if (view.rows.isEmpty()) return
+        val copy = Messages.showYesNoDialog(
+            project,
+            "Copy ${view.rows.size} visible metadata row${if (view.rows.size == 1) "" else "s"} and only " +
+                "the visible columns as formula-neutralized CSV? No file will be written.",
+            "Copy Visible Rows as CSV",
+            "Copy Visible Rows as CSV",
+            "Finish Without Copying",
+            Messages.getQuestionIcon(),
+        )
+        if (copy != Messages.YES) return
+        CopyPasteManager.getInstance().setContents(StringSelection(AccessibleDashboardTables.csv(view)))
+        status.text = "${table.title}: copied ${view.rows.size} visible metadata row${if (view.rows.size == 1) "" else "s"} as CSV"
+    }
+
+    private fun promptAccessibleFilter(project: Project, title: String): String? {
+        while (true) {
+            val filter = Messages.showInputDialog(
+                project,
+                "Optionally match up to 256 characters against only the visible verified metadata columns. " +
+                    "Leave empty to show every verified row.",
+                "Filter $title",
+                Messages.getQuestionIcon(),
+            ) ?: return null
+            if (filter.length <= 256) return filter
+            Messages.showErrorDialog(project, "Use at most 256 characters.", "Filter $title")
+        }
     }
 
     @Suppress("DEPRECATION")

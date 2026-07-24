@@ -39,6 +39,68 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `accessible metadata tables filter visible cells and sort deterministically`() {
+        val table = accessibleTableFixture()
+        val sorted = AccessibleDashboardTables.view(
+            table,
+            sortKey = "state",
+            sortDirection = AccessibleTableSortDirection.ASCENDING,
+        )
+        assertEquals(listOf("row-c", "row-a", "row-b"), sorted.rows.map { it.id })
+
+        val filtered = AccessibleDashboardTables.view(
+            table,
+            filter = "PENDING",
+            sortKey = "name",
+            sortDirection = AccessibleTableSortDirection.DESCENDING,
+        )
+        assertEquals(listOf("row-b", "row-a"), filtered.rows.map { it.id })
+        assertFailsWith<IllegalArgumentException> {
+            AccessibleDashboardTables.view(table, filter = "x".repeat(257))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            AccessibleDashboardTables.view(
+                table,
+                sortKey = "hidden",
+                sortDirection = AccessibleTableSortDirection.ASCENDING,
+            )
+        }
+    }
+
+    @Test
+    fun `accessible metadata CSV exports only filtered rows and neutralizes formulas`() {
+        val view = AccessibleDashboardTables.view(accessibleTableFixture(), filter = "SUM")
+        assertEquals("\"Name\",\"State\"\r\n\"'=SUM(A1:A2)\",\"complete\"", AccessibleDashboardTables.csv(view))
+        assertFalse(AccessibleDashboardTables.csv(view).contains("Bravo"))
+        assertFalse(AccessibleDashboardTables.csv(view).contains("omitted"))
+        val rendered = AccessibleDashboardTables.render(view)
+        assertTrue(rendered.contains("Showing 1 of 3 verified rows; 2 omitted upstream; source total 5."))
+        assertTrue(rendered.contains("Boundary: table-does-not-authorize-run-or-effects"))
+    }
+
+    @Test
+    fun `accessible metadata tables reject unreconciled totals and non-visible fields`() {
+        val table = accessibleTableFixture()
+        assertFailsWith<IllegalArgumentException> {
+            AccessibleDashboardTables.exact(table.copy(total = 4))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            AccessibleDashboardTables.exact(
+                table.copy(
+                    rows = listOf(
+                        AccessibleTableRow(
+                            "row-a",
+                            mapOf("name" to "Alpha", "state" to "pending", "secret" to "withheld"),
+                        ),
+                    ),
+                    total = 3,
+                    omitted = 2,
+                ),
+            )
+        }
+    }
+
+    @Test
     fun `package-local engine binds the installed module and executes empty evidence`() {
         val generatedEngine = Path.of(
             System.getProperty("gaep.test.packagedEngine")
@@ -193,6 +255,10 @@ class PortableDesignClientTest {
             assertFalse(dashboardView.contains("Founder Product"))
             assertFalse(dashboardView.contains(privateRoot))
             assertFalse(dashboardView.contains(privateCredential))
+            val phaseTables = RiderProductController(client).readPhaseDashboardTables()
+            assertEquals(listOf("phase-panels"), phaseTables.map { it.id })
+            assertEquals(3, phaseTables.single().rows.size)
+            assertEquals(dashboard.compositionDigest, phaseTables.single().snapshotDigest)
 
             listOf(
                 badDashboardBindingRoot,
@@ -238,6 +304,22 @@ class PortableDesignClientTest {
             assertFalse(changeView.contains("Private Change title"))
             assertFalse(changeView.contains(privateRoot))
             assertFalse(changeView.contains(privateCredential))
+            val changeTables = RiderProductController(client).readChangeImpactTables(
+                changeContext,
+                changeContext.catalog.items.single(),
+            )
+            assertEquals(
+                listOf(
+                    "change-work-items",
+                    "changed-artifacts",
+                    "effect-targets",
+                    "affected-units",
+                    "related-decisions",
+                    "related-risks",
+                ),
+                changeTables.map { it.id },
+            )
+            assertTrue(changeTables.all { it.snapshotDigest == changeDashboard.snapshotDigest })
 
             listOf(
                 badChangeCatalogBindingRoot,
@@ -292,6 +374,12 @@ class PortableDesignClientTest {
             assertFalse(agentModelView.contains("Founder Product"))
             assertFalse(agentModelView.contains(privateRoot))
             assertFalse(agentModelView.contains(privateCredential))
+            val agentModelTables = RiderProductController(client).readAgentModelTables()
+            assertEquals(
+                listOf("agent-capabilities", "agent-selection", "agent-runs", "agent-handoffs", "provider-metrics"),
+                agentModelTables.map { it.id },
+            )
+            assertTrue(agentModelTables.all { it.snapshotDigest == agentModel.snapshotDigest })
 
             listOf(
                 badAgentModelBindingRoot,
@@ -854,6 +942,27 @@ class PortableDesignClientTest {
         assertEquals("HOST_RESPONSE_INVALID", error.kind)
         assertPrivateTextWithheld(error)
     }
+
+    private fun accessibleTableFixture(): AccessibleMetadataTable = AccessibleDashboardTables.exact(
+        AccessibleMetadataTable(
+            id = "verified-runs",
+            title = "Verified Runs",
+            columns = listOf(
+                AccessibleTableColumn("name", "Name"),
+                AccessibleTableColumn("state", "State"),
+            ),
+            rows = listOf(
+                AccessibleTableRow("row-b", mapOf("name" to "Bravo", "state" to "pending")),
+                AccessibleTableRow("row-a", mapOf("name" to "Alpha", "state" to "pending")),
+                AccessibleTableRow("row-c", mapOf("name" to "=SUM(A1:A2)", "state" to "complete")),
+            ),
+            total = 5,
+            omitted = 2,
+            snapshotDigest = "sha256:${"a".repeat(64)}",
+            sourceBoundary = "already-verified-bounded-metadata-only",
+            authorityBoundary = "table-does-not-authorize-run-or-effects",
+        ),
+    )
 
     private fun assertPrivateTextWithheld(error: GaepHostException) {
         assertFalse(error.message.orEmpty().contains(privateRoot))

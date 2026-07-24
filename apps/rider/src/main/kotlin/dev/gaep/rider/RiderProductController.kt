@@ -28,6 +28,11 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         return renderPhaseDashboard(client.readPhaseDashboard(product))
     }
 
+    fun readPhaseDashboardTables(): List<AccessibleMetadataTable> {
+        val product = client.readProductBinding()
+        return AccessibleDashboardTables.phase(client.readPhaseDashboard(product))
+    }
+
     fun readChangeImpactContext(): ChangeImpactContext {
         val product = client.readProductBinding()
         return ChangeImpactContext(product, client.listChangeImpactChanges(product))
@@ -40,9 +45,24 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         return renderChangeImpactDashboard(client.readChangeImpact(context.product, change))
     }
 
+    fun readChangeImpactTables(
+        context: ChangeImpactContext,
+        change: ChangeImpactChangeReference,
+    ): List<AccessibleMetadataTable> {
+        require(change in context.catalog.items) {
+            "The selected Change is not part of the verified current catalog. Reload and select the Change again."
+        }
+        return AccessibleDashboardTables.changeImpact(client.readChangeImpact(context.product, change))
+    }
+
     fun readAgentModel(): String {
         val product = client.readProductBinding()
         return renderAgentModelDashboard(client.readAgentModel(product))
+    }
+
+    fun readAgentModelTables(): List<AccessibleMetadataTable> {
+        val product = client.readProductBinding()
+        return AccessibleDashboardTables.agentModel(client.readAgentModel(product))
     }
 
     fun readAgentReadiness(): String = buildString {
