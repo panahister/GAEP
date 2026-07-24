@@ -194,11 +194,31 @@ export async function managedEvidenceDetailDto(
   let applyDecision: ManagedApplyDecisionReceipt | undefined
   if (record.applyDecisionId && record.applyDecisionDigest) {
     applyDecision = await readers.readApplyDecision(record.applyDecisionId)
+    if (!result.previousResultId || !result.previousResultDigest) {
+      throw new Error("Managed apply decision has no exact predecessor review result")
+    }
+    const reviewResult = await readers.readResult(result.previousResultId)
+    if (canonicalDigest(reviewResult) !== result.previousResultDigest || reviewResult.id !== result.previousResultId ||
+        reviewResult.managedRunId !== record.id || reviewResult.runId !== record.runId ||
+        reviewResult.productId !== record.productId || reviewResult.mode !== record.mode ||
+        reviewResult.terminalState !== "review-required") {
+      throw new Error("Managed apply decision predecessor result binding is invalid")
+    }
+    const reviewEvidence = await readers.readEvidence(reviewResult.evidenceId)
+    if (canonicalDigest(reviewEvidence) !== reviewResult.evidenceDigest || reviewEvidence.id !== reviewResult.evidenceId ||
+        reviewEvidence.managedRunId !== record.id || reviewEvidence.runId !== record.runId ||
+        reviewEvidence.productId !== record.productId || reviewEvidence.bindingsDigest !== record.bindingsDigest ||
+        reviewEvidence.staging?.applyState !== "pending") {
+      throw new Error("Managed apply decision predecessor evidence binding is invalid")
+    }
     if (canonicalDigest(applyDecision) !== record.applyDecisionDigest || applyDecision.id !== record.applyDecisionId ||
         applyDecision.managedRunId !== record.id || applyDecision.runId !== record.runId ||
         applyDecision.productId !== record.productId || applyDecision.bindingsDigest !== record.bindingsDigest ||
-        applyDecision.reviewResultId !== result.id || applyDecision.reviewResultDigest !== record.resultDigest ||
-        applyDecision.reviewEvidenceId !== evidence.id || applyDecision.reviewEvidenceDigest !== result.evidenceDigest) {
+        applyDecision.reviewResultId !== reviewResult.id || applyDecision.reviewResultDigest !== result.previousResultDigest ||
+        applyDecision.reviewEvidenceId !== reviewEvidence.id ||
+        applyDecision.reviewEvidenceDigest !== reviewResult.evidenceDigest ||
+        evidence.staging?.applyDecision?.receiptId !== applyDecision.id ||
+        evidence.staging.applyDecision.receiptDigest !== record.applyDecisionDigest) {
       throw new Error("Managed apply decision does not match its exact evidence binding")
     }
   } else if (record.applyDecisionId || record.applyDecisionDigest) {

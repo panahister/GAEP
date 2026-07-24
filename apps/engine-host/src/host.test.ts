@@ -338,6 +338,49 @@ describe("engine host protocol", () => {
         localStagePath: "/tmp/caller-controlled",
       },
     })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 12,
+      protocolVersion: 2,
+      method: "managed.review.read",
+      params: {
+        managedRunId: "11111111-1111-4111-8111-111111111111",
+        localStagePath: "/tmp/caller-controlled",
+      },
+    })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 13,
+      protocolVersion: 2,
+      method: "managed.review.apply",
+      params: {
+        actorId: "gaep.host-test",
+        managedRunId: "11111111-1111-4111-8111-111111111111",
+        expectedManagedRunRevision: 1,
+        expectedPreviewDigest: `sha256:${"0".repeat(64)}`,
+        confirmation: "apply-whatever-is-current",
+      },
+    })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 14,
+      protocolVersion: 2,
+      method: "managed.review.discard",
+      params: {
+        actorId: "gaep.host-test",
+        managedRunId: "11111111-1111-4111-8111-111111111111",
+        expectedManagedRunRevision: 1,
+        expectedPreviewDigest: `sha256:${"0".repeat(64)}`,
+        confirmation: "discard-exact-managed-review",
+        deleteWorkspace: "/tmp/caller-controlled",
+      },
+    })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 15,
+      method: "managed.review.read",
+      params: { managedRunId: "11111111-1111-4111-8111-111111111111" },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
   })
 
   it("exposes an audit-gated bounded empty Managed Run inventory without authority", async () => {

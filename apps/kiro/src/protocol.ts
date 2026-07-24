@@ -21,6 +21,10 @@ const pagePrivacyBoundary = "Items contain validated metadata and digests only; 
 const managedInventoryBoundary = "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority"
 const managedEvidenceBoundary = "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority"
 const managedEvidencePrivacyBoundary = "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted."
+const managedReviewBoundary = "managed-review-preview-authorizes-no-mutation-without-an-exact-digest-bound-human-decision" as const
+const managedReviewPrivacyBoundary = "Exact portable identifiers, digests, warning codes, workspace-relative changed paths, file digests, sizes, modes and write scopes only; prompts, provider output, source bytes, absolute paths, executable paths, process state and credentials are omitted." as const
+const managedReviewTransitionBoundary = "managed-review-transition-proves-persisted-state-not-provider-outcome-or-machine-local-cleanup" as const
+const managedReviewCleanupBoundary = "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup." as const
 const actorIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:@+-]*$/u
 const toolPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u
 const digestPattern = /^sha256:[0-9a-f]{64}$/u
@@ -365,6 +369,91 @@ export interface ManagedEvidenceDetail {
   readonly privacyBoundary: string
 }
 
+export interface ManagedChangedFile {
+  readonly path: string
+  readonly kind: "added" | "modified" | "deleted"
+  readonly beforeDigest?: string
+  readonly afterDigest?: string
+  readonly beforeSize?: number
+  readonly afterSize?: number
+  readonly beforeMode?: number
+  readonly afterMode?: number
+}
+
+export interface ManagedReviewApplyConfirmation {
+  readonly decision: "apply-exact-reviewed-inventory"
+  readonly reviewEvidenceId: string
+  readonly reviewEvidenceDigest: string
+  readonly changedInventoryDigest: string
+  readonly writeEnvelope: readonly string[]
+  readonly writeEnvelopeDigest: string
+}
+
+export interface ManagedReviewPreview {
+  readonly schemaVersion: 1
+  readonly kind: "managed-review-preview"
+  readonly managedRunId: string
+  readonly managedRunRevision: number
+  readonly runId: string
+  readonly productId: string
+  readonly initiativeId: string
+  readonly mode: "codex-staged"
+  readonly state: "review-required" | "conflict"
+  readonly canApply: boolean
+  readonly canDiscard: true
+  readonly hasLocalJournal: boolean
+  readonly bindingsDigest: string
+  readonly result: {
+    readonly resultId: string
+    readonly resultDigest: string
+    readonly terminalState: "review-required" | "conflict"
+    readonly providerDisposition: "completed" | "failed" | "cancelled" | "interrupted" | "crashed" | "protocol-error" | "unknown"
+    readonly outcomeStatus: "satisfied" | "failed" | "not-assessed" | "indeterminate"
+    readonly outcomeBasis: "postcondition-evaluator" | "deterministic-offline-runtime" | "not-evaluated" | "provider-failure"
+    readonly warningCodes: readonly string[]
+    readonly evidenceId: string
+    readonly evidenceDigest: string
+  }
+  readonly staging: {
+    readonly evidenceId: string
+    readonly evidenceDigest: string
+    readonly baselineDigest: string
+    readonly finalDigest: string
+    readonly applyState: "pending" | "conflict"
+    readonly changeCount: number
+    readonly changedInventoryLimit: 512
+    readonly omittedCount: 0
+    readonly changedInventory: readonly ManagedChangedFile[]
+    readonly changedInventoryDigest: string
+    readonly excludedPathCount: number
+    readonly excludedPathSetDigest: string
+  }
+  readonly applyConfirmation?: ManagedReviewApplyConfirmation
+  readonly postApplyGatePolicy: "record-not-assessed"
+  readonly authorityBoundary: typeof managedReviewBoundary
+  readonly privacyBoundary: typeof managedReviewPrivacyBoundary
+  readonly cleanupBoundary: typeof managedReviewCleanupBoundary
+  readonly previewDigest: string
+}
+
+export interface ManagedReviewTransition {
+  readonly schemaVersion: 1
+  readonly kind: "managed-review-transition"
+  readonly decision: "apply-exact-managed-review" | "discard-exact-managed-review"
+  readonly sourcePreviewDigest: string
+  readonly sourceManagedRunRevision: number
+  readonly managedRunId: string
+  readonly managedRunRevision: number
+  readonly state: ManagedRunState
+  readonly canApply: boolean
+  readonly canDiscard: boolean
+  readonly hasLocalJournal: boolean
+  readonly detail: ManagedEvidenceDetail
+  readonly authorityBoundary: typeof managedReviewTransitionBoundary
+  readonly cleanupBoundary: typeof managedReviewCleanupBoundary
+  readonly transitionDigest: string
+}
+
 export interface AgentReadinessSnapshot {
   readonly schemaVersion: 1
   readonly adapterId: string
@@ -488,6 +577,26 @@ const stableHostErrors = new Map<string, StableHostError>([
   ["MANAGED_EVIDENCE_DETAIL_INVALID", {
     code: -32_027,
     message: "GAEP could not verify the exact Managed Run evidence detail.",
+  }],
+  ["MANAGED_REVIEW_AUDIT_INVALID", {
+    code: -32_028,
+    message: "Managed Run review is unavailable because the governed audit chain is invalid.",
+  }],
+  ["MANAGED_REVIEW_CHANGED", {
+    code: -32_029,
+    message: "The Managed Run review changed before the decision; open and review the current exact inventory.",
+  }],
+  ["MANAGED_REVIEW_INVALID", {
+    code: -32_036,
+    message: "GAEP could not verify an exact pending Managed Run review.",
+  }],
+  ["MANAGED_REVIEW_APPLY_FAILED", {
+    code: -32_037,
+    message: "The exact Managed Run apply transition could not be verified; reload the review before any retry.",
+  }],
+  ["MANAGED_REVIEW_DISCARD_FAILED", {
+    code: -32_038,
+    message: "The exact Managed Run discard transition could not be verified; reload the review before any retry.",
   }],
   ["INVALID_PARAMS", {
     code: -32_602,
@@ -966,6 +1075,249 @@ export function parseManagedEvidenceDetail(result: unknown, expectedManagedRunId
   })
 }
 
+export function parseManagedReviewPreview(result: unknown, expectedManagedRunId: string): ManagedReviewPreview {
+  const preview = requireRecord(result)
+  requireKeys(preview, [
+    "schemaVersion", "kind", "managedRunId", "managedRunRevision", "runId", "productId", "initiativeId", "mode",
+    "state", "canApply", "canDiscard", "hasLocalJournal", "bindingsDigest", "result", "staging",
+    "postApplyGatePolicy", "authorityBoundary", "privacyBoundary", "cleanupBoundary", "previewDigest",
+  ], ["applyConfirmation"])
+  if (requireSafeInteger(preview, "schemaVersion") !== 1 || requireString(preview, "kind") !== "managed-review-preview" ||
+      requireString(preview, "mode") !== "codex-staged" || requireString(preview, "postApplyGatePolicy") !== "record-not-assessed" ||
+      requireString(preview, "authorityBoundary") !== managedReviewBoundary ||
+      requireString(preview, "privacyBoundary") !== managedReviewPrivacyBoundary ||
+      requireString(preview, "cleanupBoundary") !== managedReviewCleanupBoundary) throw invalidHostResponse()
+  const managedRunId = normalizeUuidValue(preview.managedRunId, "Managed Run ID")
+  if (managedRunId !== normalizeUuid(expectedManagedRunId, "Managed Run ID")) throw invalidHostResponse()
+  const managedRunRevision = requireSafeInteger(preview, "managedRunRevision")
+  if (managedRunRevision < 1) throw invalidHostResponse()
+  const state = requireEnum(preview, "state", ["review-required", "conflict"] as const)
+  const canApply = requireBoolean(preview, "canApply")
+  const canDiscard = requireBoolean(preview, "canDiscard")
+  const hasLocalJournal = requireBoolean(preview, "hasLocalJournal")
+  const hasApplyConfirmation = Object.hasOwn(preview, "applyConfirmation")
+  if (!canDiscard || canApply !== hasApplyConfirmation || (state === "conflict" && canApply)) throw invalidHostResponse()
+
+  const parsedResult = parseManagedReviewResult(preview.result, state)
+  const staging = parseManagedReviewStaging(preview.staging, state)
+  if (parsedResult.evidenceId !== staging.evidenceId || parsedResult.evidenceDigest !== staging.evidenceDigest) {
+    throw invalidHostResponse()
+  }
+  const applyConfirmation = hasApplyConfirmation
+    ? parseManagedReviewApplyConfirmation(preview.applyConfirmation, staging)
+    : undefined
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "managed-review-preview" as const,
+    managedRunId,
+    managedRunRevision,
+    runId: normalizeUuidValue(preview.runId, "Run ID"),
+    productId: normalizeUuidValue(preview.productId, "Product ID"),
+    initiativeId: normalizeUuidValue(preview.initiativeId, "Initiative ID"),
+    mode: "codex-staged" as const,
+    state,
+    canApply,
+    canDiscard: true as const,
+    hasLocalJournal,
+    bindingsDigest: requireDigest(preview, "bindingsDigest"),
+    result: parsedResult,
+    staging,
+    ...(applyConfirmation ? { applyConfirmation } : {}),
+    postApplyGatePolicy: "record-not-assessed" as const,
+    authorityBoundary: managedReviewBoundary,
+    privacyBoundary: managedReviewPrivacyBoundary,
+    cleanupBoundary: managedReviewCleanupBoundary,
+  }
+  const previewDigest = requireDigest(preview, "previewDigest")
+  if (previewDigest !== canonicalDigest(body)) throw invalidHostResponse()
+  return Object.freeze({ ...body, previewDigest })
+}
+
+export function parseManagedReviewTransition(
+  result: unknown,
+  preview: ManagedReviewPreview,
+  expectedDecision: ManagedReviewTransition["decision"],
+): ManagedReviewTransition {
+  const transition = requireRecord(result)
+  requireExactKeys(transition, [
+    "schemaVersion", "kind", "decision", "sourcePreviewDigest", "sourceManagedRunRevision", "managedRunId",
+    "managedRunRevision", "state", "canApply", "canDiscard", "hasLocalJournal", "detail", "authorityBoundary",
+    "cleanupBoundary", "transitionDigest",
+  ])
+  if (requireSafeInteger(transition, "schemaVersion") !== 1 ||
+      requireString(transition, "kind") !== "managed-review-transition" ||
+      requireString(transition, "decision") !== expectedDecision ||
+      requireString(transition, "authorityBoundary") !== managedReviewTransitionBoundary ||
+      requireString(transition, "cleanupBoundary") !== managedReviewCleanupBoundary ||
+      requireDigest(transition, "sourcePreviewDigest") !== preview.previewDigest ||
+      requireSafeInteger(transition, "sourceManagedRunRevision") !== preview.managedRunRevision) throw invalidHostResponse()
+  const managedRunId = normalizeUuidValue(transition.managedRunId, "Managed Run ID")
+  const managedRunRevision = requireSafeInteger(transition, "managedRunRevision")
+  if (managedRunId !== preview.managedRunId || managedRunRevision <= preview.managedRunRevision) throw invalidHostResponse()
+  const state = requireEnum(transition, "state", [
+    "prepared", "running", "review-required", "applying", "completed", "failed", "cancelled", "timed-out", "unknown",
+    "conflict", "discarded",
+  ] as const)
+  const canApply = requireBoolean(transition, "canApply")
+  const canDiscard = requireBoolean(transition, "canDiscard")
+  if (expectedDecision === "discard-exact-managed-review") {
+    if (state !== "discarded" || canApply || canDiscard) throw invalidHostResponse()
+  } else if (!["completed", "failed", "unknown", "conflict"].includes(state) || canApply || canDiscard !== (state === "conflict")) {
+    throw invalidHostResponse()
+  }
+  const detail = parseManagedEvidenceDetail(transition.detail, managedRunId)
+  if (detail.summary.state !== state || detail.artifactStatus !== "verified-result-and-evidence") throw invalidHostResponse()
+  if (expectedDecision === "apply-exact-managed-review" && !detail.applyDecision) throw invalidHostResponse()
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "managed-review-transition" as const,
+    decision: expectedDecision,
+    sourcePreviewDigest: preview.previewDigest,
+    sourceManagedRunRevision: preview.managedRunRevision,
+    managedRunId,
+    managedRunRevision,
+    state,
+    canApply,
+    canDiscard,
+    hasLocalJournal: requireBoolean(transition, "hasLocalJournal"),
+    detail,
+    authorityBoundary: managedReviewTransitionBoundary,
+    cleanupBoundary: managedReviewCleanupBoundary,
+  }
+  const transitionDigest = requireDigest(transition, "transitionDigest")
+  if (transitionDigest !== canonicalDigest(body)) throw invalidHostResponse()
+  return Object.freeze({ ...body, transitionDigest })
+}
+
+function parseManagedReviewResult(
+  value: unknown,
+  expectedState: ManagedReviewPreview["state"],
+): ManagedReviewPreview["result"] {
+  const result = requireRecord(value)
+  requireExactKeys(result, [
+    "resultId", "resultDigest", "terminalState", "providerDisposition", "outcomeStatus", "outcomeBasis", "warningCodes",
+    "evidenceId", "evidenceDigest",
+  ])
+  if (!Array.isArray(result.warningCodes) || result.warningCodes.length > 128) throw invalidHostResponse()
+  const warnings = [
+    "provider-warning-redacted", "provider-output-redacted", "coordinator-failure", "runtime-output-truncated",
+    "staging-read-confinement-unattested", "postcondition-evaluator-failed", "local-cleanup-pending",
+    "local-cleanup-failed", "runtime-warning",
+  ] as const
+  const warningCodes = Object.freeze(result.warningCodes.map((warning) => {
+    if (typeof warning !== "string" || !(warnings as readonly string[]).includes(warning)) throw invalidHostResponse()
+    return warning
+  }))
+  return Object.freeze({
+    resultId: normalizeUuidValue(result.resultId, "Managed Result ID"),
+    resultDigest: requireDigest(result, "resultDigest"),
+    terminalState: requireEnum(result, "terminalState", [expectedState] as const),
+    providerDisposition: requireEnum(result, "providerDisposition", [
+      "completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown",
+    ] as const),
+    outcomeStatus: requireEnum(result, "outcomeStatus", ["satisfied", "failed", "not-assessed", "indeterminate"] as const),
+    outcomeBasis: requireEnum(result, "outcomeBasis", [
+      "postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure",
+    ] as const),
+    warningCodes,
+    evidenceId: normalizeUuidValue(result.evidenceId, "Managed Evidence ID"),
+    evidenceDigest: requireDigest(result, "evidenceDigest"),
+  })
+}
+
+function parseManagedReviewStaging(
+  value: unknown,
+  state: ManagedReviewPreview["state"],
+): ManagedReviewPreview["staging"] {
+  const staging = requireRecord(value)
+  requireExactKeys(staging, [
+    "evidenceId", "evidenceDigest", "baselineDigest", "finalDigest", "applyState", "changeCount",
+    "changedInventoryLimit", "omittedCount", "changedInventory", "changedInventoryDigest", "excludedPathCount",
+    "excludedPathSetDigest",
+  ])
+  const applyState = requireEnum(staging, "applyState", ["pending", "conflict"] as const)
+  if (applyState !== (state === "review-required" ? "pending" : "conflict") ||
+      requireSafeInteger(staging, "changedInventoryLimit") !== 512 ||
+      requireSafeInteger(staging, "omittedCount") !== 0 ||
+      !Array.isArray(staging.changedInventory) || staging.changedInventory.length > 512) throw invalidHostResponse()
+  const changedInventory = Object.freeze(staging.changedInventory.map(parseManagedChangedFile))
+  if (requireSafeInteger(staging, "changeCount") !== changedInventory.length ||
+      new Set(changedInventory.map((change) => change.path)).size !== changedInventory.length ||
+      changedInventory.some((change, index) => index > 0 && changedInventory[index - 1]!.path.localeCompare(change.path) >= 0)) {
+    throw invalidHostResponse()
+  }
+  const changedInventoryDigest = requireDigest(staging, "changedInventoryDigest")
+  if (changedInventoryDigest !== canonicalDigest(changedInventory)) throw invalidHostResponse()
+  return Object.freeze({
+    evidenceId: normalizeUuidValue(staging.evidenceId, "Managed Evidence ID"),
+    evidenceDigest: requireDigest(staging, "evidenceDigest"),
+    baselineDigest: requireDigest(staging, "baselineDigest"),
+    finalDigest: requireDigest(staging, "finalDigest"),
+    applyState,
+    changeCount: changedInventory.length,
+    changedInventoryLimit: 512,
+    omittedCount: 0,
+    changedInventory,
+    changedInventoryDigest,
+    excludedPathCount: nonNegativeInteger(staging, "excludedPathCount", 20_000),
+    excludedPathSetDigest: requireDigest(staging, "excludedPathSetDigest"),
+  })
+}
+
+function parseManagedChangedFile(value: unknown): ManagedChangedFile {
+  const change = requireRecord(value)
+  requireKeys(change, ["path", "kind"], [
+    "beforeDigest", "afterDigest", "beforeSize", "afterSize", "beforeMode", "afterMode",
+  ])
+  const kind = requireEnum(change, "kind", ["added", "modified", "deleted"] as const)
+  const before = Object.hasOwn(change, "beforeDigest") || Object.hasOwn(change, "beforeSize") || Object.hasOwn(change, "beforeMode")
+  const after = Object.hasOwn(change, "afterDigest") || Object.hasOwn(change, "afterSize") || Object.hasOwn(change, "afterMode")
+  const completeBefore = Object.hasOwn(change, "beforeDigest") && Object.hasOwn(change, "beforeSize") && Object.hasOwn(change, "beforeMode")
+  const completeAfter = Object.hasOwn(change, "afterDigest") && Object.hasOwn(change, "afterSize") && Object.hasOwn(change, "afterMode")
+  if (before !== completeBefore || after !== completeAfter ||
+      (kind === "added" && (before || !after)) || (kind === "deleted" && (!before || after)) ||
+      (kind === "modified" && (!before || !after))) throw invalidHostResponse()
+  const beforeSize = completeBefore ? nonNegativeInteger(change, "beforeSize", Number.MAX_SAFE_INTEGER) : undefined
+  const afterSize = completeAfter ? nonNegativeInteger(change, "afterSize", Number.MAX_SAFE_INTEGER) : undefined
+  const beforeMode = completeBefore ? nonNegativeInteger(change, "beforeMode", 0o777) : undefined
+  const afterMode = completeAfter ? nonNegativeInteger(change, "afterMode", 0o777) : undefined
+  return Object.freeze({
+    path: workspaceRelativePath(change.path),
+    kind,
+    ...(completeBefore ? { beforeDigest: requireDigest(change, "beforeDigest"), beforeSize: beforeSize!, beforeMode: beforeMode! } : {}),
+    ...(completeAfter ? { afterDigest: requireDigest(change, "afterDigest"), afterSize: afterSize!, afterMode: afterMode! } : {}),
+  })
+}
+
+function parseManagedReviewApplyConfirmation(
+  value: unknown,
+  staging: ManagedReviewPreview["staging"],
+): ManagedReviewApplyConfirmation {
+  const confirmation = requireRecord(value)
+  requireExactKeys(confirmation, [
+    "decision", "reviewEvidenceId", "reviewEvidenceDigest", "changedInventoryDigest", "writeEnvelope",
+    "writeEnvelopeDigest",
+  ])
+  if (requireString(confirmation, "decision") !== "apply-exact-reviewed-inventory" ||
+      normalizeUuidValue(confirmation.reviewEvidenceId, "Managed Evidence ID") !== staging.evidenceId ||
+      requireDigest(confirmation, "reviewEvidenceDigest") !== staging.evidenceDigest ||
+      requireDigest(confirmation, "changedInventoryDigest") !== staging.changedInventoryDigest ||
+      !Array.isArray(confirmation.writeEnvelope) || confirmation.writeEnvelope.length > 256) throw invalidHostResponse()
+  const writeEnvelope = Object.freeze(confirmation.writeEnvelope.map(workspaceRelativeScope))
+  if (new Set(writeEnvelope).size !== writeEnvelope.length ||
+      writeEnvelope.some((scope, index) => index > 0 && writeEnvelope[index - 1]!.localeCompare(scope) >= 0)) throw invalidHostResponse()
+  const writeEnvelopeDigest = requireDigest(confirmation, "writeEnvelopeDigest")
+  if (writeEnvelopeDigest !== canonicalDigest(writeEnvelope)) throw invalidHostResponse()
+  return Object.freeze({
+    decision: "apply-exact-reviewed-inventory",
+    reviewEvidenceId: staging.evidenceId,
+    reviewEvidenceDigest: staging.evidenceDigest,
+    changedInventoryDigest: staging.changedInventoryDigest,
+    writeEnvelope,
+    writeEnvelopeDigest,
+  })
+}
+
 function parseManagedRunSummary(value: unknown): ManagedRunSummary {
   const summary = requireRecord(value)
   requireKeys(summary, [
@@ -1347,6 +1699,10 @@ function workspaceRelativePath(value: unknown): string {
     throw invalidHostResponse()
   }
   return value
+}
+
+function workspaceRelativeScope(value: unknown): string {
+  return value === "." ? "." : workspaceRelativePath(value)
 }
 
 function parseAgentReadinessSnapshot(snapshot: JsonRecord): AgentReadinessSnapshot {

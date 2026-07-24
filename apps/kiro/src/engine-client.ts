@@ -22,6 +22,8 @@ import {
   parseManagedReadOnlyReceipt,
   parseManagedEvidenceDetail,
   parseManagedRunSummaryPage,
+  parseManagedReviewPreview,
+  parseManagedReviewTransition,
   parseAgentRuns,
   parseAgentSelection,
   parseAgentSelectionState,
@@ -46,6 +48,8 @@ import {
   type ManagedReadOnlyReceipt,
   type ManagedEvidenceDetail,
   type ManagedRunSummaryPage,
+  type ManagedReviewPreview,
+  type ManagedReviewTransition,
   type PortableAgentSettingValue,
 } from "./protocol.js"
 
@@ -270,6 +274,44 @@ export class GaepEngineClient {
         await this.request("managed.evidence.read", { managedRunId: normalizedManagedRunId }),
         normalizedManagedRunId,
       )
+    })
+  }
+
+  readManagedReview(managedRunId: string): Promise<ManagedReviewPreview> {
+    return this.enqueue(async () => {
+      const normalizedManagedRunId = normalizeUuid(managedRunId, "Managed Run ID")
+      return parseManagedReviewPreview(
+        await this.request("managed.review.read", { managedRunId: normalizedManagedRunId }),
+        normalizedManagedRunId,
+      )
+    })
+  }
+
+  applyManagedReview(preview: ManagedReviewPreview, actorId: string): Promise<ManagedReviewTransition> {
+    return this.decideManagedReview(preview, actorId, "apply-exact-managed-review")
+  }
+
+  discardManagedReview(preview: ManagedReviewPreview, actorId: string): Promise<ManagedReviewTransition> {
+    return this.decideManagedReview(preview, actorId, "discard-exact-managed-review")
+  }
+
+  private decideManagedReview(
+    inputPreview: ManagedReviewPreview,
+    inputActorId: string,
+    decision: ManagedReviewTransition["decision"],
+  ): Promise<ManagedReviewTransition> {
+    return this.enqueue(async () => {
+      const preview = parseManagedReviewPreview(inputPreview, inputPreview.managedRunId)
+      const actorId = normalizeActorId(inputActorId)
+      const method = decision === "apply-exact-managed-review" ? "managed.review.apply" : "managed.review.discard"
+      const result = await this.request(method, {
+        actorId,
+        managedRunId: preview.managedRunId,
+        expectedManagedRunRevision: preview.managedRunRevision,
+        expectedPreviewDigest: preview.previewDigest,
+        confirmation: decision,
+      })
+      return parseManagedReviewTransition(result, preview, decision)
     })
   }
 

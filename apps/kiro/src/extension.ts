@@ -18,6 +18,8 @@ import {
   type ManagedReadOnlyReceipt,
   type ManagedEvidenceDetail,
   type ManagedRunSummaryPage,
+  type ManagedReviewPreview,
+  type ManagedReviewTransition,
   type PortableAgentSettingValue,
   type PortableDesignSnapshotPage,
   type PortableDesignSnapshotSummary,
@@ -32,6 +34,7 @@ const commandIds = {
   handoffAgent: "gaepKiro.agents.handoff",
   managedReadOnly: "gaepKiro.runs.managedReadOnly",
   evidence: "gaepKiro.runs.evidence",
+  stagedReview: "gaepKiro.runs.stagedReview",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -94,6 +97,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.handoffAgent, () => runUserCommand(() => handoffAgent(pool))),
     vscode.commands.registerCommand(commandIds.managedReadOnly, () => runUserCommand(() => runManagedReadOnly(pool))),
     vscode.commands.registerCommand(commandIds.evidence, () => runUserCommand(() => showManagedEvidenceDashboard(pool))),
+    vscode.commands.registerCommand(commandIds.stagedReview, () => runUserCommand(() => reviewManagedStagedChanges(pool))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -166,6 +170,7 @@ function productStudioHtml(): string {
     <p>Use the Kiro Command Palette to observe verified local readiness, record one guarded portable Agent Selection, or create a versioned switch handoff from the latest terminal Run.</p>
     <p>Selection and handoff records are configuration and history only. The separate managed read-only command can run one exact, already-confirmed Charter and Workflow Plan after a digest-bound human attestation. It denies every Tool, write, and non-observation effect, uses a bounded timeout, and withholds success if staged changes appear.</p>
     <p>The Managed Run evidence command shows an audit-gated, snapshot-bound page of at most 100 runs and one exact verified detail. It displays portable states, counts, digests and timestamps only; it cannot apply, discard, resume, approve, or infer success.</p>
+    <p>The separate staged-review command can inspect one exact pending Codex inventory of at most 512 workspace-relative changed paths and then, only after a cancel-default digest-bound human decision, ask the engine to apply that inventory or persist discard. It receives no source bytes or general filesystem-write authority. Post-apply Workflow gates are recorded not assessed, so this surface cannot claim governed outcome satisfaction.</p>
   </section>
   <section>
     <h2>Governance boundary</h2>
@@ -652,6 +657,132 @@ async function showManagedEvidenceDetail(detail: ManagedEvidenceDetail): Promise
     "",
     "Boundary: provider completion is separate from governed outcome. Apply-decision evidence records a past exact decision and grants this view no apply, discard, approval, Tool, write, effect, implementation-readiness, release, or future Run authority.",
     "Raw provider output, prompts, context content, changed paths, source bytes, executable paths, process state, workspace paths, and credentials are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+}
+
+async function reviewManagedStagedChanges(
+  pool: EngineClientPool,
+): Promise<ManagedReviewPreview | ManagedReviewTransition> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const managedRunId = await collectUuid("Enter the exact pending Managed Run UUID", "Managed Run ID")
+  const preview = await client.readManagedReview(managedRunId)
+  await showManagedReviewPreview(preview)
+
+  const actions = [
+    ...(preview.canApply ? ["Apply Exact Reviewed Inventory"] : []),
+    ...(preview.canDiscard ? ["Discard Staged Changes"] : []),
+  ]
+  const selected = await vscode.window.showWarningMessage(
+    [
+      `Managed Run ${preview.managedRunId} revision ${preview.managedRunRevision} is ${preview.state}.`,
+      `${preview.staging.changeCount} exact staged file change(s); inventory ${preview.staging.changedInventoryDigest}; preview ${preview.previewDigest}.`,
+      preview.canApply
+        ? "Apply can change only the exact reviewed workspace-relative inventory and write envelope. Post-apply Workflow gates will be recorded not assessed, so governed outcome success cannot be claimed."
+        : "Apply is unavailable. Exact discard remains available for this recovery state.",
+      "Dismiss to keep the review pending. No mutation occurs by opening this review.",
+    ].join("\n\n"),
+    { modal: true },
+    ...actions,
+  )
+  if (!selected) return preview
+
+  const decision = selected === "Apply Exact Reviewed Inventory"
+    ? "apply-exact-managed-review"
+    : "discard-exact-managed-review"
+  const confirmationLabel = decision === "apply-exact-managed-review"
+    ? "Confirm Exact Apply"
+    : "Confirm Exact Discard"
+  const confirmation = await vscode.window.showWarningMessage(
+    [
+      `${confirmationLabel} for Managed Run ${preview.managedRunId}?`,
+      `Bound revision: ${preview.managedRunRevision}; preview: ${preview.previewDigest}; changes: ${preview.staging.changeCount}; inventory: ${preview.staging.changedInventoryDigest}.`,
+      decision === "apply-exact-managed-review"
+        ? `Write envelope: ${preview.applyConfirmation?.writeEnvelope.join(", ") || "none"}. This can mutate those exact source-workspace paths. Workflow gates remain not assessed.`
+        : "Discard persists a governed discarded state. Machine-local stage and recovery-journal cleanup remain separate, unproven claims.",
+      "Dismiss to cancel and keep the current review pending.",
+    ].join("\n\n"),
+    { modal: true },
+    confirmationLabel,
+  )
+  if (confirmation !== confirmationLabel) return preview
+
+  requireTrustedWorkspace()
+  const actorId = normalizeActorId(machineSetting("actorId", undefined, "gaep.kiro-local-human"))
+  const transition = decision === "apply-exact-managed-review"
+    ? await client.applyManagedReview(preview, actorId)
+    : await client.discardManagedReview(preview, actorId)
+  await showManagedReviewTransition(transition)
+  await vscode.window.showInformationMessage(
+    decision === "apply-exact-managed-review"
+      ? `Exact apply transition persisted as ${transition.state}. Workflow gates were not assessed; no governed outcome success or cleanup completion is inferred.`
+      : `Exact discard transition persisted as ${transition.state}. Machine-local cleanup completion is not independently claimed.`,
+  )
+  return transition
+}
+
+async function showManagedReviewPreview(preview: ManagedReviewPreview): Promise<void> {
+  const inventory = preview.staging.changedInventory.length === 0
+    ? ["No staged workspace file changes were recorded."]
+    : preview.staging.changedInventory.flatMap((change, index) => [
+        `${index + 1}. ${change.kind.toUpperCase()} ${change.path}`,
+        `   Before: ${change.beforeDigest ?? "absent"}; ${change.beforeSize ?? 0} byte(s); mode ${change.beforeMode?.toString(8) ?? "absent"}`,
+        `   After: ${change.afterDigest ?? "absent"}; ${change.afterSize ?? 0} byte(s); mode ${change.afterMode?.toString(8) ?? "absent"}`,
+      ])
+  const lines = [
+    "GAEP exact staged Managed Run review",
+    "",
+    `Managed Run: ${preview.managedRunId}`,
+    `Governed Run: ${preview.runId}`,
+    `Revision / state: ${preview.managedRunRevision} / ${preview.state}`,
+    `Product / Initiative: ${preview.productId} / ${preview.initiativeId}`,
+    `Bindings digest: ${preview.bindingsDigest}`,
+    `Result: ${preview.result.resultId} (${preview.result.resultDigest})`,
+    `Provider disposition: ${preview.result.providerDisposition}`,
+    `Governed outcome before decision: ${preview.result.outcomeStatus} (${preview.result.outcomeBasis})`,
+    `Evidence: ${preview.staging.evidenceId} (${preview.staging.evidenceDigest})`,
+    `Stage: ${preview.staging.applyState}; baseline=${preview.staging.baselineDigest}; final=${preview.staging.finalDigest}`,
+    `Complete bounded inventory: ${preview.staging.changeCount}/${preview.staging.changedInventoryLimit}; omitted=${preview.staging.omittedCount}; digest=${preview.staging.changedInventoryDigest}`,
+    `Excluded staged paths: ${preview.staging.excludedPathCount}; set digest=${preview.staging.excludedPathSetDigest}`,
+    `Apply available: ${preview.canApply ? "yes" : "no"}; discard available: ${preview.canDiscard ? "yes" : "no"}; local journal observed: ${preview.hasLocalJournal ? "yes" : "no"}`,
+    `Exact write envelope: ${preview.applyConfirmation?.writeEnvelope.join(", ") || "not available"}`,
+    `Preview digest: ${preview.previewDigest}`,
+    `Warnings: ${preview.result.warningCodes.length === 0 ? "none" : preview.result.warningCodes.join(", ")}`,
+    "",
+    "Exact changed-file inventory",
+    "",
+    ...inventory,
+    "",
+    "Boundary: this view authorizes no mutation. Apply or discard requires a separate exact revision-and-preview-digest-bound human decision and a second cancel-default confirmation.",
+    "Apply is limited to this exact changed inventory and write envelope. The host records post-apply Workflow gates not assessed, so it cannot claim governed outcome satisfaction.",
+    "Provider output, prompts, context content, staged source bytes, absolute paths, executable paths, process state, workspace paths and credentials are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+}
+
+async function showManagedReviewTransition(transition: ManagedReviewTransition): Promise<void> {
+  const detail = transition.detail
+  const lines = [
+    "GAEP managed staged-review transition",
+    "",
+    `Decision: ${transition.decision}`,
+    `Managed Run: ${transition.managedRunId}`,
+    `Revision: ${transition.sourceManagedRunRevision} -> ${transition.managedRunRevision}`,
+    `Persisted state: ${transition.state}`,
+    `Source preview: ${transition.sourcePreviewDigest}`,
+    `Transition digest: ${transition.transitionDigest}`,
+    `Apply available: ${transition.canApply ? "yes" : "no"}; discard available: ${transition.canDiscard ? "yes" : "no"}`,
+    `Local journal observed: ${transition.hasLocalJournal ? "yes" : "no"}`,
+    `Result digest: ${detail.summary.resultDigest ?? "not bound"}`,
+    `Apply-decision digest: ${detail.summary.applyDecisionDigest ?? "not bound"}`,
+    `Provider disposition: ${detail.result?.providerDisposition ?? "not available"}`,
+    `Governed outcome: ${detail.result ? `${detail.result.outcomeStatus} (${detail.result.outcomeBasis})` : "not available"}`,
+    "",
+    "Boundary: this receipt proves only the verified persisted transition. Provider completion, governed outcome satisfaction, machine-local stage cleanup and recovery-journal cleanup remain separate claims.",
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })

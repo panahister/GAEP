@@ -30,6 +30,12 @@ import {
   type PortableDesignHostRequest,
 } from "./portable-design-rpc.js"
 import { managedEvidenceDetailDto, managedRunPageDto } from "./managed-evidence-rpc.js"
+import {
+  managedReviewPreviewDto,
+  managedReviewTransitionDto,
+  recordManagedReviewWorkflowGatesNotAssessed,
+  type ManagedReviewPreviewDto,
+} from "./managed-review-rpc.js"
 import { HostRpcError, invalidParamsError, MAX_RPC_FRAME_BYTES, normalizeRpcError } from "./rpc.js"
 
 const PROTOCOL_VERSION = 2
@@ -45,6 +51,9 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "managed.readonly.execute",
   "managed.evidence.list",
   "managed.evidence.read",
+  "managed.review.read",
+  "managed.review.apply",
+  "managed.review.discard",
   "productStudio.designReadiness",
   "productStudio.search",
   "productStudio.exportBuild",
@@ -349,6 +358,74 @@ export class EngineHost {
           )
         }
       }
+      case "managed.review.read":
+        return this.readManagedReviewPreview(request.params.managedRunId)
+      case "managed.review.apply": {
+        const preview = await this.readManagedReviewPreview(request.params.managedRunId)
+        this.assertCurrentManagedReview(preview, request.params.expectedManagedRunRevision, request.params.expectedPreviewDigest)
+        if (!preview.canApply || !preview.applyConfirmation) {
+          throw new HostRpcError(
+            -32_036,
+            "MANAGED_REVIEW_INVALID",
+            "The exact Managed Run review is not currently eligible for apply",
+          )
+        }
+        try {
+          const review = await this.engine.applyPendingManagedReview(
+            preview.managedRunId,
+            {
+              confirmation: preview.applyConfirmation,
+              evaluateWorkflowGate: recordManagedReviewWorkflowGatesNotAssessed,
+            },
+            actorId(request.params.actorId),
+          )
+          await this.assertManagedReviewTransitionIntegrity(review.record)
+          return managedReviewTransitionDto(
+            "apply-exact-managed-review",
+            preview,
+            review,
+            this.managedEvidenceReaders(),
+          )
+        } catch (error) {
+          if (error instanceof HostRpcError) throw error
+          throw new HostRpcError(
+            -32_037,
+            "MANAGED_REVIEW_APPLY_FAILED",
+            "The exact Managed Run apply transition could not be verified; reload the review before any retry",
+          )
+        }
+      }
+      case "managed.review.discard": {
+        const preview = await this.readManagedReviewPreview(request.params.managedRunId)
+        this.assertCurrentManagedReview(preview, request.params.expectedManagedRunRevision, request.params.expectedPreviewDigest)
+        if (!preview.canDiscard) {
+          throw new HostRpcError(
+            -32_036,
+            "MANAGED_REVIEW_INVALID",
+            "The exact Managed Run review is not currently eligible for discard",
+          )
+        }
+        try {
+          const review = await this.engine.discardPendingManagedReview(
+            preview.managedRunId,
+            actorId(request.params.actorId),
+          )
+          await this.assertManagedReviewTransitionIntegrity(review.record)
+          return managedReviewTransitionDto(
+            "discard-exact-managed-review",
+            preview,
+            review,
+            this.managedEvidenceReaders(),
+          )
+        } catch (error) {
+          if (error instanceof HostRpcError) throw error
+          throw new HostRpcError(
+            -32_038,
+            "MANAGED_REVIEW_DISCARD_FAILED",
+            "The exact Managed Run discard transition could not be verified; reload the review before any retry",
+          )
+        }
+      }
       case "verifyAudit":
         return this.engine.repository.verifyAudit()
       case "productStudio.designReadiness": {
@@ -407,6 +484,78 @@ export class EngineHost {
   private async refreshCapabilitySnapshots(): Promise<AdapterCapabilities[]> {
     const observed = await Promise.all([...this.engine.adapters.keys()].map((adapterId) => this.observeAdapter(adapterId)))
     return observed.map((snapshot) => structuredClone(snapshot.capabilities))
+  }
+
+  private managedEvidenceReaders() {
+    return {
+      readResult: (id: string) => this.engine.readManagedRunResult(id),
+      readEvidence: (id: string) => this.engine.readManagedRunEvidence(id),
+      readApplyDecision: (id: string) => this.engine.readManagedApplyDecision(id),
+    }
+  }
+
+  private async readManagedReviewPreview(managedRunId: string): Promise<ManagedReviewPreviewDto> {
+    const audit = await this.engine.repository.verifyAudit()
+    if (!audit.valid) {
+      throw new HostRpcError(
+        -32_028,
+        "MANAGED_REVIEW_AUDIT_INVALID",
+        "Managed Run review is unavailable because the governed audit chain is invalid",
+      )
+    }
+    try {
+      let status
+      try {
+        status = await this.engine.readPendingManagedReviewStatus(managedRunId)
+      } catch {
+        // A failed durable-stage claim is deliberately retried once so the
+        // engine can expose its persisted discard-only recovery boundary.
+        status = await this.engine.readPendingManagedReviewStatus(managedRunId)
+      }
+      const record = await this.engine.readManagedRun(managedRunId)
+      return await managedReviewPreviewDto(record, status, this.managedEvidenceReaders())
+    } catch {
+      throw new HostRpcError(
+        -32_036,
+        "MANAGED_REVIEW_INVALID",
+        "GAEP could not verify an exact pending Managed Run review",
+      )
+    }
+  }
+
+  private assertCurrentManagedReview(
+    preview: ManagedReviewPreviewDto,
+    expectedRevision: number,
+    expectedPreviewDigest: string,
+  ): void {
+    if (preview.managedRunRevision !== expectedRevision || preview.previewDigest !== expectedPreviewDigest) {
+      throw new HostRpcError(
+        -32_029,
+        "MANAGED_REVIEW_CHANGED",
+        "The Managed Run review changed before the decision; open and review the current exact inventory",
+      )
+    }
+  }
+
+  private async assertManagedReviewTransitionIntegrity(record: { readonly id: string }): Promise<void> {
+    const [audit, persisted] = await Promise.all([
+      this.engine.repository.verifyAudit(),
+      this.engine.readManagedRun(record.id),
+    ])
+    if (!audit.valid) {
+      throw new HostRpcError(
+        -32_028,
+        "MANAGED_REVIEW_AUDIT_INVALID",
+        "Managed Run review is unavailable because the governed audit chain is invalid",
+      )
+    }
+    if (canonicalDigest(persisted) !== canonicalDigest(record)) {
+      throw new HostRpcError(
+        -32_029,
+        "MANAGED_REVIEW_CHANGED",
+        "The Managed Run changed while its review decision was being verified",
+      )
+    }
   }
 
   private async observeAdapter(adapterId: string): Promise<CapabilitySnapshot> {

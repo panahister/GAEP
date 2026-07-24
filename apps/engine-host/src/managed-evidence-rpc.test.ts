@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { canonicalDigest } from "@gaep/agent-sdk"
-import type { ManagedRunEvidence, ManagedRunRecord, ManagedRunResult } from "@gaep/contracts"
+import type { ManagedApplyDecisionReceipt, ManagedRunEvidence, ManagedRunRecord, ManagedRunResult } from "@gaep/contracts"
 
 import { managedEvidenceDetailDto, managedRunPageDto } from "./managed-evidence-rpc.js"
 
@@ -127,5 +127,94 @@ describe("managed evidence RPC projection", () => {
       readEvidence: async () => ({ ...evidence, bindingsDigest: `sha256:${"0".repeat(64)}` }),
       readApplyDecision: async () => { throw new Error("not expected") },
     })).rejects.toThrow(/evidence.*binding/u)
+  })
+
+  it("verifies an apply decision against the immutable pre-apply review chain", async () => {
+    const base = fixtures()
+    const reviewEvidence = {
+      ...base.evidence,
+      staging: {
+        baselineDigest: `sha256:${"7".repeat(64)}`,
+        finalDigest: `sha256:${"8".repeat(64)}`,
+        changes: [],
+        excludedPathCount: 0,
+        excludedPathSetDigest: canonicalDigest([]),
+        applyState: "pending",
+      },
+    } as ManagedRunEvidence
+    const reviewResult = {
+      ...base.result,
+      terminalState: "review-required",
+      evidenceDigest: canonicalDigest(reviewEvidence),
+    } as ManagedRunResult
+    const receipt: ManagedApplyDecisionReceipt = {
+      schemaVersion: 1,
+      kind: "managed-apply-decision",
+      id: "99999999-9999-4999-8999-999999999999",
+      managedRunId,
+      managedRunRevision: 2,
+      runId,
+      productId,
+      bindingsDigest,
+      reviewResultId: reviewResult.id,
+      reviewResultDigest: canonicalDigest(reviewResult),
+      reviewEvidenceId: reviewEvidence.id,
+      reviewEvidenceDigest: canonicalDigest(reviewEvidence),
+      changedInventory: [],
+      changedInventoryDigest: canonicalDigest([]),
+      writeEnvelope: [],
+      writeEnvelopeDigest: canonicalDigest([]),
+      actor: { kind: "human", id: "gaep.test" },
+      decision: "apply-exact-reviewed-inventory",
+      decidedAt: "2026-07-24T00:00:02.000Z",
+      authorityBoundary: "apply-decision-is-exact-run-evidence-inventory-actor-and-scope",
+    }
+    const receiptDigest = canonicalDigest(receipt)
+    const finalEvidence = {
+      ...reviewEvidence,
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      staging: {
+        ...reviewEvidence.staging!,
+        applyState: "applied",
+        applyJournalDigest: `sha256:${"9".repeat(64)}`,
+        applyDecision: { receiptId: receipt.id, receiptDigest },
+      },
+      capturedAt: "2026-07-24T00:00:03.000Z",
+    } as ManagedRunEvidence
+    const finalResult = {
+      ...reviewResult,
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      terminalState: "failed",
+      evidenceId: finalEvidence.id,
+      evidenceDigest: canonicalDigest(finalEvidence),
+      previousResultId: reviewResult.id,
+      previousResultDigest: canonicalDigest(reviewResult),
+      endedAt: "2026-07-24T00:00:03.000Z",
+    } as ManagedRunResult
+    const finalRecord = {
+      ...base.record,
+      revision: 4,
+      state: "failed",
+      resultId: finalResult.id,
+      resultDigest: canonicalDigest(finalResult),
+      applyDecisionId: receipt.id,
+      applyDecisionDigest: receiptDigest,
+      endedAt: "2026-07-24T00:00:03.000Z",
+    } as ManagedRunRecord
+    const detail = await managedEvidenceDetailDto(finalRecord, {
+      readResult: async (id) => id === finalResult.id ? finalResult : reviewResult,
+      readEvidence: async (id) => id === finalEvidence.id ? finalEvidence : reviewEvidence,
+      readApplyDecision: async () => receipt,
+    })
+    expect(detail.applyDecision).toMatchObject({
+      receiptId: receipt.id,
+      managedRunRevision: 2,
+      changedInventoryCount: 0,
+    })
+    await expect(managedEvidenceDetailDto(finalRecord, {
+      readResult: async (id) => id === finalResult.id ? finalResult : { ...reviewResult, productId: initiativeId },
+      readEvidence: async (id) => id === finalEvidence.id ? finalEvidence : reviewEvidence,
+      readApplyDecision: async () => receipt,
+    })).rejects.toThrow(/predecessor result/u)
   })
 })

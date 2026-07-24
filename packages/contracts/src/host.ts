@@ -97,6 +97,25 @@ export const hostManagedEvidenceReadParamsSchema = z.object({
   managedRunId: z.string().uuid(),
 }).strict()
 
+export const hostManagedReviewReadParamsSchema = z.object({
+  managedRunId: z.string().uuid(),
+}).strict()
+
+const hostManagedReviewDecisionBaseSchema = z.object({
+  actorId: hostActorIdSchema,
+  managedRunId: z.string().uuid(),
+  expectedManagedRunRevision: z.number().int().positive(),
+  expectedPreviewDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+}).strict()
+
+export const hostManagedReviewApplyParamsSchema = hostManagedReviewDecisionBaseSchema.extend({
+  confirmation: z.literal("apply-exact-managed-review"),
+}).strict()
+
+export const hostManagedReviewDiscardParamsSchema = hostManagedReviewDecisionBaseSchema.extend({
+  confirmation: z.literal("discard-exact-managed-review"),
+}).strict()
+
 export const hostSearchProductStudioParamsSchema = z.object({
   query: z.string().trim().min(2).max(500),
   kinds: z.array(productDomainRecordKindSchema).max(productDomainRecordKindSchema.options.length).optional(),
@@ -125,6 +144,9 @@ export const hostMethodSchema = z.enum([
   "managed.readonly.execute",
   "managed.evidence.list",
   "managed.evidence.read",
+  "managed.review.read",
+  "managed.review.apply",
+  "managed.review.discard",
   "verifyAudit",
   "productStudio.designReadiness",
   "productStudio.search",
@@ -166,6 +188,9 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("managed.readonly.execute", hostManagedReadOnlyExecuteParamsSchema),
   requestVariant("managed.evidence.list", hostManagedEvidenceListParamsSchema),
   requestVariant("managed.evidence.read", hostManagedEvidenceReadParamsSchema),
+  requestVariant("managed.review.read", hostManagedReviewReadParamsSchema),
+  requestVariant("managed.review.apply", hostManagedReviewApplyParamsSchema),
+  requestVariant("managed.review.discard", hostManagedReviewDiscardParamsSchema),
   requestVariant("verifyAudit", hostNoParamsSchema.default({})),
   requestVariant("productStudio.designReadiness", z.object({ productId: z.string().uuid() }).strict()),
   requestVariant("productStudio.search", hostSearchProductStudioParamsSchema),

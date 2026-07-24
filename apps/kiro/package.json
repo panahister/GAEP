@@ -1,7 +1,7 @@
 {
   "name": "gaep-kiro",
   "displayName": "GAEP for Kiro",
-  "description": "Governed local Product Studio, agent-readiness, selection, versioned handoff, managed read-only execution/evidence, and portable-design workflows for Kiro.",
+  "description": "Governed local Product Studio, agent-readiness, selection, versioned handoff, managed read-only execution/evidence, exact staged review, and portable-design workflows for Kiro.",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -37,6 +37,7 @@
     "onCommand:gaepKiro.agents.handoff",
     "onCommand:gaepKiro.runs.managedReadOnly",
     "onCommand:gaepKiro.runs.evidence",
+    "onCommand:gaepKiro.runs.stagedReview",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -45,7 +46,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "GAEP for Kiro can show its static Product Studio boundary, but it does not inspect Product or Managed Run state, start the local engine, run managed read-only work, or import/read/list portable design metadata until the workspace is trusted.",
+      "description": "GAEP for Kiro can show its static Product Studio boundary, but it does not inspect Product or Managed Run state, start the local engine, run managed read-only work, review/apply/discard staged changes, or import/read/list portable design metadata until the workspace is trusted.",
       "restrictedConfigurations": [
         "gaepKiro.engineExecutable",
         "gaepKiro.engineSha256",
@@ -80,6 +81,10 @@
         "title": "GAEP for Kiro: Show Managed Run Evidence"
       },
       {
+        "command": "gaepKiro.runs.stagedReview",
+        "title": "GAEP for Kiro: Review Pending Staged Managed Run"
+      },
+      {
         "command": "gaepKiro.portableDesign.import",
         "title": "GAEP for Kiro: Import Local Portable Design Bundle"
       },
@@ -111,7 +116,7 @@
           "type": "string",
           "default": "gaep.kiro-local-human",
           "scope": "machine",
-          "description": "Portable human actor ID recorded for local imports, guarded agent selections, and versioned handoffs. It cannot contain credentials and workspace overrides are ignored."
+          "description": "Portable human actor ID recorded for local imports, guarded agent selections, versioned handoffs, and exact staged apply/discard decisions. It cannot contain credentials and workspace overrides are ignored."
         }
       }
     }

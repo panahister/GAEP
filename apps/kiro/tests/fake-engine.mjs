@@ -12,6 +12,12 @@ const managedGovernedRunId = "12121212-1212-4212-8212-121212121212"
 const workflowStepId = "13131313-1313-4313-8313-131313131313"
 const managedResultId = "14141414-1414-4414-8414-141414141414"
 const managedEvidenceId = "15151515-1515-4515-8515-151515151515"
+const stagedManagedRunId = "16161616-1616-4616-8616-161616161616"
+const stagedResultId = "17171717-1717-4717-8717-171717171717"
+const stagedEvidenceId = "18181818-1818-4818-8818-181818181818"
+const transitionedResultId = "19191919-1919-4919-8919-191919191919"
+const transitionedEvidenceId = "20202020-2020-4020-8020-202020202020"
+const applyDecisionId = "21212121-2121-4121-8121-212121212121"
 const previewDigest = managedReadOnlyPreview().previewDigest
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
@@ -67,6 +73,12 @@ input.on("line", (line) => {
       return listManagedEvidence(id, request.params)
     case "managed.evidence.read":
       return readManagedEvidence(id, request.params)
+    case "managed.review.read":
+      return readManagedReview(id, request.params)
+    case "managed.review.apply":
+      return decideManagedReview(id, request.params, "apply-exact-managed-review")
+    case "managed.review.discard":
+      return decideManagedReview(id, request.params, "discard-exact-managed-review")
     case "productStudio.portableDesign.import":
       return importSnapshot(id, request.params)
     case "productStudio.portableDesign.list":
@@ -393,6 +405,243 @@ function managedEvidenceDetail() {
     authorityBoundary: "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority",
     privacyBoundary: "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
   }
+}
+
+function readManagedReview(id, params) {
+  if (!exactKeys(params, ["managedRunId"]) || params.managedRunId !== stagedManagedRunId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MANAGED REVIEW READ PARAMS")
+  }
+  const value = managedReviewPreview()
+  if (workspacePath.endsWith("bad-managed-review-digest")) value.previewDigest = `sha256:${"0".repeat(64)}`
+  if (workspacePath.endsWith("bad-managed-review-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
+  if (workspacePath.endsWith("bad-managed-review-binding")) {
+    value.applyConfirmation.reviewEvidenceId = managedEvidenceId
+    value.previewDigest = digestWithout(value, "previewDigest")
+  }
+  if (workspacePath.endsWith("bad-managed-review-path")) {
+    value.staging.changedInventory[0].path = `${privateRoot}/secret.ts`
+    value.staging.changedInventoryDigest = canonicalDigest(value.staging.changedInventory)
+    value.applyConfirmation.changedInventoryDigest = value.staging.changedInventoryDigest
+    value.previewDigest = digestWithout(value, "previewDigest")
+  }
+  return writeResult(id, value)
+}
+
+function decideManagedReview(id, params, decision) {
+  const preview = managedReviewPreview()
+  if (!exactKeys(params, [
+    "actorId", "managedRunId", "expectedManagedRunRevision", "expectedPreviewDigest", "confirmation",
+  ]) || params.actorId !== "founder.kiro-review" || params.managedRunId !== stagedManagedRunId ||
+    params.expectedManagedRunRevision !== preview.managedRunRevision || params.expectedPreviewDigest !== preview.previewDigest ||
+    params.confirmation !== decision) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MANAGED REVIEW DECISION PARAMS")
+  }
+  if (workspacePath.endsWith("stale-managed-review")) {
+    return writeError(id, -32_029, "MANAGED_REVIEW_CHANGED", `${privateRoot}; token=${privateCredential}`)
+  }
+  const value = managedReviewTransition(decision)
+  if (workspacePath.endsWith("bad-managed-transition-digest")) value.transitionDigest = `sha256:${"0".repeat(64)}`
+  if (workspacePath.endsWith("bad-managed-transition-private")) value.localJournalPath = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function managedReviewPreview() {
+  const changedInventory = [
+    {
+      path: "src/new.ts",
+      kind: "added",
+      afterDigest: `sha256:${"1".repeat(64)}`,
+      afterSize: 24,
+      afterMode: 0o644,
+    },
+    {
+      path: "src/review.ts",
+      kind: "modified",
+      beforeDigest: `sha256:${"2".repeat(64)}`,
+      afterDigest: `sha256:${"3".repeat(64)}`,
+      beforeSize: 80,
+      afterSize: 96,
+      beforeMode: 0o644,
+      afterMode: 0o644,
+    },
+  ]
+  const changedInventoryDigest = canonicalDigest(changedInventory)
+  const writeEnvelope = ["src"]
+  const body = {
+    schemaVersion: 1,
+    kind: "managed-review-preview",
+    managedRunId: stagedManagedRunId,
+    managedRunRevision: 3,
+    runId: managedGovernedRunId,
+    productId,
+    initiativeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    mode: "codex-staged",
+    state: "review-required",
+    canApply: true,
+    canDiscard: true,
+    hasLocalJournal: false,
+    bindingsDigest: `sha256:${"4".repeat(64)}`,
+    result: {
+      resultId: stagedResultId,
+      resultDigest: `sha256:${"5".repeat(64)}`,
+      terminalState: "review-required",
+      providerDisposition: "completed",
+      outcomeStatus: "not-assessed",
+      outcomeBasis: "not-evaluated",
+      warningCodes: ["provider-output-redacted", "staging-read-confinement-unattested"],
+      evidenceId: stagedEvidenceId,
+      evidenceDigest: `sha256:${"6".repeat(64)}`,
+    },
+    staging: {
+      evidenceId: stagedEvidenceId,
+      evidenceDigest: `sha256:${"6".repeat(64)}`,
+      baselineDigest: `sha256:${"7".repeat(64)}`,
+      finalDigest: `sha256:${"8".repeat(64)}`,
+      applyState: "pending",
+      changeCount: changedInventory.length,
+      changedInventoryLimit: 512,
+      omittedCount: 0,
+      changedInventory,
+      changedInventoryDigest,
+      excludedPathCount: 0,
+      excludedPathSetDigest: canonicalDigest([]),
+    },
+    applyConfirmation: {
+      decision: "apply-exact-reviewed-inventory",
+      reviewEvidenceId: stagedEvidenceId,
+      reviewEvidenceDigest: `sha256:${"6".repeat(64)}`,
+      changedInventoryDigest,
+      writeEnvelope,
+      writeEnvelopeDigest: canonicalDigest(writeEnvelope),
+    },
+    postApplyGatePolicy: "record-not-assessed",
+    authorityBoundary: "managed-review-preview-authorizes-no-mutation-without-an-exact-digest-bound-human-decision",
+    privacyBoundary: "Exact portable identifiers, digests, warning codes, workspace-relative changed paths, file digests, sizes, modes and write scopes only; prompts, provider output, source bytes, absolute paths, executable paths, process state and credentials are omitted.",
+    cleanupBoundary: "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup.",
+  }
+  return { ...body, previewDigest: canonicalDigest(body) }
+}
+
+function managedReviewTransition(decision) {
+  const preview = managedReviewPreview()
+  const state = decision === "apply-exact-managed-review" ? "failed" : "discarded"
+  const detail = transitionedManagedEvidenceDetail(state, decision === "apply-exact-managed-review")
+  const body = {
+    schemaVersion: 1,
+    kind: "managed-review-transition",
+    decision,
+    sourcePreviewDigest: preview.previewDigest,
+    sourceManagedRunRevision: preview.managedRunRevision,
+    managedRunId: stagedManagedRunId,
+    managedRunRevision: 4,
+    state,
+    canApply: false,
+    canDiscard: false,
+    hasLocalJournal: decision === "apply-exact-managed-review",
+    detail,
+    authorityBoundary: "managed-review-transition-proves-persisted-state-not-provider-outcome-or-machine-local-cleanup",
+    cleanupBoundary: "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup.",
+  }
+  return { ...body, transitionDigest: canonicalDigest(body) }
+}
+
+function transitionedManagedEvidenceDetail(state, applied) {
+  const resultDigest = `sha256:${"9".repeat(64)}`
+  const evidenceDigest = `sha256:${"a".repeat(64)}`
+  const applyDecisionDigest = `sha256:${"b".repeat(64)}`
+  const summary = {
+    schemaVersion: 1,
+    kind: "managed-run-summary",
+    managedRunId: stagedManagedRunId,
+    runId: managedGovernedRunId,
+    productId,
+    initiativeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    mode: "codex-staged",
+    state,
+    adapterId: "openai-codex",
+    agentId: "codex",
+    modelId: "gpt-5.6-codex",
+    attemptNumber: 1,
+    recoveryStatus: "recovered",
+    workflowCheckpointCount: 0,
+    hasResult: true,
+    hasApplyDecision: applied,
+    bindingsDigest: `sha256:${"4".repeat(64)}`,
+    resultDigest,
+    ...(applied ? { applyDecisionDigest } : {}),
+    createdAt: "2026-07-24T08:29:59.000Z",
+    startedAt: "2026-07-24T08:30:00.000Z",
+    updatedAt: "2026-07-24T08:30:02.000Z",
+    endedAt: "2026-07-24T08:30:02.000Z",
+    authorityBoundary: "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
+  }
+  return {
+    schemaVersion: 1,
+    kind: "managed-evidence-detail",
+    summary,
+    artifactStatus: "verified-result-and-evidence",
+    result: {
+      resultId: transitionedResultId,
+      resultDigest,
+      providerDisposition: "completed",
+      terminationCause: "normal",
+      outcomeStatus: "failed",
+      outcomeBasis: "not-evaluated",
+      terminalState: state,
+      evidenceId: transitionedEvidenceId,
+      evidenceDigest,
+      warningCodes: ["provider-output-redacted", ...(state === "discarded" ? ["local-cleanup-pending"] : [])],
+      startedAt: "2026-07-24T08:30:00.000Z",
+      endedAt: "2026-07-24T08:30:02.000Z",
+    },
+    evidence: {
+      evidenceId: transitionedEvidenceId,
+      evidenceDigest,
+      eventCount: 2,
+      eventTypeCounts: { lifecycle: 1, output: 1, item: 0, approval: 0, warning: 0, error: 0 },
+      eventsDigest: `sha256:${"c".repeat(64)}`,
+      workflowStrategy: "sequential",
+      workflowStepCount: 1,
+      workflowAttemptCount: 1,
+      completedStepCount: 0,
+      charterEvidenceStatus: "not-assessed",
+      charterStopStatus: "not-assessed",
+      terminalReasonCode: applied ? "workflow-output-gate-failed" : "staged-review-discarded",
+      staging: {
+        changeCount: 2,
+        excludedPathCount: 0,
+        applyState: applied ? "applied" : "discarded",
+        baselineDigest: `sha256:${"7".repeat(64)}`,
+        finalDigest: `sha256:${"8".repeat(64)}`,
+        changedInventoryDigest: previewChangedInventoryDigest(),
+        excludedPathSetDigest: canonicalDigest([]),
+      },
+      actualEffectCounts: { "not-observed": 0, "observed-provisional": 0, applied: applied ? 1 : 0, blocked: applied ? 0 : 1, unknown: 0 },
+      capturedAt: "2026-07-24T08:30:02.000Z",
+    },
+    ...(applied ? {
+      applyDecision: {
+        receiptId: applyDecisionId,
+        receiptDigest: applyDecisionDigest,
+        managedRunRevision: 3,
+        changedInventoryCount: 2,
+        writeEnvelopeCount: 1,
+        changedInventoryDigest: previewChangedInventoryDigest(),
+        writeEnvelopeDigest: canonicalDigest(["src"]),
+        decidedAt: "2026-07-24T08:30:01.000Z",
+      },
+    } : {}),
+    authorityBoundary: "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority",
+    privacyBoundary: "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
+  }
+}
+
+function previewChangedInventoryDigest() {
+  return managedReviewPreview().staging.changedInventoryDigest
+}
+
+function digestWithout(value, key) {
+  return canonicalDigest(Object.fromEntries(Object.entries(value).filter(([name]) => name !== key)))
 }
 
 function canonicalDigest(value) {

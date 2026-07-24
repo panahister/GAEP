@@ -78,7 +78,11 @@
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["previewManagedReadOnly(", "executeManagedReadOnly(", "attest-exact-managed-readonly-preview"] },
           { "path": "apps/kiro/src/protocol.ts", "contains": ["parseManagedReadOnlyPreview", "previewDigest !== canonicalDigest(body)", "parseManagedReadOnlyReceipt"] }
         ] },
-        { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
+        { "capabilityId": "staged-effectful-review", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function reviewManagedStagedChanges", "Apply Exact Reviewed Inventory", "client.applyManagedReview(preview, actorId)", "client.discardManagedReview(preview, actorId)"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readManagedReview(", "applyManagedReview(", "discardManagedReview(", "expectedPreviewDigest: preview.previewDigest"] },
+          { "path": "apps/kiro/src/protocol.ts", "contains": ["parseManagedReviewPreview", "previewDigest !== canonicalDigest(body)", "parseManagedReviewTransition", "workspaceRelativePath(change.path)"] }
+        ] },
         { "capabilityId": "evidence-dashboard", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showManagedEvidenceDashboard", "client.listManagedEvidence(0, 100)", "showManagedEvidenceDetail(await client.readManagedEvidence"] },
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["listManagedEvidence(", "readManagedEvidence(", "managed.evidence.list", "managed.evidence.read"] },

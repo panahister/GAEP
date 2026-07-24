@@ -13,6 +13,7 @@ const bundleId = "22222222-2222-4222-8222-222222222222"
 const charterId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 const workflowPlanId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
 const managedRunId = "ffffffff-ffff-4fff-8fff-ffffffffffff"
+const stagedManagedRunId = "16161616-1616-4616-8616-161616161616"
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
 const fakeEngine = resolve(dirname(fileURLToPath(import.meta.url)), "../tests/fake-engine.mjs")
@@ -53,11 +54,21 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badManagedEvidenceSnapshotRoot = join(root, "bad-managed-evidence-snapshot")
   const badManagedEvidenceDetailRoot = join(root, "bad-managed-evidence-detail")
   const badManagedEvidenceBindingRoot = join(root, "bad-managed-evidence-binding")
+  const discardManagedReviewRoot = join(root, "discard-managed-review")
+  const badManagedReviewDigestRoot = join(root, "bad-managed-review-digest")
+  const badManagedReviewPrivateRoot = join(root, "bad-managed-review-private")
+  const badManagedReviewBindingRoot = join(root, "bad-managed-review-binding")
+  const badManagedReviewPathRoot = join(root, "bad-managed-review-path")
+  const badManagedTransitionDigestRoot = join(root, "bad-managed-transition-digest")
+  const badManagedTransitionPrivateRoot = join(root, "bad-managed-transition-private")
+  const staleManagedReviewRoot = join(root, "stale-managed-review")
   await Promise.all([
     workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot, badRunsRoot, badHandoffRoot,
     badHandoffBindingRoot, badManagedPreviewRoot, badManagedCriterionRoot, badManagedDigestRoot, badManagedReceiptRoot,
     badManagedBindingRoot, badManagedEvidencePageRoot, badManagedEvidenceCountRoot, badManagedEvidenceSnapshotRoot,
-    badManagedEvidenceDetailRoot, badManagedEvidenceBindingRoot,
+    badManagedEvidenceDetailRoot, badManagedEvidenceBindingRoot, discardManagedReviewRoot, badManagedReviewDigestRoot,
+    badManagedReviewPrivateRoot, badManagedReviewBindingRoot, badManagedReviewPathRoot, badManagedTransitionDigestRoot,
+    badManagedTransitionPrivateRoot, staleManagedReviewRoot,
   ].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
@@ -194,6 +205,108 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.equal(managedDetail.applyDecision, undefined)
     assert.equal(JSON.stringify(managedDetail).includes(privateRoot), false)
     assert.equal(JSON.stringify(managedDetail).includes(privateCredential), false)
+
+    const stagedReview = await client.readManagedReview(stagedManagedRunId)
+    assert.equal(stagedReview.managedRunId, stagedManagedRunId)
+    assert.equal(stagedReview.managedRunRevision, 3)
+    assert.equal(stagedReview.state, "review-required")
+    assert.equal(stagedReview.canApply, true)
+    assert.equal(stagedReview.canDiscard, true)
+    assert.equal(stagedReview.postApplyGatePolicy, "record-not-assessed")
+    assert.deepEqual(stagedReview.staging.changedInventory.map((change) => change.path), ["src/new.ts", "src/review.ts"])
+    assert.deepEqual(stagedReview.applyConfirmation?.writeEnvelope, ["src"])
+    assert.equal(stagedReview.staging.changeCount, stagedReview.staging.changedInventory.length)
+    assert.equal(stagedReview.staging.omittedCount, 0)
+    assert.equal(JSON.stringify(stagedReview).includes(privateRoot), false)
+    assert.equal(JSON.stringify(stagedReview).includes(privateCredential), false)
+
+    const applyTransition = await client.applyManagedReview(stagedReview, "founder.kiro-review")
+    assert.equal(applyTransition.decision, "apply-exact-managed-review")
+    assert.equal(applyTransition.sourcePreviewDigest, stagedReview.previewDigest)
+    assert.equal(applyTransition.managedRunRevision, 4)
+    assert.equal(applyTransition.state, "failed")
+    assert.equal(applyTransition.detail.result?.outcomeStatus, "failed")
+    assert.equal(applyTransition.detail.evidence?.staging?.applyState, "applied")
+    assert.equal(applyTransition.detail.applyDecision?.managedRunRevision, 3)
+    assert.equal(JSON.stringify(applyTransition).includes(privateRoot), false)
+    assert.equal(JSON.stringify(applyTransition).includes(privateCredential), false)
+
+    const discardClient = await GaepEngineClient.create({
+      workspacePath: discardManagedReviewRoot,
+      engineExecutable: process.execPath,
+      engineArgumentsPrefix: [fakeEngine],
+    })
+    try {
+      const discardPreview = await discardClient.readManagedReview(stagedManagedRunId)
+      const discardTransition = await discardClient.discardManagedReview(discardPreview, "founder.kiro-review")
+      assert.equal(discardTransition.decision, "discard-exact-managed-review")
+      assert.equal(discardTransition.state, "discarded")
+      assert.equal(discardTransition.canApply, false)
+      assert.equal(discardTransition.canDiscard, false)
+      assert.equal(discardTransition.detail.evidence?.staging?.applyState, "discarded")
+      assert.equal(discardTransition.detail.applyDecision, undefined)
+    } finally {
+      await discardClient.dispose()
+    }
+
+    await assert.rejects(
+      () => client.applyManagedReview(Object.assign({}, stagedReview, { sourceRoot: privateRoot }), "founder.kiro-review"),
+      (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+    )
+    await assert.rejects(
+      () => client.discardManagedReview({ ...stagedReview, previewDigest: `sha256:${"0".repeat(64)}` }, "founder.kiro-review"),
+      (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+    )
+
+    for (const workspacePath of [
+      badManagedReviewDigestRoot, badManagedReviewPrivateRoot, badManagedReviewBindingRoot, badManagedReviewPathRoot,
+    ]) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        await assert.rejects(
+          () => hostileClient.readManagedReview(stagedManagedRunId),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
+
+    for (const workspacePath of [badManagedTransitionDigestRoot, badManagedTransitionPrivateRoot]) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        const hostilePreview = await hostileClient.readManagedReview(stagedManagedRunId)
+        await assert.rejects(
+          () => hostileClient.applyManagedReview(hostilePreview, "founder.kiro-review"),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
+
+    const staleClient = await GaepEngineClient.create({
+      workspacePath: staleManagedReviewRoot,
+      engineExecutable: process.execPath,
+      engineArgumentsPrefix: [fakeEngine],
+    })
+    try {
+      const stalePreview = await staleClient.readManagedReview(stagedManagedRunId)
+      await assert.rejects(
+        () => staleClient.applyManagedReview(stalePreview, "founder.kiro-review"),
+        (error) => safeHostError(error, "MANAGED_REVIEW_CHANGED"),
+      )
+    } finally {
+      await staleClient.dispose()
+    }
 
     await assert.rejects(
       () => client.executeManagedReadOnly({
