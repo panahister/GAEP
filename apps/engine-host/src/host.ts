@@ -18,17 +18,31 @@ import {
 import { GaepEngine } from "@gaep/engine"
 import { z, ZodError } from "zod"
 
+import {
+  isPortableDesignHostMethod,
+  parsePortableDesignHostRequest,
+  portableDesignHostMethods,
+  portableDesignProductContextError,
+  portableDesignRpcError,
+  portableDesignSnapshotDto,
+  portableDesignSnapshotPageDto,
+  type PortableDesignHostRequest,
+} from "./portable-design-rpc.js"
 import { HostRpcError, invalidParamsError, MAX_RPC_FRAME_BYTES, normalizeRpcError } from "./rpc.js"
 
 const PROTOCOL_VERSION = 2
 const SUPPORTED_PROTOCOL_VERSIONS = [1, 2] as const
-const v2OnlyMethods = new Set<HostRequest["method"]>([
+type EngineHostRequest = HostRequest | PortableDesignHostRequest
+type EngineHostMethod = EngineHostRequest["method"]
+
+const v2OnlyMethods = new Set<EngineHostMethod>([
   "workspaceHealth",
   "migrateLegacySelection",
   "productStudio.designReadiness",
   "productStudio.search",
   "productStudio.exportBuild",
   "productStudio.importPreview",
+  ...portableDesignHostMethods,
 ])
 
 const requestEnvelopeSchema = z.object({
@@ -233,6 +247,46 @@ export class EngineHost {
         return this.engine.productStudio.buildPortableExport()
       case "productStudio.importPreview":
         return this.engine.productStudio.previewImportBundle(request.params.bundle)
+      case "productStudio.portableDesign.import": {
+        let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
+        try {
+          product = await this.engine.readProduct()
+        } catch {
+          throw portableDesignProductContextError()
+        }
+        if (
+          product.id.toLowerCase() !== request.params.expectedProductId.toLowerCase()
+          || (product.revision ?? 1) !== request.params.expectedProductRevision
+        ) {
+          throw portableDesignProductContextError()
+        }
+        try {
+          const snapshot = await this.engine.productStudio.importPortableDesignSnapshot({
+            bundleRoot: request.params.bundleRoot,
+            expectedProductId: request.params.expectedProductId,
+            expectedProductRevision: request.params.expectedProductRevision,
+          }, request.params.actorId)
+          return portableDesignSnapshotDto(snapshot)
+        } catch (error) {
+          throw portableDesignRpcError("import", error)
+        }
+      }
+      case "productStudio.portableDesign.list":
+        try {
+          return portableDesignSnapshotPageDto(
+            await this.engine.productStudio.listPortableDesignSnapshots(request.params),
+          )
+        } catch (error) {
+          throw portableDesignRpcError("list", error)
+        }
+      case "productStudio.portableDesign.read":
+        try {
+          return portableDesignSnapshotDto(
+            await this.engine.productStudio.readPortableDesignSnapshot(request.params.bundleId),
+          )
+        } catch (error) {
+          throw portableDesignRpcError("read", error)
+        }
     }
   }
 
@@ -295,7 +349,7 @@ export class EngineHost {
     return { capabilities: structuredClone(capabilities), runtimeBinding }
   }
 
-  static parse(line: string): HostRequest {
+  static parse(line: string): EngineHostRequest {
     let raw: unknown
     try {
       raw = JSON.parse(line)
@@ -305,7 +359,7 @@ export class EngineHost {
     return EngineHost.validateRequest(raw)
   }
 
-  static validateRequest(rawRequest: unknown): HostRequest {
+  static validateRequest(rawRequest: unknown): EngineHostRequest {
     let serialized: string
     try {
       serialized = JSON.stringify(rawRequest)
@@ -328,6 +382,9 @@ export class EngineHost {
           ? { issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })) }
           : undefined,
       )
+    }
+    if (isPortableDesignHostMethod(envelope.method)) {
+      return parsePortableDesignHostRequest(envelope)
     }
     if (!hostMethodSchema.safeParse(envelope.method).success) {
       throw new HostRpcError(-32_601, "METHOD_NOT_FOUND", "Unknown GAEP engine method")
