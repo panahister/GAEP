@@ -17,6 +17,8 @@ internal val workflowPlanId: UUID = UUID.fromString("15151515-1515-4151-8151-151
 internal val managedRunId: UUID = UUID.fromString("16161616-1616-4161-8161-161616161616")
 internal val governedManagedRunId: UUID = UUID.fromString("17171717-1717-4171-8171-171717171717")
 internal val workflowStepId: UUID = UUID.fromString("18181818-1818-4181-8181-181818181818")
+private val managedResultId: UUID = UUID.fromString("19191919-1919-4191-8191-191919191919")
+private val managedEvidenceId: UUID = UUID.fromString("20202020-2020-4202-8202-202020202020")
 internal val handoffId: UUID = UUID.fromString("14141414-1414-4141-8141-141414141414")
 internal val bundleId: UUID = UUID.fromString("33333333-3333-4333-8333-333333333333")
 internal val missingBundleId: UUID = UUID.fromString("44444444-4444-4444-8444-444444444444")
@@ -100,6 +102,16 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "managed.readonly.execute" -> handleManagedReadOnlyExecute(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "managed.evidence.list" -> handleManagedEvidenceList(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "managed.evidence.read" -> handleManagedEvidenceRead(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -220,6 +232,151 @@ private fun managedReadOnlyPreview(workspacePath: String): JsonObject {
         preview.addProperty("previewDigest", "sha256:${"0".repeat(64)}")
     }
     return preview
+}
+
+private fun handleManagedEvidenceList(id: Long, params: JsonObject, workspacePath: String) {
+    val expectedKeys = if (params.has("snapshotDigest")) {
+        setOf("offset", "limit", "snapshotDigest")
+    } else {
+        setOf("offset", "limit")
+    }
+    if (params.keySet() != expectedKeys || params.get("offset").asInt != 0 || params.get("limit").asInt != 100 ||
+        (params.has("snapshotDigest") && params.get("snapshotDigest").asString != "sha256:${"6".repeat(64)}")
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED EVIDENCE LIST")
+        return
+    }
+    val page = managedEvidencePage()
+    if (workspacePath.endsWith("bad-managed-evidence-page")) {
+        page.getAsJsonArray("items")[0].asJsonObject.addProperty("localStagePath", "$privateRoot/$privateCredential")
+    }
+    if (workspacePath.endsWith("bad-managed-evidence-count")) page.addProperty("omittedCount", 0)
+    if (workspacePath.endsWith("bad-managed-evidence-snapshot")) {
+        page.addProperty("snapshotDigest", "sha256:${"7".repeat(64)}")
+    }
+    writeResult(id, page)
+}
+
+private fun handleManagedEvidenceRead(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("managedRunId") || params.get("managedRunId").asString != managedRunId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED EVIDENCE READ")
+        return
+    }
+    val detail = managedEvidenceDetail()
+    if (workspacePath.endsWith("bad-managed-evidence-detail")) {
+        detail.addProperty("rawProviderOutput", "$privateRoot/$privateCredential")
+    }
+    if (workspacePath.endsWith("bad-managed-evidence-binding")) {
+        detail.getAsJsonObject("evidence").addProperty("evidenceDigest", "sha256:${"0".repeat(64)}")
+    }
+    writeResult(id, detail)
+}
+
+private fun managedRunSummary(): JsonObject = JsonObject().apply {
+    addProperty("schemaVersion", 1)
+    addProperty("kind", "managed-run-summary")
+    addProperty("managedRunId", managedRunId.toString())
+    addProperty("runId", governedManagedRunId.toString())
+    addProperty("productId", productId.toString())
+    addProperty("initiativeId", initiativeId.toString())
+    addProperty("mode", "codex-staged")
+    addProperty("state", "completed")
+    addProperty("adapterId", "openai-codex")
+    addProperty("agentId", "codex")
+    addProperty("modelId", "gpt-5.6-codex")
+    addProperty("attemptNumber", 1)
+    addProperty("recoveryStatus", "not-required")
+    addProperty("workflowCheckpointCount", 0)
+    addProperty("hasResult", true)
+    addProperty("hasApplyDecision", false)
+    addProperty("bindingsDigest", "sha256:${"7".repeat(64)}")
+    addProperty("resultDigest", "sha256:${"8".repeat(64)}")
+    addProperty("createdAt", "2026-07-24T09:00:00.000Z")
+    addProperty("startedAt", "2026-07-24T09:00:00.000Z")
+    addProperty("updatedAt", "2026-07-24T09:00:05.000Z")
+    addProperty("endedAt", "2026-07-24T09:00:05.000Z")
+    addProperty(
+        "authorityBoundary",
+        "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
+    )
+}
+
+private fun managedEvidencePage(): JsonObject = JsonObject().apply {
+    addProperty("schemaVersion", 1)
+    addProperty("kind", "managed-run-summary-page")
+    add("items", JsonArray().apply { add(managedRunSummary()) })
+    addProperty("offset", 0)
+    addProperty("limit", 100)
+    addProperty("total", 3)
+    addProperty("omittedCount", 2)
+    addProperty("snapshotDigest", "sha256:${"6".repeat(64)}")
+    addProperty("hasMore", true)
+    addProperty(
+        "authorityBoundary",
+        "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
+    )
+    addProperty(
+        "privacyBoundary",
+        "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
+    )
+}
+
+private fun managedEvidenceDetail(): JsonObject = JsonObject().apply {
+    addProperty("schemaVersion", 1)
+    addProperty("kind", "managed-evidence-detail")
+    add("summary", managedRunSummary())
+    addProperty("artifactStatus", "verified-result-and-evidence")
+    add("result", JsonObject().apply {
+        addProperty("resultId", managedResultId.toString())
+        addProperty("resultDigest", "sha256:${"8".repeat(64)}")
+        addProperty("providerDisposition", "completed")
+        addProperty("terminationCause", "normal")
+        addProperty("outcomeStatus", "satisfied")
+        addProperty("outcomeBasis", "postcondition-evaluator")
+        addProperty("terminalState", "completed")
+        addProperty("evidenceId", managedEvidenceId.toString())
+        addProperty("evidenceDigest", "sha256:${"9".repeat(64)}")
+        add("warningCodes", JsonArray())
+        addProperty("startedAt", "2026-07-24T09:00:00.000Z")
+        addProperty("endedAt", "2026-07-24T09:00:05.000Z")
+    })
+    add("evidence", JsonObject().apply {
+        addProperty("evidenceId", managedEvidenceId.toString())
+        addProperty("evidenceDigest", "sha256:${"9".repeat(64)}")
+        addProperty("eventCount", 5)
+        add("eventTypeCounts", JsonObject().apply {
+            addProperty("lifecycle", 2)
+            addProperty("output", 1)
+            addProperty("item", 1)
+            addProperty("approval", 1)
+            addProperty("warning", 0)
+            addProperty("error", 0)
+        })
+        addProperty("eventsDigest", "sha256:${"a".repeat(64)}")
+        addProperty("workflowStrategy", "sequential")
+        addProperty("workflowStepCount", 1)
+        addProperty("workflowAttemptCount", 1)
+        addProperty("completedStepCount", 1)
+        addProperty("charterEvidenceStatus", "satisfied")
+        addProperty("charterStopStatus", "satisfied")
+        addProperty("terminalReasonCode", "workflow-completed")
+        add("actualEffectCounts", JsonObject().apply {
+            addProperty("not-observed", 1)
+            addProperty("observed-provisional", 0)
+            addProperty("applied", 0)
+            addProperty("blocked", 0)
+            addProperty("unknown", 0)
+        })
+        addProperty("capturedAt", "2026-07-24T09:00:05.000Z")
+    })
+    addProperty(
+        "authorityBoundary",
+        "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority",
+    )
+    addProperty(
+        "privacyBoundary",
+        "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
+    )
 }
 
 private fun managedGate(

@@ -195,6 +195,37 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun listManagedEvidence(
+        offset: Int = 0,
+        limit: Int = 100,
+        snapshotDigest: String? = null,
+    ): ManagedRunSummaryPage {
+        PortableDesignProtocol.validateManagedEvidencePage(offset, limit, snapshotDigest)
+        val params = JsonObject().apply {
+            addProperty("offset", offset)
+            addProperty("limit", limit)
+            snapshotDigest?.let { addProperty("snapshotDigest", it) }
+        }
+        return portableRequest("managed.evidence.list", params) { envelope ->
+            PortableDesignProtocol.parseManagedRunSummaryPageEnvelope(
+                envelope,
+                expectedOffset = offset,
+                expectedLimit = limit,
+                expectedSnapshotDigest = snapshotDigest,
+            )
+        }
+    }
+
+    @Synchronized
+    fun readManagedEvidence(managedRunId: UUID): ManagedEvidenceDetail {
+        require(managedRunId != UUID(0, 0)) { "Managed Run ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("managedRunId", managedRunId.toString()) }
+        return portableRequest("managed.evidence.read", params) { envelope ->
+            PortableDesignProtocol.parseManagedEvidenceDetailEnvelope(envelope, managedRunId)
+        }
+    }
+
+    @Synchronized
     fun importPortableDesignSnapshot(
         bundleRoot: Path,
         expectedProductId: UUID,

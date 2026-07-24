@@ -203,6 +203,113 @@ data class ManagedReadOnlyReceipt(
     val authorityBoundary: String,
 )
 
+data class ManagedRunSummary(
+    val schemaVersion: Int,
+    val kind: String,
+    val managedRunId: UUID,
+    val runId: UUID,
+    val productId: UUID,
+    val initiativeId: UUID,
+    val mode: String,
+    val state: String,
+    val adapterId: String,
+    val agentId: String,
+    val modelId: String,
+    val attemptNumber: Int,
+    val recoveryStatus: String,
+    val workflowCheckpointCount: Int,
+    val hasResult: Boolean,
+    val hasApplyDecision: Boolean,
+    val bindingsDigest: String,
+    val resultDigest: String?,
+    val applyDecisionDigest: String?,
+    val createdAt: Instant,
+    val startedAt: Instant?,
+    val updatedAt: Instant,
+    val endedAt: Instant?,
+    val authorityBoundary: String,
+)
+
+data class ManagedRunSummaryPage(
+    val schemaVersion: Int,
+    val kind: String,
+    val items: List<ManagedRunSummary>,
+    val offset: Int,
+    val limit: Int,
+    val total: Int,
+    val omittedCount: Int,
+    val snapshotDigest: String,
+    val hasMore: Boolean,
+    val authorityBoundary: String,
+    val privacyBoundary: String,
+)
+
+data class ManagedEvidenceResult(
+    val resultId: UUID,
+    val resultDigest: String,
+    val providerDisposition: String,
+    val terminationCause: String,
+    val outcomeStatus: String,
+    val outcomeBasis: String,
+    val terminalState: String,
+    val evidenceId: UUID,
+    val evidenceDigest: String,
+    val warningCodes: List<String>,
+    val startedAt: Instant,
+    val endedAt: Instant,
+)
+
+data class ManagedStagingProjection(
+    val changeCount: Int,
+    val excludedPathCount: Int,
+    val applyState: String,
+    val baselineDigest: String,
+    val finalDigest: String,
+    val changedInventoryDigest: String,
+    val excludedPathSetDigest: String,
+)
+
+data class ManagedEvidenceProjection(
+    val evidenceId: UUID,
+    val evidenceDigest: String,
+    val eventCount: Int,
+    val eventTypeCounts: Map<String, Int>,
+    val eventsDigest: String,
+    val workflowStrategy: String,
+    val workflowStepCount: Int,
+    val workflowAttemptCount: Int,
+    val completedStepCount: Int,
+    val charterEvidenceStatus: String,
+    val charterStopStatus: String,
+    val terminalReasonCode: String,
+    val staging: ManagedStagingProjection?,
+    val actualEffectCounts: Map<String, Int>,
+    val capturedAt: Instant,
+)
+
+data class ManagedApplyDecisionProjection(
+    val receiptId: UUID,
+    val receiptDigest: String,
+    val managedRunRevision: Int,
+    val changedInventoryCount: Int,
+    val writeEnvelopeCount: Int,
+    val changedInventoryDigest: String,
+    val writeEnvelopeDigest: String,
+    val decidedAt: Instant,
+)
+
+data class ManagedEvidenceDetail(
+    val schemaVersion: Int,
+    val kind: String,
+    val summary: ManagedRunSummary,
+    val artifactStatus: String,
+    val result: ManagedEvidenceResult?,
+    val evidence: ManagedEvidenceProjection?,
+    val applyDecision: ManagedApplyDecisionProjection?,
+    val authorityBoundary: String,
+    val privacyBoundary: String,
+)
+
 data class AgentReadinessSnapshot(
     val schemaVersion: Int,
     val adapterId: String,
@@ -318,6 +425,12 @@ internal object PortableDesignProtocol {
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
         "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority"
+    private const val MANAGED_INVENTORY_BOUNDARY =
+        "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority"
+    private const val MANAGED_EVIDENCE_BOUNDARY =
+        "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority"
+    private const val MANAGED_EVIDENCE_PRIVACY_BOUNDARY =
+        "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted."
     private val actorIdPattern = Regex("^[A-Za-z0-9][A-Za-z0-9._:@+-]*$")
     private val toolPattern = Regex("^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
     private val digestPattern = Regex("^sha256:[0-9a-f]{64}$")
@@ -407,6 +520,22 @@ internal object PortableDesignProtocol {
         "MANAGED_READ_ONLY_RECEIPT_INVALID" to StableHostError(
             -32_023,
             "GAEP could not verify the managed read-only terminal evidence.",
+        ),
+        "MANAGED_EVIDENCE_AUDIT_INVALID" to StableHostError(
+            -32_024,
+            "Managed Run evidence is unavailable because the governed audit chain is invalid.",
+        ),
+        "MANAGED_EVIDENCE_SNAPSHOT_CHANGED" to StableHostError(
+            -32_025,
+            "Managed Run inventory changed during pagination; reload the first page.",
+        ),
+        "MANAGED_EVIDENCE_INVENTORY_INVALID" to StableHostError(
+            -32_026,
+            "GAEP could not verify the bounded Managed Run inventory.",
+        ),
+        "MANAGED_EVIDENCE_DETAIL_INVALID" to StableHostError(
+            -32_027,
+            "GAEP could not verify the exact Managed Run evidence detail.",
         ),
         "INVALID_PARAMS" to StableHostError(-32_602, "The GAEP engine rejected the local request parameters."),
         "PROTOCOL_UPGRADE_REQUIRED" to StableHostError(
@@ -509,6 +638,14 @@ internal object PortableDesignProtocol {
     fun validatePage(offset: Int, limit: Int) {
         require(offset in 0..MAX_OFFSET) { "Portable design offset must be between 0 and 10000" }
         require(limit in 1..MAX_PAGE_SIZE) { "Portable design limit must be between 1 and 200" }
+    }
+
+    fun validateManagedEvidencePage(offset: Int, limit: Int, snapshotDigest: String?) {
+        require(offset in 0..2_000) { "Managed Run offset must be between 0 and 2000" }
+        require(limit in 1..200) { "Managed Run limit must be between 1 and 200" }
+        require(snapshotDigest == null || digestPattern.matches(snapshotDigest)) {
+            "Managed Run snapshot digest must be SHA-256"
+        }
     }
 
     fun parseStrictObject(raw: String): JsonObject {
@@ -824,6 +961,320 @@ internal object PortableDesignProtocol {
             endedAt = endedAt,
             authorityBoundary = MANAGED_RECEIPT_BOUNDARY,
         )
+    }
+
+    fun parseManagedRunSummaryPageEnvelope(
+        envelope: JsonObject,
+        expectedOffset: Int,
+        expectedLimit: Int,
+        expectedSnapshotDigest: String? = null,
+    ): ManagedRunSummaryPage {
+        val page = readResult(envelope).requireObject()
+        page.requireExactKeys(
+            "schemaVersion", "kind", "items", "offset", "limit", "total", "omittedCount", "snapshotDigest",
+            "hasMore", "authorityBoundary", "privacyBoundary",
+        )
+        if (page.requireInt("schemaVersion") != 1 || page.requireString("kind") != "managed-run-summary-page" ||
+            page.requireString("authorityBoundary") != MANAGED_INVENTORY_BOUNDARY ||
+            page.requireString("privacyBoundary") != MANAGED_EVIDENCE_PRIVACY_BOUNDARY
+        ) {
+            throw invalidResponse()
+        }
+        val offset = page.requireBoundedNonNegativeInt("offset", 2_000)
+        val limit = page.requireBoundedNonNegativeInt("limit", 200)
+        val total = page.requireBoundedNonNegativeInt("total", 2_000)
+        val omittedCount = page.requireBoundedNonNegativeInt("omittedCount", 2_000)
+        val rawItems = page.get("items")?.takeIf(JsonElement::isJsonArray)?.asJsonArray ?: throw invalidResponse()
+        if (limit < 1 || offset != expectedOffset || limit != expectedLimit || rawItems.size() > limit ||
+            offset.toLong() + rawItems.size() > total.toLong() || omittedCount != total - rawItems.size()
+        ) {
+            throw invalidResponse()
+        }
+        val items = rawItems.map { parseManagedRunSummary(it.requireObject()) }.toList()
+        if (items.map { it.managedRunId }.distinct().size != items.size) throw invalidResponse()
+        val snapshotDigest = page.requireDigest("snapshotDigest")
+        if (expectedSnapshotDigest != null && snapshotDigest != expectedSnapshotDigest) throw invalidResponse()
+        val hasMore = page.requireBoolean("hasMore")
+        if (hasMore != (offset.toLong() + items.size < total.toLong())) throw invalidResponse()
+        return ManagedRunSummaryPage(
+            schemaVersion = 1,
+            kind = "managed-run-summary-page",
+            items = items,
+            offset = offset,
+            limit = limit,
+            total = total,
+            omittedCount = omittedCount,
+            snapshotDigest = snapshotDigest,
+            hasMore = hasMore,
+            authorityBoundary = MANAGED_INVENTORY_BOUNDARY,
+            privacyBoundary = MANAGED_EVIDENCE_PRIVACY_BOUNDARY,
+        )
+    }
+
+    fun parseManagedEvidenceDetailEnvelope(
+        envelope: JsonObject,
+        expectedManagedRunId: UUID,
+    ): ManagedEvidenceDetail {
+        val detail = readResult(envelope).requireObject()
+        detail.requireKeys(
+            required = setOf("schemaVersion", "kind", "summary", "artifactStatus", "authorityBoundary", "privacyBoundary"),
+            optional = setOf("result", "evidence", "applyDecision"),
+        )
+        if (detail.requireInt("schemaVersion") != 1 || detail.requireString("kind") != "managed-evidence-detail" ||
+            detail.requireString("authorityBoundary") != MANAGED_EVIDENCE_BOUNDARY ||
+            detail.requireString("privacyBoundary") != MANAGED_EVIDENCE_PRIVACY_BOUNDARY
+        ) {
+            throw invalidResponse()
+        }
+        val summary = parseManagedRunSummary(detail.get("summary").requireObject())
+        if (summary.managedRunId != expectedManagedRunId) throw invalidResponse()
+        val artifactStatus = detail.requireOneOf(
+            "artifactStatus",
+            setOf("record-only", "verified-result-and-evidence"),
+        )
+        val hasResult = detail.has("result")
+        val hasEvidence = detail.has("evidence")
+        val hasApplyDecision = detail.has("applyDecision")
+        if (hasResult != hasEvidence || hasResult != summary.hasResult || hasApplyDecision != summary.hasApplyDecision ||
+            (artifactStatus == "record-only") != !hasResult
+        ) {
+            throw invalidResponse()
+        }
+        val result = detail.get("result")?.let { parseManagedEvidenceResult(it.requireObject(), summary) }
+        val evidence = detail.get("evidence")?.let {
+            parseManagedEvidenceProjection(it.requireObject(), result ?: throw invalidResponse())
+        }
+        val applyDecision = detail.get("applyDecision")?.let {
+            parseManagedApplyDecisionProjection(it.requireObject(), summary)
+        }
+        return ManagedEvidenceDetail(
+            schemaVersion = 1,
+            kind = "managed-evidence-detail",
+            summary = summary,
+            artifactStatus = artifactStatus,
+            result = result,
+            evidence = evidence,
+            applyDecision = applyDecision,
+            authorityBoundary = MANAGED_EVIDENCE_BOUNDARY,
+            privacyBoundary = MANAGED_EVIDENCE_PRIVACY_BOUNDARY,
+        )
+    }
+
+    private fun parseManagedRunSummary(summary: JsonObject): ManagedRunSummary {
+        summary.requireKeys(
+            required = setOf(
+                "schemaVersion", "kind", "managedRunId", "runId", "productId", "initiativeId", "mode", "state",
+                "adapterId", "agentId", "modelId", "attemptNumber", "recoveryStatus", "workflowCheckpointCount",
+                "hasResult", "hasApplyDecision", "bindingsDigest", "createdAt", "updatedAt", "authorityBoundary",
+            ),
+            optional = setOf("resultDigest", "applyDecisionDigest", "startedAt", "endedAt"),
+        )
+        if (summary.requireInt("schemaVersion") != 1 || summary.requireString("kind") != "managed-run-summary" ||
+            summary.requireString("authorityBoundary") != MANAGED_INVENTORY_BOUNDARY
+        ) {
+            throw invalidResponse()
+        }
+        val state = summary.requireOneOf(
+            "state",
+            setOf(
+                "prepared", "running", "review-required", "applying", "completed", "failed", "cancelled",
+                "timed-out", "unknown", "conflict", "discarded",
+            ),
+        )
+        val hasResult = summary.requireBoolean("hasResult")
+        val hasApplyDecision = summary.requireBoolean("hasApplyDecision")
+        val resultDigest = summary.get("resultDigest")?.let { summary.requireDigest("resultDigest") }
+        val applyDecisionDigest = summary.get("applyDecisionDigest")?.let { summary.requireDigest("applyDecisionDigest") }
+        if (hasResult != (resultDigest != null) || hasApplyDecision != (applyDecisionDigest != null)) throw invalidResponse()
+        val createdAt = summary.requireInstant("createdAt")
+        val startedAt = summary.get("startedAt")?.let { summary.requireInstant("startedAt") }
+        val updatedAt = summary.requireInstant("updatedAt")
+        val endedAt = summary.get("endedAt")?.let { summary.requireInstant("endedAt") }
+        val terminal = state in setOf("completed", "failed", "cancelled", "timed-out", "unknown", "conflict", "discarded")
+        if (terminal != (endedAt != null) || updatedAt.isBefore(createdAt) ||
+            (startedAt != null && startedAt.isBefore(createdAt)) ||
+            (startedAt != null && endedAt != null && endedAt.isBefore(startedAt))
+        ) {
+            throw invalidResponse()
+        }
+        val attemptNumber = summary.requireInt("attemptNumber")
+        if (attemptNumber !in 1..1_000_000) throw invalidResponse()
+        return ManagedRunSummary(
+            schemaVersion = 1,
+            kind = "managed-run-summary",
+            managedRunId = summary.requireNonEmptyUuid("managedRunId"),
+            runId = summary.requireNonEmptyUuid("runId"),
+            productId = summary.requireNonEmptyUuid("productId"),
+            initiativeId = summary.requireNonEmptyUuid("initiativeId"),
+            mode = summary.requireOneOf("mode", setOf("codex-staged", "manual-offline", "claude-context-only")),
+            state = state,
+            adapterId = summary.requirePortableText("adapterId", minimum = 1),
+            agentId = summary.requirePortableText("agentId", minimum = 1),
+            modelId = summary.requirePortableText("modelId", minimum = 1),
+            attemptNumber = attemptNumber,
+            recoveryStatus = summary.requireOneOf(
+                "recoveryStatus",
+                setOf("not-required", "required", "recovered", "resume-unavailable"),
+            ),
+            workflowCheckpointCount = summary.requireBoundedNonNegativeInt("workflowCheckpointCount", 511),
+            hasResult = hasResult,
+            hasApplyDecision = hasApplyDecision,
+            bindingsDigest = summary.requireDigest("bindingsDigest"),
+            resultDigest = resultDigest,
+            applyDecisionDigest = applyDecisionDigest,
+            createdAt = createdAt,
+            startedAt = startedAt,
+            updatedAt = updatedAt,
+            endedAt = endedAt,
+            authorityBoundary = MANAGED_INVENTORY_BOUNDARY,
+        )
+    }
+
+    private fun parseManagedEvidenceResult(result: JsonObject, summary: ManagedRunSummary): ManagedEvidenceResult {
+        result.requireExactKeys(
+            "resultId", "resultDigest", "providerDisposition", "terminationCause", "outcomeStatus", "outcomeBasis",
+            "terminalState", "evidenceId", "evidenceDigest", "warningCodes", "startedAt", "endedAt",
+        )
+        val terminalState = result.requireOneOf(
+            "terminalState",
+            setOf("review-required", "completed", "failed", "cancelled", "timed-out", "unknown", "conflict", "discarded"),
+        )
+        val providerDisposition = result.requireOneOf(
+            "providerDisposition",
+            setOf("completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown"),
+        )
+        val outcomeStatus = result.requireOneOf("outcomeStatus", setOf("satisfied", "failed", "not-assessed", "indeterminate"))
+        val resultDigest = result.requireDigest("resultDigest")
+        if (terminalState != summary.state || resultDigest != summary.resultDigest ||
+            (terminalState == "completed" && (providerDisposition != "completed" || outcomeStatus != "satisfied"))
+        ) {
+            throw invalidResponse()
+        }
+        val warningValues = setOf(
+            "provider-warning-redacted", "provider-output-redacted", "coordinator-failure", "runtime-output-truncated",
+            "staging-read-confinement-unattested", "postcondition-evaluator-failed", "local-cleanup-pending",
+            "local-cleanup-failed", "runtime-warning",
+        )
+        val rawWarnings = result.get("warningCodes")?.takeIf(JsonElement::isJsonArray)?.asJsonArray ?: throw invalidResponse()
+        if (rawWarnings.size() > 128) throw invalidResponse()
+        val warningCodes = rawWarnings.map { it.requireString().takeIf(warningValues::contains) ?: throw invalidResponse() }
+        val startedAt = result.requireInstant("startedAt")
+        val endedAt = result.requireInstant("endedAt")
+        if (endedAt.isBefore(startedAt)) throw invalidResponse()
+        return ManagedEvidenceResult(
+            resultId = result.requireNonEmptyUuid("resultId"),
+            resultDigest = resultDigest,
+            providerDisposition = providerDisposition,
+            terminationCause = result.requireOneOf(
+                "terminationCause",
+                setOf("normal", "cancel-request", "timeout", "provider-failure", "process-loss", "protocol-error"),
+            ),
+            outcomeStatus = outcomeStatus,
+            outcomeBasis = result.requireOneOf(
+                "outcomeBasis",
+                setOf("postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure"),
+            ),
+            terminalState = terminalState,
+            evidenceId = result.requireNonEmptyUuid("evidenceId"),
+            evidenceDigest = result.requireDigest("evidenceDigest"),
+            warningCodes = warningCodes,
+            startedAt = startedAt,
+            endedAt = endedAt,
+        )
+    }
+
+    private fun parseManagedEvidenceProjection(
+        evidence: JsonObject,
+        result: ManagedEvidenceResult,
+    ): ManagedEvidenceProjection {
+        evidence.requireKeys(
+            required = setOf(
+                "evidenceId", "evidenceDigest", "eventCount", "eventTypeCounts", "eventsDigest", "workflowStrategy",
+                "workflowStepCount", "workflowAttemptCount", "completedStepCount", "charterEvidenceStatus",
+                "charterStopStatus", "terminalReasonCode", "actualEffectCounts", "capturedAt",
+            ),
+            optional = setOf("staging"),
+        )
+        val evidenceId = evidence.requireNonEmptyUuid("evidenceId")
+        val evidenceDigest = evidence.requireDigest("evidenceDigest")
+        if (evidenceId != result.evidenceId || evidenceDigest != result.evidenceDigest) throw invalidResponse()
+        val eventCount = evidence.requireBoundedNonNegativeInt("eventCount", 4_096)
+        val eventTypeCounts = parseExactCountMap(
+            evidence.get("eventTypeCounts").requireObject(),
+            setOf("lifecycle", "output", "item", "approval", "warning", "error"),
+            4_096,
+        )
+        if (eventTypeCounts.values.sum() != eventCount) throw invalidResponse()
+        val workflowStepCount = evidence.requireBoundedNonNegativeInt("workflowStepCount", 512)
+        val completedStepCount = evidence.requireBoundedNonNegativeInt("completedStepCount", 512)
+        if (workflowStepCount < 1 || completedStepCount > workflowStepCount) throw invalidResponse()
+        val actualEffectCounts = parseExactCountMap(
+            evidence.get("actualEffectCounts").requireObject(),
+            setOf("not-observed", "observed-provisional", "applied", "blocked", "unknown"),
+            32,
+        )
+        if (actualEffectCounts.values.sum() > 32) throw invalidResponse()
+        return ManagedEvidenceProjection(
+            evidenceId = evidenceId,
+            evidenceDigest = evidenceDigest,
+            eventCount = eventCount,
+            eventTypeCounts = eventTypeCounts,
+            eventsDigest = evidence.requireDigest("eventsDigest"),
+            workflowStrategy = evidence.requireOneOf("workflowStrategy", setOf("sequential", "parallel-readonly")),
+            workflowStepCount = workflowStepCount,
+            workflowAttemptCount = evidence.requireBoundedNonNegativeInt("workflowAttemptCount", 5_120),
+            completedStepCount = completedStepCount,
+            charterEvidenceStatus = evidence.requireOneOf("charterEvidenceStatus", setOf("satisfied", "failed", "not-assessed")),
+            charterStopStatus = evidence.requireOneOf("charterStopStatus", setOf("satisfied", "failed", "not-assessed")),
+            terminalReasonCode = portableHandoffText(evidence.requireString("terminalReasonCode"), minimum = 1, maximum = 128),
+            staging = evidence.get("staging")?.let { parseManagedStagingProjection(it.requireObject()) },
+            actualEffectCounts = actualEffectCounts,
+            capturedAt = evidence.requireInstant("capturedAt"),
+        )
+    }
+
+    private fun parseManagedStagingProjection(staging: JsonObject): ManagedStagingProjection {
+        staging.requireExactKeys(
+            "changeCount", "excludedPathCount", "applyState", "baselineDigest", "finalDigest",
+            "changedInventoryDigest", "excludedPathSetDigest",
+        )
+        return ManagedStagingProjection(
+            changeCount = staging.requireBoundedNonNegativeInt("changeCount", 20_000),
+            excludedPathCount = staging.requireBoundedNonNegativeInt("excludedPathCount", 20_000),
+            applyState = staging.requireOneOf("applyState", setOf("pending", "applied", "conflict", "discarded", "not-applied")),
+            baselineDigest = staging.requireDigest("baselineDigest"),
+            finalDigest = staging.requireDigest("finalDigest"),
+            changedInventoryDigest = staging.requireDigest("changedInventoryDigest"),
+            excludedPathSetDigest = staging.requireDigest("excludedPathSetDigest"),
+        )
+    }
+
+    private fun parseManagedApplyDecisionProjection(
+        decision: JsonObject,
+        summary: ManagedRunSummary,
+    ): ManagedApplyDecisionProjection {
+        decision.requireExactKeys(
+            "receiptId", "receiptDigest", "managedRunRevision", "changedInventoryCount", "writeEnvelopeCount",
+            "changedInventoryDigest", "writeEnvelopeDigest", "decidedAt",
+        )
+        val receiptDigest = decision.requireDigest("receiptDigest")
+        val revision = decision.requireInt("managedRunRevision")
+        if (receiptDigest != summary.applyDecisionDigest || revision < 1) throw invalidResponse()
+        return ManagedApplyDecisionProjection(
+            receiptId = decision.requireNonEmptyUuid("receiptId"),
+            receiptDigest = receiptDigest,
+            managedRunRevision = revision,
+            changedInventoryCount = decision.requireBoundedNonNegativeInt("changedInventoryCount", 20_000),
+            writeEnvelopeCount = decision.requireBoundedNonNegativeInt("writeEnvelopeCount", 256),
+            changedInventoryDigest = decision.requireDigest("changedInventoryDigest"),
+            writeEnvelopeDigest = decision.requireDigest("writeEnvelopeDigest"),
+            decidedAt = decision.requireInstant("decidedAt"),
+        )
+    }
+
+    private fun parseExactCountMap(value: JsonObject, keys: Set<String>, maximum: Int): Map<String, Int> {
+        if (value.keySet() != keys) throw invalidResponse()
+        return keys.associateWith { value.requireBoundedNonNegativeInt(it, maximum) }
     }
 
     fun validateManagedReadOnlyPreview(preview: ManagedReadOnlyPreview) {

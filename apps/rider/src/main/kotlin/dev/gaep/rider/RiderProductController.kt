@@ -171,6 +171,41 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         timeoutMs: Int = 120_000,
     ): String = renderManagedReadOnlyReceipt(client.executeManagedReadOnly(preview, timeoutMs, actorId))
 
+    fun listManagedEvidence(): String {
+        val page = client.listManagedEvidence(offset = 0, limit = 100)
+        return buildString {
+            appendLine("GAEP bounded Managed Run evidence")
+            appendLine()
+            appendLine("Snapshot: ${page.snapshotDigest}")
+            appendLine("Displayed: ${page.items.size} of ${page.total}")
+            appendLine("Omitted from this page: ${page.omittedCount}")
+            appendLine("More pages available: ${yesNo(page.hasMore)}")
+            if (page.items.isEmpty()) appendLine("No Managed Runs exist in the verified bounded inventory.")
+            page.items.forEach { item ->
+                appendLine()
+                appendLine("${item.managedRunId} · ${item.state} · ${item.mode}")
+                appendLine("  Provider: ${item.adapterId} / ${item.agentId} / ${item.modelId}")
+                appendLine(
+                    "  Updated: ${item.updatedAt}; recovery=${item.recoveryStatus}; " +
+                        "result=${if (item.hasResult) "bound" else "not bound"}; " +
+                        "apply decision=${if (item.hasApplyDecision) "bound" else "not bound"}",
+                )
+            }
+            appendLine()
+            appendLine(
+                "Boundary: this audit-gated observation cannot start, resume, cancel, apply, discard, approve, or grant " +
+                    "Run, Tool, write, effect, outcome, implementation-readiness, or release authority.",
+            )
+            append(
+                "Raw provider output, prompts, context content, changed paths, source bytes, executable paths, process state, " +
+                    "workspace paths, and credentials are withheld.",
+            )
+        }
+    }
+
+    fun readManagedEvidence(managedRunId: String): String =
+        renderManagedEvidenceDetail(client.readManagedEvidence(parseUuid(managedRunId, "Managed Run ID")))
+
     fun listPortableDesignSnapshots(): String {
         val page = client.listPortableDesignSnapshots(offset = 0, limit = PortableDesignProtocol.DEFAULT_PAGE_SIZE)
         return buildString {
@@ -318,6 +353,88 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Provider completion and governed outcome are separate claims; one never substitutes for the other.")
         appendLine("Authority boundary: ${receipt.authorityBoundary}")
         append("No local paths, credentials, provider sessions, raw provider output, or source bytes are included.")
+    }
+
+    private fun renderManagedEvidenceDetail(detail: ManagedEvidenceDetail): String = buildString {
+        val summary = detail.summary
+        appendLine("GAEP exact Managed Run evidence detail")
+        appendLine()
+        appendLine("Managed Run: ${summary.managedRunId}")
+        appendLine("Governed Run: ${summary.runId}")
+        appendLine("Product / Initiative: ${summary.productId} / ${summary.initiativeId}")
+        appendLine("State / mode: ${summary.state} / ${summary.mode}")
+        appendLine("Provider: ${summary.adapterId} / ${summary.agentId} / ${summary.modelId}")
+        appendLine(
+            "Recovery: ${summary.recoveryStatus}; attempt ${summary.attemptNumber}; " +
+                "checkpoints ${summary.workflowCheckpointCount}",
+        )
+        appendLine("Artifact status: ${detail.artifactStatus}")
+        appendLine("Bindings digest: ${summary.bindingsDigest}")
+        detail.result?.let { result ->
+            appendLine()
+            appendLine("Verified result:")
+            appendLine("  Result: ${result.resultId} (${result.resultDigest})")
+            appendLine("  Terminal state: ${result.terminalState}")
+            appendLine("  Provider disposition: ${result.providerDisposition}; termination cause: ${result.terminationCause}")
+            appendLine("  Governed outcome: ${result.outcomeStatus} (${result.outcomeBasis})")
+            appendLine("  Warnings: ${if (result.warningCodes.isEmpty()) "none" else result.warningCodes.joinToString()}")
+            appendLine("  Started / ended: ${result.startedAt} / ${result.endedAt}")
+        } ?: appendLine("No committed result/evidence pair is bound to this record. No terminal outcome is inferred.")
+        detail.evidence?.let { evidence ->
+            appendLine()
+            appendLine("Verified evidence:")
+            appendLine("  Evidence: ${evidence.evidenceId} (${evidence.evidenceDigest})")
+            appendLine(
+                "  Events: ${evidence.eventCount}; lifecycle=${evidence.eventTypeCounts["lifecycle"]}; " +
+                    "output=${evidence.eventTypeCounts["output"]}; item=${evidence.eventTypeCounts["item"]}; " +
+                    "approval=${evidence.eventTypeCounts["approval"]}; warning=${evidence.eventTypeCounts["warning"]}; " +
+                    "error=${evidence.eventTypeCounts["error"]}",
+            )
+            appendLine(
+                "  Workflow: ${evidence.workflowStrategy}; ${evidence.completedStepCount}/${evidence.workflowStepCount} steps; " +
+                    "${evidence.workflowAttemptCount} attempts",
+            )
+            appendLine(
+                "  Charter gates: evidence=${evidence.charterEvidenceStatus}; stop=${evidence.charterStopStatus}; " +
+                    "reason=${evidence.terminalReasonCode}",
+            )
+            appendLine(
+                "  Actual effects: not-observed=${evidence.actualEffectCounts["not-observed"]}; " +
+                    "provisional=${evidence.actualEffectCounts["observed-provisional"]}; " +
+                    "applied=${evidence.actualEffectCounts["applied"]}; blocked=${evidence.actualEffectCounts["blocked"]}; " +
+                    "unknown=${evidence.actualEffectCounts["unknown"]}",
+            )
+            evidence.staging?.let { staging ->
+                appendLine(
+                    "  Staging: ${staging.applyState}; changes=${staging.changeCount}; excluded=${staging.excludedPathCount}",
+                )
+                appendLine(
+                    "  Stage digests: baseline=${staging.baselineDigest}; final=${staging.finalDigest}; " +
+                        "inventory=${staging.changedInventoryDigest}",
+                )
+            } ?: appendLine("  Staging: not present")
+            appendLine("  Captured: ${evidence.capturedAt}")
+        }
+        detail.applyDecision?.let { decision ->
+            appendLine()
+            appendLine("Verified apply-decision evidence (observation only):")
+            appendLine("  Receipt: ${decision.receiptId} (${decision.receiptDigest})")
+            appendLine(
+                "  Bound revision: ${decision.managedRunRevision}; changed inventory count=${decision.changedInventoryCount}; " +
+                    "write-envelope count=${decision.writeEnvelopeCount}",
+            )
+            appendLine("  Decided: ${decision.decidedAt}")
+        }
+        appendLine()
+        appendLine(
+            "Boundary: provider completion is separate from governed outcome. Apply-decision evidence records a past exact " +
+                "decision and grants this view no apply, discard, approval, Tool, write, effect, implementation-readiness, " +
+                "release, or future Run authority.",
+        )
+        append(
+            "Raw provider output, prompts, context content, changed paths, source bytes, executable paths, process state, " +
+                "workspace paths, and credentials are withheld.",
+        )
     }
 
     private fun renderSettingValue(value: PortableAgentSettingValue): String = when (value) {

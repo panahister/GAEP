@@ -32,6 +32,11 @@ class PortableDesignClientTest {
         val badManagedDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-digest"))
         val badManagedReceiptRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-receipt"))
         val badManagedBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-binding"))
+        val badManagedEvidencePageRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-page"))
+        val badManagedEvidenceCountRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-count"))
+        val badManagedEvidenceSnapshotRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-snapshot"))
+        val badManagedEvidenceDetailRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-detail"))
+        val badManagedEvidenceBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-binding"))
         val executable = createFakeEngineLauncher(temporaryRoot)
         GaepEngineClient(temporaryRoot, executable.toString()).use { client ->
             val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -170,9 +175,47 @@ class PortableDesignClientTest {
                     field.contains(it, ignoreCase = true)
                 }
             })
+            val managedPage = client.listManagedEvidence(offset = 0, limit = 100)
+            assertEquals(1, managedPage.items.size)
+            assertEquals(managedRunId, managedPage.items.single().managedRunId)
+            assertEquals(3, managedPage.total)
+            assertEquals(2, managedPage.omittedCount)
+            assertTrue(managedPage.hasMore)
+            assertFalse(Gson().toJson(managedPage).contains(privateRoot))
+            assertFalse(Gson().toJson(managedPage).contains(privateCredential))
+            assertEquals(
+                managedPage.snapshotDigest,
+                client.listManagedEvidence(0, 100, managedPage.snapshotDigest).snapshotDigest,
+            )
+            val managedDetail = client.readManagedEvidence(managedRunId)
+            assertEquals(managedRunId, managedDetail.summary.managedRunId)
+            assertEquals("verified-result-and-evidence", managedDetail.artifactStatus)
+            assertEquals("completed", managedDetail.result?.providerDisposition)
+            assertEquals("satisfied", managedDetail.result?.outcomeStatus)
+            assertEquals(5, managedDetail.evidence?.eventCount)
+            assertEquals(1, managedDetail.evidence?.completedStepCount)
+            assertEquals(null, managedDetail.applyDecision)
+            assertFalse(Gson().toJson(managedDetail).contains(privateRoot))
+            assertFalse(Gson().toJson(managedDetail).contains(privateCredential))
+            val managedListView = controller.listManagedEvidence()
+            assertTrue(managedListView.contains("Displayed: 1 of 3"))
+            assertTrue(managedListView.contains("Omitted from this page: 2"))
+            assertTrue(managedListView.contains("cannot start, resume, cancel, apply, discard, approve"))
+            val managedDetailView = controller.readManagedEvidence(managedRunId.toString())
+            assertTrue(managedDetailView.contains("Provider disposition: completed"))
+            assertTrue(managedDetailView.contains("Governed outcome: satisfied"))
+            assertTrue(managedDetailView.contains("Apply-decision evidence records a past exact decision"))
+            assertFalse(managedDetailView.contains(privateRoot))
+            assertFalse(managedDetailView.contains(privateCredential))
             assertFailsWith<IllegalArgumentException> {
                 client.executeManagedReadOnly(managedPreview, timeoutMs = 999, actorId = "founder.review")
             }
+            assertFailsWith<IllegalArgumentException> { client.listManagedEvidence(offset = -1, limit = 100) }
+            assertFailsWith<IllegalArgumentException> { client.listManagedEvidence(offset = 0, limit = 201) }
+            assertFailsWith<IllegalArgumentException> {
+                client.listManagedEvidence(offset = 0, limit = 100, snapshotDigest = "sha256:not-a-digest")
+            }
+            assertFailsWith<IllegalArgumentException> { client.readManagedEvidence(UUID(0, 0)) }
             assertFailsWith<IllegalArgumentException> {
                 client.executeManagedReadOnly(
                     managedPreview.copy(previewDigest = "sha256:${"0".repeat(64)}"),
@@ -209,6 +252,27 @@ class PortableDesignClientTest {
                     }
                     assertEquals("HOST_RESPONSE_INVALID", invalidReceipt.kind)
                     assertPrivateTextWithheld(invalidReceipt)
+                }
+            }
+            listOf(badManagedEvidencePageRoot, badManagedEvidenceCountRoot).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val invalidPage = hostError { hostileClient.listManagedEvidence(offset = 0, limit = 100) }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidPage.kind)
+                    assertPrivateTextWithheld(invalidPage)
+                }
+            }
+            GaepEngineClient(badManagedEvidenceSnapshotRoot, executable.toString()).use { hostileClient ->
+                val invalidSnapshot = hostError {
+                    hostileClient.listManagedEvidence(offset = 0, limit = 100, snapshotDigest = managedPage.snapshotDigest)
+                }
+                assertEquals("HOST_RESPONSE_INVALID", invalidSnapshot.kind)
+                assertPrivateTextWithheld(invalidSnapshot)
+            }
+            listOf(badManagedEvidenceDetailRoot, badManagedEvidenceBindingRoot).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val invalidDetail = hostError { hostileClient.readManagedEvidence(managedRunId) }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidDetail.kind)
+                    assertPrivateTextWithheld(invalidDetail)
                 }
             }
 

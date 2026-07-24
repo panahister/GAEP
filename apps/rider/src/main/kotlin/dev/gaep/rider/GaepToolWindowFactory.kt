@@ -92,6 +92,24 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += managedReadOnlyButton
         actions.add(managedReadOnlyButton)
 
+        addAction("List Managed Run evidence") { controller.listManagedEvidence() }
+
+        val managedEvidenceButton = JButton("Read Managed Run evidence…").apply {
+            addActionListener {
+                val managedRunId = Messages.showInputDialog(
+                    project,
+                    "Enter one exact Managed Run UUID from the bounded evidence list.",
+                    "Read Managed Run Evidence",
+                    Messages.getQuestionIcon(),
+                ) ?: return@addActionListener
+                runRequest("Read Managed Run evidence", status, output, buttons) {
+                    controller.readManagedEvidence(managedRunId)
+                }
+            }
+        }
+        buttons += managedEvidenceButton
+        actions.add(managedEvidenceButton)
+
         addAction("List design imports") { controller.listPortableDesignSnapshots() }
 
         val readButton = JButton("Read design import…").apply {
@@ -140,6 +158,8 @@ class GaepToolWindowFactory : ToolWindowFactory {
                 "They cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. " +
                 "Managed read-only execution is a separate digest-bound command: every Tool permission remains denied, only observation is allowed, " +
                 "and provider completion is reported separately from the governed outcome. " +
+                "Managed Run evidence is an audit-gated, snapshot-bounded read-only view of portable counts and digests; " +
+                "it cannot start, resume, cancel, apply, discard, approve, or infer outcome success. " +
                 "Governance boundary: portable-design imports remain pending human review. " +
                 "Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. " +
                 "Only validated metadata and digests are displayed; local paths and source content are withheld.",
