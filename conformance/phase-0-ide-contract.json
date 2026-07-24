@@ -20,7 +20,8 @@
     { "id": "evidence-dashboard", "label": "Run, evidence, recovery and provider-truth dashboard" },
     { "id": "phase-dashboard-framework", "label": "Exact phase-scoped dashboard framework projection" },
     { "id": "change-impact-dashboard", "label": "Exact current Change and impact projection" },
-    { "id": "agent-model-dashboard", "label": "Exact current Agent and Model evidence projection" }
+    { "id": "agent-model-dashboard", "label": "Exact current Agent and Model evidence projection" },
+    { "id": "accessible-dashboard-tables", "label": "Accessible dashboard sorting, filtering, textual alternative, and bounded metadata export" }
   ],
   "hosts": [
     {
@@ -32,7 +33,7 @@
         "source": "package-report",
         "level": "installed-package-bundled-engine-workflow-local",
         "requiredVerificationFragments": ["exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-bundled-engine-empty-recovery-evidence-workflow"],
-        "remainingRequirements": ["real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
+        "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/vscode/src/extension.ts", "contains": ["engine = new GaepEngine(folder.uri.fsPath", "engine.listManagedRunsPage({ offset: 0, limit: 200 })", "return presentation"] }] },
@@ -49,7 +50,7 @@
         { "capabilityId": "versioned-handoff", "state": "partial", "reason": "Portable handoff observation exists, but complete bidirectional provider/model acceptance is incomplete." },
         { "capabilityId": "managed-readonly-execution", "state": "partial", "reason": "Managed observation-only execution is implemented for declared slices; full provider and native-host parity is incomplete." },
         { "capabilityId": "staged-effectful-review", "state": "partial", "reason": "Single-step Codex staged review is durable; effectful multi-step and four-host parity remain fail-closed." },
-        { "capabilityId": "evidence-dashboard", "state": "partial", "reason": "Bounded evidence and recovery views exist; accessibility and four-host dashboard parity remain incomplete." },
+        { "capabilityId": "evidence-dashboard", "state": "partial", "reason": "Bounded evidence and recovery views exist; native assistive-technology and supported-host acceptance remain incomplete." },
         { "capabilityId": "phase-dashboard-framework", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["composePhaseDashboardFramework(observed.product", "phase: this.context.deliveryPhase()", "...(dashboard ? { dashboard } : {})"] },
           { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isPhaseDashboardFramework", "value.catalogVersion !== \"gaep-phase-dashboards-v1\"", "panel.id !== expected[index]", "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"] },
@@ -64,6 +65,10 @@
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["this.composeAgentModelDashboard(observed)", "return composeAgentModelDashboard({", "expectedSelection"] },
           { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isAgentModelDashboard", "isAgentModelSelection(value.selection)", "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects"] },
           { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderAgentModelDashboard(snapshot.agentModel)", "Agent and model evidence", "This read-only projection cannot select or switch an agent, hand off work, launch a Run, or authorize effects"] }
+        ] },
+        { "capabilityId": "accessible-dashboard-tables", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/studio-client.ts", "contains": ["filterInput.maxLength = 256", "Filter visible metadata", "Copy visible rows as CSV", "navigator.clipboard.writeText", "resultStatus.setAttribute(\"aria-live\", \"polite\")"] },
+          { "path": "apps/vscode/src/studio-accessibility.test.ts", "contains": ["keeps table sorting keyboard-focused, filters visible metadata, and exports only the visible CSV rows", "copied 1 visible metadata row as CSV"] }
         ] }
       ]
     },
@@ -76,7 +81,7 @@
         "source": "package-report",
         "level": "compatible-host-packaged-engine-workflow-local",
         "requiredVerificationFragments": ["exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-digest-bound-package-local-empty-evidence-workflow"],
-        "remainingRequirements": ["native Kiro installation and activation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
+        "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [
@@ -123,6 +128,10 @@
           { "path": "apps/kiro/src/extension.ts", "contains": ["agentModel: \"gaepKiro.dashboard.agentModel\"", "async function showAgentModelDashboard", "client.readAgentModel(product)"] },
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["async readAgentModel(product: ProductBinding)", "this.request(\"dashboard.agentModel\"", "parseAgentModelDashboard"] },
           { "path": "apps/kiro/src/protocol.ts", "contains": ["export function parseAgentModelDashboard", "parseAgentModelSelection", "snapshotDigest !== canonicalDigest(content)"] }
+        ] },
+        { "capabilityId": "accessible-dashboard-tables", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/accessible-table.ts", "contains": ["Accessible table filters can contain at most 256 characters", "renderAccessibleTableText", "accessibleTableCsv", "const neutralized"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showAccessibleDashboardTables", "Copy Visible Rows as CSV", "vscode.env.clipboard.writeText(accessibleTableCsv(view))"] }
         ] }
       ]
     },
@@ -135,7 +144,7 @@
         "source": "package-report",
         "level": "native-startup-and-packaged-engine-client-workflow-local",
         "requiredVerificationFragments": ["clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-native-startup-and-client-packaged-engine-empty-evidence-workflow"],
-        "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window packaged-engine automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
+        "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [
@@ -187,6 +196,10 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readAgentModel(product: ProductBinding)", "portableRequest(\"dashboard.agentModel\"", "parseAgentModelDashboardEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["fun parseAgentModelDashboardEnvelope", "parseAgentModelSelection", "snapshotDigest != canonicalDigest(digestBody)"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["fun readAgentModel(): String", "renderAgentModelDashboard(client.readAgentModel(product))", "GAEP exact Agent and Model dashboard"] }
+        ] },
+        { "capabilityId": "accessible-dashboard-tables", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/AccessibleDashboardTables.kt", "contains": ["Accessible table filters can contain at most 256 characters", "fun render(view: AccessibleTableView)", "fun csv(view: AccessibleTableView)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Browse accessible dashboard tables", "Copy Visible Rows as CSV", "CopyPasteManager.getInstance().setContents"] }
         ] }
       ]
     },
@@ -198,7 +211,7 @@
       "runtimeEvidence": {
         "source": "package-report",
         "level": "cross-platform-packaged-engine-client-workflow-local",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-213-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending"],
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-223-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending"],
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
@@ -257,6 +270,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadAgentModelAsync(", "\"dashboard.agentModel\"", "ParseAgentModelDashboardResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseAgentModelDashboardResponse(", "ParseAgentModelSelection", "snapshotDigest != CanonicalDigest(WithoutProperty(result, \"snapshotDigest\"))"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["ReadAgentModelAsync(", "RenderAgentModelDashboard", "GAEP exact Agent and Model dashboard"] }
+        ] },
+        { "capabilityId": "accessible-dashboard-tables", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/AccessibleDashboardTables.cs", "contains": ["Accessible table filters contain at most 256 characters", "public static string Render(AccessibleTableView view)", "public static string Csv(AccessibleTableView view)"] },
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Render accessible table and prepare visible CSV", "ApplicationCommands.SelectAll", "ApplicationCommands.Copy"] },
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["AccessibleDashboardTables.View(table, AccessibleFilter, sortKey, direction)", "AccessibleCsv = view.Rows.Count == 0", "visible-row CSV is ready for native Select All and Copy"] }
         ] }
       ]
     }
