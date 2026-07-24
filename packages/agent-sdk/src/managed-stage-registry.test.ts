@@ -253,6 +253,102 @@ describe("machine-local managed stage registry", () => {
     await expect(restarted.recover(managedRunId)).resolves.toEqual({ status: "absent" })
   })
 
+  it("inventories registered and unknown stage roots under immutable aggregate bounds", async () => {
+    const registered = await staging.create(source)
+    await registry.register(managedRunId, registered)
+    const unknown = await staging.create(source)
+
+    const inventory = await registry.inspectStageStorage()
+
+    expect(inventory).toMatchObject({
+      schemaVersion: 1,
+      kind: "gaep-managed-stage-storage-inventory-v1",
+      status: "attention-required",
+      totals: {
+        registryRecords: 1,
+        stageRoots: 2,
+        registeredStageRoots: 1,
+        unregisteredStageRoots: 1,
+        liveOwnedStageRoots: 1,
+      },
+      records: [{
+        managedRunId,
+        state: "staging",
+        stageTempRoot: dirname(registered.root),
+        stagePresent: true,
+        owner: "live",
+      }],
+      unregisteredStageRoots: [dirname(unknown.root)],
+    })
+    expect(inventory.totals.treeEntries).toBeGreaterThanOrEqual(4)
+    expect(inventory.totals.bytes).toBeGreaterThan(0)
+    expect(Object.isFrozen(inventory)).toBe(true)
+  })
+
+  it("scavenges only exact dead registered roots and preserves unknown roots", async () => {
+    const registered = await staging.create(source)
+    await registry.register(managedRunId, registered)
+    const unknown = await staging.create(source)
+    const restarted = new ManagedStageRegistry(temporary, { isProcessAlive: () => false })
+
+    const result = await restarted.scavengeOrphanStages()
+
+    expect(result.recovered).toEqual([{ managedRunId, result: "cleaned" }])
+    expect(result.deferredLiveManagedRunIds).toEqual([])
+    expect(result.inventory).toMatchObject({
+      status: "attention-required",
+      totals: { registryRecords: 0, stageRoots: 1, registeredStageRoots: 0, unregisteredStageRoots: 1 },
+      unregisteredStageRoots: [dirname(unknown.root)],
+    })
+    await expect(access(registered.root)).rejects.toMatchObject({ code: "ENOENT" })
+    await expect(access(unknown.root)).resolves.toBeUndefined()
+    await expect(access(recordPath())).rejects.toMatchObject({ code: "ENOENT" })
+  })
+
+  it("preserves a dead review for exact restart claiming during scavenging", async () => {
+    const stage = await staging.create(source)
+    await registry.register(managedRunId, stage)
+    await registry.markReview(managedRunId, await createReviewManifest(stage))
+    const restarted = new ManagedStageRegistry(temporary, { isProcessAlive: () => false })
+
+    const result = await restarted.scavengeOrphanStages()
+
+    expect(result.recovered).toEqual([{ managedRunId, result: "review-restored" }])
+    expect(result.inventory.records).toEqual([
+      expect.objectContaining({ managedRunId, state: "review-required", stagePresent: true, owner: "unowned" }),
+    ])
+    await expect(access(stage.root)).resolves.toBeUndefined()
+    await expect(restarted.claimReview(managedRunId)).resolves.toMatchObject({
+      manifest: { managedRunId },
+    })
+  })
+
+  it("defers live owners during a global stage scavenging pass", async () => {
+    const stage = await staging.create(source)
+    await registry.register(managedRunId, stage)
+
+    const result = await registry.scavengeOrphanStages()
+
+    expect(result.recovered).toEqual([])
+    expect(result.deferredLiveManagedRunIds).toEqual([managedRunId])
+    expect(result.inventory.status).toBe("within-limits")
+    await expect(access(stage.root)).resolves.toBeUndefined()
+  })
+
+  it("fails closed when global stage root or byte ceilings are exceeded", async () => {
+    await staging.create(source)
+    await staging.create(source)
+    const rootBounded = new ManagedStageRegistry(temporary, {
+      stageStorageLimits: { maxStageRoots: 1 },
+    })
+    await expect(rootBounded.inspectStageStorage()).rejects.toMatchObject({ reasonCode: "stage-storage-limit" })
+
+    const byteBounded = new ManagedStageRegistry(temporary, {
+      stageStorageLimits: { maxStageBytes: 1 },
+    })
+    await expect(byteBounded.inspectStageStorage()).rejects.toMatchObject({ reasonCode: "stage-storage-limit" })
+  })
+
   it("restores an exact no-journal apply review after a crash in the recovery checkpoint", async () => {
     const stage = await staging.create(source)
     await registry.register(managedRunId, stage)

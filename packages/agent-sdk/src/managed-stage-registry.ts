@@ -88,6 +88,51 @@ export interface ManagedStageRecoveryResult {
   journalDigest?: `sha256:${string}`
 }
 
+export interface ManagedStageStorageLimits {
+  readonly maxTempParentEntries: number
+  readonly maxRegistryRecords: number
+  readonly maxStageRoots: number
+  readonly maxStageTreeEntries: number
+  readonly maxStageBytes: number
+}
+
+export interface ManagedStageStorageInventory {
+  readonly schemaVersion: 1
+  readonly kind: "gaep-managed-stage-storage-inventory-v1"
+  readonly status: "within-limits" | "attention-required"
+  readonly limits: ManagedStageStorageLimits
+  readonly totals: {
+    readonly registryRecords: number
+    readonly stageRoots: number
+    readonly registeredStageRoots: number
+    readonly unregisteredStageRoots: number
+    readonly liveOwnedStageRoots: number
+    readonly treeEntries: number
+    readonly bytes: number
+  }
+  readonly records: readonly {
+    readonly managedRunId: string
+    readonly state: ManagedStageRegistryState
+    readonly stageTempRoot: string
+    readonly stagePresent: boolean
+    readonly owner: "live" | "dead" | "unowned"
+    readonly updatedAt: string
+  }[]
+  readonly unregisteredStageRoots: readonly string[]
+  readonly incompleteRegistryEntries: readonly string[]
+}
+
+export interface ManagedStageStorageScavengeResult {
+  readonly schemaVersion: 1
+  readonly kind: "gaep-managed-stage-storage-scavenge-v1"
+  readonly recovered: readonly {
+    readonly managedRunId: string
+    readonly result: ManagedStageRecoveryResult["status"] | "discard-completed" | "disposal-completed"
+  }[]
+  readonly deferredLiveManagedRunIds: readonly string[]
+  readonly inventory: ManagedStageStorageInventory
+}
+
 export interface ManagedStageReviewManifest {
   readonly schemaVersion: 1
   readonly kind: "gaep-managed-stage-review-manifest-v1"
@@ -133,6 +178,7 @@ export type ManagedStageRecoveryReason =
   | "stage-active"
   | "lock-timeout"
   | "quarantine-limit"
+  | "stage-storage-limit"
   | "source-residue-conflict"
 
 export class ManagedStageRecoveryError extends Error {
@@ -165,6 +211,15 @@ const maximumPathMetadataBytes = 1 * 1024 * 1024
 const maximumStageTreeEntries = maximumWorkspaceEntries + 1
 const maximumQuarantineTreeEntries = maximumWorkspaceEntries + 4
 const maximumQuarantineBytes = maximumWorkspaceBytes + (2 * maximumJournalBytes)
+const defaultStageStorageLimits: ManagedStageStorageLimits = Object.freeze({
+  maxTempParentEntries: 10_000,
+  maxRegistryRecords: 2_000,
+  maxStageRoots: 64,
+  maxStageTreeEntries: 200_000,
+  maxStageBytes: 2 * 1024 * 1024 * 1024,
+})
+const registryRecordPattern = /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.json$/i
+const registryTemporaryPattern = /^\.[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tmp$/i
 const durableJournalTemporaryPattern = /^\.gaep-durable-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
 const defaultLockWaitMs = 15_000
 const defaultStaleLockMs = 5_000
@@ -173,6 +228,8 @@ export interface ManagedStageRegistryOptions {
   lockWaitMs?: number
   staleLockMs?: number
   isProcessAlive?: (pid: number) => boolean
+  /** @internal Tests may narrow, but never raise, the immutable aggregate storage ceilings. */
+  stageStorageLimits?: Partial<ManagedStageStorageLimits>
   /** @internal Allows the platform boundary to be exercised without mutating process globals. */
   hostPlatform?: "posix" | "windows"
   /** @internal Deterministic crash/fault injection for quarantine disposal tests. */
@@ -826,6 +883,7 @@ export class ManagedStageRegistry {
   private readonly lockWaitMs: number
   private readonly staleLockMs: number
   private readonly isProcessAlive: (pid: number) => boolean
+  private readonly stageStorageLimits: ManagedStageStorageLimits
   private readonly beforeDisposalStep?: ManagedStageRegistryOptions["beforeDisposalStep"]
   private readonly afterQuarantineMove?: ManagedStageRegistryOptions["afterQuarantineMove"]
   private readonly afterRunLockCreate?: ManagedStageRegistryOptions["afterRunLockCreate"]
@@ -888,6 +946,10 @@ export class ManagedStageRegistry {
     }
     this.lockWaitMs = options.lockWaitMs ?? defaultLockWaitMs
     this.staleLockMs = options.staleLockMs ?? defaultStaleLockMs
+    this.stageStorageLimits = Object.freeze({
+      ...defaultStageStorageLimits,
+      ...options.stageStorageLimits,
+    })
     this.beforeDisposalStep = options.beforeDisposalStep
     this.afterQuarantineMove = options.afterQuarantineMove
     this.afterRunLockCreate = options.afterRunLockCreate
@@ -896,6 +958,12 @@ export class ManagedStageRegistry {
     if (!Number.isSafeInteger(this.lockWaitMs) || this.lockWaitMs < 1 ||
         !Number.isSafeInteger(this.staleLockMs) || this.staleLockMs < 1) {
       throw new Error("Managed stage registry lock timing is invalid")
+    }
+    for (const [key, value] of Object.entries(this.stageStorageLimits)) {
+      const hardMaximum = defaultStageStorageLimits[key as keyof ManagedStageStorageLimits]
+      if (!Number.isSafeInteger(value) || value < 1 || value > hardMaximum) {
+        throw new Error(`${key} must be a positive safe integer no greater than its immutable stage-storage maximum`)
+      }
     }
     this.isProcessAlive = options.isProcessAlive ?? ((pid) => {
       try {
@@ -1323,6 +1391,182 @@ export class ManagedStageRegistry {
   ): Promise<ManagedStageRecoveryResult> {
     this.assertRunId(managedRunId)
     return this.withRunLock(managedRunId, () => this.recoverLocked(managedRunId, options.preserveReview === true))
+  }
+
+  /**
+   * Produces a bounded, identity-checked inventory of every GAEP stage root in
+   * this registry's temporary parent. Unknown roots are reported but never
+   * treated as safe deletion targets.
+   */
+  async inspectStageStorage(): Promise<ManagedStageStorageInventory> {
+    const records = await this.listRegistryRecords()
+    const recordsByStagePath = new Map<string, ManagedStageRegistryRecord>()
+    const ownersByManagedRunId = new Map<string, "live" | "dead" | "unowned">()
+    for (const record of records) {
+      if (recordsByStagePath.has(record.stageTempRoot)) {
+        throw new Error("Managed stage registry records bind the same stage root more than once")
+      }
+      recordsByStagePath.set(record.stageTempRoot, record)
+      ownersByManagedRunId.set(
+        record.managedRunId,
+        record.ownerLease ? (this.isProcessAlive(record.ownerLease.pid) ? "live" : "dead") : "unowned",
+      )
+    }
+
+    const parentIdentity = await this.assertSafeTempParent()
+    let parentEntries: Dirent[]
+    try {
+      parentEntries = await this.readBoundedDirectory(
+        this.tempParent,
+        this.stageStorageLimits.maxTempParentEntries,
+        "Managed stage temporary parent",
+      )
+    } catch (error) {
+      if (error instanceof Error && /inventory exceeds its bound/.test(error.message)) {
+        throw new ManagedStageRecoveryError(
+          "stage-storage-limit",
+          "Managed stage temporary-parent inventory exceeds its immutable bound",
+        )
+      }
+      throw error
+    }
+    const stageEntries = parentEntries
+      .filter((entry) => stageDirectoryPattern.test(entry.name))
+      .sort((left, right) => left.name.localeCompare(right.name))
+    if (stageEntries.length > this.stageStorageLimits.maxStageRoots) {
+      throw new ManagedStageRecoveryError(
+        "stage-storage-limit",
+        "Managed stage root count exceeds its immutable aggregate bound",
+      )
+    }
+
+    const observedStagePaths = new Set<string>()
+    const unregisteredStageRoots: string[] = []
+    let treeEntries = 0
+    let bytes = 0
+    let registeredStageRoots = 0
+    let liveOwnedStageRoots = 0
+    for (const entry of stageEntries) {
+      const stagePath = join(this.tempParent, entry.name)
+      if (!entry.isDirectory() || entry.isSymbolicLink()) {
+        throw new Error("Managed stage temporary parent contains an unsafe stage entry")
+      }
+      const record = recordsByStagePath.get(stagePath)
+      if (record) {
+        await this.assertStageRoot(stagePath, record.stageIdentity)
+        await this.assertPrivateDirectory(
+          join(stagePath, "workspace"),
+          "Managed workspace stage",
+          0o700,
+          record.stageWorkspaceIdentity,
+        )
+        registeredStageRoots += 1
+        if (ownersByManagedRunId.get(record.managedRunId) === "live") liveOwnedStageRoots += 1
+      } else {
+        await this.assertStageRoot(stagePath)
+        unregisteredStageRoots.push(stagePath)
+      }
+      observedStagePaths.add(stagePath)
+      const remainingEntries = this.stageStorageLimits.maxStageTreeEntries - treeEntries
+      const remainingBytes = this.stageStorageLimits.maxStageBytes - bytes
+      if (remainingEntries < 1 || remainingBytes < 1) {
+        throw new ManagedStageRecoveryError(
+          "stage-storage-limit",
+          "Managed stage storage aggregate limit is reached",
+        )
+      }
+      try {
+        const tree = await this.inspectBoundedPrivateTree(stagePath, remainingEntries, remainingBytes)
+        treeEntries += tree.entries
+        bytes += tree.bytes
+      } catch (error) {
+        if ((error instanceof ManagedStageRecoveryError && error.reasonCode === "quarantine-limit") ||
+            (error instanceof Error && /inventory exceeds its bound/.test(error.message))) {
+          throw new ManagedStageRecoveryError(
+            "stage-storage-limit",
+            "Managed stage storage exceeds its immutable aggregate entry or byte bound",
+          )
+        }
+        throw error
+      }
+    }
+    await this.assertSafeTempParent(parentIdentity)
+
+    const incompleteRegistryEntries = await this.listIncompleteRegistryEntries()
+    const inventoryRecords = records.map((record) => {
+      const owner = ownersByManagedRunId.get(record.managedRunId)!
+      return {
+        managedRunId: record.managedRunId,
+        state: record.state,
+        stageTempRoot: record.stageTempRoot,
+        stagePresent: observedStagePaths.has(record.stageTempRoot),
+        owner,
+        updatedAt: record.updatedAt,
+      } as const
+    })
+    const needsAttention = unregisteredStageRoots.length > 0 || incompleteRegistryEntries.length > 0 ||
+      inventoryRecords.some((record) => record.stagePresent && record.owner !== "live")
+    return deepFreeze({
+      schemaVersion: 1,
+      kind: "gaep-managed-stage-storage-inventory-v1",
+      status: needsAttention ? "attention-required" : "within-limits",
+      limits: { ...this.stageStorageLimits },
+      totals: {
+        registryRecords: records.length,
+        stageRoots: stageEntries.length,
+        registeredStageRoots,
+        unregisteredStageRoots: unregisteredStageRoots.length,
+        liveOwnedStageRoots,
+        treeEntries,
+        bytes,
+      },
+      records: inventoryRecords,
+      unregisteredStageRoots,
+      incompleteRegistryEntries,
+    })
+  }
+
+  /**
+   * Resumes only durably registered abandoned work. Review material is
+   * preserved for an exact future claimant; unregistered roots are inventory
+   * findings and are never deleted by this method.
+   */
+  async scavengeOrphanStages(): Promise<ManagedStageStorageScavengeResult> {
+    const records = await this.listRegistryRecords()
+    const recovered: Array<ManagedStageStorageScavengeResult["recovered"][number]> = []
+    const deferredLiveManagedRunIds: string[] = []
+    for (const initialRecord of records) {
+      if (initialRecord.ownerLease && this.isProcessAlive(initialRecord.ownerLease.pid)) {
+        deferredLiveManagedRunIds.push(initialRecord.managedRunId)
+        continue
+      }
+      try {
+        if (["staging", "review-required", "applying", "journal-retained", "recovering"].includes(initialRecord.state)) {
+          const result = await this.recover(initialRecord.managedRunId, { preserveReview: true })
+          recovered.push({ managedRunId: initialRecord.managedRunId, result: result.status })
+        } else if (initialRecord.state === "discarding") {
+          await this.discardReview(initialRecord.managedRunId)
+          await this.completeDiscard(initialRecord.managedRunId)
+          recovered.push({ managedRunId: initialRecord.managedRunId, result: "discard-completed" })
+        } else if (initialRecord.state === "disposing") {
+          await this.disposeQuarantine(initialRecord.managedRunId)
+          recovered.push({ managedRunId: initialRecord.managedRunId, result: "disposal-completed" })
+        }
+      } catch (error) {
+        if (error instanceof ManagedStageRecoveryError && error.reasonCode === "stage-active") {
+          deferredLiveManagedRunIds.push(initialRecord.managedRunId)
+          continue
+        }
+        throw error
+      }
+    }
+    return deepFreeze({
+      schemaVersion: 1,
+      kind: "gaep-managed-stage-storage-scavenge-v1",
+      recovered,
+      deferredLiveManagedRunIds: [...new Set(deferredLiveManagedRunIds)].sort(),
+      inventory: await this.inspectStageStorage(),
+    })
   }
 
   async disposeQuarantine(managedRunId: string): Promise<void> {
@@ -2823,6 +3067,113 @@ export class ManagedStageRegistry {
       if (!isNoEntry(error)) throw error
     }
     await this.syncDirectory(this.tempParent, parentIdentity, "Managed stage temporary parent")
+  }
+
+  private async inspectRegistryInventoryEntries(): Promise<{
+    recordIds: string[]
+    incompleteEntries: string[]
+  }> {
+    const registryIdentity = await this.ensureSafeRegistryRoot()
+    let entries: Dirent[]
+    try {
+      entries = await this.readBoundedDirectory(
+        this.root,
+        this.stageStorageLimits.maxRegistryRecords + 256 + 4,
+        "Managed stage registry root",
+      )
+    } catch (error) {
+      if (error instanceof Error && /inventory exceeds its bound/.test(error.message)) {
+        throw new ManagedStageRecoveryError(
+          "stage-storage-limit",
+          "Managed stage registry inventory exceeds its immutable bound",
+        )
+      }
+      throw error
+    }
+    const recordIds: string[] = []
+    const incompleteEntries: string[] = []
+    const knownRoots = new Map([
+      ["locks", "Managed stage registry lock root"],
+      ["manifests", "Managed stage manifest root"],
+      ["quarantine", "Managed stage quarantine root"],
+      ["tombstones", "Managed stage tombstone root"],
+    ])
+    for (const entry of entries) {
+      const knownLabel = knownRoots.get(entry.name)
+      if (knownLabel) {
+        if (!entry.isDirectory() || entry.isSymbolicLink()) {
+          throw new Error(`${knownLabel} is unsafe`)
+        }
+        await this.assertPrivateDirectory(join(this.root, entry.name), knownLabel, 0o700)
+        continue
+      }
+      const recordMatch = registryRecordPattern.exec(entry.name)
+      if (recordMatch) {
+        if (!entry.isFile() || entry.isSymbolicLink()) {
+          throw new Error("Managed stage registry record inventory contains an unsafe entry")
+        }
+        recordIds.push(recordMatch[1]!)
+        continue
+      }
+      if (registryTemporaryPattern.test(entry.name)) {
+        if (!entry.isFile() || entry.isSymbolicLink()) {
+          throw new Error("Managed stage registry temporary inventory contains an unsafe entry")
+        }
+        const temporaryPath = join(this.root, entry.name)
+        try {
+          const metadata = await lstat(temporaryPath, { bigint: true })
+          this.assertOwnedPrivateMetadata(
+            metadata,
+            "Managed stage registry incomplete temporary",
+            "file",
+            0o600,
+            true,
+          )
+          if (metadata.size > BigInt(maximumRecordBytes) || await realpath(temporaryPath) !== temporaryPath) {
+            throw new Error("Managed stage registry incomplete temporary is unsafe or oversized")
+          }
+        } catch (error) {
+          if (isNoEntry(error)) continue
+          throw error
+        }
+        incompleteEntries.push(entry.name)
+        continue
+      }
+      throw new Error(`Managed stage registry root contains unexpected entry ${entry.name}`)
+    }
+    if (recordIds.length > this.stageStorageLimits.maxRegistryRecords) {
+      throw new ManagedStageRecoveryError(
+        "stage-storage-limit",
+        "Managed stage registry record count exceeds its immutable bound",
+      )
+    }
+    if (new Set(recordIds.map((managedRunId) => managedRunId.toLowerCase())).size !== recordIds.length) {
+      throw new Error("Managed stage registry record inventory contains duplicate identities")
+    }
+    await this.assertSafeRegistryRoot(registryIdentity)
+    return {
+      recordIds: recordIds.sort(),
+      incompleteEntries: incompleteEntries.sort(),
+    }
+  }
+
+  private async listRegistryRecords(): Promise<ManagedStageRegistryRecord[]> {
+    const { recordIds } = await this.inspectRegistryInventoryEntries()
+    const records: ManagedStageRegistryRecord[] = []
+    const readConcurrency = 32
+    for (let offset = 0; offset < recordIds.length; offset += readConcurrency) {
+      const batch = await Promise.all(
+        recordIds.slice(offset, offset + readConcurrency).map((managedRunId) => this.read(managedRunId)),
+      )
+      for (const snapshot of batch) {
+        if (snapshot) records.push(snapshot.record)
+      }
+    }
+    return records.sort((left, right) => left.managedRunId.localeCompare(right.managedRunId))
+  }
+
+  private async listIncompleteRegistryEntries(): Promise<string[]> {
+    return (await this.inspectRegistryInventoryEntries()).incompleteEntries
   }
 
   private async ensureSafeRegistryRoot(): Promise<FileIdentity> {
