@@ -138,8 +138,8 @@
       "runtimeEvidence": {
         "source": "package-report",
         "level": "cross-platform-compile-and-controller-only",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-98-protocol-controller-checks-windows-container-install-pending"],
-        "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-124-protocol-controller-checks-windows-container-install-pending"],
+        "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "interactive later-page Managed Run evidence navigation", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["await using var client = new EngineClient(workspace)"] }] },
@@ -161,7 +161,13 @@
           { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseManagedReadOnlyPreviewResponse(", "preview.PreviewDigest != CanonicalDigest(body)", "ParseManagedReadOnlyReceiptResponse("] }
         ] },
         { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
-        { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "The Remote UI renders bounded managed preview and receipt documents but has no complete Run and evidence dashboard." }
+        { "capabilityId": "evidence-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["List Managed Run evidence", "Read Managed Run evidence", "ListManagedEvidenceCommand", "ReadManagedEvidenceCommand"] },
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["ListManagedEvidenceCommand = new AsyncCommand", "ReadManagedEvidenceCommand = new AsyncCommand", "cannot start, resume, cancel, apply, discard, approve"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["ListManagedEvidenceAsync(CancellationToken", "ReadManagedEvidenceAsync(", "this audit-gated observation cannot start, resume, cancel, apply, discard, approve"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ListManagedEvidenceAsync(", "ReadManagedEvidenceAsync(", "managed.evidence.list", "managed.evidence.read"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseManagedRunSummaryPageResponse(", "ParseManagedEvidenceDetailResponse(", "hasResult != hasEvidence"] }
+        ] }
       ]
     }
   ],
