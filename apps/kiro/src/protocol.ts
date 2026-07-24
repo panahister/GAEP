@@ -18,6 +18,9 @@ const nonEscalation = "not-gaep-approval-design-baseline-implementation-or-relea
 const summaryPrivacyBoundary = "Validated metadata only; no bundle root, artifact path, token value, source bytes, credentials, OAuth state, or external-account state."
 const pageGovernanceBoundary = "Every item remains pending human review; source review is an upstream claim only."
 const pagePrivacyBoundary = "Items contain validated metadata and digests only; local paths and source content are omitted."
+const managedInventoryBoundary = "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority"
+const managedEvidenceBoundary = "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority"
+const managedEvidencePrivacyBoundary = "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted."
 const actorIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:@+-]*$/u
 const toolPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u
 const digestPattern = /^sha256:[0-9a-f]{64}$/u
@@ -259,6 +262,109 @@ export interface ManagedReadOnlyReceipt {
   readonly authorityBoundary: "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority"
 }
 
+export type ManagedRunState =
+  | "prepared" | "running" | "review-required" | "applying" | "completed" | "failed"
+  | "cancelled" | "timed-out" | "unknown" | "conflict" | "discarded"
+
+export interface ManagedRunSummary {
+  readonly schemaVersion: 1
+  readonly kind: "managed-run-summary"
+  readonly managedRunId: string
+  readonly runId: string
+  readonly productId: string
+  readonly initiativeId: string
+  readonly mode: "codex-staged" | "manual-offline" | "claude-context-only"
+  readonly state: ManagedRunState
+  readonly adapterId: string
+  readonly agentId: string
+  readonly modelId: string
+  readonly attemptNumber: number
+  readonly recoveryStatus: "not-required" | "required" | "recovered" | "resume-unavailable"
+  readonly workflowCheckpointCount: number
+  readonly hasResult: boolean
+  readonly hasApplyDecision: boolean
+  readonly bindingsDigest: string
+  readonly resultDigest?: string
+  readonly applyDecisionDigest?: string
+  readonly createdAt: string
+  readonly startedAt?: string
+  readonly updatedAt: string
+  readonly endedAt?: string
+  readonly authorityBoundary: "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority"
+}
+
+export interface ManagedRunSummaryPage {
+  readonly schemaVersion: 1
+  readonly kind: "managed-run-summary-page"
+  readonly items: readonly ManagedRunSummary[]
+  readonly offset: number
+  readonly limit: number
+  readonly total: number
+  readonly omittedCount: number
+  readonly snapshotDigest: string
+  readonly hasMore: boolean
+  readonly authorityBoundary: ManagedRunSummary["authorityBoundary"]
+  readonly privacyBoundary: string
+}
+
+export interface ManagedEvidenceDetail {
+  readonly schemaVersion: 1
+  readonly kind: "managed-evidence-detail"
+  readonly summary: ManagedRunSummary
+  readonly artifactStatus: "record-only" | "verified-result-and-evidence"
+  readonly result?: {
+    readonly resultId: string
+    readonly resultDigest: string
+    readonly providerDisposition: "completed" | "failed" | "cancelled" | "interrupted" | "crashed" | "protocol-error" | "unknown"
+    readonly terminationCause: "normal" | "cancel-request" | "timeout" | "provider-failure" | "process-loss" | "protocol-error"
+    readonly outcomeStatus: "satisfied" | "failed" | "not-assessed" | "indeterminate"
+    readonly outcomeBasis: "postcondition-evaluator" | "deterministic-offline-runtime" | "not-evaluated" | "provider-failure"
+    readonly terminalState: Exclude<ManagedRunState, "prepared" | "running" | "applying">
+    readonly evidenceId: string
+    readonly evidenceDigest: string
+    readonly warningCodes: readonly string[]
+    readonly startedAt: string
+    readonly endedAt: string
+  }
+  readonly evidence?: {
+    readonly evidenceId: string
+    readonly evidenceDigest: string
+    readonly eventCount: number
+    readonly eventTypeCounts: Readonly<Record<"lifecycle" | "output" | "item" | "approval" | "warning" | "error", number>>
+    readonly eventsDigest: string
+    readonly workflowStrategy: "sequential" | "parallel-readonly"
+    readonly workflowStepCount: number
+    readonly workflowAttemptCount: number
+    readonly completedStepCount: number
+    readonly charterEvidenceStatus: "satisfied" | "failed" | "not-assessed"
+    readonly charterStopStatus: "satisfied" | "failed" | "not-assessed"
+    readonly terminalReasonCode: string
+    readonly staging?: {
+      readonly changeCount: number
+      readonly excludedPathCount: number
+      readonly applyState: "pending" | "applied" | "conflict" | "discarded" | "not-applied"
+      readonly baselineDigest: string
+      readonly finalDigest: string
+      readonly changedInventoryDigest: string
+      readonly excludedPathSetDigest: string
+    }
+    readonly actualEffectCounts: Readonly<Record<"not-observed" | "observed-provisional" | "applied" | "blocked" | "unknown", number>>
+    readonly capturedAt: string
+  }
+  readonly applyDecision?: {
+    readonly receiptId: string
+    readonly receiptDigest: string
+    readonly managedRunRevision: number
+    readonly changedInventoryCount: number
+    readonly writeEnvelopeCount: number
+    readonly changedInventoryDigest: string
+    readonly writeEnvelopeDigest: string
+    readonly decidedAt: string
+  }
+  readonly authorityBoundary: "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority"
+  readonly privacyBoundary: string
+}
+
 export interface AgentReadinessSnapshot {
   readonly schemaVersion: 1
   readonly adapterId: string
@@ -366,6 +472,22 @@ const stableHostErrors = new Map<string, StableHostError>([
   ["MANAGED_READ_ONLY_RECEIPT_INVALID", {
     code: -32_023,
     message: "GAEP could not verify the managed read-only terminal evidence.",
+  }],
+  ["MANAGED_EVIDENCE_AUDIT_INVALID", {
+    code: -32_024,
+    message: "Managed Run evidence is unavailable because the governed audit chain is invalid.",
+  }],
+  ["MANAGED_EVIDENCE_SNAPSHOT_CHANGED", {
+    code: -32_025,
+    message: "Managed Run inventory changed during pagination; reload the first page.",
+  }],
+  ["MANAGED_EVIDENCE_INVENTORY_INVALID", {
+    code: -32_026,
+    message: "GAEP could not verify the bounded Managed Run inventory.",
+  }],
+  ["MANAGED_EVIDENCE_DETAIL_INVALID", {
+    code: -32_027,
+    message: "GAEP could not verify the exact Managed Run evidence detail.",
   }],
   ["INVALID_PARAMS", {
     code: -32_602,
@@ -767,6 +889,301 @@ export function parseManagedReadOnlyReceipt(result: unknown, preview: ManagedRea
     endedAt,
     authorityBoundary: "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
   })
+}
+
+export function parseManagedRunSummaryPage(
+  result: unknown,
+  expected: { readonly offset: number; readonly limit: number; readonly snapshotDigest?: string },
+): ManagedRunSummaryPage {
+  const page = requireRecord(result)
+  requireExactKeys(page, [
+    "schemaVersion", "kind", "items", "offset", "limit", "total", "omittedCount", "snapshotDigest", "hasMore",
+    "authorityBoundary", "privacyBoundary",
+  ])
+  if (requireSafeInteger(page, "schemaVersion") !== 1 || requireString(page, "kind") !== "managed-run-summary-page" ||
+    requireString(page, "authorityBoundary") !== managedInventoryBoundary ||
+    requireString(page, "privacyBoundary") !== managedEvidencePrivacyBoundary) throw invalidHostResponse()
+  const offset = nonNegativeInteger(page, "offset", 2_000)
+  const limit = nonNegativeInteger(page, "limit", 200)
+  const total = nonNegativeInteger(page, "total", 2_000)
+  const omittedCount = nonNegativeInteger(page, "omittedCount", 2_000)
+  if (limit < 1 || offset !== expected.offset || limit !== expected.limit || !Array.isArray(page.items) ||
+    page.items.length > limit || offset + page.items.length > total || omittedCount !== total - page.items.length) {
+    throw invalidHostResponse()
+  }
+  const items = Object.freeze(page.items.map(parseManagedRunSummary))
+  if (new Set(items.map((item) => item.managedRunId)).size !== items.length) throw invalidHostResponse()
+  const snapshotDigest = requireDigest(page, "snapshotDigest")
+  if (expected.snapshotDigest && snapshotDigest !== expected.snapshotDigest) throw invalidHostResponse()
+  const hasMore = requireBoolean(page, "hasMore")
+  if (hasMore !== (offset + items.length < total)) throw invalidHostResponse()
+  return Object.freeze({
+    schemaVersion: 1,
+    kind: "managed-run-summary-page",
+    items,
+    offset,
+    limit,
+    total,
+    omittedCount,
+    snapshotDigest,
+    hasMore,
+    authorityBoundary: managedInventoryBoundary,
+    privacyBoundary: managedEvidencePrivacyBoundary,
+  })
+}
+
+export function parseManagedEvidenceDetail(result: unknown, expectedManagedRunId: string): ManagedEvidenceDetail {
+  const detail = requireRecord(result)
+  requireKeys(
+    detail,
+    ["schemaVersion", "kind", "summary", "artifactStatus", "authorityBoundary", "privacyBoundary"],
+    ["result", "evidence", "applyDecision"],
+  )
+  if (requireSafeInteger(detail, "schemaVersion") !== 1 || requireString(detail, "kind") !== "managed-evidence-detail" ||
+    requireString(detail, "authorityBoundary") !== managedEvidenceBoundary ||
+    requireString(detail, "privacyBoundary") !== managedEvidencePrivacyBoundary) throw invalidHostResponse()
+  const summary = parseManagedRunSummary(detail.summary)
+  if (summary.managedRunId !== normalizeUuid(expectedManagedRunId, "Managed Run ID")) throw invalidHostResponse()
+  const artifactStatus = requireEnum(detail, "artifactStatus", ["record-only", "verified-result-and-evidence"] as const)
+  const hasResult = Object.hasOwn(detail, "result")
+  const hasEvidence = Object.hasOwn(detail, "evidence")
+  const hasApplyDecision = Object.hasOwn(detail, "applyDecision")
+  if (hasResult !== hasEvidence || hasResult !== summary.hasResult || hasApplyDecision !== summary.hasApplyDecision ||
+    (artifactStatus === "record-only") !== !hasResult) throw invalidHostResponse()
+  const parsedResult = hasResult ? parseManagedEvidenceResult(detail.result, summary) : undefined
+  const evidence = hasEvidence ? parseManagedEvidenceProjection(detail.evidence, parsedResult!) : undefined
+  const applyDecision = hasApplyDecision ? parseManagedApplyDecisionProjection(detail.applyDecision, summary) : undefined
+  return Object.freeze({
+    schemaVersion: 1,
+    kind: "managed-evidence-detail",
+    summary,
+    artifactStatus,
+    ...(parsedResult ? { result: parsedResult } : {}),
+    ...(evidence ? { evidence } : {}),
+    ...(applyDecision ? { applyDecision } : {}),
+    authorityBoundary: managedEvidenceBoundary,
+    privacyBoundary: managedEvidencePrivacyBoundary,
+  })
+}
+
+function parseManagedRunSummary(value: unknown): ManagedRunSummary {
+  const summary = requireRecord(value)
+  requireKeys(summary, [
+    "schemaVersion", "kind", "managedRunId", "runId", "productId", "initiativeId", "mode", "state", "adapterId",
+    "agentId", "modelId", "attemptNumber", "recoveryStatus", "workflowCheckpointCount", "hasResult",
+    "hasApplyDecision", "bindingsDigest", "createdAt", "updatedAt", "authorityBoundary",
+  ], ["resultDigest", "applyDecisionDigest", "startedAt", "endedAt"])
+  if (requireSafeInteger(summary, "schemaVersion") !== 1 || requireString(summary, "kind") !== "managed-run-summary" ||
+    requireString(summary, "authorityBoundary") !== managedInventoryBoundary) throw invalidHostResponse()
+  const state = requireEnum(summary, "state", [
+    "prepared", "running", "review-required", "applying", "completed", "failed", "cancelled", "timed-out", "unknown",
+    "conflict", "discarded",
+  ] as const)
+  const hasResult = requireBoolean(summary, "hasResult")
+  const hasApplyDecision = requireBoolean(summary, "hasApplyDecision")
+  const resultDigest = Object.hasOwn(summary, "resultDigest") ? requireDigest(summary, "resultDigest") : undefined
+  const applyDecisionDigest = Object.hasOwn(summary, "applyDecisionDigest")
+    ? requireDigest(summary, "applyDecisionDigest")
+    : undefined
+  if (hasResult !== (resultDigest !== undefined) || hasApplyDecision !== (applyDecisionDigest !== undefined)) {
+    throw invalidHostResponse()
+  }
+  const createdAt = requireTimestamp(summary, "createdAt")
+  const startedAt = Object.hasOwn(summary, "startedAt") ? requireTimestamp(summary, "startedAt") : undefined
+  const updatedAt = requireTimestamp(summary, "updatedAt")
+  const endedAt = Object.hasOwn(summary, "endedAt") ? requireTimestamp(summary, "endedAt") : undefined
+  const terminal = ["completed", "failed", "cancelled", "timed-out", "unknown", "conflict", "discarded"].includes(state)
+  if (terminal !== (endedAt !== undefined) || Date.parse(updatedAt) < Date.parse(createdAt) ||
+    (startedAt !== undefined && Date.parse(startedAt) < Date.parse(createdAt)) ||
+    (endedAt !== undefined && startedAt !== undefined && Date.parse(endedAt) < Date.parse(startedAt))) {
+    throw invalidHostResponse()
+  }
+  const attemptNumber = requireSafeInteger(summary, "attemptNumber")
+  if (attemptNumber < 1 || attemptNumber > 1_000_000) throw invalidHostResponse()
+  return Object.freeze({
+    schemaVersion: 1,
+    kind: "managed-run-summary",
+    managedRunId: normalizeUuid(requireString(summary, "managedRunId"), "Managed Run ID"),
+    runId: normalizeUuid(requireString(summary, "runId"), "Run ID"),
+    productId: normalizeUuid(requireString(summary, "productId"), "Product ID"),
+    initiativeId: normalizeUuid(requireString(summary, "initiativeId"), "Initiative ID"),
+    mode: requireEnum(summary, "mode", ["codex-staged", "manual-offline", "claude-context-only"] as const),
+    state,
+    adapterId: requirePortableText(summary, "adapterId", 1),
+    agentId: requirePortableText(summary, "agentId", 1),
+    modelId: requirePortableText(summary, "modelId", 1),
+    attemptNumber,
+    recoveryStatus: requireEnum(summary, "recoveryStatus", [
+      "not-required", "required", "recovered", "resume-unavailable",
+    ] as const),
+    workflowCheckpointCount: nonNegativeInteger(summary, "workflowCheckpointCount", 511),
+    hasResult,
+    hasApplyDecision,
+    bindingsDigest: requireDigest(summary, "bindingsDigest"),
+    ...(resultDigest ? { resultDigest } : {}),
+    ...(applyDecisionDigest ? { applyDecisionDigest } : {}),
+    createdAt,
+    ...(startedAt ? { startedAt } : {}),
+    updatedAt,
+    ...(endedAt ? { endedAt } : {}),
+    authorityBoundary: managedInventoryBoundary,
+  })
+}
+
+function parseManagedEvidenceResult(
+  value: unknown,
+  summary: ManagedRunSummary,
+): NonNullable<ManagedEvidenceDetail["result"]> {
+  const result = requireRecord(value)
+  requireExactKeys(result, [
+    "resultId", "resultDigest", "providerDisposition", "terminationCause", "outcomeStatus", "outcomeBasis",
+    "terminalState", "evidenceId", "evidenceDigest", "warningCodes", "startedAt", "endedAt",
+  ])
+  const terminalState = requireEnum(result, "terminalState", [
+    "review-required", "completed", "failed", "cancelled", "timed-out", "unknown", "conflict", "discarded",
+  ] as const)
+  const providerDisposition = requireEnum(result, "providerDisposition", [
+    "completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown",
+  ] as const)
+  const outcomeStatus = requireEnum(result, "outcomeStatus", ["satisfied", "failed", "not-assessed", "indeterminate"] as const)
+  if (terminalState !== summary.state || requireDigest(result, "resultDigest") !== summary.resultDigest ||
+    (terminalState === "completed" && (providerDisposition !== "completed" || outcomeStatus !== "satisfied"))) {
+    throw invalidHostResponse()
+  }
+  if (!Array.isArray(result.warningCodes) || result.warningCodes.length > 128) throw invalidHostResponse()
+  const warnings = [
+    "provider-warning-redacted", "provider-output-redacted", "coordinator-failure", "runtime-output-truncated",
+    "staging-read-confinement-unattested", "postcondition-evaluator-failed", "local-cleanup-pending",
+    "local-cleanup-failed", "runtime-warning",
+  ] as const
+  const warningCodes = Object.freeze(result.warningCodes.map((warning) => {
+    if (typeof warning !== "string" || !(warnings as readonly string[]).includes(warning)) throw invalidHostResponse()
+    return warning
+  }))
+  const startedAt = requireTimestamp(result, "startedAt")
+  const endedAt = requireTimestamp(result, "endedAt")
+  if (Date.parse(endedAt) < Date.parse(startedAt)) throw invalidHostResponse()
+  return Object.freeze({
+    resultId: normalizeUuid(requireString(result, "resultId"), "Managed Result ID"),
+    resultDigest: summary.resultDigest!,
+    providerDisposition,
+    terminationCause: requireEnum(result, "terminationCause", [
+      "normal", "cancel-request", "timeout", "provider-failure", "process-loss", "protocol-error",
+    ] as const),
+    outcomeStatus,
+    outcomeBasis: requireEnum(result, "outcomeBasis", [
+      "postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure",
+    ] as const),
+    terminalState,
+    evidenceId: normalizeUuid(requireString(result, "evidenceId"), "Managed Evidence ID"),
+    evidenceDigest: requireDigest(result, "evidenceDigest"),
+    warningCodes,
+    startedAt,
+    endedAt,
+  })
+}
+
+function parseManagedEvidenceProjection(
+  value: unknown,
+  result: NonNullable<ManagedEvidenceDetail["result"]>,
+): NonNullable<ManagedEvidenceDetail["evidence"]> {
+  const evidence = requireRecord(value)
+  requireKeys(evidence, [
+    "evidenceId", "evidenceDigest", "eventCount", "eventTypeCounts", "eventsDigest", "workflowStrategy",
+    "workflowStepCount", "workflowAttemptCount", "completedStepCount", "charterEvidenceStatus", "charterStopStatus",
+    "terminalReasonCode", "actualEffectCounts", "capturedAt",
+  ], ["staging"])
+  const eventCount = nonNegativeInteger(evidence, "eventCount", 4_096)
+  const eventTypeCounts = parseExactCountRecord(
+    evidence.eventTypeCounts,
+    ["lifecycle", "output", "item", "approval", "warning", "error"] as const,
+    4_096,
+  )
+  if (Object.values(eventTypeCounts).reduce((sum, count) => sum + count, 0) !== eventCount) throw invalidHostResponse()
+  const workflowStepCount = nonNegativeInteger(evidence, "workflowStepCount", 512)
+  const workflowAttemptCount = nonNegativeInteger(evidence, "workflowAttemptCount", 5_120)
+  const completedStepCount = nonNegativeInteger(evidence, "completedStepCount", 512)
+  if (workflowStepCount < 1 || completedStepCount > workflowStepCount) throw invalidHostResponse()
+  const actualEffectCounts = parseExactCountRecord(
+    evidence.actualEffectCounts,
+    ["not-observed", "observed-provisional", "applied", "blocked", "unknown"] as const,
+    32,
+  )
+  if (Object.values(actualEffectCounts).reduce((sum, count) => sum + count, 0) > 32) throw invalidHostResponse()
+  const staging = Object.hasOwn(evidence, "staging") ? parseManagedStagingProjection(evidence.staging) : undefined
+  const evidenceId = normalizeUuid(requireString(evidence, "evidenceId"), "Managed Evidence ID")
+  const evidenceDigest = requireDigest(evidence, "evidenceDigest")
+  if (evidenceId !== result.evidenceId || evidenceDigest !== result.evidenceDigest) throw invalidHostResponse()
+  return Object.freeze({
+    evidenceId,
+    evidenceDigest,
+    eventCount,
+    eventTypeCounts,
+    eventsDigest: requireDigest(evidence, "eventsDigest"),
+    workflowStrategy: requireEnum(evidence, "workflowStrategy", ["sequential", "parallel-readonly"] as const),
+    workflowStepCount,
+    workflowAttemptCount,
+    completedStepCount,
+    charterEvidenceStatus: requireEnum(evidence, "charterEvidenceStatus", ["satisfied", "failed", "not-assessed"] as const),
+    charterStopStatus: requireEnum(evidence, "charterStopStatus", ["satisfied", "failed", "not-assessed"] as const),
+    terminalReasonCode: portableHandoffText(requireString(evidence, "terminalReasonCode"), 1, 128),
+    ...(staging ? { staging } : {}),
+    actualEffectCounts,
+    capturedAt: requireTimestamp(evidence, "capturedAt"),
+  })
+}
+
+function parseManagedStagingProjection(value: unknown): NonNullable<NonNullable<ManagedEvidenceDetail["evidence"]>["staging"]> {
+  const staging = requireRecord(value)
+  requireExactKeys(staging, [
+    "changeCount", "excludedPathCount", "applyState", "baselineDigest", "finalDigest", "changedInventoryDigest",
+    "excludedPathSetDigest",
+  ])
+  return Object.freeze({
+    changeCount: nonNegativeInteger(staging, "changeCount", 20_000),
+    excludedPathCount: nonNegativeInteger(staging, "excludedPathCount", 20_000),
+    applyState: requireEnum(staging, "applyState", ["pending", "applied", "conflict", "discarded", "not-applied"] as const),
+    baselineDigest: requireDigest(staging, "baselineDigest"),
+    finalDigest: requireDigest(staging, "finalDigest"),
+    changedInventoryDigest: requireDigest(staging, "changedInventoryDigest"),
+    excludedPathSetDigest: requireDigest(staging, "excludedPathSetDigest"),
+  })
+}
+
+function parseManagedApplyDecisionProjection(
+  value: unknown,
+  summary: ManagedRunSummary,
+): NonNullable<ManagedEvidenceDetail["applyDecision"]> {
+  const decision = requireRecord(value)
+  requireExactKeys(decision, [
+    "receiptId", "receiptDigest", "managedRunRevision", "changedInventoryCount", "writeEnvelopeCount",
+    "changedInventoryDigest", "writeEnvelopeDigest", "decidedAt",
+  ])
+  const managedRunRevision = requireSafeInteger(decision, "managedRunRevision")
+  if (managedRunRevision < 1 || requireDigest(decision, "receiptDigest") !== summary.applyDecisionDigest) {
+    throw invalidHostResponse()
+  }
+  return Object.freeze({
+    receiptId: normalizeUuid(requireString(decision, "receiptId"), "Apply Decision ID"),
+    receiptDigest: summary.applyDecisionDigest!,
+    managedRunRevision,
+    changedInventoryCount: nonNegativeInteger(decision, "changedInventoryCount", 20_000),
+    writeEnvelopeCount: nonNegativeInteger(decision, "writeEnvelopeCount", 256),
+    changedInventoryDigest: requireDigest(decision, "changedInventoryDigest"),
+    writeEnvelopeDigest: requireDigest(decision, "writeEnvelopeDigest"),
+    decidedAt: requireTimestamp(decision, "decidedAt"),
+  })
+}
+
+function parseExactCountRecord<const Keys extends readonly string[]>(
+  value: unknown,
+  keys: Keys,
+  maximum: number,
+): Readonly<Record<Keys[number], number>> {
+  const record = requireRecord(value)
+  requireExactKeys(record, keys)
+  return Object.freeze(Object.fromEntries(keys.map((key) => [key, nonNegativeInteger(record, key, maximum)]))) as
+    Readonly<Record<Keys[number], number>>
 }
 
 function parseManagedReadOnlyGate(value: unknown, stepIds: ReadonlySet<string>): ManagedReadOnlyGatePreview {

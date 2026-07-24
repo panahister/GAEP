@@ -29,6 +29,7 @@ import {
   portableDesignSnapshotPageDto,
   type PortableDesignHostRequest,
 } from "./portable-design-rpc.js"
+import { managedEvidenceDetailDto, managedRunPageDto } from "./managed-evidence-rpc.js"
 import { HostRpcError, invalidParamsError, MAX_RPC_FRAME_BYTES, normalizeRpcError } from "./rpc.js"
 
 const PROTOCOL_VERSION = 2
@@ -42,6 +43,8 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "migrateLegacySelection",
   "managed.readonly.preview",
   "managed.readonly.execute",
+  "managed.evidence.list",
+  "managed.evidence.read",
   "productStudio.designReadiness",
   "productStudio.search",
   "productStudio.exportBuild",
@@ -289,6 +292,62 @@ export class EngineHost {
           )
         }
         return receipt
+      }
+      case "managed.evidence.list": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_024,
+            "MANAGED_EVIDENCE_AUDIT_INVALID",
+            "Managed Run evidence is unavailable because the governed audit chain is invalid",
+          )
+        }
+        try {
+          return managedRunPageDto(await this.engine.listManagedRunsPage({
+            offset: request.params.offset,
+            limit: request.params.limit,
+            ...(request.params.snapshotDigest
+              ? { snapshotDigest: request.params.snapshotDigest as `sha256:${string}` }
+              : {}),
+          }))
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("inventory changed during pagination")) {
+            throw new HostRpcError(
+              -32_025,
+              "MANAGED_EVIDENCE_SNAPSHOT_CHANGED",
+              "Managed Run inventory changed during pagination; reload the first page",
+            )
+          }
+          throw new HostRpcError(
+            -32_026,
+            "MANAGED_EVIDENCE_INVENTORY_INVALID",
+            "GAEP could not verify the bounded Managed Run inventory",
+          )
+        }
+      }
+      case "managed.evidence.read": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_024,
+            "MANAGED_EVIDENCE_AUDIT_INVALID",
+            "Managed Run evidence is unavailable because the governed audit chain is invalid",
+          )
+        }
+        try {
+          const record = await this.engine.readManagedRun(request.params.managedRunId)
+          return await managedEvidenceDetailDto(record, {
+            readResult: (id) => this.engine.readManagedRunResult(id),
+            readEvidence: (id) => this.engine.readManagedRunEvidence(id),
+            readApplyDecision: (id) => this.engine.readManagedApplyDecision(id),
+          })
+        } catch {
+          throw new HostRpcError(
+            -32_027,
+            "MANAGED_EVIDENCE_DETAIL_INVALID",
+            "GAEP could not verify the exact Managed Run evidence detail",
+          )
+        }
       }
       case "verifyAudit":
         return this.engine.repository.verifyAudit()

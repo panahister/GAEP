@@ -20,6 +20,8 @@ import {
   parseAgentHandoff,
   parseManagedReadOnlyPreview,
   parseManagedReadOnlyReceipt,
+  parseManagedEvidenceDetail,
+  parseManagedRunSummaryPage,
   parseAgentRuns,
   parseAgentSelection,
   parseAgentSelectionState,
@@ -42,6 +44,8 @@ import {
   type AgentSelectionState,
   type ManagedReadOnlyPreview,
   type ManagedReadOnlyReceipt,
+  type ManagedEvidenceDetail,
+  type ManagedRunSummaryPage,
   type PortableAgentSettingValue,
 } from "./protocol.js"
 
@@ -228,6 +232,44 @@ export class GaepEngineClient {
         confirmation: "attest-exact-managed-readonly-preview",
       })
       return parseManagedReadOnlyReceipt(result, preview)
+    })
+  }
+
+  listManagedEvidence(
+    offset = 0,
+    limit = 100,
+    snapshotDigest?: string,
+  ): Promise<ManagedRunSummaryPage> {
+    return this.enqueue(async () => {
+      if (!Number.isSafeInteger(offset) || offset < 0 || offset > 2_000) {
+        throw new RangeError("Managed Run offset must be between 0 and 2,000")
+      }
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) {
+        throw new RangeError("Managed Run limit must be between 1 and 200")
+      }
+      const normalizedSnapshot = snapshotDigest?.trim().toLowerCase()
+      if (snapshotDigest !== undefined && !/^sha256:[0-9a-f]{64}$/u.test(normalizedSnapshot ?? "")) {
+        throw new TypeError("Managed Run snapshot digest must be SHA-256")
+      }
+      const expected = {
+        offset,
+        limit,
+        ...(normalizedSnapshot ? { snapshotDigest: normalizedSnapshot } : {}),
+      }
+      return parseManagedRunSummaryPage(
+        await this.request("managed.evidence.list", expected),
+        expected,
+      )
+    })
+  }
+
+  readManagedEvidence(managedRunId: string): Promise<ManagedEvidenceDetail> {
+    return this.enqueue(async () => {
+      const normalizedManagedRunId = normalizeUuid(managedRunId, "Managed Run ID")
+      return parseManagedEvidenceDetail(
+        await this.request("managed.evidence.read", { managedRunId: normalizedManagedRunId }),
+        normalizedManagedRunId,
+      )
     })
   }
 

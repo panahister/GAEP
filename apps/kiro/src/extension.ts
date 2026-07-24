@@ -16,6 +16,8 @@ import {
   type AgentSelectionSetting,
   type ManagedReadOnlyPreview,
   type ManagedReadOnlyReceipt,
+  type ManagedEvidenceDetail,
+  type ManagedRunSummaryPage,
   type PortableAgentSettingValue,
   type PortableDesignSnapshotPage,
   type PortableDesignSnapshotSummary,
@@ -29,6 +31,7 @@ const commandIds = {
   selectAgent: "gaepKiro.agents.select",
   handoffAgent: "gaepKiro.agents.handoff",
   managedReadOnly: "gaepKiro.runs.managedReadOnly",
+  evidence: "gaepKiro.runs.evidence",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -90,6 +93,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.selectAgent, () => runUserCommand(() => selectAgent(pool))),
     vscode.commands.registerCommand(commandIds.handoffAgent, () => runUserCommand(() => handoffAgent(pool))),
     vscode.commands.registerCommand(commandIds.managedReadOnly, () => runUserCommand(() => runManagedReadOnly(pool))),
+    vscode.commands.registerCommand(commandIds.evidence, () => runUserCommand(() => showManagedEvidenceDashboard(pool))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -161,6 +165,7 @@ function productStudioHtml(): string {
     <h2>Codex and Claude</h2>
     <p>Use the Kiro Command Palette to observe verified local readiness, record one guarded portable Agent Selection, or create a versioned switch handoff from the latest terminal Run.</p>
     <p>Selection and handoff records are configuration and history only. The separate managed read-only command can run one exact, already-confirmed Charter and Workflow Plan after a digest-bound human attestation. It denies every Tool, write, and non-observation effect, uses a bounded timeout, and withholds success if staged changes appear.</p>
+    <p>The Managed Run evidence command shows an audit-gated, snapshot-bound page of at most 100 runs and one exact verified detail. It displays portable states, counts, digests and timestamps only; it cannot apply, discard, resume, approve, or infer success.</p>
   </section>
   <section>
     <h2>Governance boundary</h2>
@@ -550,6 +555,103 @@ async function showManagedReadOnlyReceipt(receipt: ManagedReadOnlyReceipt): Prom
     "",
     "Boundary: provider completion does not equal governed outcome satisfaction. This receipt grants no Tool, write, effect, approval, implementation-readiness, release-readiness, or future Run authority.",
     "Raw provider output, prompts, context content, executable paths, process state, workspace paths, and credentials are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+}
+
+async function showManagedEvidenceDashboard(pool: EngineClientPool): Promise<ManagedRunSummaryPage> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const page = await client.listManagedEvidence(0, 100)
+  const lines = [
+    "GAEP bounded Managed Run evidence",
+    "",
+    `Snapshot: ${page.snapshotDigest}`,
+    `Displayed: ${page.items.length} of ${page.total}`,
+    `Omitted from this page: ${page.omittedCount}`,
+    `More pages available: ${page.hasMore ? "yes" : "no"}`,
+    "",
+    ...page.items.map((item) => [
+      `${item.managedRunId} · ${item.state} · ${item.mode}`,
+      `  Provider: ${item.adapterId} / ${item.agentId} / ${item.modelId}`,
+      `  Updated: ${item.updatedAt}; recovery=${item.recoveryStatus}; result=${item.hasResult ? "bound" : "not bound"}; apply decision=${item.hasApplyDecision ? "bound" : "not bound"}`,
+    ].join("\n")),
+    "",
+    "Boundary: this audit-gated observation cannot start, resume, cancel, apply, discard, approve, or grant Run, Tool, write, effect, outcome, implementation-readiness, or release authority.",
+    "Raw provider output, prompts, context content, changed paths, source bytes, executable paths, process state, workspace paths, and credentials are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  if (page.items.length === 0) {
+    await vscode.window.showInformationMessage("No Managed Runs exist in the verified bounded inventory.")
+    return page
+  }
+  const selected = await vscode.window.showQuickPick(
+    page.items.map((item) => ({
+      label: `${item.state} · ${item.mode}`,
+      description: item.managedRunId,
+      detail: `${item.agentId} / ${item.modelId} · updated ${item.updatedAt} · ${item.hasResult ? "bound result" : "record only"}`,
+      managedRunId: item.managedRunId,
+    })),
+    {
+      title: `Managed Run evidence (${page.items.length} of ${page.total}; ${page.omittedCount} omitted from this page)`,
+      placeHolder: "Select one exact Managed Run for verified result/evidence detail; dismiss to keep this read-only page",
+      ignoreFocusOut: true,
+    },
+  )
+  if (selected) await showManagedEvidenceDetail(await client.readManagedEvidence(selected.managedRunId))
+  return page
+}
+
+async function showManagedEvidenceDetail(detail: ManagedEvidenceDetail): Promise<void> {
+  const { summary, result, evidence, applyDecision } = detail
+  const lines = [
+    "GAEP exact Managed Run evidence detail",
+    "",
+    `Managed Run: ${summary.managedRunId}`,
+    `Governed Run: ${summary.runId}`,
+    `Product / Initiative: ${summary.productId} / ${summary.initiativeId}`,
+    `State / mode: ${summary.state} / ${summary.mode}`,
+    `Provider: ${summary.adapterId} / ${summary.agentId} / ${summary.modelId}`,
+    `Recovery: ${summary.recoveryStatus}; attempt ${summary.attemptNumber}; checkpoints ${summary.workflowCheckpointCount}`,
+    `Artifact status: ${detail.artifactStatus}`,
+    `Bindings digest: ${summary.bindingsDigest}`,
+    ...(result ? [
+      "",
+      "Verified result:",
+      `  Result: ${result.resultId} (${result.resultDigest})`,
+      `  Terminal state: ${result.terminalState}`,
+      `  Provider disposition: ${result.providerDisposition}; termination cause: ${result.terminationCause}`,
+      `  Governed outcome: ${result.outcomeStatus} (${result.outcomeBasis})`,
+      `  Warnings: ${result.warningCodes.length === 0 ? "none" : result.warningCodes.join(", ")}`,
+      `  Started / ended: ${result.startedAt} / ${result.endedAt}`,
+    ] : ["", "No committed result/evidence pair is bound to this record. No terminal outcome is inferred."]),
+    ...(evidence ? [
+      "",
+      "Verified evidence:",
+      `  Evidence: ${evidence.evidenceId} (${evidence.evidenceDigest})`,
+      `  Events: ${evidence.eventCount}; lifecycle=${evidence.eventTypeCounts.lifecycle}; output=${evidence.eventTypeCounts.output}; item=${evidence.eventTypeCounts.item}; approval=${evidence.eventTypeCounts.approval}; warning=${evidence.eventTypeCounts.warning}; error=${evidence.eventTypeCounts.error}`,
+      `  Workflow: ${evidence.workflowStrategy}; ${evidence.completedStepCount}/${evidence.workflowStepCount} steps; ${evidence.workflowAttemptCount} attempts`,
+      `  Charter gates: evidence=${evidence.charterEvidenceStatus}; stop=${evidence.charterStopStatus}; reason=${evidence.terminalReasonCode}`,
+      `  Actual effects: not-observed=${evidence.actualEffectCounts["not-observed"]}; provisional=${evidence.actualEffectCounts["observed-provisional"]}; applied=${evidence.actualEffectCounts.applied}; blocked=${evidence.actualEffectCounts.blocked}; unknown=${evidence.actualEffectCounts.unknown}`,
+      ...(evidence.staging ? [
+        `  Staging: ${evidence.staging.applyState}; changes=${evidence.staging.changeCount}; excluded=${evidence.staging.excludedPathCount}`,
+        `  Stage digests: baseline=${evidence.staging.baselineDigest}; final=${evidence.staging.finalDigest}; inventory=${evidence.staging.changedInventoryDigest}`,
+      ] : ["  Staging: not present"]),
+      `  Captured: ${evidence.capturedAt}`,
+    ] : []),
+    ...(applyDecision ? [
+      "",
+      "Verified apply-decision evidence (observation only):",
+      `  Receipt: ${applyDecision.receiptId} (${applyDecision.receiptDigest})`,
+      `  Bound revision: ${applyDecision.managedRunRevision}; changed inventory count=${applyDecision.changedInventoryCount}; write-envelope count=${applyDecision.writeEnvelopeCount}`,
+      `  Decided: ${applyDecision.decidedAt}`,
+    ] : []),
+    "",
+    "Boundary: provider completion is separate from governed outcome. Apply-decision evidence records a past exact decision and grants this view no apply, discard, approval, Tool, write, effect, implementation-readiness, release, or future Run authority.",
+    "Raw provider output, prompts, context content, changed paths, source bytes, executable paths, process state, workspace paths, and credentials are withheld.",
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })

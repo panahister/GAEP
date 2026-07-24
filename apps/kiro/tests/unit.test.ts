@@ -12,6 +12,7 @@ const productId = "11111111-1111-4111-8111-111111111111"
 const bundleId = "22222222-2222-4222-8222-222222222222"
 const charterId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 const workflowPlanId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+const managedRunId = "ffffffff-ffff-4fff-8fff-ffffffffffff"
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
 const fakeEngine = resolve(dirname(fileURLToPath(import.meta.url)), "../tests/fake-engine.mjs")
@@ -47,10 +48,16 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badManagedDigestRoot = join(root, "bad-managed-digest")
   const badManagedReceiptRoot = join(root, "bad-managed-receipt")
   const badManagedBindingRoot = join(root, "bad-managed-binding")
+  const badManagedEvidencePageRoot = join(root, "bad-managed-evidence-page")
+  const badManagedEvidenceCountRoot = join(root, "bad-managed-evidence-count")
+  const badManagedEvidenceSnapshotRoot = join(root, "bad-managed-evidence-snapshot")
+  const badManagedEvidenceDetailRoot = join(root, "bad-managed-evidence-detail")
+  const badManagedEvidenceBindingRoot = join(root, "bad-managed-evidence-binding")
   await Promise.all([
     workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot, badRunsRoot, badHandoffRoot,
     badHandoffBindingRoot, badManagedPreviewRoot, badManagedCriterionRoot, badManagedDigestRoot, badManagedReceiptRoot,
-    badManagedBindingRoot,
+    badManagedBindingRoot, badManagedEvidencePageRoot, badManagedEvidenceCountRoot, badManagedEvidenceSnapshotRoot,
+    badManagedEvidenceDetailRoot, badManagedEvidenceBindingRoot,
   ].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
@@ -168,6 +175,26 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.equal(JSON.stringify(managedReceipt).includes(privateRoot), false)
     assert.equal(JSON.stringify(managedReceipt).includes(privateCredential), false)
 
+    const managedPage = await client.listManagedEvidence(0, 100)
+    assert.equal(managedPage.items.length, 1)
+    assert.equal(managedPage.items[0]?.managedRunId, managedRunId)
+    assert.equal(managedPage.total, 3)
+    assert.equal(managedPage.omittedCount, 2)
+    assert.equal(managedPage.hasMore, true)
+    assert.equal(JSON.stringify(managedPage).includes(privateRoot), false)
+    assert.equal(JSON.stringify(managedPage).includes(privateCredential), false)
+    assert.equal((await client.listManagedEvidence(0, 100, managedPage.snapshotDigest)).snapshotDigest, managedPage.snapshotDigest)
+    const managedDetail = await client.readManagedEvidence(managedRunId)
+    assert.equal(managedDetail.summary.managedRunId, managedRunId)
+    assert.equal(managedDetail.artifactStatus, "verified-result-and-evidence")
+    assert.equal(managedDetail.result?.providerDisposition, "completed")
+    assert.equal(managedDetail.result?.outcomeStatus, "satisfied")
+    assert.equal(managedDetail.evidence?.eventCount, 4)
+    assert.equal(managedDetail.evidence?.completedStepCount, 1)
+    assert.equal(managedDetail.applyDecision, undefined)
+    assert.equal(JSON.stringify(managedDetail).includes(privateRoot), false)
+    assert.equal(JSON.stringify(managedDetail).includes(privateCredential), false)
+
     await assert.rejects(
       () => client.executeManagedReadOnly({
         preview: Object.assign({}, managedPreview, { tools: [] }),
@@ -226,6 +253,35 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
         await hostileClient.dispose()
       }
     }
+
+    for (const [workspacePath, operation] of [
+      [badManagedEvidencePageRoot, "list"],
+      [badManagedEvidenceCountRoot, "list"],
+      [badManagedEvidenceSnapshotRoot, "list-with-snapshot"],
+      [badManagedEvidenceDetailRoot, "read"],
+      [badManagedEvidenceBindingRoot, "read"],
+    ] as const) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        await assert.rejects(
+          () => operation === "read"
+            ? hostileClient.readManagedEvidence(managedRunId)
+            : hostileClient.listManagedEvidence(0, 100, operation === "list-with-snapshot" ? managedPage.snapshotDigest : undefined),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
+
+    await assert.rejects(() => client.listManagedEvidence(-1, 100), RangeError)
+    await assert.rejects(() => client.listManagedEvidence(0, 201), RangeError)
+    await assert.rejects(() => client.listManagedEvidence(0, 100, "sha256:not-a-digest"), TypeError)
+    await assert.rejects(() => client.readManagedEvidence("00000000-0000-0000-0000-000000000000"), TypeError)
 
     const badRunsClient = await GaepEngineClient.create({
       workspacePath: badRunsRoot,

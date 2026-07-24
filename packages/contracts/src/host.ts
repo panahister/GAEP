@@ -87,6 +87,16 @@ export const hostManagedReadOnlyExecuteParamsSchema = z.object({
   confirmation: z.literal("attest-exact-managed-readonly-preview"),
 }).strict()
 
+export const hostManagedEvidenceListParamsSchema = z.object({
+  offset: z.number().int().nonnegative().max(2_000).default(0),
+  limit: z.number().int().min(1).max(200).default(100),
+  snapshotDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/).optional(),
+}).strict()
+
+export const hostManagedEvidenceReadParamsSchema = z.object({
+  managedRunId: z.string().uuid(),
+}).strict()
+
 export const hostSearchProductStudioParamsSchema = z.object({
   query: z.string().trim().min(2).max(500),
   kinds: z.array(productDomainRecordKindSchema).max(productDomainRecordKindSchema.options.length).optional(),
@@ -113,6 +123,8 @@ export const hostMethodSchema = z.enum([
   "createHandoff",
   "managed.readonly.preview",
   "managed.readonly.execute",
+  "managed.evidence.list",
+  "managed.evidence.read",
   "verifyAudit",
   "productStudio.designReadiness",
   "productStudio.search",
@@ -152,6 +164,8 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("createHandoff", hostCreateHandoffParamsSchema),
   requestVariant("managed.readonly.preview", hostManagedReadOnlyPreviewParamsSchema),
   requestVariant("managed.readonly.execute", hostManagedReadOnlyExecuteParamsSchema),
+  requestVariant("managed.evidence.list", hostManagedEvidenceListParamsSchema),
+  requestVariant("managed.evidence.read", hostManagedEvidenceReadParamsSchema),
   requestVariant("verifyAudit", hostNoParamsSchema.default({})),
   requestVariant("productStudio.designReadiness", z.object({ productId: z.string().uuid() }).strict()),
   requestVariant("productStudio.search", hostSearchProductStudioParamsSchema),

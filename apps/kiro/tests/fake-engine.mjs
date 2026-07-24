@@ -10,6 +10,8 @@ const workflowPlanId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
 const managedRunId = "ffffffff-ffff-4fff-8fff-ffffffffffff"
 const managedGovernedRunId = "12121212-1212-4212-8212-121212121212"
 const workflowStepId = "13131313-1313-4313-8313-131313131313"
+const managedResultId = "14141414-1414-4414-8414-141414141414"
+const managedEvidenceId = "15151515-1515-4515-8515-151515151515"
 const previewDigest = managedReadOnlyPreview().previewDigest
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
@@ -61,6 +63,10 @@ input.on("line", (line) => {
       return previewManagedReadOnly(id, request.params)
     case "managed.readonly.execute":
       return executeManagedReadOnly(id, request.params)
+    case "managed.evidence.list":
+      return listManagedEvidence(id, request.params)
+    case "managed.evidence.read":
+      return readManagedEvidence(id, request.params)
     case "productStudio.portableDesign.import":
       return importSnapshot(id, request.params)
     case "productStudio.portableDesign.list":
@@ -278,6 +284,114 @@ function managedReadOnlyReceipt() {
     startedAt: "2026-07-24T08:20:00.000Z",
     endedAt: "2026-07-24T08:20:01.000Z",
     authorityBoundary: "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+  }
+}
+
+function listManagedEvidence(id, params) {
+  if (!exactKeys(params, params.snapshotDigest === undefined ? ["offset", "limit"] : ["offset", "limit", "snapshotDigest"]) ||
+    params.offset !== 0 || params.limit !== 100 ||
+    (params.snapshotDigest !== undefined && params.snapshotDigest !== `sha256:${"6".repeat(64)}`)) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MANAGED EVIDENCE LIST PARAMS")
+  }
+  const value = managedRunPage()
+  if (workspacePath.endsWith("bad-managed-evidence-page")) value.items[0].localStagePath = `${privateRoot}/${privateCredential}`
+  if (workspacePath.endsWith("bad-managed-evidence-count")) value.omittedCount = 0
+  if (workspacePath.endsWith("bad-managed-evidence-snapshot")) value.snapshotDigest = `sha256:${"7".repeat(64)}`
+  return writeResult(id, value)
+}
+
+function readManagedEvidence(id, params) {
+  if (!exactKeys(params, ["managedRunId"]) || params.managedRunId !== managedRunId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MANAGED EVIDENCE READ PARAMS")
+  }
+  const value = managedEvidenceDetail()
+  if (workspacePath.endsWith("bad-managed-evidence-detail")) value.rawProviderOutput = `${privateRoot}/${privateCredential}`
+  if (workspacePath.endsWith("bad-managed-evidence-binding")) value.evidence.evidenceDigest = `sha256:${"0".repeat(64)}`
+  return writeResult(id, value)
+}
+
+function managedRunSummary() {
+  return {
+    schemaVersion: 1,
+    kind: "managed-run-summary",
+    managedRunId,
+    runId: managedGovernedRunId,
+    productId,
+    initiativeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    mode: "manual-offline",
+    state: "completed",
+    adapterId: "openai-codex",
+    agentId: "codex",
+    modelId: "gpt-5.6-codex",
+    attemptNumber: 1,
+    recoveryStatus: "not-required",
+    workflowCheckpointCount: 0,
+    hasResult: true,
+    hasApplyDecision: false,
+    bindingsDigest: `sha256:${"8".repeat(64)}`,
+    resultDigest: `sha256:${"9".repeat(64)}`,
+    createdAt: "2026-07-24T08:19:59.000Z",
+    startedAt: "2026-07-24T08:20:00.000Z",
+    updatedAt: "2026-07-24T08:20:01.000Z",
+    endedAt: "2026-07-24T08:20:01.000Z",
+    authorityBoundary: "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
+  }
+}
+
+function managedRunPage() {
+  return {
+    schemaVersion: 1,
+    kind: "managed-run-summary-page",
+    items: [managedRunSummary()],
+    offset: 0,
+    limit: 100,
+    total: 3,
+    omittedCount: 2,
+    snapshotDigest: `sha256:${"6".repeat(64)}`,
+    hasMore: true,
+    authorityBoundary: "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
+    privacyBoundary: "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
+  }
+}
+
+function managedEvidenceDetail() {
+  return {
+    schemaVersion: 1,
+    kind: "managed-evidence-detail",
+    summary: managedRunSummary(),
+    artifactStatus: "verified-result-and-evidence",
+    result: {
+      resultId: managedResultId,
+      resultDigest: `sha256:${"9".repeat(64)}`,
+      providerDisposition: "completed",
+      terminationCause: "normal",
+      outcomeStatus: "satisfied",
+      outcomeBasis: "deterministic-offline-runtime",
+      terminalState: "completed",
+      evidenceId: managedEvidenceId,
+      evidenceDigest: `sha256:${"a".repeat(64)}`,
+      warningCodes: [],
+      startedAt: "2026-07-24T08:20:00.000Z",
+      endedAt: "2026-07-24T08:20:01.000Z",
+    },
+    evidence: {
+      evidenceId: managedEvidenceId,
+      evidenceDigest: `sha256:${"a".repeat(64)}`,
+      eventCount: 4,
+      eventTypeCounts: { lifecycle: 2, output: 1, item: 1, approval: 0, warning: 0, error: 0 },
+      eventsDigest: `sha256:${"b".repeat(64)}`,
+      workflowStrategy: "sequential",
+      workflowStepCount: 1,
+      workflowAttemptCount: 1,
+      completedStepCount: 1,
+      charterEvidenceStatus: "satisfied",
+      charterStopStatus: "satisfied",
+      terminalReasonCode: "workflow-completed",
+      actualEffectCounts: { "not-observed": 1, "observed-provisional": 0, applied: 0, blocked: 0, unknown: 0 },
+      capturedAt: "2026-07-24T08:20:01.000Z",
+    },
+    authorityBoundary: "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority",
+    privacyBoundary: "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
   }
 }
 
