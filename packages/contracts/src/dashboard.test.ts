@@ -43,6 +43,10 @@ function framework(phaseId: DeliveryPhaseId): Record<string, unknown> {
         state: "active",
       },
     ],
+    evidenceCues: {
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
     observedAt: "2026-07-24T00:00:00.000Z",
     sourceBoundary: "governed-repository-and-engine-only",
     limitations: ["This projection grants no phase or readiness authority."],
@@ -72,6 +76,12 @@ describe("phase dashboard contracts", () => {
     }
     wrongOrder.panels.reverse()
     expect(phaseDashboardFrameworkSchema.safeParse(wrongOrder).success).toBe(false)
+
+    const forgedEvidenceCue = structuredClone(framework(deliveryPhaseIds[0])) as {
+      evidenceCues: { freshness: string }
+    }
+    forgedEvidenceCue.evidenceCues.freshness = "unknown"
+    expect(phaseDashboardFrameworkSchema.safeParse(forgedEvidenceCue).success).toBe(false)
   })
 
   it("keeps applicability, evidence basis, and presentation state consistent", () => {
