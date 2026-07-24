@@ -128,6 +128,12 @@ class PortableDesignClientTest {
         val badChangeImpactFreshnessRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-freshness"))
         val badChangeImpactDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-digest"))
         val badChangeImpactPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-private"))
+        val badAgentModelBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-binding"))
+        val badAgentModelCountRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-count"))
+        val badAgentModelFreshnessRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-freshness"))
+        val badAgentModelMetricsRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-metrics"))
+        val badAgentModelDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-digest"))
+        val badAgentModelPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-private"))
         val executable = createFakeEngineLauncher(temporaryRoot)
         GaepEngineClient(temporaryRoot, executable.toString()).use { client ->
             val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -267,6 +273,45 @@ class PortableDesignClientTest {
                 )
             }
 
+            val agentModel = client.readAgentModel(product)
+            assertEquals(product.digest, agentModel.productDigest)
+            assertEquals(2, agentModel.capabilities.size)
+            assertEquals("unselected", agentModel.selection.status)
+            assertEquals("current", agentModel.freshness.state)
+            assertEquals(2, agentModel.capabilityLimit.total)
+            assertFalse(agentModel.truncated)
+            assertTrue(agentModel.runs.isEmpty())
+            assertTrue(agentModel.handoffs.isEmpty())
+            assertFalse(Gson().toJson(agentModel).contains("Founder Product"))
+            assertFalse(Gson().toJson(agentModel).contains(privateRoot))
+            assertFalse(Gson().toJson(agentModel).contains(privateCredential))
+            val agentModelView = RiderProductController(client).readAgentModel()
+            assertTrue(agentModelView.contains("GAEP exact Agent and Model dashboard"))
+            assertTrue(agentModelView.contains("Provider usage: unavailable"))
+            assertTrue(agentModelView.contains("cannot select or switch an agent"))
+            assertFalse(agentModelView.contains("Founder Product"))
+            assertFalse(agentModelView.contains(privateRoot))
+            assertFalse(agentModelView.contains(privateCredential))
+
+            listOf(
+                badAgentModelBindingRoot,
+                badAgentModelCountRoot,
+                badAgentModelFreshnessRoot,
+                badAgentModelMetricsRoot,
+                badAgentModelDigestRoot,
+                badAgentModelPrivateRoot,
+            ).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val hostileProduct = hostileClient.readProductBinding()
+                    val invalidDashboard = hostError { hostileClient.readAgentModel(hostileProduct) }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidDashboard.kind)
+                    assertPrivateTextWithheld(invalidDashboard)
+                }
+            }
+            assertFailsWith<IllegalArgumentException> {
+                client.readAgentModel(product.copy(digest = "sha256:not-a-digest"))
+            }
+
             val readiness = client.probeAgentReadiness()
             assertEquals(listOf("claude-code", "codex"), readiness.map { it.agentId })
             assertFalse(readiness.first().detected)
@@ -310,6 +355,14 @@ class PortableDesignClientTest {
             assertFalse(selectionFields.any { field ->
                 listOf("executable", "path", "token", "credential").any { field.contains(it, ignoreCase = true) }
             })
+
+            val selectedAgentModel = client.readAgentModel(product)
+            assertEquals("selected", selectedAgentModel.selection.status)
+            assertEquals("stale", selectedAgentModel.selection.capabilityState)
+            assertEquals("attention-required", selectedAgentModel.freshness.state)
+            assertEquals(1, selectedAgentModel.capabilities.count { it.selected })
+            assertFalse(Gson().toJson(selectedAgentModel).contains(privateRoot))
+            assertFalse(Gson().toJson(selectedAgentModel).contains(privateCredential))
 
             val runs = client.listRuns()
             assertEquals(1, runs.size)
@@ -728,7 +781,7 @@ class PortableDesignClientTest {
             assertTrue(importView.contains("exact Product revision 7"))
             assertTrue(importView.contains("not approval or a baseline"))
             listOf(
-                productView, readinessView, selectedView, managedPreviewView, managedReceiptView,
+                productView, readinessView, agentModelView, selectedView, managedPreviewView, managedReceiptView,
                 handoffView, listView, readView, importView,
             ).forEach { rendered ->
                 assertFalse(rendered.contains(bundleRoot.toString()))

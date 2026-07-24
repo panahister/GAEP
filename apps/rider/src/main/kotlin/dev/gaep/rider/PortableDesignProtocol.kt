@@ -196,6 +196,105 @@ data class ChangeImpactDashboard(
     val snapshotDigest: String,
 )
 
+data class AgentModelLimit(val shown: Long, val total: Long, val omitted: Long)
+
+data class AgentModelCapability(
+    val adapterId: String,
+    val adapterVersion: String,
+    val agentId: String,
+    val agentLabel: String,
+    val runtimeVersion: String?,
+    val capabilityDigest: String,
+    val detected: Boolean,
+    val executionInterface: String,
+    val interfaceMaturity: String,
+    val modelCount: Long,
+    val limitationShown: Long,
+    val limitationTotal: Long,
+    val observedAt: Instant,
+    val selected: Boolean,
+)
+
+data class AgentModelSelectionProjection(
+    val status: String,
+    val selectionDigest: String?,
+    val adapterId: String?,
+    val agentId: String?,
+    val modelId: String?,
+    val modelTruthClass: String?,
+    val modelAlias: Boolean?,
+    val settings: Map<String, PortableAgentSettingValue>,
+    val selectedAt: Instant?,
+    val capabilityDigest: String?,
+    val capabilityState: String?,
+)
+
+data class AgentModelManagedProjection(
+    val status: String,
+    val recordId: UUID?,
+    val state: String?,
+    val attemptNumber: Long?,
+    val resultStatus: String?,
+    val providerDisposition: String?,
+    val outcomeStatus: String?,
+    val evidenceId: UUID?,
+    val eventCount: Long?,
+    val actualEffectCount: Long?,
+)
+
+data class AgentModelRunProjection(
+    val recordId: UUID,
+    val revision: Long,
+    val state: String,
+    val adapterId: String,
+    val agentId: String,
+    val modelId: String,
+    val managed: AgentModelManagedProjection,
+)
+
+data class AgentModelHandoffProjection(
+    val recordId: UUID,
+    val fromRunId: UUID,
+    val toAdapterId: String,
+    val toAgentId: String,
+    val toModelId: String,
+    val state: String,
+    val createdAt: Instant,
+)
+
+data class AgentModelFreshness(
+    val state: String,
+    val selectionCapabilityState: String,
+    val oldestCapabilityObservedAt: Instant,
+    val newestCapabilityObservedAt: Instant,
+    val truncated: Boolean,
+)
+
+data class AgentModelDashboard(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val capabilities: List<AgentModelCapability>,
+    val selection: AgentModelSelectionProjection,
+    val runs: List<AgentModelRunProjection>,
+    val handoffs: List<AgentModelHandoffProjection>,
+    val freshness: AgentModelFreshness,
+    val capabilityLimit: AgentModelLimit,
+    val runLimit: AgentModelLimit,
+    val handoffLimit: AgentModelLimit,
+    val managedRunLimit: AgentModelLimit,
+    val truncated: Boolean,
+    val observedAt: Instant,
+    val limitations: List<String>,
+    val snapshotDigest: String,
+)
+
+private data class AgentModelReference(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+)
+
 data class AgentModelReadiness(
     val id: String,
     val label: String,
@@ -240,6 +339,7 @@ data class AgentSelection(
     val settings: Map<String, PortableAgentSettingValue>,
     val selectedAt: Instant,
     val capabilityDigest: String,
+    val selectionDigest: String,
 )
 
 sealed interface AgentSelectionState {
@@ -574,6 +674,7 @@ data class AgentReadinessSnapshot(
     val models: List<AgentModelReadiness>,
     val limitations: List<String>,
     val observedAt: Instant,
+    val capabilityDigest: String,
 )
 
 data class PortableDesignGovernanceMetadata(
@@ -1288,6 +1389,140 @@ internal object PortableDesignProtocol {
             observedAt,
             limitations,
             snapshotDigest,
+        )
+    }
+
+    fun parseAgentModelDashboardEnvelope(
+        envelope: JsonObject,
+        expectedProduct: ProductBinding,
+        expectedCapabilities: List<AgentReadinessSnapshot>,
+        expectedSelection: AgentSelectionState,
+    ): AgentModelDashboard {
+        val dashboard = readResult(envelope).requireObject()
+        dashboard.requireExactKeys(
+            "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs",
+            "providerMetrics", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+            "authorityBoundary", "snapshotDigest",
+        )
+        if (dashboard.requireInt("schemaVersion") != 1 ||
+            dashboard.requireString("kind") != "agent-model-dashboard" ||
+            dashboard.requireString("sourceBoundary") !=
+            "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" ||
+            dashboard.requireString("authorityBoundary") !=
+            "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects"
+        ) {
+            throw invalidResponse()
+        }
+        val product = parseAgentModelReference(dashboard.get("product"), "product")
+        if (product.recordId != expectedProduct.id || product.revision != expectedProduct.revision ||
+            product.digest != expectedProduct.digest
+        ) {
+            throw invalidResponse()
+        }
+        val capabilityValues = dashboard.get("capabilities")
+        if (capabilityValues == null || !capabilityValues.isJsonArray || capabilityValues.asJsonArray.size() !in 1..16 ||
+            capabilityValues.asJsonArray.size() != expectedCapabilities.size
+        ) {
+            throw invalidResponse()
+        }
+        val expectedByKey = expectedCapabilities.associateBy { "${it.adapterId}:${it.agentId}" }
+        if (expectedByKey.size != expectedCapabilities.size) throw invalidResponse()
+        val capabilities = capabilityValues.asJsonArray.map { value ->
+            val row = value.requireObject()
+            val key = "${row.requireString("adapterId")}:${row.requireString("agentId")}"
+            parseAgentModelCapability(row, expectedByKey[key] ?: throw invalidResponse())
+        }
+        val capabilityKeys = capabilities.map { "${it.adapterId}:${it.agentId}" }
+        if (capabilityKeys.distinct().size != capabilities.size ||
+            capabilityKeys.zipWithNext().any { (left, right) -> left >= right }
+        ) {
+            throw invalidResponse()
+        }
+        val selection = parseAgentModelSelection(dashboard.get("selection"), expectedSelection, capabilities)
+        val runValues = dashboard.get("runs")
+        val handoffValues = dashboard.get("handoffs")
+        if (runValues == null || !runValues.isJsonArray || runValues.asJsonArray.size() > 256 ||
+            handoffValues == null || !handoffValues.isJsonArray || handoffValues.asJsonArray.size() > 256
+        ) {
+            throw invalidResponse()
+        }
+        val runs = runValues.asJsonArray.map(::parseAgentModelRun)
+        val handoffs = handoffValues.asJsonArray.map(::parseAgentModelHandoff)
+        if (runs.map { it.recordId }.distinct().size != runs.size ||
+            handoffs.map { it.recordId }.distinct().size != handoffs.size ||
+            runs.mapNotNull { it.managed.recordId }.distinct().size != runs.count { it.managed.recordId != null }
+        ) {
+            throw invalidResponse()
+        }
+        validateAgentModelMetrics(dashboard.get("providerMetrics"))
+        val freshness = parseAgentModelFreshness(dashboard.get("freshness"))
+        val limitObject = dashboard.get("limits").requireObject()
+        limitObject.requireExactKeys("capabilities", "runs", "handoffs", "managedRuns", "truncated")
+        val capabilityLimit = parseAgentModelLimit(limitObject.get("capabilities"))
+        val runLimit = parseAgentModelLimit(limitObject.get("runs"))
+        val handoffLimit = parseAgentModelLimit(limitObject.get("handoffs"))
+        val managedRunLimit = parseAgentModelLimit(limitObject.get("managedRuns"))
+        val limitsTruncated = limitObject.requireBoolean("truncated")
+        if (capabilityLimit.shown != capabilities.size.toLong() || runLimit.shown != runs.size.toLong() ||
+            handoffLimit.shown != handoffs.size.toLong() ||
+            managedRunLimit.shown != runs.count { it.managed.status == "observed" }.toLong()
+        ) {
+            throw invalidResponse()
+        }
+        val truncated = listOf(capabilityLimit, runLimit, handoffLimit, managedRunLimit).any { it.omitted > 0 }
+        val selectionCapabilityState = if (selection.status == "selected") {
+            selection.capabilityState ?: throw invalidResponse()
+        } else {
+            selection.status
+        }
+        val attentionRequired = truncated || selectionCapabilityState in setOf("stale", "migration-required", "invalid")
+        val selectedCapabilities = capabilities.filter { it.selected }
+        if (freshness.selectionCapabilityState != selectionCapabilityState || freshness.truncated != truncated ||
+            limitsTruncated != truncated || (freshness.state == "attention-required") != attentionRequired
+        ) {
+            throw invalidResponse()
+        }
+        if (selection.status == "selected") {
+            val selectedCapability = selectedCapabilities.singleOrNull() ?: throw invalidResponse()
+            if (selectedCapability.adapterId != selection.adapterId || selectedCapability.agentId != selection.agentId ||
+                ((selectedCapability.capabilityDigest == selection.capabilityDigest) !=
+                    (selection.capabilityState == "current"))
+            ) {
+                throw invalidResponse()
+            }
+        } else if (selectedCapabilities.isNotEmpty()) {
+            throw invalidResponse()
+        }
+        if (runLimit.omitted == 0L && handoffs.any { handoff -> runs.none { it.recordId == handoff.fromRunId } }) {
+            throw invalidResponse()
+        }
+        val observedAt = dashboard.requireInstant("observedAt")
+        if (freshness.oldestCapabilityObservedAt.isAfter(freshness.newestCapabilityObservedAt) ||
+            freshness.newestCapabilityObservedAt.isAfter(observedAt)
+        ) {
+            throw invalidResponse()
+        }
+        val limitations = parseChangeImpactLimitations(dashboard.get("limitations"))
+        val snapshotDigest = dashboard.requireDigest("snapshotDigest")
+        val digestBody = dashboard.deepCopy().apply { remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+        return AgentModelDashboard(
+            productId = product.recordId,
+            productRevision = product.revision,
+            productDigest = product.digest,
+            capabilities = capabilities,
+            selection = selection,
+            runs = runs,
+            handoffs = handoffs,
+            freshness = freshness,
+            capabilityLimit = capabilityLimit,
+            runLimit = runLimit,
+            handoffLimit = handoffLimit,
+            managedRunLimit = managedRunLimit,
+            truncated = truncated,
+            observedAt = observedAt,
+            limitations = limitations,
+            snapshotDigest = snapshotDigest,
         )
     }
 
@@ -2622,6 +2857,7 @@ internal object PortableDesignProtocol {
             models = parsedModels,
             limitations = limitations.map { portableText(it.requireString()) },
             observedAt = snapshot.requireInstant("observedAt"),
+            capabilityDigest = canonicalDigest(snapshot),
         )
     }
 
@@ -2720,6 +2956,7 @@ internal object PortableDesignProtocol {
             settings = parsePortableSelectionSettings(selection.get("settings").requireObject()),
             selectedAt = selection.requireInstant("selectedAt"),
             capabilityDigest = selection.requireDigest("capabilityDigest"),
+            selectionDigest = canonicalDigest(selection),
         )
     }
 
@@ -3050,6 +3287,336 @@ internal object PortableDesignProtocol {
     ): List<T> {
         if (value == null || !value.isJsonArray || value.asJsonArray.size() > maximum) throw invalidResponse()
         return value.asJsonArray.map(parse)
+    }
+
+    private fun parseAgentModelReference(value: JsonElement?, expectedType: String): AgentModelReference {
+        val reference = value.requireObject()
+        reference.requireExactKeys("recordType", "recordId", "revision", "digest")
+        if (reference.requireString("recordType") != expectedType) throw invalidResponse()
+        val revision = reference.requireLong("revision")
+        if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        return AgentModelReference(
+            reference.requireNonEmptyUuid("recordId"),
+            revision,
+            reference.requireDigest("digest"),
+        )
+    }
+
+    private fun parseAgentModelCapability(
+        row: JsonObject,
+        expected: AgentReadinessSnapshot,
+    ): AgentModelCapability {
+        row.requireExactKeys(
+            "adapterId", "adapterVersion", "agentId", "agentLabel", "runtimeVersion", "capabilityDigest",
+            "detected", "executionInterface", "interfaceMaturity", "support", "modelCount", "limitations",
+            "observedAt", "selected",
+        )
+        val runtimeValue = row.get("runtimeVersion") ?: throw invalidResponse()
+        val runtimeVersion = when {
+            runtimeValue.isJsonNull -> null
+            else -> portableText(runtimeValue.requireString(), minimum = 1)
+        }
+        val support = row.get("support").requireObject()
+        support.requireExactKeys("resume", "cancel", "checkpoints", "modelDiscovery", "toolSelection")
+        val limitationRecord = row.get("limitations").requireObject()
+        limitationRecord.requireExactKeys("values", "shown", "total", "omitted")
+        val limitationValues = limitationRecord.get("values")
+        if (limitationValues == null || !limitationValues.isJsonArray || limitationValues.asJsonArray.size() > 64) {
+            throw invalidResponse()
+        }
+        val limitations = limitationValues.asJsonArray.map {
+            portableText(it.requireString(), minimum = 1, maximum = 20_000)
+        }
+        val limitationShown = limitationRecord.requireBoundedNonNegativeLong("shown", 64)
+        val limitationTotal = limitationRecord.requireBoundedNonNegativeLong("total", 512)
+        val limitationOmitted = limitationRecord.requireBoundedNonNegativeLong("omitted", 512)
+        if (limitationShown != limitations.size.toLong() || limitationShown + limitationOmitted != limitationTotal) {
+            throw invalidResponse()
+        }
+        val parsed = AgentModelCapability(
+            adapterId = row.requirePortableText("adapterId", minimum = 1),
+            adapterVersion = row.requirePortableText("adapterVersion", minimum = 1),
+            agentId = row.requirePortableText("agentId", minimum = 1),
+            agentLabel = row.requirePortableText("agentLabel", minimum = 1),
+            runtimeVersion = runtimeVersion,
+            capabilityDigest = row.requireDigest("capabilityDigest"),
+            detected = row.requireBoolean("detected"),
+            executionInterface = row.requireOneOf(
+                "executionInterface",
+                setOf("cli-jsonl", "cli-stream-json", "stdio-rpc", "managed-in-process", "unavailable"),
+            ),
+            interfaceMaturity = row.requireOneOf(
+                "interfaceMaturity",
+                setOf("stable", "beta", "experimental", "unknown"),
+            ),
+            modelCount = row.requireBoundedNonNegativeLong("modelCount", 512),
+            limitationShown = limitationShown,
+            limitationTotal = limitationTotal,
+            observedAt = row.requireInstant("observedAt"),
+            selected = row.requireBoolean("selected"),
+        )
+        if (parsed.adapterId != expected.adapterId || parsed.adapterVersion != expected.adapterVersion ||
+            parsed.agentId != expected.agentId || parsed.agentLabel != expected.agentLabel ||
+            parsed.runtimeVersion != expected.runtimeVersion || parsed.capabilityDigest != expected.capabilityDigest ||
+            parsed.detected != expected.detected || parsed.executionInterface != expected.executionInterface ||
+            parsed.interfaceMaturity != expected.interfaceMaturity || parsed.modelCount != expected.models.size.toLong() ||
+            parsed.limitationTotal != expected.limitations.size.toLong() ||
+            limitations != expected.limitations.take(64) || parsed.observedAt != expected.observedAt ||
+            support.requireBoolean("resume") != expected.supportsResume ||
+            support.requireBoolean("cancel") != expected.supportsCancel ||
+            support.requireBoolean("checkpoints") != expected.supportsCheckpoints ||
+            support.requireBoolean("modelDiscovery") != expected.supportsModelDiscovery ||
+            support.requireBoolean("toolSelection") != expected.supportsToolSelection
+        ) {
+            throw invalidResponse()
+        }
+        return parsed
+    }
+
+    private fun parseAgentModelSelection(
+        value: JsonElement?,
+        expected: AgentSelectionState,
+        capabilities: List<AgentModelCapability>,
+    ): AgentModelSelectionProjection {
+        val selection = value.requireObject()
+        val status = selection.requireString("status")
+        val expectedStatus = when (expected) {
+            AgentSelectionState.Unselected -> "unselected"
+            is AgentSelectionState.Selected -> "selected"
+            is AgentSelectionState.MigrationRequired -> "migration-required"
+            AgentSelectionState.Invalid -> "invalid"
+        }
+        if (status != expectedStatus) throw invalidResponse()
+        if (status == "unselected" || status == "invalid") {
+            selection.requireExactKeys("status")
+            return AgentModelSelectionProjection(
+                status, null, null, null, null, null, null, emptyMap(), null, null, null,
+            )
+        }
+        selection.requireExactKeys(
+            "status", "selectionDigest", "adapterId", "agentId", "modelId", "modelTruthClass", "modelAlias",
+            "settings", "selectedAt", "capabilityDigest", "capabilityState",
+        )
+        val current = when (expected) {
+            is AgentSelectionState.Selected -> expected.selection
+            is AgentSelectionState.MigrationRequired -> expected.portableCandidate
+            else -> throw invalidResponse()
+        }
+        val aliasValue = selection.get("modelAlias") ?: throw invalidResponse()
+        val modelAlias = when {
+            aliasValue.isJsonNull -> null
+            aliasValue.isJsonPrimitive && aliasValue.asJsonPrimitive.isBoolean -> aliasValue.asBoolean
+            else -> throw invalidResponse()
+        }
+        val capabilityState = selection.requireOneOf(
+            "capabilityState",
+            if (status == "selected") setOf("current", "stale") else setOf("migration-required"),
+        )
+        val parsed = AgentModelSelectionProjection(
+            status = status,
+            selectionDigest = selection.requireDigest("selectionDigest"),
+            adapterId = selection.requirePortableText("adapterId", minimum = 1),
+            agentId = selection.requirePortableText("agentId", minimum = 1),
+            modelId = selection.requirePortableText("modelId", minimum = 1),
+            modelTruthClass = selection.requireTruthClass("modelTruthClass"),
+            modelAlias = modelAlias,
+            settings = parsePortableSelectionSettings(selection.get("settings").requireObject()),
+            selectedAt = selection.requireInstant("selectedAt"),
+            capabilityDigest = selection.requireDigest("capabilityDigest"),
+            capabilityState = capabilityState,
+        )
+        if (parsed.selectionDigest != current.selectionDigest || parsed.adapterId != current.adapterId ||
+            parsed.agentId != current.agentId || parsed.modelId != current.modelId ||
+            parsed.modelTruthClass != current.modelTruthClass || parsed.modelAlias != current.modelAlias ||
+            parsed.selectedAt != current.selectedAt || parsed.capabilityDigest != current.capabilityDigest
+        ) {
+            throw invalidResponse()
+        }
+        if (status == "selected") {
+            val capability = capabilities.singleOrNull {
+                it.adapterId == parsed.adapterId && it.agentId == parsed.agentId
+            } ?: throw invalidResponse()
+            if ((capability.capabilityDigest == parsed.capabilityDigest) != (capabilityState == "current")) {
+                throw invalidResponse()
+            }
+        }
+        return parsed
+    }
+
+    private fun parseAgentModelRun(value: JsonElement): AgentModelRunProjection {
+        val row = value.requireObject()
+        row.requireExactKeys("record", "initiativeId", "state", "agent", "startedAt", "endedAt", "managed")
+        val record = parseAgentModelReference(row.get("record"), "run")
+        val agent = row.get("agent").requireObject()
+        agent.requireExactKeys("adapterId", "agentId", "modelId", "selectionDigest")
+        val startedAt = parseNullableInstant(row.get("startedAt"))
+        val endedAt = parseNullableInstant(row.get("endedAt"))
+        if (startedAt != null && endedAt != null && endedAt.isBefore(startedAt)) throw invalidResponse()
+        return AgentModelRunProjection(
+            recordId = record.recordId,
+            revision = record.revision,
+            state = row.requireOneOf(
+                "state",
+                setOf("prepared", "running", "paused", "completed", "failed", "cancelled", "unknown"),
+            ),
+            adapterId = agent.requirePortableText("adapterId", minimum = 1),
+            agentId = agent.requirePortableText("agentId", minimum = 1),
+            modelId = agent.requirePortableText("modelId", minimum = 1),
+            managed = parseAgentModelManaged(row.get("managed")),
+        ).also {
+            row.requireNonEmptyUuid("initiativeId")
+            agent.requireDigest("selectionDigest")
+        }
+    }
+
+    private fun parseAgentModelManaged(value: JsonElement?): AgentModelManagedProjection {
+        val managed = value.requireObject()
+        val status = managed.requireString("status")
+        if (status == "not-observed-in-bounded-window") {
+            managed.requireExactKeys("status")
+            return AgentModelManagedProjection(
+                status, null, null, null, null, null, null, null, null, null,
+            )
+        }
+        if (status != "observed") throw invalidResponse()
+        managed.requireExactKeys(
+            "status", "record", "mode", "state", "attemptNumber", "bindingsDigest", "provider", "result",
+        )
+        val record = parseAgentModelReference(managed.get("record"), "managed-run")
+        managed.requireOneOf("mode", setOf("codex-staged", "manual-offline", "claude-context-only"))
+        val state = managed.requireOneOf(
+            "state",
+            setOf(
+                "prepared", "running", "review-required", "applying", "completed", "failed", "cancelled",
+                "timed-out", "unknown", "conflict", "discarded",
+            ),
+        )
+        val attemptNumber = managed.requireLong("attemptNumber")
+        if (attemptNumber !in 1..1_000_000) throw invalidResponse()
+        managed.requireDigest("bindingsDigest")
+        val provider = managed.get("provider").requireObject()
+        provider.requireExactKeys("adapterId", "agentId", "modelId", "capabilityDigest")
+        provider.requirePortableText("adapterId", minimum = 1)
+        provider.requirePortableText("agentId", minimum = 1)
+        provider.requirePortableText("modelId", minimum = 1)
+        provider.requireDigest("capabilityDigest")
+        val result = managed.get("result").requireObject()
+        return when (val resultStatus = result.requireString("status")) {
+            "not-bound" -> {
+                result.requireExactKeys("status")
+                AgentModelManagedProjection(
+                    status, record.recordId, state, attemptNumber, resultStatus, null, null, null, null, null,
+                )
+            }
+            "bound" -> {
+                result.requireExactKeys(
+                    "status", "recordId", "digest", "providerDisposition", "outcomeStatus", "evidence",
+                )
+                val evidence = result.get("evidence").requireObject()
+                evidence.requireExactKeys(
+                    "recordId", "digest", "eventCount", "eventsDigest", "actualEffectCount", "capturedAt",
+                )
+                val evidenceId = evidence.requireNonEmptyUuid("recordId")
+                result.requireNonEmptyUuid("recordId")
+                result.requireDigest("digest")
+                val providerDisposition = result.requireOneOf(
+                    "providerDisposition",
+                    setOf("completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown"),
+                )
+                val outcomeStatus = result.requireOneOf(
+                    "outcomeStatus",
+                    setOf("satisfied", "failed", "not-assessed", "indeterminate"),
+                )
+                evidence.requireDigest("digest")
+                val eventCount = evidence.requireBoundedNonNegativeLong("eventCount", 4_096)
+                evidence.requireDigest("eventsDigest")
+                val actualEffectCount = evidence.requireBoundedNonNegativeLong("actualEffectCount", 32)
+                evidence.requireInstant("capturedAt")
+                AgentModelManagedProjection(
+                    status, record.recordId, state, attemptNumber, resultStatus, providerDisposition, outcomeStatus,
+                    evidenceId, eventCount, actualEffectCount,
+                )
+            }
+            else -> throw invalidResponse()
+        }
+    }
+
+    private fun parseAgentModelHandoff(value: JsonElement): AgentModelHandoffProjection {
+        val row = value.requireObject()
+        row.requireExactKeys("record", "fromRun", "toSelection", "state", "createdAt", "acknowledgedAt")
+        val record = parseAgentModelReference(row.get("record"), "handoff")
+        if (record.revision != 1L) throw invalidResponse()
+        val fromRun = parseAgentModelReference(row.get("fromRun"), "run")
+        val toSelection = row.get("toSelection").requireObject()
+        toSelection.requireExactKeys("adapterId", "agentId", "modelId", "selectionDigest")
+        val createdAt = row.requireInstant("createdAt")
+        val acknowledgedAt = parseNullableInstant(row.get("acknowledgedAt"))
+        if (acknowledgedAt != null && acknowledgedAt.isBefore(createdAt)) throw invalidResponse()
+        return AgentModelHandoffProjection(
+            recordId = record.recordId,
+            fromRunId = fromRun.recordId,
+            toAdapterId = toSelection.requirePortableText("adapterId", minimum = 1),
+            toAgentId = toSelection.requirePortableText("agentId", minimum = 1),
+            toModelId = toSelection.requirePortableText("modelId", minimum = 1),
+            state = row.requireOneOf("state", setOf("pending-acknowledgement", "acknowledged")),
+            createdAt = createdAt,
+        ).also {
+            toSelection.requireDigest("selectionDigest")
+            if ((it.state == "acknowledged") != (acknowledgedAt != null)) throw invalidResponse()
+        }
+    }
+
+    private fun validateAgentModelMetrics(value: JsonElement?) {
+        val metrics = value.requireObject()
+        metrics.requireExactKeys("usage", "cost")
+        listOf("usage", "cost").forEach { key ->
+            val metric = metrics.get(key).requireObject()
+            metric.requireExactKeys("state", "basis")
+            if (metric.requireString("state") != "unavailable" ||
+                metric.requireString("basis") != "current-managed-records-have-no-provider-usage-or-cost-contract"
+            ) {
+                throw invalidResponse()
+            }
+        }
+    }
+
+    private fun parseAgentModelFreshness(value: JsonElement?): AgentModelFreshness {
+        val freshness = value.requireObject()
+        freshness.requireExactKeys(
+            "state", "selectionCapabilityState", "oldestCapabilityObservedAt", "newestCapabilityObservedAt",
+            "truncated", "coverageBoundary",
+        )
+        if (freshness.requireString("coverageBoundary") !=
+            "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness"
+        ) {
+            throw invalidResponse()
+        }
+        return AgentModelFreshness(
+            state = freshness.requireOneOf("state", setOf("current", "attention-required")),
+            selectionCapabilityState = freshness.requireOneOf(
+                "selectionCapabilityState",
+                setOf("current", "unselected", "stale", "migration-required", "invalid"),
+            ),
+            oldestCapabilityObservedAt = freshness.requireInstant("oldestCapabilityObservedAt"),
+            newestCapabilityObservedAt = freshness.requireInstant("newestCapabilityObservedAt"),
+            truncated = freshness.requireBoolean("truncated"),
+        )
+    }
+
+    private fun parseAgentModelLimit(value: JsonElement?): AgentModelLimit {
+        val limit = value.requireObject()
+        limit.requireExactKeys("shown", "total", "omitted")
+        val shown = limit.requireBoundedNonNegativeLong("shown", 1_000_000)
+        val total = limit.requireBoundedNonNegativeLong("total", 1_000_000)
+        val omitted = limit.requireBoundedNonNegativeLong("omitted", 1_000_000)
+        if (shown + omitted != total) throw invalidResponse()
+        return AgentModelLimit(shown, total, omitted)
+    }
+
+    private fun parseNullableInstant(value: JsonElement?): Instant? = when {
+        value == null -> throw invalidResponse()
+        value.isJsonNull -> null
+        else -> parseInstant(value)
     }
 
     private fun parseChangeImpactExactReference(

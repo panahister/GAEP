@@ -138,6 +138,53 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readAgentModel(product: ProductBinding): AgentModelDashboard {
+        PortableDesignProtocol.validateProductId(product.id)
+        PortableDesignProtocol.validateProductRevision(product.revision)
+        require(Regex("^sha256:[0-9a-f]{64}$").matches(product.digest)) { "Product digest must be SHA-256" }
+        val capabilities = probeAgentReadiness()
+        val selection = readAgentSelection()
+        val expectedSelection = JsonObject().apply {
+            when (selection) {
+                AgentSelectionState.Unselected -> addProperty("status", "unselected")
+                AgentSelectionState.Invalid -> addProperty("status", "invalid")
+                is AgentSelectionState.Selected -> {
+                    addProperty("status", "selected")
+                    addProperty("selectionDigest", selection.selection.selectionDigest)
+                }
+                is AgentSelectionState.MigrationRequired -> {
+                    addProperty("status", "migration-required")
+                    addProperty("selectionDigest", selection.portableCandidate.selectionDigest)
+                }
+            }
+        }
+        val expectedCapabilities = JsonArray().apply {
+            capabilities.sortedBy { "${it.adapterId}:${it.agentId}" }.forEach { capability ->
+                add(JsonObject().apply {
+                    addProperty("adapterId", capability.adapterId)
+                    addProperty("agentId", capability.agentId)
+                    addProperty("capabilityDigest", capability.capabilityDigest)
+                })
+            }
+        }
+        val params = JsonObject().apply {
+            addProperty("expectedProductId", product.id.toString())
+            addProperty("expectedProductRevision", product.revision)
+            addProperty("expectedProductDigest", product.digest)
+            add("expectedSelection", expectedSelection)
+            add("expectedCapabilities", expectedCapabilities)
+        }
+        return portableRequest("dashboard.agentModel", params) { envelope ->
+            PortableDesignProtocol.parseAgentModelDashboardEnvelope(
+                envelope,
+                expectedProduct = product,
+                expectedCapabilities = capabilities,
+                expectedSelection = selection,
+            )
+        }
+    }
+
+    @Synchronized
     fun probeAgentReadiness(): List<AgentReadinessSnapshot> = portableRequest(
         "probeAgents",
         JsonObject(),

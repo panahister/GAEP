@@ -40,6 +40,11 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         return renderChangeImpactDashboard(client.readChangeImpact(context.product, change))
     }
 
+    fun readAgentModel(): String {
+        val product = client.readProductBinding()
+        return renderAgentModelDashboard(client.readAgentModel(product))
+    }
+
     fun readAgentReadiness(): String = buildString {
         appendLine("GAEP Codex and Claude readiness")
         appendLine()
@@ -484,6 +489,88 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         append(
             "Product text, Change text, Work Item text, source bytes, absolute paths, provider output, prompts, " +
                 "executable state, and credentials are withheld.",
+        )
+    }
+
+    private fun renderAgentModelDashboard(dashboard: AgentModelDashboard): String = buildString {
+        appendLine("GAEP exact Agent and Model dashboard")
+        appendLine()
+        appendLine("Product revision: ${dashboard.productRevision}")
+        appendLine("Product digest: ${dashboard.productDigest}")
+        appendLine("Snapshot digest: ${dashboard.snapshotDigest}")
+        appendLine(
+            "Freshness: ${dashboard.freshness.state}; selection capability " +
+                dashboard.freshness.selectionCapabilityState,
+        )
+        appendLine(
+            "Capability observation range: ${dashboard.freshness.oldestCapabilityObservedAt} to " +
+                dashboard.freshness.newestCapabilityObservedAt,
+        )
+        appendLine("Provider usage: unavailable; current Managed Run records have no provider usage contract.")
+        appendLine("Provider cost: unavailable; current Managed Run records have no provider cost contract.")
+        appendLine()
+        val selection = dashboard.selection
+        if (selection.status == "selected" || selection.status == "migration-required") {
+            appendLine(
+                "Selection: ${selection.status}; ${selection.adapterId}/${selection.agentId}; ${selection.modelId}",
+            )
+            appendLine("Selection digest: ${selection.selectionDigest}")
+            appendLine("Selection capability: ${selection.capabilityState}; ${selection.capabilityDigest}")
+            selection.settings.forEach { (key, value) ->
+                appendLine("  setting $key=${renderSettingValue(value)}")
+            }
+        } else {
+            appendLine("Selection: ${selection.status}")
+        }
+        appendLine()
+        appendLine(
+            "Observed capabilities (${dashboard.capabilityLimit.shown}/${dashboard.capabilityLimit.total}):",
+        )
+        dashboard.capabilities.forEach { capability ->
+            appendLine(
+                "  ${capability.adapterId}/${capability.agentId}; ${capability.agentLabel}; " +
+                    "${capability.executionInterface}/${capability.interfaceMaturity}; " +
+                    "models=${capability.modelCount}; selected=${capability.selected}; ${capability.capabilityDigest}",
+            )
+        }
+        appendLine()
+        appendLine("Runs (${dashboard.runLimit.shown}/${dashboard.runLimit.total}):")
+        dashboard.runs.forEach { run ->
+            val managed = if (run.managed.status == "observed") {
+                "${run.managed.state}/attempt-${run.managed.attemptNumber}/${run.managed.resultStatus}"
+            } else {
+                run.managed.status
+            }
+            appendLine(
+                "  ${run.recordId}@${run.revision}; ${run.state}; " +
+                    "${run.adapterId}/${run.agentId}/${run.modelId}; managed=$managed",
+            )
+        }
+        appendLine()
+        appendLine("Agent/model handoffs (${dashboard.handoffLimit.shown}/${dashboard.handoffLimit.total}):")
+        dashboard.handoffs.forEach { handoff ->
+            appendLine(
+                "  ${handoff.recordId}; Run ${handoff.fromRunId} -> " +
+                    "${handoff.toAdapterId}/${handoff.toAgentId}/${handoff.toModelId}; ${handoff.state}",
+            )
+        }
+        appendLine()
+        appendLine(
+            "Managed Run observations: ${dashboard.managedRunLimit.shown}/${dashboard.managedRunLimit.total}",
+        )
+        appendLine(
+            "Omissions: ${if (dashboard.truncated) "one or more bounded categories are truncated" else "none in reported categories"}",
+        )
+        appendLine("Coverage: bounded current records do not prove provider-account or native-host readiness.")
+        dashboard.limitations.forEach { appendLine("Limit: $it") }
+        appendLine()
+        appendLine(
+            "Boundary: this read-only projection cannot select or switch an agent, create a handoff, launch a Run, " +
+                "authorize a Tool/write/effect, approve an outcome, establish readiness, or grant release authority.",
+        )
+        append(
+            "Product text, Run narrative, source bytes, absolute paths, provider output, prompts, executable state, " +
+                "credentials, and sensitive setting values are withheld.",
         )
     }
 

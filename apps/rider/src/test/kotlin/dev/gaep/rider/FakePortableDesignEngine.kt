@@ -83,6 +83,11 @@ fun main(arguments: Array<String>) {
                 request.getAsJsonObject("params"),
                 workspacePath,
             )
+            "dashboard.agentModel" -> handleAgentModel(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
             "probeAgents" -> writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
             "readAgentSelection" -> {
                 if (workspacePath.endsWith("bad-selection")) {
@@ -448,6 +453,196 @@ private fun exactReference(type: String, id: UUID, revision: Long, digest: Strin
 private fun changeArtifact(workItem: JsonObject, locator: JsonObject): JsonObject = JsonObject().apply {
     add("sourceWorkItem", workItem.deepCopy())
     add("locator", locator)
+}
+
+private fun handleAgentModel(id: Long, params: JsonObject, workspacePath: String) {
+    val productDigest = canonicalDigest(productRecord())
+    val readiness = readinessSnapshots(false).asJsonArray
+    val expectedCapabilities = JsonArray().apply {
+        readiness.map { entry ->
+            val snapshot = entry.asJsonObject
+            JsonObject().apply {
+                addProperty("adapterId", snapshot.get("adapterId").asString)
+                addProperty("agentId", snapshot.get("agentId").asString)
+                addProperty("capabilityDigest", canonicalDigest(snapshot))
+            }
+        }.sortedBy { entry -> "${entry.get("adapterId").asString}:${entry.get("agentId").asString}" }
+            .forEach(::add)
+    }
+    val expectedSelection = JsonObject().apply {
+        val current = selectedAgent
+        if (current == null) {
+            addProperty("status", "unselected")
+        } else {
+            addProperty("status", "selected")
+            addProperty("selectionDigest", canonicalDigest(current))
+        }
+    }
+    if (params.keySet() != setOf(
+            "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedSelection",
+            "expectedCapabilities",
+        ) || params.get("expectedProductId").asString != productId.toString() ||
+        params.get("expectedProductRevision").asLong != 7L ||
+        params.get("expectedProductDigest").asString != productDigest ||
+        canonicalDigest(params.get("expectedSelection")) != canonicalDigest(expectedSelection) ||
+        canonicalDigest(params.get("expectedCapabilities")) != canonicalDigest(expectedCapabilities)
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE AGENT MODEL PARAMS")
+        return
+    }
+    val capabilities = JsonArray().apply {
+        readiness.map { entry ->
+            val snapshot = entry.asJsonObject
+            JsonObject().apply {
+                addProperty("adapterId", snapshot.get("adapterId").asString)
+                addProperty("adapterVersion", snapshot.get("adapterVersion").asString)
+                addProperty("agentId", snapshot.get("agentId").asString)
+                addProperty("agentLabel", snapshot.get("agentLabel").asString)
+                if (snapshot.has("runtimeVersion")) {
+                    addProperty("runtimeVersion", snapshot.get("runtimeVersion").asString)
+                } else {
+                    add("runtimeVersion", com.google.gson.JsonNull.INSTANCE)
+                }
+                addProperty("capabilityDigest", canonicalDigest(snapshot))
+                addProperty("detected", snapshot.get("detected").asBoolean)
+                addProperty("executionInterface", snapshot.get("executionInterface").asString)
+                addProperty("interfaceMaturity", snapshot.get("interfaceMaturity").asString)
+                add("support", JsonObject().apply {
+                    addProperty("resume", snapshot.get("supportsResume").asBoolean)
+                    addProperty("cancel", snapshot.get("supportsCancel").asBoolean)
+                    addProperty("checkpoints", snapshot.get("supportsCheckpoints").asBoolean)
+                    addProperty("modelDiscovery", snapshot.get("supportsModelDiscovery").asBoolean)
+                    addProperty("toolSelection", snapshot.get("supportsToolSelection").asBoolean)
+                })
+                addProperty("modelCount", snapshot.getAsJsonArray("models").size())
+                val limitationValues = snapshot.getAsJsonArray("limitations").deepCopy()
+                add("limitations", JsonObject().apply {
+                    add("values", limitationValues)
+                    addProperty("shown", limitationValues.size())
+                    addProperty("total", limitationValues.size())
+                    addProperty("omitted", 0)
+                })
+                addProperty("observedAt", snapshot.get("observedAt").asString)
+                addProperty(
+                    "selected",
+                    selectedAgent?.get("adapterId")?.asString == snapshot.get("adapterId").asString &&
+                        selectedAgent?.get("agentId")?.asString == snapshot.get("agentId").asString,
+                )
+            }
+        }.sortedBy { entry -> "${entry.get("adapterId").asString}:${entry.get("agentId").asString}" }
+            .forEach(::add)
+    }
+    val selection = JsonObject().apply {
+        val current = selectedAgent
+        if (current == null) {
+            addProperty("status", "unselected")
+        } else {
+            val selectedCapability = capabilities.first { entry ->
+                entry.asJsonObject.get("adapterId").asString == current.get("adapterId").asString &&
+                    entry.asJsonObject.get("agentId").asString == current.get("agentId").asString
+            }.asJsonObject
+            addProperty("status", "selected")
+            addProperty("selectionDigest", canonicalDigest(current))
+            addProperty("adapterId", current.get("adapterId").asString)
+            addProperty("agentId", current.get("agentId").asString)
+            addProperty("modelId", current.get("modelId").asString)
+            addProperty("modelTruthClass", current.get("modelTruthClass").asString)
+            add("modelAlias", current.get("modelAlias").deepCopy())
+            add("settings", current.getAsJsonObject("settings").deepCopy())
+            addProperty("selectedAt", current.get("selectedAt").asString)
+            addProperty("capabilityDigest", current.get("capabilityDigest").asString)
+            addProperty(
+                "capabilityState",
+                if (selectedCapability.get("capabilityDigest").asString == current.get("capabilityDigest").asString) {
+                    "current"
+                } else {
+                    "stale"
+                },
+            )
+        }
+    }
+    val selectionCapabilityState = if (selection.get("status").asString == "selected") {
+        selection.get("capabilityState").asString
+    } else {
+        selection.get("status").asString
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "agent-model-dashboard")
+        add("product", exactReference("product", productId, 7, productDigest))
+        add("capabilities", capabilities)
+        add("selection", selection)
+        add("runs", JsonArray())
+        add("handoffs", JsonArray())
+        add("providerMetrics", JsonObject().apply {
+            listOf("usage", "cost").forEach { metric ->
+                add(metric, JsonObject().apply {
+                    addProperty("state", "unavailable")
+                    addProperty("basis", "current-managed-records-have-no-provider-usage-or-cost-contract")
+                })
+            }
+        })
+        add("freshness", JsonObject().apply {
+            addProperty("state", if (selectionCapabilityState == "stale") "attention-required" else "current")
+            addProperty("selectionCapabilityState", selectionCapabilityState)
+            addProperty("oldestCapabilityObservedAt", "2026-07-24T08:00:00.000Z")
+            addProperty("newestCapabilityObservedAt", "2026-07-24T08:00:00.000Z")
+            addProperty("truncated", false)
+            addProperty(
+                "coverageBoundary",
+                "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness",
+            )
+        })
+        add("limits", JsonObject().apply {
+            add("capabilities", agentModelLimit(2))
+            add("runs", agentModelLimit(0))
+            add("handoffs", agentModelLimit(0))
+            add("managedRuns", agentModelLimit(0))
+            addProperty("truncated", false)
+        })
+        addProperty("observedAt", "2026-07-24T12:06:00.000Z")
+        addProperty(
+            "sourceBoundary",
+            "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata",
+        )
+        add("limitations", JsonArray().apply {
+            add("Capability truth is bounded to current portable observations and does not prove provider-account readiness.")
+            add("Current managed records have no provider usage or cost contract, so both metrics remain unavailable.")
+        })
+        addProperty(
+            "authorityBoundary",
+            "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects",
+        )
+    }
+    if (workspacePath.endsWith("bad-agent-model-binding")) {
+        content.getAsJsonObject("product").addProperty("digest", "sha256:${"0".repeat(64)}")
+    }
+    if (workspacePath.endsWith("bad-agent-model-count")) {
+        content.getAsJsonObject("limits").getAsJsonObject("capabilities").addProperty("total", 3)
+    }
+    if (workspacePath.endsWith("bad-agent-model-freshness")) {
+        content.getAsJsonObject("freshness").addProperty("state", "attention-required")
+    }
+    if (workspacePath.endsWith("bad-agent-model-metrics")) {
+        content.getAsJsonObject("providerMetrics").add("cost", JsonObject().apply {
+            addProperty("state", "available")
+            addProperty("amount", 0)
+        })
+    }
+    val response = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-agent-model-digest")) {
+        response.getAsJsonArray("capabilities")[0].asJsonObject.addProperty("agentLabel", "Forged label")
+    }
+    if (workspacePath.endsWith("bad-agent-model-private")) {
+        response.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+    }
+    writeResult(id, response)
+}
+
+private fun agentModelLimit(total: Int): JsonObject = JsonObject().apply {
+    addProperty("shown", total)
+    addProperty("total", total)
+    addProperty("omitted", 0)
 }
 
 private fun handleManagedReadOnlyPreview(id: Long, params: JsonObject, workspacePath: String) {

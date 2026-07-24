@@ -85,6 +85,8 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += changeImpactButton
         actions.add(changeImpactButton)
 
+        addAction("Show Agent and model") { controller.readAgentModel() }
+
         addAction("Refresh agent readiness") { controller.readAgentReadiness() }
 
         val selectionButton = JButton("Select agent configuration…").apply {
