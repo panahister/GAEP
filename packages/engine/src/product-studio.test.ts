@@ -563,6 +563,7 @@ describe("Product Studio domain engine", () => {
       scope: { read: [relativeRoot], write: [relativeSource], effects: [] },
       owner: { kind: "agent", id: "local-agent" },
     }, 1, "founder")
+    const collectedAt = new Date().toISOString()
     const evidence = await engine.productStudio.createEvidence({
       subjects: [
         { recordType: "work-item", recordId: workItem.id, revision: workItem.revision, digest: canonicalDigest(workItem) },
@@ -578,8 +579,8 @@ describe("Product Studio domain engine", () => {
       artifactDigest: canonicalDigest({ result: "pass", suite: "product-studio" }),
       limitations: ["This is local author evidence and not independent assurance."],
       verification: { status: "unverified" },
-      freshness: { status: "fresh", assessedAt: new Date().toISOString(), basis: "Collected in the current test run." },
-      collectedAt: new Date().toISOString(),
+      freshness: { status: "fresh", assessedAt: collectedAt, basis: "Collected in the current test run." },
+      collectedAt,
     }, 1, "founder")
     const implementationLink = await engine.productStudio.createTraceLink({
       source: { recordType: "work-item", recordId: workItem.id, revision: 1, digest: canonicalDigest(workItem) },
