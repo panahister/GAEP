@@ -2,7 +2,7 @@ import { lstat, readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
-import { canonicalDigest, canonicalJson } from "@gaep/agent-sdk"
+import { DeterministicManualAdapter, canonicalDigest, canonicalJson, capabilityDigest } from "@gaep/agent-sdk"
 
 const scriptDirectory = fileURLToPath(new URL(".", import.meta.url))
 const exampleDirectory = resolve(scriptDirectory, "../examples/phase-0-managed-readonly")
@@ -55,6 +55,17 @@ const changeImpactLimitations = [
   "Only persisted Work Item scopes and trace links are shown; missing trace does not prove missing impact.",
   "The current record model has no general Change approval record, so approval remains not established.",
 ]
+
+const agentModelLimitations = [
+  "Capability truth is bounded to the current portable adapter observations and does not prove provider-account or native-host readiness.",
+  "Current managed records do not carry a provider usage or cost contract, so both metrics remain explicitly unavailable.",
+  "Run and handoff history is bounded; omitted records remain governed but are not summarized by this snapshot.",
+]
+
+const unavailableMetric = {
+  state: "unavailable",
+  basis: "current-managed-records-have-no-provider-usage-or-cost-contract",
+}
 
 function assertExactReference(reference, recordType, label) {
   assertExactKeys(reference, ["recordType", "recordId", "revision", "digest"], label)
@@ -277,6 +288,161 @@ function verifyChangeImpactDashboard(dashboard, phaseProduct, catalogItem) {
   if (snapshotDigest !== canonicalDigest(content)) fail("Change/Impact dashboard snapshot digest differs")
 }
 
+function verifyAgentModelLimit(limit, expected, label) {
+  assertExactKeys(limit, ["shown", "total", "omitted"], label)
+  if (limit.shown !== expected || limit.total !== expected || limit.omitted !== 0) {
+    fail(`${label} does not reconcile to the canonical projection`)
+  }
+}
+
+async function verifyAgentModelDashboard(dashboard, phaseProduct, portableRun, scenario) {
+  assertExactKeys(dashboard, [
+    "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs", "providerMetrics",
+    "freshness", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+  ], "receipt.agentModel")
+  if (dashboard.schemaVersion !== 1 || dashboard.kind !== "agent-model-dashboard" ||
+      dashboard.sourceBoundary !== "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" ||
+      dashboard.authorityBoundary !== "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects") {
+    fail("Agent/Model dashboard identity or authority boundary differs")
+  }
+  assertExactReference(dashboard.product, "product", "receipt.agentModel.product")
+  assertSameReference(dashboard.product, phaseProduct, "Agent/Model dashboard Product binding")
+
+  if (!Array.isArray(dashboard.capabilities) || dashboard.capabilities.length !== 1) {
+    fail("Agent/Model dashboard must contain one exact capability")
+  }
+  const capability = dashboard.capabilities[0]
+  assertExactKeys(capability, [
+    "adapterId", "adapterVersion", "agentId", "agentLabel", "runtimeVersion", "capabilityDigest", "detected",
+    "executionInterface", "interfaceMaturity", "support", "modelCount", "limitations", "observedAt", "selected",
+  ], "receipt.agentModel.capabilities[0]")
+  const expectedCapability = (await new DeterministicManualAdapter().probe()).capabilities
+  const expectedCapabilityDigest = capabilityDigest(expectedCapability)
+  if (capability.adapterId !== scenario.execution.adapterId || capability.adapterVersion !== expectedCapability.adapterVersion ||
+      capability.agentId !== scenario.execution.agentId || capability.agentLabel !== expectedCapability.agentLabel ||
+      capability.runtimeVersion !== expectedCapability.runtimeVersion || capability.capabilityDigest !== expectedCapabilityDigest ||
+      capability.detected !== true || capability.executionInterface !== "managed-in-process" ||
+      capability.interfaceMaturity !== "stable" || capability.modelCount !== 1 || capability.selected !== true) {
+    fail("Agent/Model capability differs from the deterministic offline adapter")
+  }
+  assertExactKeys(capability.support, ["resume", "cancel", "checkpoints", "modelDiscovery", "toolSelection"], "receipt.agentModel.capabilities[0].support")
+  if (canonicalJson(capability.support) !== canonicalJson({
+    resume: true, cancel: true, checkpoints: true, modelDiscovery: true, toolSelection: false,
+  })) fail("Agent/Model capability support differs")
+  assertExactKeys(capability.limitations, ["values", "shown", "total", "omitted"], "receipt.agentModel.capabilities[0].limitations")
+  if (canonicalJson(capability.limitations.values) !== canonicalJson(expectedCapability.limitations) ||
+      capability.limitations.shown !== 2 || capability.limitations.total !== 2 || capability.limitations.omitted !== 0) {
+    fail("Agent/Model capability limitations differ")
+  }
+  assertDate(capability.observedAt, "receipt.agentModel.capabilities[0].observedAt")
+
+  const selection = dashboard.selection
+  assertExactKeys(selection, [
+    "status", "selectionDigest", "adapterId", "agentId", "modelId", "modelTruthClass", "modelAlias", "settings",
+    "selectedAt", "capabilityDigest", "capabilityState",
+  ], "receipt.agentModel.selection")
+  if (selection.status !== "selected" || selection.adapterId !== scenario.execution.adapterId ||
+      selection.agentId !== scenario.execution.agentId || selection.modelId !== scenario.execution.modelId ||
+      selection.modelTruthClass !== "configured" || selection.modelAlias !== false ||
+      canonicalJson(selection.settings) !== canonicalJson({ script: scenario.execution.script }) ||
+      selection.capabilityDigest !== expectedCapabilityDigest || selection.capabilityState !== "current") {
+    fail("Agent/Model selection binding differs")
+  }
+  assertDate(selection.selectedAt, "receipt.agentModel.selection.selectedAt")
+  assertDigest(selection.selectionDigest, "receipt.agentModel.selection.selectionDigest")
+  const portableSelection = {
+    schemaVersion: 2,
+    adapterId: selection.adapterId,
+    agentId: selection.agentId,
+    modelId: selection.modelId,
+    modelTruthClass: selection.modelTruthClass,
+    modelAlias: selection.modelAlias,
+    settings: selection.settings,
+    selectedAt: selection.selectedAt,
+    capabilityDigest: selection.capabilityDigest,
+  }
+  if (selection.selectionDigest !== canonicalDigest(portableSelection)) fail("Agent/Model selection digest differs")
+
+  if (!Array.isArray(dashboard.runs) || dashboard.runs.length !== 1) fail("Agent/Model dashboard must contain one Run")
+  const run = dashboard.runs[0]
+  assertExactKeys(run, ["record", "initiativeId", "state", "agent", "startedAt", "endedAt", "managed"], "receipt.agentModel.runs[0]")
+  assertExactReference(run.record, "run", "receipt.agentModel.runs[0].record")
+  assertUuid(run.initiativeId, "receipt.agentModel.runs[0].initiativeId")
+  if (run.record.recordId !== portableRun.runId || run.state !== "completed") fail("Agent/Model Run binding differs")
+  assertExactKeys(run.agent, ["adapterId", "agentId", "modelId", "selectionDigest"], "receipt.agentModel.runs[0].agent")
+  if (run.agent.adapterId !== scenario.execution.adapterId || run.agent.agentId !== scenario.execution.agentId ||
+      run.agent.modelId !== scenario.execution.modelId) fail("Agent/Model Run agent binding differs")
+  assertDigest(run.agent.selectionDigest, "receipt.agentModel.runs[0].agent.selectionDigest")
+  assertDate(run.startedAt, "receipt.agentModel.runs[0].startedAt")
+  assertDate(run.endedAt, "receipt.agentModel.runs[0].endedAt")
+
+  const managed = run.managed
+  assertExactKeys(managed, ["status", "record", "mode", "state", "attemptNumber", "bindingsDigest", "provider", "result"], "receipt.agentModel.runs[0].managed")
+  if (managed.status !== "observed" || managed.mode !== "manual-offline" || managed.state !== "completed" ||
+      managed.attemptNumber !== 1) fail("Agent/Model Managed Run state differs")
+  assertExactReference(managed.record, "managed-run", "receipt.agentModel.runs[0].managed.record")
+  if (managed.record.recordId !== portableRun.managedRunId) fail("Agent/Model Managed Run binding differs")
+  assertDigest(managed.bindingsDigest, "receipt.agentModel.runs[0].managed.bindingsDigest")
+  assertExactKeys(managed.provider, ["adapterId", "agentId", "modelId", "capabilityDigest"], "receipt.agentModel.runs[0].managed.provider")
+  if (managed.provider.adapterId !== scenario.execution.adapterId || managed.provider.agentId !== scenario.execution.agentId ||
+      managed.provider.modelId !== scenario.execution.modelId || managed.provider.capabilityDigest !== expectedCapabilityDigest) {
+    fail("Agent/Model Managed Run provider binding differs")
+  }
+  assertExactKeys(managed.result, ["status", "recordId", "digest", "providerDisposition", "outcomeStatus", "evidence"], "receipt.agentModel.runs[0].managed.result")
+  if (managed.result.status !== "bound" || managed.result.digest !== portableRun.resultDigest ||
+      managed.result.providerDisposition !== "completed" || managed.result.outcomeStatus !== "satisfied") {
+    fail("Agent/Model Managed result binding differs")
+  }
+  assertUuid(managed.result.recordId, "receipt.agentModel.runs[0].managed.result.recordId")
+  assertExactKeys(managed.result.evidence, ["recordId", "digest", "eventCount", "eventsDigest", "actualEffectCount", "capturedAt"], "receipt.agentModel.runs[0].managed.result.evidence")
+  if (managed.result.evidence.digest !== portableRun.evidenceDigest || managed.result.evidence.eventCount !== 3 ||
+      managed.result.evidence.actualEffectCount !== 1) fail("Agent/Model Managed evidence binding differs")
+  assertUuid(managed.result.evidence.recordId, "receipt.agentModel.runs[0].managed.result.evidence.recordId")
+  assertDigest(managed.result.evidence.eventsDigest, "receipt.agentModel.runs[0].managed.result.evidence.eventsDigest")
+  assertDate(managed.result.evidence.capturedAt, "receipt.agentModel.runs[0].managed.result.evidence.capturedAt")
+
+  if (!Array.isArray(dashboard.handoffs) || dashboard.handoffs.length !== 1) fail("Agent/Model dashboard must contain one Handoff")
+  const handoff = dashboard.handoffs[0]
+  assertExactKeys(handoff, ["record", "fromRun", "toSelection", "state", "createdAt", "acknowledgedAt"], "receipt.agentModel.handoffs[0]")
+  assertExactReference(handoff.record, "handoff", "receipt.agentModel.handoffs[0].record")
+  assertExactReference(handoff.fromRun, "run", "receipt.agentModel.handoffs[0].fromRun")
+  assertSameReference(handoff.fromRun, run.record, "Agent/Model Handoff source Run binding")
+  assertExactKeys(handoff.toSelection, ["adapterId", "agentId", "modelId", "selectionDigest"], "receipt.agentModel.handoffs[0].toSelection")
+  if (handoff.toSelection.adapterId !== selection.adapterId || handoff.toSelection.agentId !== selection.agentId ||
+      handoff.toSelection.modelId !== selection.modelId || handoff.toSelection.selectionDigest !== selection.selectionDigest ||
+      handoff.state !== "pending-acknowledgement" || handoff.acknowledgedAt !== null) {
+    fail("Agent/Model Handoff selection binding differs")
+  }
+  assertDate(handoff.createdAt, "receipt.agentModel.handoffs[0].createdAt")
+
+  assertExactKeys(dashboard.providerMetrics, ["usage", "cost"], "receipt.agentModel.providerMetrics")
+  if (canonicalJson(dashboard.providerMetrics.usage) !== canonicalJson(unavailableMetric) ||
+      canonicalJson(dashboard.providerMetrics.cost) !== canonicalJson(unavailableMetric)) {
+    fail("Agent/Model provider metrics must remain explicitly unavailable")
+  }
+  assertExactKeys(dashboard.freshness, [
+    "state", "selectionCapabilityState", "oldestCapabilityObservedAt", "newestCapabilityObservedAt", "truncated", "coverageBoundary",
+  ], "receipt.agentModel.freshness")
+  if (dashboard.freshness.state !== "current" || dashboard.freshness.selectionCapabilityState !== "current" ||
+      dashboard.freshness.oldestCapabilityObservedAt !== capability.observedAt ||
+      dashboard.freshness.newestCapabilityObservedAt !== capability.observedAt || dashboard.freshness.truncated !== false ||
+      dashboard.freshness.coverageBoundary !== "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness") {
+    fail("Agent/Model freshness differs from the exact current observations")
+  }
+  assertDate(dashboard.observedAt, "receipt.agentModel.observedAt")
+  if (Date.parse(capability.observedAt) > Date.parse(dashboard.observedAt)) fail("Agent/Model capability observation is newer than the snapshot")
+  assertExactKeys(dashboard.limits, ["capabilities", "runs", "handoffs", "managedRuns", "truncated"], "receipt.agentModel.limits")
+  verifyAgentModelLimit(dashboard.limits.capabilities, 1, "receipt.agentModel.limits.capabilities")
+  verifyAgentModelLimit(dashboard.limits.runs, 1, "receipt.agentModel.limits.runs")
+  verifyAgentModelLimit(dashboard.limits.handoffs, 1, "receipt.agentModel.limits.handoffs")
+  verifyAgentModelLimit(dashboard.limits.managedRuns, 1, "receipt.agentModel.limits.managedRuns")
+  if (dashboard.limits.truncated !== false) fail("Agent/Model dashboard must not claim truncation")
+  if (canonicalJson(dashboard.limitations) !== canonicalJson(agentModelLimitations)) fail("Agent/Model dashboard limitations differ")
+  assertDigest(dashboard.snapshotDigest, "receipt.agentModel.snapshotDigest")
+  const { snapshotDigest, ...content } = dashboard
+  if (snapshotDigest !== canonicalDigest(content)) fail("Agent/Model dashboard snapshot digest differs")
+}
+
 function dashboardSemanticProjection(dashboard) {
   return {
     dashboardPhase: dashboard.phase.id,
@@ -307,6 +473,25 @@ function changeImpactSemanticProjection(changeImpact) {
   }
 }
 
+function agentModelSemanticProjection(agentModel) {
+  return {
+    agentCapabilityCount: agentModel.capabilities.length,
+    agentSelectedCapabilityCount: agentModel.capabilities.filter((entry) => entry.selected).length,
+    agentSelectionStatus: agentModel.selection.status,
+    agentSelectionCapabilityState: agentModel.freshness.selectionCapabilityState,
+    agentRunCount: agentModel.runs.length,
+    agentManagedRunCount: agentModel.limits.managedRuns.shown,
+    agentBoundManagedResultCount: agentModel.runs.filter((entry) =>
+      entry.managed.status === "observed" && entry.managed.result.status === "bound").length,
+    agentHandoffCount: agentModel.handoffs.length,
+    agentUsageState: agentModel.providerMetrics.usage.state,
+    agentCostState: agentModel.providerMetrics.cost.state,
+    agentFreshness: agentModel.freshness.state,
+    agentTruncated: agentModel.limits.truncated,
+    agentAuthorityBoundary: agentModel.authorityBoundary,
+  }
+}
+
 async function readBoundedJson(path, label, byteLimit = receiptByteLimit) {
   const stat = await lstat(path)
   if (!stat.isFile() || stat.isSymbolicLink()) fail(`${label} must be a regular file`)
@@ -326,13 +511,26 @@ export async function loadPhase0ExampleContract() {
     readBoundedJson(expectedSummaryPath, "expected summary", 64 * 1024),
   ])
   assertExactKeys(scenario, [
-    "schemaVersion", "kind", "id", "actorId", "product", "initiative", "changeImpact", "context", "workflow", "charter", "execution",
+    "schemaVersion", "kind", "id", "actorId", "product", "initiative", "changeImpact", "agentModel", "context", "workflow", "charter", "execution",
   ], "scenario")
   if (scenario.schemaVersion !== 1 || scenario.kind !== "gaep-phase0-example-scenario") fail("scenario identity is unsupported")
   if (scenario.id !== "phase-0-managed-readonly-v1") fail("scenario ID is unsupported")
   if (scenario.execution?.adapterId !== "gaep.manual" || scenario.execution?.agentId !== "manual" ||
       scenario.execution?.modelId !== "manual-deterministic-v1" || scenario.execution?.script !== "success") {
     fail("scenario must use the deterministic offline success runtime")
+  }
+  assertExactKeys(scenario.agentModel, ["handoff"], "scenario.agentModel")
+  assertExactKeys(scenario.agentModel.handoff, [
+    "reason", "completedWork", "unresolvedMatters", "decisions", "evidence",
+  ], "scenario.agentModel.handoff")
+  if (typeof scenario.agentModel.handoff.reason !== "string" || scenario.agentModel.handoff.reason.length < 4) {
+    fail("scenario Agent/Model handoff reason is invalid")
+  }
+  for (const key of ["completedWork", "unresolvedMatters", "decisions", "evidence"]) {
+    const values = scenario.agentModel.handoff[key]
+    if (!Array.isArray(values) || values.length !== 1 || typeof values[0] !== "string" || values[0].length < 4) {
+      fail(`scenario Agent/Model handoff ${key} must contain one bounded statement`)
+    }
   }
   if (!Number.isSafeInteger(scenario.execution.timeoutMs) || scenario.execution.timeoutMs < 1_000 ||
       scenario.execution.timeoutMs > 300_000) fail("scenario timeout is outside the managed read-only bounds")
@@ -345,7 +543,10 @@ export async function loadPhase0ExampleContract() {
     "dashboardAuthorityBoundary", "changeCatalogCount", "changeCatalogOmitted", "changeImpactWorkItemCount",
     "changeImpactChangedArtifactCount", "changeImpactEffectTargetCount", "changeImpactAffectedUnitCount",
     "changeImpactDecisionCount", "changeImpactRiskCount", "changeImpactFreshness", "changeImpactApproval",
-    "changeImpactTruncated", "changeImpactAuthorityBoundary",
+    "changeImpactTruncated", "changeImpactAuthorityBoundary", "agentCapabilityCount", "agentSelectedCapabilityCount",
+    "agentSelectionStatus", "agentSelectionCapabilityState", "agentRunCount", "agentManagedRunCount",
+    "agentBoundManagedResultCount", "agentHandoffCount", "agentUsageState", "agentCostState", "agentFreshness",
+    "agentTruncated", "agentAuthorityBoundary",
   ], "expected summary")
   if (expectedSummary.schemaVersion !== 1 || expectedSummary.kind !== "gaep-phase0-example-semantic-summary" ||
       expectedSummary.scenarioId !== scenario.id) fail("expected summary identity differs from the canonical scenario")
@@ -355,10 +556,10 @@ export async function loadPhase0ExampleContract() {
 export async function verifyPhase0ExampleReceiptObject(receipt) {
   const { scenario, expectedSummary } = await loadPhase0ExampleContract()
   assertExactKeys(receipt, [
-    "schemaVersion", "kind", "scenario", "portableRun", "dashboard", "changeImpact", "summary", "summaryDigest",
+    "schemaVersion", "kind", "scenario", "portableRun", "dashboard", "changeImpact", "agentModel", "summary", "summaryDigest",
     "expectedSummaryDigest", "integrity", "authority", "limitations",
   ], "receipt")
-  if (receipt.schemaVersion !== 2 || receipt.kind !== "gaep-phase0-example-receipt") fail("receipt identity is unsupported")
+  if (receipt.schemaVersion !== 3 || receipt.kind !== "gaep-phase0-example-receipt") fail("receipt identity is unsupported")
 
   assertExactKeys(receipt.scenario, ["id", "digest"], "receipt.scenario")
   if (receipt.scenario.id !== scenario.id) fail("scenario ID differs from the canonical example")
@@ -377,11 +578,13 @@ export async function verifyPhase0ExampleReceiptObject(receipt) {
   assertExactKeys(receipt.changeImpact, ["catalog", "dashboard"], "receipt.changeImpact")
   const catalogItem = verifyChangeCatalog(receipt.changeImpact.catalog, receipt.dashboard.product)
   verifyChangeImpactDashboard(receipt.changeImpact.dashboard, receipt.dashboard.product, catalogItem)
+  await verifyAgentModelDashboard(receipt.agentModel, receipt.dashboard.product, receipt.portableRun, scenario)
 
   if (canonicalJson(receipt.summary) !== canonicalJson(expectedSummary)) fail("semantic summary differs from the checked-in expectation")
   const semanticProjection = {
     ...dashboardSemanticProjection(receipt.dashboard),
     ...changeImpactSemanticProjection(receipt.changeImpact),
+    ...agentModelSemanticProjection(receipt.agentModel),
   }
   for (const [key, value] of Object.entries(semanticProjection)) {
     if (canonicalJson(receipt.summary[key]) !== canonicalJson(value)) fail(`semantic summary ${key} differs from dashboard`)
@@ -397,7 +600,9 @@ export async function verifyPhase0ExampleReceiptObject(receipt) {
     "auditValid", "auditEventCount", "inventoryCount", "inventorySnapshotDigest", "recordResultDigestMatches",
     "resultEvidenceDigestMatches", "evidenceEventsDigestMatches", "dashboardProductDigestMatches",
     "dashboardCompositionDigestMatches", "changeCatalogSnapshotDigestMatches", "changeImpactSnapshotDigestMatches",
-    "changeImpactProductBindingMatches", "changeImpactChangeBindingMatches",
+    "changeImpactProductBindingMatches", "changeImpactChangeBindingMatches", "agentModelSnapshotDigestMatches",
+    "agentModelProductBindingMatches", "agentModelSelectionBindingMatches", "agentModelRunBindingMatches",
+    "agentModelManagedBindingMatches", "agentModelHandoffBindingMatches",
   ], "receipt.integrity")
   if (receipt.integrity.auditValid !== true) fail("portable audit is not valid")
   if (!Number.isSafeInteger(receipt.integrity.auditEventCount) || receipt.integrity.auditEventCount < 1 ||
@@ -408,6 +613,8 @@ export async function verifyPhase0ExampleReceiptObject(receipt) {
     "recordResultDigestMatches", "resultEvidenceDigestMatches", "evidenceEventsDigestMatches",
     "dashboardProductDigestMatches", "dashboardCompositionDigestMatches", "changeCatalogSnapshotDigestMatches",
     "changeImpactSnapshotDigestMatches", "changeImpactProductBindingMatches", "changeImpactChangeBindingMatches",
+    "agentModelSnapshotDigestMatches", "agentModelProductBindingMatches", "agentModelSelectionBindingMatches",
+    "agentModelRunBindingMatches", "agentModelManagedBindingMatches", "agentModelHandoffBindingMatches",
   ]) {
     if (receipt.integrity[key] !== true) fail(`${key} must be true`)
   }

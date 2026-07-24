@@ -1,0 +1,608 @@
+{
+  "schemaVersion": 3,
+  "kind": "gaep-phase0-example-receipt",
+  "scenario": {
+    "id": "phase-0-managed-readonly-v1",
+    "digest": "sha256:398315dfdc35890fdf3a2d31d8adbdd95ba74002e12a622cc1fe8996a12a879c"
+  },
+  "portableRun": {
+    "previewDigest": "sha256:93007d0526a4b5b94da2e1d43f113ce29c63f3509bf5107522a6b57c3697a658",
+    "runId": "775352f5-e618-4e44-9085-6c6fbe41f1a7",
+    "managedRunId": "ffd6b733-9208-4249-b2ed-d784715babca",
+    "resultDigest": "sha256:b3879ea1dadac27316ab587508fc9009577ca146fc247f5bf36abf024828b9aa",
+    "evidenceDigest": "sha256:3249b8b93f0a00847c66dccb11282dc5fd4225449b3ae79b57c4cfc2e4f16c07",
+    "startedAt": "2026-07-24T21:58:18.942Z",
+    "endedAt": "2026-07-24T21:58:19.004Z"
+  },
+  "dashboard": {
+    "schemaVersion": 1,
+    "kind": "phase-dashboard-framework",
+    "catalogVersion": "gaep-phase-dashboards-v1",
+    "product": {
+      "recordType": "product",
+      "recordId": "1fbb960a-28d7-42c4-8529-5020dff04c8d",
+      "revision": 1,
+      "digest": "sha256:b15128cc716963206406f3dd0c700a2fd437329d16aed90379f511094815768b"
+    },
+    "phase": {
+      "id": "phase-0-1a-foundation",
+      "label": "Phase 0 / 1A — Four-IDE Platform Foundation"
+    },
+    "panels": [
+      {
+        "id": "foundation-summary",
+        "role": "phase",
+        "title": "Foundation summary and readiness",
+        "applicability": {
+          "status": "unknown",
+          "basis": "not-evaluated"
+        },
+        "state": "attention-required"
+      },
+      {
+        "id": "change-impact",
+        "role": "change-impact",
+        "title": "Change and impact",
+        "applicability": {
+          "status": "applicable",
+          "basis": "phase-contract"
+        },
+        "state": "active"
+      },
+      {
+        "id": "agent-model",
+        "role": "agent-model",
+        "title": "Agent and model",
+        "applicability": {
+          "status": "applicable",
+          "basis": "phase-contract"
+        },
+        "state": "active"
+      }
+    ],
+    "observedAt": "2026-07-24T00:00:00.000Z",
+    "sourceBoundary": "governed-repository-and-engine-only",
+    "limitations": [
+      "The selected phase scopes presentation only; it does not prove phase entry, completion, acceptance, or release readiness.",
+      "The phase dashboard remains attention-required until a governed applicability decision is bound."
+    ],
+    "authorityBoundary": "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
+    "compositionDigest": "sha256:f253f295b77b4ff29175a41d817c7a7a839de9b28c143518d0eaf4642a236d3b"
+  },
+  "changeImpact": {
+    "catalog": {
+      "schemaVersion": 1,
+      "kind": "change-impact-change-catalog",
+      "product": {
+        "recordType": "product",
+        "recordId": "1fbb960a-28d7-42c4-8529-5020dff04c8d",
+        "revision": 1,
+        "digest": "sha256:b15128cc716963206406f3dd0c700a2fd437329d16aed90379f511094815768b"
+      },
+      "items": [
+        {
+          "recordType": "change",
+          "recordId": "beefe2c8-6289-4dc9-8586-4c8a3ccab5d4",
+          "revision": 1,
+          "digest": "sha256:110283bcece54390352cd2a7b8bf5d76219a0afe48d87490ed0bdd1eeda7e13f",
+          "state": "proposed",
+          "effectEnvelope": [
+            "observe"
+          ]
+        }
+      ],
+      "total": 1,
+      "omitted": 0,
+      "observedAt": "2026-07-24T21:58:18.387Z",
+      "sourceBoundary": "current-governed-change-metadata-only",
+      "limitations": [
+        "The catalog contains exact current Change metadata only; Product text, Change text, and source content are withheld.",
+        "At most 256 Changes are shown in deterministic ID order; omitted Changes require another governed selection surface."
+      ],
+      "authorityBoundary": "change-catalog-selection-does-not-approve-change-or-authorize-effects",
+      "snapshotDigest": "sha256:fc0702441f85847dca4a92f6e897510dfb21177792521dd3ffc89f572b645920"
+    },
+    "dashboard": {
+      "schemaVersion": 1,
+      "kind": "change-impact-dashboard",
+      "product": {
+        "recordType": "product",
+        "recordId": "1fbb960a-28d7-42c4-8529-5020dff04c8d",
+        "revision": 1,
+        "digest": "sha256:b15128cc716963206406f3dd0c700a2fd437329d16aed90379f511094815768b"
+      },
+      "change": {
+        "recordId": "beefe2c8-6289-4dc9-8586-4c8a3ccab5d4",
+        "revision": 1,
+        "digest": "sha256:110283bcece54390352cd2a7b8bf5d76219a0afe48d87490ed0bdd1eeda7e13f",
+        "recordType": "change",
+        "state": "proposed",
+        "effectEnvelope": [
+          "observe"
+        ]
+      },
+      "workItems": [
+        {
+          "record": {
+            "recordType": "work-item",
+            "recordId": "35688c6f-75bf-42f9-9eb8-e02f4fbfc3f8",
+            "revision": 1,
+            "digest": "sha256:3655a5db52943c0aca65c09c6a19d81152c6057291f114e61401a676063f35b5"
+          },
+          "state": "proposed"
+        }
+      ],
+      "changedArtifacts": [
+        {
+          "sourceWorkItem": {
+            "recordType": "work-item",
+            "recordId": "35688c6f-75bf-42f9-9eb8-e02f4fbfc3f8",
+            "revision": 1,
+            "digest": "sha256:3655a5db52943c0aca65c09c6a19d81152c6057291f114e61401a676063f35b5"
+          },
+          "locator": {
+            "kind": "workspace-relative",
+            "path": "packages/engine/src/change-impact-dashboard.ts"
+          }
+        }
+      ],
+      "effectTargets": [
+        {
+          "sourceWorkItem": {
+            "recordType": "work-item",
+            "recordId": "35688c6f-75bf-42f9-9eb8-e02f4fbfc3f8",
+            "revision": 1,
+            "digest": "sha256:3655a5db52943c0aca65c09c6a19d81152c6057291f114e61401a676063f35b5"
+          },
+          "locator": {
+            "kind": "logical",
+            "value": "phase0.example.change-impact"
+          }
+        }
+      ],
+      "affectedUnits": [
+        {
+          "direction": "upstream",
+          "relationship": "affects",
+          "endpoint": {
+            "recordType": "decision",
+            "recordId": "bb72b3ba-5978-4da9-8ccc-6dbf0fe2244c",
+            "revision": 1,
+            "digest": "sha256:9aca59ea325e7f6cf647c914951b70f63a08ca57201caae7f3eba29476baf1c2"
+          },
+          "trace": {
+            "recordId": "cc1874d6-48c3-48ea-bd46-df45da07e9ef",
+            "revision": 1,
+            "assessmentDigest": "sha256:867029ddeda92edaa1c3dff8228b98af3863851c44915db7a48b87eabf200b85",
+            "assessedState": "valid"
+          }
+        },
+        {
+          "direction": "upstream",
+          "relationship": "affects",
+          "endpoint": {
+            "recordType": "risk",
+            "recordId": "e21d23cb-077f-4472-b7f9-d7ede62e1fef",
+            "revision": 1,
+            "digest": "sha256:82ca6d4356f71aba27a83447de6e1e906681300caf5b28073e8359af7a46389f"
+          },
+          "trace": {
+            "recordId": "42d8a9ab-ea85-44d6-b6d5-0c5812d6feb7",
+            "revision": 1,
+            "assessmentDigest": "sha256:c6cf0d237aab86374d2d60795380d9fb84358047756329d5954a386c934885fa",
+            "assessedState": "valid"
+          }
+        }
+      ],
+      "governance": {
+        "approval": {
+          "state": "not-established",
+          "basis": "current-contract-has-no-change-approval-record"
+        },
+        "decisions": [
+          {
+            "record": {
+              "recordType": "decision",
+              "recordId": "bb72b3ba-5978-4da9-8ccc-6dbf0fe2244c",
+              "revision": 1,
+              "digest": "sha256:9aca59ea325e7f6cf647c914951b70f63a08ca57201caae7f3eba29476baf1c2"
+            },
+            "state": "open",
+            "outcome": "not-selected"
+          }
+        ],
+        "risks": [
+          {
+            "record": {
+              "recordType": "risk",
+              "recordId": "e21d23cb-077f-4472-b7f9-d7ede62e1fef",
+              "revision": 1,
+              "digest": "sha256:82ca6d4356f71aba27a83447de6e1e906681300caf5b28073e8359af7a46389f"
+            },
+            "state": "open",
+            "likelihood": "possible",
+            "impact": "major",
+            "acceptance": "not-accepted"
+          }
+        ],
+        "authorityBoundary": "decisions-and-risk-acceptance-do-not-approve-the-change"
+      },
+      "freshness": {
+        "state": "current",
+        "evaluatedAt": "2026-07-24T21:58:18.387Z",
+        "unresolvedTraceLinks": 0,
+        "invalidTraceLinks": 0,
+        "staleTraceLinks": 0,
+        "staleGovernanceReferences": 0,
+        "traceAnalysisTruncated": false,
+        "coverageBoundary": "absence-of-a-trace-link-does-not-prove-absence-of-impact"
+      },
+      "limits": {
+        "workItems": {
+          "shown": 1,
+          "total": 1,
+          "omitted": 0
+        },
+        "changedArtifacts": {
+          "shown": 1,
+          "total": 1,
+          "omitted": 0
+        },
+        "effectTargets": {
+          "shown": 1,
+          "total": 1,
+          "omitted": 0
+        },
+        "affectedUnits": {
+          "shown": 2,
+          "total": 2,
+          "omitted": 0
+        },
+        "decisions": {
+          "shown": 1,
+          "total": 1,
+          "omitted": 0
+        },
+        "risks": {
+          "shown": 1,
+          "total": 1,
+          "omitted": 0
+        },
+        "truncated": false
+      },
+      "observedAt": "2026-07-24T21:58:18.387Z",
+      "sourceBoundary": "current-governed-records-and-bounded-trace-analysis",
+      "limitations": [
+        "Only persisted Work Item scopes and trace links are shown; missing trace does not prove missing impact.",
+        "The current record model has no general Change approval record, so approval remains not established."
+      ],
+      "authorityBoundary": "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects",
+      "snapshotDigest": "sha256:d783fc140a60c90f0d00aeed23ad9454950c9231a05658c1b545a9273b001f28"
+    }
+  },
+  "agentModel": {
+    "schemaVersion": 1,
+    "kind": "agent-model-dashboard",
+    "product": {
+      "recordType": "product",
+      "recordId": "1fbb960a-28d7-42c4-8529-5020dff04c8d",
+      "revision": 1,
+      "digest": "sha256:b15128cc716963206406f3dd0c700a2fd437329d16aed90379f511094815768b"
+    },
+    "capabilities": [
+      {
+        "adapterId": "gaep.manual",
+        "adapterVersion": "0.1.0",
+        "agentId": "manual",
+        "agentLabel": "Deterministic Manual Agent",
+        "runtimeVersion": "1",
+        "capabilityDigest": "sha256:063c0bb8bc1a3daa85c0ce419fb86d5c81d54a4b236b285141f157bb7630147c",
+        "detected": true,
+        "executionInterface": "managed-in-process",
+        "interfaceMaturity": "stable",
+        "support": {
+          "resume": true,
+          "cancel": true,
+          "checkpoints": true,
+          "modelDiscovery": true,
+          "toolSelection": false
+        },
+        "modelCount": 1,
+        "limitations": {
+          "values": [
+            "This adapter has no executable path and can run only through the GAEP in-process managed-runtime contract.",
+            "This offline deterministic rehearsal runtime cannot perform arbitrary implementation, provider, network, Tool, or workspace effects."
+          ],
+          "shown": 2,
+          "total": 2,
+          "omitted": 0
+        },
+        "observedAt": "2026-07-24T21:58:18.397Z",
+        "selected": true
+      }
+    ],
+    "selection": {
+      "status": "selected",
+      "selectionDigest": "sha256:8d2a8cc3045bff706db97a1e6cdc70febfc1eaa5b05606544f82f6468f80448d",
+      "adapterId": "gaep.manual",
+      "agentId": "manual",
+      "modelId": "manual-deterministic-v1",
+      "modelTruthClass": "configured",
+      "modelAlias": false,
+      "settings": {
+        "script": "success"
+      },
+      "selectedAt": "2026-07-24T21:58:19.094Z",
+      "capabilityDigest": "sha256:063c0bb8bc1a3daa85c0ce419fb86d5c81d54a4b236b285141f157bb7630147c",
+      "capabilityState": "current"
+    },
+    "runs": [
+      {
+        "record": {
+          "recordType": "run",
+          "recordId": "775352f5-e618-4e44-9085-6c6fbe41f1a7",
+          "revision": 3,
+          "digest": "sha256:ba68d819f69f83a945aabab3a5527ca199c930351d05b9c2ffda4a3e572c33e3"
+        },
+        "initiativeId": "9c14ea27-79e5-40f1-b211-cc1c065cb4eb",
+        "state": "completed",
+        "agent": {
+          "adapterId": "gaep.manual",
+          "agentId": "manual",
+          "modelId": "manual-deterministic-v1",
+          "selectionDigest": "sha256:f3d8910187477a8c726ef29d9a4170c6f6d0d3535a351e1b7c10a3753d50afd6"
+        },
+        "startedAt": "2026-07-24T21:58:18.942Z",
+        "endedAt": "2026-07-24T21:58:19.009Z",
+        "managed": {
+          "status": "observed",
+          "record": {
+            "recordType": "managed-run",
+            "recordId": "ffd6b733-9208-4249-b2ed-d784715babca",
+            "revision": 3,
+            "digest": "sha256:c7ee4db8f73ac72188563a13d4cf86d5e4c97c628335c097dea7502723f0a934"
+          },
+          "mode": "manual-offline",
+          "state": "completed",
+          "attemptNumber": 1,
+          "bindingsDigest": "sha256:94d81d67da8cb274cc46346ae4a62d3bc3235f2a647e916c2e33d31f4b81345e",
+          "provider": {
+            "adapterId": "gaep.manual",
+            "agentId": "manual",
+            "modelId": "manual-deterministic-v1",
+            "capabilityDigest": "sha256:063c0bb8bc1a3daa85c0ce419fb86d5c81d54a4b236b285141f157bb7630147c"
+          },
+          "result": {
+            "status": "bound",
+            "recordId": "4e5d90ef-ab6b-4945-8a97-1c9d0eb527ae",
+            "digest": "sha256:b3879ea1dadac27316ab587508fc9009577ca146fc247f5bf36abf024828b9aa",
+            "providerDisposition": "completed",
+            "outcomeStatus": "satisfied",
+            "evidence": {
+              "recordId": "021eaeb9-39f6-46bb-a2fa-2cb0d450ad81",
+              "digest": "sha256:3249b8b93f0a00847c66dccb11282dc5fd4225449b3ae79b57c4cfc2e4f16c07",
+              "eventCount": 3,
+              "eventsDigest": "sha256:6137bed7a334e26bb85daedbdca13cc31bf11f1abf90aba1edacef43a0ad0c60",
+              "actualEffectCount": 1,
+              "capturedAt": "2026-07-24T21:58:19.004Z"
+            }
+          }
+        }
+      }
+    ],
+    "handoffs": [
+      {
+        "record": {
+          "recordType": "handoff",
+          "recordId": "e31bdd63-9c0b-4fda-9c30-69bafbe0e94d",
+          "revision": 1,
+          "digest": "sha256:20d42a00444c7c42aa01c2ea2784f72af28c403162c1497e37903491f0954fdb"
+        },
+        "fromRun": {
+          "recordType": "run",
+          "recordId": "775352f5-e618-4e44-9085-6c6fbe41f1a7",
+          "revision": 3,
+          "digest": "sha256:ba68d819f69f83a945aabab3a5527ca199c930351d05b9c2ffda4a3e572c33e3"
+        },
+        "toSelection": {
+          "adapterId": "gaep.manual",
+          "agentId": "manual",
+          "modelId": "manual-deterministic-v1",
+          "selectionDigest": "sha256:8d2a8cc3045bff706db97a1e6cdc70febfc1eaa5b05606544f82f6468f80448d"
+        },
+        "state": "pending-acknowledgement",
+        "createdAt": "2026-07-24T21:58:19.102Z",
+        "acknowledgedAt": null
+      }
+    ],
+    "providerMetrics": {
+      "usage": {
+        "state": "unavailable",
+        "basis": "current-managed-records-have-no-provider-usage-or-cost-contract"
+      },
+      "cost": {
+        "state": "unavailable",
+        "basis": "current-managed-records-have-no-provider-usage-or-cost-contract"
+      }
+    },
+    "freshness": {
+      "state": "current",
+      "selectionCapabilityState": "current",
+      "oldestCapabilityObservedAt": "2026-07-24T21:58:18.397Z",
+      "newestCapabilityObservedAt": "2026-07-24T21:58:18.397Z",
+      "truncated": false,
+      "coverageBoundary": "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness"
+    },
+    "limits": {
+      "capabilities": {
+        "shown": 1,
+        "total": 1,
+        "omitted": 0
+      },
+      "runs": {
+        "shown": 1,
+        "total": 1,
+        "omitted": 0
+      },
+      "handoffs": {
+        "shown": 1,
+        "total": 1,
+        "omitted": 0
+      },
+      "managedRuns": {
+        "shown": 1,
+        "total": 1,
+        "omitted": 0
+      },
+      "truncated": false
+    },
+    "observedAt": "2026-07-24T21:58:19.176Z",
+    "sourceBoundary": "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata",
+    "limitations": [
+      "Capability truth is bounded to the current portable adapter observations and does not prove provider-account or native-host readiness.",
+      "Current managed records do not carry a provider usage or cost contract, so both metrics remain explicitly unavailable.",
+      "Run and handoff history is bounded; omitted records remain governed but are not summarized by this snapshot."
+    ],
+    "authorityBoundary": "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects",
+    "snapshotDigest": "sha256:a3f847e93b54cd57bbc5fae2f1e7e4a262b2c9d5bec4743e2b599c137912c931"
+  },
+  "summary": {
+    "schemaVersion": 1,
+    "kind": "gaep-phase0-example-semantic-summary",
+    "scenarioId": "phase-0-managed-readonly-v1",
+    "adapterId": "gaep.manual",
+    "agentId": "manual",
+    "modelId": "manual-deterministic-v1",
+    "executionMode": "manual-offline",
+    "state": "completed",
+    "providerDisposition": "completed",
+    "outcomeStatus": "satisfied",
+    "outcomeBasis": "deterministic-offline-runtime",
+    "workflowStrategy": "sequential",
+    "contextPackCount": 1,
+    "toolDefinitionCount": 0,
+    "readScopeCount": 1,
+    "writeScopeCount": 0,
+    "gatePhases": [
+      "charter-evidence",
+      "charter-stop-conditions",
+      "preconditions",
+      "outputs",
+      "evidence",
+      "stop-conditions"
+    ],
+    "completedStepCount": 1,
+    "totalStepCount": 1,
+    "eventTypes": [
+      "lifecycle",
+      "output",
+      "item"
+    ],
+    "eventCount": 3,
+    "actualEffects": [
+      {
+        "effect": "observe",
+        "status": "observed-provisional"
+      }
+    ],
+    "stagingPresent": false,
+    "warnings": [],
+    "auditValid": true,
+    "managedInventoryCount": 1,
+    "dashboardPhase": "phase-0-1a-foundation",
+    "dashboardPanelIds": [
+      "foundation-summary",
+      "change-impact",
+      "agent-model"
+    ],
+    "dashboardApplicability": [
+      {
+        "status": "unknown",
+        "basis": "not-evaluated"
+      },
+      {
+        "status": "applicable",
+        "basis": "phase-contract"
+      },
+      {
+        "status": "applicable",
+        "basis": "phase-contract"
+      }
+    ],
+    "dashboardStates": [
+      "attention-required",
+      "active",
+      "active"
+    ],
+    "dashboardAuthorityBoundary": "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
+    "changeCatalogCount": 1,
+    "changeCatalogOmitted": 0,
+    "changeImpactWorkItemCount": 1,
+    "changeImpactChangedArtifactCount": 1,
+    "changeImpactEffectTargetCount": 1,
+    "changeImpactAffectedUnitCount": 2,
+    "changeImpactDecisionCount": 1,
+    "changeImpactRiskCount": 1,
+    "changeImpactFreshness": "current",
+    "changeImpactApproval": "not-established",
+    "changeImpactTruncated": false,
+    "changeImpactAuthorityBoundary": "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects",
+    "agentCapabilityCount": 1,
+    "agentSelectedCapabilityCount": 1,
+    "agentSelectionStatus": "selected",
+    "agentSelectionCapabilityState": "current",
+    "agentRunCount": 1,
+    "agentManagedRunCount": 1,
+    "agentBoundManagedResultCount": 1,
+    "agentHandoffCount": 1,
+    "agentUsageState": "unavailable",
+    "agentCostState": "unavailable",
+    "agentFreshness": "current",
+    "agentTruncated": false,
+    "agentAuthorityBoundary": "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects"
+  },
+  "summaryDigest": "sha256:17889938923a8fcb0fb4c2fc8682748bf3f59bfd85db521aad0a3623839f2399",
+  "expectedSummaryDigest": "sha256:17889938923a8fcb0fb4c2fc8682748bf3f59bfd85db521aad0a3623839f2399",
+  "integrity": {
+    "auditValid": true,
+    "auditEventCount": 20,
+    "inventoryCount": 1,
+    "inventorySnapshotDigest": "sha256:8110037a828bf7c204ecc1e4eddad78c63a2b94a6dc28f3cb7cceafa32a2e0a1",
+    "recordResultDigestMatches": true,
+    "resultEvidenceDigestMatches": true,
+    "evidenceEventsDigestMatches": true,
+    "dashboardProductDigestMatches": true,
+    "dashboardCompositionDigestMatches": true,
+    "changeCatalogSnapshotDigestMatches": true,
+    "changeImpactSnapshotDigestMatches": true,
+    "changeImpactProductBindingMatches": true,
+    "changeImpactChangeBindingMatches": true,
+    "agentModelSnapshotDigestMatches": true,
+    "agentModelProductBindingMatches": true,
+    "agentModelSelectionBindingMatches": true,
+    "agentModelRunBindingMatches": true,
+    "agentModelManagedBindingMatches": true,
+    "agentModelHandoffBindingMatches": true
+  },
+  "authority": {
+    "previewBoundary": "managed-readonly-preview-does-not-grant-execution-or-effect-authority",
+    "receiptBoundary": "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+    "requestedEffects": [
+      "observe"
+    ],
+    "toolPermissions": [
+      {
+        "capability": "all-tools",
+        "mode": "deny",
+        "scope": []
+      }
+    ],
+    "workspaceWriteScope": [],
+    "networkRequirement": "none-deterministic-in-process-runtime"
+  },
+  "limitations": [
+    "Offline deterministic runtime evidence does not validate a real provider.",
+    "This example does not validate native IDE installation, activation, rendering, or accessibility.",
+    "A satisfied scripted outcome is not Product readiness, release acceptance, deployment approval, or production evidence."
+  ]
+}

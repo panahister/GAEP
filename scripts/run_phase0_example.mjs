@@ -4,8 +4,9 @@ import { tmpdir } from "node:os"
 import { dirname, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
-import { DeterministicManualAdapter, canonicalDigest } from "@gaep/agent-sdk"
+import { DeterministicManualAdapter, canonicalDigest, capabilityDigest } from "@gaep/agent-sdk"
 import {
+  composeAgentModelDashboard,
   composeChangeImpactChangeCatalog,
   composeChangeImpactDashboard,
   composePhaseDashboardFramework,
@@ -59,6 +60,7 @@ function semanticSummary({
   dashboard,
   changeCatalog,
   changeImpactDashboard,
+  agentModelDashboard,
 }) {
   return {
     schemaVersion: 1,
@@ -107,6 +109,20 @@ function semanticSummary({
     changeImpactApproval: changeImpactDashboard.governance.approval.state,
     changeImpactTruncated: changeImpactDashboard.limits.truncated,
     changeImpactAuthorityBoundary: changeImpactDashboard.authorityBoundary,
+    agentCapabilityCount: agentModelDashboard.capabilities.length,
+    agentSelectedCapabilityCount: agentModelDashboard.capabilities.filter((entry) => entry.selected).length,
+    agentSelectionStatus: agentModelDashboard.selection.status,
+    agentSelectionCapabilityState: agentModelDashboard.freshness.selectionCapabilityState,
+    agentRunCount: agentModelDashboard.runs.length,
+    agentManagedRunCount: agentModelDashboard.limits.managedRuns.shown,
+    agentBoundManagedResultCount: agentModelDashboard.runs.filter((entry) =>
+      entry.managed.status === "observed" && entry.managed.result.status === "bound").length,
+    agentHandoffCount: agentModelDashboard.handoffs.length,
+    agentUsageState: agentModelDashboard.providerMetrics.usage.state,
+    agentCostState: agentModelDashboard.providerMetrics.cost.state,
+    agentFreshness: agentModelDashboard.freshness.state,
+    agentTruncated: agentModelDashboard.limits.truncated,
+    agentAuthorityBoundary: agentModelDashboard.authorityBoundary,
   }
 }
 
@@ -295,10 +311,42 @@ async function createExample(workspace, scenario, expectedSummary) {
   if (!record.resultId) throw new Error("Completed managed Run does not bind a result")
   const result = await engine.readManagedRunResult(record.resultId)
   const evidence = await engine.readManagedRunEvidence(result.evidenceId)
-  const [audit, inventory] = await Promise.all([
+  await engine.createHandoff({
+    ...scenario.agentModel.handoff,
+    fromRunId: receipt.runId,
+    toCapabilities: probe.capabilities,
+    toModelId: scenario.execution.modelId,
+    toSettings: { script: scenario.execution.script },
+  }, actorId)
+  const [audit, inventory, runs, handoffs, selectionState] = await Promise.all([
     engine.repository.verifyAudit(),
     engine.listManagedRunsPage({ offset: 0, limit: 10 }),
+    engine.listRuns(),
+    engine.listHandoffs(),
+    engine.readSelectionState(),
   ])
+  if (selectionState.status !== "selected") throw new Error("Canonical Agent Selection is not current")
+  const agentModelObservedAt = new Date().toISOString()
+  const agentModelDashboard = composeAgentModelDashboard({
+    product,
+    capabilities: [probe.capabilities],
+    selection: selectionState,
+    runs,
+    handoffs,
+    handoffTotal: handoffs.length,
+    managedRuns: [{ record, result, evidence }],
+    managedRunTotal: inventory.total,
+  }, {
+    expectedProductId: product.id,
+    expectedProductRevision: productRevision,
+    expectedProductDigest: productDigest,
+    expectedSelection: { status: "selected", selectionDigest: canonicalDigest(selectionState.selection) },
+    expectedCapabilities: [{
+      adapterId: probe.capabilities.adapterId,
+      agentId: probe.capabilities.agentId,
+      capabilityDigest: capabilityDigest(probe.capabilities),
+    }],
+  }, agentModelObservedAt)
   const summary = semanticSummary({
     scenario,
     preview,
@@ -310,6 +358,7 @@ async function createExample(workspace, scenario, expectedSummary) {
     dashboard,
     changeCatalog,
     changeImpactDashboard,
+    agentModelDashboard,
   })
   const summaryDigest = canonicalDigest(summary)
   const expectedSummaryDigest = canonicalDigest(expectedSummary)
@@ -318,7 +367,7 @@ async function createExample(workspace, scenario, expectedSummary) {
   }
 
   const output = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     kind: "gaep-phase0-example-receipt",
     scenario: { id: scenario.id, digest: canonicalDigest(scenario) },
     portableRun: {
@@ -335,6 +384,7 @@ async function createExample(workspace, scenario, expectedSummary) {
       catalog: changeCatalog,
       dashboard: changeImpactDashboard,
     },
+    agentModel: agentModelDashboard,
     summary,
     summaryDigest,
     expectedSummaryDigest,
@@ -359,6 +409,24 @@ async function createExample(workspace, scenario, expectedSummary) {
         changeCatalog.items[0].recordId === changeImpactDashboard.change.recordId &&
         changeCatalog.items[0].revision === changeImpactDashboard.change.revision &&
         changeCatalog.items[0].digest === changeImpactDashboard.change.digest,
+      agentModelSnapshotDigestMatches: agentModelDashboard.snapshotDigest === canonicalDigest((({ snapshotDigest: _, ...content }) => content)(agentModelDashboard)),
+      agentModelProductBindingMatches: agentModelDashboard.product.recordId === dashboard.product.recordId &&
+        agentModelDashboard.product.revision === dashboard.product.revision &&
+        agentModelDashboard.product.digest === dashboard.product.digest,
+      agentModelSelectionBindingMatches: agentModelDashboard.selection.status === "selected" &&
+        agentModelDashboard.selection.selectionDigest === canonicalDigest(selectionState.selection) &&
+        agentModelDashboard.selection.capabilityDigest === capabilityDigest(probe.capabilities),
+      agentModelRunBindingMatches: agentModelDashboard.runs.length === 1 &&
+        agentModelDashboard.runs[0].record.recordId === receipt.runId,
+      agentModelManagedBindingMatches: agentModelDashboard.runs.length === 1 &&
+        agentModelDashboard.runs[0].managed.status === "observed" &&
+        agentModelDashboard.runs[0].managed.record.recordId === receipt.managedRunId &&
+        agentModelDashboard.runs[0].managed.result.status === "bound" &&
+        agentModelDashboard.runs[0].managed.result.digest === receipt.resultDigest &&
+        agentModelDashboard.runs[0].managed.result.evidence.digest === receipt.evidenceDigest,
+      agentModelHandoffBindingMatches: agentModelDashboard.handoffs.length === 1 &&
+        agentModelDashboard.handoffs[0].fromRun.recordId === receipt.runId &&
+        agentModelDashboard.handoffs[0].toSelection.selectionDigest === canonicalDigest(selectionState.selection),
     },
     authority: {
       previewBoundary: preview.authorityBoundary,

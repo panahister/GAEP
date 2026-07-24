@@ -129,6 +129,23 @@
     },
     "traceRationale": "The governed record directly affects the canonical Change."
   },
+  "agentModel": {
+    "handoff": {
+      "reason": "Persist one governed same-runtime handoff so switch history and current selection remain independently observable.",
+      "completedWork": [
+        "The deterministic managed read-only Run completed with bound result and evidence."
+      ],
+      "unresolvedMatters": [
+        "Real-provider and native-host acceptance remain outside this offline example."
+      ],
+      "decisions": [
+        "Keep the selected deterministic manual runtime for the next governed step."
+      ],
+      "evidence": [
+        "The completed Run and managed evidence remain bound by portable digests."
+      ]
+    }
+  },
   "context": {
     "source": "atlas-release-evidence-packet-v1",
     "content": "Candidate 0.1.0 has local build and contract-test evidence. Native Windows installation and human acceptance are not recorded. Deployment is outside this review.",

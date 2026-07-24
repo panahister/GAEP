@@ -78,5 +78,18 @@
   "changeImpactFreshness": "current",
   "changeImpactApproval": "not-established",
   "changeImpactTruncated": false,
-  "changeImpactAuthorityBoundary": "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects"
+  "changeImpactAuthorityBoundary": "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects",
+  "agentCapabilityCount": 1,
+  "agentSelectedCapabilityCount": 1,
+  "agentSelectionStatus": "selected",
+  "agentSelectionCapabilityState": "current",
+  "agentRunCount": 1,
+  "agentManagedRunCount": 1,
+  "agentBoundManagedResultCount": 1,
+  "agentHandoffCount": 1,
+  "agentUsageState": "unavailable",
+  "agentCostState": "unavailable",
+  "agentFreshness": "current",
+  "agentTruncated": false,
+  "agentAuthorityBoundary": "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects"
 }

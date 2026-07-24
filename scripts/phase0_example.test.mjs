@@ -42,6 +42,12 @@ test("repeats the canonical semantic result while keeping generated Run identity
   assert.equal(first.integrity.changeImpactSnapshotDigestMatches, true)
   assert.equal(first.integrity.changeImpactProductBindingMatches, true)
   assert.equal(first.integrity.changeImpactChangeBindingMatches, true)
+  assert.equal(first.integrity.agentModelSnapshotDigestMatches, true)
+  assert.equal(first.integrity.agentModelProductBindingMatches, true)
+  assert.equal(first.integrity.agentModelSelectionBindingMatches, true)
+  assert.equal(first.integrity.agentModelRunBindingMatches, true)
+  assert.equal(first.integrity.agentModelManagedBindingMatches, true)
+  assert.equal(first.integrity.agentModelHandoffBindingMatches, true)
   assert.equal(first.dashboard.phase.id, "phase-0-1a-foundation")
   assert.deepEqual(first.dashboard.panels.map((panel) => panel.id), [
     "foundation-summary", "change-impact", "agent-model",
@@ -57,6 +63,17 @@ test("repeats the canonical semantic result while keeping generated Run identity
   assert.equal(first.changeImpact.dashboard.freshness.state, "current")
   assert.equal(first.changeImpact.dashboard.governance.approval.state, "not-established")
   assert.equal(first.changeImpact.dashboard.limits.truncated, false)
+  assert.equal(first.agentModel.capabilities.length, 1)
+  assert.equal(first.agentModel.selection.status, "selected")
+  assert.equal(first.agentModel.selection.capabilityState, "current")
+  assert.equal(first.agentModel.runs.length, 1)
+  assert.equal(first.agentModel.runs[0].managed.status, "observed")
+  assert.equal(first.agentModel.runs[0].managed.result.status, "bound")
+  assert.equal(first.agentModel.handoffs.length, 1)
+  assert.equal(first.agentModel.providerMetrics.usage.state, "unavailable")
+  assert.equal(first.agentModel.providerMetrics.cost.state, "unavailable")
+  assert.equal(first.agentModel.freshness.state, "current")
+  assert.equal(first.agentModel.limits.truncated, false)
 })
 
 test("creates a new inspectable artifact directory without exposing private runtime data", async () => {
@@ -158,6 +175,69 @@ test("rejects semantic tampering, oversized files, and symlink receipts", async 
     await assert.rejects(
       verifyPhase0ExampleReceiptObject(digestTampered),
       /snapshot digest differs/,
+    )
+
+    const agentProductTampered = structuredClone(receipt)
+    agentProductTampered.agentModel.product.recordId = randomUUID()
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(agentProductTampered),
+      /Agent\/Model dashboard Product binding differs/,
+    )
+
+    const agentSelectionTampered = structuredClone(receipt)
+    agentSelectionTampered.agentModel.selection.selectionDigest = `sha256:${"1".repeat(64)}`
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(agentSelectionTampered),
+      /Agent\/Model selection digest differs/,
+    )
+
+    const agentCountTampered = structuredClone(receipt)
+    agentCountTampered.agentModel.limits.runs.total = 2
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(agentCountTampered),
+      /agentModel\.limits\.runs does not reconcile/,
+    )
+
+    const agentFreshnessTampered = structuredClone(receipt)
+    agentFreshnessTampered.agentModel.freshness.state = "attention-required"
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(agentFreshnessTampered),
+      /Agent\/Model freshness differs/,
+    )
+
+    const agentMetricTampered = structuredClone(receipt)
+    agentMetricTampered.agentModel.providerMetrics.usage.state = "available"
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(agentMetricTampered),
+      /provider metrics must remain explicitly unavailable/,
+    )
+
+    const agentManagedTampered = structuredClone(receipt)
+    agentManagedTampered.agentModel.runs[0].managed.result.digest = `sha256:${"2".repeat(64)}`
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(agentManagedTampered),
+      /Managed result binding differs/,
+    )
+
+    const agentAuthorityTampered = structuredClone(receipt)
+    agentAuthorityTampered.agentModel.authorityBoundary = "dashboard-can-launch-runs"
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(agentAuthorityTampered),
+      /Agent\/Model dashboard identity or authority boundary differs/,
+    )
+
+    const agentDigestTampered = structuredClone(receipt)
+    agentDigestTampered.agentModel.snapshotDigest = `sha256:${"3".repeat(64)}`
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(agentDigestTampered),
+      /Agent\/Model dashboard snapshot digest differs/,
+    )
+
+    const agentPrivateTampered = structuredClone(receipt)
+    agentPrivateTampered.agentModel.providerToken = "must-not-pass"
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(agentPrivateTampered),
+      /receipt\.agentModel keys differ/,
     )
 
     const oversized = join(directory, "oversized.json")
