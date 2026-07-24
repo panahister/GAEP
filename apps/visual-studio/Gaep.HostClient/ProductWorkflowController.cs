@@ -215,6 +215,44 @@ public sealed class ProductWorkflowController(EngineClient client)
             actorId,
             cancellationToken));
 
+    public async Task<string> ListManagedEvidenceAsync(CancellationToken cancellationToken = default)
+    {
+        var page = await client.ListManagedEvidenceAsync(offset: 0, limit: 100, cancellationToken: cancellationToken);
+        var output = new StringBuilder()
+            .AppendLine("GAEP bounded Managed Run evidence")
+            .AppendLine()
+            .AppendLine($"Snapshot: {page.SnapshotDigest}")
+            .AppendLine($"Displayed: {page.Items.Count} of {page.Total}")
+            .AppendLine($"Omitted from this page: {page.OmittedCount}")
+            .AppendLine($"More pages available: {YesNo(page.HasMore)}");
+        if (page.Items.Count == 0) output.AppendLine("No Managed Runs exist in the verified bounded inventory.");
+        foreach (var item in page.Items)
+        {
+            output.AppendLine()
+                .AppendLine($"{item.ManagedRunId:D} · {item.State} · {item.Mode}")
+                .AppendLine($"  Provider: {item.AdapterId} / {item.AgentId} / {item.ModelId}")
+                .AppendLine(
+                    $"  Updated: {item.UpdatedAt.ToString("O", CultureInfo.InvariantCulture)}; " +
+                    $"recovery={item.RecoveryStatus}; result={(item.HasResult ? "bound" : "not bound")}; " +
+                    $"apply decision={(item.HasApplyDecision ? "bound" : "not bound")}");
+        }
+        return output.AppendLine()
+            .AppendLine(
+                "Boundary: this audit-gated observation cannot start, resume, cancel, apply, discard, approve, or grant " +
+                "Run, Tool, write, effect, outcome, implementation-readiness, or release authority.")
+            .Append(
+                "Raw provider output, prompts, context content, changed paths, source bytes, executable paths, process state, " +
+                "workspace paths, and credentials are withheld.")
+            .ToString();
+    }
+
+    public async Task<string> ReadManagedEvidenceAsync(
+        string managedRunId,
+        CancellationToken cancellationToken = default) =>
+        RenderManagedEvidenceDetail(await client.ReadManagedEvidenceAsync(
+            ParseRequiredId(managedRunId, "Managed Run ID"),
+            cancellationToken));
+
     public static string NormalizeHandoffReason(string value) =>
         PortableDesignProtocol.ValidateHandoffText(value, "Handoff reason", 2, 5_000);
 
@@ -445,6 +483,97 @@ public sealed class ProductWorkflowController(EngineClient client)
             .AppendLine("Provider completion and governed outcome are separate claims; one never substitutes for the other.")
             .AppendLine($"Authority boundary: {receipt.AuthorityBoundary}")
             .Append("No local paths, credentials, provider sessions, raw provider output, or source bytes are included.")
+            .ToString();
+    }
+
+    private static string RenderManagedEvidenceDetail(ManagedEvidenceDetail detail)
+    {
+        var summary = detail.Summary;
+        var output = new StringBuilder()
+            .AppendLine("GAEP exact Managed Run evidence detail")
+            .AppendLine()
+            .AppendLine($"Managed Run: {summary.ManagedRunId:D}")
+            .AppendLine($"Governed Run: {summary.RunId:D}")
+            .AppendLine($"Product / Initiative: {summary.ProductId:D} / {summary.InitiativeId:D}")
+            .AppendLine($"State / mode: {summary.State} / {summary.Mode}")
+            .AppendLine($"Provider: {summary.AdapterId} / {summary.AgentId} / {summary.ModelId}")
+            .AppendLine(
+                $"Recovery: {summary.RecoveryStatus}; attempt {summary.AttemptNumber}; " +
+                $"checkpoints {summary.WorkflowCheckpointCount}")
+            .AppendLine($"Artifact status: {detail.ArtifactStatus}")
+            .AppendLine($"Bindings digest: {summary.BindingsDigest}");
+        if (detail.Result is { } result)
+        {
+            output.AppendLine()
+                .AppendLine("Verified result:")
+                .AppendLine($"  Result: {result.ResultId:D} ({result.ResultDigest})")
+                .AppendLine($"  Terminal state: {result.TerminalState}")
+                .AppendLine(
+                    $"  Provider disposition: {result.ProviderDisposition}; termination cause: {result.TerminationCause}")
+                .AppendLine($"  Governed outcome: {result.OutcomeStatus} ({result.OutcomeBasis})")
+                .AppendLine($"  Warnings: {(result.WarningCodes.Count == 0 ? "none" : string.Join(", ", result.WarningCodes))}")
+                .AppendLine(
+                    $"  Started / ended: {result.StartedAt.ToString("O", CultureInfo.InvariantCulture)} / " +
+                    result.EndedAt.ToString("O", CultureInfo.InvariantCulture));
+        }
+        else
+        {
+            output.AppendLine("No committed result/evidence pair is bound to this record. No terminal outcome is inferred.");
+        }
+        if (detail.Evidence is { } evidence)
+        {
+            output.AppendLine()
+                .AppendLine("Verified evidence:")
+                .AppendLine($"  Evidence: {evidence.EvidenceId:D} ({evidence.EvidenceDigest})")
+                .AppendLine(
+                    $"  Events: {evidence.EventCount}; lifecycle={evidence.EventTypeCounts["lifecycle"]}; " +
+                    $"output={evidence.EventTypeCounts["output"]}; item={evidence.EventTypeCounts["item"]}; " +
+                    $"approval={evidence.EventTypeCounts["approval"]}; warning={evidence.EventTypeCounts["warning"]}; " +
+                    $"error={evidence.EventTypeCounts["error"]}")
+                .AppendLine(
+                    $"  Workflow: {evidence.WorkflowStrategy}; {evidence.CompletedStepCount}/{evidence.WorkflowStepCount} " +
+                    $"steps; {evidence.WorkflowAttemptCount} attempts")
+                .AppendLine(
+                    $"  Charter gates: evidence={evidence.CharterEvidenceStatus}; stop={evidence.CharterStopStatus}; " +
+                    $"reason={evidence.TerminalReasonCode}")
+                .AppendLine(
+                    $"  Actual effects: not-observed={evidence.ActualEffectCounts["not-observed"]}; " +
+                    $"provisional={evidence.ActualEffectCounts["observed-provisional"]}; " +
+                    $"applied={evidence.ActualEffectCounts["applied"]}; blocked={evidence.ActualEffectCounts["blocked"]}; " +
+                    $"unknown={evidence.ActualEffectCounts["unknown"]}");
+            if (evidence.Staging is { } staging)
+            {
+                output.AppendLine(
+                        $"  Staging: {staging.ApplyState}; changes={staging.ChangeCount}; excluded={staging.ExcludedPathCount}")
+                    .AppendLine(
+                        $"  Stage digests: baseline={staging.BaselineDigest}; final={staging.FinalDigest}; " +
+                        $"inventory={staging.ChangedInventoryDigest}");
+            }
+            else
+            {
+                output.AppendLine("  Staging: not present");
+            }
+            output.AppendLine($"  Captured: {evidence.CapturedAt.ToString("O", CultureInfo.InvariantCulture)}");
+        }
+        if (detail.ApplyDecision is { } decision)
+        {
+            output.AppendLine()
+                .AppendLine("Verified apply-decision evidence (observation only):")
+                .AppendLine($"  Receipt: {decision.ReceiptId:D} ({decision.ReceiptDigest})")
+                .AppendLine(
+                    $"  Bound revision: {decision.ManagedRunRevision}; " +
+                    $"changed inventory count={decision.ChangedInventoryCount}; " +
+                    $"write-envelope count={decision.WriteEnvelopeCount}")
+                .AppendLine($"  Decided: {decision.DecidedAt.ToString("O", CultureInfo.InvariantCulture)}");
+        }
+        return output.AppendLine()
+            .AppendLine(
+                "Boundary: provider completion is separate from governed outcome. Apply-decision evidence records a past exact " +
+                "decision and grants this view no apply, discard, approval, Tool, write, effect, implementation-readiness, " +
+                "release, or future Run authority.")
+            .Append(
+                "Raw provider output, prompts, context content, changed paths, source bytes, executable paths, process state, " +
+                "workspace paths, and credentials are withheld.")
             .ToString();
     }
 

@@ -71,6 +71,13 @@ for (const binding of [
   "HandoffUnresolvedMatters",
   "HandoffDecisions",
   "HandoffEvidence",
+  "ManagedCharterId",
+  "ManagedWorkflowPlanId",
+  "LoadManagedReadOnlyPreviewCommand",
+  "ExecuteManagedReadOnlyCommand",
+  "ManagedRunId",
+  "ListManagedEvidenceCommand",
+  "ReadManagedEvidenceCommand",
   "ListDesignImportsCommand",
   "ReadDesignImportCommand",
   "ImportDesignBundleCommand",
@@ -87,6 +94,10 @@ requireText(remoteUi, /Confirm guarded selection/u,
   "Visual Studio selection action does not communicate its guarded confirmation boundary")
 requireText(remoteUi, /Create versioned handoff/u,
   "Visual Studio handoff action does not communicate its versioned-record boundary")
+requireText(remoteUi, /List Managed Run evidence/u,
+  "Visual Studio evidence dashboard does not expose bounded Managed Run inventory")
+requireText(remoteUi, /Read Managed Run evidence/u,
+  "Visual Studio evidence dashboard does not expose exact evidence detail")
 
 if (process.platform === "win32") {
   await regularFile(join(output, "Gaep.VisualStudio.vsix"), 128 * 1024 * 1024)

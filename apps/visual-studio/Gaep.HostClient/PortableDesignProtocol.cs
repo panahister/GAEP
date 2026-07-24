@@ -24,6 +24,9 @@ internal static partial class PortableDesignProtocol
     private const string PagePrivacyBoundary = "Items contain validated metadata and digests only; local paths and source content are omitted.";
     private const string ManagedPreviewBoundary = "managed-readonly-preview-does-not-grant-execution-or-effect-authority";
     private const string ManagedReceiptBoundary = "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority";
+    private const string ManagedInventoryBoundary = "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority";
+    private const string ManagedEvidenceBoundary = "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority";
+    private const string ManagedEvidencePrivacyBoundary = "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.";
     private static readonly JsonSerializerOptions StrictJson = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -50,6 +53,10 @@ internal static partial class PortableDesignProtocol
             ["AGENT_SELECTION_INVALID"] = (-32_018, "The persisted Agent Selection is invalid and cannot be replaced implicitly."),
             ["MANAGED_READ_ONLY_PREVIEW_CHANGED"] = (-32_022, "The managed read-only preview changed before execution; review the current preview."),
             ["MANAGED_READ_ONLY_RECEIPT_INVALID"] = (-32_023, "GAEP could not verify the managed read-only terminal evidence."),
+            ["MANAGED_EVIDENCE_AUDIT_INVALID"] = (-32_024, "Managed Run evidence is unavailable because the governed audit chain is invalid."),
+            ["MANAGED_EVIDENCE_SNAPSHOT_CHANGED"] = (-32_025, "Managed Run inventory changed during pagination; reload the first page."),
+            ["MANAGED_EVIDENCE_INVENTORY_INVALID"] = (-32_026, "GAEP could not verify the bounded Managed Run inventory."),
+            ["MANAGED_EVIDENCE_DETAIL_INVALID"] = (-32_027, "GAEP could not verify the exact Managed Run evidence detail."),
             ["INVALID_PARAMS"] = (-32_602, "The GAEP engine rejected the local request parameters."),
             ["PROTOCOL_UPGRADE_REQUIRED"] = (-32_021, "The GAEP engine requires protocol version 2 for portable design requests."),
             ["UNSUPPORTED_PROTOCOL_VERSION"] = (-32_020, "The GAEP engine does not support the requested portable design protocol version."),
@@ -169,6 +176,16 @@ internal static partial class PortableDesignProtocol
     {
         if (offset is < 0 or > MaxOffset) throw new ArgumentOutOfRangeException(nameof(offset));
         if (limit is < 1 or > MaxPageSize) throw new ArgumentOutOfRangeException(nameof(limit));
+    }
+
+    internal static void ValidateManagedEvidencePage(int offset, int limit, string? snapshotDigest)
+    {
+        if (offset is < 0 or > 2_000) throw new ArgumentOutOfRangeException(nameof(offset));
+        if (limit is < 1 or > 200) throw new ArgumentOutOfRangeException(nameof(limit));
+        if (snapshotDigest is not null && !DigestPattern().IsMatch(snapshotDigest))
+        {
+            throw new ArgumentException("Managed Run snapshot digest must be SHA-256.", nameof(snapshotDigest));
+        }
     }
 
     internal static PortableDesignSnapshotSummary ParseSnapshotResponse(
@@ -534,6 +551,363 @@ internal static partial class PortableDesignProtocol
             startedAt,
             endedAt,
             ManagedReceiptBoundary);
+    }
+
+    internal static ManagedRunSummaryPage ParseManagedRunSummaryPageResponse(
+        JsonElement envelope,
+        int expectedOffset,
+        int expectedLimit,
+        string? expectedSnapshotDigest = null)
+    {
+        var page = ReadResult(envelope);
+        if (!HasRequiredAndAllowedProperties(
+                page,
+                [
+                    "schemaVersion", "kind", "items", "offset", "limit", "total", "omittedCount",
+                    "snapshotDigest", "hasMore", "authorityBoundary", "privacyBoundary",
+                ],
+                []) ||
+            page.GetProperty("schemaVersion").GetInt32() != 1 ||
+            page.GetProperty("kind").GetString() != "managed-run-summary-page" ||
+            page.GetProperty("authorityBoundary").GetString() != ManagedInventoryBoundary ||
+            page.GetProperty("privacyBoundary").GetString() != ManagedEvidencePrivacyBoundary)
+        {
+            throw InvalidResponse();
+        }
+        var offset = ParseBoundedNonNegativeInt(page, "offset", 2_000);
+        var limit = ParseBoundedNonNegativeInt(page, "limit", 200);
+        var total = ParseBoundedNonNegativeInt(page, "total", 2_000);
+        var omittedCount = ParseBoundedNonNegativeInt(page, "omittedCount", 2_000);
+        if (!page.TryGetProperty("items", out var itemsElement) || itemsElement.ValueKind != JsonValueKind.Array ||
+            limit < 1 || offset != expectedOffset || limit != expectedLimit || itemsElement.GetArrayLength() > limit ||
+            (long)offset + itemsElement.GetArrayLength() > total || omittedCount != total - itemsElement.GetArrayLength())
+        {
+            throw InvalidResponse();
+        }
+        var items = itemsElement.EnumerateArray().Select(ParseManagedRunSummary).ToArray();
+        if (items.Select(item => item.ManagedRunId).Distinct().Count() != items.Length) throw InvalidResponse();
+        var snapshotDigest = ParseRequiredDigest(page, "snapshotDigest");
+        if (expectedSnapshotDigest is not null && snapshotDigest != expectedSnapshotDigest) throw InvalidResponse();
+        var hasMore = ParseRequiredBoolean(page, "hasMore");
+        if (hasMore != ((long)offset + items.Length < total)) throw InvalidResponse();
+        return new ManagedRunSummaryPage(
+            1,
+            "managed-run-summary-page",
+            Array.AsReadOnly(items),
+            offset,
+            limit,
+            total,
+            omittedCount,
+            snapshotDigest,
+            hasMore,
+            ManagedInventoryBoundary,
+            ManagedEvidencePrivacyBoundary);
+    }
+
+    internal static ManagedEvidenceDetail ParseManagedEvidenceDetailResponse(
+        JsonElement envelope,
+        Guid expectedManagedRunId)
+    {
+        var detail = ReadResult(envelope);
+        if (!HasRequiredAndAllowedProperties(
+                detail,
+                ["schemaVersion", "kind", "summary", "artifactStatus", "authorityBoundary", "privacyBoundary"],
+                ["result", "evidence", "applyDecision"]) ||
+            detail.GetProperty("schemaVersion").GetInt32() != 1 ||
+            detail.GetProperty("kind").GetString() != "managed-evidence-detail" ||
+            detail.GetProperty("authorityBoundary").GetString() != ManagedEvidenceBoundary ||
+            detail.GetProperty("privacyBoundary").GetString() != ManagedEvidencePrivacyBoundary)
+        {
+            throw InvalidResponse();
+        }
+        var summary = ParseManagedRunSummary(detail.GetProperty("summary"));
+        if (expectedManagedRunId == Guid.Empty || summary.ManagedRunId != expectedManagedRunId) throw InvalidResponse();
+        var artifactStatus = ParseRequiredEnum(
+            detail,
+            "artifactStatus",
+            "record-only",
+            "verified-result-and-evidence");
+        var hasResult = detail.TryGetProperty("result", out var resultElement);
+        var hasEvidence = detail.TryGetProperty("evidence", out var evidenceElement);
+        var hasApplyDecision = detail.TryGetProperty("applyDecision", out var applyDecisionElement);
+        if (hasResult != hasEvidence || hasResult != summary.HasResult ||
+            hasApplyDecision != summary.HasApplyDecision || (artifactStatus == "record-only") != !hasResult)
+        {
+            throw InvalidResponse();
+        }
+        var result = hasResult ? ParseManagedEvidenceResult(resultElement, summary) : null;
+        var evidence = hasEvidence
+            ? ParseManagedEvidenceProjection(evidenceElement, result ?? throw InvalidResponse())
+            : null;
+        var applyDecision = hasApplyDecision
+            ? ParseManagedApplyDecisionProjection(applyDecisionElement, summary)
+            : null;
+        return new ManagedEvidenceDetail(
+            1,
+            "managed-evidence-detail",
+            summary,
+            artifactStatus,
+            result,
+            evidence,
+            applyDecision,
+            ManagedEvidenceBoundary,
+            ManagedEvidencePrivacyBoundary);
+    }
+
+    private static ManagedRunSummary ParseManagedRunSummary(JsonElement summary)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                summary,
+                [
+                    "schemaVersion", "kind", "managedRunId", "runId", "productId", "initiativeId", "mode", "state",
+                    "adapterId", "agentId", "modelId", "attemptNumber", "recoveryStatus", "workflowCheckpointCount",
+                    "hasResult", "hasApplyDecision", "bindingsDigest", "createdAt", "updatedAt", "authorityBoundary",
+                ],
+                ["resultDigest", "applyDecisionDigest", "startedAt", "endedAt"]) ||
+            summary.GetProperty("schemaVersion").GetInt32() != 1 ||
+            summary.GetProperty("kind").GetString() != "managed-run-summary" ||
+            summary.GetProperty("authorityBoundary").GetString() != ManagedInventoryBoundary)
+        {
+            throw InvalidResponse();
+        }
+        var state = ParseRequiredEnum(
+            summary,
+            "state",
+            "prepared", "running", "review-required", "applying", "completed", "failed", "cancelled",
+            "timed-out", "unknown", "conflict", "discarded");
+        var hasResult = ParseRequiredBoolean(summary, "hasResult");
+        var hasApplyDecision = ParseRequiredBoolean(summary, "hasApplyDecision");
+        var resultDigest = ParseOptionalDigest(summary, "resultDigest");
+        var applyDecisionDigest = ParseOptionalDigest(summary, "applyDecisionDigest");
+        if (hasResult != (resultDigest is not null) || hasApplyDecision != (applyDecisionDigest is not null))
+        {
+            throw InvalidResponse();
+        }
+        var createdAt = ParseRequiredTimestamp(summary, "createdAt");
+        var startedAt = ParseOptionalTimestamp(summary, "startedAt");
+        var updatedAt = ParseRequiredTimestamp(summary, "updatedAt");
+        var endedAt = ParseOptionalTimestamp(summary, "endedAt");
+        var terminal = state is "completed" or "failed" or "cancelled" or "timed-out" or "unknown" or "conflict" or "discarded";
+        if (terminal != endedAt.HasValue || updatedAt < createdAt ||
+            (startedAt.HasValue && startedAt.Value < createdAt) ||
+            (startedAt.HasValue && endedAt.HasValue && endedAt.Value < startedAt.Value))
+        {
+            throw InvalidResponse();
+        }
+        var attemptNumber = ParseBoundedNonNegativeInt(summary, "attemptNumber", 1_000_000);
+        if (attemptNumber < 1) throw InvalidResponse();
+        return new ManagedRunSummary(
+            1,
+            "managed-run-summary",
+            ParseRequiredGuid(summary, "managedRunId"),
+            ParseRequiredGuid(summary, "runId"),
+            ParseRequiredGuid(summary, "productId"),
+            ParseRequiredGuid(summary, "initiativeId"),
+            ParseRequiredEnum(summary, "mode", "codex-staged", "manual-offline", "claude-context-only"),
+            state,
+            ParseRequiredPortableText(summary, "adapterId"),
+            ParseRequiredPortableText(summary, "agentId"),
+            ParseRequiredPortableText(summary, "modelId"),
+            attemptNumber,
+            ParseRequiredEnum(summary, "recoveryStatus", "not-required", "required", "recovered", "resume-unavailable"),
+            ParseBoundedNonNegativeInt(summary, "workflowCheckpointCount", 511),
+            hasResult,
+            hasApplyDecision,
+            ParseRequiredDigest(summary, "bindingsDigest"),
+            resultDigest,
+            applyDecisionDigest,
+            createdAt,
+            startedAt,
+            updatedAt,
+            endedAt,
+            ManagedInventoryBoundary);
+    }
+
+    private static ManagedEvidenceResult ParseManagedEvidenceResult(
+        JsonElement result,
+        ManagedRunSummary summary)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                result,
+                [
+                    "resultId", "resultDigest", "providerDisposition", "terminationCause", "outcomeStatus", "outcomeBasis",
+                    "terminalState", "evidenceId", "evidenceDigest", "warningCodes", "startedAt", "endedAt",
+                ],
+                []))
+        {
+            throw InvalidResponse();
+        }
+        var terminalState = ParseRequiredEnum(
+            result,
+            "terminalState",
+            "review-required", "completed", "failed", "cancelled", "timed-out", "unknown", "conflict", "discarded");
+        var providerDisposition = ParseRequiredEnum(
+            result,
+            "providerDisposition",
+            "completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown");
+        var outcomeStatus = ParseRequiredEnum(result, "outcomeStatus", "satisfied", "failed", "not-assessed", "indeterminate");
+        var resultDigest = ParseRequiredDigest(result, "resultDigest");
+        if (terminalState != summary.State || resultDigest != summary.ResultDigest ||
+            (terminalState == "completed" && (providerDisposition != "completed" || outcomeStatus != "satisfied")))
+        {
+            throw InvalidResponse();
+        }
+        if (!result.TryGetProperty("warningCodes", out var warningsElement) ||
+            warningsElement.ValueKind != JsonValueKind.Array || warningsElement.GetArrayLength() > 128)
+        {
+            throw InvalidResponse();
+        }
+        string[] allowedWarnings =
+        [
+            "provider-warning-redacted", "provider-output-redacted", "coordinator-failure", "runtime-output-truncated",
+            "staging-read-confinement-unattested", "postcondition-evaluator-failed", "local-cleanup-pending",
+            "local-cleanup-failed", "runtime-warning",
+        ];
+        var warningCodes = warningsElement.EnumerateArray().Select(warning =>
+        {
+            var value = warning.ValueKind == JsonValueKind.String ? warning.GetString() : null;
+            return value is not null && allowedWarnings.Contains(value, StringComparer.Ordinal)
+                ? value
+                : throw InvalidResponse();
+        }).ToArray();
+        var startedAt = ParseRequiredTimestamp(result, "startedAt");
+        var endedAt = ParseRequiredTimestamp(result, "endedAt");
+        if (endedAt < startedAt) throw InvalidResponse();
+        return new ManagedEvidenceResult(
+            ParseRequiredGuid(result, "resultId"),
+            resultDigest,
+            providerDisposition,
+            ParseRequiredEnum(
+                result,
+                "terminationCause",
+                "normal", "cancel-request", "timeout", "provider-failure", "process-loss", "protocol-error"),
+            outcomeStatus,
+            ParseRequiredEnum(
+                result,
+                "outcomeBasis",
+                "postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure"),
+            terminalState,
+            ParseRequiredGuid(result, "evidenceId"),
+            ParseRequiredDigest(result, "evidenceDigest"),
+            Array.AsReadOnly(warningCodes),
+            startedAt,
+            endedAt);
+    }
+
+    private static ManagedEvidenceProjection ParseManagedEvidenceProjection(
+        JsonElement evidence,
+        ManagedEvidenceResult result)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                evidence,
+                [
+                    "evidenceId", "evidenceDigest", "eventCount", "eventTypeCounts", "eventsDigest", "workflowStrategy",
+                    "workflowStepCount", "workflowAttemptCount", "completedStepCount", "charterEvidenceStatus",
+                    "charterStopStatus", "terminalReasonCode", "actualEffectCounts", "capturedAt",
+                ],
+                ["staging"]))
+        {
+            throw InvalidResponse();
+        }
+        var evidenceId = ParseRequiredGuid(evidence, "evidenceId");
+        var evidenceDigest = ParseRequiredDigest(evidence, "evidenceDigest");
+        if (evidenceId != result.EvidenceId || evidenceDigest != result.EvidenceDigest) throw InvalidResponse();
+        var eventCount = ParseBoundedNonNegativeInt(evidence, "eventCount", 4_096);
+        var eventTypeCounts = ParseExactCountMap(
+            evidence.GetProperty("eventTypeCounts"),
+            ["lifecycle", "output", "item", "approval", "warning", "error"],
+            4_096);
+        if (eventTypeCounts.Values.Sum() != eventCount) throw InvalidResponse();
+        var workflowStepCount = ParseBoundedNonNegativeInt(evidence, "workflowStepCount", 512);
+        var completedStepCount = ParseBoundedNonNegativeInt(evidence, "completedStepCount", 512);
+        if (workflowStepCount < 1 || completedStepCount > workflowStepCount) throw InvalidResponse();
+        var actualEffectCounts = ParseExactCountMap(
+            evidence.GetProperty("actualEffectCounts"),
+            ["not-observed", "observed-provisional", "applied", "blocked", "unknown"],
+            32);
+        if (actualEffectCounts.Values.Sum() > 32) throw InvalidResponse();
+        var terminalReasonCode = ParseRequiredPortableText(evidence, "terminalReasonCode");
+        if (terminalReasonCode.Length > 128 ||
+            ValidateHandoffText(terminalReasonCode, "Terminal reason code", 1, 128) != terminalReasonCode)
+        {
+            throw InvalidResponse();
+        }
+        return new ManagedEvidenceProjection(
+            evidenceId,
+            evidenceDigest,
+            eventCount,
+            eventTypeCounts,
+            ParseRequiredDigest(evidence, "eventsDigest"),
+            ParseRequiredEnum(evidence, "workflowStrategy", "sequential", "parallel-readonly"),
+            workflowStepCount,
+            ParseBoundedNonNegativeInt(evidence, "workflowAttemptCount", 5_120),
+            completedStepCount,
+            ParseRequiredEnum(evidence, "charterEvidenceStatus", "satisfied", "failed", "not-assessed"),
+            ParseRequiredEnum(evidence, "charterStopStatus", "satisfied", "failed", "not-assessed"),
+            terminalReasonCode,
+            evidence.TryGetProperty("staging", out var staging) ? ParseManagedStagingProjection(staging) : null,
+            actualEffectCounts,
+            ParseRequiredTimestamp(evidence, "capturedAt"));
+    }
+
+    private static ManagedStagingProjection ParseManagedStagingProjection(JsonElement staging)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                staging,
+                [
+                    "changeCount", "excludedPathCount", "applyState", "baselineDigest", "finalDigest",
+                    "changedInventoryDigest", "excludedPathSetDigest",
+                ],
+                []))
+        {
+            throw InvalidResponse();
+        }
+        return new ManagedStagingProjection(
+            ParseBoundedNonNegativeInt(staging, "changeCount", 20_000),
+            ParseBoundedNonNegativeInt(staging, "excludedPathCount", 20_000),
+            ParseRequiredEnum(staging, "applyState", "pending", "applied", "conflict", "discarded", "not-applied"),
+            ParseRequiredDigest(staging, "baselineDigest"),
+            ParseRequiredDigest(staging, "finalDigest"),
+            ParseRequiredDigest(staging, "changedInventoryDigest"),
+            ParseRequiredDigest(staging, "excludedPathSetDigest"));
+    }
+
+    private static ManagedApplyDecisionProjection ParseManagedApplyDecisionProjection(
+        JsonElement decision,
+        ManagedRunSummary summary)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                decision,
+                [
+                    "receiptId", "receiptDigest", "managedRunRevision", "changedInventoryCount", "writeEnvelopeCount",
+                    "changedInventoryDigest", "writeEnvelopeDigest", "decidedAt",
+                ],
+                []))
+        {
+            throw InvalidResponse();
+        }
+        var receiptDigest = ParseRequiredDigest(decision, "receiptDigest");
+        var managedRunRevision = ParseBoundedNonNegativeInt(decision, "managedRunRevision", int.MaxValue);
+        if (receiptDigest != summary.ApplyDecisionDigest || managedRunRevision < 1) throw InvalidResponse();
+        return new ManagedApplyDecisionProjection(
+            ParseRequiredGuid(decision, "receiptId"),
+            receiptDigest,
+            managedRunRevision,
+            ParseBoundedNonNegativeInt(decision, "changedInventoryCount", 20_000),
+            ParseBoundedNonNegativeInt(decision, "writeEnvelopeCount", 256),
+            ParseRequiredDigest(decision, "changedInventoryDigest"),
+            ParseRequiredDigest(decision, "writeEnvelopeDigest"),
+            ParseRequiredTimestamp(decision, "decidedAt"));
+    }
+
+    private static IReadOnlyDictionary<string, int> ParseExactCountMap(
+        JsonElement value,
+        IReadOnlyCollection<string> keys,
+        int maximum)
+    {
+        if (!HasRequiredAndAllowedProperties(value, keys, [])) throw InvalidResponse();
+        return new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(
+            keys.ToDictionary(key => key, key => ParseBoundedNonNegativeInt(value, key, maximum), StringComparer.Ordinal));
     }
 
     internal static void ValidateManagedReadOnlyPreview(ManagedReadOnlyPreview preview)
@@ -1181,6 +1555,16 @@ internal static partial class PortableDesignProtocol
             throw InvalidResponse();
         }
         return parsed;
+    }
+
+    private static bool ParseRequiredBoolean(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value) ||
+            value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+        {
+            throw InvalidResponse();
+        }
+        return value.GetBoolean();
     }
 
     private static DateTimeOffset ParseRequiredTimestamp(JsonElement element, string name)

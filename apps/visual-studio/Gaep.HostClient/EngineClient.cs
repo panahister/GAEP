@@ -231,6 +231,49 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseManagedReadOnlyReceiptResponse(envelope, preview));
     }
 
+    public async Task<ManagedRunSummaryPage> ListManagedEvidenceAsync(
+        int offset = 0,
+        int limit = 100,
+        string? snapshotDigest = null,
+        CancellationToken cancellationToken = default)
+    {
+        PortableDesignProtocol.ValidateManagedEvidencePage(offset, limit, snapshotDigest);
+        var parameters = new Dictionary<string, object?>
+        {
+            ["offset"] = offset,
+            ["limit"] = limit,
+        };
+        if (snapshotDigest is not null) parameters["snapshotDigest"] = snapshotDigest;
+        using var response = await RequestPortableDesignAsync(
+            "managed.evidence.list",
+            parameters,
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseManagedRunSummaryPageResponse(
+                envelope,
+                offset,
+                limit,
+                snapshotDigest));
+    }
+
+    public async Task<ManagedEvidenceDetail> ReadManagedEvidenceAsync(
+        Guid managedRunId,
+        CancellationToken cancellationToken = default)
+    {
+        if (managedRunId == Guid.Empty)
+        {
+            throw new ArgumentException("Managed Run ID must be a non-empty UUID.", nameof(managedRunId));
+        }
+        using var response = await RequestPortableDesignAsync(
+            "managed.evidence.read",
+            new Dictionary<string, object?> { ["managedRunId"] = managedRunId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseManagedEvidenceDetailResponse(envelope, managedRunId));
+    }
+
     public async Task<PortableDesignSnapshotSummary> ImportPortableDesignSnapshotAsync(
         string bundleRoot,
         Guid expectedProductId,

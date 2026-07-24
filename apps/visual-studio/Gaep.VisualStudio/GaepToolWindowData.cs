@@ -67,6 +67,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private string managedWorkflowPlanId = string.Empty;
     private ManagedReadOnlyPreview? managedReadOnlyPreview;
     private string? managedReadOnlyWorkspace;
+    private string managedRunId = string.Empty;
     private bool busy;
 
     public GaepToolWindowData(VisualStudioExtensibility extensibility)
@@ -80,6 +81,8 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         CreateAgentHandoffCommand = new AsyncCommand(CreateAgentHandoffAsync);
         LoadManagedReadOnlyPreviewCommand = new AsyncCommand(LoadManagedReadOnlyPreviewAsync);
         ExecuteManagedReadOnlyCommand = new AsyncCommand(ExecuteManagedReadOnlyAsync);
+        ListManagedEvidenceCommand = new AsyncCommand(ListManagedEvidenceAsync);
+        ReadManagedEvidenceCommand = new AsyncCommand(ReadManagedEvidenceAsync);
         ListDesignImportsCommand = new AsyncCommand(ListDesignImportsAsync);
         ReadDesignImportCommand = new AsyncCommand(ReadDesignImportAsync);
         ImportDesignBundleCommand = new AsyncCommand(ImportDesignBundleAsync);
@@ -94,7 +97,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
@@ -119,6 +122,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ExecuteManagedReadOnlyCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ListManagedEvidenceCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ReadManagedEvidenceCommand { get; }
 
     [DataMember]
     public IAsyncCommand ListDesignImportsCommand { get; }
@@ -235,6 +244,13 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     {
         get => managedWorkflowPlanId;
         set => SetProperty(ref managedWorkflowPlanId, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string ManagedRunId
+    {
+        get => managedRunId;
+        set => SetProperty(ref managedRunId, value ?? string.Empty);
     }
 
     [DataMember]
@@ -428,6 +444,18 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
                 "Any Codex stage with changes, conflict, or pending review is discarded or rejected; only a proven zero-change stage may close automatically. " +
                 "Provider completion and governed outcome remain separate claims.");
     }
+
+    private Task ListManagedEvidenceAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Listing bounded Managed Run evidence",
+            (controller, _, token) => controller.ListManagedEvidenceAsync(token),
+            cancellationToken);
+
+    private Task ReadManagedEvidenceAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Reading exact Managed Run evidence",
+            (controller, _, token) => controller.ReadManagedEvidenceAsync(ManagedRunId, token),
+            cancellationToken);
 
     private Task ListDesignImportsAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(

@@ -105,6 +105,20 @@
                 Command="{Binding ExecuteManagedReadOnlyCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
+        <TextBlock Text="Managed Run Evidence" FontWeight="SemiBold" />
+        <TextBlock Text="List the first bounded audit-gated Run page with exact total and omission truth, or read one exact private-safe evidence detail. This view cannot start, resume, cancel, apply, discard, or approve work."
+                   TextWrapping="Wrap" Margin="0,4,0,8" />
+        <Button x:Name="ListManagedEvidenceButton" Content="List Managed Run evidence"
+                Command="{Binding ListManagedEvidenceCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <TextBlock Text="Exact Managed Run UUID" />
+        <TextBox Text="{Binding ManagedRunId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="ReadManagedEvidenceButton" Content="Read Managed Run evidence"
+                Command="{Binding ReadManagedEvidenceCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
         <TextBlock Text="Portable design metadata" FontWeight="SemiBold" />
         <Button x:Name="ListDesignImportsButton" Content="List design imports"
                 Command="{Binding ListDesignImportsCommand}" MinHeight="28" Margin="0,4,0,8"
@@ -142,6 +156,8 @@
       <Setter TargetName="CreateAgentHandoffButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadManagedReadOnlyPreviewButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ExecuteManagedReadOnlyButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ListManagedEvidenceButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ReadManagedEvidenceButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ListDesignImportsButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ReadDesignImportButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ImportDesignBundleButton" Property="IsEnabled" Value="False" />

@@ -189,6 +189,106 @@ public sealed record ManagedReadOnlyReceipt(
     DateTimeOffset EndedAt,
     string AuthorityBoundary);
 
+public sealed record ManagedRunSummary(
+    int SchemaVersion,
+    string Kind,
+    Guid ManagedRunId,
+    Guid RunId,
+    Guid ProductId,
+    Guid InitiativeId,
+    string Mode,
+    string State,
+    string AdapterId,
+    string AgentId,
+    string ModelId,
+    int AttemptNumber,
+    string RecoveryStatus,
+    int WorkflowCheckpointCount,
+    bool HasResult,
+    bool HasApplyDecision,
+    string BindingsDigest,
+    string? ResultDigest,
+    string? ApplyDecisionDigest,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? EndedAt,
+    string AuthorityBoundary);
+
+public sealed record ManagedRunSummaryPage(
+    int SchemaVersion,
+    string Kind,
+    IReadOnlyList<ManagedRunSummary> Items,
+    int Offset,
+    int Limit,
+    int Total,
+    int OmittedCount,
+    string SnapshotDigest,
+    bool HasMore,
+    string AuthorityBoundary,
+    string PrivacyBoundary);
+
+public sealed record ManagedEvidenceResult(
+    Guid ResultId,
+    string ResultDigest,
+    string ProviderDisposition,
+    string TerminationCause,
+    string OutcomeStatus,
+    string OutcomeBasis,
+    string TerminalState,
+    Guid EvidenceId,
+    string EvidenceDigest,
+    IReadOnlyList<string> WarningCodes,
+    DateTimeOffset StartedAt,
+    DateTimeOffset EndedAt);
+
+public sealed record ManagedStagingProjection(
+    int ChangeCount,
+    int ExcludedPathCount,
+    string ApplyState,
+    string BaselineDigest,
+    string FinalDigest,
+    string ChangedInventoryDigest,
+    string ExcludedPathSetDigest);
+
+public sealed record ManagedEvidenceProjection(
+    Guid EvidenceId,
+    string EvidenceDigest,
+    int EventCount,
+    IReadOnlyDictionary<string, int> EventTypeCounts,
+    string EventsDigest,
+    string WorkflowStrategy,
+    int WorkflowStepCount,
+    int WorkflowAttemptCount,
+    int CompletedStepCount,
+    string CharterEvidenceStatus,
+    string CharterStopStatus,
+    string TerminalReasonCode,
+    ManagedStagingProjection? Staging,
+    IReadOnlyDictionary<string, int> ActualEffectCounts,
+    DateTimeOffset CapturedAt);
+
+public sealed record ManagedApplyDecisionProjection(
+    Guid ReceiptId,
+    string ReceiptDigest,
+    int ManagedRunRevision,
+    int ChangedInventoryCount,
+    int WriteEnvelopeCount,
+    string ChangedInventoryDigest,
+    string WriteEnvelopeDigest,
+    DateTimeOffset DecidedAt);
+
+public sealed record ManagedEvidenceDetail(
+    int SchemaVersion,
+    string Kind,
+    ManagedRunSummary Summary,
+    string ArtifactStatus,
+    ManagedEvidenceResult? Result,
+    ManagedEvidenceProjection? Evidence,
+    ManagedApplyDecisionProjection? ApplyDecision,
+    string AuthorityBoundary,
+    string PrivacyBoundary);
+
 public sealed record AgentReadinessSnapshot(
     int SchemaVersion,
     string AdapterId,
