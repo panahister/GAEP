@@ -17,7 +17,8 @@
     { "id": "versioned-handoff", "label": "Versioned provider and model handoff" },
     { "id": "managed-readonly-execution", "label": "Managed read-only execution" },
     { "id": "staged-effectful-review", "label": "Preview, review, apply or discard workflow" },
-    { "id": "evidence-dashboard", "label": "Run, evidence, recovery and provider-truth dashboard" }
+    { "id": "evidence-dashboard", "label": "Run, evidence, recovery and provider-truth dashboard" },
+    { "id": "phase-dashboard-framework", "label": "Exact phase-scoped dashboard framework projection" }
   ],
   "hosts": [
     {
@@ -46,7 +47,12 @@
         { "capabilityId": "versioned-handoff", "state": "partial", "reason": "Portable handoff observation exists, but complete bidirectional provider/model acceptance is incomplete." },
         { "capabilityId": "managed-readonly-execution", "state": "partial", "reason": "Managed observation-only execution is implemented for declared slices; full provider and native-host parity is incomplete." },
         { "capabilityId": "staged-effectful-review", "state": "partial", "reason": "Single-step Codex staged review is durable; effectful multi-step and four-host parity remain fail-closed." },
-        { "capabilityId": "evidence-dashboard", "state": "partial", "reason": "Bounded evidence and recovery views exist; accessibility and four-host dashboard parity remain incomplete." }
+        { "capabilityId": "evidence-dashboard", "state": "partial", "reason": "Bounded evidence and recovery views exist; accessibility and four-host dashboard parity remain incomplete." },
+        { "capabilityId": "phase-dashboard-framework", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["composePhaseDashboardFramework(observed.product", "phase: this.context.deliveryPhase()", "...(dashboard ? { dashboard } : {})"] },
+          { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isPhaseDashboardFramework", "value.catalogVersion !== \"gaep-phase-dashboards-v1\"", "panel.id !== expected[index]", "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"] },
+          { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderPhaseDashboard(snapshot.dashboard)", "Exact Product revision", "This projection does not prove phase approval, readiness, acceptance, or applicability"] }
+        ] }
       ]
     },
     {
@@ -90,6 +96,11 @@
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showManagedEvidenceDashboard", "Previous verified page", "Next verified page", "firstPage.snapshotDigest", "firstPage.total", "showManagedEvidenceDetail(await client.readManagedEvidence"] },
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["listManagedEvidence(", "expectedTotal?: number", "await this.request(\"managed.evidence.list\", requestParams)", "readManagedEvidence("] },
           { "path": "apps/kiro/src/protocol.ts", "contains": ["parseManagedRunSummaryPage", "expected.total !== undefined && total !== expected.total", "hasMore && items.length === 0", "parseManagedEvidenceDetail", "evidenceId !== result.evidenceId || evidenceDigest !== result.evidenceDigest"] }
+        ] },
+        { "capabilityId": "phase-dashboard-framework", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showPhaseDashboard", "client.readPhaseDashboard(product, \"phase-0-1a-foundation\")", "grants no mutation, applicability, phase-entry"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readPhaseDashboard(product: ProductBinding", "this.request(\"dashboard.framework\"", "expectedProductDigest: productDigest"] },
+          { "path": "apps/kiro/src/protocol.ts", "contains": ["parsePhaseDashboardFramework", "requireExactKeys(framework", "compositionDigest !== canonicalDigest(content)", "parsePhaseDashboardPanel"] }
         ] }
       ]
     },
@@ -136,6 +147,12 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["fun listManagedEvidencePage(", "fun renderManagedEvidencePage(", "fun readManagedEvidence(managedRunId: String)", "this audit-gated observation cannot start, resume, cancel, apply, discard, approve"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun listManagedEvidence(", "expectedTotal: Int? = null", "expectedTotal = expectedTotal", "fun readManagedEvidence(managedRunId: UUID)"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parseManagedRunSummaryPageEnvelope(", "expectedTotal != null && total != expectedTotal", "hasMore && items.isEmpty()", "parseManagedEvidenceDetailEnvelope(", "hasResult != hasEvidence"] }
+        ] },
+        { "capabilityId": "phase-dashboard-framework", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Show phase dashboards", "controller.readPhaseDashboard()"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readPhaseDashboard(", "portableRequest(\"dashboard.framework\"", "expectedProductDigest"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parsePhaseDashboardEnvelope(", "phaseDashboardPanelCatalog", "compositionDigest != canonicalDigest(digestBody)", "parsePhaseDashboardPanel"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP phase-scoped dashboard framework", "grants no mutation, applicability, phase-entry"] }
         ] }
       ]
     },
@@ -147,7 +164,7 @@
       "runtimeEvidence": {
         "source": "package-report",
         "level": "cross-platform-packaged-engine-client-workflow-local",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-163-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending"],
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-175-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending"],
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
@@ -186,6 +203,12 @@
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["ListManagedEvidencePageAsync(", "RenderManagedEvidencePage(", "ReadManagedEvidenceAsync(", "this audit-gated observation cannot start, resume, cancel, apply, discard, approve"] },
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ListManagedEvidenceAsync(", "int? expectedTotal = null", "expectedTotal));", "ReadManagedEvidenceAsync("] },
           { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseManagedRunSummaryPageResponse(", "expectedTotal is not null && total != expectedTotal", "hasMore && items.Length == 0", "ParseManagedEvidenceDetailResponse(", "hasResult != hasEvidence"] }
+        ] },
+        { "capabilityId": "phase-dashboard-framework", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Show Phase 0/1A dashboards", "ShowPhaseDashboardCommand"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadPhaseDashboardAsync(", "\"dashboard.framework\"", "[\"expectedProductDigest\"] = product.Digest"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParsePhaseDashboardResponse(", "PhaseDashboardPanelCatalog", "compositionDigest != CanonicalDigest(compositionBody)", "ParsePhaseDashboardPanel"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP phase-scoped dashboard framework", "It grants no mutation, applicability, ", "phase-entry, approval"] }
         ] }
       ]
     }
