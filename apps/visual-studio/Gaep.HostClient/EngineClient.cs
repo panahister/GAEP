@@ -87,6 +87,60 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParsePhaseDashboardResponse(envelope, phase, product));
     }
 
+    public async Task<ChangeImpactChangeCatalog> ListChangeImpactChangesAsync(
+        ProductBinding product,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        if (product.Id == Guid.Empty) throw new ArgumentException("Product identity must not be empty.", nameof(product));
+        PortableDesignProtocol.ValidateProductRevision(product.Revision);
+        PortableDesignProtocol.ValidateProductDigest(product.Digest);
+        using var response = await RequestPortableDesignAsync(
+            "dashboard.changeImpact.changes",
+            new Dictionary<string, object?>
+            {
+                ["expectedProductId"] = product.Id,
+                ["expectedProductRevision"] = product.Revision,
+                ["expectedProductDigest"] = product.Digest,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseChangeImpactChangeCatalogResponse(envelope, product));
+    }
+
+    public async Task<ChangeImpactDashboard> ReadChangeImpactAsync(
+        ProductBinding product,
+        ChangeImpactChangeReference change,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        ArgumentNullException.ThrowIfNull(change);
+        if (product.Id == Guid.Empty || change.RecordId == Guid.Empty)
+        {
+            throw new ArgumentException("Product and Change identities must not be empty.");
+        }
+        PortableDesignProtocol.ValidateProductRevision(product.Revision);
+        PortableDesignProtocol.ValidateProductRevision(change.Revision);
+        PortableDesignProtocol.ValidateProductDigest(product.Digest);
+        PortableDesignProtocol.ValidateProductDigest(change.Digest);
+        using var response = await RequestPortableDesignAsync(
+            "dashboard.changeImpact",
+            new Dictionary<string, object?>
+            {
+                ["expectedProductId"] = product.Id,
+                ["expectedProductRevision"] = product.Revision,
+                ["expectedProductDigest"] = product.Digest,
+                ["expectedChangeId"] = change.RecordId,
+                ["expectedChangeRevision"] = change.Revision,
+                ["expectedChangeDigest"] = change.Digest,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseChangeImpactDashboardResponse(envelope, product, change));
+    }
+
     public async Task<IReadOnlyList<AgentReadinessSnapshot>> ProbeAgentReadinessAsync(
         CancellationToken cancellationToken = default)
     {

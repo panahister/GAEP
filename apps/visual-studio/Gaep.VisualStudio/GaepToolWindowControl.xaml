@@ -24,6 +24,21 @@
         <Button x:Name="ShowPhaseDashboardButton" Content="Show Phase 0/1A dashboards"
                 Command="{Binding ShowPhaseDashboardCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
+        <TextBlock Text="Change and impact" FontWeight="SemiBold" />
+        <TextBlock Text="Load exact current Change metadata, select one bound revision, then open a read-only projection. Selection grants no Change approval, Risk acceptance, mutation, Run, Tool, write, or effect authority."
+                   TextWrapping="Wrap" Margin="0,4,0,8" />
+        <Button x:Name="LoadChangeImpactButton" Content="Load exact current Changes"
+                Command="{Binding LoadChangeImpactCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <TextBlock Text="Exact current Change" />
+        <ComboBox ItemsSource="{Binding AvailableChangeChoices}"
+                  SelectedItem="{Binding SelectedChangeChoice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <Button x:Name="ShowChangeImpactButton" Content="Show exact Change and impact"
+                Command="{Binding ShowChangeImpactCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
         <Button x:Name="RefreshAgentReadinessButton" Content="Refresh Codex and Claude readiness"
                 Command="{Binding RefreshAgentReadinessCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
@@ -176,6 +191,8 @@
     <DataTrigger Binding="{Binding Busy}" Value="True">
       <Setter TargetName="RefreshProductButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhaseDashboardButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="LoadChangeImpactButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ShowChangeImpactButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="RefreshAgentReadinessButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadAgentSelectionButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="SelectAgentButton" Property="IsEnabled" Value="False" />

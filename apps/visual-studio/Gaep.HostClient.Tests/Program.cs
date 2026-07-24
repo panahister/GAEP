@@ -33,6 +33,11 @@ internal static class Program
     private static readonly Guid TransitionedResultId = Guid.Parse("26262626-2626-4626-8626-262626262626");
     private static readonly Guid TransitionedEvidenceId = Guid.Parse("27272727-2727-4727-8727-272727272727");
     private static readonly Guid ReviewApplyDecisionId = Guid.Parse("28282828-2828-4828-8828-282828282828");
+    private static readonly Guid ChangeId = Guid.Parse("29292929-2929-4929-8929-292929292929");
+    private static readonly Guid ChangeWorkItemId = Guid.Parse("30303030-3030-4030-8030-303030303030");
+    private static readonly Guid ChangeTraceId = Guid.Parse("31313131-3131-4131-8131-313131313131");
+    private static readonly Guid ChangeDecisionId = Guid.Parse("32323232-3232-4232-8232-323232323232");
+    private static readonly Guid ChangeRiskId = Guid.Parse("34343434-3434-4434-8434-343434343434");
     private const string PrivateRoot = "/Users/private/design-bundle";
     private const string PrivateCredential = "PRIVATE-OAUTH-TOKEN";
     private static int passed;
@@ -86,6 +91,14 @@ internal static class Program
         var badDashboardApplicabilityRoot = Path.Combine(temporaryRoot, "bad-dashboard-applicability");
         var badDashboardDigestRoot = Path.Combine(temporaryRoot, "bad-dashboard-digest");
         var badDashboardPrivateRoot = Path.Combine(temporaryRoot, "bad-dashboard-private");
+        var badChangeCatalogBindingRoot = Path.Combine(temporaryRoot, "bad-change-catalog-binding");
+        var badChangeCatalogDigestRoot = Path.Combine(temporaryRoot, "bad-change-catalog-digest");
+        var badChangeCatalogPrivateRoot = Path.Combine(temporaryRoot, "bad-change-catalog-private");
+        var badChangeImpactBindingRoot = Path.Combine(temporaryRoot, "bad-change-impact-binding");
+        var badChangeImpactCountRoot = Path.Combine(temporaryRoot, "bad-change-impact-count");
+        var badChangeImpactFreshnessRoot = Path.Combine(temporaryRoot, "bad-change-impact-freshness");
+        var badChangeImpactDigestRoot = Path.Combine(temporaryRoot, "bad-change-impact-digest");
+        var badChangeImpactPrivateRoot = Path.Combine(temporaryRoot, "bad-change-impact-private");
         var badManagedPreviewRoot = Path.Combine(temporaryRoot, "bad-managed-preview");
         var badManagedCriterionRoot = Path.Combine(temporaryRoot, "bad-managed-criterion");
         var badManagedDigestRoot = Path.Combine(temporaryRoot, "bad-managed-digest");
@@ -117,6 +130,14 @@ internal static class Program
         Directory.CreateDirectory(badDashboardApplicabilityRoot);
         Directory.CreateDirectory(badDashboardDigestRoot);
         Directory.CreateDirectory(badDashboardPrivateRoot);
+        Directory.CreateDirectory(badChangeCatalogBindingRoot);
+        Directory.CreateDirectory(badChangeCatalogDigestRoot);
+        Directory.CreateDirectory(badChangeCatalogPrivateRoot);
+        Directory.CreateDirectory(badChangeImpactBindingRoot);
+        Directory.CreateDirectory(badChangeImpactCountRoot);
+        Directory.CreateDirectory(badChangeImpactFreshnessRoot);
+        Directory.CreateDirectory(badChangeImpactDigestRoot);
+        Directory.CreateDirectory(badChangeImpactPrivateRoot);
         Directory.CreateDirectory(badManagedPreviewRoot);
         Directory.CreateDirectory(badManagedCriterionRoot);
         Directory.CreateDirectory(badManagedDigestRoot);
@@ -260,6 +281,74 @@ internal static class Program
         await ExpectAsync<ArgumentException>(
             () => client.ReadPhaseDashboardAsync(product with { Digest = "sha256:not-a-digest" }),
             "Invalid Product dashboard digests fail before transport");
+
+        var changeCatalog = await client.ListChangeImpactChangesAsync(product);
+        Check(changeCatalog.ProductId == ProductId && changeCatalog.Total == 1 && changeCatalog.Omitted == 0 &&
+              changeCatalog.Items.Single().RecordId == ChangeId &&
+              changeCatalog.Items.Single().EffectEnvelope.SequenceEqual(["reversible-change"]),
+            "Typed Change catalog preserves one exact current metadata-only Change binding");
+        var changeDashboard = await client.ReadChangeImpactAsync(product, changeCatalog.Items.Single());
+        Check(changeDashboard.Change.RecordId == ChangeId && changeDashboard.Freshness.State == "current" &&
+              changeDashboard.WorkItems.Count == 1 &&
+              changeDashboard.ChangedArtifacts.Single().Locator.Kind == "workspace-relative" &&
+              changeDashboard.EffectTargets.Single().Locator.Kind == "logical" &&
+              changeDashboard.AffectedUnits.Single().Endpoint.RecordType == "risk" &&
+              changeDashboard.AffectedUnits.Single().Trace.AssessedState == "valid" &&
+              changeDashboard.Decisions.Single().Outcome == "not-selected" &&
+              changeDashboard.Risks.Single().Acceptance == "not-accepted" && !changeDashboard.Limits.Truncated,
+            "Typed Change/Impact dashboard preserves exact bounded records, trace, governance and freshness metadata");
+        var changeController = new ProductWorkflowController(client);
+        var changeContext = await changeController.ReadChangeImpactContextAsync();
+        var changeOutput = await changeController.ReadChangeImpactAsync(changeContext, changeContext.Catalog.Items.Single());
+        Check(changeOutput.Contains("GAEP exact Change and impact dashboard", StringComparison.Ordinal) &&
+              changeOutput.Contains("Approval: not established", StringComparison.Ordinal) &&
+              changeOutput.Contains("absence of a trace link does not prove absence of impact", StringComparison.Ordinal) &&
+              changeOutput.Contains("grants no Change approval, risk acceptance, mutation", StringComparison.Ordinal) &&
+              !changeOutput.Contains("Founder Product", StringComparison.Ordinal) &&
+              !changeOutput.Contains("Private Change title", StringComparison.Ordinal) &&
+              !changeOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !changeOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Change/Impact workflow renders metadata only with explicit coverage and no-authority boundaries");
+        foreach (var hostileRoot in new[]
+                 {
+                     badChangeCatalogBindingRoot,
+                     badChangeCatalogDigestRoot,
+                     badChangeCatalogPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var hostileProduct = await hostileClient.ReadProductBindingAsync();
+            var invalidCatalog = await CaptureHostErrorAsync(
+                () => hostileClient.ListChangeImpactChangesAsync(hostileProduct));
+            Check(invalidCatalog.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidCatalog.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidCatalog.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Change catalog rejects hostile binding, digest, and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badChangeImpactBindingRoot,
+                     badChangeImpactCountRoot,
+                     badChangeImpactFreshnessRoot,
+                     badChangeImpactDigestRoot,
+                     badChangeImpactPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var hostileProduct = await hostileClient.ReadProductBindingAsync();
+            var hostileChange = (await hostileClient.ListChangeImpactChangesAsync(hostileProduct)).Items.Single();
+            var invalidDashboard = await CaptureHostErrorAsync(
+                () => hostileClient.ReadChangeImpactAsync(hostileProduct, hostileChange));
+            Check(invalidDashboard.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidDashboard.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidDashboard.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Change/Impact dashboard rejects hostile binding, count, freshness, digest, and private-field drift");
+        }
+        await ExpectAsync<ArgumentException>(
+            () => client.ReadChangeImpactAsync(
+                product,
+                changeCatalog.Items.Single() with { Digest = "sha256:not-a-digest" }),
+            "Invalid Change dashboard digests fail before transport");
 
         var readiness = await client.ProbeAgentReadinessAsync();
         Check(readiness.Select(snapshot => snapshot.AgentId).SequenceEqual(["claude-code", "codex"]),
@@ -1038,6 +1127,14 @@ internal static class Program
         var badDashboardApplicability = Path.GetFileName(workspace) == "bad-dashboard-applicability";
         var badDashboardDigest = Path.GetFileName(workspace) == "bad-dashboard-digest";
         var badDashboardPrivate = Path.GetFileName(workspace) == "bad-dashboard-private";
+        var badChangeCatalogBinding = Path.GetFileName(workspace) == "bad-change-catalog-binding";
+        var badChangeCatalogDigest = Path.GetFileName(workspace) == "bad-change-catalog-digest";
+        var badChangeCatalogPrivate = Path.GetFileName(workspace) == "bad-change-catalog-private";
+        var badChangeImpactBinding = Path.GetFileName(workspace) == "bad-change-impact-binding";
+        var badChangeImpactCount = Path.GetFileName(workspace) == "bad-change-impact-count";
+        var badChangeImpactFreshness = Path.GetFileName(workspace) == "bad-change-impact-freshness";
+        var badChangeImpactDigest = Path.GetFileName(workspace) == "bad-change-impact-digest";
+        var badChangeImpactPrivate = Path.GetFileName(workspace) == "bad-change-impact-private";
         var badManagedPreview = Path.GetFileName(workspace) == "bad-managed-preview";
         var badManagedCriterion = Path.GetFileName(workspace) == "bad-managed-criterion";
         var badManagedDigest = Path.GetFileName(workspace) == "bad-managed-digest";
@@ -1096,6 +1193,24 @@ internal static class Program
                         badDashboardApplicability,
                         badDashboardDigest,
                         badDashboardPrivate);
+                    break;
+                case "dashboard.changeImpact.changes":
+                    await HandleChangeImpactCatalogAsync(
+                        id,
+                        parameters,
+                        badChangeCatalogBinding,
+                        badChangeCatalogDigest,
+                        badChangeCatalogPrivate);
+                    break;
+                case "dashboard.changeImpact":
+                    await HandleChangeImpactAsync(
+                        id,
+                        parameters,
+                        badChangeImpactBinding,
+                        badChangeImpactCount,
+                        badChangeImpactFreshness,
+                        badChangeImpactDigest,
+                        badChangeImpactPrivate);
                     break;
                 case "readAgentSelection":
                     if (!HasOnlyProperties(parameters))
@@ -2164,6 +2279,260 @@ internal static class Program
             },
             ["state"] = state,
         };
+
+    private static Dictionary<string, object?> ChangeRecord() => new()
+    {
+        ["schemaVersion"] = 1,
+        ["kind"] = "change",
+        ["id"] = ChangeId.ToString("D"),
+        ["productId"] = ProductId.ToString("D"),
+        ["revision"] = 3,
+        ["initiativeId"] = InitiativeId.ToString("D"),
+        ["title"] = "Private Change title is withheld",
+        ["summary"] = "Private Change summary is withheld.",
+        ["baseline"] = new Dictionary<string, object?>
+        {
+            ["kind"] = "genesis",
+            ["declaration"] = "No earlier projection.",
+            ["rationale"] = "First projection.",
+        },
+        ["state"] = "active",
+        ["effectEnvelope"] = new[] { "reversible-change" },
+        ["createdAt"] = "2026-07-24T12:01:00.000Z",
+        ["updatedAt"] = "2026-07-24T12:02:00.000Z",
+    };
+
+    private static Dictionary<string, object?> ChangeReference()
+    {
+        var change = ChangeRecord();
+        return new Dictionary<string, object?>
+        {
+            ["recordType"] = "change",
+            ["recordId"] = ChangeId.ToString("D"),
+            ["revision"] = 3,
+            ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(change)),
+            ["state"] = "active",
+            ["effectEnvelope"] = new[] { "reversible-change" },
+        };
+    }
+
+    private static async Task HandleChangeImpactCatalogAsync(
+        long id,
+        JsonElement parameters,
+        bool mismatchBinding,
+        bool invalidateDigest,
+        bool includePrivateField)
+    {
+        var productDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        if (!HasOnlyProperties(parameters, "expectedProductId", "expectedProductRevision", "expectedProductDigest") ||
+            parameters.GetProperty("expectedProductId").GetString() != ProductId.ToString("D") ||
+            parameters.GetProperty("expectedProductRevision").GetInt64() != 7 ||
+            parameters.GetProperty("expectedProductDigest").GetString() != productDigest)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID CHANGE CATALOG REQUEST");
+            return;
+        }
+        var catalog = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "change-impact-change-catalog",
+            ["product"] = ExactReference(
+                "product",
+                ProductId,
+                7,
+                mismatchBinding ? $"sha256:{new string('0', 64)}" : productDigest),
+            ["items"] = new[] { ChangeReference() },
+            ["total"] = 1,
+            ["omitted"] = 0,
+            ["observedAt"] = "2026-07-24T12:03:00.000Z",
+            ["sourceBoundary"] = "current-governed-change-metadata-only",
+            ["limitations"] = new[]
+            {
+                "The catalog contains exact current Change metadata only; Product text, Change text, and source content are withheld.",
+            },
+            ["authorityBoundary"] = "change-catalog-selection-does-not-approve-change-or-authorize-effects",
+        };
+        RefreshCanonicalDigest(catalog, "snapshotDigest");
+        if (invalidateDigest)
+        {
+            ((Dictionary<string, object?>[])catalog["items"]!)[0]["state"] = "blocked";
+        }
+        if (includePrivateField) catalog["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, catalog);
+    }
+
+    private static async Task HandleChangeImpactAsync(
+        long id,
+        JsonElement parameters,
+        bool mismatchBinding,
+        bool invalidateCount,
+        bool invalidateFreshness,
+        bool invalidateDigest,
+        bool includePrivateField)
+    {
+        var productDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        var change = ChangeReference();
+        if (!HasOnlyProperties(
+                parameters,
+                "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedChangeId",
+                "expectedChangeRevision", "expectedChangeDigest") ||
+            parameters.GetProperty("expectedProductId").GetString() != ProductId.ToString("D") ||
+            parameters.GetProperty("expectedProductRevision").GetInt64() != 7 ||
+            parameters.GetProperty("expectedProductDigest").GetString() != productDigest ||
+            parameters.GetProperty("expectedChangeId").GetString() != ChangeId.ToString("D") ||
+            parameters.GetProperty("expectedChangeRevision").GetInt64() != 3 ||
+            parameters.GetProperty("expectedChangeDigest").GetString() != (string)change["digest"]!)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID CHANGE IMPACT REQUEST");
+            return;
+        }
+        if (mismatchBinding) change["digest"] = $"sha256:{new string('0', 64)}";
+        var workItem = ExactReference("work-item", ChangeWorkItemId, 2, $"sha256:{new string('3', 64)}");
+        var decision = ExactReference("decision", ChangeDecisionId, 1, $"sha256:{new string('4', 64)}");
+        var risk = ExactReference("risk", ChangeRiskId, 1, $"sha256:{new string('5', 64)}");
+        var limits = new Dictionary<string, object?>
+        {
+            ["workItems"] = ChangeImpactLimit(),
+            ["changedArtifacts"] = ChangeImpactLimit(),
+            ["effectTargets"] = ChangeImpactLimit(),
+            ["affectedUnits"] = ChangeImpactLimit(),
+            ["decisions"] = ChangeImpactLimit(),
+            ["risks"] = ChangeImpactLimit(),
+            ["truncated"] = false,
+        };
+        if (invalidateCount) ((Dictionary<string, object?>)limits["workItems"]!)["total"] = 2;
+        var freshness = new Dictionary<string, object?>
+        {
+            ["state"] = invalidateFreshness ? "attention-required" : "current",
+            ["evaluatedAt"] = "2026-07-24T12:04:00.000Z",
+            ["unresolvedTraceLinks"] = 0,
+            ["invalidTraceLinks"] = 0,
+            ["staleTraceLinks"] = 0,
+            ["staleGovernanceReferences"] = 0,
+            ["traceAnalysisTruncated"] = false,
+            ["coverageBoundary"] = "absence-of-a-trace-link-does-not-prove-absence-of-impact",
+        };
+        var dashboard = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "change-impact-dashboard",
+            ["product"] = ExactReference("product", ProductId, 7, productDigest),
+            ["change"] = change,
+            ["workItems"] = new[]
+            {
+                new Dictionary<string, object?>
+                {
+                    ["record"] = workItem,
+                    ["state"] = "in-progress",
+                },
+            },
+            ["changedArtifacts"] = new[]
+            {
+                ChangeArtifact(workItem, new Dictionary<string, object?>
+                {
+                    ["kind"] = "workspace-relative",
+                    ["path"] = "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs",
+                }),
+            },
+            ["effectTargets"] = new[]
+            {
+                ChangeArtifact(workItem, new Dictionary<string, object?>
+                {
+                    ["kind"] = "logical",
+                    ["value"] = "package.build",
+                }),
+            },
+            ["affectedUnits"] = new[]
+            {
+                new Dictionary<string, object?>
+                {
+                    ["direction"] = "upstream",
+                    ["relationship"] = "affects",
+                    ["endpoint"] = risk,
+                    ["trace"] = new Dictionary<string, object?>
+                    {
+                        ["recordId"] = ChangeTraceId.ToString("D"),
+                        ["revision"] = 1,
+                        ["assessmentDigest"] = $"sha256:{new string('6', 64)}",
+                        ["assessedState"] = "valid",
+                    },
+                },
+            },
+            ["governance"] = new Dictionary<string, object?>
+            {
+                ["approval"] = new Dictionary<string, object?>
+                {
+                    ["state"] = "not-established",
+                    ["basis"] = "current-contract-has-no-change-approval-record",
+                },
+                ["decisions"] = new[]
+                {
+                    new Dictionary<string, object?>
+                    {
+                        ["record"] = decision,
+                        ["state"] = "open",
+                        ["outcome"] = "not-selected",
+                    },
+                },
+                ["risks"] = new[]
+                {
+                    new Dictionary<string, object?>
+                    {
+                        ["record"] = risk,
+                        ["state"] = "open",
+                        ["likelihood"] = "possible",
+                        ["impact"] = "major",
+                        ["acceptance"] = "not-accepted",
+                    },
+                },
+                ["authorityBoundary"] = "decisions-and-risk-acceptance-do-not-approve-the-change",
+            },
+            ["freshness"] = freshness,
+            ["limits"] = limits,
+            ["observedAt"] = "2026-07-24T12:05:00.000Z",
+            ["sourceBoundary"] = "current-governed-records-and-bounded-trace-analysis",
+            ["limitations"] = new[]
+            {
+                "Only persisted Work Item scopes and trace links are shown; missing trace does not prove missing impact.",
+                "The current record model has no general Change approval record, so approval remains not established.",
+            },
+            ["authorityBoundary"] =
+                "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects",
+        };
+        RefreshCanonicalDigest(dashboard, "snapshotDigest");
+        if (invalidateDigest) ((Dictionary<string, object?>)dashboard["change"]!)["state"] = "blocked";
+        if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, dashboard);
+    }
+
+    private static Dictionary<string, object?> ExactReference(
+        string recordType,
+        Guid recordId,
+        long revision,
+        string digest) =>
+        new()
+        {
+            ["recordType"] = recordType,
+            ["recordId"] = recordId.ToString("D"),
+            ["revision"] = revision,
+            ["digest"] = digest,
+        };
+
+    private static Dictionary<string, object?> ChangeArtifact(
+        Dictionary<string, object?> workItem,
+        Dictionary<string, object?> locator) =>
+        new()
+        {
+            ["sourceWorkItem"] = workItem,
+            ["locator"] = locator,
+        };
+
+    private static Dictionary<string, object?> ChangeImpactLimit() => new()
+    {
+        ["shown"] = 1,
+        ["total"] = 1,
+        ["omitted"] = 0,
+    };
 
     private static async Task HandleProbeAgentsAsync(long id, JsonElement parameters, bool includePrivatePath)
     {

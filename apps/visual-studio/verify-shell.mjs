@@ -57,6 +57,10 @@ for (const binding of [
   "BundlePath",
   "RefreshProductCommand",
   "ShowPhaseDashboardCommand",
+  "LoadChangeImpactCommand",
+  "ShowChangeImpactCommand",
+  "AvailableChangeChoices",
+  "SelectedChangeChoice",
   "RefreshAgentReadinessCommand",
   "LoadAgentSelectionCommand",
   "SelectAgentCommand",
@@ -99,6 +103,10 @@ requireText(remoteUi, /Import local bundle as pending review/u,
   "Visual Studio import action does not communicate its pending-review boundary")
 requireText(remoteUi, /Show Phase 0\/1A dashboards/u,
   "Visual Studio Product Studio does not expose the explicit phase-dashboard projection")
+requireText(remoteUi, /Show exact Change and impact/u,
+  "Visual Studio Product Studio does not expose exact Change and impact projection")
+requireText(remoteUi, /Selection grants no Change approval, Risk acceptance, mutation, Run, Tool, write, or effect authority/u,
+  "Visual Studio Change and impact action does not communicate its no-authority boundary")
 requireText(remoteUi, /Confirm guarded selection/u,
   "Visual Studio selection action does not communicate its guarded confirmation boundary")
 requireText(remoteUi, /Create versioned handoff/u,

@@ -12,6 +12,10 @@ public sealed record AgentHandoffContext(
     AgentRun SourceRun,
     IReadOnlyList<AgentReadinessSnapshot> Available);
 
+public sealed record ChangeImpactContext(
+    ProductBinding Product,
+    ChangeImpactChangeCatalog Catalog);
+
 public sealed class ProductWorkflowController(EngineClient client)
 {
     public async Task<string> ReadProductAsync(CancellationToken cancellationToken = default) =>
@@ -24,6 +28,30 @@ public sealed class ProductWorkflowController(EngineClient client)
             product,
             DeliveryPhaseId.Phase0Foundation,
             cancellationToken));
+    }
+
+    public async Task<ChangeImpactContext> ReadChangeImpactContextAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        return new ChangeImpactContext(product, await client.ListChangeImpactChangesAsync(product, cancellationToken));
+    }
+
+    public async Task<string> ReadChangeImpactAsync(
+        ChangeImpactContext context,
+        ChangeImpactChangeReference change,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(change);
+        if (!context.Catalog.Items.Contains(change))
+        {
+            throw new ArgumentException(
+                "The selected Change is not part of the verified current catalog. Reload and select the Change again.",
+                nameof(change));
+        }
+        return RenderChangeImpactDashboard(
+            await client.ReadChangeImpactAsync(context.Product, change, cancellationToken));
     }
 
     public async Task<string> ReadAgentReadinessAsync(CancellationToken cancellationToken = default)
@@ -534,6 +562,86 @@ public sealed class ProductWorkflowController(EngineClient client)
                 "phase-entry, approval, readiness, acceptance, release, Run, Tool, or effect authority.")
             .Append(
                 "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.")
+            .ToString();
+    }
+
+    private static string RenderChangeImpactDashboard(ChangeImpactDashboard dashboard)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP exact Change and impact dashboard")
+            .AppendLine()
+            .AppendLine($"Change: {dashboard.Change.RecordId:D}")
+            .AppendLine($"Change revision / state: {dashboard.Change.Revision} / {dashboard.Change.State}")
+            .AppendLine($"Change digest: {dashboard.Change.Digest}")
+            .AppendLine($"Product revision: {dashboard.ProductRevision}")
+            .AppendLine($"Product digest: {dashboard.ProductDigest}")
+            .AppendLine($"Snapshot digest: {dashboard.SnapshotDigest}")
+            .AppendLine($"Effects: {string.Join(", ", dashboard.Change.EffectEnvelope)}")
+            .AppendLine(
+                $"Freshness: {dashboard.Freshness.State}; observed {dashboard.ObservedAt:O}; " +
+                $"trace evaluated {dashboard.Freshness.EvaluatedAt:O}")
+            .AppendLine("Approval: not established. The current contract has no general Change approval record.")
+            .AppendLine()
+            .AppendLine($"Work Items ({dashboard.Limits.WorkItems.Shown}/{dashboard.Limits.WorkItems.Total}):");
+        foreach (var entry in dashboard.WorkItems)
+        {
+            output.AppendLine(
+                $"  {entry.Record.RecordId:D}@{entry.Record.Revision} · {entry.State} · {entry.Record.Digest}");
+        }
+        output.AppendLine()
+            .AppendLine(
+                $"Changed artifacts ({dashboard.Limits.ChangedArtifacts.Shown}/{dashboard.Limits.ChangedArtifacts.Total}):");
+        foreach (var entry in dashboard.ChangedArtifacts)
+        {
+            output.AppendLine(
+                $"  {entry.Locator.Value} · {entry.Locator.Kind} · Work Item {entry.SourceWorkItem.RecordId:D}");
+        }
+        output.AppendLine()
+            .AppendLine($"Effect targets ({dashboard.Limits.EffectTargets.Shown}/{dashboard.Limits.EffectTargets.Total}):");
+        foreach (var entry in dashboard.EffectTargets)
+        {
+            output.AppendLine(
+                $"  {entry.Locator.Value} · {entry.Locator.Kind} · Work Item {entry.SourceWorkItem.RecordId:D}");
+        }
+        output.AppendLine()
+            .AppendLine($"Affected units ({dashboard.Limits.AffectedUnits.Shown}/{dashboard.Limits.AffectedUnits.Total}):");
+        foreach (var entry in dashboard.AffectedUnits)
+        {
+            output.AppendLine(
+                $"  {entry.Direction} · {entry.Endpoint.RecordType}:{entry.Endpoint.RecordId} · " +
+                $"{entry.Relationship} · {entry.Trace.AssessedState}");
+        }
+        output.AppendLine()
+            .AppendLine($"Related Decisions ({dashboard.Limits.Decisions.Shown}/{dashboard.Limits.Decisions.Total}):");
+        foreach (var entry in dashboard.Decisions)
+        {
+            output.AppendLine(
+                $"  {entry.Record.RecordId:D}@{entry.Record.Revision} · {entry.State} · {entry.Outcome}");
+        }
+        output.AppendLine()
+            .AppendLine($"Related Risks ({dashboard.Limits.Risks.Shown}/{dashboard.Limits.Risks.Total}):");
+        foreach (var entry in dashboard.Risks)
+        {
+            output.AppendLine(
+                $"  {entry.Record.RecordId:D}@{entry.Record.Revision} · {entry.State} · " +
+                $"{entry.Likelihood}/{entry.Impact} · {entry.Acceptance}");
+        }
+        output.AppendLine()
+            .AppendLine(
+                $"Trace attention: unresolved={dashboard.Freshness.UnresolvedTraceLinks}; " +
+                $"invalid={dashboard.Freshness.InvalidTraceLinks}; stale={dashboard.Freshness.StaleTraceLinks}; " +
+                $"stale governance={dashboard.Freshness.StaleGovernanceReferences}")
+            .AppendLine(
+                $"Omissions: {(dashboard.Limits.Truncated ? "one or more bounded categories are truncated" : "none in bounded categories")}")
+            .AppendLine("Coverage: absence of a trace link does not prove absence of impact.");
+        foreach (var limitation in dashboard.Limitations) output.AppendLine($"Limit: {limitation}");
+        return output.AppendLine()
+            .AppendLine(
+                "Boundary: this read-only projection grants no Change approval, risk acceptance, mutation, Run, Tool, " +
+                "write, effect, phase-entry, readiness, release, or outcome authority.")
+            .Append(
+                "Product text, Change text, Work Item text, source bytes, absolute paths, provider output, prompts, " +
+                "executable state, and credentials are withheld.")
             .ToString();
     }
 

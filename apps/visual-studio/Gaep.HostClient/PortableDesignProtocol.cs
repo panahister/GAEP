@@ -33,6 +33,33 @@ internal static partial class PortableDesignProtocol
     private const string ManagedReviewCleanupBoundary = "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup.";
     private const string PhaseDashboardAuthorityBoundary =
         "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence";
+    private const string ChangeCatalogAuthorityBoundary =
+        "change-catalog-selection-does-not-approve-change-or-authorize-effects";
+    private const string ChangeDashboardAuthorityBoundary =
+        "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects";
+    private static readonly HashSet<string> ChangeImpactEffects = new(StringComparer.Ordinal)
+    {
+        "observe", "provisional", "reversible-change", "external-effect", "destructive-or-irreversible",
+    };
+    private static readonly HashSet<string> ChangeImpactStates = new(StringComparer.Ordinal)
+    {
+        "proposed", "planned", "active", "blocked", "completed", "cancelled",
+    };
+    private static readonly HashSet<string> ChangeImpactWorkItemStates = new(ChangeImpactStates, StringComparer.Ordinal)
+    {
+        "ready", "in-progress",
+    };
+    private static readonly HashSet<string> ChangeImpactRelationships = new(StringComparer.Ordinal)
+    {
+        "targets", "derives-from", "contributes-to", "depends-on", "implements", "satisfies", "validates",
+        "mitigates", "decides", "affects", "supersedes", "related-to",
+    };
+    private static readonly HashSet<string> ChangeImpactRecordTypes = new(StringComparer.Ordinal)
+    {
+        "product", "design-revision", "initiative", "change", "work-item", "requirement", "decision", "risk",
+        "architecture", "evidence", "context-pack", "workflow-plan", "tool-definition",
+        "instruction-privilege-grant", "run-tool-selection", "run", "external",
+    };
     private static readonly IReadOnlyDictionary<DeliveryPhaseId, (string WireValue, string Label, string PanelId)>
         DeliveryPhaseCatalog = new Dictionary<DeliveryPhaseId, (string WireValue, string Label, string PanelId)>
         {
@@ -99,6 +126,11 @@ internal static partial class PortableDesignProtocol
             ["MANAGED_REVIEW_INVALID"] = (-32_036, "GAEP could not verify an exact pending Managed Run review."),
             ["MANAGED_REVIEW_APPLY_FAILED"] = (-32_037, "The exact Managed Run apply transition could not be verified; reload the review before any retry."),
             ["MANAGED_REVIEW_DISCARD_FAILED"] = (-32_038, "The exact Managed Run discard transition could not be verified; reload the review before any retry."),
+            ["DASHBOARD_PRODUCT_CONTEXT_CHANGED"] = (-32_039, "The Product changed before the phase dashboard was composed; reload the current Product."),
+            ["CHANGE_IMPACT_PRODUCT_CONTEXT_CHANGED"] = (-32_040, "The Product changed before the Change/Impact projection was composed; reload the current Product."),
+            ["CHANGE_IMPACT_CHANGE_CONTEXT_CHANGED"] = (-32_041, "The Change changed before the Change/Impact projection was composed; select the current Change again."),
+            ["CHANGE_IMPACT_AUDIT_INVALID"] = (-32_042, "The Change/Impact projection is unavailable because the governed audit chain is invalid."),
+            ["CHANGE_IMPACT_CATALOG_INVALID"] = (-32_043, "The current Change catalog could not be verified."),
             ["INVALID_PARAMS"] = (-32_602, "The GAEP engine rejected the local request parameters."),
             ["PROTOCOL_UPGRADE_REQUIRED"] = (-32_021, "The GAEP engine requires protocol version 2 for portable design requests."),
             ["UNSUPPORTED_PROTOCOL_VERSION"] = (-32_020, "The GAEP engine does not support the requested portable design protocol version."),
@@ -450,6 +482,431 @@ internal static partial class PortableDesignProtocol
             ParsePositiveLong(decision, "revision"),
             ParseRequiredDigest(decision, "digest"));
     }
+
+    internal static ChangeImpactChangeCatalog ParseChangeImpactChangeCatalogResponse(
+        JsonElement envelope,
+        ProductBinding expectedProduct)
+    {
+        var result = ReadResult(envelope);
+        if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                result,
+                "schemaVersion", "kind", "product", "items", "total", "omitted", "observedAt",
+                "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest") ||
+            !result.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var schema) ||
+            schema != 1 || ParseRequiredEnum(result, "kind", "change-impact-change-catalog") !=
+                "change-impact-change-catalog" ||
+            ParseRequiredEnum(result, "sourceBoundary", "current-governed-change-metadata-only") !=
+                "current-governed-change-metadata-only" ||
+            ParseRequiredEnum(result, "authorityBoundary", ChangeCatalogAuthorityBoundary) !=
+                ChangeCatalogAuthorityBoundary)
+        {
+            throw InvalidResponse();
+        }
+        var product = ParseChangeImpactExactReference(result.GetProperty("product"), "product");
+        if (product.RecordId != expectedProduct.Id || product.Revision != expectedProduct.Revision ||
+            product.Digest != expectedProduct.Digest)
+        {
+            throw InvalidResponse();
+        }
+        var itemsElement = result.GetProperty("items");
+        if (itemsElement.ValueKind != JsonValueKind.Array || itemsElement.GetArrayLength() > 256) throw InvalidResponse();
+        var items = itemsElement.EnumerateArray().Select(ParseChangeImpactChangeReference).ToArray();
+        if (items.Select(item => item.RecordId).Distinct().Count() != items.Length ||
+            items.Zip(items.Skip(1)).Any(pair =>
+                StringComparer.Ordinal.Compare(pair.First.RecordId.ToString("D"), pair.Second.RecordId.ToString("D")) >= 0))
+        {
+            throw InvalidResponse();
+        }
+        var total = ParseBoundedNonNegativeLong(result, "total", 1_000_000);
+        var omitted = ParseBoundedNonNegativeLong(result, "omitted", 1_000_000);
+        if (items.LongLength + omitted != total) throw InvalidResponse();
+        var limitations = ParseChangeImpactLimitations(result.GetProperty("limitations"));
+        var observedAt = ParseRequiredTimestamp(result, "observedAt");
+        var snapshotDigest = ParseRequiredDigest(result, "snapshotDigest");
+        if (snapshotDigest != CanonicalDigest(WithoutProperty(result, "snapshotDigest"))) throw InvalidResponse();
+        return new ChangeImpactChangeCatalog(
+            product.RecordId,
+            product.Revision,
+            product.Digest,
+            Array.AsReadOnly(items),
+            total,
+            omitted,
+            observedAt,
+            limitations,
+            snapshotDigest);
+    }
+
+    internal static ChangeImpactDashboard ParseChangeImpactDashboardResponse(
+        JsonElement envelope,
+        ProductBinding expectedProduct,
+        ChangeImpactChangeReference expectedChange)
+    {
+        var result = ReadResult(envelope);
+        if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                result,
+                "schemaVersion", "kind", "product", "change", "workItems", "changedArtifacts", "effectTargets",
+                "affectedUnits", "governance", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+                "authorityBoundary", "snapshotDigest") ||
+            !result.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var schema) ||
+            schema != 1 || ParseRequiredEnum(result, "kind", "change-impact-dashboard") != "change-impact-dashboard" ||
+            ParseRequiredEnum(result, "sourceBoundary", "current-governed-records-and-bounded-trace-analysis") !=
+                "current-governed-records-and-bounded-trace-analysis" ||
+            ParseRequiredEnum(result, "authorityBoundary", ChangeDashboardAuthorityBoundary) !=
+                ChangeDashboardAuthorityBoundary)
+        {
+            throw InvalidResponse();
+        }
+        var product = ParseChangeImpactExactReference(result.GetProperty("product"), "product");
+        if (product.RecordId != expectedProduct.Id || product.Revision != expectedProduct.Revision ||
+            product.Digest != expectedProduct.Digest)
+        {
+            throw InvalidResponse();
+        }
+        var change = ParseChangeImpactChangeReference(result.GetProperty("change"));
+        if (change.RecordId != expectedChange.RecordId || change.Revision != expectedChange.Revision ||
+            change.Digest != expectedChange.Digest || change.State != expectedChange.State ||
+            !change.EffectEnvelope.SequenceEqual(expectedChange.EffectEnvelope, StringComparer.Ordinal))
+        {
+            throw InvalidResponse();
+        }
+
+        var workItems = ParseChangeImpactArray(result.GetProperty("workItems"), 256, row =>
+        {
+            if (!HasOnlyProperties(row, "record", "state")) throw InvalidResponse();
+            return new ChangeImpactWorkItem(
+                ParseChangeImpactExactReference(row.GetProperty("record"), "work-item"),
+                ParseRequiredEnum(row, "state", [.. ChangeImpactWorkItemStates]));
+        });
+        ChangeImpactArtifact ParseArtifact(JsonElement row)
+        {
+            if (!HasOnlyProperties(row, "sourceWorkItem", "locator")) throw InvalidResponse();
+            return new ChangeImpactArtifact(
+                ParseChangeImpactExactReference(row.GetProperty("sourceWorkItem"), "work-item"),
+                ParseChangeImpactLocator(row.GetProperty("locator")));
+        }
+        var changedArtifacts = ParseChangeImpactArray(result.GetProperty("changedArtifacts"), 512, ParseArtifact);
+        var effectTargets = ParseChangeImpactArray(result.GetProperty("effectTargets"), 512, ParseArtifact);
+        var affectedUnits = ParseChangeImpactArray(
+            result.GetProperty("affectedUnits"),
+            512,
+            ParseChangeImpactAffectedUnit);
+
+        var governance = result.GetProperty("governance");
+        if (!HasOnlyProperties(governance, "approval", "decisions", "risks", "authorityBoundary"))
+        {
+            throw InvalidResponse();
+        }
+        var approval = governance.GetProperty("approval");
+        if (!HasOnlyProperties(approval, "state", "basis") ||
+            ParseRequiredEnum(approval, "state", "not-established") != "not-established" ||
+            ParseRequiredEnum(approval, "basis", "current-contract-has-no-change-approval-record") !=
+                "current-contract-has-no-change-approval-record" ||
+            ParseRequiredEnum(
+                governance,
+                "authorityBoundary",
+                "decisions-and-risk-acceptance-do-not-approve-the-change") !=
+                "decisions-and-risk-acceptance-do-not-approve-the-change")
+        {
+            throw InvalidResponse();
+        }
+        var decisions = ParseChangeImpactArray(governance.GetProperty("decisions"), 256, row =>
+        {
+            if (!HasOnlyProperties(row, "record", "state", "outcome")) throw InvalidResponse();
+            var state = ParseRequiredEnum(row, "state", "open", "decided", "deferred", "superseded");
+            var outcome = ParseRequiredEnum(row, "outcome", "human-selected", "not-selected");
+            if ((state == "decided") != (outcome == "human-selected")) throw InvalidResponse();
+            return new ChangeImpactDecision(
+                ParseChangeImpactExactReference(row.GetProperty("record"), "decision"),
+                state,
+                outcome);
+        });
+        var risks = ParseChangeImpactArray(governance.GetProperty("risks"), 256, row =>
+        {
+            if (!HasOnlyProperties(row, "record", "state", "likelihood", "impact", "acceptance"))
+            {
+                throw InvalidResponse();
+            }
+            var state = ParseRequiredEnum(row, "state", "open", "treated", "accepted", "closed");
+            var acceptance = ParseRequiredEnum(row, "acceptance", "human-accepted", "not-accepted");
+            if ((state == "accepted") != (acceptance == "human-accepted")) throw InvalidResponse();
+            return new ChangeImpactRisk(
+                ParseChangeImpactExactReference(row.GetProperty("record"), "risk"),
+                state,
+                ParseRequiredEnum(row, "likelihood", "rare", "unlikely", "possible", "likely", "almost-certain", "unknown"),
+                ParseRequiredEnum(row, "impact", "negligible", "minor", "moderate", "major", "critical", "unknown"),
+                acceptance);
+        });
+
+        var freshnessElement = result.GetProperty("freshness");
+        if (!HasOnlyProperties(
+                freshnessElement,
+                "state", "evaluatedAt", "unresolvedTraceLinks", "invalidTraceLinks", "staleTraceLinks",
+                "staleGovernanceReferences", "traceAnalysisTruncated", "coverageBoundary") ||
+            ParseRequiredEnum(
+                freshnessElement,
+                "coverageBoundary",
+                "absence-of-a-trace-link-does-not-prove-absence-of-impact") !=
+                "absence-of-a-trace-link-does-not-prove-absence-of-impact")
+        {
+            throw InvalidResponse();
+        }
+        var freshness = new ChangeImpactFreshness(
+            ParseRequiredEnum(freshnessElement, "state", "current", "attention-required"),
+            ParseRequiredTimestamp(freshnessElement, "evaluatedAt"),
+            ParseBoundedNonNegativeLong(freshnessElement, "unresolvedTraceLinks", 1_000_000),
+            ParseBoundedNonNegativeLong(freshnessElement, "invalidTraceLinks", 1_000_000),
+            ParseBoundedNonNegativeLong(freshnessElement, "staleTraceLinks", 1_000_000),
+            ParseBoundedNonNegativeLong(freshnessElement, "staleGovernanceReferences", 1_000_000),
+            ParseRequiredBoolean(freshnessElement, "traceAnalysisTruncated"));
+
+        var limitsElement = result.GetProperty("limits");
+        if (!HasOnlyProperties(
+                limitsElement,
+                "workItems", "changedArtifacts", "effectTargets", "affectedUnits", "decisions", "risks", "truncated"))
+        {
+            throw InvalidResponse();
+        }
+        var limits = new ChangeImpactLimits(
+            ParseChangeImpactLimit(limitsElement.GetProperty("workItems")),
+            ParseChangeImpactLimit(limitsElement.GetProperty("changedArtifacts")),
+            ParseChangeImpactLimit(limitsElement.GetProperty("effectTargets")),
+            ParseChangeImpactLimit(limitsElement.GetProperty("affectedUnits")),
+            ParseChangeImpactLimit(limitsElement.GetProperty("decisions")),
+            ParseChangeImpactLimit(limitsElement.GetProperty("risks")),
+            ParseRequiredBoolean(limitsElement, "truncated"));
+        var categories = new (long Count, ChangeImpactLimit Limit)[]
+        {
+            (workItems.LongLength, limits.WorkItems),
+            (changedArtifacts.LongLength, limits.ChangedArtifacts),
+            (effectTargets.LongLength, limits.EffectTargets),
+            (affectedUnits.LongLength, limits.AffectedUnits),
+            (decisions.LongLength, limits.Decisions),
+            (risks.LongLength, limits.Risks),
+        };
+        if (categories.Any(category => category.Count != category.Limit.Shown)) throw InvalidResponse();
+        var truncated = freshness.TraceAnalysisTruncated || categories.Any(category => category.Limit.Omitted > 0);
+        var attentionRequired = truncated || freshness.UnresolvedTraceLinks > 0 || freshness.InvalidTraceLinks > 0 ||
+            freshness.StaleTraceLinks > 0 || freshness.StaleGovernanceReferences > 0;
+        var observedAt = ParseRequiredTimestamp(result, "observedAt");
+        if (limits.Truncated != truncated || (freshness.State == "attention-required") != attentionRequired ||
+            freshness.EvaluatedAt > observedAt)
+        {
+            throw InvalidResponse();
+        }
+        EnsureUniqueChangeImpactRows(workItems, changedArtifacts, effectTargets, affectedUnits, decisions, risks);
+        var limitations = ParseChangeImpactLimitations(result.GetProperty("limitations"));
+        var snapshotDigest = ParseRequiredDigest(result, "snapshotDigest");
+        if (snapshotDigest != CanonicalDigest(WithoutProperty(result, "snapshotDigest"))) throw InvalidResponse();
+        return new ChangeImpactDashboard(
+            product.RecordId,
+            product.Revision,
+            product.Digest,
+            change,
+            Array.AsReadOnly(workItems),
+            Array.AsReadOnly(changedArtifacts),
+            Array.AsReadOnly(effectTargets),
+            Array.AsReadOnly(affectedUnits),
+            Array.AsReadOnly(decisions),
+            Array.AsReadOnly(risks),
+            freshness,
+            limits,
+            observedAt,
+            limitations,
+            snapshotDigest);
+    }
+
+    private static T[] ParseChangeImpactArray<T>(JsonElement value, int maximum, Func<JsonElement, T> parse)
+    {
+        if (value.ValueKind != JsonValueKind.Array || value.GetArrayLength() > maximum) throw InvalidResponse();
+        return value.EnumerateArray().Select(parse).ToArray();
+    }
+
+    private static ChangeImpactExactReference ParseChangeImpactExactReference(
+        JsonElement reference,
+        string expectedType)
+    {
+        if (!HasOnlyProperties(reference, "recordType", "recordId", "revision", "digest") ||
+            ParseRequiredEnum(reference, "recordType", expectedType) != expectedType)
+        {
+            throw InvalidResponse();
+        }
+        return new ChangeImpactExactReference(
+            expectedType,
+            ParseRequiredGuid(reference, "recordId"),
+            ParsePositiveLong(reference, "revision"),
+            ParseRequiredDigest(reference, "digest"));
+    }
+
+    private static ChangeImpactChangeReference ParseChangeImpactChangeReference(JsonElement change)
+    {
+        if (!HasOnlyProperties(change, "recordType", "recordId", "revision", "digest", "state", "effectEnvelope") ||
+            ParseRequiredEnum(change, "recordType", "change") != "change")
+        {
+            throw InvalidResponse();
+        }
+        var effectsElement = change.GetProperty("effectEnvelope");
+        if (effectsElement.ValueKind != JsonValueKind.Array ||
+            effectsElement.GetArrayLength() is < 1 or > 5)
+        {
+            throw InvalidResponse();
+        }
+        var effects = effectsElement.EnumerateArray().Select(effect =>
+        {
+            if (effect.ValueKind != JsonValueKind.String || effect.GetString() is not { } value ||
+                !ChangeImpactEffects.Contains(value))
+            {
+                throw InvalidResponse();
+            }
+            return value;
+        }).ToArray();
+        if (effects.Distinct(StringComparer.Ordinal).Count() != effects.Length) throw InvalidResponse();
+        return new ChangeImpactChangeReference(
+            ParseRequiredGuid(change, "recordId"),
+            ParsePositiveLong(change, "revision"),
+            ParseRequiredDigest(change, "digest"),
+            ParseRequiredEnum(change, "state", [.. ChangeImpactStates]),
+            Array.AsReadOnly(effects));
+    }
+
+    private static ChangeImpactLocator ParseChangeImpactLocator(JsonElement locator)
+    {
+        var kind = ParseRequiredPortableText(locator, "kind");
+        if (kind == "workspace-relative")
+        {
+            if (!HasOnlyProperties(locator, "kind", "path")) throw InvalidResponse();
+            return new ChangeImpactLocator(kind, ParseWorkspaceRelativeScope(locator.GetProperty("path")));
+        }
+        if (kind == "logical")
+        {
+            if (!HasOnlyProperties(locator, "kind", "value")) throw InvalidResponse();
+            var value = ParseRequiredPortableText(locator, "value");
+            if (!ToolPattern().IsMatch(value)) throw InvalidResponse();
+            return new ChangeImpactLocator(kind, value);
+        }
+        if (kind != "external-uri" || !HasOnlyProperties(locator, "kind", "uri")) throw InvalidResponse();
+        var raw = ParseRequiredPortableText(locator, "uri");
+        if (raw.Length > 8_192 || !Uri.TryCreate(raw, UriKind.Absolute, out var uri) ||
+            uri.Scheme is not ("http" or "https" or "urn") || !string.IsNullOrEmpty(uri.UserInfo) ||
+            (uri.Scheme is "http" or "https" && string.IsNullOrWhiteSpace(uri.Host)))
+        {
+            throw InvalidResponse();
+        }
+        var queryKeys = Uri.UnescapeDataString(uri.Query.TrimStart('?'))
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(value => value.Split('=', 2)[0]);
+        var fragment = Uri.UnescapeDataString(uri.Fragment.TrimStart('#'));
+        if (queryKeys.Any(key => SensitiveUriComponentPattern().IsMatch(key)) ||
+            (!string.IsNullOrEmpty(fragment) && SensitiveUriComponentPattern().IsMatch(fragment)))
+        {
+            throw InvalidResponse();
+        }
+        return new ChangeImpactLocator(kind, raw);
+    }
+
+    private static ChangeImpactTraceEndpoint ParseChangeImpactTraceEndpoint(JsonElement endpoint)
+    {
+        if (!HasRequiredAndAllowedProperties(endpoint, ["recordType", "recordId"], ["revision", "digest"]))
+        {
+            throw InvalidResponse();
+        }
+        var recordType = ParseRequiredEnum(endpoint, "recordType", [.. ChangeImpactRecordTypes]);
+        if (recordType == "external")
+        {
+            if (endpoint.TryGetProperty("revision", out _) || endpoint.TryGetProperty("digest", out _) ||
+                !endpoint.TryGetProperty("recordId", out var recordIdElement) ||
+                recordIdElement.ValueKind != JsonValueKind.String ||
+                !ValidPortableText(recordIdElement.GetString(), minimum: 1, maximum: 500))
+            {
+                throw InvalidResponse();
+            }
+            return new ChangeImpactTraceEndpoint(recordType, recordIdElement.GetString()!, null, null);
+        }
+        if (!endpoint.TryGetProperty("revision", out _) || !endpoint.TryGetProperty("digest", out _))
+        {
+            throw InvalidResponse();
+        }
+        return new ChangeImpactTraceEndpoint(
+            recordType,
+            ParseRequiredGuid(endpoint, "recordId").ToString("D"),
+            ParsePositiveLong(endpoint, "revision"),
+            ParseRequiredDigest(endpoint, "digest"));
+    }
+
+    private static ChangeImpactAffectedUnit ParseChangeImpactAffectedUnit(JsonElement unit)
+    {
+        if (!HasOnlyProperties(unit, "direction", "relationship", "endpoint", "trace")) throw InvalidResponse();
+        var trace = unit.GetProperty("trace");
+        if (!HasOnlyProperties(trace, "recordId", "revision", "assessmentDigest", "assessedState"))
+        {
+            throw InvalidResponse();
+        }
+        return new ChangeImpactAffectedUnit(
+            ParseRequiredEnum(unit, "direction", "upstream", "downstream"),
+            ParseRequiredEnum(unit, "relationship", [.. ChangeImpactRelationships]),
+            ParseChangeImpactTraceEndpoint(unit.GetProperty("endpoint")),
+            new ChangeImpactTraceAssessment(
+                ParseRequiredGuid(trace, "recordId"),
+                ParsePositiveLong(trace, "revision"),
+                ParseRequiredDigest(trace, "assessmentDigest"),
+                ParseRequiredEnum(trace, "assessedState", "valid", "unresolved", "stale", "invalid")));
+    }
+
+    private static ChangeImpactLimit ParseChangeImpactLimit(JsonElement limit)
+    {
+        if (!HasOnlyProperties(limit, "shown", "total", "omitted")) throw InvalidResponse();
+        var shown = ParseBoundedNonNegativeLong(limit, "shown", 1_000_000);
+        var total = ParseBoundedNonNegativeLong(limit, "total", 1_000_000);
+        var omitted = ParseBoundedNonNegativeLong(limit, "omitted", 1_000_000);
+        if (shown + omitted != total) throw InvalidResponse();
+        return new ChangeImpactLimit(shown, total, omitted);
+    }
+
+    private static IReadOnlyList<string> ParseChangeImpactLimitations(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.Array || value.GetArrayLength() is < 1 or > 8) throw InvalidResponse();
+        var limitations = value.EnumerateArray().Select(limitation =>
+        {
+            if (limitation.ValueKind != JsonValueKind.String ||
+                !ValidPortableText(limitation.GetString(), minimum: 4, maximum: 1_000))
+            {
+                throw InvalidResponse();
+            }
+            return limitation.GetString()!;
+        }).ToArray();
+        return Array.AsReadOnly(limitations);
+    }
+
+    private static void EnsureUniqueChangeImpactRows(
+        IReadOnlyCollection<ChangeImpactWorkItem> workItems,
+        IReadOnlyCollection<ChangeImpactArtifact> changedArtifacts,
+        IReadOnlyCollection<ChangeImpactArtifact> effectTargets,
+        IReadOnlyCollection<ChangeImpactAffectedUnit> affectedUnits,
+        IReadOnlyCollection<ChangeImpactDecision> decisions,
+        IReadOnlyCollection<ChangeImpactRisk> risks)
+    {
+        static bool Unique(IEnumerable<string> values)
+        {
+            var rows = values.ToArray();
+            return rows.Distinct(StringComparer.Ordinal).Count() == rows.Length;
+        }
+        static string ArtifactKey(ChangeImpactArtifact value) =>
+            $"{value.SourceWorkItem.RecordId:D}:{value.Locator.Kind}:{value.Locator.Value}";
+        if (!Unique(workItems.Select(row => row.Record.RecordId.ToString("D"))) ||
+            !Unique(changedArtifacts.Select(ArtifactKey)) || !Unique(effectTargets.Select(ArtifactKey)) ||
+            !Unique(affectedUnits.Select(row =>
+                $"{row.Direction}:{row.Endpoint.RecordType}:{row.Endpoint.RecordId}:{row.Trace.RecordId:D}")) ||
+            !Unique(decisions.Select(row => row.Record.RecordId.ToString("D"))) ||
+            !Unique(risks.Select(row => row.Record.RecordId.ToString("D"))))
+        {
+            throw InvalidResponse();
+        }
+    }
+
+    private static JsonElement WithoutProperty(JsonElement value, string propertyName) =>
+        JsonSerializer.SerializeToElement(
+            value.EnumerateObject()
+                .Where(property => property.Name != propertyName)
+                .ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal));
 
     internal static IReadOnlyList<AgentReadinessSnapshot> ParseAgentReadinessResponse(JsonElement envelope)
     {
@@ -2544,6 +3001,9 @@ internal static partial class PortableDesignProtocol
 
     [GeneratedRegex("%2e", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex EncodedDotPattern();
+
+    [GeneratedRegex("token|password|passwd|secret|signature|credential|api.?key|access.?key|auth", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex SensitiveUriComponentPattern();
 
     [GeneratedRegex(@"\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|\bAKIA[A-Z0-9]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex SecretPattern();

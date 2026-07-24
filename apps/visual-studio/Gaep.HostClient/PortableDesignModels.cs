@@ -67,6 +67,105 @@ public sealed record PhaseDashboardFramework(
     IReadOnlyList<string> Limitations,
     string CompositionDigest);
 
+public sealed record ChangeImpactChangeReference(
+    Guid RecordId,
+    long Revision,
+    string Digest,
+    string State,
+    IReadOnlyList<string> EffectEnvelope);
+
+public sealed record ChangeImpactChangeCatalog(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    IReadOnlyList<ChangeImpactChangeReference> Items,
+    long Total,
+    long Omitted,
+    DateTimeOffset ObservedAt,
+    IReadOnlyList<string> Limitations,
+    string SnapshotDigest);
+
+public sealed record ChangeImpactExactReference(
+    string RecordType,
+    Guid RecordId,
+    long Revision,
+    string Digest);
+
+public sealed record ChangeImpactLocator(string Kind, string Value);
+
+public sealed record ChangeImpactWorkItem(ChangeImpactExactReference Record, string State);
+
+public sealed record ChangeImpactArtifact(
+    ChangeImpactExactReference SourceWorkItem,
+    ChangeImpactLocator Locator);
+
+public sealed record ChangeImpactTraceEndpoint(
+    string RecordType,
+    string RecordId,
+    long? Revision,
+    string? Digest);
+
+public sealed record ChangeImpactTraceAssessment(
+    Guid RecordId,
+    long Revision,
+    string AssessmentDigest,
+    string AssessedState);
+
+public sealed record ChangeImpactAffectedUnit(
+    string Direction,
+    string Relationship,
+    ChangeImpactTraceEndpoint Endpoint,
+    ChangeImpactTraceAssessment Trace);
+
+public sealed record ChangeImpactDecision(
+    ChangeImpactExactReference Record,
+    string State,
+    string Outcome);
+
+public sealed record ChangeImpactRisk(
+    ChangeImpactExactReference Record,
+    string State,
+    string Likelihood,
+    string Impact,
+    string Acceptance);
+
+public sealed record ChangeImpactFreshness(
+    string State,
+    DateTimeOffset EvaluatedAt,
+    long UnresolvedTraceLinks,
+    long InvalidTraceLinks,
+    long StaleTraceLinks,
+    long StaleGovernanceReferences,
+    bool TraceAnalysisTruncated);
+
+public sealed record ChangeImpactLimit(long Shown, long Total, long Omitted);
+
+public sealed record ChangeImpactLimits(
+    ChangeImpactLimit WorkItems,
+    ChangeImpactLimit ChangedArtifacts,
+    ChangeImpactLimit EffectTargets,
+    ChangeImpactLimit AffectedUnits,
+    ChangeImpactLimit Decisions,
+    ChangeImpactLimit Risks,
+    bool Truncated);
+
+public sealed record ChangeImpactDashboard(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    ChangeImpactChangeReference Change,
+    IReadOnlyList<ChangeImpactWorkItem> WorkItems,
+    IReadOnlyList<ChangeImpactArtifact> ChangedArtifacts,
+    IReadOnlyList<ChangeImpactArtifact> EffectTargets,
+    IReadOnlyList<ChangeImpactAffectedUnit> AffectedUnits,
+    IReadOnlyList<ChangeImpactDecision> Decisions,
+    IReadOnlyList<ChangeImpactRisk> Risks,
+    ChangeImpactFreshness Freshness,
+    ChangeImpactLimits Limits,
+    DateTimeOffset ObservedAt,
+    IReadOnlyList<string> Limitations,
+    string SnapshotDigest);
+
 public sealed record AgentModelReadiness(
     string Id,
     string Label,

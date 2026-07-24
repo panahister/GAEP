@@ -49,6 +49,10 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private string bundleId = string.Empty;
     private string status = "GAEP engine has not been contacted";
     private string output = "Set one absolute local workspace folder, then refresh the Product.";
+    private string[] availableChangeChoices = [];
+    private string selectedChangeChoice = string.Empty;
+    private ChangeImpactContext? changeImpactContext;
+    private string? changeImpactWorkspace;
     private string[] availableAgentChoices = [];
     private string selectedAgentChoice = string.Empty;
     private string[] availableModelIds = [];
@@ -80,6 +84,8 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         this.extensibility = extensibility ?? throw new ArgumentNullException(nameof(extensibility));
         RefreshProductCommand = new AsyncCommand(RefreshProductAsync);
         ShowPhaseDashboardCommand = new AsyncCommand(ShowPhaseDashboardAsync);
+        LoadChangeImpactCommand = new AsyncCommand(LoadChangeImpactAsync);
+        ShowChangeImpactCommand = new AsyncCommand(ShowChangeImpactAsync);
         RefreshAgentReadinessCommand = new AsyncCommand(RefreshAgentReadinessAsync);
         LoadAgentSelectionCommand = new AsyncCommand(LoadAgentSelectionAsync);
         SelectAgentCommand = new AsyncCommand(SelectAgentAsync);
@@ -108,13 +114,19 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Change/Impact selection and projection are exact audit-gated metadata views; they cannot approve a Change, accept a Risk, mutate records, or authorize effects. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
 
     [DataMember]
     public IAsyncCommand ShowPhaseDashboardCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadChangeImpactCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ShowChangeImpactCommand { get; }
 
     [DataMember]
     public IAsyncCommand RefreshAgentReadinessCommand { get; }
@@ -166,6 +178,20 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ImportDesignBundleCommand { get; }
+
+    [DataMember]
+    public string[] AvailableChangeChoices
+    {
+        get => availableChangeChoices;
+        private set => SetProperty(ref availableChangeChoices, value);
+    }
+
+    [DataMember]
+    public string SelectedChangeChoice
+    {
+        get => selectedChangeChoice;
+        set => SetProperty(ref selectedChangeChoice, value ?? string.Empty);
+    }
 
     [DataMember]
     public string WorkspacePath
@@ -320,6 +346,44 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading Phase 0/1A dashboards",
             (controller, _, token) => controller.ReadPhaseDashboardAsync(token),
+            cancellationToken);
+
+    private Task LoadChangeImpactAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact current Change catalog",
+            async (controller, workspace, token) =>
+            {
+                var context = await controller.ReadChangeImpactContextAsync(token);
+                if (context.Catalog.Items.Count == 0)
+                {
+                    throw new ArgumentException(
+                        "No current Change metadata is available for the exact Change/Impact dashboard.");
+                }
+                changeImpactContext = context;
+                changeImpactWorkspace = workspace;
+                AvailableChangeChoices = context.Catalog.Items.Select(ChangeChoice).ToArray();
+                SelectedChangeChoice = AvailableChangeChoices[0];
+                return $"Verified {context.Catalog.Items.Count} of {context.Catalog.Total} exact current Change references; " +
+                    $"{context.Catalog.Omitted} omitted. Select one below, then open its read-only projection. " +
+                    "No Change approval, Risk acceptance, mutation, Run, Tool, write, or effect authority was granted.";
+            },
+            cancellationToken);
+
+    private Task ShowChangeImpactAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Change/Impact projection",
+            (controller, workspace, token) =>
+            {
+                var context = changeImpactContext
+                    ?? throw new ArgumentException("Load the exact current Change catalog before opening a projection.");
+                if (!StringComparer.Ordinal.Equals(changeImpactWorkspace, workspace))
+                {
+                    throw new ArgumentException("The workspace changed after the Change catalog was loaded. Load it again.");
+                }
+                var change = context.Catalog.Items.SingleOrDefault(item => ChangeChoice(item) == SelectedChangeChoice)
+                    ?? throw new ArgumentException("Select one exact Change from the verified current catalog.");
+                return controller.ReadChangeImpactAsync(context, change, token);
+            },
             cancellationToken);
 
     private Task RefreshAgentReadinessAsync(object? commandParameter, CancellationToken cancellationToken) =>
@@ -719,6 +783,10 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private AgentReadinessSnapshot ResolveSelectedAgent(AgentSelectionContext context) =>
         context.Available.SingleOrDefault(snapshot => AgentChoice(snapshot) == SelectedAgentChoice)
         ?? throw new ArgumentException("Select one verified adapter from the loaded capability snapshot.");
+
+    private static string ChangeChoice(ChangeImpactChangeReference change) =>
+        $"{change.RecordId:D} · {change.State} · revision {change.Revision} · " +
+        string.Join(", ", change.EffectEnvelope);
 
     private static string AgentChoice(AgentReadinessSnapshot snapshot) =>
         $"{snapshot.AgentLabel} — {snapshot.AdapterId} ({snapshot.ExecutionInterface}, {snapshot.InterfaceMaturity})";
