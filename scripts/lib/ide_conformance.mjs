@@ -10,6 +10,7 @@ const assessmentStates = new Set(["implemented", "partial", "not-implemented"])
 const runtimeSources = new Set(["package-report", "json-evidence"])
 const runtimeLevels = new Set([
   "installed-package-activation-local",
+  "installed-package-bundled-engine-workflow-local",
   "compatible-host-activation-only",
   "compatible-host-packaged-engine-workflow-local",
   "native-startup-plugin-load-only",

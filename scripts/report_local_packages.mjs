@@ -22,7 +22,7 @@ const definitions = [
     path: "apps/vscode/dist/gaep-vscode.vsix",
     maximumBytes: 32 * 1024 * 1024,
     requiredHere: true,
-    verification: "exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-and-activation",
+    verification: "exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-bundled-engine-empty-recovery-evidence-workflow",
   },
   {
     host: "kiro",

@@ -27,12 +27,12 @@
       "packagePlatforms": ["darwin", "linux", "win32"],
       "runtimeEvidence": {
         "source": "package-report",
-        "level": "installed-package-activation-local",
-        "requiredVerificationFragments": ["exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-and-activation"],
-        "remainingRequirements": ["supported-OS installation matrix", "packaged-engine workflow acceptance", "Product Owner acceptance"]
+        "level": "installed-package-bundled-engine-workflow-local",
+        "requiredVerificationFragments": ["exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-bundled-engine-empty-recovery-evidence-workflow"],
+        "remainingRequirements": ["real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
-        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/vscode/src/extension.ts", "contains": ["engine = new GaepEngine(folder.uri.fsPath"] }] },
+        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/vscode/src/extension.ts", "contains": ["engine = new GaepEngine(folder.uri.fsPath", "engine.listManagedRunsPage({ offset: 0, limit: 200 })", "return presentation"] }] },
         { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["const product = await context.readProduct()"] }] },
         { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["studio.listPortableDesignSnapshots"] }] },
         { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["studio.readPortableDesignSnapshot"] }] },
