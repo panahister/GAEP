@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 2,
+  "kind": "gaep-phase0-example-receipt",
+  "scenario": {
+    "id": "phase-0-managed-readonly-v1",
+    "digest": "sha256:16002212feb50c5dbc6f2f63121eaee36c85d8a3a0fa134758b86bea0c6f4ee9"
+  },
+  "portableRun": {
+    "previewDigest": "sha256:63fcdee0942f040f34af65cafd447678fb8096bad2e122507b5abff4bd29c90d",
+    "runId": "3c9ac619-8e3a-4836-afc8-71eeda9b18d3",
+    "managedRunId": "bc7e0f5b-b63b-4035-a348-205489761939",
+    "resultDigest": "sha256:fe6f182cfa310da70d2fe29ab6fb34004f94b41dc7b1a50907def309b54525d1",
+    "evidenceDigest": "sha256:54f43dd74d7aaef63e8c7e638a2eaf24914abf66e47b17228a78bf47948ddcc2",
+    "startedAt": "2026-07-24T18:21:27.708Z",
+    "endedAt": "2026-07-24T18:21:27.768Z"
+  },
+  "dashboard": {
+    "schemaVersion": 1,
+    "kind": "phase-dashboard-framework",
+    "catalogVersion": "gaep-phase-dashboards-v1",
+    "product": {
+      "recordType": "product",
+      "recordId": "b99463a0-51a6-4cb1-8515-cc44dfe1bf16",
+      "revision": 1,
+      "digest": "sha256:7978bc4d9641a71042c5b9a1ddf4358a9b0be96f6e27c98a590b2012f63b9800"
+    },
+    "phase": {
+      "id": "phase-0-1a-foundation",
+      "label": "Phase 0 / 1A — Four-IDE Platform Foundation"
+    },
+    "panels": [
+      {
+        "id": "foundation-summary",
+        "role": "phase",
+        "title": "Foundation summary and readiness",
+        "applicability": {
+          "status": "unknown",
+          "basis": "not-evaluated"
+        },
+        "state": "attention-required"
+      },
+      {
+        "id": "change-impact",
+        "role": "change-impact",
+        "title": "Change and impact",
+        "applicability": {
+          "status": "applicable",
+          "basis": "phase-contract"
+        },
+        "state": "active"
+      },
+      {
+        "id": "agent-model",
+        "role": "agent-model",
+        "title": "Agent and model",
+        "applicability": {
+          "status": "applicable",
+          "basis": "phase-contract"
+        },
+        "state": "active"
+      }
+    ],
+    "observedAt": "2026-07-24T00:00:00.000Z",
+    "sourceBoundary": "governed-repository-and-engine-only",
+    "limitations": [
+      "The selected phase scopes presentation only; it does not prove phase entry, completion, acceptance, or release readiness.",
+      "The phase dashboard remains attention-required until a governed applicability decision is bound."
+    ],
+    "authorityBoundary": "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
+    "compositionDigest": "sha256:eed97ffadd65bf7ff04e737f04edd82c28ae38855f97fd20de580cedba8ce025"
+  },
+  "summary": {
+    "schemaVersion": 1,
+    "kind": "gaep-phase0-example-semantic-summary",
+    "scenarioId": "phase-0-managed-readonly-v1",
+    "adapterId": "gaep.manual",
+    "agentId": "manual",
+    "modelId": "manual-deterministic-v1",
+    "executionMode": "manual-offline",
+    "state": "completed",
+    "providerDisposition": "completed",
+    "outcomeStatus": "satisfied",
+    "outcomeBasis": "deterministic-offline-runtime",
+    "workflowStrategy": "sequential",
+    "contextPackCount": 1,
+    "toolDefinitionCount": 0,
+    "readScopeCount": 1,
+    "writeScopeCount": 0,
+    "gatePhases": [
+      "charter-evidence",
+      "charter-stop-conditions",
+      "preconditions",
+      "outputs",
+      "evidence",
+      "stop-conditions"
+    ],
+    "completedStepCount": 1,
+    "totalStepCount": 1,
+    "eventTypes": [
+      "lifecycle",
+      "output",
+      "item"
+    ],
+    "eventCount": 3,
+    "actualEffects": [
+      {
+        "effect": "observe",
+        "status": "observed-provisional"
+      }
+    ],
+    "stagingPresent": false,
+    "warnings": [],
+    "auditValid": true,
+    "managedInventoryCount": 1,
+    "dashboardPhase": "phase-0-1a-foundation",
+    "dashboardPanelIds": [
+      "foundation-summary",
+      "change-impact",
+      "agent-model"
+    ],
+    "dashboardApplicability": [
+      {
+        "status": "unknown",
+        "basis": "not-evaluated"
+      },
+      {
+        "status": "applicable",
+        "basis": "phase-contract"
+      },
+      {
+        "status": "applicable",
+        "basis": "phase-contract"
+      }
+    ],
+    "dashboardStates": [
+      "attention-required",
+      "active",
+      "active"
+    ],
+    "dashboardAuthorityBoundary": "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"
+  },
+  "summaryDigest": "sha256:09449ee7a6e41ed1d18cc606407239f941acd7f3e6a180de6786e1ff93f944aa",
+  "expectedSummaryDigest": "sha256:09449ee7a6e41ed1d18cc606407239f941acd7f3e6a180de6786e1ff93f944aa",
+  "integrity": {
+    "auditValid": true,
+    "auditEventCount": 13,
+    "inventoryCount": 1,
+    "inventorySnapshotDigest": "sha256:bfa58fac5a516366d7fbe6e7baeda703541a0f3f4afe043621380c08129ba46f",
+    "recordResultDigestMatches": true,
+    "resultEvidenceDigestMatches": true,
+    "evidenceEventsDigestMatches": true,
+    "dashboardProductDigestMatches": true,
+    "dashboardCompositionDigestMatches": true
+  },
+  "authority": {
+    "previewBoundary": "managed-readonly-preview-does-not-grant-execution-or-effect-authority",
+    "receiptBoundary": "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+    "requestedEffects": [
+      "observe"
+    ],
+    "toolPermissions": [
+      {
+        "capability": "all-tools",
+        "mode": "deny",
+        "scope": []
+      }
+    ],
+    "workspaceWriteScope": [],
+    "networkRequirement": "none-deterministic-in-process-runtime"
+  },
+  "limitations": [
+    "Offline deterministic runtime evidence does not validate a real provider.",
+    "This example does not validate native IDE installation, activation, rendering, or accessibility.",
+    "A satisfied scripted outcome is not Product readiness, release acceptance, deployment approval, or production evidence."
+  ]
+}

@@ -40,5 +40,31 @@
   "stagingPresent": false,
   "warnings": [],
   "auditValid": true,
-  "managedInventoryCount": 1
+  "managedInventoryCount": 1,
+  "dashboardPhase": "phase-0-1a-foundation",
+  "dashboardPanelIds": [
+    "foundation-summary",
+    "change-impact",
+    "agent-model"
+  ],
+  "dashboardApplicability": [
+    {
+      "status": "unknown",
+      "basis": "not-evaluated"
+    },
+    {
+      "status": "applicable",
+      "basis": "phase-contract"
+    },
+    {
+      "status": "applicable",
+      "basis": "phase-contract"
+    }
+  ],
+  "dashboardStates": [
+    "attention-required",
+    "active",
+    "active"
+  ],
+  "dashboardAuthorityBoundary": "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"
 }

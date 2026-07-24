@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
 import { DeterministicManualAdapter, canonicalDigest } from "@gaep/agent-sdk"
-import { GaepEngine } from "@gaep/engine"
+import { composePhaseDashboardFramework, GaepEngine } from "@gaep/engine"
 
 import { loadPhase0ExampleContract, verifyPhase0ExampleReceiptObject } from "./verify_phase0_example_receipt.mjs"
 
@@ -43,7 +43,7 @@ function contextTrust(scenario) {
   }
 }
 
-function semanticSummary({ scenario, preview, receipt, plan, evidence, audit, inventory }) {
+function semanticSummary({ scenario, preview, receipt, plan, evidence, audit, inventory, dashboard }) {
   return {
     schemaVersion: 1,
     kind: "gaep-phase0-example-semantic-summary",
@@ -71,6 +71,14 @@ function semanticSummary({ scenario, preview, receipt, plan, evidence, audit, in
     warnings: receipt.warnings,
     auditValid: audit.valid,
     managedInventoryCount: inventory.total,
+    dashboardPhase: dashboard.phase.id,
+    dashboardPanelIds: dashboard.panels.map((panel) => panel.id),
+    dashboardApplicability: dashboard.panels.map((panel) => ({
+      status: panel.applicability.status,
+      basis: panel.applicability.basis,
+    })),
+    dashboardStates: dashboard.panels.map((panel) => panel.state),
+    dashboardAuthorityBoundary: dashboard.authorityBoundary,
   }
 }
 
@@ -79,6 +87,14 @@ async function createExample(workspace, scenario, expectedSummary) {
   const engine = new GaepEngine(workspace, [adapter])
   const actorId = scenario.actorId
   const product = await engine.createProduct(scenario.product, actorId)
+  const productRevision = product.revision ?? 1
+  const productDigest = canonicalDigest(product)
+  const dashboard = composePhaseDashboardFramework(product, {
+    phase: "phase-0-1a-foundation",
+    expectedProductId: product.id,
+    expectedProductRevision: productRevision,
+    expectedProductDigest: productDigest,
+  }, "2026-07-24T00:00:00.000Z")
   const initiative = await engine.createInitiative(scenario.initiative, actorId)
   await engine.updateInitiativeState(initiative.id, "active", "Begin the canonical offline evidence review", actorId)
 
@@ -201,7 +217,7 @@ async function createExample(workspace, scenario, expectedSummary) {
     engine.repository.verifyAudit(),
     engine.listManagedRunsPage({ offset: 0, limit: 10 }),
   ])
-  const summary = semanticSummary({ scenario, preview, receipt, plan, evidence, audit, inventory })
+  const summary = semanticSummary({ scenario, preview, receipt, plan, evidence, audit, inventory, dashboard })
   const summaryDigest = canonicalDigest(summary)
   const expectedSummaryDigest = canonicalDigest(expectedSummary)
   if (summaryDigest !== expectedSummaryDigest) {
@@ -209,7 +225,7 @@ async function createExample(workspace, scenario, expectedSummary) {
   }
 
   const output = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: "gaep-phase0-example-receipt",
     scenario: { id: scenario.id, digest: canonicalDigest(scenario) },
     portableRun: {
@@ -221,6 +237,7 @@ async function createExample(workspace, scenario, expectedSummary) {
       startedAt: receipt.startedAt,
       endedAt: receipt.endedAt,
     },
+    dashboard,
     summary,
     summaryDigest,
     expectedSummaryDigest,
@@ -232,6 +249,9 @@ async function createExample(workspace, scenario, expectedSummary) {
       recordResultDigestMatches: record.resultDigest === canonicalDigest(result) && record.resultDigest === receipt.resultDigest,
       resultEvidenceDigestMatches: result.evidenceDigest === canonicalDigest(evidence) && result.evidenceDigest === receipt.evidenceDigest,
       evidenceEventsDigestMatches: evidence.eventsDigest === canonicalDigest(evidence.events),
+      dashboardProductDigestMatches: dashboard.product.recordId === product.id &&
+        dashboard.product.revision === productRevision && dashboard.product.digest === productDigest,
+      dashboardCompositionDigestMatches: dashboard.compositionDigest === canonicalDigest((({ compositionDigest: _, ...content }) => content)(dashboard)),
     },
     authority: {
       previewBoundary: preview.authorityBoundary,

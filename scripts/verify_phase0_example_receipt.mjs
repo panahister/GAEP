@@ -41,6 +41,72 @@ function assertDate(value, label) {
   if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) fail(`${label} must be an ISO date-time`)
 }
 
+const dashboardLimitations = [
+  "The selected phase scopes presentation only; it does not prove phase entry, completion, acceptance, or release readiness.",
+  "The phase dashboard remains attention-required until a governed applicability decision is bound.",
+]
+
+function verifyPhaseDashboard(dashboard) {
+  assertExactKeys(dashboard, [
+    "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt", "sourceBoundary",
+    "limitations", "authorityBoundary", "compositionDigest",
+  ], "receipt.dashboard")
+  if (dashboard.schemaVersion !== 1 || dashboard.kind !== "phase-dashboard-framework" ||
+      dashboard.catalogVersion !== "gaep-phase-dashboards-v1" ||
+      dashboard.sourceBoundary !== "governed-repository-and-engine-only" ||
+      dashboard.authorityBoundary !== "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence") {
+    fail("dashboard identity or authority boundary differs")
+  }
+  assertExactKeys(dashboard.product, ["recordType", "recordId", "revision", "digest"], "receipt.dashboard.product")
+  if (dashboard.product.recordType !== "product") fail("dashboard Product reference type differs")
+  assertUuid(dashboard.product.recordId, "receipt.dashboard.product.recordId")
+  if (!Number.isSafeInteger(dashboard.product.revision) || dashboard.product.revision < 1) {
+    fail("dashboard Product revision must be positive")
+  }
+  assertDigest(dashboard.product.digest, "receipt.dashboard.product.digest")
+  assertExactKeys(dashboard.phase, ["id", "label"], "receipt.dashboard.phase")
+  if (dashboard.phase.id !== "phase-0-1a-foundation" ||
+      dashboard.phase.label !== "Phase 0 / 1A — Four-IDE Platform Foundation") {
+    fail("dashboard phase differs from the canonical Phase 0/1A example")
+  }
+  const expectedPanels = [
+    ["foundation-summary", "phase", "Foundation summary and readiness", "unknown", "not-evaluated", "attention-required"],
+    ["change-impact", "change-impact", "Change and impact", "applicable", "phase-contract", "active"],
+    ["agent-model", "agent-model", "Agent and model", "applicable", "phase-contract", "active"],
+  ]
+  if (!Array.isArray(dashboard.panels) || dashboard.panels.length !== expectedPanels.length) {
+    fail("dashboard must contain the canonical three panels")
+  }
+  dashboard.panels.forEach((panel, index) => {
+    assertExactKeys(panel, ["id", "role", "title", "applicability", "state"], `receipt.dashboard.panels[${index}]`)
+    assertExactKeys(panel.applicability, ["status", "basis"], `receipt.dashboard.panels[${index}].applicability`)
+    const [id, role, title, status, basis, state] = expectedPanels[index]
+    if (panel.id !== id || panel.role !== role || panel.title !== title || panel.applicability.status !== status ||
+        panel.applicability.basis !== basis || panel.state !== state) {
+      fail(`dashboard panel ${index} differs from the canonical applicability contract`)
+    }
+  })
+  assertDate(dashboard.observedAt, "receipt.dashboard.observedAt")
+  if (dashboard.observedAt !== "2026-07-24T00:00:00.000Z") fail("dashboard observation time is not deterministic")
+  if (canonicalJson(dashboard.limitations) !== canonicalJson(dashboardLimitations)) fail("dashboard limitations differ")
+  assertDigest(dashboard.compositionDigest, "receipt.dashboard.compositionDigest")
+  const { compositionDigest, ...content } = dashboard
+  if (compositionDigest !== canonicalDigest(content)) fail("dashboard composition digest differs")
+}
+
+function dashboardSemanticProjection(dashboard) {
+  return {
+    dashboardPhase: dashboard.phase.id,
+    dashboardPanelIds: dashboard.panels.map((panel) => panel.id),
+    dashboardApplicability: dashboard.panels.map((panel) => ({
+      status: panel.applicability.status,
+      basis: panel.applicability.basis,
+    })),
+    dashboardStates: dashboard.panels.map((panel) => panel.state),
+    dashboardAuthorityBoundary: dashboard.authorityBoundary,
+  }
+}
+
 async function readBoundedJson(path, label, byteLimit = receiptByteLimit) {
   const stat = await lstat(path)
   if (!stat.isFile() || stat.isSymbolicLink()) fail(`${label} must be a regular file`)
@@ -75,7 +141,8 @@ export async function loadPhase0ExampleContract() {
     "providerDisposition", "outcomeStatus", "outcomeBasis", "workflowStrategy", "contextPackCount",
     "toolDefinitionCount", "readScopeCount", "writeScopeCount", "gatePhases", "completedStepCount",
     "totalStepCount", "eventTypes", "eventCount", "actualEffects", "stagingPresent", "warnings", "auditValid",
-    "managedInventoryCount",
+    "managedInventoryCount", "dashboardPhase", "dashboardPanelIds", "dashboardApplicability", "dashboardStates",
+    "dashboardAuthorityBoundary",
   ], "expected summary")
   if (expectedSummary.schemaVersion !== 1 || expectedSummary.kind !== "gaep-phase0-example-semantic-summary" ||
       expectedSummary.scenarioId !== scenario.id) fail("expected summary identity differs from the canonical scenario")
@@ -85,10 +152,10 @@ export async function loadPhase0ExampleContract() {
 export async function verifyPhase0ExampleReceiptObject(receipt) {
   const { scenario, expectedSummary } = await loadPhase0ExampleContract()
   assertExactKeys(receipt, [
-    "schemaVersion", "kind", "scenario", "portableRun", "summary", "summaryDigest", "expectedSummaryDigest",
+    "schemaVersion", "kind", "scenario", "portableRun", "dashboard", "summary", "summaryDigest", "expectedSummaryDigest",
     "integrity", "authority", "limitations",
   ], "receipt")
-  if (receipt.schemaVersion !== 1 || receipt.kind !== "gaep-phase0-example-receipt") fail("receipt identity is unsupported")
+  if (receipt.schemaVersion !== 2 || receipt.kind !== "gaep-phase0-example-receipt") fail("receipt identity is unsupported")
 
   assertExactKeys(receipt.scenario, ["id", "digest"], "receipt.scenario")
   if (receipt.scenario.id !== scenario.id) fail("scenario ID differs from the canonical example")
@@ -103,7 +170,13 @@ export async function verifyPhase0ExampleReceiptObject(receipt) {
   for (const key of ["startedAt", "endedAt"]) assertDate(receipt.portableRun[key], `receipt.portableRun.${key}`)
   if (Date.parse(receipt.portableRun.endedAt) < Date.parse(receipt.portableRun.startedAt)) fail("portable Run end precedes its start")
 
+  verifyPhaseDashboard(receipt.dashboard)
+
   if (canonicalJson(receipt.summary) !== canonicalJson(expectedSummary)) fail("semantic summary differs from the checked-in expectation")
+  const dashboardProjection = dashboardSemanticProjection(receipt.dashboard)
+  for (const [key, value] of Object.entries(dashboardProjection)) {
+    if (canonicalJson(receipt.summary[key]) !== canonicalJson(value)) fail(`semantic summary ${key} differs from dashboard`)
+  }
   assertDigest(receipt.summaryDigest, "receipt.summaryDigest")
   assertDigest(receipt.expectedSummaryDigest, "receipt.expectedSummaryDigest")
   const expectedDigest = canonicalDigest(expectedSummary)
@@ -113,14 +186,18 @@ export async function verifyPhase0ExampleReceiptObject(receipt) {
 
   assertExactKeys(receipt.integrity, [
     "auditValid", "auditEventCount", "inventoryCount", "inventorySnapshotDigest", "recordResultDigestMatches",
-    "resultEvidenceDigestMatches", "evidenceEventsDigestMatches",
+    "resultEvidenceDigestMatches", "evidenceEventsDigestMatches", "dashboardProductDigestMatches",
+    "dashboardCompositionDigestMatches",
   ], "receipt.integrity")
   if (receipt.integrity.auditValid !== true) fail("portable audit is not valid")
   if (!Number.isSafeInteger(receipt.integrity.auditEventCount) || receipt.integrity.auditEventCount < 1 ||
       receipt.integrity.auditEventCount > 10_000) fail("audit event count is outside the receipt bound")
   if (receipt.integrity.inventoryCount !== 1) fail("managed Run inventory must contain exactly one item")
   assertDigest(receipt.integrity.inventorySnapshotDigest, "receipt.integrity.inventorySnapshotDigest")
-  for (const key of ["recordResultDigestMatches", "resultEvidenceDigestMatches", "evidenceEventsDigestMatches"]) {
+  for (const key of [
+    "recordResultDigestMatches", "resultEvidenceDigestMatches", "evidenceEventsDigestMatches",
+    "dashboardProductDigestMatches", "dashboardCompositionDigestMatches",
+  ]) {
     if (receipt.integrity[key] !== true) fail(`${key} must be true`)
   }
 

@@ -35,6 +35,13 @@ test("repeats the canonical semantic result while keeping generated Run identity
   assert.equal(first.integrity.recordResultDigestMatches, true)
   assert.equal(first.integrity.resultEvidenceDigestMatches, true)
   assert.equal(first.integrity.evidenceEventsDigestMatches, true)
+  assert.equal(first.integrity.dashboardProductDigestMatches, true)
+  assert.equal(first.integrity.dashboardCompositionDigestMatches, true)
+  assert.equal(first.dashboard.phase.id, "phase-0-1a-foundation")
+  assert.deepEqual(first.dashboard.panels.map((panel) => panel.id), [
+    "foundation-summary", "change-impact", "agent-model",
+  ])
+  assert.deepEqual(first.dashboard.panels.map((panel) => panel.state), ["attention-required", "active", "active"])
 })
 
 test("creates a new inspectable artifact directory without exposing private runtime data", async () => {
@@ -95,6 +102,13 @@ test("rejects semantic tampering, oversized files, and symlink receipts", async 
     const tampered = structuredClone(receipt)
     tampered.summary.state = "failed"
     await assert.rejects(verifyPhase0ExampleReceiptObject(tampered), /semantic summary differs/)
+
+    const dashboardTampered = structuredClone(receipt)
+    dashboardTampered.dashboard.panels[0].state = "active"
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(dashboardTampered),
+      /dashboard panel 0 differs from the canonical applicability contract/,
+    )
 
     const oversized = join(directory, "oversized.json")
     await writeFile(oversized, JSON.stringify({ padding: "x".repeat(129 * 1024) }))
