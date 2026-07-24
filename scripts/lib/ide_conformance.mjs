@@ -3,6 +3,8 @@ import { createReadStream } from "node:fs"
 import { lstat, readFile, realpath } from "node:fs/promises"
 import { isAbsolute, relative, resolve, sep } from "node:path"
 
+import { verifyHostBehaviorEvidence } from "./host_behavior_evidence.mjs"
+
 const maximumControlBytes = 1024 * 1024
 const maximumSourceBytes = 8 * 1024 * 1024
 const requiredHosts = ["kiro", "rider", "visual-studio", "vscode"]
@@ -111,6 +113,17 @@ function validateContract(contract) {
     requireCondition(host.runtimeEvidence && runtimeSources.has(host.runtimeEvidence.source) &&
       runtimeLevels.has(host.runtimeEvidence.level),
     `${host.id} runtime evidence contract is invalid`)
+    if (host.runtimeEvidence.source === "json-evidence") {
+      requireCondition(typeof host.runtimeEvidence.reportPath === "string" &&
+        typeof host.runtimeEvidence.expectedKind === "string", `${host.id} JSON runtime evidence contract is invalid`)
+      if (host.runtimeEvidence.format === "gaep-host-behavior-v1") {
+        requireCondition(host.runtimeEvidence.expectedKind === "gaep-phase-0-host-behavior-evidence-v1",
+          `${host.id} host behavior evidence kind is invalid`)
+      } else {
+        requireCondition(Array.isArray(host.runtimeEvidence.assertions) && host.runtimeEvidence.assertions.length > 0,
+          `${host.id} JSON runtime evidence assertions are invalid`)
+      }
+    }
     assertStringList(host.runtimeEvidence.remainingRequirements, `${host.id} remaining requirements`)
     requireCondition(Array.isArray(host.capabilityAssessments) && host.capabilityAssessments.length === capabilityIds.length,
       `${host.id} capability assessment set is incomplete`)
@@ -175,13 +188,14 @@ async function verifyPackage(repositoryRoot, packageReport, host) {
   return {
     status: artifact.status,
     artifactPath: artifact.artifactPath,
+    bytes: artifact.bytes,
     digest: artifact.digest,
     verification: artifact.verification,
     limitation: artifact.limitation,
   }
 }
 
-async function verifyRuntimeEvidence(repositoryRoot, runtimeEvidence, packageState, hostId) {
+async function verifyRuntimeEvidence(repositoryRoot, contract, runtimeEvidence, packageState, hostId) {
   if (runtimeEvidence.source === "package-report") {
     assertStringList(runtimeEvidence.requiredVerificationFragments, `${hostId} runtime verification fragments`)
     for (const fragment of runtimeEvidence.requiredVerificationFragments) {
@@ -189,8 +203,7 @@ async function verifyRuntimeEvidence(repositoryRoot, runtimeEvidence, packageSta
     }
     return { source: "package-report", level: runtimeEvidence.level }
   }
-  requireCondition(typeof runtimeEvidence.reportPath === "string" && typeof runtimeEvidence.expectedKind === "string" &&
-    Array.isArray(runtimeEvidence.assertions) && runtimeEvidence.assertions.length > 0,
+  requireCondition(typeof runtimeEvidence.reportPath === "string" && typeof runtimeEvidence.expectedKind === "string",
   `${hostId} JSON runtime evidence contract is invalid`)
   const { resolved } = await verifyRepositoryFile(
     repositoryRoot,
@@ -202,6 +215,11 @@ async function verifyRuntimeEvidence(repositoryRoot, runtimeEvidence, packageSta
   requireCondition(evidence.kind === runtimeEvidence.expectedKind && typeof evidence.claimBoundary === "string" &&
     evidence.claimBoundary.length > 0,
   `${hostId} runtime evidence identity is invalid`)
+  if (runtimeEvidence.format === "gaep-host-behavior-v1") {
+    return verifyHostBehaviorEvidence({ repositoryRoot, contract, receipt: evidence, hostId, packageState })
+  }
+  requireCondition(Array.isArray(runtimeEvidence.assertions) && runtimeEvidence.assertions.length > 0,
+    `${hostId} JSON runtime evidence assertions are invalid`)
   for (const assertion of runtimeEvidence.assertions) {
     assertStringList(assertion.path, `${hostId} runtime assertion path`)
     requireCondition(Object.hasOwn(assertion, "equals"), `${hostId} runtime assertion requires an exact value`)
@@ -249,7 +267,7 @@ export async function buildIdeConformanceReport({
   const hosts = []
   for (const host of contract.hosts) {
     const packageState = await verifyPackage(normalizedRoot, packageReport, host)
-    const runtimeEvidence = await verifyRuntimeEvidence(normalizedRoot, host.runtimeEvidence, packageState, host.id)
+    const runtimeEvidence = await verifyRuntimeEvidence(normalizedRoot, contract, host.runtimeEvidence, packageState, host.id)
     const capabilities = []
     for (const assessment of host.capabilityAssessments) {
       capabilities.push(await verifyAssessment(normalizedRoot, host.id, assessment))
