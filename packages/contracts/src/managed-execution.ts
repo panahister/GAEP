@@ -543,6 +543,13 @@ export const managedRunResultSchema = z.object({
   }
 })
 
+export const managedWorkflowCheckpointBindingSchema = z.object({
+  evidenceId: uuidSchema,
+  evidenceDigest: digestSchema,
+  nextStepIndex: z.number().int().positive().max(511),
+  completedStepIdsDigest: digestSchema,
+}).strict()
+
 export const managedRunRecordSchema = z.object({
   schemaVersion: z.literal(2),
   kind: z.literal("managed-run"),
@@ -567,6 +574,7 @@ export const managedRunRecordSchema = z.object({
   applyDecisionDigest: digestSchema.optional(),
   resultId: uuidSchema.optional(),
   resultDigest: digestSchema.optional(),
+  workflowCheckpoints: z.array(managedWorkflowCheckpointBindingSchema).max(511).optional(),
   recovery: z.object({
     status: z.enum(["not-required", "required", "recovered", "resume-unavailable"]),
     reasonCode: portableCodeSchema.optional(),
@@ -585,6 +593,21 @@ export const managedRunRecordSchema = z.object({
   }
   if ((record.applyDecisionId === undefined) !== (record.applyDecisionDigest === undefined)) {
     context.addIssue({ code: "custom", path: ["applyDecisionId"], message: "Managed Run apply-decision identity and digest must be present together" })
+  }
+  if (record.workflowCheckpoints) {
+    const evidenceIds = new Set<string>()
+    let previousNextStepIndex = 0
+    for (const [index, checkpoint] of record.workflowCheckpoints.entries()) {
+      if (evidenceIds.has(checkpoint.evidenceId)) {
+        context.addIssue({ code: "custom", path: ["workflowCheckpoints", index, "evidenceId"], message: "Workflow checkpoint evidence identities must be unique" })
+      }
+      evidenceIds.add(checkpoint.evidenceId)
+      if (checkpoint.nextStepIndex <= previousNextStepIndex ||
+          (index > 0 && checkpoint.nextStepIndex !== previousNextStepIndex + 1)) {
+        context.addIssue({ code: "custom", path: ["workflowCheckpoints", index, "nextStepIndex"], message: "Workflow checkpoints must advance the next step consecutively" })
+      }
+      previousNextStepIndex = checkpoint.nextStepIndex
+    }
   }
   if (!record.previousManagedRunId && (record.rootManagedRunId !== record.id || record.attemptNumber !== 1)) {
     context.addIssue({ code: "custom", path: ["rootManagedRunId"], message: "An initial Managed Run must be lineage root attempt 1" })
@@ -613,6 +636,7 @@ export type ManagedEvidenceEvent = z.infer<typeof managedEvidenceEventSchema>
 export type ManagedWorkflowGateAssessment = z.infer<typeof managedWorkflowGateAssessmentSchema>
 export type ManagedWorkflowStepAttempt = z.infer<typeof managedWorkflowStepAttemptSchema>
 export type ManagedWorkflowExecution = z.infer<typeof managedWorkflowExecutionSchema>
+export type ManagedWorkflowCheckpointBinding = z.infer<typeof managedWorkflowCheckpointBindingSchema>
 export type ManagedApplyDecisionReceipt = z.infer<typeof managedApplyDecisionReceiptSchema>
 export type ManagedRunEvidence = z.infer<typeof managedRunEvidenceSchema>
 export type ManagedRunResult = z.infer<typeof managedRunResultSchema>

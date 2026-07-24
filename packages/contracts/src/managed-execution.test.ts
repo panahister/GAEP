@@ -171,6 +171,28 @@ describe("managed execution portable contracts", () => {
     expect(managedRunResultSchema.parse(result()).terminalState).toBe("completed")
   })
 
+  it("accepts an ordered portable Workflow checkpoint chain and rejects ambiguous progress", () => {
+    const first = {
+      evidenceId: id(11),
+      evidenceDigest: digest,
+      nextStepIndex: 1,
+      completedStepIdsDigest: digest,
+    }
+    const second = { ...first, evidenceId: id(12), nextStepIndex: 2 }
+    expect(managedRunRecordSchema.safeParse({
+      ...managedRecord(),
+      workflowCheckpoints: [first, second],
+    }).success).toBe(true)
+    expect(managedRunRecordSchema.safeParse({
+      ...managedRecord(),
+      workflowCheckpoints: [first, { ...second, evidenceId: first.evidenceId }],
+    }).success).toBe(false)
+    expect(managedRunRecordSchema.safeParse({
+      ...managedRecord(),
+      workflowCheckpoints: [second, first],
+    }).success).toBe(false)
+  })
+
   it.each([
     ["record root", () => ({ ...managedRecord(), executablePath: "/usr/local/bin/agent" }), managedRunRecordSchema],
     ["provider", () => ({ ...managedRecord(), provider: { ...(managedRecord().provider as object), processId: 42 } }), managedRunRecordSchema],

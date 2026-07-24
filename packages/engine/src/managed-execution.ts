@@ -240,6 +240,14 @@ interface ResolvedExecution {
   orderedSteps: WorkflowStep[]
   writeEnvelope: string[]
   previousManagedRun?: ManagedRunRecord
+  providerResume?: ResumeSource
+  workflowResume?: DurableWorkflowResume
+}
+
+interface DurableWorkflowResume {
+  workflow: ManagedWorkflowExecution
+  events: ManagedEvidenceEvent[]
+  nextStepIndex: number
 }
 
 interface StepRuntimeCompletion {
@@ -252,6 +260,7 @@ interface StepRuntimeCompletion {
 interface RuntimeCompletion extends StepRuntimeCompletion {
   workflow: ManagedWorkflowExecution
   gateEvaluator: ManagedWorkflowGateEvaluator
+  evidenceEvents?: ManagedEvidenceEvent[]
   persistedEventsDigest?: `sha256:${string}`
   requiresWorkflowGateEvaluator?: boolean
 }
@@ -1008,8 +1017,9 @@ export class ManagedExecutionService {
           completed.runtime.portable.postconditionStatus,
           completed.codexReview !== undefined && completed.runtime.portable.terminalDisposition === "completed",
         )
+        const latest = await this.read(managedRun.id)
         const persisted = await this.persistRuntimeResult(
-          running,
+          latest,
           resolved,
           completed.runtime,
           completed.workflow,
@@ -1021,6 +1031,7 @@ export class ManagedExecutionService {
             : completed.runtime.portable.terminalDisposition === "completed"
               ? "not-evaluated"
               : "provider-failure",
+          completed.evidenceEvents,
           actorId,
         )
         const providerThreadId = completed.runtime.portable.providerThreadId
@@ -1096,19 +1107,26 @@ export class ManagedExecutionService {
       if (canonicalDigest(boundCharter) !== record.bindings.charter.digest) {
         throw new Error("Interrupted Managed Run has no intact exact Charter binding")
       }
-      const recoveryWorkflow = managedWorkflowExecutionSchema.parse({
-        plan: record.bindings.workflowPlan,
-        strategy: "sequential",
-        orderedStepIds: compileManagedWorkflowOrder(boundPlan).map((step) => step.id),
-        attempts: [],
-        completedStepIds: [],
-        charterGates: {
-          requiredEvidence: this.notAssessedGate("charter-evidence", boundCharter.requiredEvidence),
-          stopConditions: this.notAssessedGate("charter-stop-conditions", boundCharter.stopConditions),
-        },
-        terminalReasonCode: "process-loss",
-        capabilityBoundary: "natural-language-gates-require-explicit-human-or-system-assessment",
-      })
+      const orderedSteps = compileManagedWorkflowOrder(boundPlan)
+      const checkpointEvidence = (await this.readWorkflowCheckpointChain(record, orderedSteps)).at(-1)
+      const recoveryWorkflow = checkpointEvidence
+        ? managedWorkflowExecutionSchema.parse({
+            ...checkpointEvidence.workflow,
+            terminalReasonCode: "process-loss",
+          })
+        : managedWorkflowExecutionSchema.parse({
+            plan: record.bindings.workflowPlan,
+            strategy: "sequential",
+            orderedStepIds: orderedSteps.map((step) => step.id),
+            attempts: [],
+            completedStepIds: [],
+            charterGates: {
+              requiredEvidence: this.notAssessedGate("charter-evidence", boundCharter.requiredEvidence),
+              stopConditions: this.notAssessedGate("charter-stop-conditions", boundCharter.stopConditions),
+            },
+            terminalReasonCode: "process-loss",
+            capabilityBoundary: "natural-language-gates-require-explicit-human-or-system-assessment",
+          })
       let localRecoveryWarning: ManagedRunResult["warnings"][number] | undefined
       let localRecoveryStatus: "cleaned" | "quarantined" = "cleaned"
       let localJournalDigest: `sha256:${string}` | undefined
@@ -1177,8 +1195,8 @@ export class ManagedExecutionService {
         runId: record.runId,
         productId: record.productId,
         bindingsDigest: record.bindingsDigest,
-        events: [],
-        eventsDigest: canonicalDigest([]),
+        events: checkpointEvidence?.events ?? [],
+        eventsDigest: canonicalDigest(checkpointEvidence?.events ?? []),
         workflow: recoveryWorkflow,
         staging: recoveryStaging,
         actualEffects,
@@ -1207,6 +1225,10 @@ export class ManagedExecutionService {
         endedAt: now,
         authorityBoundary: "provider-completion-does-not-equal-outcome-completion",
       })
+      const observationRestartAvailable = !checkpointEvidence && record.state === "running" &&
+        record.mode !== "codex-staged" && orderedSteps.length > 1 &&
+        boundCharter.expectedEffects.length === 1 && boundCharter.expectedEffects[0] === "observe" &&
+        localRecoveryStatus === "cleaned"
       const next = managedRunRecordSchema.parse({
         ...record,
         revision: record.revision + 1,
@@ -1214,10 +1236,14 @@ export class ManagedExecutionService {
         resultId: result.id,
         resultDigest: canonicalDigest(result),
         recovery: {
-          status: "resume-unavailable",
-          reasonCode: localRecoveryStatus === "quarantined"
-            ? "local-apply-journal-quarantined"
-            : "machine-local-runtime-lost",
+          status: checkpointEvidence || observationRestartAvailable ? "recovered" : "resume-unavailable",
+          reasonCode: checkpointEvidence
+            ? "workflow-checkpoint-preserved"
+            : observationRestartAvailable
+              ? "observation-restart-from-beginning"
+            : localRecoveryStatus === "quarantined"
+              ? "local-apply-journal-quarantined"
+              : "machine-local-runtime-lost",
         },
         updatedAt: now,
         endedAt: now,
@@ -1252,6 +1278,7 @@ export class ManagedExecutionService {
               to: "unknown",
               resultDigest: canonicalDigest(result),
               evidenceDigest: canonicalDigest(evidence),
+              workflowCheckpointPreserved: checkpointEvidence !== undefined,
               machineLocalDataPersisted: false,
             },
           },
@@ -1271,12 +1298,8 @@ export class ManagedExecutionService {
     if (input.previousManagedRunId) {
       const previous = await this.read(input.previousManagedRunId)
       previousManagedRun = previous
-      const resume = this.resumeSources.get(previous.id)
       if (previous.runId !== run.id || previous.state !== "unknown") {
         throw new Error("Managed resume requires an unknown prior Managed Run for the same Run")
-      }
-      if (!resume || resume.runId !== run.id) {
-        throw new Error("Managed resume is unavailable because its machine-local provider binding was not retained")
       }
       if ((await this.list()).some((candidate) => candidate.previousManagedRunId === previous.id)) {
         throw new Error("Managed resume lineage already has a successor; branching is forbidden")
@@ -1417,9 +1440,6 @@ export class ManagedExecutionService {
     const mode = this.modeFor(adapter, probe.runtimeBinding)
     this.assertModeEnvelope(mode, charter, contextPacks, workflowTools)
     const orderedSteps = this.assertWorkflowExecutable(workflowPlan, run, charter, contextPacks, workflowTools, mode)
-    if (previousManagedRun && orderedSteps.length !== 1) {
-      throw new Error("Managed provider resume supports exactly one Workflow Step; multi-step checkpoint recovery is not implemented and fails closed")
-    }
     const writeEnvelope = this.compileWriteEnvelope(workflowPlan, charter)
     if (mode === "codex-staged") {
       compileManagedCodexPolicy(charter, workflowTools, writeEnvelope)
@@ -1441,6 +1461,22 @@ export class ManagedExecutionService {
       runToolSelection: toolSelection ? ref(toolSelection, "run-tool-selection") : undefined,
       tools: tools.map((tool) => ref(tool, "tool-definition")),
     })
+    let providerResume: ResumeSource | undefined
+    let workflowResume: DurableWorkflowResume | undefined
+    if (previousManagedRun) {
+      this.assertStableResumeBindings(previousManagedRun, bindings, mode)
+      if (orderedSteps.length === 1) {
+        providerResume = this.resumeSources.get(previousManagedRun.id)
+        if (!providerResume || providerResume.runId !== run.id) {
+          throw new Error("Managed resume is unavailable because its machine-local provider binding was not retained")
+        }
+      } else {
+        if (mode === "codex-staged") {
+          throw new Error("Managed provider resume supports exactly one Workflow Step; effectful multi-step checkpoint recovery is not implemented and fails closed")
+        }
+        workflowResume = await this.resolveDurableWorkflowResume(previousManagedRun, orderedSteps)
+      }
+    }
     return {
       run,
       initiative,
@@ -1456,6 +1492,124 @@ export class ManagedExecutionService {
       orderedSteps,
       writeEnvelope,
       previousManagedRun,
+      providerResume,
+      workflowResume,
+    }
+  }
+
+  private assertStableResumeBindings(
+    previous: ManagedRunRecord,
+    current: ManagedRunBindings,
+    mode: ManagedExecutionMode,
+  ): void {
+    if (canonicalDigest(previous.bindings) !== previous.bindingsDigest || previous.mode !== mode) {
+      throw new Error("Managed resume prior bindings or execution mode are invalid")
+    }
+    const stablePrevious = {
+      ...previous.bindings,
+      run: { ...previous.bindings.run, revision: 0, digest: "run-state-excluded" },
+    }
+    const stableCurrent = {
+      ...current,
+      run: { ...current.run, revision: 0, digest: "run-state-excluded" },
+    }
+    if (canonicalDigest(stablePrevious) !== canonicalDigest(stableCurrent) ||
+        previous.bindingSnapshots.run.id !== current.run.recordId ||
+        canonicalDigest(previous.bindingSnapshots.run.agent) !== current.agentSelectionDigest ||
+        previous.provider.adapterId !== previous.bindingSnapshots.run.agent.adapterId ||
+        previous.provider.agentId !== previous.bindingSnapshots.run.agent.agentId ||
+        previous.provider.modelId !== previous.bindingSnapshots.run.agent.modelId ||
+        previous.provider.capabilityDigest !== previous.bindingSnapshots.run.agent.capabilityDigest) {
+      throw new Error("Managed resume governed bindings changed after the prior attempt")
+    }
+  }
+
+  private async resolveDurableWorkflowResume(
+    previous: ManagedRunRecord,
+    orderedSteps: readonly WorkflowStep[],
+  ): Promise<DurableWorkflowResume> {
+    const checkpoint = previous.workflowCheckpoints?.at(-1)
+    if (!checkpoint) {
+      const current = await this.readCurrentArtifacts(previous.id)
+      if (current.result.terminationCause !== "process-loss" ||
+          current.evidence.workflow.attempts.length > 0 ||
+          current.evidence.workflow.completedStepIds.length > 0 ||
+          current.evidence.events.length > 0) {
+        throw new Error("Managed multi-step resume has no durable Workflow checkpoint")
+      }
+      this.assertWorkflowResumeShape(current.evidence, previous, orderedSteps, 0, false)
+      return {
+        workflow: structuredClone(current.evidence.workflow),
+        events: [],
+        nextStepIndex: 0,
+      }
+    }
+    const evidence = (await this.readWorkflowCheckpointChain(previous, orderedSteps)).at(-1)!
+    return {
+      workflow: structuredClone(evidence.workflow),
+      events: structuredClone(evidence.events),
+      nextStepIndex: checkpoint.nextStepIndex,
+    }
+  }
+
+  private async readWorkflowCheckpointChain(
+    record: ManagedRunRecord,
+    orderedSteps: readonly WorkflowStep[],
+  ): Promise<ManagedRunEvidence[]> {
+    const evidenceChain: ManagedRunEvidence[] = []
+    for (const checkpoint of record.workflowCheckpoints ?? []) {
+      const evidence = await this.readEvidence(checkpoint.evidenceId)
+      if (canonicalDigest(evidence) !== checkpoint.evidenceDigest ||
+          canonicalDigest(evidence.workflow.completedStepIds) !== checkpoint.completedStepIdsDigest) {
+        throw new Error("Managed Workflow checkpoint binding is invalid")
+      }
+      this.assertWorkflowResumeShape(evidence, record, orderedSteps, checkpoint.nextStepIndex, true)
+      evidenceChain.push(evidence)
+    }
+    return evidenceChain
+  }
+
+  private assertWorkflowResumeShape(
+    evidence: ManagedRunEvidence,
+    previous: ManagedRunRecord,
+    orderedSteps: readonly WorkflowStep[],
+    nextStepIndex: number,
+    checkpoint: boolean,
+  ): void {
+    const orderedStepIds = orderedSteps.map((step) => step.id)
+    const expectedCompleted = orderedStepIds.slice(0, nextStepIndex)
+    if (evidence.managedRunId !== previous.id || evidence.runId !== previous.runId ||
+        evidence.productId !== previous.productId || evidence.bindingsDigest !== previous.bindingsDigest ||
+        canonicalDigest(evidence.events) !== evidence.eventsDigest || evidence.staging ||
+        canonicalDigest(evidence.workflow.plan) !== canonicalDigest(previous.bindings.workflowPlan) ||
+        canonicalDigest(evidence.workflow.orderedStepIds) !== canonicalDigest(orderedStepIds) ||
+        canonicalDigest(evidence.workflow.completedStepIds) !== canonicalDigest(expectedCompleted) ||
+        evidence.workflow.terminalReasonCode !== (checkpoint ? "workflow-checkpoint" : "process-loss") ||
+        evidence.workflow.charterGates.requiredEvidence.status !== "not-assessed" ||
+        evidence.workflow.charterGates.stopConditions.status !== "not-assessed" ||
+        evidence.actualEffects.length !== 1 || evidence.actualEffects[0]?.effect !== "observe" ||
+        (checkpoint
+          ? evidence.actualEffects[0]?.status !== "observed-provisional"
+          : !["unknown", "blocked"].includes(evidence.actualEffects[0]?.status ?? ""))) {
+      throw new Error("Managed Workflow checkpoint evidence is inconsistent with the exact prior execution")
+    }
+    if (checkpoint && (nextStepIndex < 1 || nextStepIndex >= orderedSteps.length)) {
+      throw new Error("Managed Workflow checkpoint next-step boundary is invalid")
+    }
+    for (const attempt of evidence.workflow.attempts) {
+      const step = orderedSteps[attempt.stepIndex]
+      if (!step || attempt.stepId !== step.id || attempt.stepIndex >= nextStepIndex ||
+          canonicalDigest(attempt.dependencies) !== canonicalDigest(step.dependsOn) ||
+          canonicalDigest(attempt.contextPacks) !== canonicalDigest(step.contextPacks) ||
+          canonicalDigest(attempt.tools) !== canonicalDigest(step.toolDefinitions) ||
+          canonicalDigest(attempt.effectEnvelope) !== canonicalDigest(step.effectEnvelope) ||
+          attempt.gates.preconditions.criteriaDigest !== canonicalDigest(step.preconditions) ||
+          attempt.gates.outputs.criteriaDigest !== canonicalDigest(step.outputs) ||
+          attempt.gates.evidence.criteriaDigest !== canonicalDigest(step.evidenceCriteria) ||
+          attempt.gates.stopConditions.criteriaDigest !== canonicalDigest(step.stopConditions) ||
+          (attempt.eventRange && attempt.eventRange.endSequence >= evidence.events.length)) {
+        throw new Error("Managed Workflow checkpoint attempt evidence exceeds its completed prefix")
+      }
     }
   }
 
@@ -1540,13 +1694,13 @@ export class ManagedExecutionService {
     const evaluator = input.evaluateWorkflowGate!
     const queue = new BoundedAsyncQueue<ManagedRuntimeEvent>(4_096, 16 * 1024 * 1024)
     const collectedEvents: ManagedRuntimeEvent[] = []
-    const attempts: ManagedWorkflowStepAttempt[] = []
-    const completedStepIds: string[] = []
+    const attempts: ManagedWorkflowStepAttempt[] = structuredClone(resolved.workflowResume?.workflow.attempts ?? [])
+    const completedStepIds: string[] = [...(resolved.workflowResume?.workflow.completedStepIds ?? [])]
     let activeStep: StepRuntimeHandle | undefined
     let cancellationRequested = false
     const cancellation = new AbortController()
     let releaseBackoff: (() => void) | undefined
-    let sequence = 0
+    let sequence = resolved.workflowResume?.events.length ?? 0
     let charterGates = this.unassessedCharterGates(resolved)
     let finalStepDeadlineAt: number | undefined
     let controlledAttempt: {
@@ -1569,6 +1723,7 @@ export class ManagedExecutionService {
       let terminalReasonCode = "workflow-not-started"
       try {
         for (const [stepIndex, step] of resolved.orderedSteps.entries()) {
+          if (stepIndex < (resolved.workflowResume?.nextStepIndex ?? 0)) continue
           if (step.dependsOn.some((dependency) => !completedStepIds.includes(dependency))) {
             throw new Error(`Workflow Step ${step.id} dependency completion invariant failed`)
           }
@@ -1858,6 +2013,18 @@ export class ManagedExecutionService {
             terminalReasonCode = "workflow-retry-exhausted"
             return this.workflowCompletion(last, resolved, attempts, completedStepIds, terminalReasonCode, evaluator, collectedEvents)
           }
+          if (stepIndex < resolved.orderedSteps.length - 1) {
+            await this.persistWorkflowCheckpoint(
+              managedRunId,
+              resolved,
+              last,
+              attempts,
+              completedStepIds,
+              evaluator,
+              collectedEvents,
+              actorId,
+            )
+          }
         }
         const finalAttempt = attempts.at(-1)
         const finalStep = resolved.orderedSteps.at(-1)
@@ -1873,7 +2040,11 @@ export class ManagedExecutionService {
           actorId,
           providerDisposition: last.runtime.portable.terminalDisposition,
           postconditionStatus: last.runtime.portable.postconditionStatus,
-          eventsDigest: canonicalDigest(collectedEvents) as `sha256:${string}`,
+          eventsDigest: canonicalDigest(
+            resolved.workflowResume
+              ? this.workflowEvidenceEvents(resolved, collectedEvents)
+              : collectedEvents,
+          ) as `sha256:${string}`,
           deadlineAt: finalStepDeadlineAt,
           signal: cancellation.signal,
         }
@@ -2059,6 +2230,7 @@ export class ManagedExecutionService {
                 : "failed"
     return {
       ...completion,
+      evidenceEvents: this.workflowEvidenceEvents(resolved, events),
       runtime: {
         portable: {
           ...completion.runtime.portable,
@@ -2070,6 +2242,118 @@ export class ManagedExecutionService {
       workflow,
       gateEvaluator,
     }
+  }
+
+  private workflowEvidenceEvents(
+    resolved: ResolvedExecution,
+    events: readonly ManagedRuntimeEvent[],
+  ): ManagedEvidenceEvent[] {
+    const inherited = structuredClone(resolved.workflowResume?.events ?? [])
+    const available = 4_096 - inherited.length
+    if (available < 0 || (resolved.orderedSteps.length > 1 && events.length > available)) {
+      throw new Error("Managed multi-step Workflow exceeds the portable evidence event bound")
+    }
+    const current = normalizeManagedRuntimeEvents(events.slice(0, Math.max(0, available)))
+      .map((event, index) => ({ ...event, sequence: inherited.length + index }))
+    return [...inherited, ...current]
+  }
+
+  private async persistWorkflowCheckpoint(
+    managedRunId: string,
+    resolved: ResolvedExecution,
+    completion: StepRuntimeCompletion,
+    attempts: readonly ManagedWorkflowStepAttempt[],
+    completedStepIds: readonly string[],
+    gateEvaluator: ManagedWorkflowGateEvaluator,
+    runtimeEvents: readonly ManagedRuntimeEvent[],
+    actorId: string,
+  ): Promise<void> {
+    if (resolved.mode === "codex-staged" ||
+        resolved.charter.expectedEffects.some((effect) => effect !== "observe")) {
+      throw new Error("Durable Workflow checkpoints are restricted to observation-only execution")
+    }
+    const nextStepIndex = completedStepIds.length
+    if (nextStepIndex < 1 || nextStepIndex >= resolved.orderedSteps.length ||
+        canonicalDigest(completedStepIds) !==
+          canonicalDigest(resolved.orderedSteps.slice(0, nextStepIndex).map((step) => step.id))) {
+      throw new Error("Durable Workflow checkpoint requires an exact completed dependency prefix")
+    }
+    const checkpoint = this.workflowCompletion(
+      completion,
+      resolved,
+      [...attempts],
+      [...completedStepIds],
+      "workflow-checkpoint",
+      gateEvaluator,
+      [...runtimeEvents],
+    )
+    const evidenceEvents = checkpoint.evidenceEvents!
+    const capturedAt = new Date().toISOString()
+    await this.repository.withLock(async () => {
+      await this.assertBindingsCurrent(resolved, true)
+      const current = await this.repository.readJson(this.managedRunPath(managedRunId), managedRunRecordSchema)
+      const priorNextStepIndex = current.workflowCheckpoints?.at(-1)?.nextStepIndex ??
+        resolved.workflowResume?.nextStepIndex ?? 0
+      if (current.state !== "running" || current.bindingsDigest !== canonicalDigest(resolved.bindings) ||
+          priorNextStepIndex !== nextStepIndex - 1) {
+        throw new Error("Managed Run changed before Workflow checkpoint persistence")
+      }
+      await this.readWorkflowCheckpointChain(current, resolved.orderedSteps)
+      const evidence = managedRunEvidenceSchema.parse({
+        schemaVersion: 2,
+        kind: "managed-run-evidence",
+        id: randomUUID(),
+        managedRunId: current.id,
+        runId: current.runId,
+        productId: current.productId,
+        bindingsDigest: current.bindingsDigest,
+        events: evidenceEvents,
+        eventsDigest: canonicalDigest(evidenceEvents),
+        workflow: checkpoint.workflow,
+        actualEffects: [...new Set(resolved.charter.expectedEffects)].map((effect) => ({
+          effect,
+          status: "observed-provisional" as const,
+          evidenceDigest: canonicalDigest({
+            managedRunId: current.id,
+            nextStepIndex,
+            effect,
+            eventsDigest: canonicalDigest(evidenceEvents),
+          }),
+        })),
+        capturedAt,
+        authorityBoundary: "evidence-does-not-self-assert-outcome-or-authorization",
+      })
+      const binding = {
+        evidenceId: evidence.id,
+        evidenceDigest: canonicalDigest(evidence),
+        nextStepIndex,
+        completedStepIdsDigest: canonicalDigest(completedStepIds),
+      }
+      const next = managedRunRecordSchema.parse({
+        ...current,
+        revision: current.revision + 1,
+        workflowCheckpoints: [...(current.workflowCheckpoints ?? []), binding],
+        updatedAt: capturedAt,
+      })
+      await this.repository.commitMutation({
+        writes: [
+          { path: this.evidencePath(evidence.id), value: evidence, schema: managedRunEvidenceSchema, governed: true },
+          { path: this.managedRunPath(next.id), value: next, schema: managedRunRecordSchema, governed: true },
+        ],
+        audit: {
+          eventType: "managed-run.workflow-checkpointed",
+          actor: { kind: "system", id: actorId },
+          subjectId: next.id,
+          payload: {
+            nextStepIndex,
+            completedStepIdsDigest: binding.completedStepIdsDigest,
+            evidenceId: evidence.id,
+            evidenceDigest: binding.evidenceDigest,
+            machineLocalDataPersisted: false,
+          },
+        },
+      })
+    })
   }
 
   private emptyWorkflow(resolved: ResolvedExecution, terminalReasonCode: string): ManagedWorkflowExecution {
@@ -2397,7 +2681,7 @@ export class ManagedExecutionService {
   ): Promise<StepRuntimeHandle> {
     const timeoutMs = deadlineAt === undefined ? undefined : deadlineAt - Date.now()
     if (timeoutMs !== undefined && timeoutMs <= 0) throw new WorkflowControlError("timeout")
-    const resume = input.previousManagedRunId ? this.resumeSources.get(input.previousManagedRunId) : undefined
+    const resume = input.previousManagedRunId ? resolved.providerResume : undefined
     if (resume && !allowResume) throw new Error("Managed provider resume can bind only the first Workflow Step attempt")
     const stepPacks = step.contextPacks.map((binding) =>
       resolved.contextPacks.find((pack) => pack.id === binding.recordId)!)
@@ -2511,13 +2795,18 @@ export class ManagedExecutionService {
     cause: ManagedRunResult["terminationCause"],
     stagingState: NonNullable<ManagedRunEvidence["staging"]>["applyState"] | undefined,
     outcomeBasis: ManagedRunResult["outcome"]["basis"],
+    evidenceEvents: ManagedEvidenceEvent[] | undefined,
     actorId: string,
     applyDecision?: ManagedApplyDecisionReceipt,
     outcomeEvaluator?: ManagedEvaluatorIdentity,
     priorEvidence?: ManagedRunEvidence,
     priorWarnings?: ManagedRunResult["warnings"],
   ): Promise<PersistedArtifacts> {
-    const events = priorEvidence ? structuredClone(priorEvidence.events) : normalizeManagedRuntimeEvents(runtime.portable.events)
+    const events = priorEvidence
+      ? structuredClone(priorEvidence.events)
+      : evidenceEvents
+        ? structuredClone(evidenceEvents)
+        : normalizeManagedRuntimeEvents(runtime.portable.events)
     const now = new Date().toISOString()
     const staging = runtime.portable.staging && stagingState
       ? managedStagingEvidence(runtime.portable.staging, stagingState, applyDecision)
@@ -2833,6 +3122,9 @@ export class ManagedExecutionService {
     cause: "protocol-error" | "process-loss",
     actorId: string,
   ): Promise<void> {
+    const checkpointEvidence = cause === "process-loss"
+      ? (await this.readWorkflowCheckpointChain(current, resolved.orderedSteps)).at(-1)
+      : undefined
     const runtime: ManagedRuntimeResultEnvelope = {
       portable: {
         schemaVersion: 1,
@@ -2848,11 +3140,17 @@ export class ManagedExecutionService {
       current,
       resolved,
       runtime,
-      this.emptyWorkflow(resolved, cause === "protocol-error" ? "launch-protocol-error" : "process-loss"),
+      checkpointEvidence
+        ? managedWorkflowExecutionSchema.parse({
+            ...checkpointEvidence.workflow,
+            terminalReasonCode: "process-loss",
+          })
+        : this.emptyWorkflow(resolved, cause === "protocol-error" ? "launch-protocol-error" : "process-loss"),
       cause === "protocol-error" ? "failed" : "unknown",
       cause,
       undefined,
       "provider-failure",
+      checkpointEvidence?.events,
       actorId,
     )
   }
@@ -3217,6 +3515,7 @@ export class ManagedExecutionService {
         "normal",
         applyState,
         input.evaluatePostconditions ? "postcondition-evaluator" : "not-evaluated",
+        undefined,
         actorId,
         receipt,
         input.postconditionEvaluator,
@@ -3250,6 +3549,7 @@ export class ManagedExecutionService {
           "normal",
           appliedState,
           input.evaluatePostconditions ? "postcondition-evaluator" : "not-evaluated",
+          undefined,
           actorId,
           receipt,
           input.postconditionEvaluator,

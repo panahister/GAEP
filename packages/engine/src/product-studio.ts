@@ -3274,6 +3274,22 @@ export class ProductStudioService {
           throw new Error(`Import Managed Run ${managed.id} result binding is unresolved`)
         }
       }
+      for (const checkpoint of managed.workflowCheckpoints ?? []) {
+        const evidence = evidenceById.get(checkpoint.evidenceId)
+        if (!evidence || canonicalDigest(evidence) !== checkpoint.evidenceDigest ||
+            evidence.managedRunId !== managed.id || evidence.runId !== managed.runId ||
+            evidence.productId !== managed.productId || evidence.bindingsDigest !== managed.bindingsDigest ||
+            evidence.staging !== undefined || evidence.workflow.terminalReasonCode !== "workflow-checkpoint" ||
+            evidence.workflow.completedStepIds.length !== checkpoint.nextStepIndex ||
+            checkpoint.nextStepIndex >= evidence.workflow.orderedStepIds.length ||
+            evidence.workflow.charterGates.requiredEvidence.status !== "not-assessed" ||
+            evidence.workflow.charterGates.stopConditions.status !== "not-assessed" ||
+            evidence.actualEffects.length !== 1 || evidence.actualEffects[0]?.effect !== "observe" ||
+            evidence.actualEffects[0]?.status !== "observed-provisional" ||
+            canonicalDigest(evidence.workflow.completedStepIds) !== checkpoint.completedStepIdsDigest) {
+          throw new Error(`Import Managed Run ${managed.id} Workflow checkpoint binding is unresolved`)
+        }
+      }
       if (managed.applyDecisionId) {
         const receipt = applyDecisionById.get(managed.applyDecisionId)
         const reviewResult = receipt ? resultById.get(receipt.reviewResultId) : undefined
@@ -3320,7 +3336,8 @@ export class ProductStudioService {
       }
     }
     const retainedResultIds = new Set<string>()
-    const retainedEvidenceIds = new Set<string>()
+    const retainedEvidenceIds = new Set<string>(managedRuns.flatMap((managed) =>
+      (managed.workflowCheckpoints ?? []).map((checkpoint) => checkpoint.evidenceId)))
     for (const managed of managedRuns) {
       let resultId = managed.resultId
       let expectedDigest = managed.resultDigest
@@ -3403,6 +3420,7 @@ export class ProductStudioService {
           canonicalDigest(attempt.dependencies) !== canonicalDigest(step.dependsOn) ||
           canonicalDigest(attempt.contextPacks) !== canonicalDigest(step.contextPacks) ||
           canonicalDigest(attempt.tools) !== canonicalDigest(step.toolDefinitions) ||
+          canonicalDigest(attempt.effectEnvelope) !== canonicalDigest(step.effectEnvelope) ||
           attempt.gates.preconditions.criteriaDigest !== canonicalDigest(step.preconditions) ||
           attempt.gates.outputs.criteriaDigest !== canonicalDigest(step.outputs) ||
           attempt.gates.evidence.criteriaDigest !== canonicalDigest(step.evidenceCriteria) ||
@@ -3446,13 +3464,21 @@ export class ProductStudioService {
       }
     }
     for (const [attemptId, history] of workflowAttemptHistories) {
-      history.sort((left, right) => left.revision - right.revision)
-      for (const [index, attempt] of history.entries()) {
+      const snapshotsByRevision = new Map<number, (typeof history)[number]>()
+      for (const attempt of history) {
+        const existing = snapshotsByRevision.get(attempt.revision)
+        if (existing && canonicalDigest(existing) !== canonicalDigest(attempt)) {
+          throw new Error(`Import Workflow attempt ${attemptId} revision has divergent snapshots`)
+        }
+        snapshotsByRevision.set(attempt.revision, attempt)
+      }
+      const snapshots = [...snapshotsByRevision.values()].sort((left, right) => left.revision - right.revision)
+      for (const [index, attempt] of snapshots.entries()) {
         if (attempt.revision !== index + 1) {
           throw new Error(`Import Workflow attempt ${attemptId} revision history is incomplete`)
         }
         if (index === 0 ? attempt.previousSnapshotDigest !== undefined :
-          attempt.previousSnapshotDigest !== canonicalDigest(history[index - 1])) {
+          attempt.previousSnapshotDigest !== canonicalDigest(snapshots[index - 1])) {
           throw new Error(`Import Workflow attempt ${attemptId} predecessor digest is invalid`)
         }
       }

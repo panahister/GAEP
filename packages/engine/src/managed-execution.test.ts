@@ -15,7 +15,12 @@ import type {
   WorkflowPlan,
   WorkflowStep,
 } from "@gaep/contracts"
-import { adapterCapabilitiesSnapshotSchema, managedRunRecordSchema, runSchema } from "@gaep/contracts"
+import {
+  adapterCapabilitiesSnapshotSchema,
+  managedRunEvidenceSchema,
+  managedRunRecordSchema,
+  runSchema,
+} from "@gaep/contracts"
 import {
   DeterministicManualAdapter,
   ManagedStageRecoveryError,
@@ -1119,7 +1124,7 @@ describe("managed execution engine", () => {
   })
 
   it("coordinates dependency-ordered steps with immutable gate-backed attempts", async () => {
-    const { run, plan, steps } = await readyRun("success", { stepCount: 2 })
+    const { run, plan, steps } = await readyRun("success", { stepCount: 3 })
     const observed: Array<{ stepId: string; phase: string }> = []
     const evaluator: ManagedWorkflowGateEvaluator = async (request) => {
       observed.push({ stepId: request.stepId, phase: request.phase })
@@ -1144,10 +1149,168 @@ describe("managed execution engine", () => {
       state: attempt.state,
     }))).toEqual(steps.map((step) => ({ stepId: step.id, attempt: 1, state: "completed" })))
     expect(observed.map((entry) => entry.stepId)).toEqual([
-      steps[0]!.id, steps[0]!.id, steps[0]!.id, steps[0]!.id,
-      steps[1]!.id, steps[1]!.id, steps[1]!.id, steps[1]!.id,
-      steps[1]!.id, steps[1]!.id,
+      ...steps.flatMap((step) => [step.id, step.id, step.id, step.id]),
+      steps.at(-1)!.id, steps.at(-1)!.id,
     ])
+    expect(review.record.workflowCheckpoints?.map((checkpoint) => checkpoint.nextStepIndex)).toEqual([1, 2])
+    await expect(engine.productStudio.previewImportBundle(
+      await engine.productStudio.buildPortableExport(),
+    )).resolves.toMatchObject({ status: "compatible" })
+  })
+
+  it("recovers and resumes an observation-only multi-step Workflow from its durable completed prefix", async () => {
+    const { run, plan, steps } = await readyRun("success", { stepCount: 2 })
+    let signalSecondStep!: () => void
+    const secondStepStarted = new Promise<void>((resolve) => { signalSecondStep = resolve })
+    const crashWindowEvaluator: ManagedWorkflowGateEvaluator = async (request) => {
+      if (request.stepId === steps[1]!.id && request.phase === "preconditions") {
+        signalSecondStep()
+        await new Promise<void>((resolve) => {
+          request.signal.addEventListener("abort", () => resolve(), { once: true })
+        })
+      }
+      return satisfyWorkflowGate(request)
+    }
+    const abandoned = await engine.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      evaluateWorkflowGate: crashWindowEvaluator,
+    }, "founder")
+    const abandonedEventDrain = (async () => {
+      for await (const _event of abandoned.events) { /* drain the simulated lost process */ }
+    })()
+    const abandonedCompletion = abandoned.completion.catch(() => undefined)
+    await secondStepStarted
+
+    const running = await engine.readManagedRun(abandoned.record.id)
+    expect(running.workflowCheckpoints).toHaveLength(1)
+    expect(running.workflowCheckpoints?.[0]?.nextStepIndex).toBe(1)
+    const checkpointBinding = running.workflowCheckpoints![0]!
+    const checkpointEvidence = await engine.repository.readJson(
+      engine.repository.resolve("sessions", `managed-evidence-${checkpointBinding.evidenceId}.json`),
+      managedRunEvidenceSchema,
+    )
+    expect(canonicalDigest(checkpointEvidence)).toBe(checkpointBinding.evidenceDigest)
+    expect(checkpointEvidence.workflow.completedStepIds).toEqual([steps[0]!.id])
+    expect(checkpointEvidence.workflow.terminalReasonCode).toBe("workflow-checkpoint")
+
+    const restarted = new GaepEngine(workspace, [adapter])
+    await expect(restarted.recoverInterruptedRuns("gaep.managed-test.restart")).resolves.toEqual([
+      expect.objectContaining({ id: run.id, state: "unknown" }),
+    ])
+    expect(await restarted.readManagedRun(running.id)).toMatchObject({
+      state: "unknown",
+      recovery: { status: "recovered", reasonCode: "workflow-checkpoint-preserved" },
+    })
+    await abandoned.cancel("Simulate process teardown after portable recovery")
+    await abandonedCompletion
+    await abandonedEventDrain
+
+    const resumedGateRequests: Array<{ stepId: string; phase: string }> = []
+    const resumed = await drain(await restarted.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      previousManagedRunId: running.id,
+      evaluateWorkflowGate: async (request) => {
+        resumedGateRequests.push({ stepId: request.stepId, phase: request.phase })
+        return satisfyWorkflowGate(request)
+      },
+    }, "founder"))
+    expect(resumed.review.record.state).toBe("completed")
+    expect(resumed.review.evidence.workflow.completedStepIds).toEqual(steps.map((step) => step.id))
+    expect(resumed.review.evidence.workflow.attempts.map((attempt) => attempt.stepId)).toEqual(steps.map((step) => step.id))
+    expect(resumed.review.evidence.workflow.attempts[0]?.id).toBe(checkpointEvidence.workflow.attempts[0]?.id)
+    expect(resumedGateRequests.some((request) => request.stepId === steps[0]!.id)).toBe(false)
+    expect(resumedGateRequests.some((request) => request.stepId === steps[1]!.id)).toBe(true)
+    await expect(restarted.productStudio.previewImportBundle(
+      await restarted.productStudio.buildPortableExport(),
+    )).resolves.toMatchObject({ status: "compatible" })
+  })
+
+  it("restarts an interrupted observation-only multi-step Workflow from step one when no checkpoint exists", async () => {
+    const { run, plan, steps } = await readyRun("success", { stepCount: 2 })
+    let signalFirstStep!: () => void
+    const firstStepStarted = new Promise<void>((resolve) => { signalFirstStep = resolve })
+    const blockedEvaluator: ManagedWorkflowGateEvaluator = async (request) => {
+      if (request.stepId === steps[0]!.id && request.phase === "preconditions") {
+        signalFirstStep()
+        await new Promise<void>((resolve) => request.signal.addEventListener("abort", () => resolve(), { once: true }))
+      }
+      return satisfyWorkflowGate(request)
+    }
+    const abandoned = await engine.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      evaluateWorkflowGate: blockedEvaluator,
+    }, "founder")
+    const abandonedEventDrain = (async () => {
+      for await (const _event of abandoned.events) { /* drain the simulated lost process */ }
+    })()
+    const abandonedCompletion = abandoned.completion.catch(() => undefined)
+    await firstStepStarted
+    expect((await engine.readManagedRun(abandoned.record.id)).workflowCheckpoints).toBeUndefined()
+
+    const restarted = new GaepEngine(workspace, [adapter])
+    await restarted.recoverInterruptedRuns("gaep.managed-test.restart")
+    expect(await restarted.readManagedRun(abandoned.record.id)).toMatchObject({
+      state: "unknown",
+      recovery: { status: "recovered", reasonCode: "observation-restart-from-beginning" },
+    })
+    await abandoned.cancel("Simulate process teardown before the first checkpoint")
+    await abandonedCompletion
+    await abandonedEventDrain
+
+    const resumed = await drain(await restarted.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      previousManagedRunId: abandoned.record.id,
+      evaluateWorkflowGate: satisfyWorkflowGate,
+    }, "founder"))
+    expect(resumed.review.record.state).toBe("completed")
+    expect(resumed.review.evidence.workflow.completedStepIds).toEqual(steps.map((step) => step.id))
+  })
+
+  it("fails closed when a durable Workflow checkpoint receipt is tampered before recovery", async () => {
+    const { run, plan, steps } = await readyRun("success", { stepCount: 2 })
+    let signalSecondStep!: () => void
+    const secondStepStarted = new Promise<void>((resolve) => { signalSecondStep = resolve })
+    const blockedEvaluator: ManagedWorkflowGateEvaluator = async (request) => {
+      if (request.stepId === steps[1]!.id && request.phase === "preconditions") {
+        signalSecondStep()
+        await new Promise<void>((resolve) => request.signal.addEventListener("abort", () => resolve(), { once: true }))
+      }
+      return satisfyWorkflowGate(request)
+    }
+    const abandoned = await engine.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      evaluateWorkflowGate: blockedEvaluator,
+    }, "founder")
+    const abandonedEventDrain = (async () => {
+      for await (const _event of abandoned.events) { /* drain the simulated lost process */ }
+    })()
+    const abandonedCompletion = abandoned.completion.catch(() => undefined)
+    await secondStepStarted
+    const running = await engine.readManagedRun(abandoned.record.id)
+    const checkpoint = running.workflowCheckpoints![0]!
+    const checkpointPath = engine.repository.resolve("sessions", `managed-evidence-${checkpoint.evidenceId}.json`)
+    const evidence = await engine.repository.readJson(checkpointPath, managedRunEvidenceSchema)
+    const tampered = managedRunEvidenceSchema.parse({
+      ...evidence,
+      actualEffects: evidence.actualEffects.map((effect) => ({
+        ...effect,
+        evidenceDigest: canonicalDigest({ tampered: effect.evidenceDigest }),
+      })),
+    })
+    await writeFile(checkpointPath, `${JSON.stringify(tampered, null, 2)}\n`)
+
+    const restarted = new GaepEngine(workspace, [adapter])
+    await expect(restarted.recoverInterruptedRuns("gaep.managed-test.restart"))
+      .rejects.toThrow(/checkpoint binding is invalid/i)
+    expect((await restarted.readManagedRun(running.id)).state).toBe("running")
+    await abandoned.cancel("Stop the simulated process after fail-closed recovery")
+    await abandonedCompletion
+    await abandonedEventDrain
   })
 
   it("stops before provider launch when an explicit precondition gate is blocked", async () => {
