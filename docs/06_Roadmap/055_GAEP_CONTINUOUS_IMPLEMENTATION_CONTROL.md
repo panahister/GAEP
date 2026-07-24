@@ -13,13 +13,13 @@
 
 | Field | Current value |
 |---|---|
-| Overall progress | `52%` |
-| Wave | `Wave 4 critical path; Waves 5–7 partial completion — durable recovery, Product Studio evidence, and governed design snapshots` |
+| Overall progress | `54%` |
+| Wave | `Wave 4 critical path; Waves 5–7 partial completion — durable recovery, Product Studio evidence, and governed design snapshot workflow` |
 | State | `IN_PROGRESS` |
 | Working branch | `codex/gaep-hardwork-completion` |
 | Starting commit | `eab8374cc5974eea25bcad4659f46e1b0da92108` |
-| Last stable checkpoint | `fa7e0a8` — governed portable-design snapshot persistence with exact revision, audit, privacy, and non-escalation checks |
-| Active work | Wave 4 crash/concurrency/recovery remediation remains the critical path; the verified Wave 6 persistence slice is checkpointed while host workflow/UI and broader recovery UX remain |
+| Last stable checkpoint | `972faa8` — VS Code local portable-design import, bounded audit-gated review, and privacy-safe non-escalating UI |
+| Active work | Wave 4 crash/concurrency/recovery remediation remains the critical path; the verified Wave 6 engine and VS Code workflow slices are checkpointed while other-host parity and broader recovery UX remain |
 | Blockers | Formal baseline/readiness remain human-governance blocked. Wave 4 is locally acceptance-blocked until the independent-review findings in Section 9 are fixed and revalidated |
 | Next exact action | Close and independently re-review every Wave 4 write-ahead, lost-update, recovery-owner, disposal and effect-truth defect; run cross-workspace validation; then continue design-import persistence and the remaining Product Studio recovery UX |
 
@@ -112,6 +112,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | Wave 4 durable staged-review restart boundary | REVIEW FINDINGS — REMEDIATION ACTIVE | Initial aggregate validation passed 184 tests with 1 conditional skip, and the exact-reviewed-content repair passes 85 focused tests with 1 conditional skip. Acceptance is withheld pending crash-safe journal discovery, lost-update protection, idempotent disposal, live-owner recovery, discard ordering and actual-effect truth fixes |
 | 2026-07-24 | Wave 5 Product Studio evidence UX | PASS WITH DECLARED PLATFORM/HARNESS LIMITS | Checkpoint `0a024bd3e6444c68a99096777e198deb5e0e02f8`; 17 files and 96 unit tests pass; package typecheck/build, 10 DOM/accessibility tests, extension-host open and multi-root pass. Native Windows handoff contents fail closed because no-follow identity is unattested, and the Electron harness does not exercise untrusted-workspace behavior |
 | 2026-07-24 | Wave 6 governed portable-design persistence | PASS WITH HOST/UI LIMIT | Checkpoint `fa7e0a8`; 49 affected engine/repository regressions and 13 focused import regressions pass; engine and design-import typechecks pass. Exact validated metadata is persisted pending human review with final Product revision recheck, canonical paths, bounded inventory, audit binding, privacy checks and tamper rejection. Host workflow/UI is not yet implemented |
+| 2026-07-24 | Wave 6 VS Code portable-design workflow | PASS WITH NATIVE-HARNESS LIMIT | Checkpoint `972faa8`; 18 files and 107 VS Code tests pass, workspace typecheck and extension build pass, and extension-host open/multi-root smokes pass. The workflow is local-folder-only, trust/revision bound, audit gated, accessible and privacy safe. The harness cannot automate a truly untrusted workspace or the native OS folder picker |
 
 ## 8. Change Ledger
 
@@ -134,6 +135,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | 4 | Added bounded restart-safe staged-review manifests, claimant leases, governed-binding revalidation, fail-closed discard and registry-owned journal disposal | REVIEW_BLOCKED | Independent review found crash-ordering, lost-update, recovery-owner, disposal and effect-truth defects; remediation and fault-injection tests are active; no commit yet |
 | 2026-07-24 | 5 | Added audit-gated, privacy-safe run, evidence, apply-decision, provider-truth and bounded handoff projections to Product Studio | PARTIAL_COMPLETE | `0a024bd3e6444c68a99096777e198deb5e0e02f8`; all review findings are closed with 96 unit tests and full VS Code verification; broader recovery UX and native-platform conformance remain |
 | 2026-07-24 | 6 | Persisted exact portable-design import results as immutable governed candidates without promoting approval, baseline or readiness | PARTIAL_COMPLETE | `fa7e0a8`; import/read/list, final Product revision and Initiative checks, canonical lowercase inventory, audit integrity, timestamp/evidence invariants, privacy and tamper regressions pass; host workflow/UI remains |
+| 2026-07-24 | 6 | Added the VS Code local portable-design import, bounded audit-gated review table and exact privacy-safe inspector | PARTIAL_COMPLETE | `972faa8`; 107 tests, typecheck, build and extension-host smokes pass; imported sourceReview remains an upstream claim and cannot promote approval, baseline, implementation or release readiness |
 
 ## 9. Wave 4 Durable Review Boundary — Acceptance Remediation
 
@@ -172,6 +174,6 @@ If work stops at this checkpoint, resume by:
 1. checking out `codex/gaep-hardwork-completion`;
 2. verifying that it descends from `eab8374cc5974eea25bcad4659f46e1b0da92108`;
 3. reading this document and `054_GAEP_FEATURE_DELIVERY_TRACKER.md`;
-4. preserving the uncommitted ownership split: `packages/agent-sdk` and `packages/engine/src/managed-execution*` belong to Wave 4 remediation; Wave 5 is clean at `0a024bd3e6444c68a99096777e198deb5e0e02f8`, Wave 6 governed persistence is clean at `fa7e0a8`, and this ledger belongs to root integration;
+4. preserving the uncommitted ownership split: `packages/agent-sdk` and `packages/engine/src/managed-execution*` belong to Wave 4 remediation; Wave 5 is clean at `0a024bd3e6444c68a99096777e198deb5e0e02f8`, Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, and this ledger belongs to root integration;
 5. closing and independently reviewing every acceptance defect listed in Section 9, then rerunning focused and aggregate validation; and
 6. checkpointing Wave 4 and Wave 5 separately before continuing multi-step restart/resume, design-import persistence and the remaining Product Studio UX.
