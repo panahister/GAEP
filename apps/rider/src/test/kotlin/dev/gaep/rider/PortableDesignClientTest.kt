@@ -35,6 +35,7 @@ class PortableDesignClientTest {
         val badManagedEvidencePageRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-page"))
         val badManagedEvidenceCountRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-count"))
         val badManagedEvidenceSnapshotRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-snapshot"))
+        val badManagedEvidenceTotalRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-total"))
         val badManagedEvidenceDetailRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-detail"))
         val badManagedEvidenceBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-binding"))
         val badManagedReviewDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-review-digest"))
@@ -195,6 +196,17 @@ class PortableDesignClientTest {
                 managedPage.snapshotDigest,
                 client.listManagedEvidence(0, 100, managedPage.snapshotDigest).snapshotDigest,
             )
+            val managedNextPage = client.listManagedEvidence(
+                offset = 1,
+                limit = 100,
+                snapshotDigest = managedPage.snapshotDigest,
+                expectedTotal = managedPage.total,
+            )
+            assertEquals(1, managedNextPage.offset)
+            assertEquals(2, managedNextPage.items.size)
+            assertEquals(managedPage.total, managedNextPage.total)
+            assertEquals(1, managedNextPage.omittedCount)
+            assertFalse(managedNextPage.hasMore)
             val managedDetail = client.readManagedEvidence(managedRunId)
             assertEquals(managedRunId, managedDetail.summary.managedRunId)
             assertEquals("verified-result-and-evidence", managedDetail.artifactStatus)
@@ -285,6 +297,9 @@ class PortableDesignClientTest {
             assertFailsWith<IllegalArgumentException> {
                 client.listManagedEvidence(offset = 0, limit = 100, snapshotDigest = "sha256:not-a-digest")
             }
+            assertFailsWith<IllegalArgumentException> {
+                client.listManagedEvidence(offset = 0, limit = 100, expectedTotal = 2_001)
+            }
             assertFailsWith<IllegalArgumentException> { client.readManagedEvidence(UUID(0, 0)) }
             assertFailsWith<IllegalArgumentException> {
                 client.executeManagedReadOnly(
@@ -337,6 +352,18 @@ class PortableDesignClientTest {
                 }
                 assertEquals("HOST_RESPONSE_INVALID", invalidSnapshot.kind)
                 assertPrivateTextWithheld(invalidSnapshot)
+            }
+            GaepEngineClient(badManagedEvidenceTotalRoot, executable.toString()).use { hostileClient ->
+                val invalidTotal = hostError {
+                    hostileClient.listManagedEvidence(
+                        offset = 1,
+                        limit = 100,
+                        snapshotDigest = managedPage.snapshotDigest,
+                        expectedTotal = managedPage.total,
+                    )
+                }
+                assertEquals("HOST_RESPONSE_INVALID", invalidTotal.kind)
+                assertPrivateTextWithheld(invalidTotal)
             }
             listOf(badManagedEvidenceDetailRoot, badManagedEvidenceBindingRoot).forEach { root ->
                 GaepEngineClient(root, executable.toString()).use { hostileClient ->

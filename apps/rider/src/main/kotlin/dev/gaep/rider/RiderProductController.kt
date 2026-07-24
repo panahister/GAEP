@@ -171,36 +171,43 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         timeoutMs: Int = 120_000,
     ): String = renderManagedReadOnlyReceipt(client.executeManagedReadOnly(preview, timeoutMs, actorId))
 
-    fun listManagedEvidence(): String {
-        val page = client.listManagedEvidence(offset = 0, limit = 100)
-        return buildString {
-            appendLine("GAEP bounded Managed Run evidence")
-            appendLine()
-            appendLine("Snapshot: ${page.snapshotDigest}")
-            appendLine("Displayed: ${page.items.size} of ${page.total}")
-            appendLine("Omitted from this page: ${page.omittedCount}")
-            appendLine("More pages available: ${yesNo(page.hasMore)}")
-            if (page.items.isEmpty()) appendLine("No Managed Runs exist in the verified bounded inventory.")
-            page.items.forEach { item ->
-                appendLine()
-                appendLine("${item.managedRunId} · ${item.state} · ${item.mode}")
-                appendLine("  Provider: ${item.adapterId} / ${item.agentId} / ${item.modelId}")
-                appendLine(
-                    "  Updated: ${item.updatedAt}; recovery=${item.recoveryStatus}; " +
-                        "result=${if (item.hasResult) "bound" else "not bound"}; " +
-                        "apply decision=${if (item.hasApplyDecision) "bound" else "not bound"}",
-                )
-            }
+    fun listManagedEvidencePage(
+        offset: Int = 0,
+        limit: Int = 100,
+        snapshotDigest: String? = null,
+        expectedTotal: Int? = null,
+    ): ManagedRunSummaryPage = client.listManagedEvidence(offset, limit, snapshotDigest, expectedTotal)
+
+    fun listManagedEvidence(): String = renderManagedEvidencePage(listManagedEvidencePage())
+
+    fun renderManagedEvidencePage(page: ManagedRunSummaryPage): String = buildString {
+        appendLine("GAEP bounded Managed Run evidence")
+        appendLine()
+        appendLine("Snapshot: ${page.snapshotDigest}")
+        appendLine("Offset / limit: ${page.offset} / ${page.limit}")
+        appendLine("Displayed: ${page.items.size} of ${page.total}")
+        appendLine("Omitted from this page: ${page.omittedCount}")
+        appendLine("More pages available: ${yesNo(page.hasMore)}")
+        if (page.items.isEmpty()) appendLine("No Managed Runs exist in the verified bounded inventory.")
+        page.items.forEach { item ->
             appendLine()
             appendLine(
-                "Boundary: this audit-gated observation cannot start, resume, cancel, apply, discard, approve, or grant " +
-                    "Run, Tool, write, effect, outcome, implementation-readiness, or release authority.",
-            )
-            append(
-                "Raw provider output, prompts, context content, changed paths, source bytes, executable paths, process state, " +
-                    "workspace paths, and credentials are withheld.",
+                "${item.managedRunId} · ${item.state} · ${item.mode}\n" +
+                    "  Provider: ${item.adapterId} / ${item.agentId} / ${item.modelId}\n" +
+                    "  Updated: ${item.updatedAt}; recovery=${item.recoveryStatus}; " +
+                    "result=${if (item.hasResult) "bound" else "not bound"}; " +
+                    "apply decision=${if (item.hasApplyDecision) "bound" else "not bound"}",
             )
         }
+        appendLine()
+        appendLine(
+            "Boundary: this audit-gated observation cannot start, resume, cancel, apply, discard, approve, or grant " +
+                "Run, Tool, write, effect, outcome, implementation-readiness, or release authority.",
+        )
+        append(
+            "Raw provider output, prompts, context content, changed paths, source bytes, executable paths, process state, " +
+                "workspace paths, and credentials are withheld.",
+        )
     }
 
     fun readManagedEvidence(managedRunId: String): String =

@@ -757,11 +757,14 @@ internal object PortableDesignProtocol {
         require(limit in 1..MAX_PAGE_SIZE) { "Portable design limit must be between 1 and 200" }
     }
 
-    fun validateManagedEvidencePage(offset: Int, limit: Int, snapshotDigest: String?) {
+    fun validateManagedEvidencePage(offset: Int, limit: Int, snapshotDigest: String?, expectedTotal: Int? = null) {
         require(offset in 0..2_000) { "Managed Run offset must be between 0 and 2000" }
         require(limit in 1..200) { "Managed Run limit must be between 1 and 200" }
         require(snapshotDigest == null || digestPattern.matches(snapshotDigest)) {
             "Managed Run snapshot digest must be SHA-256"
+        }
+        require(expectedTotal == null || expectedTotal in 0..2_000) {
+            "Managed Run expected total must be between 0 and 2000"
         }
     }
 
@@ -1085,6 +1088,7 @@ internal object PortableDesignProtocol {
         expectedOffset: Int,
         expectedLimit: Int,
         expectedSnapshotDigest: String? = null,
+        expectedTotal: Int? = null,
     ): ManagedRunSummaryPage {
         val page = readResult(envelope).requireObject()
         page.requireExactKeys(
@@ -1102,7 +1106,8 @@ internal object PortableDesignProtocol {
         val total = page.requireBoundedNonNegativeInt("total", 2_000)
         val omittedCount = page.requireBoundedNonNegativeInt("omittedCount", 2_000)
         val rawItems = page.get("items")?.takeIf(JsonElement::isJsonArray)?.asJsonArray ?: throw invalidResponse()
-        if (limit < 1 || offset != expectedOffset || limit != expectedLimit || rawItems.size() > limit ||
+        if (limit < 1 || offset != expectedOffset || limit != expectedLimit ||
+            (expectedTotal != null && total != expectedTotal) || rawItems.size() > limit ||
             offset.toLong() + rawItems.size() > total.toLong() || omittedCount != total - rawItems.size()
         ) {
             throw invalidResponse()
@@ -1112,7 +1117,9 @@ internal object PortableDesignProtocol {
         val snapshotDigest = page.requireDigest("snapshotDigest")
         if (expectedSnapshotDigest != null && snapshotDigest != expectedSnapshotDigest) throw invalidResponse()
         val hasMore = page.requireBoolean("hasMore")
-        if (hasMore != (offset.toLong() + items.size < total.toLong())) throw invalidResponse()
+        if (hasMore != (offset.toLong() + items.size < total.toLong()) || (hasMore && items.isEmpty())) {
+            throw invalidResponse()
+        }
         return ManagedRunSummaryPage(
             schemaVersion = 1,
             kind = "managed-run-summary-page",

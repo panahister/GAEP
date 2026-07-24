@@ -199,8 +199,9 @@ class GaepEngineClient(
         offset: Int = 0,
         limit: Int = 100,
         snapshotDigest: String? = null,
+        expectedTotal: Int? = null,
     ): ManagedRunSummaryPage {
-        PortableDesignProtocol.validateManagedEvidencePage(offset, limit, snapshotDigest)
+        PortableDesignProtocol.validateManagedEvidencePage(offset, limit, snapshotDigest, expectedTotal)
         val params = JsonObject().apply {
             addProperty("offset", offset)
             addProperty("limit", limit)
@@ -212,6 +213,7 @@ class GaepEngineClient(
                 expectedOffset = offset,
                 expectedLimit = limit,
                 expectedSnapshotDigest = snapshotDigest,
+                expectedTotal = expectedTotal,
             )
         }
     }

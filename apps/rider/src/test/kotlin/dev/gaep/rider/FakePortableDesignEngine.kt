@@ -263,19 +263,26 @@ private fun handleManagedEvidenceList(id: Long, params: JsonObject, workspacePat
     } else {
         setOf("offset", "limit")
     }
-    if (params.keySet() != expectedKeys || params.get("offset").asInt != 0 || params.get("limit").asInt != 100 ||
+    val offset = params.get("offset").asInt
+    if (params.keySet() != expectedKeys || offset !in setOf(0, 1) || params.get("limit").asInt != 100 ||
+        (offset > 0 && !params.has("snapshotDigest")) ||
         (params.has("snapshotDigest") && params.get("snapshotDigest").asString != "sha256:${"6".repeat(64)}")
     ) {
         writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED EVIDENCE LIST")
         return
     }
-    val page = managedEvidencePage()
+    val page = managedEvidencePage(offset)
     if (workspacePath.endsWith("bad-managed-evidence-page")) {
         page.getAsJsonArray("items")[0].asJsonObject.addProperty("localStagePath", "$privateRoot/$privateCredential")
     }
     if (workspacePath.endsWith("bad-managed-evidence-count")) page.addProperty("omittedCount", 0)
     if (workspacePath.endsWith("bad-managed-evidence-snapshot")) {
         page.addProperty("snapshotDigest", "sha256:${"7".repeat(64)}")
+    }
+    if (workspacePath.endsWith("bad-managed-evidence-total") && offset == 1) {
+        page.addProperty("total", 4)
+        page.addProperty("omittedCount", 2)
+        page.addProperty("hasMore", true)
     }
     writeResult(id, page)
 }
@@ -324,16 +331,30 @@ private fun managedRunSummary(): JsonObject = JsonObject().apply {
     )
 }
 
-private fun managedEvidencePage(): JsonObject = JsonObject().apply {
+private fun managedEvidencePage(offset: Int = 0): JsonObject = JsonObject().apply {
+    val items = JsonArray().apply {
+        if (offset == 0) {
+            add(managedRunSummary())
+        } else {
+            add(managedRunSummary().apply {
+                addProperty("managedRunId", "17171717-1717-4717-8717-171717171717")
+                addProperty("runId", "18181818-1818-4818-8818-181818181818")
+            })
+            add(managedRunSummary().apply {
+                addProperty("managedRunId", "19191919-1919-4919-8919-191919191919")
+                addProperty("runId", "20202020-2020-4020-8020-202020202020")
+            })
+        }
+    }
     addProperty("schemaVersion", 1)
     addProperty("kind", "managed-run-summary-page")
-    add("items", JsonArray().apply { add(managedRunSummary()) })
-    addProperty("offset", 0)
+    add("items", items)
+    addProperty("offset", offset)
     addProperty("limit", 100)
     addProperty("total", 3)
-    addProperty("omittedCount", 2)
+    addProperty("omittedCount", 3 - items.size())
     addProperty("snapshotDigest", "sha256:${"6".repeat(64)}")
-    addProperty("hasMore", true)
+    addProperty("hasMore", offset + items.size() < 3)
     addProperty(
         "authorityBoundary",
         "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",

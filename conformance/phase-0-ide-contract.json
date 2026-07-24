@@ -105,7 +105,7 @@
           { "path": ["plugin", "id"], "equals": "dev.gaep.productstudio" },
           { "path": ["plugin", "version"], "equals": "0.1.0" }
         ],
-        "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window automation", "interactive later-page Managed Run evidence navigation", "real-provider managed read-only workflow acceptance", "interactive cancellation and resume", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
+        "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window automation", "real-provider managed read-only workflow acceptance", "interactive cancellation and resume", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["GaepEngineClient(Path.of(workspace))"] }] },
@@ -131,10 +131,10 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parseManagedReviewPreviewEnvelope(", "preview.previewDigest == canonicalDigest(body)", "parseManagedReviewTransitionEnvelope(", "workspaceRelativePath(change.requireString(\"path\"))"] }
         ] },
         { "capabilityId": "evidence-dashboard", "state": "implemented", "probes": [
-          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["List Managed Run evidence", "Read Managed Run evidence"] },
-          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["fun listManagedEvidence()", "fun readManagedEvidence(managedRunId: String)", "this audit-gated observation cannot start, resume, cancel, apply, discard, approve"] },
-          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun listManagedEvidence(", "fun readManagedEvidence(managedRunId: UUID)", "managed.evidence.list", "managed.evidence.read"] },
-          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parseManagedRunSummaryPageEnvelope(", "parseManagedEvidenceDetailEnvelope(", "hasResult != hasEvidence"] }
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Browse Managed Run evidence", "Previous Verified Page", "Next Verified Page", "snapshotDigest = firstPage.snapshotDigest", "expectedTotal = firstPage.total", "Read Managed Run evidence"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["fun listManagedEvidencePage(", "fun renderManagedEvidencePage(", "fun readManagedEvidence(managedRunId: String)", "this audit-gated observation cannot start, resume, cancel, apply, discard, approve"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun listManagedEvidence(", "expectedTotal: Int? = null", "expectedTotal = expectedTotal", "fun readManagedEvidence(managedRunId: UUID)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parseManagedRunSummaryPageEnvelope(", "expectedTotal != null && total != expectedTotal", "hasMore && items.isEmpty()", "parseManagedEvidenceDetailEnvelope(", "hasResult != hasEvidence"] }
         ] }
       ]
     },

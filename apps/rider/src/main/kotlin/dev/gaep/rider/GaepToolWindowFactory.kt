@@ -92,7 +92,13 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += managedReadOnlyButton
         actions.add(managedReadOnlyButton)
 
-        addAction("List Managed Run evidence") { controller.listManagedEvidence() }
+        val managedEvidenceListButton = JButton("Browse Managed Run evidence…").apply {
+            addActionListener {
+                beginManagedEvidenceNavigation(project, controller, status, output, buttons)
+            }
+        }
+        buttons += managedEvidenceListButton
+        actions.add(managedEvidenceListButton)
 
         val managedEvidenceButton = JButton("Read Managed Run evidence…").apply {
             addActionListener {
@@ -195,6 +201,104 @@ class GaepToolWindowFactory : ToolWindowFactory {
         val content = ContentFactory.getInstance().createContent(panel, "Product", false)
         content.setDisposer(client)
         toolWindow.contentManager.addContent(content)
+    }
+
+    private fun beginManagedEvidenceNavigation(
+        project: Project,
+        controller: RiderProductController,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+    ) {
+        buttons.forEach { it.isEnabled = false }
+        status.text = "Loading first verified Managed Run evidence page…"
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching { controller.listManagedEvidencePage() }
+                .onSuccess { firstPage ->
+                    ApplicationManager.getApplication().invokeLater {
+                        continueManagedEvidenceNavigation(
+                            project,
+                            controller,
+                            status,
+                            output,
+                            buttons,
+                            mutableListOf(firstPage),
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    ApplicationManager.getApplication().invokeLater {
+                        finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                    }
+                }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun continueManagedEvidenceNavigation(
+        project: Project,
+        controller: RiderProductController,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+        pages: MutableList<ManagedRunSummaryPage>,
+    ) {
+        val page = pages.last()
+        val rendered = controller.renderManagedEvidencePage(page)
+        output.text = rendered
+        output.caretPosition = 0
+        val firstDisplayed = if (page.items.isEmpty()) 0 else page.offset + 1
+        status.text = "Managed Run evidence $firstDisplayed-${page.offset + page.items.size} of ${page.total}"
+        val previous = "Previous Verified Page"
+        val next = "Next Verified Page"
+        val finish = "Finish Observation"
+        val options = buildList {
+            if (pages.size > 1) add(previous)
+            if (page.hasMore) add(next)
+            add(finish)
+        }.toTypedArray()
+        val choice = Messages.showDialog(
+            project,
+            "This page is bound to snapshot ${pages.first().snapshotDigest} and total ${pages.first().total}. " +
+                "Navigation remains read-only and grants no Run, Tool, write, effect, apply, discard, approval, or outcome authority.",
+            "Browse Verified Managed Run Evidence",
+            options,
+            options.lastIndex,
+            Messages.getQuestionIcon(),
+        )
+        val selected = options.getOrNull(choice) ?: finish
+        if (selected == finish) {
+            finishRequest(status, output, buttons, "GAEP engine ready", rendered)
+            return
+        }
+        if (selected == previous) {
+            pages.removeAt(pages.lastIndex)
+            ApplicationManager.getApplication().invokeLater {
+                continueManagedEvidenceNavigation(project, controller, status, output, buttons, pages)
+            }
+            return
+        }
+        status.text = "Loading next verified Managed Run evidence page…"
+        val firstPage = pages.first()
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching {
+                controller.listManagedEvidencePage(
+                    offset = page.offset + page.items.size,
+                    limit = page.limit,
+                    snapshotDigest = firstPage.snapshotDigest,
+                    expectedTotal = firstPage.total,
+                )
+            }.onSuccess { nextPage ->
+                ApplicationManager.getApplication().invokeLater {
+                    pages += nextPage
+                    continueManagedEvidenceNavigation(project, controller, status, output, buttons, pages)
+                }
+            }.onFailure { error ->
+                ApplicationManager.getApplication().invokeLater {
+                    finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                }
+            }
+        }
     }
 
     private fun beginManagedReadOnly(
