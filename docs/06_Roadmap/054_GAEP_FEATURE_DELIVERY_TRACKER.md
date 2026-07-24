@@ -83,13 +83,13 @@ This table must be recounted and updated after every status change.
 
 | Registry | Total | ✅ Done | 🟡 In Progress | 🧪 Ready for Test | 🔎 In Review | ⛔ Blocked | ⏸ Deferred | ❌ Backlog |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Cross-platform capabilities | 35 | 3 | 30 | 0 | 0 | 0 | 0 | 2 |
+| Cross-platform capabilities | 35 | 3 | 31 | 0 | 0 | 0 | 0 | 1 |
 | Phase 1 — Product P0–P4 | 36 | 1 | 21 | 0 | 0 | 0 | 0 | 14 |
 | Phase 2 — UX and Figma | 26 | 0 | 8 | 0 | 0 | 0 | 0 | 18 |
 | Phase 3A — Backlog and Readiness | 24 | 0 | 8 | 0 | 0 | 0 | 0 | 16 |
 | Phase 3B — Implementation and QA | 30 | 0 | 15 | 0 | 0 | 0 | 0 | 15 |
 | Phase 4 — Release and Learning | 17 | 0 | 8 | 0 | 0 | 0 | 0 | 9 |
-| **All tracked features** | **168** | **4** | **90** | **0** | **0** | **0** | **0** | **74** |
+| **All tracked features** | **168** | **4** | **91** | **0** | **0** | **0** | **0** | **73** |
 
 ## 6. Cross-Platform Capability Registry
 
@@ -118,7 +118,7 @@ These capabilities are cross-cutting. The target milestone is the first phase in
 | PLT-19 | Normalized Evidence and Run Records | Phase 0 / 1A | Provider- and host-independent evidence | `🟡 In Progress` | `0daba2a` corrects apply-decision verification to traverse and bind the immutable pre-apply result/evidence predecessor rather than miscompare the post-apply result. Checkpoint/restart and bounded inventory evidence remain portable; every provider and host is not yet conformant |
 | PLT-20 | Install, Upgrade, and Rollback | Phase 0 / 1A | Testable lifecycle for all four plugins | `🟡 In Progress` | `9f1af97` proves isolated prior-version fixture install, `0.1.0` upgrade, same-version reinstall, forced rollback, uninstall/absence, final current install and activation for VS Code and Kiro-compatible hosts. Fixtures are not production rollback payloads; native Kiro/Rider plugin-manager behavior and Visual Studio Windows installation remain |
 | PLT-21 | Dashboard Shell | Phase 0 / 1A | Shared dashboard shell in all four hosts | `🟡 In Progress` | `b598edf`, `11452de` and `95d210e` add snapshot-and-total-bound next/previous Managed Run evidence navigation to Visual Studio, Rider and Kiro; VS Code shares the bounded inventory/detail truth. Native accessibility/rendering and four-host installation remain incomplete |
-| PLT-22 | Phase-Scoped Dashboard Framework | Phase 0 / 1A | Compose dashboards according to phase and applicability | `❌ Backlog` | A complete framework and contract do not exist |
+| PLT-22 | Phase-Scoped Dashboard Framework | Phase 0 / 1A | Compose dashboards according to phase and applicability | `🟡 In Progress` | `fa9b3cd` adds a strict portable seven-phase catalog, exact current-Product revision/digest binding, deterministic composition digest and protocol-v2 `dashboard.framework` query. Every response contains one phase slice plus the mandatory Change/Impact and Agent/Model panels; the phase slice remains `unknown`/attention-required until governed applicability exists, while caller-supplied applicability/readiness fields and stale Product bindings fail closed. Twenty-two new current/hostile tests, affected package typechecks and the 48-file aggregate with 515 passed plus 1 conditional skip are green. VS Code, Kiro, Rider and Visual Studio presentation/client adoption, governed applicability decisions, executable-example evidence and human acceptance remain incomplete |
 | PLT-23 | Change and Impact Dashboard | Phase 0 / 1A | Changed artifacts, affected units, approvals, and risks | `🟡 In Progress` | A partial view exists; completeness and freshness are incomplete |
 | PLT-24 | Agent and Model Dashboard | Phase 0 / 1A | Provider, model, run status, cost/usage, and handoff evidence | `🟡 In Progress` | Kiro, Rider and Visual Studio expose exact staged inventory, decisions, readiness, selection, handoff and bounded Run/evidence projections, including later-page navigation under one exact snapshot. Usage and native acceptance remain incomplete |
 | PLT-25 | Accessible Dashboard Tables | Phase 0 / 1A | Keyboard and screen-reader support, sorting, filtering, and export | `🟡 In Progress` | A table foundation exists; accessibility conformance is incomplete |
