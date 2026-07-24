@@ -106,10 +106,16 @@
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Managed Run Evidence" FontWeight="SemiBold" />
-        <TextBlock Text="List the first bounded audit-gated Run page with exact total and omission truth, or read one exact private-safe evidence detail. This view cannot start, resume, cancel, apply, discard, or approve work."
+        <TextBlock Text="Browse bounded audit-gated Run pages under the first page's exact snapshot digest and total, or read one exact private-safe evidence detail. Navigation cannot start, resume, cancel, apply, discard, or approve work."
                    TextWrapping="Wrap" Margin="0,4,0,8" />
-        <Button x:Name="ListManagedEvidenceButton" Content="List Managed Run evidence"
+        <Button x:Name="ListManagedEvidenceButton" Content="Load first Managed Run evidence page"
                 Command="{Binding ListManagedEvidenceCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="PreviousManagedEvidencePageButton" Content="Previous verified evidence page"
+                Command="{Binding PreviousManagedEvidencePageCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="NextManagedEvidencePageButton" Content="Next verified evidence page"
+                Command="{Binding NextManagedEvidencePageCommand}" MinHeight="28" Margin="0,0,0,8"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
         <TextBlock Text="Exact Managed Run UUID" />
         <TextBox Text="{Binding ManagedRunId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -174,6 +180,8 @@
       <Setter TargetName="LoadManagedReadOnlyPreviewButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ExecuteManagedReadOnlyButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ListManagedEvidenceButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="PreviousManagedEvidencePageButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="NextManagedEvidencePageButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ReadManagedEvidenceButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadManagedReviewButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ApplyManagedReviewButton" Property="IsEnabled" Value="False" />

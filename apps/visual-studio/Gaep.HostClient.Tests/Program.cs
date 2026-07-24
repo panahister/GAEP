@@ -82,6 +82,7 @@ internal static class Program
         var badManagedEvidencePageRoot = Path.Combine(temporaryRoot, "bad-managed-evidence-page");
         var badManagedEvidenceCountRoot = Path.Combine(temporaryRoot, "bad-managed-evidence-count");
         var badManagedEvidenceSnapshotRoot = Path.Combine(temporaryRoot, "bad-managed-evidence-snapshot");
+        var badManagedEvidenceTotalRoot = Path.Combine(temporaryRoot, "bad-managed-evidence-total");
         var badManagedEvidenceDetailRoot = Path.Combine(temporaryRoot, "bad-managed-evidence-detail");
         var badManagedEvidenceBindingRoot = Path.Combine(temporaryRoot, "bad-managed-evidence-binding");
         var badManagedEvidenceApplyBindingRoot = Path.Combine(temporaryRoot, "bad-managed-evidence-apply-binding");
@@ -108,6 +109,7 @@ internal static class Program
         Directory.CreateDirectory(badManagedEvidencePageRoot);
         Directory.CreateDirectory(badManagedEvidenceCountRoot);
         Directory.CreateDirectory(badManagedEvidenceSnapshotRoot);
+        Directory.CreateDirectory(badManagedEvidenceTotalRoot);
         Directory.CreateDirectory(badManagedEvidenceDetailRoot);
         Directory.CreateDirectory(badManagedEvidenceBindingRoot);
         Directory.CreateDirectory(badManagedEvidenceApplyBindingRoot);
@@ -309,6 +311,18 @@ internal static class Program
             snapshotDigest: managedEvidencePage.SnapshotDigest);
         Check(repeatedManagedEvidencePage.SnapshotDigest == managedEvidencePage.SnapshotDigest,
             "Managed evidence pagination binds the exact snapshot digest on reuse");
+        var nextManagedEvidencePage = await client.ListManagedEvidenceAsync(
+            offset: 1,
+            limit: 100,
+            snapshotDigest: managedEvidencePage.SnapshotDigest,
+            expectedTotal: managedEvidencePage.Total);
+        Check(nextManagedEvidencePage.Offset == 1 && nextManagedEvidencePage.Items.Count == 2 &&
+              nextManagedEvidencePage.Total == managedEvidencePage.Total && nextManagedEvidencePage.OmittedCount == 1 &&
+              !nextManagedEvidencePage.HasMore,
+            "Managed evidence later-page navigation preserves exact snapshot, total, omission, and terminal-page truth");
+        Check(ProductWorkflowController.RenderManagedEvidencePage(nextManagedEvidencePage)
+                .Contains("Offset / limit: 1 / 100", StringComparison.Ordinal),
+            "Managed evidence later-page rendering exposes exact offset and limit truth");
         var managedEvidenceJson = JsonSerializer.Serialize(managedEvidencePage);
         Check(!managedEvidenceJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
               !managedEvidenceJson.Contains(PrivateCredential, StringComparison.Ordinal),
@@ -367,6 +381,9 @@ internal static class Program
         await ExpectAsync<ArgumentException>(
             () => client.ListManagedEvidenceAsync(offset: 0, limit: 100, snapshotDigest: "not-a-digest"),
             "Managed evidence snapshot digest is validated before transport");
+        await ExpectAsync<ArgumentOutOfRangeException>(
+            () => client.ListManagedEvidenceAsync(offset: 0, limit: 100, expectedTotal: 2_001),
+            "Managed evidence expected total is bounded before transport");
         await ExpectAsync<ArgumentException>(
             () => client.ReadManagedEvidenceAsync(Guid.Empty),
             "Managed evidence exact read rejects an empty Run identity before transport");
@@ -388,6 +405,18 @@ internal static class Program
                 snapshotDigest: managedEvidencePage.SnapshotDigest));
             Check(invalidSnapshot.Kind == "HOST_RESPONSE_INVALID",
                 "Managed Run inventory snapshot substitution fails closed");
+        }
+        await using (var hostileClient = new EngineClient(badManagedEvidenceTotalRoot, executable))
+        {
+            var invalidTotal = await CaptureHostErrorAsync(() => hostileClient.ListManagedEvidenceAsync(
+                offset: 1,
+                limit: 100,
+                snapshotDigest: managedEvidencePage.SnapshotDigest,
+                expectedTotal: managedEvidencePage.Total));
+            Check(invalidTotal.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidTotal.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidTotal.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Managed Run inventory total drift fails closed without private reflection");
         }
         foreach (var hostileRoot in new[]
                  {
@@ -810,6 +839,7 @@ internal static class Program
         var badManagedEvidencePage = Path.GetFileName(workspace) == "bad-managed-evidence-page";
         var badManagedEvidenceCount = Path.GetFileName(workspace) == "bad-managed-evidence-count";
         var badManagedEvidenceSnapshot = Path.GetFileName(workspace) == "bad-managed-evidence-snapshot";
+        var badManagedEvidenceTotal = Path.GetFileName(workspace) == "bad-managed-evidence-total";
         var badManagedEvidenceDetail = Path.GetFileName(workspace) == "bad-managed-evidence-detail";
         var badManagedEvidenceBinding = Path.GetFileName(workspace) == "bad-managed-evidence-binding";
         var badManagedEvidenceApplyBinding = Path.GetFileName(workspace) == "bad-managed-evidence-apply-binding";
@@ -918,7 +948,8 @@ internal static class Program
                         parameters,
                         badManagedEvidencePage,
                         badManagedEvidenceCount,
-                        badManagedEvidenceSnapshot);
+                        badManagedEvidenceSnapshot,
+                        badManagedEvidenceTotal);
                     break;
                 case "managed.evidence.read":
                     await HandleManagedEvidenceReadAsync(
@@ -1175,20 +1206,23 @@ internal static class Program
         JsonElement parameters,
         bool includePrivateField,
         bool invalidateOmittedCount,
-        bool substituteSnapshot)
+        bool substituteSnapshot,
+        bool substituteTotal)
     {
         var hasSnapshot = parameters.TryGetProperty("snapshotDigest", out var snapshotDigest);
+        var offset = parameters.GetProperty("offset").GetInt32();
         if (!(hasSnapshot
                 ? HasOnlyProperties(parameters, "offset", "limit", "snapshotDigest")
                 : HasOnlyProperties(parameters, "offset", "limit")) ||
-            parameters.GetProperty("offset").GetInt32() != 0 ||
+            offset is not (0 or 1) ||
+            (offset > 0 && !hasSnapshot) ||
             parameters.GetProperty("limit").GetInt32() != 100 ||
             (hasSnapshot && snapshotDigest.GetString() != $"sha256:{new string('6', 64)}"))
         {
             await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED EVIDENCE LIST");
             return;
         }
-        var page = ManagedEvidencePage();
+        var page = ManagedEvidencePage(offset);
         if (includePrivateField)
         {
             var items = (Dictionary<string, object?>[])page["items"]!;
@@ -1196,6 +1230,12 @@ internal static class Program
         }
         if (invalidateOmittedCount) page["omittedCount"] = 0;
         if (substituteSnapshot) page["snapshotDigest"] = $"sha256:{new string('7', 64)}";
+        if (substituteTotal && offset == 1)
+        {
+            page["total"] = 4;
+            page["omittedCount"] = 2;
+            page["hasMore"] = true;
+        }
         await WriteResultAsync(id, page);
     }
 
@@ -1566,20 +1606,38 @@ internal static class Program
         ["authorityBoundary"] = "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
     };
 
-    private static Dictionary<string, object?> ManagedEvidencePage() => new()
+    private static Dictionary<string, object?> ManagedEvidencePage(int offset = 0)
     {
-        ["schemaVersion"] = 1,
-        ["kind"] = "managed-run-summary-page",
-        ["items"] = new[] { ManagedRunSummary() },
-        ["offset"] = 0,
-        ["limit"] = 100,
-        ["total"] = 3,
-        ["omittedCount"] = 2,
-        ["snapshotDigest"] = $"sha256:{new string('6', 64)}",
-        ["hasMore"] = true,
-        ["authorityBoundary"] = "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
-        ["privacyBoundary"] = "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
-    };
+        Dictionary<string, object?>[] items;
+        if (offset == 0)
+        {
+            items = [ManagedRunSummary()];
+        }
+        else
+        {
+            var second = ManagedRunSummary();
+            second["managedRunId"] = "29292929-2929-4929-8929-292929292929";
+            second["runId"] = "30303030-3030-4030-8030-303030303030";
+            var third = ManagedRunSummary();
+            third["managedRunId"] = "31313131-3131-4131-8131-313131313131";
+            third["runId"] = "32323232-3232-4232-8232-323232323232";
+            items = [second, third];
+        }
+        return new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "managed-run-summary-page",
+            ["items"] = items,
+            ["offset"] = offset,
+            ["limit"] = 100,
+            ["total"] = 3,
+            ["omittedCount"] = 3 - items.Length,
+            ["snapshotDigest"] = $"sha256:{new string('6', 64)}",
+            ["hasMore"] = offset + items.Length < 3,
+            ["authorityBoundary"] = "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
+            ["privacyBoundary"] = "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
+        };
+    }
 
     private static Dictionary<string, object?> ManagedEvidenceDetail() => new()
     {

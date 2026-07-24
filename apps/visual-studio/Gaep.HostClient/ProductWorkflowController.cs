@@ -215,13 +215,24 @@ public sealed class ProductWorkflowController(EngineClient client)
             actorId,
             cancellationToken));
 
-    public async Task<string> ListManagedEvidenceAsync(CancellationToken cancellationToken = default)
+    public Task<ManagedRunSummaryPage> ListManagedEvidencePageAsync(
+        int offset = 0,
+        int limit = 100,
+        string? snapshotDigest = null,
+        int? expectedTotal = null,
+        CancellationToken cancellationToken = default) =>
+        client.ListManagedEvidenceAsync(offset, limit, snapshotDigest, expectedTotal, cancellationToken);
+
+    public async Task<string> ListManagedEvidenceAsync(CancellationToken cancellationToken = default) =>
+        RenderManagedEvidencePage(await ListManagedEvidencePageAsync(cancellationToken: cancellationToken));
+
+    public static string RenderManagedEvidencePage(ManagedRunSummaryPage page)
     {
-        var page = await client.ListManagedEvidenceAsync(offset: 0, limit: 100, cancellationToken: cancellationToken);
         var output = new StringBuilder()
             .AppendLine("GAEP bounded Managed Run evidence")
             .AppendLine()
             .AppendLine($"Snapshot: {page.SnapshotDigest}")
+            .AppendLine($"Offset / limit: {page.Offset} / {page.Limit}")
             .AppendLine($"Displayed: {page.Items.Count} of {page.Total}")
             .AppendLine($"Omitted from this page: {page.OmittedCount}")
             .AppendLine($"More pages available: {YesNo(page.HasMore)}");

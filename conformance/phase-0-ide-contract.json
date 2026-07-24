@@ -146,8 +146,8 @@
       "runtimeEvidence": {
         "source": "package-report",
         "level": "cross-platform-compile-and-controller-only",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-150-protocol-controller-checks-windows-container-install-pending"],
-        "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "interactive later-page Managed Run evidence navigation", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-155-protocol-controller-checks-windows-container-install-pending"],
+        "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["await using var client = new EngineClient(workspace)"] }] },
@@ -175,11 +175,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseManagedReviewPreviewResponse(", "preview.PreviewDigest != CanonicalDigest(body)", "ParseManagedReviewTransitionResponse(", "ParseWorkspaceRelativePath(change.GetProperty(\"path\"))"] }
         ] },
         { "capabilityId": "evidence-dashboard", "state": "implemented", "probes": [
-          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["List Managed Run evidence", "Read Managed Run evidence", "ListManagedEvidenceCommand", "ReadManagedEvidenceCommand"] },
-          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["ListManagedEvidenceCommand = new AsyncCommand", "ReadManagedEvidenceCommand = new AsyncCommand", "cannot start, resume, cancel, apply, discard, approve"] },
-          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["ListManagedEvidenceAsync(CancellationToken", "ReadManagedEvidenceAsync(", "this audit-gated observation cannot start, resume, cancel, apply, discard, approve"] },
-          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ListManagedEvidenceAsync(", "ReadManagedEvidenceAsync(", "managed.evidence.list", "managed.evidence.read"] },
-          { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseManagedRunSummaryPageResponse(", "ParseManagedEvidenceDetailResponse(", "hasResult != hasEvidence"] }
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Load first Managed Run evidence page", "Previous verified evidence page", "Next verified evidence page", "PreviousManagedEvidencePageCommand", "NextManagedEvidencePageCommand", "Read Managed Run evidence"] },
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["ListManagedEvidenceCommand = new AsyncCommand", "PreviousManagedEvidencePageCommand = new AsyncCommand", "NextManagedEvidencePageCommand = new AsyncCommand", "snapshotDigest: firstPage.SnapshotDigest", "expectedTotal: firstPage.Total", "cannot start, resume, cancel, apply, discard, approve"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["ListManagedEvidencePageAsync(", "RenderManagedEvidencePage(", "ReadManagedEvidenceAsync(", "this audit-gated observation cannot start, resume, cancel, apply, discard, approve"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ListManagedEvidenceAsync(", "int? expectedTotal = null", "expectedTotal));", "ReadManagedEvidenceAsync("] },
+          { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseManagedRunSummaryPageResponse(", "expectedTotal is not null && total != expectedTotal", "hasMore && items.Length == 0", "ParseManagedEvidenceDetailResponse(", "hasResult != hasEvidence"] }
         ] }
       ]
     }

@@ -187,7 +187,11 @@ internal static partial class PortableDesignProtocol
         if (limit is < 1 or > MaxPageSize) throw new ArgumentOutOfRangeException(nameof(limit));
     }
 
-    internal static void ValidateManagedEvidencePage(int offset, int limit, string? snapshotDigest)
+    internal static void ValidateManagedEvidencePage(
+        int offset,
+        int limit,
+        string? snapshotDigest,
+        int? expectedTotal = null)
     {
         if (offset is < 0 or > 2_000) throw new ArgumentOutOfRangeException(nameof(offset));
         if (limit is < 1 or > 200) throw new ArgumentOutOfRangeException(nameof(limit));
@@ -195,6 +199,7 @@ internal static partial class PortableDesignProtocol
         {
             throw new ArgumentException("Managed Run snapshot digest must be SHA-256.", nameof(snapshotDigest));
         }
+        if (expectedTotal is < 0 or > 2_000) throw new ArgumentOutOfRangeException(nameof(expectedTotal));
     }
 
     internal static PortableDesignSnapshotSummary ParseSnapshotResponse(
@@ -566,7 +571,8 @@ internal static partial class PortableDesignProtocol
         JsonElement envelope,
         int expectedOffset,
         int expectedLimit,
-        string? expectedSnapshotDigest = null)
+        string? expectedSnapshotDigest = null,
+        int? expectedTotal = null)
     {
         var page = ReadResult(envelope);
         if (!HasRequiredAndAllowedProperties(
@@ -588,7 +594,8 @@ internal static partial class PortableDesignProtocol
         var total = ParseBoundedNonNegativeInt(page, "total", 2_000);
         var omittedCount = ParseBoundedNonNegativeInt(page, "omittedCount", 2_000);
         if (!page.TryGetProperty("items", out var itemsElement) || itemsElement.ValueKind != JsonValueKind.Array ||
-            limit < 1 || offset != expectedOffset || limit != expectedLimit || itemsElement.GetArrayLength() > limit ||
+            limit < 1 || offset != expectedOffset || limit != expectedLimit ||
+            (expectedTotal is not null && total != expectedTotal) || itemsElement.GetArrayLength() > limit ||
             (long)offset + itemsElement.GetArrayLength() > total || omittedCount != total - itemsElement.GetArrayLength())
         {
             throw InvalidResponse();
@@ -598,7 +605,7 @@ internal static partial class PortableDesignProtocol
         var snapshotDigest = ParseRequiredDigest(page, "snapshotDigest");
         if (expectedSnapshotDigest is not null && snapshotDigest != expectedSnapshotDigest) throw InvalidResponse();
         var hasMore = ParseRequiredBoolean(page, "hasMore");
-        if (hasMore != ((long)offset + items.Length < total)) throw InvalidResponse();
+        if (hasMore != ((long)offset + items.Length < total) || (hasMore && items.Length == 0)) throw InvalidResponse();
         return new ManagedRunSummaryPage(
             1,
             "managed-run-summary-page",

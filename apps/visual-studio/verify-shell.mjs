@@ -77,6 +77,8 @@ for (const binding of [
   "ExecuteManagedReadOnlyCommand",
   "ManagedRunId",
   "ListManagedEvidenceCommand",
+  "PreviousManagedEvidencePageCommand",
+  "NextManagedEvidencePageCommand",
   "ReadManagedEvidenceCommand",
   "ManagedReviewRunId",
   "LoadManagedReviewCommand",
@@ -98,8 +100,12 @@ requireText(remoteUi, /Confirm guarded selection/u,
   "Visual Studio selection action does not communicate its guarded confirmation boundary")
 requireText(remoteUi, /Create versioned handoff/u,
   "Visual Studio handoff action does not communicate its versioned-record boundary")
-requireText(remoteUi, /List Managed Run evidence/u,
+requireText(remoteUi, /Load first Managed Run evidence page/u,
   "Visual Studio evidence dashboard does not expose bounded Managed Run inventory")
+requireText(remoteUi, /Previous verified evidence page/u,
+  "Visual Studio evidence dashboard does not expose previous-page navigation")
+requireText(remoteUi, /Next verified evidence page/u,
+  "Visual Studio evidence dashboard does not expose next-page navigation")
 requireText(remoteUi, /Read Managed Run evidence/u,
   "Visual Studio evidence dashboard does not expose exact evidence detail")
 requireText(remoteUi, /Apply exact reviewed inventory/u,

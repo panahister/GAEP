@@ -235,9 +235,10 @@ public sealed class EngineClient : IAsyncDisposable
         int offset = 0,
         int limit = 100,
         string? snapshotDigest = null,
+        int? expectedTotal = null,
         CancellationToken cancellationToken = default)
     {
-        PortableDesignProtocol.ValidateManagedEvidencePage(offset, limit, snapshotDigest);
+        PortableDesignProtocol.ValidateManagedEvidencePage(offset, limit, snapshotDigest, expectedTotal);
         var parameters = new Dictionary<string, object?>
         {
             ["offset"] = offset,
@@ -254,7 +255,8 @@ public sealed class EngineClient : IAsyncDisposable
                 envelope,
                 offset,
                 limit,
-                snapshotDigest));
+                snapshotDigest,
+                expectedTotal));
     }
 
     public async Task<ManagedEvidenceDetail> ReadManagedEvidenceAsync(

@@ -68,6 +68,8 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private ManagedReadOnlyPreview? managedReadOnlyPreview;
     private string? managedReadOnlyWorkspace;
     private string managedRunId = string.Empty;
+    private readonly List<ManagedRunSummaryPage> managedEvidencePages = [];
+    private string? managedEvidenceWorkspace;
     private string managedReviewRunId = string.Empty;
     private ManagedReviewPreview? managedReviewPreview;
     private string? managedReviewWorkspace;
@@ -85,6 +87,8 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadManagedReadOnlyPreviewCommand = new AsyncCommand(LoadManagedReadOnlyPreviewAsync);
         ExecuteManagedReadOnlyCommand = new AsyncCommand(ExecuteManagedReadOnlyAsync);
         ListManagedEvidenceCommand = new AsyncCommand(ListManagedEvidenceAsync);
+        PreviousManagedEvidencePageCommand = new AsyncCommand(PreviousManagedEvidencePageAsync);
+        NextManagedEvidencePageCommand = new AsyncCommand(NextManagedEvidencePageAsync);
         ReadManagedEvidenceCommand = new AsyncCommand(ReadManagedEvidenceAsync);
         LoadManagedReviewCommand = new AsyncCommand(LoadManagedReviewAsync);
         ApplyManagedReviewCommand = new AsyncCommand(ApplyManagedReviewAsync);
@@ -131,6 +135,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ListManagedEvidenceCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand PreviousManagedEvidencePageCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand NextManagedEvidencePageCommand { get; }
 
     [DataMember]
     public IAsyncCommand ReadManagedEvidenceCommand { get; }
@@ -469,9 +479,79 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     private Task ListManagedEvidenceAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(
-            "Listing bounded Managed Run evidence",
-            (controller, _, token) => controller.ListManagedEvidenceAsync(token),
+            "Loading first verified Managed Run evidence page",
+            async (controller, workspace, token) =>
+            {
+                var page = await controller.ListManagedEvidencePageAsync(cancellationToken: token);
+                managedEvidencePages.Clear();
+                managedEvidencePages.Add(page);
+                managedEvidenceWorkspace = workspace;
+                return ProductWorkflowController.RenderManagedEvidencePage(page);
+            },
             cancellationToken);
+
+    private Task PreviousManagedEvidencePageAsync(object? commandParameter, CancellationToken cancellationToken)
+    {
+        if (managedEvidencePages.Count < 2)
+        {
+            Status = "No previous verified Managed Run evidence page";
+            return Task.CompletedTask;
+        }
+        return RunRequestAsync(
+            "Returning to previous verified Managed Run evidence page",
+            (controller, workspace, token) =>
+            {
+                if (!StringComparer.Ordinal.Equals(managedEvidenceWorkspace, workspace))
+                {
+                    throw new ArgumentException(
+                        "The workspace changed after the evidence snapshot was loaded. Load the first page again.");
+                }
+                managedEvidencePages.RemoveAt(managedEvidencePages.Count - 1);
+                return Task.FromResult(ProductWorkflowController.RenderManagedEvidencePage(managedEvidencePages[^1]));
+            },
+            cancellationToken);
+    }
+
+    private Task NextManagedEvidencePageAsync(object? commandParameter, CancellationToken cancellationToken)
+    {
+        if (managedEvidencePages.Count == 0)
+        {
+            Status = "Managed Run evidence snapshot is not loaded";
+            Output = "Load the first verified page before requesting the next page.";
+            return Task.CompletedTask;
+        }
+        var firstPage = managedEvidencePages[0];
+        var currentPage = managedEvidencePages[^1];
+        if (!currentPage.HasMore)
+        {
+            Status = "No later Managed Run evidence page exists in this snapshot";
+            return Task.CompletedTask;
+        }
+        return RunRequestAsync(
+            "Loading next verified Managed Run evidence page",
+            async (controller, workspace, token) =>
+            {
+                if (!StringComparer.Ordinal.Equals(managedEvidenceWorkspace, workspace))
+                {
+                    throw new ArgumentException(
+                        "The workspace changed after the evidence snapshot was loaded. Load the first page again.");
+                }
+                if (!ReferenceEquals(currentPage, managedEvidencePages[^1]))
+                {
+                    throw new ArgumentException(
+                        "The evidence page changed before navigation. Load the first page again.");
+                }
+                var nextPage = await controller.ListManagedEvidencePageAsync(
+                    offset: currentPage.Offset + currentPage.Items.Count,
+                    limit: currentPage.Limit,
+                    snapshotDigest: firstPage.SnapshotDigest,
+                    expectedTotal: firstPage.Total,
+                    cancellationToken: token);
+                managedEvidencePages.Add(nextPage);
+                return ProductWorkflowController.RenderManagedEvidencePage(nextPage);
+            },
+            cancellationToken);
+    }
 
     private Task ReadManagedEvidenceAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(
