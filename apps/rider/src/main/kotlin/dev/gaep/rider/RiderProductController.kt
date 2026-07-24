@@ -15,12 +15,29 @@ internal data class AgentHandoffContext(
     val available: List<AgentReadinessSnapshot>,
 )
 
+internal data class ChangeImpactContext(
+    val product: ProductBinding,
+    val catalog: ChangeImpactChangeCatalog,
+)
+
 internal class RiderProductController(private val client: GaepEngineClient) {
     fun readProduct(): String = renderProduct(client.readProductBinding())
 
     fun readPhaseDashboard(): String {
         val product = client.readProductBinding()
         return renderPhaseDashboard(client.readPhaseDashboard(product))
+    }
+
+    fun readChangeImpactContext(): ChangeImpactContext {
+        val product = client.readProductBinding()
+        return ChangeImpactContext(product, client.listChangeImpactChanges(product))
+    }
+
+    fun readChangeImpact(context: ChangeImpactContext, change: ChangeImpactChangeReference): String {
+        require(change in context.catalog.items) {
+            "The selected Change is not part of the verified current catalog. Reload and select the Change again."
+        }
+        return renderChangeImpactDashboard(client.readChangeImpact(context.product, change))
     }
 
     fun readAgentReadiness(): String = buildString {
@@ -391,6 +408,82 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
         append(
             "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.",
+        )
+    }
+
+    private fun renderChangeImpactDashboard(dashboard: ChangeImpactDashboard): String = buildString {
+        fun locator(value: ChangeImpactLocator): String = value.value
+        appendLine("GAEP exact Change and impact dashboard")
+        appendLine()
+        appendLine("Change: ${dashboard.change.recordId}")
+        appendLine("Change revision / state: ${dashboard.change.revision} / ${dashboard.change.state}")
+        appendLine("Change digest: ${dashboard.change.digest}")
+        appendLine("Product revision: ${dashboard.productRevision}")
+        appendLine("Product digest: ${dashboard.productDigest}")
+        appendLine("Snapshot digest: ${dashboard.snapshotDigest}")
+        appendLine("Effects: ${dashboard.change.effectEnvelope.joinToString(", ")}")
+        appendLine(
+            "Freshness: ${dashboard.freshness.state}; observed ${dashboard.observedAt}; " +
+                "trace evaluated ${dashboard.freshness.evaluatedAt}",
+        )
+        appendLine("Approval: not established. The current contract has no general Change approval record.")
+        appendLine()
+        appendLine("Work Items (${dashboard.limits.workItems.shown}/${dashboard.limits.workItems.total}):")
+        dashboard.workItems.forEach { entry ->
+            appendLine("  ${entry.record.recordId}@${entry.record.revision} · ${entry.state} · ${entry.record.digest}")
+        }
+        appendLine()
+        appendLine(
+            "Changed artifacts (${dashboard.limits.changedArtifacts.shown}/${dashboard.limits.changedArtifacts.total}):",
+        )
+        dashboard.changedArtifacts.forEach { entry ->
+            appendLine("  ${locator(entry.locator)} · ${entry.locator.kind} · Work Item ${entry.sourceWorkItem.recordId}")
+        }
+        appendLine()
+        appendLine("Effect targets (${dashboard.limits.effectTargets.shown}/${dashboard.limits.effectTargets.total}):")
+        dashboard.effectTargets.forEach { entry ->
+            appendLine("  ${locator(entry.locator)} · ${entry.locator.kind} · Work Item ${entry.sourceWorkItem.recordId}")
+        }
+        appendLine()
+        appendLine("Affected units (${dashboard.limits.affectedUnits.shown}/${dashboard.limits.affectedUnits.total}):")
+        dashboard.affectedUnits.forEach { entry ->
+            appendLine(
+                "  ${entry.direction} · ${entry.endpoint.recordType}:${entry.endpoint.recordId} · " +
+                    "${entry.relationship} · ${entry.trace.assessedState}",
+            )
+        }
+        appendLine()
+        appendLine("Related Decisions (${dashboard.limits.decisions.shown}/${dashboard.limits.decisions.total}):")
+        dashboard.decisions.forEach { entry ->
+            appendLine("  ${entry.record.recordId}@${entry.record.revision} · ${entry.state} · ${entry.outcome}")
+        }
+        appendLine()
+        appendLine("Related Risks (${dashboard.limits.risks.shown}/${dashboard.limits.risks.total}):")
+        dashboard.risks.forEach { entry ->
+            appendLine(
+                "  ${entry.record.recordId}@${entry.record.revision} · ${entry.state} · " +
+                    "${entry.likelihood}/${entry.impact} · ${entry.acceptance}",
+            )
+        }
+        appendLine()
+        appendLine(
+            "Trace attention: unresolved=${dashboard.freshness.unresolvedTraceLinks}; " +
+                "invalid=${dashboard.freshness.invalidTraceLinks}; stale=${dashboard.freshness.staleTraceLinks}; " +
+                "stale governance=${dashboard.freshness.staleGovernanceReferences}",
+        )
+        appendLine(
+            "Omissions: ${if (dashboard.limits.truncated) "one or more bounded categories are truncated" else "none in bounded categories"}",
+        )
+        appendLine("Coverage: absence of a trace link does not prove absence of impact.")
+        dashboard.limitations.forEach { appendLine("Limit: $it") }
+        appendLine()
+        appendLine(
+            "Boundary: this read-only projection grants no Change approval, risk acceptance, mutation, Run, Tool, " +
+                "write, effect, phase-entry, readiness, release, or outcome authority.",
+        )
+        append(
+            "Product text, Change text, Work Item text, source bytes, absolute paths, provider output, prompts, " +
+                "executable state, and credentials are withheld.",
         )
     }
 

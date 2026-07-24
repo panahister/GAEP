@@ -10,6 +10,7 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import java.io.StringReader
 import java.math.BigDecimal
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -82,6 +83,117 @@ data class PhaseDashboardFramework(
     val observedAt: Instant,
     val limitations: List<String>,
     val compositionDigest: String,
+)
+
+data class ChangeImpactChangeReference(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val state: String,
+    val effectEnvelope: List<String>,
+)
+
+data class ChangeImpactChangeCatalog(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val items: List<ChangeImpactChangeReference>,
+    val total: Long,
+    val omitted: Long,
+    val observedAt: Instant,
+    val limitations: List<String>,
+    val snapshotDigest: String,
+)
+
+data class ChangeImpactExactReference(
+    val recordType: String,
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+)
+
+data class ChangeImpactLocator(val kind: String, val value: String)
+
+data class ChangeImpactWorkItem(val record: ChangeImpactExactReference, val state: String)
+
+data class ChangeImpactArtifact(
+    val sourceWorkItem: ChangeImpactExactReference,
+    val locator: ChangeImpactLocator,
+)
+
+data class ChangeImpactTraceEndpoint(
+    val recordType: String,
+    val recordId: String,
+    val revision: Long?,
+    val digest: String?,
+)
+
+data class ChangeImpactTraceAssessment(
+    val recordId: UUID,
+    val revision: Long,
+    val assessmentDigest: String,
+    val assessedState: String,
+)
+
+data class ChangeImpactAffectedUnit(
+    val direction: String,
+    val relationship: String,
+    val endpoint: ChangeImpactTraceEndpoint,
+    val trace: ChangeImpactTraceAssessment,
+)
+
+data class ChangeImpactDecision(
+    val record: ChangeImpactExactReference,
+    val state: String,
+    val outcome: String,
+)
+
+data class ChangeImpactRisk(
+    val record: ChangeImpactExactReference,
+    val state: String,
+    val likelihood: String,
+    val impact: String,
+    val acceptance: String,
+)
+
+data class ChangeImpactFreshness(
+    val state: String,
+    val evaluatedAt: Instant,
+    val unresolvedTraceLinks: Long,
+    val invalidTraceLinks: Long,
+    val staleTraceLinks: Long,
+    val staleGovernanceReferences: Long,
+    val traceAnalysisTruncated: Boolean,
+)
+
+data class ChangeImpactLimit(val shown: Long, val total: Long, val omitted: Long)
+
+data class ChangeImpactLimits(
+    val workItems: ChangeImpactLimit,
+    val changedArtifacts: ChangeImpactLimit,
+    val effectTargets: ChangeImpactLimit,
+    val affectedUnits: ChangeImpactLimit,
+    val decisions: ChangeImpactLimit,
+    val risks: ChangeImpactLimit,
+    val truncated: Boolean,
+)
+
+data class ChangeImpactDashboard(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val change: ChangeImpactChangeReference,
+    val workItems: List<ChangeImpactWorkItem>,
+    val changedArtifacts: List<ChangeImpactArtifact>,
+    val effectTargets: List<ChangeImpactArtifact>,
+    val affectedUnits: List<ChangeImpactAffectedUnit>,
+    val decisions: List<ChangeImpactDecision>,
+    val risks: List<ChangeImpactRisk>,
+    val freshness: ChangeImpactFreshness,
+    val limits: ChangeImpactLimits,
+    val observedAt: Instant,
+    val limitations: List<String>,
+    val snapshotDigest: String,
 )
 
 data class AgentModelReadiness(
@@ -573,6 +685,24 @@ internal object PortableDesignProtocol {
         "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup."
     private const val PHASE_DASHBOARD_AUTHORITY_BOUNDARY =
         "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"
+    private const val CHANGE_CATALOG_AUTHORITY_BOUNDARY =
+        "change-catalog-selection-does-not-approve-change-or-authorize-effects"
+    private const val CHANGE_DASHBOARD_AUTHORITY_BOUNDARY =
+        "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects"
+    private val changeImpactEffects = setOf(
+        "observe", "provisional", "reversible-change", "external-effect", "destructive-or-irreversible",
+    )
+    private val changeImpactStates = setOf("proposed", "planned", "active", "blocked", "completed", "cancelled")
+    private val changeImpactWorkItemStates = changeImpactStates + "ready" + "in-progress"
+    private val changeImpactRelationships = setOf(
+        "targets", "derives-from", "contributes-to", "depends-on", "implements", "satisfies", "validates",
+        "mitigates", "decides", "affects", "supersedes", "related-to",
+    )
+    private val changeImpactRecordTypes = setOf(
+        "product", "design-revision", "initiative", "change", "work-item", "requirement", "decision", "risk",
+        "architecture", "evidence", "context-pack", "workflow-plan", "tool-definition", "instruction-privilege-grant",
+        "run-tool-selection", "run", "external",
+    )
     private val deliveryPhaseCatalog = mapOf(
         DeliveryPhaseId.PHASE_0_1A_FOUNDATION to Pair("Phase 0 / 1A — Four-IDE Platform Foundation", "foundation-summary"),
         DeliveryPhaseId.PHASE_1B_PRODUCT to Pair("Phase 1B — Product P0–P4", "product-architecture"),
@@ -718,6 +848,26 @@ internal object PortableDesignProtocol {
         "MANAGED_REVIEW_DISCARD_FAILED" to StableHostError(
             -32_038,
             "The exact Managed Run discard transition could not be verified; reload the review before any retry.",
+        ),
+        "DASHBOARD_PRODUCT_CONTEXT_CHANGED" to StableHostError(
+            -32_039,
+            "The Product changed before the phase dashboard was composed; reload the current Product.",
+        ),
+        "CHANGE_IMPACT_PRODUCT_CONTEXT_CHANGED" to StableHostError(
+            -32_040,
+            "The Product changed before the Change/Impact projection was composed; reload the current Product.",
+        ),
+        "CHANGE_IMPACT_CHANGE_CONTEXT_CHANGED" to StableHostError(
+            -32_041,
+            "The Change changed before the Change/Impact projection was composed; select the current Change again.",
+        ),
+        "CHANGE_IMPACT_AUDIT_INVALID" to StableHostError(
+            -32_042,
+            "The Change/Impact projection is unavailable because the governed audit chain is invalid.",
+        ),
+        "CHANGE_IMPACT_CATALOG_INVALID" to StableHostError(
+            -32_043,
+            "The current Change catalog could not be verified.",
         ),
         "INVALID_PARAMS" to StableHostError(-32_602, "The GAEP engine rejected the local request parameters."),
         "PROTOCOL_UPGRADE_REQUIRED" to StableHostError(
@@ -938,6 +1088,206 @@ internal object PortableDesignProtocol {
             observedAt = observedAt,
             limitations = limitations,
             compositionDigest = compositionDigest,
+        )
+    }
+
+    fun parseChangeImpactChangeCatalogEnvelope(
+        envelope: JsonObject,
+        expectedProduct: ProductBinding,
+    ): ChangeImpactChangeCatalog {
+        val catalog = readResult(envelope).requireObject()
+        catalog.requireExactKeys(
+            "schemaVersion", "kind", "product", "items", "total", "omitted", "observedAt",
+            "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+        )
+        if (catalog.requireInt("schemaVersion") != 1 ||
+            catalog.requireString("kind") != "change-impact-change-catalog" ||
+            catalog.requireString("sourceBoundary") != "current-governed-change-metadata-only" ||
+            catalog.requireString("authorityBoundary") != CHANGE_CATALOG_AUTHORITY_BOUNDARY
+        ) {
+            throw invalidResponse()
+        }
+        val product = parseChangeImpactExactReference(catalog.get("product"), "product")
+        if (product.recordId != expectedProduct.id || product.revision != expectedProduct.revision ||
+            product.digest != expectedProduct.digest
+        ) {
+            throw invalidResponse()
+        }
+        val items = parseChangeImpactArray(catalog.get("items"), 256, ::parseChangeImpactChangeReference)
+        if (items.map { it.recordId }.distinct().size != items.size ||
+            items.zipWithNext().any { (left, right) -> left.recordId.toString() >= right.recordId.toString() }
+        ) {
+            throw invalidResponse()
+        }
+        val total = catalog.requireBoundedNonNegativeLong("total", 1_000_000)
+        val omitted = catalog.requireBoundedNonNegativeLong("omitted", 1_000_000)
+        if (items.size.toLong() + omitted != total) throw invalidResponse()
+        val limitations = parseChangeImpactLimitations(catalog.get("limitations"))
+        val observedAt = catalog.requireInstant("observedAt")
+        val snapshotDigest = catalog.requireDigest("snapshotDigest")
+        val digestBody = catalog.deepCopy().apply { remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+        return ChangeImpactChangeCatalog(
+            productId = product.recordId,
+            productRevision = product.revision,
+            productDigest = product.digest,
+            items = items,
+            total = total,
+            omitted = omitted,
+            observedAt = observedAt,
+            limitations = limitations,
+            snapshotDigest = snapshotDigest,
+        )
+    }
+
+    fun parseChangeImpactDashboardEnvelope(
+        envelope: JsonObject,
+        expectedProduct: ProductBinding,
+        expectedChange: ChangeImpactChangeReference,
+    ): ChangeImpactDashboard {
+        val dashboard = readResult(envelope).requireObject()
+        dashboard.requireExactKeys(
+            "schemaVersion", "kind", "product", "change", "workItems", "changedArtifacts", "effectTargets",
+            "affectedUnits", "governance", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+            "authorityBoundary", "snapshotDigest",
+        )
+        if (dashboard.requireInt("schemaVersion") != 1 ||
+            dashboard.requireString("kind") != "change-impact-dashboard" ||
+            dashboard.requireString("sourceBoundary") != "current-governed-records-and-bounded-trace-analysis" ||
+            dashboard.requireString("authorityBoundary") != CHANGE_DASHBOARD_AUTHORITY_BOUNDARY
+        ) {
+            throw invalidResponse()
+        }
+        val product = parseChangeImpactExactReference(dashboard.get("product"), "product")
+        if (product.recordId != expectedProduct.id || product.revision != expectedProduct.revision ||
+            product.digest != expectedProduct.digest
+        ) {
+            throw invalidResponse()
+        }
+        val change = parseChangeImpactChangeReference(dashboard.get("change"))
+        if (change != expectedChange) throw invalidResponse()
+        val workItems = parseChangeImpactArray(dashboard.get("workItems"), 256) { value ->
+            val row = value.requireObject()
+            row.requireExactKeys("record", "state")
+            ChangeImpactWorkItem(
+                parseChangeImpactExactReference(row.get("record"), "work-item"),
+                row.requireOneOf("state", changeImpactWorkItemStates),
+            )
+        }
+        fun parseArtifact(value: JsonElement): ChangeImpactArtifact {
+            val row = value.requireObject()
+            row.requireExactKeys("sourceWorkItem", "locator")
+            return ChangeImpactArtifact(
+                parseChangeImpactExactReference(row.get("sourceWorkItem"), "work-item"),
+                parseChangeImpactLocator(row.get("locator")),
+            )
+        }
+        val changedArtifacts = parseChangeImpactArray(dashboard.get("changedArtifacts"), 512, ::parseArtifact)
+        val effectTargets = parseChangeImpactArray(dashboard.get("effectTargets"), 512, ::parseArtifact)
+        val affectedUnits = parseChangeImpactArray(dashboard.get("affectedUnits"), 512, ::parseChangeImpactAffectedUnit)
+        val governance = dashboard.get("governance").requireObject()
+        governance.requireExactKeys("approval", "decisions", "risks", "authorityBoundary")
+        val approval = governance.get("approval").requireObject()
+        approval.requireExactKeys("state", "basis")
+        if (approval.requireString("state") != "not-established" ||
+            approval.requireString("basis") != "current-contract-has-no-change-approval-record" ||
+            governance.requireString("authorityBoundary") != "decisions-and-risk-acceptance-do-not-approve-the-change"
+        ) {
+            throw invalidResponse()
+        }
+        val decisions = parseChangeImpactArray(governance.get("decisions"), 256) { value ->
+            val row = value.requireObject()
+            row.requireExactKeys("record", "state", "outcome")
+            val state = row.requireOneOf("state", setOf("open", "decided", "deferred", "superseded"))
+            val outcome = row.requireOneOf("outcome", setOf("human-selected", "not-selected"))
+            if ((state == "decided") != (outcome == "human-selected")) throw invalidResponse()
+            ChangeImpactDecision(parseChangeImpactExactReference(row.get("record"), "decision"), state, outcome)
+        }
+        val risks = parseChangeImpactArray(governance.get("risks"), 256) { value ->
+            val row = value.requireObject()
+            row.requireExactKeys("record", "state", "likelihood", "impact", "acceptance")
+            val state = row.requireOneOf("state", setOf("open", "treated", "accepted", "closed"))
+            val acceptance = row.requireOneOf("acceptance", setOf("human-accepted", "not-accepted"))
+            if ((state == "accepted") != (acceptance == "human-accepted")) throw invalidResponse()
+            ChangeImpactRisk(
+                parseChangeImpactExactReference(row.get("record"), "risk"),
+                state,
+                row.requireOneOf("likelihood", setOf("rare", "unlikely", "possible", "likely", "almost-certain", "unknown")),
+                row.requireOneOf("impact", setOf("negligible", "minor", "moderate", "major", "critical", "unknown")),
+                acceptance,
+            )
+        }
+        val freshnessObject = dashboard.get("freshness").requireObject()
+        freshnessObject.requireExactKeys(
+            "state", "evaluatedAt", "unresolvedTraceLinks", "invalidTraceLinks", "staleTraceLinks",
+            "staleGovernanceReferences", "traceAnalysisTruncated", "coverageBoundary",
+        )
+        if (freshnessObject.requireString("coverageBoundary") !=
+            "absence-of-a-trace-link-does-not-prove-absence-of-impact"
+        ) {
+            throw invalidResponse()
+        }
+        val freshness = ChangeImpactFreshness(
+            freshnessObject.requireOneOf("state", setOf("current", "attention-required")),
+            freshnessObject.requireInstant("evaluatedAt"),
+            freshnessObject.requireBoundedNonNegativeLong("unresolvedTraceLinks", 1_000_000),
+            freshnessObject.requireBoundedNonNegativeLong("invalidTraceLinks", 1_000_000),
+            freshnessObject.requireBoundedNonNegativeLong("staleTraceLinks", 1_000_000),
+            freshnessObject.requireBoundedNonNegativeLong("staleGovernanceReferences", 1_000_000),
+            freshnessObject.requireBoolean("traceAnalysisTruncated"),
+        )
+        val limitsObject = dashboard.get("limits").requireObject()
+        limitsObject.requireExactKeys(
+            "workItems", "changedArtifacts", "effectTargets", "affectedUnits", "decisions", "risks", "truncated",
+        )
+        val limits = ChangeImpactLimits(
+            parseChangeImpactLimit(limitsObject.get("workItems")),
+            parseChangeImpactLimit(limitsObject.get("changedArtifacts")),
+            parseChangeImpactLimit(limitsObject.get("effectTargets")),
+            parseChangeImpactLimit(limitsObject.get("affectedUnits")),
+            parseChangeImpactLimit(limitsObject.get("decisions")),
+            parseChangeImpactLimit(limitsObject.get("risks")),
+            limitsObject.requireBoolean("truncated"),
+        )
+        val categories = listOf(
+            workItems.size.toLong() to limits.workItems,
+            changedArtifacts.size.toLong() to limits.changedArtifacts,
+            effectTargets.size.toLong() to limits.effectTargets,
+            affectedUnits.size.toLong() to limits.affectedUnits,
+            decisions.size.toLong() to limits.decisions,
+            risks.size.toLong() to limits.risks,
+        )
+        if (categories.any { (size, limit) -> size != limit.shown }) throw invalidResponse()
+        val truncated = freshness.traceAnalysisTruncated || categories.any { (_, limit) -> limit.omitted > 0 }
+        val attentionRequired = truncated || freshness.unresolvedTraceLinks > 0 || freshness.invalidTraceLinks > 0 ||
+            freshness.staleTraceLinks > 0 || freshness.staleGovernanceReferences > 0
+        val observedAt = dashboard.requireInstant("observedAt")
+        if (limits.truncated != truncated || (freshness.state == "attention-required") != attentionRequired ||
+            freshness.evaluatedAt.isAfter(observedAt)
+        ) {
+            throw invalidResponse()
+        }
+        ensureUniqueChangeImpactRows(workItems, changedArtifacts, effectTargets, affectedUnits, decisions, risks)
+        val limitations = parseChangeImpactLimitations(dashboard.get("limitations"))
+        val snapshotDigest = dashboard.requireDigest("snapshotDigest")
+        val digestBody = dashboard.deepCopy().apply { remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+        return ChangeImpactDashboard(
+            product.recordId,
+            product.revision,
+            product.digest,
+            change,
+            workItems,
+            changedArtifacts,
+            effectTargets,
+            affectedUnits,
+            decisions,
+            risks,
+            freshness,
+            limits,
+            observedAt,
+            limitations,
+            snapshotDigest,
         )
     }
 
@@ -2691,6 +3041,174 @@ internal object PortableDesignProtocol {
         val revision = decision.requireLong("revision")
         if (recordId == UUID(0, 0) || revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
         return PhaseDashboardDecision(recordId, revision, decision.requireDigest("digest"))
+    }
+
+    private fun <T> parseChangeImpactArray(
+        value: JsonElement?,
+        maximum: Int,
+        parse: (JsonElement) -> T,
+    ): List<T> {
+        if (value == null || !value.isJsonArray || value.asJsonArray.size() > maximum) throw invalidResponse()
+        return value.asJsonArray.map(parse)
+    }
+
+    private fun parseChangeImpactExactReference(
+        value: JsonElement?,
+        expectedType: String,
+    ): ChangeImpactExactReference {
+        val reference = value.requireObject()
+        reference.requireExactKeys("recordType", "recordId", "revision", "digest")
+        if (reference.requireString("recordType") != expectedType) throw invalidResponse()
+        val recordId = reference.requireNonEmptyUuid("recordId")
+        val revision = reference.requireLong("revision")
+        if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        return ChangeImpactExactReference(expectedType, recordId, revision, reference.requireDigest("digest"))
+    }
+
+    private fun parseChangeImpactChangeReference(value: JsonElement): ChangeImpactChangeReference {
+        val change = value.requireObject()
+        change.requireExactKeys("recordType", "recordId", "revision", "digest", "state", "effectEnvelope")
+        val envelope = change.get("effectEnvelope")
+        if (change.requireString("recordType") != "change" || envelope == null || !envelope.isJsonArray ||
+            envelope.asJsonArray.size() !in 1..changeImpactEffects.size
+        ) {
+            throw invalidResponse()
+        }
+        val effects = envelope.asJsonArray.map { effect ->
+            effect.requireString().takeIf(changeImpactEffects::contains) ?: throw invalidResponse()
+        }
+        val revision = change.requireLong("revision")
+        if (effects.distinct().size != effects.size || revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        return ChangeImpactChangeReference(
+            change.requireNonEmptyUuid("recordId"),
+            revision,
+            change.requireDigest("digest"),
+            change.requireOneOf("state", changeImpactStates),
+            effects,
+        )
+    }
+
+    private fun parseChangeImpactLocator(value: JsonElement?): ChangeImpactLocator {
+        val locator = value.requireObject()
+        return when (val kind = locator.requireString("kind")) {
+            "workspace-relative" -> {
+                locator.requireExactKeys("kind", "path")
+                ChangeImpactLocator(kind, workspaceRelativeScope(locator.requireString("path")))
+            }
+            "logical" -> {
+                locator.requireExactKeys("kind", "value")
+                val logical = locator.requireString("value")
+                if (!toolPattern.matches(logical)) throw invalidResponse()
+                ChangeImpactLocator(kind, logical)
+            }
+            "external-uri" -> {
+                locator.requireExactKeys("kind", "uri")
+                val raw = locator.requireString("uri")
+                if (raw.length !in 1..8_192 || raw.any(Char::isISOControl)) throw invalidResponse()
+                val parsed = try {
+                    URI(raw)
+                } catch (_: Exception) {
+                    throw invalidResponse()
+                }
+                val scheme = parsed.scheme?.lowercase()
+                val sensitive = Regex(
+                    "token|password|passwd|secret|signature|credential|api.?key|access.?key|auth",
+                    RegexOption.IGNORE_CASE,
+                )
+                val queryKeys = parsed.query?.split('&')?.map { it.substringBefore('=') }.orEmpty()
+                if (scheme !in setOf("http", "https", "urn") || parsed.userInfo != null ||
+                    ((scheme == "http" || scheme == "https") && parsed.host.isNullOrBlank()) ||
+                    queryKeys.any(sensitive::containsMatchIn) ||
+                    (!parsed.fragment.isNullOrEmpty() && sensitive.containsMatchIn(parsed.fragment))
+                ) {
+                    throw invalidResponse()
+                }
+                ChangeImpactLocator(kind, raw)
+            }
+            else -> throw invalidResponse()
+        }
+    }
+
+    private fun parseChangeImpactTraceEndpoint(value: JsonElement?): ChangeImpactTraceEndpoint {
+        val endpoint = value.requireObject()
+        endpoint.requireKeys(setOf("recordType", "recordId"), setOf("revision", "digest"))
+        val recordType = endpoint.requireOneOf("recordType", changeImpactRecordTypes)
+        if (recordType == "external") {
+            if (endpoint.has("revision") || endpoint.has("digest")) throw invalidResponse()
+            return ChangeImpactTraceEndpoint(
+                recordType,
+                portableText(endpoint.requireString("recordId"), minimum = 1, maximum = 500),
+                null,
+                null,
+            )
+        }
+        if (!endpoint.has("revision") || !endpoint.has("digest")) throw invalidResponse()
+        val revision = endpoint.requireLong("revision")
+        if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        return ChangeImpactTraceEndpoint(
+            recordType,
+            endpoint.requireNonEmptyUuid("recordId").toString(),
+            revision,
+            endpoint.requireDigest("digest"),
+        )
+    }
+
+    private fun parseChangeImpactAffectedUnit(value: JsonElement): ChangeImpactAffectedUnit {
+        val unit = value.requireObject()
+        unit.requireExactKeys("direction", "relationship", "endpoint", "trace")
+        val trace = unit.get("trace").requireObject()
+        trace.requireExactKeys("recordId", "revision", "assessmentDigest", "assessedState")
+        val traceRevision = trace.requireLong("revision")
+        if (traceRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        return ChangeImpactAffectedUnit(
+            unit.requireOneOf("direction", setOf("upstream", "downstream")),
+            unit.requireOneOf("relationship", changeImpactRelationships),
+            parseChangeImpactTraceEndpoint(unit.get("endpoint")),
+            ChangeImpactTraceAssessment(
+                trace.requireNonEmptyUuid("recordId"),
+                traceRevision,
+                trace.requireDigest("assessmentDigest"),
+                trace.requireOneOf("assessedState", setOf("valid", "unresolved", "stale", "invalid")),
+            ),
+        )
+    }
+
+    private fun parseChangeImpactLimit(value: JsonElement?): ChangeImpactLimit {
+        val limit = value.requireObject()
+        limit.requireExactKeys("shown", "total", "omitted")
+        val shown = limit.requireBoundedNonNegativeLong("shown", 1_000_000)
+        val total = limit.requireBoundedNonNegativeLong("total", 1_000_000)
+        val omitted = limit.requireBoundedNonNegativeLong("omitted", 1_000_000)
+        if (shown + omitted != total) throw invalidResponse()
+        return ChangeImpactLimit(shown, total, omitted)
+    }
+
+    private fun parseChangeImpactLimitations(value: JsonElement?): List<String> {
+        if (value == null || !value.isJsonArray || value.asJsonArray.size() !in 1..8) throw invalidResponse()
+        return value.asJsonArray.map { portableText(it.requireString(), minimum = 4, maximum = 1_000) }
+    }
+
+    private fun ensureUniqueChangeImpactRows(
+        workItems: List<ChangeImpactWorkItem>,
+        changedArtifacts: List<ChangeImpactArtifact>,
+        effectTargets: List<ChangeImpactArtifact>,
+        affectedUnits: List<ChangeImpactAffectedUnit>,
+        decisions: List<ChangeImpactDecision>,
+        risks: List<ChangeImpactRisk>,
+    ) {
+        fun <T> unique(values: List<T>): Boolean = values.distinct().size == values.size
+        fun artifactKey(value: ChangeImpactArtifact): String =
+            "${value.sourceWorkItem.recordId}:${value.locator.kind}:${value.locator.value}"
+        if (!unique(workItems.map { it.record.recordId }) ||
+            !unique(changedArtifacts.map(::artifactKey)) ||
+            !unique(effectTargets.map(::artifactKey)) ||
+            !unique(affectedUnits.map {
+                "${it.direction}:${it.endpoint.recordType}:${it.endpoint.recordId}:${it.trace.recordId}"
+            }) ||
+            !unique(decisions.map { it.record.recordId }) || !unique(risks.map { it.record.recordId })
+        ) {
+            throw invalidResponse()
+        }
     }
 
     private fun canonicalDigest(value: JsonElement): String {

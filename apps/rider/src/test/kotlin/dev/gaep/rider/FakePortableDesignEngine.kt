@@ -39,6 +39,11 @@ internal val invalidGovernanceBundleId: UUID = UUID.fromString("cccccccc-cccc-4c
 internal val invalidDigestBundleId: UUID = UUID.fromString("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
 internal val invalidCountBundleId: UUID = UUID.fromString("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")
 internal val invalidTimestampBundleId: UUID = UUID.fromString("ffffffff-ffff-4fff-8fff-ffffffffffff")
+internal val changeId: UUID = UUID.fromString("29292929-2929-4929-8929-292929292929")
+private val changeWorkItemId: UUID = UUID.fromString("30303030-3030-4030-8030-303030303030")
+private val changeTraceId: UUID = UUID.fromString("31313131-3131-4131-8131-313131313131")
+private val changeDecisionId: UUID = UUID.fromString("32323232-3232-4232-8232-323232323232")
+private val changeRiskId: UUID = UUID.fromString("34343434-3434-4434-8434-343434343434")
 internal const val privateRoot = "/Users/private/design-bundle"
 internal const val privateCredential = "PRIVATE-OAUTH-TOKEN"
 private var selectedAgent: JsonObject? = null
@@ -64,6 +69,16 @@ fun main(arguments: Array<String>) {
         when (method) {
             "readProduct" -> writeResult(id, productRecord())
             "dashboard.framework" -> handlePhaseDashboard(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "dashboard.changeImpact.changes" -> handleChangeImpactCatalog(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "dashboard.changeImpact" -> handleChangeImpact(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -227,6 +242,212 @@ private fun phaseDashboardPanel(
         addProperty("basis", basis)
     })
     addProperty("state", state)
+}
+
+private fun changeRecord(): JsonObject = JsonObject().apply {
+    addProperty("schemaVersion", 1)
+    addProperty("kind", "change")
+    addProperty("id", changeId.toString())
+    addProperty("productId", productId.toString())
+    addProperty("revision", 3)
+    addProperty("initiativeId", initiativeId.toString())
+    addProperty("title", "Private Change title is withheld")
+    addProperty("summary", "Private Change summary is withheld.")
+    add("baseline", JsonObject().apply {
+        addProperty("kind", "genesis")
+        addProperty("declaration", "No earlier projection.")
+        addProperty("rationale", "First projection.")
+    })
+    addProperty("state", "active")
+    add("effectEnvelope", JsonArray().apply { add("reversible-change") })
+    addProperty("createdAt", "2026-07-24T12:01:00.000Z")
+    addProperty("updatedAt", "2026-07-24T12:02:00.000Z")
+}
+
+private fun changeReference(): JsonObject {
+    val change = changeRecord()
+    return JsonObject().apply {
+        addProperty("recordType", "change")
+        addProperty("recordId", changeId.toString())
+        addProperty("revision", 3)
+        addProperty("digest", canonicalDigest(change))
+        addProperty("state", "active")
+        add("effectEnvelope", change.getAsJsonArray("effectEnvelope").deepCopy())
+    }
+}
+
+private fun handleChangeImpactCatalog(id: Long, params: JsonObject, workspacePath: String) {
+    val productDigest = canonicalDigest(productRecord())
+    if (params.keySet() != setOf("expectedProductId", "expectedProductRevision", "expectedProductDigest") ||
+        params.get("expectedProductId").asString != productId.toString() ||
+        params.get("expectedProductRevision").asLong != 7L ||
+        params.get("expectedProductDigest").asString != productDigest
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE CHANGE CATALOG PARAMS")
+        return
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "change-impact-change-catalog")
+        add("product", exactReference("product", productId, 7, productDigest))
+        add("items", JsonArray().apply { add(changeReference()) })
+        addProperty("total", 1)
+        addProperty("omitted", 0)
+        addProperty("observedAt", "2026-07-24T12:03:00.000Z")
+        addProperty("sourceBoundary", "current-governed-change-metadata-only")
+        add("limitations", JsonArray().apply {
+            add("The catalog contains exact current Change metadata only; Product text, Change text, and source content are withheld.")
+        })
+        addProperty("authorityBoundary", "change-catalog-selection-does-not-approve-change-or-authorize-effects")
+    }
+    if (workspacePath.endsWith("bad-change-catalog-binding")) {
+        content.getAsJsonObject("product").addProperty("digest", "sha256:${"0".repeat(64)}")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-change-catalog-digest")) {
+        value.getAsJsonArray("items")[0].asJsonObject.addProperty("state", "blocked")
+    }
+    if (workspacePath.endsWith("bad-change-catalog-private")) {
+        value.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+    }
+    writeResult(id, value)
+}
+
+private fun handleChangeImpact(id: Long, params: JsonObject, workspacePath: String) {
+    val productDigest = canonicalDigest(productRecord())
+    val change = changeReference()
+    if (params.keySet() != setOf(
+            "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedChangeId",
+            "expectedChangeRevision", "expectedChangeDigest",
+        ) || params.get("expectedProductId").asString != productId.toString() ||
+        params.get("expectedProductRevision").asLong != 7L ||
+        params.get("expectedProductDigest").asString != productDigest ||
+        params.get("expectedChangeId").asString != changeId.toString() ||
+        params.get("expectedChangeRevision").asLong != 3L ||
+        params.get("expectedChangeDigest").asString != change.get("digest").asString
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE CHANGE IMPACT PARAMS")
+        return
+    }
+    val workItem = exactReference("work-item", changeWorkItemId, 2, "sha256:${"3".repeat(64)}")
+    val decision = exactReference("decision", changeDecisionId, 1, "sha256:${"4".repeat(64)}")
+    val risk = exactReference("risk", changeRiskId, 1, "sha256:${"5".repeat(64)}")
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "change-impact-dashboard")
+        add("product", exactReference("product", productId, 7, productDigest))
+        add("change", change)
+        add("workItems", JsonArray().apply {
+            add(JsonObject().apply {
+                add("record", workItem.deepCopy())
+                addProperty("state", "in-progress")
+            })
+        })
+        add("changedArtifacts", JsonArray().apply {
+            add(changeArtifact(workItem, JsonObject().apply {
+                addProperty("kind", "workspace-relative")
+                addProperty("path", "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt")
+            }))
+        })
+        add("effectTargets", JsonArray().apply {
+            add(changeArtifact(workItem, JsonObject().apply {
+                addProperty("kind", "logical")
+                addProperty("value", "package.build")
+            }))
+        })
+        add("affectedUnits", JsonArray().apply {
+            add(JsonObject().apply {
+                addProperty("direction", "upstream")
+                addProperty("relationship", "affects")
+                add("endpoint", risk.deepCopy())
+                add("trace", JsonObject().apply {
+                    addProperty("recordId", changeTraceId.toString())
+                    addProperty("revision", 1)
+                    addProperty("assessmentDigest", "sha256:${"6".repeat(64)}")
+                    addProperty("assessedState", "valid")
+                })
+            })
+        })
+        add("governance", JsonObject().apply {
+            add("approval", JsonObject().apply {
+                addProperty("state", "not-established")
+                addProperty("basis", "current-contract-has-no-change-approval-record")
+            })
+            add("decisions", JsonArray().apply {
+                add(JsonObject().apply {
+                    add("record", decision)
+                    addProperty("state", "open")
+                    addProperty("outcome", "not-selected")
+                })
+            })
+            add("risks", JsonArray().apply {
+                add(JsonObject().apply {
+                    add("record", risk.deepCopy())
+                    addProperty("state", "open")
+                    addProperty("likelihood", "possible")
+                    addProperty("impact", "major")
+                    addProperty("acceptance", "not-accepted")
+                })
+            })
+            addProperty("authorityBoundary", "decisions-and-risk-acceptance-do-not-approve-the-change")
+        })
+        add("freshness", JsonObject().apply {
+            addProperty("state", "current")
+            addProperty("evaluatedAt", "2026-07-24T12:04:00.000Z")
+            addProperty("unresolvedTraceLinks", 0)
+            addProperty("invalidTraceLinks", 0)
+            addProperty("staleTraceLinks", 0)
+            addProperty("staleGovernanceReferences", 0)
+            addProperty("traceAnalysisTruncated", false)
+            addProperty("coverageBoundary", "absence-of-a-trace-link-does-not-prove-absence-of-impact")
+        })
+        add("limits", JsonObject().apply {
+            listOf("workItems", "changedArtifacts", "effectTargets", "affectedUnits", "decisions", "risks").forEach { key ->
+                add(key, JsonObject().apply {
+                    addProperty("shown", 1)
+                    addProperty("total", 1)
+                    addProperty("omitted", 0)
+                })
+            }
+            addProperty("truncated", false)
+        })
+        addProperty("observedAt", "2026-07-24T12:05:00.000Z")
+        addProperty("sourceBoundary", "current-governed-records-and-bounded-trace-analysis")
+        add("limitations", JsonArray().apply {
+            add("Only persisted Work Item scopes and trace links are shown; missing trace does not prove missing impact.")
+            add("The current record model has no general Change approval record, so approval remains not established.")
+        })
+        addProperty("authorityBoundary", "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects")
+    }
+    if (workspacePath.endsWith("bad-change-impact-binding")) {
+        content.getAsJsonObject("change").addProperty("digest", "sha256:${"0".repeat(64)}")
+    }
+    if (workspacePath.endsWith("bad-change-impact-count")) {
+        content.getAsJsonObject("limits").getAsJsonObject("workItems").addProperty("total", 2)
+    }
+    if (workspacePath.endsWith("bad-change-impact-freshness")) {
+        content.getAsJsonObject("freshness").addProperty("state", "attention-required")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-change-impact-digest")) {
+        value.getAsJsonObject("change").addProperty("state", "blocked")
+    }
+    if (workspacePath.endsWith("bad-change-impact-private")) {
+        value.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+    }
+    writeResult(id, value)
+}
+
+private fun exactReference(type: String, id: UUID, revision: Long, digest: String): JsonObject = JsonObject().apply {
+    addProperty("recordType", type)
+    addProperty("recordId", id.toString())
+    addProperty("revision", revision)
+    addProperty("digest", digest)
+}
+
+private fun changeArtifact(workItem: JsonObject, locator: JsonObject): JsonObject = JsonObject().apply {
+    add("sourceWorkItem", workItem.deepCopy())
+    add("locator", locator)
 }
 
 private fun handleManagedReadOnlyPreview(id: Long, params: JsonObject, workspacePath: String) {

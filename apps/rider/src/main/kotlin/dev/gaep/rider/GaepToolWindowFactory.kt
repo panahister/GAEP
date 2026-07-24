@@ -76,6 +76,15 @@ class GaepToolWindowFactory : ToolWindowFactory {
 
         addAction("Refresh Product") { controller.readProduct() }
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
+
+        val changeImpactButton = JButton("Show Change and impact…").apply {
+            addActionListener {
+                beginChangeImpact(project, controller, status, output, buttons)
+            }
+        }
+        buttons += changeImpactButton
+        actions.add(changeImpactButton)
+
         addAction("Refresh agent readiness") { controller.readAgentReadiness() }
 
         val selectionButton = JButton("Select agent configuration…").apply {
@@ -178,6 +187,8 @@ class GaepToolWindowFactory : ToolWindowFactory {
         actions.add(importButton)
 
         val governance = JTextArea(
+            "Change/Impact boundary: selection and projection are exact, audit-gated, read-only metadata views; " +
+                "they cannot approve a Change, accept a Risk, mutate records, or authorize effects. " +
             "Agent boundary: Codex and Claude readiness is observation-only; guarded selection and versioned handoff record portable configuration and history only. " +
                 "They cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. " +
                 "Managed read-only execution is a separate digest-bound command: every Tool permission remains denied, only observation is allowed, " +
@@ -211,6 +222,88 @@ class GaepToolWindowFactory : ToolWindowFactory {
         val content = ContentFactory.getInstance().createContent(panel, "Product", false)
         content.setDisposer(client)
         toolWindow.contentManager.addContent(content)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun beginChangeImpact(
+        project: Project,
+        controller: RiderProductController,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+    ) {
+        buttons.forEach { it.isEnabled = false }
+        status.text = "Loading exact current Change catalog…"
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching { controller.readChangeImpactContext() }
+                .onSuccess { context ->
+                    ApplicationManager.getApplication().invokeLater {
+                        if (context.catalog.items.isEmpty()) {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "GAEP Change/Impact catalog is empty",
+                                "No current Change metadata is available for the exact Change/Impact dashboard.",
+                            )
+                            return@invokeLater
+                        }
+                        val labels = context.catalog.items.map { change ->
+                            "${change.recordId} · ${change.state} · revision ${change.revision} · " +
+                                change.effectEnvelope.joinToString(", ")
+                        }.toTypedArray()
+                        val selected = Messages.showChooseDialog(
+                            project,
+                            "Select one exact current Change (${context.catalog.items.size} of ${context.catalog.total}; " +
+                                "${context.catalog.omitted} omitted). Selection grants no approval or effect authority.",
+                            "Open Read-only Change/Impact Projection",
+                            Messages.getQuestionIcon(),
+                            labels,
+                            labels.first(),
+                        )
+                        if (selected < 0) {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "GAEP Change/Impact selection cancelled",
+                                "No Change/Impact projection was requested and no authority was granted.",
+                            )
+                            return@invokeLater
+                        }
+                        val change = context.catalog.items.getOrNull(selected)
+                        if (change == null) {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "GAEP request stopped",
+                                "Select one verified Change from the current exact catalog.",
+                            )
+                            return@invokeLater
+                        }
+                        status.text = "Loading exact Change/Impact projection…"
+                        ApplicationManager.getApplication().executeOnPooledThread {
+                            runCatching { controller.readChangeImpact(context, change) }
+                                .onSuccess { rendered ->
+                                    ApplicationManager.getApplication().invokeLater {
+                                        finishRequest(status, output, buttons, "GAEP Change/Impact projection ready", rendered)
+                                    }
+                                }
+                                .onFailure { error ->
+                                    ApplicationManager.getApplication().invokeLater {
+                                        finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                                    }
+                                }
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    ApplicationManager.getApplication().invokeLater {
+                        finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                    }
+                }
+        }
     }
 
     private fun beginManagedEvidenceNavigation(

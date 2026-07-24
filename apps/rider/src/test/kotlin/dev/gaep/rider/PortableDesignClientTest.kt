@@ -120,6 +120,14 @@ class PortableDesignClientTest {
         val badDashboardApplicabilityRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-applicability"))
         val badDashboardDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-digest"))
         val badDashboardPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-private"))
+        val badChangeCatalogBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-catalog-binding"))
+        val badChangeCatalogDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-catalog-digest"))
+        val badChangeCatalogPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-catalog-private"))
+        val badChangeImpactBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-binding"))
+        val badChangeImpactCountRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-count"))
+        val badChangeImpactFreshnessRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-freshness"))
+        val badChangeImpactDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-digest"))
+        val badChangeImpactPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-private"))
         val executable = createFakeEngineLauncher(temporaryRoot)
         GaepEngineClient(temporaryRoot, executable.toString()).use { client ->
             val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -195,6 +203,68 @@ class PortableDesignClientTest {
             }
             assertFailsWith<IllegalArgumentException> {
                 client.readPhaseDashboard(product.copy(digest = "sha256:not-a-digest"))
+            }
+
+            val changeCatalog = client.listChangeImpactChanges(product)
+            assertEquals(productId, changeCatalog.productId)
+            assertEquals(1, changeCatalog.total)
+            assertEquals(0, changeCatalog.omitted)
+            assertEquals(changeId, changeCatalog.items.single().recordId)
+            assertEquals(listOf("reversible-change"), changeCatalog.items.single().effectEnvelope)
+            val changeDashboard = client.readChangeImpact(product, changeCatalog.items.single())
+            assertEquals(changeId, changeDashboard.change.recordId)
+            assertEquals("current", changeDashboard.freshness.state)
+            assertEquals(1, changeDashboard.workItems.size)
+            assertEquals("workspace-relative", changeDashboard.changedArtifacts.single().locator.kind)
+            assertEquals("logical", changeDashboard.effectTargets.single().locator.kind)
+            assertEquals("risk", changeDashboard.affectedUnits.single().endpoint.recordType)
+            assertEquals("valid", changeDashboard.affectedUnits.single().trace.assessedState)
+            assertEquals("not-selected", changeDashboard.decisions.single().outcome)
+            assertEquals("not-accepted", changeDashboard.risks.single().acceptance)
+            assertFalse(changeDashboard.limits.truncated)
+            val changeContext = RiderProductController(client).readChangeImpactContext()
+            val changeView = RiderProductController(client).readChangeImpact(changeContext, changeContext.catalog.items.single())
+            assertTrue(changeView.contains("GAEP exact Change and impact dashboard"))
+            assertTrue(changeView.contains("Approval: not established"))
+            assertTrue(changeView.contains("absence of a trace link does not prove absence of impact"))
+            assertTrue(changeView.contains("grants no Change approval, risk acceptance, mutation"))
+            assertFalse(changeView.contains("Founder Product"))
+            assertFalse(changeView.contains("Private Change title"))
+            assertFalse(changeView.contains(privateRoot))
+            assertFalse(changeView.contains(privateCredential))
+
+            listOf(
+                badChangeCatalogBindingRoot,
+                badChangeCatalogDigestRoot,
+                badChangeCatalogPrivateRoot,
+            ).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val hostileProduct = hostileClient.readProductBinding()
+                    val invalidCatalog = hostError { hostileClient.listChangeImpactChanges(hostileProduct) }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidCatalog.kind)
+                    assertPrivateTextWithheld(invalidCatalog)
+                }
+            }
+            listOf(
+                badChangeImpactBindingRoot,
+                badChangeImpactCountRoot,
+                badChangeImpactFreshnessRoot,
+                badChangeImpactDigestRoot,
+                badChangeImpactPrivateRoot,
+            ).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val hostileProduct = hostileClient.readProductBinding()
+                    val hostileChange = hostileClient.listChangeImpactChanges(hostileProduct).items.single()
+                    val invalidDashboard = hostError { hostileClient.readChangeImpact(hostileProduct, hostileChange) }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidDashboard.kind)
+                    assertPrivateTextWithheld(invalidDashboard)
+                }
+            }
+            assertFailsWith<IllegalArgumentException> {
+                client.readChangeImpact(
+                    product,
+                    changeCatalog.items.single().copy(digest = "sha256:not-a-digest"),
+                )
             }
 
             val readiness = client.probeAgentReadiness()

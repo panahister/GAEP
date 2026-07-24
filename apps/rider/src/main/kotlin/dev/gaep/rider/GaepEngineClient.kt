@@ -97,6 +97,47 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun listChangeImpactChanges(product: ProductBinding): ChangeImpactChangeCatalog {
+        PortableDesignProtocol.validateProductId(product.id)
+        PortableDesignProtocol.validateProductRevision(product.revision)
+        require(Regex("^sha256:[0-9a-f]{64}$").matches(product.digest)) { "Product digest must be SHA-256" }
+        val params = JsonObject().apply {
+            addProperty("expectedProductId", product.id.toString())
+            addProperty("expectedProductRevision", product.revision)
+            addProperty("expectedProductDigest", product.digest)
+        }
+        return portableRequest("dashboard.changeImpact.changes", params) { envelope ->
+            PortableDesignProtocol.parseChangeImpactChangeCatalogEnvelope(envelope, product)
+        }
+    }
+
+    @Synchronized
+    fun readChangeImpact(
+        product: ProductBinding,
+        change: ChangeImpactChangeReference,
+    ): ChangeImpactDashboard {
+        PortableDesignProtocol.validateProductId(product.id)
+        PortableDesignProtocol.validateProductRevision(product.revision)
+        PortableDesignProtocol.validateProductId(change.recordId)
+        PortableDesignProtocol.validateProductRevision(change.revision)
+        require(
+            Regex("^sha256:[0-9a-f]{64}$").matches(product.digest) &&
+                Regex("^sha256:[0-9a-f]{64}$").matches(change.digest),
+        ) { "Product and Change digests must be SHA-256" }
+        val params = JsonObject().apply {
+            addProperty("expectedProductId", product.id.toString())
+            addProperty("expectedProductRevision", product.revision)
+            addProperty("expectedProductDigest", product.digest)
+            addProperty("expectedChangeId", change.recordId.toString())
+            addProperty("expectedChangeRevision", change.revision)
+            addProperty("expectedChangeDigest", change.digest)
+        }
+        return portableRequest("dashboard.changeImpact", params) { envelope ->
+            PortableDesignProtocol.parseChangeImpactDashboardEnvelope(envelope, product, change)
+        }
+    }
+
+    @Synchronized
     fun probeAgentReadiness(): List<AgentReadinessSnapshot> = portableRequest(
         "probeAgents",
         JsonObject(),
