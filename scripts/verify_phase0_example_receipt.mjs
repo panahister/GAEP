@@ -80,9 +80,18 @@ function assertSameReference(left, right, label) {
       left.revision !== right.revision || left.digest !== right.digest) fail(`${label} differs`)
 }
 
+function verifyDashboardEvidenceCues(cues, expectedFreshness, label) {
+  assertExactKeys(cues, ["freshness", "confidence"], label)
+  assertExactKeys(cues.confidence, ["state", "basis"], `${label}.confidence`)
+  if (cues.freshness !== expectedFreshness || cues.confidence.state !== "not-assessed" ||
+      cues.confidence.basis !== "no-governed-confidence-evaluation-is-bound") {
+    fail(`${label} differ from governed evidence truth`)
+  }
+}
+
 function verifyPhaseDashboard(dashboard) {
   assertExactKeys(dashboard, [
-    "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt", "sourceBoundary",
+    "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "evidenceCues", "observedAt", "sourceBoundary",
     "limitations", "authorityBoundary", "compositionDigest",
   ], "receipt.dashboard")
   if (dashboard.schemaVersion !== 1 || dashboard.kind !== "phase-dashboard-framework" ||
@@ -120,6 +129,7 @@ function verifyPhaseDashboard(dashboard) {
       fail(`dashboard panel ${index} differs from the canonical applicability contract`)
     }
   })
+  verifyDashboardEvidenceCues(dashboard.evidenceCues, "current", "receipt.dashboard.evidenceCues")
   assertDate(dashboard.observedAt, "receipt.dashboard.observedAt")
   if (dashboard.observedAt !== "2026-07-24T00:00:00.000Z") fail("dashboard observation time is not deterministic")
   if (canonicalJson(dashboard.limitations) !== canonicalJson(dashboardLimitations)) fail("dashboard limitations differ")
@@ -173,7 +183,7 @@ function verifyProjectedRecord(record, recordType, state, label) {
 function verifyChangeImpactDashboard(dashboard, phaseProduct, catalogItem) {
   assertExactKeys(dashboard, [
     "schemaVersion", "kind", "product", "change", "workItems", "changedArtifacts", "effectTargets",
-    "affectedUnits", "governance", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+    "affectedUnits", "governance", "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations",
     "authorityBoundary", "snapshotDigest",
   ], "receipt.changeImpact.dashboard")
   if (dashboard.schemaVersion !== 1 || dashboard.kind !== "change-impact-dashboard" ||
@@ -269,6 +279,7 @@ function verifyChangeImpactDashboard(dashboard, phaseProduct, catalogItem) {
     fail("Change/Impact freshness differs from the current exact trace graph")
   }
   assertDate(dashboard.freshness.evaluatedAt, "receipt.changeImpact.dashboard.freshness.evaluatedAt")
+  verifyDashboardEvidenceCues(dashboard.evidenceCues, "current", "receipt.changeImpact.dashboard.evidenceCues")
   assertDate(dashboard.observedAt, "receipt.changeImpact.dashboard.observedAt")
   if (dashboard.freshness.evaluatedAt !== dashboard.observedAt) fail("Change/Impact observation is not bound to its trace evaluation")
 
@@ -298,7 +309,7 @@ function verifyAgentModelLimit(limit, expected, label) {
 async function verifyAgentModelDashboard(dashboard, phaseProduct, portableRun, scenario) {
   assertExactKeys(dashboard, [
     "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs", "providerMetrics",
-    "freshness", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+    "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
   ], "receipt.agentModel")
   if (dashboard.schemaVersion !== 1 || dashboard.kind !== "agent-model-dashboard" ||
       dashboard.sourceBoundary !== "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" ||
@@ -429,6 +440,7 @@ async function verifyAgentModelDashboard(dashboard, phaseProduct, portableRun, s
       dashboard.freshness.coverageBoundary !== "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness") {
     fail("Agent/Model freshness differs from the exact current observations")
   }
+  verifyDashboardEvidenceCues(dashboard.evidenceCues, "current", "receipt.agentModel.evidenceCues")
   assertDate(dashboard.observedAt, "receipt.agentModel.observedAt")
   if (Date.parse(capability.observedAt) > Date.parse(dashboard.observedAt)) fail("Agent/Model capability observation is newer than the snapshot")
   assertExactKeys(dashboard.limits, ["capabilities", "runs", "handoffs", "managedRuns", "truncated"], "receipt.agentModel.limits")
@@ -452,6 +464,9 @@ function dashboardSemanticProjection(dashboard) {
       basis: panel.applicability.basis,
     })),
     dashboardStates: dashboard.panels.map((panel) => panel.state),
+    dashboardSourceBoundary: dashboard.sourceBoundary,
+    dashboardEvidenceFreshness: dashboard.evidenceCues.freshness,
+    dashboardConfidenceState: dashboard.evidenceCues.confidence.state,
     dashboardAuthorityBoundary: dashboard.authorityBoundary,
   }
 }
@@ -467,6 +482,9 @@ function changeImpactSemanticProjection(changeImpact) {
     changeImpactDecisionCount: changeImpact.dashboard.governance.decisions.length,
     changeImpactRiskCount: changeImpact.dashboard.governance.risks.length,
     changeImpactFreshness: changeImpact.dashboard.freshness.state,
+    changeImpactSourceBoundary: changeImpact.dashboard.sourceBoundary,
+    changeImpactEvidenceFreshness: changeImpact.dashboard.evidenceCues.freshness,
+    changeImpactConfidenceState: changeImpact.dashboard.evidenceCues.confidence.state,
     changeImpactApproval: changeImpact.dashboard.governance.approval.state,
     changeImpactTruncated: changeImpact.dashboard.limits.truncated,
     changeImpactAuthorityBoundary: changeImpact.dashboard.authorityBoundary,
@@ -487,6 +505,9 @@ function agentModelSemanticProjection(agentModel) {
     agentUsageState: agentModel.providerMetrics.usage.state,
     agentCostState: agentModel.providerMetrics.cost.state,
     agentFreshness: agentModel.freshness.state,
+    agentSourceBoundary: agentModel.sourceBoundary,
+    agentEvidenceFreshness: agentModel.evidenceCues.freshness,
+    agentConfidenceState: agentModel.evidenceCues.confidence.state,
     agentTruncated: agentModel.limits.truncated,
     agentAuthorityBoundary: agentModel.authorityBoundary,
   }
@@ -540,12 +561,15 @@ export async function loadPhase0ExampleContract() {
     "toolDefinitionCount", "readScopeCount", "writeScopeCount", "gatePhases", "completedStepCount",
     "totalStepCount", "eventTypes", "eventCount", "actualEffects", "stagingPresent", "warnings", "auditValid",
     "managedInventoryCount", "dashboardPhase", "dashboardPanelIds", "dashboardApplicability", "dashboardStates",
-    "dashboardAuthorityBoundary", "changeCatalogCount", "changeCatalogOmitted", "changeImpactWorkItemCount",
+    "dashboardSourceBoundary", "dashboardEvidenceFreshness", "dashboardConfidenceState", "dashboardAuthorityBoundary",
+    "changeCatalogCount", "changeCatalogOmitted", "changeImpactWorkItemCount",
     "changeImpactChangedArtifactCount", "changeImpactEffectTargetCount", "changeImpactAffectedUnitCount",
-    "changeImpactDecisionCount", "changeImpactRiskCount", "changeImpactFreshness", "changeImpactApproval",
+    "changeImpactDecisionCount", "changeImpactRiskCount", "changeImpactFreshness", "changeImpactSourceBoundary",
+    "changeImpactEvidenceFreshness", "changeImpactConfidenceState", "changeImpactApproval",
     "changeImpactTruncated", "changeImpactAuthorityBoundary", "agentCapabilityCount", "agentSelectedCapabilityCount",
     "agentSelectionStatus", "agentSelectionCapabilityState", "agentRunCount", "agentManagedRunCount",
     "agentBoundManagedResultCount", "agentHandoffCount", "agentUsageState", "agentCostState", "agentFreshness",
+    "agentSourceBoundary", "agentEvidenceFreshness", "agentConfidenceState",
     "agentTruncated", "agentAuthorityBoundary",
   ], "expected summary")
   if (expectedSummary.schemaVersion !== 1 || expectedSummary.kind !== "gaep-phase0-example-semantic-summary" ||

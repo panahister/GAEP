@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 import test from "node:test"
 
+import { canonicalDigest } from "@gaep/agent-sdk"
+
 import { runPhase0Example } from "./run_phase0_example.mjs"
 import { verifyPhase0ExampleReceiptFile, verifyPhase0ExampleReceiptObject } from "./verify_phase0_example_receipt.mjs"
 
@@ -142,6 +144,16 @@ test("rejects semantic tampering, oversized files, and symlink receipts", async 
       /dashboard panel 0 differs from the canonical applicability contract/,
     )
 
+    const dashboardCueTampered = structuredClone(receipt)
+    dashboardCueTampered.dashboard.evidenceCues.freshness = "unknown"
+    dashboardCueTampered.dashboard.compositionDigest = canonicalDigest(
+      (({ compositionDigest: _, ...content }) => content)(dashboardCueTampered.dashboard),
+    )
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(dashboardCueTampered),
+      /dashboard\.evidenceCues differ from governed evidence truth/,
+    )
+
     const productBindingTampered = structuredClone(receipt)
     productBindingTampered.changeImpact.catalog.product.recordId = randomUUID()
     await assert.rejects(
@@ -161,6 +173,16 @@ test("rejects semantic tampering, oversized files, and symlink receipts", async 
     await assert.rejects(
       verifyPhase0ExampleReceiptObject(freshnessTampered),
       /freshness differs from the current exact trace graph/,
+    )
+
+    const changeCueTampered = structuredClone(receipt)
+    changeCueTampered.changeImpact.dashboard.evidenceCues.freshness = "stale"
+    changeCueTampered.changeImpact.dashboard.snapshotDigest = canonicalDigest(
+      (({ snapshotDigest: _, ...content }) => content)(changeCueTampered.changeImpact.dashboard),
+    )
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(changeCueTampered),
+      /changeImpact\.dashboard\.evidenceCues differ from governed evidence truth/,
     )
 
     const authorityTampered = structuredClone(receipt)
@@ -203,6 +225,16 @@ test("rejects semantic tampering, oversized files, and symlink receipts", async 
     await assert.rejects(
       verifyPhase0ExampleReceiptObject(agentFreshnessTampered),
       /Agent\/Model freshness differs/,
+    )
+
+    const agentCueTampered = structuredClone(receipt)
+    agentCueTampered.agentModel.evidenceCues.confidence.state = "supported"
+    agentCueTampered.agentModel.snapshotDigest = canonicalDigest(
+      (({ snapshotDigest: _, ...content }) => content)(agentCueTampered.agentModel),
+    )
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(agentCueTampered),
+      /agentModel\.evidenceCues differ from governed evidence truth/,
     )
 
     const agentMetricTampered = structuredClone(receipt)

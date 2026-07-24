@@ -66,6 +66,9 @@
     "active",
     "active"
   ],
+  "dashboardSourceBoundary": "governed-repository-and-engine-only",
+  "dashboardEvidenceFreshness": "current",
+  "dashboardConfidenceState": "not-assessed",
   "dashboardAuthorityBoundary": "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
   "changeCatalogCount": 1,
   "changeCatalogOmitted": 0,
@@ -76,6 +79,9 @@
   "changeImpactDecisionCount": 1,
   "changeImpactRiskCount": 1,
   "changeImpactFreshness": "current",
+  "changeImpactSourceBoundary": "current-governed-records-and-bounded-trace-analysis",
+  "changeImpactEvidenceFreshness": "current",
+  "changeImpactConfidenceState": "not-assessed",
   "changeImpactApproval": "not-established",
   "changeImpactTruncated": false,
   "changeImpactAuthorityBoundary": "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects",
@@ -90,6 +96,9 @@
   "agentUsageState": "unavailable",
   "agentCostState": "unavailable",
   "agentFreshness": "current",
+  "agentSourceBoundary": "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata",
+  "agentEvidenceFreshness": "current",
+  "agentConfidenceState": "not-assessed",
   "agentTruncated": false,
   "agentAuthorityBoundary": "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects"
 }
