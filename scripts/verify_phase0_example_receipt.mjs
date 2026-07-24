@@ -46,6 +46,29 @@ const dashboardLimitations = [
   "The phase dashboard remains attention-required until a governed applicability decision is bound.",
 ]
 
+const changeCatalogLimitations = [
+  "The catalog contains exact current Change metadata only; Product text, Change text, and source content are withheld.",
+  "At most 256 Changes are shown in deterministic ID order; omitted Changes require another governed selection surface.",
+]
+
+const changeImpactLimitations = [
+  "Only persisted Work Item scopes and trace links are shown; missing trace does not prove missing impact.",
+  "The current record model has no general Change approval record, so approval remains not established.",
+]
+
+function assertExactReference(reference, recordType, label) {
+  assertExactKeys(reference, ["recordType", "recordId", "revision", "digest"], label)
+  if (reference.recordType !== recordType) fail(`${label} record type differs`)
+  assertUuid(reference.recordId, `${label}.recordId`)
+  if (!Number.isSafeInteger(reference.revision) || reference.revision < 1) fail(`${label}.revision must be positive`)
+  assertDigest(reference.digest, `${label}.digest`)
+}
+
+function assertSameReference(left, right, label) {
+  if (left.recordType !== right.recordType || left.recordId.toLowerCase() !== right.recordId.toLowerCase() ||
+      left.revision !== right.revision || left.digest !== right.digest) fail(`${label} differs`)
+}
+
 function verifyPhaseDashboard(dashboard) {
   assertExactKeys(dashboard, [
     "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt", "sourceBoundary",
@@ -94,6 +117,166 @@ function verifyPhaseDashboard(dashboard) {
   if (compositionDigest !== canonicalDigest(content)) fail("dashboard composition digest differs")
 }
 
+function verifyChangeCatalog(catalog, phaseProduct) {
+  assertExactKeys(catalog, [
+    "schemaVersion", "kind", "product", "items", "total", "omitted", "observedAt", "sourceBoundary",
+    "limitations", "authorityBoundary", "snapshotDigest",
+  ], "receipt.changeImpact.catalog")
+  if (catalog.schemaVersion !== 1 || catalog.kind !== "change-impact-change-catalog" ||
+      catalog.sourceBoundary !== "current-governed-change-metadata-only" ||
+      catalog.authorityBoundary !== "change-catalog-selection-does-not-approve-change-or-authorize-effects") {
+    fail("Change catalog identity or authority boundary differs")
+  }
+  assertExactReference(catalog.product, "product", "receipt.changeImpact.catalog.product")
+  assertSameReference(catalog.product, phaseProduct, "Change catalog Product binding")
+  if (!Array.isArray(catalog.items) || catalog.items.length !== 1 || catalog.total !== 1 || catalog.omitted !== 0) {
+    fail("Change catalog counts must reconcile to the canonical one-Change projection")
+  }
+  const item = catalog.items[0]
+  assertExactKeys(item, ["recordType", "recordId", "revision", "digest", "state", "effectEnvelope"], "receipt.changeImpact.catalog.items[0]")
+  assertExactReference((({ state: _state, effectEnvelope: _effects, ...reference }) => reference)(item), "change", "receipt.changeImpact.catalog.items[0].reference")
+  if (item.state !== "proposed" || canonicalJson(item.effectEnvelope) !== canonicalJson(["observe"])) {
+    fail("Change catalog item differs from the canonical proposed observation-only Change")
+  }
+  assertDate(catalog.observedAt, "receipt.changeImpact.catalog.observedAt")
+  if (canonicalJson(catalog.limitations) !== canonicalJson(changeCatalogLimitations)) fail("Change catalog limitations differ")
+  assertDigest(catalog.snapshotDigest, "receipt.changeImpact.catalog.snapshotDigest")
+  const { snapshotDigest, ...content } = catalog
+  if (snapshotDigest !== canonicalDigest(content)) fail("Change catalog snapshot digest differs")
+  return item
+}
+
+function assertLimit(limit, expected, label) {
+  assertExactKeys(limit, ["shown", "total", "omitted"], label)
+  if (limit.shown !== expected || limit.total !== expected || limit.omitted !== 0) {
+    fail(`${label} does not reconcile to the canonical projection`)
+  }
+}
+
+function verifyProjectedRecord(record, recordType, state, label) {
+  assertExactKeys(record, ["record", "state"], label)
+  assertExactReference(record.record, recordType, `${label}.record`)
+  if (record.state !== state) fail(`${label} state differs`)
+}
+
+function verifyChangeImpactDashboard(dashboard, phaseProduct, catalogItem) {
+  assertExactKeys(dashboard, [
+    "schemaVersion", "kind", "product", "change", "workItems", "changedArtifacts", "effectTargets",
+    "affectedUnits", "governance", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+    "authorityBoundary", "snapshotDigest",
+  ], "receipt.changeImpact.dashboard")
+  if (dashboard.schemaVersion !== 1 || dashboard.kind !== "change-impact-dashboard" ||
+      dashboard.sourceBoundary !== "current-governed-records-and-bounded-trace-analysis" ||
+      dashboard.authorityBoundary !== "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects") {
+    fail("Change/Impact dashboard identity or authority boundary differs")
+  }
+  assertExactReference(dashboard.product, "product", "receipt.changeImpact.dashboard.product")
+  assertSameReference(dashboard.product, phaseProduct, "Change/Impact dashboard Product binding")
+  assertExactKeys(dashboard.change, ["recordType", "recordId", "revision", "digest", "state", "effectEnvelope"], "receipt.changeImpact.dashboard.change")
+  assertExactReference((({ state: _state, effectEnvelope: _effects, ...reference }) => reference)(dashboard.change), "change", "receipt.changeImpact.dashboard.change.reference")
+  assertSameReference(dashboard.change, catalogItem, "Change/Impact selected Change binding")
+  if (dashboard.change.state !== "proposed" || canonicalJson(dashboard.change.effectEnvelope) !== canonicalJson(["observe"])) {
+    fail("Change/Impact selected Change semantics differ")
+  }
+
+  if (!Array.isArray(dashboard.workItems) || dashboard.workItems.length !== 1) fail("Change/Impact dashboard must contain one Work Item")
+  verifyProjectedRecord(dashboard.workItems[0], "work-item", "proposed", "receipt.changeImpact.dashboard.workItems[0]")
+  const workItemReference = dashboard.workItems[0].record
+  const verifyArtifact = (artifact, locator, label) => {
+    assertExactKeys(artifact, ["sourceWorkItem", "locator"], label)
+    assertExactReference(artifact.sourceWorkItem, "work-item", `${label}.sourceWorkItem`)
+    assertSameReference(artifact.sourceWorkItem, workItemReference, `${label} Work Item binding`)
+    if (canonicalJson(artifact.locator) !== canonicalJson(locator)) fail(`${label} locator differs`)
+  }
+  if (!Array.isArray(dashboard.changedArtifacts) || dashboard.changedArtifacts.length !== 1) {
+    fail("Change/Impact dashboard must contain one changed artifact")
+  }
+  verifyArtifact(dashboard.changedArtifacts[0], {
+    kind: "workspace-relative", path: "packages/engine/src/change-impact-dashboard.ts",
+  }, "receipt.changeImpact.dashboard.changedArtifacts[0]")
+  if (!Array.isArray(dashboard.effectTargets) || dashboard.effectTargets.length !== 1) {
+    fail("Change/Impact dashboard must contain one effect target")
+  }
+  verifyArtifact(dashboard.effectTargets[0], {
+    kind: "logical", value: "phase0.example.change-impact",
+  }, "receipt.changeImpact.dashboard.effectTargets[0]")
+
+  if (!Array.isArray(dashboard.affectedUnits) || dashboard.affectedUnits.length !== 2) {
+    fail("Change/Impact dashboard must contain the exact Decision and Risk affected units")
+  }
+  const affectedTypes = new Set()
+  for (const [index, unit] of dashboard.affectedUnits.entries()) {
+    const label = `receipt.changeImpact.dashboard.affectedUnits[${index}]`
+    assertExactKeys(unit, ["direction", "relationship", "endpoint", "trace"], label)
+    if (unit.direction !== "upstream" || unit.relationship !== "affects") fail(`${label} relationship differs`)
+    assertExactReference(unit.endpoint, unit.endpoint?.recordType, `${label}.endpoint`)
+    if (unit.endpoint.recordType !== "decision" && unit.endpoint.recordType !== "risk") fail(`${label} endpoint type differs`)
+    if (affectedTypes.has(unit.endpoint.recordType)) fail("Change/Impact affected unit types must be unique")
+    affectedTypes.add(unit.endpoint.recordType)
+    assertExactKeys(unit.trace, ["recordId", "revision", "assessmentDigest", "assessedState"], `${label}.trace`)
+    assertUuid(unit.trace.recordId, `${label}.trace.recordId`)
+    if (unit.trace.revision !== 1 || unit.trace.assessedState !== "valid") fail(`${label} trace assessment differs`)
+    assertDigest(unit.trace.assessmentDigest, `${label}.trace.assessmentDigest`)
+  }
+
+  assertExactKeys(dashboard.governance, ["approval", "decisions", "risks", "authorityBoundary"], "receipt.changeImpact.dashboard.governance")
+  assertExactKeys(dashboard.governance.approval, ["state", "basis"], "receipt.changeImpact.dashboard.governance.approval")
+  if (dashboard.governance.approval.state !== "not-established" ||
+      dashboard.governance.approval.basis !== "current-contract-has-no-change-approval-record" ||
+      dashboard.governance.authorityBoundary !== "decisions-and-risk-acceptance-do-not-approve-the-change") {
+    fail("Change/Impact governance authority differs")
+  }
+  if (!Array.isArray(dashboard.governance.decisions) || dashboard.governance.decisions.length !== 1) {
+    fail("Change/Impact governance must contain one Decision")
+  }
+  const decision = dashboard.governance.decisions[0]
+  assertExactKeys(decision, ["record", "state", "outcome"], "receipt.changeImpact.dashboard.governance.decisions[0]")
+  assertExactReference(decision.record, "decision", "receipt.changeImpact.dashboard.governance.decisions[0].record")
+  if (decision.state !== "open" || decision.outcome !== "not-selected") fail("Change/Impact Decision semantics differ")
+  if (!Array.isArray(dashboard.governance.risks) || dashboard.governance.risks.length !== 1) {
+    fail("Change/Impact governance must contain one Risk")
+  }
+  const risk = dashboard.governance.risks[0]
+  assertExactKeys(risk, ["record", "state", "likelihood", "impact", "acceptance"], "receipt.changeImpact.dashboard.governance.risks[0]")
+  assertExactReference(risk.record, "risk", "receipt.changeImpact.dashboard.governance.risks[0].record")
+  if (risk.state !== "open" || risk.likelihood !== "possible" || risk.impact !== "major" || risk.acceptance !== "not-accepted") {
+    fail("Change/Impact Risk semantics differ")
+  }
+  const affectedIds = new Map(dashboard.affectedUnits.map((unit) => [unit.endpoint.recordType, unit.endpoint.recordId]))
+  if (affectedIds.get("decision") !== decision.record.recordId || affectedIds.get("risk") !== risk.record.recordId) {
+    fail("Change/Impact trace endpoints differ from the projected governance records")
+  }
+
+  assertExactKeys(dashboard.freshness, [
+    "state", "evaluatedAt", "unresolvedTraceLinks", "invalidTraceLinks", "staleTraceLinks",
+    "staleGovernanceReferences", "traceAnalysisTruncated", "coverageBoundary",
+  ], "receipt.changeImpact.dashboard.freshness")
+  if (dashboard.freshness.state !== "current" || dashboard.freshness.unresolvedTraceLinks !== 0 ||
+      dashboard.freshness.invalidTraceLinks !== 0 || dashboard.freshness.staleTraceLinks !== 0 ||
+      dashboard.freshness.staleGovernanceReferences !== 0 || dashboard.freshness.traceAnalysisTruncated !== false ||
+      dashboard.freshness.coverageBoundary !== "absence-of-a-trace-link-does-not-prove-absence-of-impact") {
+    fail("Change/Impact freshness differs from the current exact trace graph")
+  }
+  assertDate(dashboard.freshness.evaluatedAt, "receipt.changeImpact.dashboard.freshness.evaluatedAt")
+  assertDate(dashboard.observedAt, "receipt.changeImpact.dashboard.observedAt")
+  if (dashboard.freshness.evaluatedAt !== dashboard.observedAt) fail("Change/Impact observation is not bound to its trace evaluation")
+
+  assertExactKeys(dashboard.limits, [
+    "workItems", "changedArtifacts", "effectTargets", "affectedUnits", "decisions", "risks", "truncated",
+  ], "receipt.changeImpact.dashboard.limits")
+  assertLimit(dashboard.limits.workItems, 1, "receipt.changeImpact.dashboard.limits.workItems")
+  assertLimit(dashboard.limits.changedArtifacts, 1, "receipt.changeImpact.dashboard.limits.changedArtifacts")
+  assertLimit(dashboard.limits.effectTargets, 1, "receipt.changeImpact.dashboard.limits.effectTargets")
+  assertLimit(dashboard.limits.affectedUnits, 2, "receipt.changeImpact.dashboard.limits.affectedUnits")
+  assertLimit(dashboard.limits.decisions, 1, "receipt.changeImpact.dashboard.limits.decisions")
+  assertLimit(dashboard.limits.risks, 1, "receipt.changeImpact.dashboard.limits.risks")
+  if (dashboard.limits.truncated !== false) fail("Change/Impact dashboard must not claim truncation")
+  if (canonicalJson(dashboard.limitations) !== canonicalJson(changeImpactLimitations)) fail("Change/Impact dashboard limitations differ")
+  assertDigest(dashboard.snapshotDigest, "receipt.changeImpact.dashboard.snapshotDigest")
+  const { snapshotDigest, ...content } = dashboard
+  if (snapshotDigest !== canonicalDigest(content)) fail("Change/Impact dashboard snapshot digest differs")
+}
+
 function dashboardSemanticProjection(dashboard) {
   return {
     dashboardPhase: dashboard.phase.id,
@@ -104,6 +287,23 @@ function dashboardSemanticProjection(dashboard) {
     })),
     dashboardStates: dashboard.panels.map((panel) => panel.state),
     dashboardAuthorityBoundary: dashboard.authorityBoundary,
+  }
+}
+
+function changeImpactSemanticProjection(changeImpact) {
+  return {
+    changeCatalogCount: changeImpact.catalog.total,
+    changeCatalogOmitted: changeImpact.catalog.omitted,
+    changeImpactWorkItemCount: changeImpact.dashboard.workItems.length,
+    changeImpactChangedArtifactCount: changeImpact.dashboard.changedArtifacts.length,
+    changeImpactEffectTargetCount: changeImpact.dashboard.effectTargets.length,
+    changeImpactAffectedUnitCount: changeImpact.dashboard.affectedUnits.length,
+    changeImpactDecisionCount: changeImpact.dashboard.governance.decisions.length,
+    changeImpactRiskCount: changeImpact.dashboard.governance.risks.length,
+    changeImpactFreshness: changeImpact.dashboard.freshness.state,
+    changeImpactApproval: changeImpact.dashboard.governance.approval.state,
+    changeImpactTruncated: changeImpact.dashboard.limits.truncated,
+    changeImpactAuthorityBoundary: changeImpact.dashboard.authorityBoundary,
   }
 }
 
@@ -126,7 +326,7 @@ export async function loadPhase0ExampleContract() {
     readBoundedJson(expectedSummaryPath, "expected summary", 64 * 1024),
   ])
   assertExactKeys(scenario, [
-    "schemaVersion", "kind", "id", "actorId", "product", "initiative", "context", "workflow", "charter", "execution",
+    "schemaVersion", "kind", "id", "actorId", "product", "initiative", "changeImpact", "context", "workflow", "charter", "execution",
   ], "scenario")
   if (scenario.schemaVersion !== 1 || scenario.kind !== "gaep-phase0-example-scenario") fail("scenario identity is unsupported")
   if (scenario.id !== "phase-0-managed-readonly-v1") fail("scenario ID is unsupported")
@@ -142,7 +342,10 @@ export async function loadPhase0ExampleContract() {
     "toolDefinitionCount", "readScopeCount", "writeScopeCount", "gatePhases", "completedStepCount",
     "totalStepCount", "eventTypes", "eventCount", "actualEffects", "stagingPresent", "warnings", "auditValid",
     "managedInventoryCount", "dashboardPhase", "dashboardPanelIds", "dashboardApplicability", "dashboardStates",
-    "dashboardAuthorityBoundary",
+    "dashboardAuthorityBoundary", "changeCatalogCount", "changeCatalogOmitted", "changeImpactWorkItemCount",
+    "changeImpactChangedArtifactCount", "changeImpactEffectTargetCount", "changeImpactAffectedUnitCount",
+    "changeImpactDecisionCount", "changeImpactRiskCount", "changeImpactFreshness", "changeImpactApproval",
+    "changeImpactTruncated", "changeImpactAuthorityBoundary",
   ], "expected summary")
   if (expectedSummary.schemaVersion !== 1 || expectedSummary.kind !== "gaep-phase0-example-semantic-summary" ||
       expectedSummary.scenarioId !== scenario.id) fail("expected summary identity differs from the canonical scenario")
@@ -152,8 +355,8 @@ export async function loadPhase0ExampleContract() {
 export async function verifyPhase0ExampleReceiptObject(receipt) {
   const { scenario, expectedSummary } = await loadPhase0ExampleContract()
   assertExactKeys(receipt, [
-    "schemaVersion", "kind", "scenario", "portableRun", "dashboard", "summary", "summaryDigest", "expectedSummaryDigest",
-    "integrity", "authority", "limitations",
+    "schemaVersion", "kind", "scenario", "portableRun", "dashboard", "changeImpact", "summary", "summaryDigest",
+    "expectedSummaryDigest", "integrity", "authority", "limitations",
   ], "receipt")
   if (receipt.schemaVersion !== 2 || receipt.kind !== "gaep-phase0-example-receipt") fail("receipt identity is unsupported")
 
@@ -171,10 +374,16 @@ export async function verifyPhase0ExampleReceiptObject(receipt) {
   if (Date.parse(receipt.portableRun.endedAt) < Date.parse(receipt.portableRun.startedAt)) fail("portable Run end precedes its start")
 
   verifyPhaseDashboard(receipt.dashboard)
+  assertExactKeys(receipt.changeImpact, ["catalog", "dashboard"], "receipt.changeImpact")
+  const catalogItem = verifyChangeCatalog(receipt.changeImpact.catalog, receipt.dashboard.product)
+  verifyChangeImpactDashboard(receipt.changeImpact.dashboard, receipt.dashboard.product, catalogItem)
 
   if (canonicalJson(receipt.summary) !== canonicalJson(expectedSummary)) fail("semantic summary differs from the checked-in expectation")
-  const dashboardProjection = dashboardSemanticProjection(receipt.dashboard)
-  for (const [key, value] of Object.entries(dashboardProjection)) {
+  const semanticProjection = {
+    ...dashboardSemanticProjection(receipt.dashboard),
+    ...changeImpactSemanticProjection(receipt.changeImpact),
+  }
+  for (const [key, value] of Object.entries(semanticProjection)) {
     if (canonicalJson(receipt.summary[key]) !== canonicalJson(value)) fail(`semantic summary ${key} differs from dashboard`)
   }
   assertDigest(receipt.summaryDigest, "receipt.summaryDigest")
@@ -187,7 +396,8 @@ export async function verifyPhase0ExampleReceiptObject(receipt) {
   assertExactKeys(receipt.integrity, [
     "auditValid", "auditEventCount", "inventoryCount", "inventorySnapshotDigest", "recordResultDigestMatches",
     "resultEvidenceDigestMatches", "evidenceEventsDigestMatches", "dashboardProductDigestMatches",
-    "dashboardCompositionDigestMatches",
+    "dashboardCompositionDigestMatches", "changeCatalogSnapshotDigestMatches", "changeImpactSnapshotDigestMatches",
+    "changeImpactProductBindingMatches", "changeImpactChangeBindingMatches",
   ], "receipt.integrity")
   if (receipt.integrity.auditValid !== true) fail("portable audit is not valid")
   if (!Number.isSafeInteger(receipt.integrity.auditEventCount) || receipt.integrity.auditEventCount < 1 ||
@@ -196,7 +406,8 @@ export async function verifyPhase0ExampleReceiptObject(receipt) {
   assertDigest(receipt.integrity.inventorySnapshotDigest, "receipt.integrity.inventorySnapshotDigest")
   for (const key of [
     "recordResultDigestMatches", "resultEvidenceDigestMatches", "evidenceEventsDigestMatches",
-    "dashboardProductDigestMatches", "dashboardCompositionDigestMatches",
+    "dashboardProductDigestMatches", "dashboardCompositionDigestMatches", "changeCatalogSnapshotDigestMatches",
+    "changeImpactSnapshotDigestMatches", "changeImpactProductBindingMatches", "changeImpactChangeBindingMatches",
   ]) {
     if (receipt.integrity[key] !== true) fail(`${key} must be true`)
   }
@@ -224,7 +435,10 @@ export async function verifyPhase0ExampleReceiptObject(receipt) {
 
   const serialized = JSON.stringify(receipt)
   if (Buffer.byteLength(serialized) > receiptByteLimit) fail("serialized receipt exceeds the byte limit")
-  for (const forbidden of ["deterministic output", "manual-thread-", "manual-turn-", "providerThreadId", "providerTurnId"]) {
+  for (const forbidden of [
+    "deterministic output", "manual-thread-", "manual-turn-", "providerThreadId", "providerTurnId",
+    "Add an exact Change and impact projection", "Incomplete trace coverage",
+  ]) {
     if (serialized.includes(forbidden)) fail(`receipt exposes forbidden provider-local data: ${forbidden}`)
   }
   if (/(?:^|["'\s])\/(?:Users|private|tmp|home)\//.test(serialized) || /[A-Za-z]:\\/.test(serialized)) {

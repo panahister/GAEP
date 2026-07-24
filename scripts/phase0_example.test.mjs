@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
+import { randomUUID } from "node:crypto"
 import { lstat, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -37,11 +38,25 @@ test("repeats the canonical semantic result while keeping generated Run identity
   assert.equal(first.integrity.evidenceEventsDigestMatches, true)
   assert.equal(first.integrity.dashboardProductDigestMatches, true)
   assert.equal(first.integrity.dashboardCompositionDigestMatches, true)
+  assert.equal(first.integrity.changeCatalogSnapshotDigestMatches, true)
+  assert.equal(first.integrity.changeImpactSnapshotDigestMatches, true)
+  assert.equal(first.integrity.changeImpactProductBindingMatches, true)
+  assert.equal(first.integrity.changeImpactChangeBindingMatches, true)
   assert.equal(first.dashboard.phase.id, "phase-0-1a-foundation")
   assert.deepEqual(first.dashboard.panels.map((panel) => panel.id), [
     "foundation-summary", "change-impact", "agent-model",
   ])
   assert.deepEqual(first.dashboard.panels.map((panel) => panel.state), ["attention-required", "active", "active"])
+  assert.equal(first.changeImpact.catalog.total, 1)
+  assert.equal(first.changeImpact.dashboard.workItems.length, 1)
+  assert.equal(first.changeImpact.dashboard.changedArtifacts.length, 1)
+  assert.equal(first.changeImpact.dashboard.effectTargets.length, 1)
+  assert.equal(first.changeImpact.dashboard.affectedUnits.length, 2)
+  assert.equal(first.changeImpact.dashboard.governance.decisions.length, 1)
+  assert.equal(first.changeImpact.dashboard.governance.risks.length, 1)
+  assert.equal(first.changeImpact.dashboard.freshness.state, "current")
+  assert.equal(first.changeImpact.dashboard.governance.approval.state, "not-established")
+  assert.equal(first.changeImpact.dashboard.limits.truncated, false)
 })
 
 test("creates a new inspectable artifact directory without exposing private runtime data", async () => {
@@ -108,6 +123,41 @@ test("rejects semantic tampering, oversized files, and symlink receipts", async 
     await assert.rejects(
       verifyPhase0ExampleReceiptObject(dashboardTampered),
       /dashboard panel 0 differs from the canonical applicability contract/,
+    )
+
+    const productBindingTampered = structuredClone(receipt)
+    productBindingTampered.changeImpact.catalog.product.recordId = randomUUID()
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(productBindingTampered),
+      /Change catalog Product binding differs/,
+    )
+
+    const countTampered = structuredClone(receipt)
+    countTampered.changeImpact.catalog.total = 2
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(countTampered),
+      /Change catalog counts must reconcile/,
+    )
+
+    const freshnessTampered = structuredClone(receipt)
+    freshnessTampered.changeImpact.dashboard.freshness.state = "attention-required"
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(freshnessTampered),
+      /freshness differs from the current exact trace graph/,
+    )
+
+    const authorityTampered = structuredClone(receipt)
+    authorityTampered.changeImpact.dashboard.authorityBoundary = "dashboard-approves-change"
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(authorityTampered),
+      /identity or authority boundary differs/,
+    )
+
+    const digestTampered = structuredClone(receipt)
+    digestTampered.changeImpact.dashboard.snapshotDigest = `sha256:${"0".repeat(64)}`
+    await assert.rejects(
+      verifyPhase0ExampleReceiptObject(digestTampered),
+      /snapshot digest differs/,
     )
 
     const oversized = join(directory, "oversized.json")

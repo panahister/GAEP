@@ -66,5 +66,17 @@
     "active",
     "active"
   ],
-  "dashboardAuthorityBoundary": "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"
+  "dashboardAuthorityBoundary": "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
+  "changeCatalogCount": 1,
+  "changeCatalogOmitted": 0,
+  "changeImpactWorkItemCount": 1,
+  "changeImpactChangedArtifactCount": 1,
+  "changeImpactEffectTargetCount": 1,
+  "changeImpactAffectedUnitCount": 2,
+  "changeImpactDecisionCount": 1,
+  "changeImpactRiskCount": 1,
+  "changeImpactFreshness": "current",
+  "changeImpactApproval": "not-established",
+  "changeImpactTruncated": false,
+  "changeImpactAuthorityBoundary": "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects"
 }

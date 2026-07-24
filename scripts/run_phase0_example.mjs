@@ -5,7 +5,12 @@ import { dirname, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
 import { DeterministicManualAdapter, canonicalDigest } from "@gaep/agent-sdk"
-import { composePhaseDashboardFramework, GaepEngine } from "@gaep/engine"
+import {
+  composeChangeImpactChangeCatalog,
+  composeChangeImpactDashboard,
+  composePhaseDashboardFramework,
+  GaepEngine,
+} from "@gaep/engine"
 
 import { loadPhase0ExampleContract, verifyPhase0ExampleReceiptObject } from "./verify_phase0_example_receipt.mjs"
 
@@ -43,7 +48,18 @@ function contextTrust(scenario) {
   }
 }
 
-function semanticSummary({ scenario, preview, receipt, plan, evidence, audit, inventory, dashboard }) {
+function semanticSummary({
+  scenario,
+  preview,
+  receipt,
+  plan,
+  evidence,
+  audit,
+  inventory,
+  dashboard,
+  changeCatalog,
+  changeImpactDashboard,
+}) {
   return {
     schemaVersion: 1,
     kind: "gaep-phase0-example-semantic-summary",
@@ -79,6 +95,27 @@ function semanticSummary({ scenario, preview, receipt, plan, evidence, audit, in
     })),
     dashboardStates: dashboard.panels.map((panel) => panel.state),
     dashboardAuthorityBoundary: dashboard.authorityBoundary,
+    changeCatalogCount: changeCatalog.total,
+    changeCatalogOmitted: changeCatalog.omitted,
+    changeImpactWorkItemCount: changeImpactDashboard.workItems.length,
+    changeImpactChangedArtifactCount: changeImpactDashboard.changedArtifacts.length,
+    changeImpactEffectTargetCount: changeImpactDashboard.effectTargets.length,
+    changeImpactAffectedUnitCount: changeImpactDashboard.affectedUnits.length,
+    changeImpactDecisionCount: changeImpactDashboard.governance.decisions.length,
+    changeImpactRiskCount: changeImpactDashboard.governance.risks.length,
+    changeImpactFreshness: changeImpactDashboard.freshness.state,
+    changeImpactApproval: changeImpactDashboard.governance.approval.state,
+    changeImpactTruncated: changeImpactDashboard.limits.truncated,
+    changeImpactAuthorityBoundary: changeImpactDashboard.authorityBoundary,
+  }
+}
+
+function exactReference(recordType, record) {
+  return {
+    recordType,
+    recordId: record.id,
+    revision: record.revision,
+    digest: canonicalDigest(record),
   }
 }
 
@@ -97,6 +134,51 @@ async function createExample(workspace, scenario, expectedSummary) {
   }, "2026-07-24T00:00:00.000Z")
   const initiative = await engine.createInitiative(scenario.initiative, actorId)
   await engine.updateInitiativeState(initiative.id, "active", "Begin the canonical offline evidence review", actorId)
+
+  const change = await engine.productStudio.createChange({
+    initiativeId: initiative.id,
+    ...scenario.changeImpact.change,
+  }, productRevision, actorId)
+  const workItem = await engine.productStudio.createWorkItem({
+    changeId: change.id,
+    ...scenario.changeImpact.workItem,
+  }, productRevision, actorId)
+  const decision = await engine.productStudio.createDecision({
+    ...scenario.changeImpact.decision,
+    affectedRecords: [exactReference("change", change)],
+  }, productRevision, actorId)
+  const risk = await engine.productStudio.createRisk(scenario.changeImpact.risk, productRevision, actorId)
+  const changeReference = exactReference("change", change)
+  for (const [recordType, record] of [["decision", decision], ["risk", risk]]) {
+    await engine.productStudio.createTraceLink({
+      source: exactReference(recordType, record),
+      relationship: "affects",
+      target: changeReference,
+      provenance: { kind: "human", actorId, rationale: scenario.changeImpact.traceRationale },
+    }, productRevision, actorId)
+  }
+  const traceImpact = await engine.productStudio.impactAnalysis(changeReference)
+  const changeImpactObservedAt = traceImpact.evaluatedAt
+  const changeCatalog = composeChangeImpactChangeCatalog(product, [change], {
+    expectedProductId: product.id,
+    expectedProductRevision: productRevision,
+    expectedProductDigest: productDigest,
+  }, changeImpactObservedAt)
+  const changeImpactDashboard = composeChangeImpactDashboard({
+    product,
+    change,
+    workItems: [workItem],
+    traceImpact,
+    decisions: [decision],
+    risks: [risk],
+  }, {
+    expectedProductId: product.id,
+    expectedProductRevision: productRevision,
+    expectedProductDigest: productDigest,
+    expectedChangeId: change.id,
+    expectedChangeRevision: change.revision,
+    expectedChangeDigest: canonicalDigest(change),
+  }, changeImpactObservedAt)
 
   const probe = await adapter.probe()
   if (probe.capabilities.adapterId !== scenario.execution.adapterId ||
@@ -217,7 +299,18 @@ async function createExample(workspace, scenario, expectedSummary) {
     engine.repository.verifyAudit(),
     engine.listManagedRunsPage({ offset: 0, limit: 10 }),
   ])
-  const summary = semanticSummary({ scenario, preview, receipt, plan, evidence, audit, inventory, dashboard })
+  const summary = semanticSummary({
+    scenario,
+    preview,
+    receipt,
+    plan,
+    evidence,
+    audit,
+    inventory,
+    dashboard,
+    changeCatalog,
+    changeImpactDashboard,
+  })
   const summaryDigest = canonicalDigest(summary)
   const expectedSummaryDigest = canonicalDigest(expectedSummary)
   if (summaryDigest !== expectedSummaryDigest) {
@@ -238,6 +331,10 @@ async function createExample(workspace, scenario, expectedSummary) {
       endedAt: receipt.endedAt,
     },
     dashboard,
+    changeImpact: {
+      catalog: changeCatalog,
+      dashboard: changeImpactDashboard,
+    },
     summary,
     summaryDigest,
     expectedSummaryDigest,
@@ -252,6 +349,16 @@ async function createExample(workspace, scenario, expectedSummary) {
       dashboardProductDigestMatches: dashboard.product.recordId === product.id &&
         dashboard.product.revision === productRevision && dashboard.product.digest === productDigest,
       dashboardCompositionDigestMatches: dashboard.compositionDigest === canonicalDigest((({ compositionDigest: _, ...content }) => content)(dashboard)),
+      changeCatalogSnapshotDigestMatches: changeCatalog.snapshotDigest === canonicalDigest((({ snapshotDigest: _, ...content }) => content)(changeCatalog)),
+      changeImpactSnapshotDigestMatches: changeImpactDashboard.snapshotDigest === canonicalDigest((({ snapshotDigest: _, ...content }) => content)(changeImpactDashboard)),
+      changeImpactProductBindingMatches: changeCatalog.product.recordId === dashboard.product.recordId &&
+        changeCatalog.product.revision === dashboard.product.revision && changeCatalog.product.digest === dashboard.product.digest &&
+        changeImpactDashboard.product.recordId === dashboard.product.recordId &&
+        changeImpactDashboard.product.revision === dashboard.product.revision && changeImpactDashboard.product.digest === dashboard.product.digest,
+      changeImpactChangeBindingMatches: changeCatalog.items.length === 1 &&
+        changeCatalog.items[0].recordId === changeImpactDashboard.change.recordId &&
+        changeCatalog.items[0].revision === changeImpactDashboard.change.revision &&
+        changeCatalog.items[0].digest === changeImpactDashboard.change.digest,
     },
     authority: {
       previewBoundary: preview.authorityBoundary,

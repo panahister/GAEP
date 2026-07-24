@@ -36,6 +36,99 @@
       "Human acceptance substitution"
     ]
   },
+  "changeImpact": {
+    "change": {
+      "title": "Add an exact Change and impact projection",
+      "summary": "Project one governed Change through a bounded metadata-only dashboard without granting approval or effect authority.",
+      "baseline": {
+        "kind": "genesis",
+        "declaration": "The canonical example has no prior Change and impact projection.",
+        "rationale": "Exercise the first portable read-only Change and impact slice."
+      },
+      "effectEnvelope": [
+        "observe"
+      ]
+    },
+    "workItem": {
+      "title": "Verify the exact Change and impact snapshot",
+      "objective": "Bind one changed artifact and one logical effect target to the exact governed Change.",
+      "dependsOn": [],
+      "completionCriteria": [
+        "The metadata-only Change and impact snapshot verifies"
+      ],
+      "evidenceCriteria": [
+        "Binding, count, freshness, authority, and digest drift fail closed"
+      ],
+      "scope": {
+        "read": [
+          {
+            "kind": "workspace-relative",
+            "path": "."
+          }
+        ],
+        "write": [
+          {
+            "kind": "workspace-relative",
+            "path": "packages/engine/src/change-impact-dashboard.ts"
+          }
+        ],
+        "effects": [
+          {
+            "kind": "logical",
+            "value": "phase0.example.change-impact"
+          }
+        ]
+      },
+      "owner": {
+        "kind": "agent",
+        "id": "manual"
+      }
+    },
+    "decision": {
+      "question": "Should the canonical Change and impact example remain a read-only projection?",
+      "options": [
+        {
+          "id": "00000000-0000-4000-8000-000000000101",
+          "label": "Keep it read only",
+          "description": "Expose exact current metadata without approval or execution actions.",
+          "tradeoffs": [
+            "Human approval remains outside this example"
+          ]
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000102",
+          "label": "Add mutations",
+          "description": "Allow the dashboard to approve or execute the Change.",
+          "tradeoffs": [
+            "Would widen the authority boundary"
+          ]
+        }
+      ],
+      "dissentAndUncertainty": [
+        "Future phases may add separate governed approval records"
+      ]
+    },
+    "risk": {
+      "title": "Incomplete trace coverage",
+      "cause": "A governed trace link can be absent from the local repository.",
+      "condition": "Impact analysis operates over the currently persisted trace graph.",
+      "consequence": "The projection can understate possible impact.",
+      "likelihood": "possible",
+      "impact": "major",
+      "uncertainty": "Coverage depends on the completeness of persisted trace links.",
+      "treatment": "Expose the coverage boundary and never infer completeness from absence.",
+      "owner": {
+        "kind": "human",
+        "id": "phase0-example-owner"
+      },
+      "reviewTriggers": [
+        "The Change is prepared for governed review"
+      ],
+      "residualRisk": "Missing trace links remain possible.",
+      "evidence": []
+    },
+    "traceRationale": "The governed record directly affects the canonical Change."
+  },
   "context": {
     "source": "atlas-release-evidence-packet-v1",
     "content": "Candidate 0.1.0 has local build and contract-test evidence. Native Windows installation and human acceptance are not recorded. Deployment is outside this review.",
