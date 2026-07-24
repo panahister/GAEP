@@ -2,6 +2,7 @@ package dev.gaep.rider
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import java.io.BufferedWriter
 import java.io.ByteArrayOutputStream
@@ -78,6 +79,74 @@ class GaepEngineClient(
         }
         return portableRequest("selectAgent", params) { envelope ->
             PortableDesignProtocol.parseAgentSelectionEnvelope(envelope)
+        }
+    }
+
+    @Synchronized
+    fun listRuns(): List<AgentRun> = portableRequest(
+        "listRuns",
+        JsonObject(),
+    ) { envelope -> PortableDesignProtocol.parseAgentRunsEnvelope(envelope) }
+
+    @Synchronized
+    fun createHandoff(
+        fromRunId: UUID,
+        productId: UUID,
+        initiativeId: UUID,
+        toAdapterId: String,
+        toAgentId: String,
+        toModelId: String,
+        toSettings: Map<String, PortableAgentSettingValue>,
+        reason: String,
+        completedWork: List<String>,
+        unresolvedMatters: List<String>,
+        decisions: List<String>,
+        evidence: List<String>,
+        actorId: String,
+    ): AgentHandoff {
+        require(fromRunId != UUID(0, 0)) { "Source Run ID must be a non-empty UUID" }
+        require(productId != UUID(0, 0)) { "Product ID must be a non-empty UUID" }
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val normalizedAdapterId = PortableDesignProtocol.normalizeSelectionIdentifier(toAdapterId, "Target Adapter ID")
+        val normalizedAgentId = PortableDesignProtocol.normalizeSelectionIdentifier(toAgentId, "Target Agent ID")
+        val normalizedModelId = PortableDesignProtocol.normalizeSelectionIdentifier(toModelId, "Target Model ID")
+        val normalizedReason = PortableDesignProtocol.normalizeHandoffText(reason, "Handoff reason", 2, 5_000)
+        val normalizedCompleted = PortableDesignProtocol.normalizeHandoffTextList(completedWork, "Completed work")
+        val normalizedUnresolved = PortableDesignProtocol.normalizeHandoffTextList(unresolvedMatters, "Unresolved matters")
+        val normalizedDecisions = PortableDesignProtocol.normalizeHandoffTextList(decisions, "Decisions")
+        val normalizedEvidence = PortableDesignProtocol.normalizeHandoffTextList(evidence, "Evidence")
+        val normalizedActorId = PortableDesignProtocol.normalizeActorId(actorId)
+        val handoff = JsonObject().apply {
+            addProperty("fromRunId", fromRunId.toString())
+            addProperty("toAdapterId", normalizedAdapterId)
+            addProperty("toModelId", normalizedModelId)
+            add("toSettings", PortableDesignProtocol.portableSelectionSettingsToJson(toSettings))
+            addProperty("reason", normalizedReason)
+            add("completedWork", normalizedCompleted.toJsonArray())
+            add("unresolvedMatters", normalizedUnresolved.toJsonArray())
+            add("decisions", normalizedDecisions.toJsonArray())
+            add("evidence", normalizedEvidence.toJsonArray())
+        }
+        val params = JsonObject().apply {
+            addProperty("actorId", normalizedActorId)
+            add("handoff", handoff)
+        }
+        return portableRequest("createHandoff", params) { envelope ->
+            PortableDesignProtocol.parseAgentHandoffEnvelope(
+                envelope,
+                expectedFromRunId = fromRunId,
+                expectedProductId = productId,
+                expectedInitiativeId = initiativeId,
+                expectedAdapterId = normalizedAdapterId,
+                expectedAgentId = normalizedAgentId,
+                expectedModelId = normalizedModelId,
+                expectedSettings = toSettings,
+                expectedReason = normalizedReason,
+                expectedCompletedWork = normalizedCompleted,
+                expectedUnresolvedMatters = normalizedUnresolved,
+                expectedDecisions = normalizedDecisions,
+                expectedEvidence = normalizedEvidence,
+            )
         }
     }
 
@@ -362,4 +431,6 @@ class GaepEngineClient(
     }
 
     private fun isWindows(): Boolean = System.getProperty("os.name").lowercase(Locale.ROOT).contains("win")
+
+    private fun List<String>.toJsonArray(): JsonArray = JsonArray().also { array -> forEach(array::add) }
 }

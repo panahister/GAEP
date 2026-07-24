@@ -133,6 +133,7 @@ export class GaepEngineClient {
     readonly productId: string
     readonly initiativeId: string
     readonly toAdapterId: string
+    readonly toAgentId: string
     readonly toModelId: string
     readonly toSettings: Readonly<Record<string, PortableAgentSettingValue>>
     readonly reason: string
@@ -147,6 +148,7 @@ export class GaepEngineClient {
       const productId = normalizeUuid(input.productId, "Product ID")
       const initiativeId = normalizeUuid(input.initiativeId, "Initiative ID")
       const toAdapterId = normalizeSelectionIdentifier(input.toAdapterId, "Target Adapter ID")
+      const toAgentId = normalizeSelectionIdentifier(input.toAgentId, "Target Agent ID")
       const toModelId = normalizeSelectionIdentifier(input.toModelId, "Target Model ID")
       const toSettings = normalizeSelectionSettings(input.toSettings)
       const reason = normalizeHandoffText(input.reason, "Handoff reason", 2, 5_000)
@@ -169,7 +171,20 @@ export class GaepEngineClient {
           evidence,
         },
       })
-      return parseAgentHandoff(result, { fromRunId, productId, initiativeId, toAdapterId, toModelId })
+      return parseAgentHandoff(result, {
+        fromRunId,
+        productId,
+        initiativeId,
+        toAdapterId,
+        toAgentId,
+        toModelId,
+        toSettings,
+        reason,
+        completedWork,
+        unresolvedMatters,
+        decisions,
+        evidence,
+      })
     })
   }
 

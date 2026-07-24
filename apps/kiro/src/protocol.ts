@@ -492,7 +492,14 @@ export function parseAgentHandoff(
     readonly productId: string
     readonly initiativeId: string
     readonly toAdapterId: string
+    readonly toAgentId: string
     readonly toModelId: string
+    readonly toSettings: Readonly<Record<string, PortableAgentSettingValue>>
+    readonly reason: string
+    readonly completedWork: readonly string[]
+    readonly unresolvedMatters: readonly string[]
+    readonly decisions: readonly string[]
+    readonly evidence: readonly string[]
   },
 ): AgentHandoff {
   const handoff = requireRecord(result)
@@ -513,10 +520,23 @@ export function parseAgentHandoff(
   if (fromRunId !== normalizeUuid(expected.fromRunId, "Source Run ID") ||
     productId !== normalizeUuid(expected.productId, "Product ID") ||
     initiativeId !== normalizeUuid(expected.initiativeId, "Initiative ID") ||
-    toAgent.adapterId !== expected.toAdapterId || toAgent.modelId !== expected.toModelId) {
+    toAgent.adapterId !== expected.toAdapterId || toAgent.agentId !== expected.toAgentId ||
+    toAgent.modelId !== expected.toModelId ||
+    JSON.stringify(sortedPortableSettings(toAgent.settings)) !== JSON.stringify(sortedPortableSettings(expected.toSettings))) {
     throw invalidHostResponse()
   }
   const baseline = parseHandoffWorkspaceBaseline(requireRecord(handoff.workspaceBaseline))
+  const reason = portableHandoffText(handoff.reason, 2)
+  const completedWork = parseHandoffTextArray(handoff.completedWork)
+  const unresolvedMatters = parseHandoffTextArray(handoff.unresolvedMatters)
+  const decisions = parseHandoffTextArray(handoff.decisions)
+  const evidence = parseHandoffTextArray(handoff.evidence)
+  if (reason !== expected.reason || JSON.stringify(completedWork) !== JSON.stringify(expected.completedWork) ||
+    JSON.stringify(unresolvedMatters) !== JSON.stringify(expected.unresolvedMatters) ||
+    JSON.stringify(decisions) !== JSON.stringify(expected.decisions) ||
+    JSON.stringify(evidence) !== JSON.stringify(expected.evidence)) {
+    throw invalidHostResponse()
+  }
   const acknowledgedAt = Object.hasOwn(handoff, "acknowledgedAt")
     ? requireTimestamp(handoff, "acknowledgedAt")
     : undefined
@@ -527,17 +547,23 @@ export function parseAgentHandoff(
     initiativeId,
     fromRunId,
     toAgent,
-    reason: portableHandoffText(handoff.reason, 2),
+    reason,
     workspaceBaseline: baseline,
-    completedWork: parseHandoffTextArray(handoff.completedWork),
-    unresolvedMatters: parseHandoffTextArray(handoff.unresolvedMatters),
-    decisions: parseHandoffTextArray(handoff.decisions),
-    evidence: parseHandoffTextArray(handoff.evidence),
+    completedWork,
+    unresolvedMatters,
+    decisions,
+    evidence,
     capabilityDifferences: parseHandoffTextArray(handoff.capabilityDifferences),
     createdAt: requireTimestamp(handoff, "createdAt"),
     ...(acknowledgedAt !== undefined ? { acknowledgedAt } : {}),
   }
   return Object.freeze(parsed)
+}
+
+function sortedPortableSettings(
+  settings: Readonly<Record<string, PortableAgentSettingValue>>,
+): Record<string, PortableAgentSettingValue> {
+  return Object.fromEntries(Object.entries(settings).sort(([left], [right]) => left.localeCompare(right)))
 }
 
 export function parsePortableSelectionSettings(value: unknown): Readonly<Record<string, PortableAgentSettingValue>> {

@@ -433,6 +433,7 @@ async function handoffAgent(pool: EngineClientPool): Promise<AgentHandoff> {
     productId: sourceRun.productId,
     initiativeId: sourceRun.initiativeId,
     toAdapterId: target.snapshot.adapterId,
+    toAgentId: target.snapshot.agentId,
     toModelId: target.modelId,
     toSettings: target.settings,
     reason,

@@ -39,8 +39,10 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badSelectionRoot = join(root, "bad-selection")
   const badRunsRoot = join(root, "bad-runs")
   const badHandoffRoot = join(root, "bad-handoff")
+  const badHandoffBindingRoot = join(root, "bad-handoff-binding")
   await Promise.all([
     workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot, badRunsRoot, badHandoffRoot,
+    badHandoffBindingRoot,
   ].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
@@ -119,6 +121,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
       productId: runs[0]!.productId,
       initiativeId: runs[0]!.initiativeId,
       toAdapterId: "openai-codex",
+      toAgentId: "codex",
       toModelId: "gpt-5.6-codex-next",
       toSettings: { reasoningEffort: "medium" },
       reason: "Switch to the reviewed model",
@@ -160,6 +163,20 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
       )
     } finally {
       await badHandoffClient.dispose()
+    }
+
+    const badHandoffBindingClient = await GaepEngineClient.create({
+      workspacePath: badHandoffBindingRoot,
+      engineExecutable: process.execPath,
+      engineArgumentsPrefix: [fakeEngine],
+    })
+    try {
+      await assert.rejects(
+        () => badHandoffBindingClient.createHandoff(handoffInput),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await badHandoffBindingClient.dispose()
     }
 
     await assert.rejects(

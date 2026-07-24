@@ -7,6 +7,9 @@ import java.util.UUID
 
 private val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
 private val initiativeId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+internal val runId: UUID = UUID.fromString("12121212-1212-4121-8121-121212121212")
+private val charterId: UUID = UUID.fromString("13131313-1313-4131-8131-131313131313")
+internal val handoffId: UUID = UUID.fromString("14141414-1414-4141-8141-141414141414")
 internal val bundleId: UUID = UUID.fromString("33333333-3333-4333-8333-333333333333")
 internal val missingBundleId: UUID = UUID.fromString("44444444-4444-4444-8444-444444444444")
 internal val extraFieldBundleId: UUID = UUID.fromString("55555555-5555-4555-8555-555555555555")
@@ -74,6 +77,15 @@ fun main(arguments: Array<String>) {
                 }
             }
             "selectAgent" -> handleSelectAgent(id, request.getAsJsonObject("params"))
+            "listRuns" -> writeResult(id, com.google.gson.JsonArray().apply {
+                add(agentRun(workspacePath.endsWith("bad-runs")))
+            })
+            "createHandoff" -> handleCreateHandoff(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath.endsWith("bad-handoff"),
+                workspacePath.endsWith("bad-handoff-binding"),
+            )
             "productStudio.portableDesign.import" -> handleImport(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.list" -> handleList(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.read" -> handleRead(id, request.getAsJsonObject("params"))
@@ -109,6 +121,88 @@ private fun agentSelection(settings: JsonObject = JsonObject().apply { addProper
         addProperty("selectedAt", "2026-07-24T08:05:00.000Z")
         addProperty("capabilityDigest", "sha256:${"e".repeat(64)}")
     }
+
+private fun targetAgentSelection(): JsonObject = agentSelection(
+    JsonObject().apply { addProperty("reasoningEffort", "medium") },
+).apply {
+    addProperty("modelId", "gpt-5.6-codex-next")
+    addProperty("selectedAt", "2026-07-24T08:10:00.000Z")
+    addProperty("capabilityDigest", "sha256:${"f".repeat(64)}")
+}
+
+private fun agentRun(includePrivatePath: Boolean): JsonObject = JsonObject().apply {
+    addProperty("schemaVersion", 1)
+    addProperty("id", runId.toString())
+    addProperty("revision", 3)
+    addProperty("charterId", charterId.toString())
+    addProperty("charterDigest", "sha256:${"1".repeat(64)}")
+    addProperty("productId", productId.toString())
+    addProperty("initiativeId", initiativeId.toString())
+    add("agent", agentSelection())
+    addProperty("state", "completed")
+    addProperty("providerSessionRef", "sha256:${"2".repeat(64)}")
+    addProperty("startedAt", "2026-07-24T08:00:00.000Z")
+    addProperty("endedAt", "2026-07-24T08:04:00.000Z")
+    if (includePrivatePath) addProperty("runtimeExecutable", "$privateRoot/$privateCredential")
+}
+
+private fun handleCreateHandoff(
+    id: Long,
+    params: JsonObject,
+    includePrivatePath: Boolean,
+    includeWrongBinding: Boolean,
+) {
+    val handoff = params.getAsJsonObject("handoff")
+    val settings = handoff?.getAsJsonObject("toSettings")
+    if (params.keySet() != setOf("actorId", "handoff") || params.get("actorId").asString != "founder.review" ||
+        handoff == null || handoff.keySet() != setOf(
+            "fromRunId", "toAdapterId", "toModelId", "toSettings", "reason", "completedWork",
+            "unresolvedMatters", "decisions", "evidence",
+        ) || handoff.get("fromRunId").asString != runId.toString() ||
+        handoff.get("toAdapterId").asString != "openai-codex" ||
+        handoff.get("toModelId").asString != "gpt-5.6-codex-next" ||
+        settings?.keySet() != setOf("reasoningEffort") || settings.get("reasoningEffort").asString != "medium" ||
+        handoff.get("reason").asString != "Switch to the reviewed model" ||
+        handoff.getAsJsonArray("completedWork").map(JsonElement::getAsString) != listOf("Selection workflow completed") ||
+        handoff.getAsJsonArray("unresolvedMatters").map(JsonElement::getAsString) != listOf("Native Rider acceptance remains") ||
+        handoff.getAsJsonArray("decisions").map(JsonElement::getAsString) != listOf("Keep execution disabled") ||
+        handoff.getAsJsonArray("evidence").map(JsonElement::getAsString) != listOf("evidence/rider-selection.json")
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID HANDOFF")
+        return
+    }
+    selectedAgent = targetAgentSelection()
+    writeResult(id, agentHandoff().apply {
+        if (includePrivatePath) addProperty("runtimeExecutable", "$privateRoot/$privateCredential")
+        if (includeWrongBinding) {
+            getAsJsonObject("toAgent").getAsJsonObject("settings").addProperty("reasoningEffort", "high")
+        }
+    })
+}
+
+private fun agentHandoff(): JsonObject = JsonObject().apply {
+    addProperty("schemaVersion", 1)
+    addProperty("id", handoffId.toString())
+    addProperty("productId", productId.toString())
+    addProperty("initiativeId", initiativeId.toString())
+    addProperty("fromRunId", runId.toString())
+    add("toAgent", targetAgentSelection())
+    addProperty("reason", "Switch to the reviewed model")
+    add("workspaceBaseline", JsonObject().apply {
+        addProperty("gitHead", "abcdef1")
+        addProperty("dirty", true)
+        add("changedFiles", com.google.gson.JsonArray().apply { add("src/index.kt") })
+        addProperty("truthClass", "observed")
+    })
+    add("completedWork", com.google.gson.JsonArray().apply { add("Selection workflow completed") })
+    add("unresolvedMatters", com.google.gson.JsonArray().apply { add("Native Rider acceptance remains") })
+    add("decisions", com.google.gson.JsonArray().apply { add("Keep execution disabled") })
+    add("evidence", com.google.gson.JsonArray().apply { add("evidence/rider-selection.json") })
+    add("capabilityDifferences", com.google.gson.JsonArray().apply {
+        add("Model changes from gpt-5.6-codex to gpt-5.6-codex-next.")
+    })
+    addProperty("createdAt", "2026-07-24T08:10:00.000Z")
+}
 
 private fun handleImport(id: Long, params: JsonObject) {
     if (params.keySet() != setOf("bundleRoot", "expectedProductId", "expectedProductRevision", "actorId") ||

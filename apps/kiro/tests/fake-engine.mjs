@@ -135,6 +135,7 @@ function createHandoff(id, params) {
   selectedAgent = targetAgentSelection()
   const value = agentHandoff()
   if (workspacePath.endsWith("bad-handoff")) value.runtimeExecutable = `${privateRoot}/${privateCredential}`
+  if (workspacePath.endsWith("bad-handoff-binding")) value.toAgent.settings.reasoningEffort = "high"
   return writeResult(id, value)
 }
 

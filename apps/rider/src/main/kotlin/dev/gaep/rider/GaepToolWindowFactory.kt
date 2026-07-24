@@ -25,6 +25,15 @@ private data class AgentSelectionDraft(
     val settings: Map<String, PortableAgentSettingValue>,
 )
 
+private data class AgentHandoffDraft(
+    val target: AgentSelectionDraft,
+    val reason: String,
+    val completedWork: List<String>,
+    val unresolvedMatters: List<String>,
+    val decisions: List<String>,
+    val evidence: List<String>,
+)
+
 private class AgentSelectionCancelled : RuntimeException()
 
 class GaepToolWindowFactory : ToolWindowFactory {
@@ -65,6 +74,14 @@ class GaepToolWindowFactory : ToolWindowFactory {
         }
         buttons += selectionButton
         actions.add(selectionButton)
+
+        val handoffButton = JButton("Create versioned agent handoff…").apply {
+            addActionListener {
+                beginAgentHandoff(project, controller, status, output, buttons)
+            }
+        }
+        buttons += handoffButton
+        actions.add(handoffButton)
 
         addAction("List design imports") { controller.listPortableDesignSnapshots() }
 
@@ -110,8 +127,8 @@ class GaepToolWindowFactory : ToolWindowFactory {
         actions.add(importButton)
 
         val governance = JTextArea(
-            "Agent boundary: Codex and Claude readiness is observation-only; guarded selection records portable configuration only. " +
-                "Selection cannot start a provider, create or resume a Run, approve tools or effects, or grant execution authority. " +
+            "Agent boundary: Codex and Claude readiness is observation-only; guarded selection and versioned handoff record portable configuration and history only. " +
+                "They cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. " +
                 "Governance boundary: portable-design imports remain pending human review. " +
                 "Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. " +
                 "Only validated metadata and digests are displayed; local paths and source content are withheld.",
@@ -217,14 +234,157 @@ class GaepToolWindowFactory : ToolWindowFactory {
         }
     }
 
+    private fun beginAgentHandoff(
+        project: Project,
+        controller: RiderProductController,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+    ) {
+        buttons.forEach { it.isEnabled = false }
+        status.text = "Loading versioned handoff context…"
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching { controller.readAgentHandoffContext() }
+                .onSuccess { context ->
+                    ApplicationManager.getApplication().invokeLater {
+                        val draft = runCatching { promptAgentHandoff(project, context) }
+                            .getOrElse { error ->
+                                if (error is AgentSelectionCancelled) {
+                                    finishRequest(
+                                        status,
+                                        output,
+                                        buttons,
+                                        "Agent handoff unchanged",
+                                        "Handoff was cancelled. No provider was started and no state changed.",
+                                    )
+                                } else {
+                                    finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                                }
+                                return@invokeLater
+                            }
+                        val decision = Messages.showYesNoDialog(
+                            project,
+                            "Create a versioned handoff from terminal Run ${context.sourceRun.id}?\n\n" +
+                                "Prior selection: ${context.current.agentId} / ${context.current.modelId}.\n" +
+                                "Target selection: ${draft.target.adapter.agentLabel} / ${draft.target.modelId} with " +
+                                "${draft.target.settings.size} explicit portable setting(s).\n" +
+                                "Preserved entries: ${draft.completedWork.size} completed, ${draft.unresolvedMatters.size} unresolved, " +
+                                "${draft.decisions.size} decisions, ${draft.evidence.size} evidence.\n\n" +
+                                "The engine will atomically record the handoff and replace Agent Selection only after fresh capability verification. " +
+                                "It will not start or resume a provider, create a Run, approve tools or effects, or grant execution authority.",
+                            "Confirm Versioned Agent Handoff",
+                            "Create Handoff and Switch",
+                            "Cancel",
+                            Messages.getWarningIcon(),
+                        )
+                        if (decision != Messages.YES) {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "Agent handoff unchanged",
+                                "Handoff was cancelled. No provider was started and no state changed.",
+                            )
+                            return@invokeLater
+                        }
+                        status.text = "Recording versioned Agent Handoff…"
+                        ApplicationManager.getApplication().executeOnPooledThread {
+                            val actorId = System.getenv("GAEP_ACTOR_ID") ?: "gaep.rider-local-human"
+                            runCatching {
+                                controller.createAgentHandoff(
+                                    context = context,
+                                    toAdapterId = draft.target.adapter.adapterId,
+                                    toModelId = draft.target.modelId,
+                                    toSettings = draft.target.settings,
+                                    reason = draft.reason,
+                                    completedWork = draft.completedWork,
+                                    unresolvedMatters = draft.unresolvedMatters,
+                                    decisions = draft.decisions,
+                                    evidence = draft.evidence,
+                                    actorId = actorId,
+                                )
+                            }.onSuccess { result ->
+                                ApplicationManager.getApplication().invokeLater {
+                                    finishRequest(status, output, buttons, "GAEP engine ready", result)
+                                }
+                            }.onFailure { error ->
+                                ApplicationManager.getApplication().invokeLater {
+                                    finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                                }
+                            }
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    ApplicationManager.getApplication().invokeLater {
+                        finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                    }
+                }
+        }
+    }
+
+    private fun promptAgentHandoff(project: Project, context: AgentHandoffContext): AgentHandoffDraft {
+        val target = promptAgentSelection(
+            project,
+            AgentSelectionContext(AgentSelectionState.Selected(context.current), context.available),
+            "Select one verified local target adapter. The handoff records configuration and history only; it does not start an agent.",
+        ) ?: throw AgentSelectionCancelled()
+        require(context.current.adapterId != target.adapter.adapterId || context.current.modelId != target.modelId ||
+            !PortableDesignProtocol.portableSettingsEqual(context.current.settings, target.settings)
+        ) {
+            "The handoff target is identical to the current portable Agent Selection. Choose a different adapter, model, or setting."
+        }
+        val reason = promptHandoffText(project, "Why is this provider, model, or setting switch required?", true)
+        val completedWork = promptHandoffList(project, "Completed work to preserve, separated by commas")
+        val unresolvedMatters = promptHandoffList(project, "Unresolved matters to preserve, separated by commas")
+        val decisions = promptHandoffList(project, "Decisions to preserve, separated by commas")
+        val evidence = promptHandoffList(project, "Portable evidence references to preserve, separated by commas")
+        require(completedWork.isNotEmpty() || unresolvedMatters.isNotEmpty() || decisions.isNotEmpty() || evidence.isNotEmpty()) {
+            "Record at least one completed-work, unresolved-matter, decision, or portable evidence entry before creating a handoff."
+        }
+        return AgentHandoffDraft(target, reason, completedWork, unresolvedMatters, decisions, evidence)
+    }
+
+    private fun promptHandoffList(project: Project, prompt: String): List<String> {
+        val value = promptHandoffText(project, "$prompt Leave blank when none.", false)
+        if (value.isEmpty()) return emptyList()
+        return PortableDesignProtocol.normalizeHandoffTextList(value.split(',').map(String::trim), prompt)
+    }
+
+    private fun promptHandoffText(project: Project, prompt: String, required: Boolean): String {
+        while (true) {
+            val entered = Messages.showInputDialog(
+                project,
+                prompt,
+                "Versioned Agent Handoff",
+                Messages.getQuestionIcon(),
+            ) ?: throw AgentSelectionCancelled()
+            if (!required && entered.isBlank()) return ""
+            val normalized = runCatching {
+                PortableDesignProtocol.normalizeHandoffText(
+                    entered,
+                    if (required) "Handoff reason" else "Handoff detail",
+                    minimum = if (required) 2 else 1,
+                    maximum = if (required) 5_000 else 2_000,
+                )
+            }
+            if (normalized.isSuccess) return normalized.getOrThrow()
+            Messages.showErrorDialog(project, safeError(normalized.exceptionOrNull()!!), "Versioned Agent Handoff")
+        }
+    }
+
     @Suppress("DEPRECATION")
-    private fun promptAgentSelection(project: Project, context: AgentSelectionContext): AgentSelectionDraft? {
+    private fun promptAgentSelection(
+        project: Project,
+        context: AgentSelectionContext,
+        prompt: String = "Select one verified local agent adapter. Selection records configuration only; it does not start an agent.",
+    ): AgentSelectionDraft? {
         val adapterLabels = context.available.mapIndexed { index, adapter ->
             "${index + 1}. ${adapter.agentLabel} — ${adapter.adapterId} (${adapter.executionInterface}, ${adapter.interfaceMaturity})"
         }.toTypedArray()
         val chosenAdapter = Messages.showChooseDialog(
             project,
-            "Select one verified local agent adapter. Selection records configuration only; it does not start an agent.",
+            prompt,
             "Select Agent Adapter",
             Messages.getQuestionIcon(),
             adapterLabels,

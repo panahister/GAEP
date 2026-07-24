@@ -93,6 +93,58 @@ sealed interface AgentSelectionState {
     data object Invalid : AgentSelectionState
 }
 
+enum class AgentRunState {
+    PREPARED,
+    RUNNING,
+    PAUSED,
+    COMPLETED,
+    FAILED,
+    CANCELLED,
+    UNKNOWN,
+}
+
+data class AgentRun(
+    val schemaVersion: Int,
+    val id: UUID,
+    val revision: Long?,
+    val charterId: UUID,
+    val charterDigest: String?,
+    val productId: UUID,
+    val initiativeId: UUID,
+    val agent: AgentSelection,
+    val state: AgentRunState,
+    val providerSessionRef: String?,
+    val startedAt: Instant?,
+    val endedAt: Instant?,
+    val previousRunId: UUID?,
+)
+
+data class HandoffWorkspaceBaseline(
+    val gitHead: String?,
+    val dirty: Boolean?,
+    val changedFiles: List<String>,
+    val truthClass: String?,
+    val observationError: String?,
+)
+
+data class AgentHandoff(
+    val schemaVersion: Int,
+    val id: UUID,
+    val productId: UUID,
+    val initiativeId: UUID,
+    val fromRunId: UUID,
+    val toAgent: AgentSelection,
+    val reason: String,
+    val workspaceBaseline: HandoffWorkspaceBaseline,
+    val completedWork: List<String>,
+    val unresolvedMatters: List<String>,
+    val decisions: List<String>,
+    val evidence: List<String>,
+    val capabilityDifferences: List<String>,
+    val createdAt: Instant,
+    val acknowledgedAt: Instant?,
+)
+
 data class AgentReadinessSnapshot(
     val schemaVersion: Int,
     val adapterId: String,
@@ -211,6 +263,7 @@ internal object PortableDesignProtocol {
     private val absolutePathPattern = Regex("""^(?:/\S*|[A-Za-z]:[\\/]\S*|\\\\\S*|file://\S*)$""")
     private val portableSettingPathPattern = Regex("""^(?:/|[A-Za-z]:[\\/]|\\\\|file://|~[\\/])""")
     private val privatePathPattern = Regex("""(?:^|[\s(="'])(?:/(?:Users|home|tmp|private|Volumes)/[^\s"'<>)]*|[A-Za-z]:\\[^\s"'<>)]*|\\\\[^\s"'<>)]*)""")
+    private val handoffPathPattern = Regex("""(?:^|[\s(="'])(?:~[\\/]|/(?!/)[^\s"'<>)]*|[A-Za-z]:[\\/][^\s"'<>)]*|\\\\[^\s"'<>)]*|file://[^\s"'<>)]*)""")
     private val secretPattern = Regex(
         """\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|\bAKIA[A-Z0-9]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+""",
         RegexOption.IGNORE_CASE,
@@ -347,6 +400,32 @@ internal object PortableDesignProtocol {
         throw IllegalArgumentException("$label must be portable text without paths, controls, or secret-shaped values")
     }
 
+    fun normalizeHandoffText(value: String, label: String, minimum: Int, maximum: Int): String {
+        val normalized = value.trim()
+        require(normalized.length in minimum..maximum && normalized.none(Char::isISOControl) &&
+            !handoffPathPattern.containsMatchIn(normalized) && !secretPattern.containsMatchIn(normalized)
+        ) {
+            "$label must be portable text without paths, controls, or secret-shaped values"
+        }
+        return normalized
+    }
+
+    fun normalizeHandoffTextList(values: List<String>, label: String): List<String> {
+        require(values.size <= 256) { "$label may contain at most 256 entries" }
+        return values.map { normalizeHandoffText(it, label, minimum = 1, maximum = 2_000) }
+    }
+
+    fun portableSettingsEqual(
+        left: Map<String, PortableAgentSettingValue>,
+        right: Map<String, PortableAgentSettingValue>,
+    ): Boolean = left.keys == right.keys && left.all { (key, value) ->
+        when (val candidate = right[key]) {
+            is PortableAgentSettingValue.Decimal -> value is PortableAgentSettingValue.Decimal &&
+                value.value.compareTo(candidate.value) == 0
+            else -> value == candidate
+        }
+    }
+
     fun portableSelectionSettingsToJson(settings: Map<String, PortableAgentSettingValue>): JsonObject {
         require(settings.size <= 128) { "Agent settings may contain at most 128 portable values" }
         return JsonObject().apply {
@@ -442,6 +521,84 @@ internal object PortableDesignProtocol {
 
     fun parseAgentSelectionEnvelope(envelope: JsonObject): AgentSelection =
         parseAgentSelection(readResult(envelope).requireObject())
+
+    fun parseAgentRunsEnvelope(envelope: JsonObject): List<AgentRun> {
+        val result = readResult(envelope)
+        if (!result.isJsonArray || result.asJsonArray.size() > 512) throw invalidResponse()
+        val runs = result.asJsonArray.map { parseAgentRun(it.requireObject()) }
+        if (runs.map { it.id }.distinct().size != runs.size) throw invalidResponse()
+        return runs.toList()
+    }
+
+    fun parseAgentHandoffEnvelope(
+        envelope: JsonObject,
+        expectedFromRunId: UUID,
+        expectedProductId: UUID,
+        expectedInitiativeId: UUID,
+        expectedAdapterId: String,
+        expectedAgentId: String,
+        expectedModelId: String,
+        expectedSettings: Map<String, PortableAgentSettingValue>,
+        expectedReason: String,
+        expectedCompletedWork: List<String>,
+        expectedUnresolvedMatters: List<String>,
+        expectedDecisions: List<String>,
+        expectedEvidence: List<String>,
+    ): AgentHandoff {
+        val handoff = readResult(envelope).requireObject()
+        handoff.requireKeys(
+            required = setOf(
+                "schemaVersion", "id", "productId", "initiativeId", "fromRunId", "toAgent", "reason",
+                "workspaceBaseline", "completedWork", "unresolvedMatters", "decisions", "evidence",
+                "capabilityDifferences", "createdAt",
+            ),
+            optional = setOf("acknowledgedAt"),
+        )
+        if (handoff.requireInt("schemaVersion") != 1) throw invalidResponse()
+        val id = parseUuid(handoff.requireString("id"))
+        val productId = parseUuid(handoff.requireString("productId"))
+        val initiativeId = parseUuid(handoff.requireString("initiativeId"))
+        val fromRunId = parseUuid(handoff.requireString("fromRunId"))
+        if (listOf(id, productId, initiativeId, fromRunId).any { it == UUID(0, 0) } ||
+            fromRunId != expectedFromRunId || productId != expectedProductId || initiativeId != expectedInitiativeId
+        ) {
+            throw invalidResponse()
+        }
+        val toAgent = parseAgentSelection(handoff.get("toAgent").requireObject())
+        if (toAgent.adapterId != expectedAdapterId || toAgent.agentId != expectedAgentId ||
+            toAgent.modelId != expectedModelId ||
+            !portableSettingsEqual(toAgent.settings, expectedSettings)
+        ) {
+            throw invalidResponse()
+        }
+        val reason = portableHandoffText(handoff.requireString("reason"), minimum = 2)
+        val completedWork = parseHandoffTextArray(handoff.get("completedWork"))
+        val unresolvedMatters = parseHandoffTextArray(handoff.get("unresolvedMatters"))
+        val decisions = parseHandoffTextArray(handoff.get("decisions"))
+        val evidence = parseHandoffTextArray(handoff.get("evidence"))
+        if (reason != expectedReason || completedWork != expectedCompletedWork ||
+            unresolvedMatters != expectedUnresolvedMatters || decisions != expectedDecisions || evidence != expectedEvidence
+        ) {
+            throw invalidResponse()
+        }
+        return AgentHandoff(
+            schemaVersion = 1,
+            id = id,
+            productId = productId,
+            initiativeId = initiativeId,
+            fromRunId = fromRunId,
+            toAgent = toAgent,
+            reason = reason,
+            workspaceBaseline = parseHandoffWorkspaceBaseline(handoff.get("workspaceBaseline").requireObject()),
+            completedWork = completedWork,
+            unresolvedMatters = unresolvedMatters,
+            decisions = decisions,
+            evidence = evidence,
+            capabilityDifferences = parseHandoffTextArray(handoff.get("capabilityDifferences")),
+            createdAt = handoff.requireInstant("createdAt"),
+            acknowledgedAt = handoff.get("acknowledgedAt")?.let { parseInstant(it) },
+        )
+    }
 
     fun parsePageEnvelope(envelope: JsonObject, expectedOffset: Int, expectedLimit: Int): PortableDesignSnapshotPage {
         val page = readResult(envelope).requireObject()
@@ -772,6 +929,111 @@ internal object PortableDesignProtocol {
         )
     }
 
+    private fun parseAgentRun(run: JsonObject): AgentRun {
+        run.requireKeys(
+            required = setOf("schemaVersion", "id", "charterId", "productId", "initiativeId", "agent", "state"),
+            optional = setOf(
+                "revision", "charterDigest", "providerSessionRef", "startedAt", "endedAt", "previousRunId",
+            ),
+        )
+        if (run.requireInt("schemaVersion") != 1) throw invalidResponse()
+        val id = parseUuid(run.requireString("id"))
+        val charterId = parseUuid(run.requireString("charterId"))
+        val productId = parseUuid(run.requireString("productId"))
+        val initiativeId = parseUuid(run.requireString("initiativeId"))
+        if (listOf(id, charterId, productId, initiativeId).any { it == UUID(0, 0) }) throw invalidResponse()
+        val revision = run.get("revision")?.let {
+            run.requireLong("revision").also { value -> if (value < 1) throw invalidResponse() }
+        }
+        val state = when (run.requireString("state")) {
+            "prepared" -> AgentRunState.PREPARED
+            "running" -> AgentRunState.RUNNING
+            "paused" -> AgentRunState.PAUSED
+            "completed" -> AgentRunState.COMPLETED
+            "failed" -> AgentRunState.FAILED
+            "cancelled" -> AgentRunState.CANCELLED
+            "unknown" -> AgentRunState.UNKNOWN
+            else -> throw invalidResponse()
+        }
+        val previousRunId = run.get("previousRunId")?.let { parseUuid(it.requireString()) }
+        if (previousRunId == UUID(0, 0)) throw invalidResponse()
+        return AgentRun(
+            schemaVersion = 1,
+            id = id,
+            revision = revision,
+            charterId = charterId,
+            charterDigest = run.get("charterDigest")?.let { run.requireDigest("charterDigest") },
+            productId = productId,
+            initiativeId = initiativeId,
+            agent = parseAgentSelection(run.get("agent").requireObject()),
+            state = state,
+            providerSessionRef = run.get("providerSessionRef")?.let { run.requireDigest("providerSessionRef") },
+            startedAt = run.get("startedAt")?.let { parseInstant(it) },
+            endedAt = run.get("endedAt")?.let { parseInstant(it) },
+            previousRunId = previousRunId,
+        )
+    }
+
+    private fun parseHandoffWorkspaceBaseline(baseline: JsonObject): HandoffWorkspaceBaseline {
+        baseline.requireKeys(
+            required = setOf("dirty", "changedFiles"),
+            optional = setOf("gitHead", "truthClass", "observationError"),
+        )
+        val gitHead = baseline.get("gitHead")?.let {
+            it.requireString().takeIf { value -> Regex("^[0-9a-fA-F]{7,64}$").matches(value) }
+                ?: throw invalidResponse()
+        }
+        val dirtyElement = baseline.get("dirty") ?: throw invalidResponse()
+        val dirty = when {
+            dirtyElement.isJsonNull -> null
+            dirtyElement.isJsonPrimitive && dirtyElement.asJsonPrimitive.isBoolean -> dirtyElement.asBoolean
+            else -> throw invalidResponse()
+        }
+        val changedFilesElement = baseline.get("changedFiles")
+        if (changedFilesElement == null || !changedFilesElement.isJsonArray ||
+            changedFilesElement.asJsonArray.size() > 20_000
+        ) {
+            throw invalidResponse()
+        }
+        val changedFiles = changedFilesElement.asJsonArray.map { workspaceRelativePath(it.requireString()) }
+        if (changedFiles.distinct().size != changedFiles.size) throw invalidResponse()
+        return HandoffWorkspaceBaseline(
+            gitHead = gitHead,
+            dirty = dirty,
+            changedFiles = changedFiles.toList(),
+            truthClass = baseline.get("truthClass")?.let { baseline.requireTruthClass("truthClass") },
+            observationError = baseline.get("observationError")?.let {
+                portableHandoffText(it.requireString(), minimum = 1, maximum = 500)
+            },
+        )
+    }
+
+    private fun parseHandoffTextArray(value: JsonElement?): List<String> {
+        if (value == null || !value.isJsonArray || value.asJsonArray.size() > 512) throw invalidResponse()
+        return value.asJsonArray.map { portableHandoffText(it.requireString(), minimum = 1) }.toList()
+    }
+
+    private fun portableHandoffText(value: String, minimum: Int, maximum: Int = 5_000): String {
+        if (value.length !in minimum..maximum || value != value.trim() || value.any(Char::isISOControl) ||
+            handoffPathPattern.containsMatchIn(value) || secretPattern.containsMatchIn(value)
+        ) {
+            throw invalidResponse()
+        }
+        return value
+    }
+
+    private fun workspaceRelativePath(value: String): String {
+        val segments = value.split('/')
+        if (value.length !in 1..4_096 || value == "." || value.startsWith('/') ||
+            Regex("^[A-Za-z]:").containsMatchIn(value) || value.startsWith('~') || '\\' in value || '\u0000' in value ||
+            Regex("%2e", RegexOption.IGNORE_CASE).containsMatchIn(value) ||
+            segments.any { it.isEmpty() || it == "." || it == ".." }
+        ) {
+            throw invalidResponse()
+        }
+        return value
+    }
+
     private fun parsePortableSelectionSettings(settings: JsonObject): Map<String, PortableAgentSettingValue> {
         if (settings.size() > 128 || settings.keySet().any { !validSettingKey(it) }) throw invalidResponse()
         return settings.entrySet().associate { (key, value) -> key to parsePortableSettingValue(value) }
@@ -932,8 +1194,10 @@ internal object PortableDesignProtocol {
     private fun JsonObject.requireDigest(name: String): String =
         requireString(name).takeIf(digestPattern::matches) ?: throw invalidResponse()
 
-    private fun JsonObject.requireInstant(name: String): Instant = try {
-        Instant.parse(requireString(name))
+    private fun JsonObject.requireInstant(name: String): Instant = parseInstant(get(name) ?: throw invalidResponse())
+
+    private fun parseInstant(value: JsonElement): Instant = try {
+        Instant.parse(value.requireString())
     } catch (_: Exception) {
         throw invalidResponse()
     }

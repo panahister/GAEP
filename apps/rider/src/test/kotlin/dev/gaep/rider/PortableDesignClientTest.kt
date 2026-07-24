@@ -24,6 +24,9 @@ class PortableDesignClientTest {
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
         val badReadinessRoot = Files.createDirectory(temporaryRoot.resolve("bad-readiness"))
         val badSelectionRoot = Files.createDirectory(temporaryRoot.resolve("bad-selection"))
+        val badRunsRoot = Files.createDirectory(temporaryRoot.resolve("bad-runs"))
+        val badHandoffRoot = Files.createDirectory(temporaryRoot.resolve("bad-handoff"))
+        val badHandoffBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-handoff-binding"))
         val executable = createFakeEngineLauncher(temporaryRoot)
         GaepEngineClient(temporaryRoot, executable.toString()).use { client ->
             val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -113,6 +116,110 @@ class PortableDesignClientTest {
             assertFalse(selectionFields.any { field ->
                 listOf("executable", "path", "token", "credential").any { field.contains(it, ignoreCase = true) }
             })
+
+            val runs = client.listRuns()
+            assertEquals(1, runs.size)
+            assertEquals(runId, runs.single().id)
+            assertEquals(AgentRunState.COMPLETED, runs.single().state)
+            assertEquals(selectedState.selection, runs.single().agent)
+            assertFalse(Gson().toJson(runs).contains(privateRoot))
+            assertFalse(Gson().toJson(runs).contains(privateCredential))
+
+            val handoffContext = controller.readAgentHandoffContext()
+            assertEquals(runId, handoffContext.sourceRun.id)
+            assertEquals(selectedState.selection, handoffContext.current)
+            val handoffView = controller.createAgentHandoff(
+                context = handoffContext,
+                toAdapterId = "openai-codex",
+                toModelId = "gpt-5.6-codex-next",
+                toSettings = mapOf("reasoningEffort" to PortableAgentSettingValue.Text("medium")),
+                reason = "Switch to the reviewed model",
+                completedWork = listOf("Selection workflow completed"),
+                unresolvedMatters = listOf("Native Rider acceptance remains"),
+                decisions = listOf("Keep execution disabled"),
+                evidence = listOf("evidence/rider-selection.json"),
+                actorId = "founder.review",
+            )
+            assertTrue(handoffView.contains("GAEP versioned Agent Handoff"))
+            assertTrue(handoffView.contains(handoffId.toString()))
+            assertTrue(handoffView.contains(runId.toString()))
+            assertTrue(handoffView.contains("gpt-5.6-codex-next"))
+            assertTrue(handoffView.contains("did not start or resume a provider"))
+            assertFalse(handoffView.contains(privateRoot))
+            assertFalse(handoffView.contains(privateCredential))
+            val switched = assertIs<AgentSelectionState.Selected>(client.readAgentSelection())
+            assertEquals("gpt-5.6-codex-next", switched.selection.modelId)
+            val handoffFields = AgentHandoff::class.java.declaredFields.map { it.name }.toSet()
+            assertFalse(handoffFields.any { field ->
+                listOf("executable", "path", "token", "credential", "session").any {
+                    field.contains(it, ignoreCase = true)
+                }
+            })
+
+            GaepEngineClient(badRunsRoot, executable.toString()).use { badRunsClient ->
+                val invalidRuns = hostError { badRunsClient.listRuns() }
+                assertEquals("HOST_RESPONSE_INVALID", invalidRuns.kind)
+                assertPrivateTextWithheld(invalidRuns)
+            }
+            GaepEngineClient(badHandoffRoot, executable.toString()).use { badHandoffClient ->
+                val invalidHandoff = hostError {
+                    badHandoffClient.createHandoff(
+                        fromRunId = runId,
+                        productId = productId,
+                        initiativeId = UUID.fromString("22222222-2222-4222-8222-222222222222"),
+                        toAdapterId = "openai-codex",
+                        toAgentId = "codex",
+                        toModelId = "gpt-5.6-codex-next",
+                        toSettings = mapOf("reasoningEffort" to PortableAgentSettingValue.Text("medium")),
+                        reason = "Switch to the reviewed model",
+                        completedWork = listOf("Selection workflow completed"),
+                        unresolvedMatters = listOf("Native Rider acceptance remains"),
+                        decisions = listOf("Keep execution disabled"),
+                        evidence = listOf("evidence/rider-selection.json"),
+                        actorId = "founder.review",
+                    )
+                }
+                assertEquals("HOST_RESPONSE_INVALID", invalidHandoff.kind)
+                assertPrivateTextWithheld(invalidHandoff)
+            }
+            GaepEngineClient(badHandoffBindingRoot, executable.toString()).use { badHandoffBindingClient ->
+                val invalidHandoff = hostError {
+                    badHandoffBindingClient.createHandoff(
+                        fromRunId = runId,
+                        productId = productId,
+                        initiativeId = UUID.fromString("22222222-2222-4222-8222-222222222222"),
+                        toAdapterId = "openai-codex",
+                        toAgentId = "codex",
+                        toModelId = "gpt-5.6-codex-next",
+                        toSettings = mapOf("reasoningEffort" to PortableAgentSettingValue.Text("medium")),
+                        reason = "Switch to the reviewed model",
+                        completedWork = listOf("Selection workflow completed"),
+                        unresolvedMatters = listOf("Native Rider acceptance remains"),
+                        decisions = listOf("Keep execution disabled"),
+                        evidence = listOf("evidence/rider-selection.json"),
+                        actorId = "founder.review",
+                    )
+                }
+                assertEquals("HOST_RESPONSE_INVALID", invalidHandoff.kind)
+                assertPrivateTextWithheld(invalidHandoff)
+            }
+            assertFailsWith<IllegalArgumentException> {
+                client.createHandoff(
+                    fromRunId = runId,
+                    productId = productId,
+                    initiativeId = UUID.fromString("22222222-2222-4222-8222-222222222222"),
+                    toAdapterId = "openai-codex",
+                    toAgentId = "codex",
+                    toModelId = "gpt-5.6-codex-next",
+                    toSettings = mapOf("reasoningEffort" to PortableAgentSettingValue.Text("medium")),
+                    reason = "Inspect $privateRoot/$privateCredential",
+                    completedWork = emptyList(),
+                    unresolvedMatters = emptyList(),
+                    decisions = emptyList(),
+                    evidence = emptyList(),
+                    actorId = "founder.review",
+                )
+            }
             assertFailsWith<IllegalArgumentException> {
                 client.selectAgent(
                     "openai-codex",
@@ -167,7 +274,7 @@ class PortableDesignClientTest {
             val importView = controller.importPortableDesignSnapshot(bundleRoot, "founder.review")
             assertTrue(importView.contains("exact Product revision 7"))
             assertTrue(importView.contains("not approval or a baseline"))
-            listOf(productView, readinessView, selectedView, listView, readView, importView).forEach { rendered ->
+            listOf(productView, readinessView, selectedView, handoffView, listView, readView, importView).forEach { rendered ->
                 assertFalse(rendered.contains(bundleRoot.toString()))
                 assertFalse(rendered.contains(privateRoot))
                 assertFalse(rendered.contains(privateCredential))
