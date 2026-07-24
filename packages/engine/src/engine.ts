@@ -1038,11 +1038,10 @@ export class GaepEngine {
     input: HandoffInput,
   ): Promise<{ handoff: Handoff; capabilities: AdapterCapabilities }> {
     const fromRunId = requireUuid(input.fromRunId, "Source Run ID")
-    const fromRun = await this.repository.readJson(
-      this.repository.resolve("sessions", `run-${fromRunId}.json`),
-      runSchema,
-    )
-    if (fromRun.state === "running" || fromRun.state === "unknown") {
+    const runs = await this.listRuns()
+    const fromRun = runs.find((run) => run.id === fromRunId)
+    if (!fromRun) throw new Error("The source Run does not exist in this governed workspace")
+    if (runs.some((run) => !["completed", "failed", "cancelled"].includes(run.state))) {
       throw new Error("Stop, cancel, or reconcile the active agent process before creating a switch handoff")
     }
     const suppliedCapabilities = adapterCapabilitiesSchema.parse(input.toCapabilities)

@@ -2,6 +2,9 @@ import { createInterface } from "node:readline"
 
 const productId = "11111111-1111-4111-8111-111111111111"
 const bundleId = "22222222-2222-4222-8222-222222222222"
+const runId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+const charterId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+const handoffId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
 const workspacePath = process.argv[process.argv.indexOf("--workspace") + 1] ?? ""
@@ -43,6 +46,11 @@ input.on("line", (line) => {
       return writeResult(id, selectedAgent ? { status: "selected", selection: selectedAgent } : { status: "unselected" })
     case "selectAgent":
       return selectAgent(id, request.params)
+    case "listRuns":
+      if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
+      return writeResult(id, [agentRun(workspacePath.endsWith("bad-runs"))])
+    case "createHandoff":
+      return createHandoff(id, request.params)
     case "productStudio.portableDesign.import":
       return importSnapshot(id, request.params)
     case "productStudio.portableDesign.list":
@@ -76,6 +84,81 @@ function agentSelection(settings = { reasoningEffort: "high" }) {
     settings,
     selectedAt: "2026-07-24T08:05:00.000Z",
     capabilityDigest: `sha256:${"e".repeat(64)}`,
+  }
+}
+
+function targetAgentSelection() {
+  return {
+    ...agentSelection({ reasoningEffort: "medium" }),
+    modelId: "gpt-5.6-codex-next",
+    selectedAt: "2026-07-24T08:10:00.000Z",
+    capabilityDigest: `sha256:${"f".repeat(64)}`,
+  }
+}
+
+function agentRun(includePrivatePath = false) {
+  const run = {
+    schemaVersion: 1,
+    id: runId,
+    revision: 3,
+    charterId,
+    charterDigest: `sha256:${"1".repeat(64)}`,
+    productId,
+    initiativeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    agent: agentSelection(),
+    state: "completed",
+    providerSessionRef: `sha256:${"2".repeat(64)}`,
+    startedAt: "2026-07-24T08:00:00.000Z",
+    endedAt: "2026-07-24T08:04:00.000Z",
+  }
+  if (includePrivatePath) run.runtimeExecutable = `${privateRoot}/${privateCredential}`
+  return run
+}
+
+function createHandoff(id, params) {
+  const expected = {
+    fromRunId: runId,
+    toAdapterId: "openai-codex",
+    toModelId: "gpt-5.6-codex-next",
+    toSettings: { reasoningEffort: "medium" },
+    reason: "Switch to the reviewed model",
+    completedWork: ["Selection workflow completed"],
+    unresolvedMatters: ["Native Kiro acceptance remains"],
+    decisions: ["Keep execution disabled"],
+    evidence: ["evidence/kiro-selection.json"],
+  }
+  if (!exactKeys(params, ["actorId", "handoff"]) || params.actorId !== "founder.kiro-review" ||
+    !params.handoff || !exactKeys(params.handoff, Object.keys(expected)) ||
+    JSON.stringify(params.handoff) !== JSON.stringify(expected)) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE HANDOFF PARAMS")
+  }
+  selectedAgent = targetAgentSelection()
+  const value = agentHandoff()
+  if (workspacePath.endsWith("bad-handoff")) value.runtimeExecutable = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function agentHandoff() {
+  return {
+    schemaVersion: 1,
+    id: handoffId,
+    productId,
+    initiativeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    fromRunId: runId,
+    toAgent: targetAgentSelection(),
+    reason: "Switch to the reviewed model",
+    workspaceBaseline: {
+      gitHead: "abcdef1",
+      dirty: true,
+      changedFiles: ["src/index.ts"],
+      truthClass: "observed",
+    },
+    completedWork: ["Selection workflow completed"],
+    unresolvedMatters: ["Native Kiro acceptance remains"],
+    decisions: ["Keep execution disabled"],
+    evidence: ["evidence/kiro-selection.json"],
+    capabilityDifferences: ["Model changes from gpt-5.6-codex to gpt-5.6-codex-next."],
+    createdAt: "2026-07-24T08:10:00.000Z",
   }
 }
 

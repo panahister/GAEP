@@ -17,6 +17,8 @@ import {
   normalizeExistingLocalFolder,
   normalizeUuid,
   parseAgentReadiness,
+  parseAgentHandoff,
+  parseAgentRuns,
   parseAgentSelection,
   parseAgentSelectionState,
   parseHostResult,
@@ -32,6 +34,8 @@ import {
   type PortableDesignSnapshotSummary,
   type ProductBinding,
   type AgentReadinessSnapshot,
+  type AgentHandoff,
+  type AgentRun,
   type AgentSelection,
   type AgentSelectionState,
   type PortableAgentSettingValue,
@@ -117,6 +121,55 @@ export class GaepEngineClient {
       const settings = normalizeSelectionSettings(input.settings)
       const actorId = normalizeActorId(input.actorId)
       return parseAgentSelection(await this.request("selectAgent", { adapterId, modelId, settings, actorId }))
+    })
+  }
+
+  listRuns(): Promise<readonly AgentRun[]> {
+    return this.enqueue(async () => parseAgentRuns(await this.request("listRuns", {})))
+  }
+
+  createHandoff(input: {
+    readonly fromRunId: string
+    readonly productId: string
+    readonly initiativeId: string
+    readonly toAdapterId: string
+    readonly toModelId: string
+    readonly toSettings: Readonly<Record<string, PortableAgentSettingValue>>
+    readonly reason: string
+    readonly completedWork: readonly string[]
+    readonly unresolvedMatters: readonly string[]
+    readonly decisions: readonly string[]
+    readonly evidence: readonly string[]
+    readonly actorId: string
+  }): Promise<AgentHandoff> {
+    return this.enqueue(async () => {
+      const fromRunId = normalizeUuid(input.fromRunId, "Source Run ID")
+      const productId = normalizeUuid(input.productId, "Product ID")
+      const initiativeId = normalizeUuid(input.initiativeId, "Initiative ID")
+      const toAdapterId = normalizeSelectionIdentifier(input.toAdapterId, "Target Adapter ID")
+      const toModelId = normalizeSelectionIdentifier(input.toModelId, "Target Model ID")
+      const toSettings = normalizeSelectionSettings(input.toSettings)
+      const reason = normalizeHandoffText(input.reason, "Handoff reason", 2, 5_000)
+      const completedWork = normalizeHandoffTextList(input.completedWork, "Completed work")
+      const unresolvedMatters = normalizeHandoffTextList(input.unresolvedMatters, "Unresolved matters")
+      const decisions = normalizeHandoffTextList(input.decisions, "Decisions")
+      const evidence = normalizeHandoffTextList(input.evidence, "Evidence")
+      const actorId = normalizeActorId(input.actorId)
+      const result = await this.request("createHandoff", {
+        actorId,
+        handoff: {
+          fromRunId,
+          toAdapterId,
+          toModelId,
+          toSettings,
+          reason,
+          completedWork,
+          unresolvedMatters,
+          decisions,
+          evidence,
+        },
+      })
+      return parseAgentHandoff(result, { fromRunId, productId, initiativeId, toAdapterId, toModelId })
     })
   }
 
@@ -320,6 +373,25 @@ function normalizeSelectionSettings(
   } catch {
     throw new TypeError("Agent settings must contain only verified portable, non-secret values")
   }
+}
+
+function normalizeHandoffTextList(value: readonly string[], label: string): readonly string[] {
+  if (!Array.isArray(value) || value.length > 256) {
+    throw new TypeError(`${label} must contain at most 256 portable entries`)
+  }
+  return Object.freeze(value.map((item) => normalizeHandoffText(item, label, 1, 2_000)))
+}
+
+function normalizeHandoffText(value: string, label: string, minimum: number, maximum: number): string {
+  if (typeof value !== "string") throw new TypeError(`${label} must be portable text`)
+  const normalized = value.trim()
+  if (normalized.length < minimum || normalized.length > maximum ||
+    /[\u0000-\u001F\u007F-\u009F]/u.test(normalized) ||
+    /(?:^|[\s(="'])(?:~[\\/]|\/(?!\/)[^\s"'<>)]*|[A-Za-z]:[\\/][^\s"'<>)]*|\\\\[^\s"'<>)]*|file:\/\/[^\s"'<>)]*)/u.test(normalized) ||
+    /\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|\bAKIA[A-Z0-9]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+/iu.test(normalized)) {
+    throw new TypeError(`${label} must be portable text without paths, controls, or secret-shaped values`)
+  }
+  return normalized
 }
 
 async function resolveExecutable(requested: string, environment: NodeJS.ProcessEnv): Promise<string> {

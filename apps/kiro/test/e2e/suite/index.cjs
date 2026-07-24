@@ -9,6 +9,7 @@ const commands = [
   "gaepKiro.openProductStudio",
   "gaepKiro.agents.readiness",
   "gaepKiro.agents.select",
+  "gaepKiro.agents.handoff",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",
@@ -42,7 +43,7 @@ async function run() {
   const tab = await waitFor(productStudioTab, "GAEP for Kiro Product Studio did not open")
   assert.equal(tab.label, "GAEP for Kiro Product Studio")
   await assert.rejects(access(path.join(workspace, ".gaep")), (error) => error?.code === "ENOENT")
-  process.stdout.write("PASS activation: six bounded commands, machine-only configuration, static Product Studio, and no workspace mutation\n")
+  process.stdout.write("PASS activation: seven bounded commands, machine-only configuration, static Product Studio, and no workspace mutation\n")
 }
 
 function productStudioTab() {

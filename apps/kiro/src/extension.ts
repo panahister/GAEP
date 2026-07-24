@@ -9,7 +9,9 @@ import {
   normalizeExistingLocalFolder,
   normalizeUuid,
   validatePage,
+  type AgentHandoff,
   type AgentReadinessSnapshot,
+  type AgentRun,
   type AgentSelection,
   type AgentSelectionSetting,
   type PortableAgentSettingValue,
@@ -23,6 +25,7 @@ const commandIds = {
   open: "gaepKiro.openProductStudio",
   readiness: "gaepKiro.agents.readiness",
   selectAgent: "gaepKiro.agents.select",
+  handoffAgent: "gaepKiro.agents.handoff",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -82,6 +85,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.open, () => openProductStudio()),
     vscode.commands.registerCommand(commandIds.readiness, () => runUserCommand(() => showAgentReadiness(pool))),
     vscode.commands.registerCommand(commandIds.selectAgent, () => runUserCommand(() => selectAgent(pool))),
+    vscode.commands.registerCommand(commandIds.handoffAgent, () => runUserCommand(() => handoffAgent(pool))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -151,8 +155,8 @@ function productStudioHtml(): string {
   </section>
   <section>
     <h2>Codex and Claude</h2>
-    <p>Use the Kiro Command Palette to observe verified local readiness or record one guarded, portable Agent Selection.</p>
-    <p>Selection records configuration only. It does not start a provider, resume work, approve tools or effects, create a Run, or grant execution authority. Active Runs, capability drift, legacy state, invalid state, and post-Run changes fail closed.</p>
+    <p>Use the Kiro Command Palette to observe verified local readiness, record one guarded portable Agent Selection, or create a versioned switch handoff from the latest terminal Run.</p>
+    <p>Selection and handoff records are configuration and history only. They do not start a provider, resume work, approve tools or effects, create a Run, or grant execution authority. Active Runs, capability drift, legacy state, invalid state, and unbound source Runs fail closed.</p>
   </section>
   <section>
     <h2>Governance boundary</h2>
@@ -316,6 +320,221 @@ async function selectAgent(pool: EngineClientPool): Promise<AgentSelection> {
     )
   }
 
+  const target = await collectAgentTarget(client, "Select one verified local agent adapter")
+  const actorId = normalizeActorId(machineSetting("actorId", undefined, "gaep.kiro-local-human"))
+  const prior = current.status === "selected"
+    ? ` Current selection: ${current.selection.agentId} / ${current.selection.modelId}.`
+    : ""
+  const confirmation = await vscode.window.showWarningMessage(
+    `Record ${target.snapshot.agentLabel} / ${target.modelId} with ${Object.keys(target.settings).length} explicit portable setting${Object.keys(target.settings).length === 1 ? "" : "s"}?${prior} This does not start a provider, create or resume a Run, approve tools or effects, or grant execution authority. The engine will reject active-Run, capability-drift, legacy, invalid, and post-Run changes that require a handoff.`,
+    { modal: true },
+    "Confirm Selection",
+  )
+  if (confirmation !== "Confirm Selection") throw new WorkflowCancelled()
+  requireTrustedWorkspace()
+  const selected = await client.selectAgent({
+    adapterId: target.snapshot.adapterId,
+    modelId: target.modelId,
+    settings: target.settings,
+    actorId,
+  })
+  await showAgentSelectionDocument(selected)
+  await vscode.window.showInformationMessage(
+    `Recorded ${selected.agentId} / ${selected.modelId} as portable Agent Selection. No agent was started and no Run authority was granted.`,
+  )
+  return selected
+}
+
+async function handoffAgent(pool: EngineClientPool): Promise<AgentHandoff> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const current = await client.readAgentSelection()
+  if (current.status === "unselected") {
+    throw new ConfigurationBoundaryError("No prior Agent Selection exists. Use guarded selection before creating Runs or handoffs.")
+  }
+  if (current.status === "migration-required") {
+    throw new ConfigurationBoundaryError(
+      "The existing legacy Agent Selection requires explicit migration review before a versioned handoff.",
+    )
+  }
+  if (current.status === "invalid") {
+    throw new ConfigurationBoundaryError(
+      "The existing Agent Selection is invalid. Repair or review the governed record before creating a handoff.",
+    )
+  }
+
+  const runs = await client.listRuns()
+  const active = runs.filter((run) => !isTerminalRun(run))
+  if (active.length > 0) {
+    throw new ConfigurationBoundaryError(
+      `A versioned handoff cannot be created while ${active.length} Run${active.length === 1 ? " is" : "s are"} non-terminal. Stop, cancel, or reconcile the Run first.`,
+    )
+  }
+  const sourceRun = runs[0]
+  if (!sourceRun) {
+    throw new ConfigurationBoundaryError("No prior terminal Run exists to bind as the source of a versioned handoff.")
+  }
+  if (!samePortableBinding(sourceRun.agent, current.selection)) {
+    throw new ConfigurationBoundaryError(
+      "The latest terminal Run is not bound to the current Agent Selection. Refresh or reconcile governed state before handing off.",
+    )
+  }
+
+  const target = await collectAgentTarget(client, "Select the target for a versioned handoff")
+  if (samePortableBinding(current.selection, {
+    adapterId: target.snapshot.adapterId,
+    modelId: target.modelId,
+    settings: target.settings,
+  })) {
+    throw new ConfigurationBoundaryError(
+      "The handoff target is identical to the current portable Agent Selection. Choose a different adapter, model, or setting.",
+    )
+  }
+
+  const reason = await collectHandoffText("Why is this provider, model, or setting switch required?", true)
+  const completedWork = await collectHandoffList("Completed work to preserve, separated by commas")
+  const unresolvedMatters = await collectHandoffList("Unresolved matters to preserve, separated by commas")
+  const decisions = await collectHandoffList("Decisions to preserve, separated by commas")
+  const evidence = await collectHandoffList("Portable evidence references to preserve, separated by commas")
+  if (completedWork.length === 0 && unresolvedMatters.length === 0 && decisions.length === 0 && evidence.length === 0) {
+    throw new ConfigurationBoundaryError(
+      "Record at least one completed-work, unresolved-matter, decision, or portable evidence entry before creating a handoff.",
+    )
+  }
+
+  const confirmation = await vscode.window.showWarningMessage(
+    [
+      `Create a versioned handoff from terminal Run ${sourceRun.id}?`,
+      `Prior selection: ${current.selection.agentId} / ${current.selection.modelId}.`,
+      `Target selection: ${target.snapshot.agentLabel} / ${target.modelId} with ${Object.keys(target.settings).length} explicit portable setting${Object.keys(target.settings).length === 1 ? "" : "s"}.`,
+      `Preserved entries: ${completedWork.length} completed, ${unresolvedMatters.length} unresolved, ${decisions.length} decisions, ${evidence.length} evidence.`,
+      "The engine will atomically record the handoff and replace Agent Selection only after fresh capability verification. It will not start or resume a provider, create a Run, approve tools or effects, or grant execution authority.",
+    ].join("\n\n"),
+    { modal: true },
+    "Create Handoff and Switch",
+  )
+  if (confirmation !== "Create Handoff and Switch") throw new WorkflowCancelled()
+  requireTrustedWorkspace()
+
+  const [freshSelection, freshRuns] = await Promise.all([client.readAgentSelection(), client.listRuns()])
+  const freshSource = freshRuns[0]
+  if (freshSelection.status !== "selected" || !sameExactSelection(freshSelection.selection, current.selection) ||
+    freshRuns.some((run) => !isTerminalRun(run)) || !freshSource || freshSource.id !== sourceRun.id ||
+    !samePortableBinding(freshSource.agent, current.selection)) {
+    throw new ConfigurationBoundaryError(
+      "Agent Selection or Run history changed while the handoff form was open. No handoff was requested; reopen the flow and review fresh state.",
+    )
+  }
+
+  const actorId = normalizeActorId(machineSetting("actorId", undefined, "gaep.kiro-local-human"))
+  const handoff = await client.createHandoff({
+    fromRunId: sourceRun.id,
+    productId: sourceRun.productId,
+    initiativeId: sourceRun.initiativeId,
+    toAdapterId: target.snapshot.adapterId,
+    toModelId: target.modelId,
+    toSettings: target.settings,
+    reason,
+    completedWork,
+    unresolvedMatters,
+    decisions,
+    evidence,
+    actorId,
+  })
+  await showAgentHandoffDocument(handoff)
+  await vscode.window.showInformationMessage(
+    `Recorded versioned handoff ${handoff.id} and switched portable Agent Selection to ${handoff.toAgent.agentId} / ${handoff.toAgent.modelId}. No provider was started and no Run authority was granted.`,
+  )
+  return handoff
+}
+
+function isTerminalRun(run: AgentRun): boolean {
+  return run.state === "completed" || run.state === "failed" || run.state === "cancelled"
+}
+
+function samePortableBinding(
+  left: Pick<AgentSelection, "adapterId" | "modelId" | "settings">,
+  right: Pick<AgentSelection, "adapterId" | "modelId" | "settings">,
+): boolean {
+  return left.adapterId === right.adapterId && left.modelId === right.modelId &&
+    JSON.stringify(sortedSettings(left.settings)) === JSON.stringify(sortedSettings(right.settings))
+}
+
+function sameExactSelection(left: AgentSelection, right: AgentSelection): boolean {
+  return left.schemaVersion === right.schemaVersion && left.adapterId === right.adapterId && left.agentId === right.agentId &&
+    left.modelId === right.modelId && left.modelTruthClass === right.modelTruthClass && left.modelAlias === right.modelAlias &&
+    left.selectedAt === right.selectedAt && left.capabilityDigest === right.capabilityDigest &&
+    JSON.stringify(sortedSettings(left.settings)) === JSON.stringify(sortedSettings(right.settings))
+}
+
+function sortedSettings(settings: Readonly<Record<string, PortableAgentSettingValue>>): Record<string, PortableAgentSettingValue> {
+  return Object.fromEntries(Object.entries(settings).sort(([left], [right]) => left.localeCompare(right)))
+}
+
+async function collectHandoffText(prompt: string, required: boolean): Promise<string> {
+  const value = await vscode.window.showInputBox({
+    prompt,
+    ignoreFocusOut: true,
+    validateInput: (candidate) => validateHandoffText(candidate, required),
+  })
+  if (value === undefined) throw new WorkflowCancelled()
+  const issue = validateHandoffText(value, required)
+  if (issue) throw new TypeError(issue)
+  return value.trim()
+}
+
+async function collectHandoffList(prompt: string): Promise<readonly string[]> {
+  const value = await collectHandoffText(prompt, false)
+  if (!value) return Object.freeze([])
+  const entries = value.split(",").map((entry) => entry.trim())
+  if (entries.length > 256) throw new TypeError("Handoff detail lists can contain at most 256 entries")
+  for (const entry of entries) {
+    const issue = validateHandoffText(entry, true, 2_000)
+    if (issue) throw new TypeError(issue)
+  }
+  return Object.freeze(entries)
+}
+
+function validateHandoffText(value: string, required: boolean, maximum = 5_000): string | undefined {
+  const normalized = value.trim()
+  if (required && normalized.length < 2) return "Enter at least two portable characters"
+  if (!normalized && !required) return undefined
+  if (normalized.length > maximum || /[\u0000-\u001F\u007F-\u009F]/u.test(normalized) ||
+    /(?:^|[\s(="'])(?:~[\\/]|\/(?!\/)[^\s"'<>)]*|[A-Za-z]:[\\/][^\s"'<>)]*|\\\\[^\s"'<>)]*|file:\/\/[^\s"'<>)]*)/u.test(normalized) ||
+    /\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|\bAKIA[A-Z0-9]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+/iu.test(normalized)) {
+    return "Use portable text without machine paths, controls, or secret-shaped values"
+  }
+  return undefined
+}
+
+async function showAgentHandoffDocument(handoff: AgentHandoff): Promise<void> {
+  const lines = [
+    "GAEP versioned Agent Handoff",
+    "",
+    `Handoff: ${handoff.id}`,
+    `Source Run: ${handoff.fromRunId}`,
+    `Target: ${handoff.toAgent.agentId} / ${handoff.toAgent.modelId}`,
+    `Created at: ${handoff.createdAt}`,
+    `Workspace observation: dirty=${handoff.workspaceBaseline.dirty ?? "unknown"}; changed files=${handoff.workspaceBaseline.changedFiles.length}; truth=${handoff.workspaceBaseline.truthClass ?? "not recorded"}`,
+    `Preserved entries: completed=${handoff.completedWork.length}; unresolved=${handoff.unresolvedMatters.length}; decisions=${handoff.decisions.length}; evidence=${handoff.evidence.length}`,
+    "Capability differences:",
+    ...handoff.capabilityDifferences.map((difference) => `  - ${difference}`),
+    "",
+    "Boundary: the handoff atomically replaced portable Agent Selection, but did not start or resume a provider, create a Run, approve tools or effects, or grant execution authority.",
+    "Machine-local paths, credentials, provider sessions, and raw provider output are not included.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+}
+
+interface AgentTarget {
+  readonly snapshot: AgentReadinessSnapshot
+  readonly modelId: string
+  readonly settings: Readonly<Record<string, PortableAgentSettingValue>>
+}
+
+async function collectAgentTarget(client: GaepEngineClient, title: string): Promise<AgentTarget> {
   const snapshots = await client.probeAgentReadiness()
   const available = snapshots.filter((snapshot) => snapshot.detected && snapshot.executionInterface !== "unavailable")
   if (available.length === 0) {
@@ -329,37 +548,17 @@ async function selectAgent(pool: EngineClientPool): Promise<AgentSelection> {
       snapshot,
     })),
     {
-      title: "Select one verified local agent adapter",
-      placeHolder: "Selection records portable configuration only; it does not start an agent",
+      title,
+      placeHolder: "Portable configuration only; this does not start an agent",
       ignoreFocusOut: true,
     },
   )
   if (!adapter) throw new WorkflowCancelled()
-
-  const model = await selectAgentModel(adapter.snapshot)
-  const settings = await collectAgentSettings(adapter.snapshot.settings)
-  const actorId = normalizeActorId(machineSetting("actorId", undefined, "gaep.kiro-local-human"))
-  const prior = current.status === "selected"
-    ? ` Current selection: ${current.selection.agentId} / ${current.selection.modelId}.`
-    : ""
-  const confirmation = await vscode.window.showWarningMessage(
-    `Record ${adapter.snapshot.agentLabel} / ${model} with ${Object.keys(settings).length} explicit portable setting${Object.keys(settings).length === 1 ? "" : "s"}?${prior} This does not start a provider, create or resume a Run, approve tools or effects, or grant execution authority. The engine will reject active-Run, capability-drift, legacy, invalid, and post-Run changes that require a handoff.`,
-    { modal: true },
-    "Confirm Selection",
-  )
-  if (confirmation !== "Confirm Selection") throw new WorkflowCancelled()
-  requireTrustedWorkspace()
-  const selected = await client.selectAgent({
-    adapterId: adapter.snapshot.adapterId,
-    modelId: model,
-    settings,
-    actorId,
+  return Object.freeze({
+    snapshot: adapter.snapshot,
+    modelId: await selectAgentModel(adapter.snapshot),
+    settings: await collectAgentSettings(adapter.snapshot.settings),
   })
-  await showAgentSelectionDocument(selected)
-  await vscode.window.showInformationMessage(
-    `Recorded ${selected.agentId} / ${selected.modelId} as portable Agent Selection. No agent was started and no Run authority was granted.`,
-  )
-  return selected
 }
 
 async function selectAgentModel(snapshot: AgentReadinessSnapshot): Promise<string> {

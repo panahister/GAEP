@@ -149,6 +149,50 @@ export type AgentSelectionState =
   | { readonly status: "migration-required"; readonly portableCandidate: AgentSelection }
   | { readonly status: "invalid" }
 
+export type AgentRunState = "prepared" | "running" | "paused" | "completed" | "failed" | "cancelled" | "unknown"
+
+export interface AgentRun {
+  readonly schemaVersion: 1
+  readonly id: string
+  readonly revision?: number
+  readonly charterId: string
+  readonly charterDigest?: string
+  readonly productId: string
+  readonly initiativeId: string
+  readonly agent: AgentSelection
+  readonly state: AgentRunState
+  readonly providerSessionRef?: string
+  readonly startedAt?: string
+  readonly endedAt?: string
+  readonly previousRunId?: string
+}
+
+export interface HandoffWorkspaceBaseline {
+  readonly gitHead?: string
+  readonly dirty: boolean | null
+  readonly changedFiles: readonly string[]
+  readonly truthClass?: AgentTruthClass
+  readonly observationError?: string
+}
+
+export interface AgentHandoff {
+  readonly schemaVersion: 1
+  readonly id: string
+  readonly productId: string
+  readonly initiativeId: string
+  readonly fromRunId: string
+  readonly toAgent: AgentSelection
+  readonly reason: string
+  readonly workspaceBaseline: HandoffWorkspaceBaseline
+  readonly completedWork: readonly string[]
+  readonly unresolvedMatters: readonly string[]
+  readonly decisions: readonly string[]
+  readonly evidence: readonly string[]
+  readonly capabilityDifferences: readonly string[]
+  readonly createdAt: string
+  readonly acknowledgedAt?: string
+}
+
 export interface AgentReadinessSnapshot {
   readonly schemaVersion: 1
   readonly adapterId: string
@@ -434,6 +478,68 @@ export function parseAgentSelection(result: unknown): AgentSelection {
   })
 }
 
+export function parseAgentRuns(result: unknown): readonly AgentRun[] {
+  if (!Array.isArray(result) || result.length > 512) throw invalidHostResponse()
+  const runs = Object.freeze(result.map((value) => parseAgentRun(requireRecord(value))))
+  if (new Set(runs.map((run) => run.id)).size !== runs.length) throw invalidHostResponse()
+  return runs
+}
+
+export function parseAgentHandoff(
+  result: unknown,
+  expected: {
+    readonly fromRunId: string
+    readonly productId: string
+    readonly initiativeId: string
+    readonly toAdapterId: string
+    readonly toModelId: string
+  },
+): AgentHandoff {
+  const handoff = requireRecord(result)
+  requireKeys(
+    handoff,
+    [
+      "schemaVersion", "id", "productId", "initiativeId", "fromRunId", "toAgent", "reason",
+      "workspaceBaseline", "completedWork", "unresolvedMatters", "decisions", "evidence",
+      "capabilityDifferences", "createdAt",
+    ],
+    ["acknowledgedAt"],
+  )
+  if (requireSafeInteger(handoff, "schemaVersion") !== 1) throw invalidHostResponse()
+  const fromRunId = normalizeUuid(requireString(handoff, "fromRunId"), "Source Run ID")
+  const toAgent = parseAgentSelection(handoff.toAgent)
+  const productId = normalizeUuid(requireString(handoff, "productId"), "Product ID")
+  const initiativeId = normalizeUuid(requireString(handoff, "initiativeId"), "Initiative ID")
+  if (fromRunId !== normalizeUuid(expected.fromRunId, "Source Run ID") ||
+    productId !== normalizeUuid(expected.productId, "Product ID") ||
+    initiativeId !== normalizeUuid(expected.initiativeId, "Initiative ID") ||
+    toAgent.adapterId !== expected.toAdapterId || toAgent.modelId !== expected.toModelId) {
+    throw invalidHostResponse()
+  }
+  const baseline = parseHandoffWorkspaceBaseline(requireRecord(handoff.workspaceBaseline))
+  const acknowledgedAt = Object.hasOwn(handoff, "acknowledgedAt")
+    ? requireTimestamp(handoff, "acknowledgedAt")
+    : undefined
+  const parsed: AgentHandoff = {
+    schemaVersion: 1,
+    id: normalizeUuid(requireString(handoff, "id"), "Handoff ID"),
+    productId,
+    initiativeId,
+    fromRunId,
+    toAgent,
+    reason: portableHandoffText(handoff.reason, 2),
+    workspaceBaseline: baseline,
+    completedWork: parseHandoffTextArray(handoff.completedWork),
+    unresolvedMatters: parseHandoffTextArray(handoff.unresolvedMatters),
+    decisions: parseHandoffTextArray(handoff.decisions),
+    evidence: parseHandoffTextArray(handoff.evidence),
+    capabilityDifferences: parseHandoffTextArray(handoff.capabilityDifferences),
+    createdAt: requireTimestamp(handoff, "createdAt"),
+    ...(acknowledgedAt !== undefined ? { acknowledgedAt } : {}),
+  }
+  return Object.freeze(parsed)
+}
+
 export function parsePortableSelectionSettings(value: unknown): Readonly<Record<string, PortableAgentSettingValue>> {
   const settings = requireRecord(value)
   const entries = Object.entries(settings)
@@ -446,6 +552,91 @@ export function parsePortableSelectionSettings(value: unknown): Readonly<Record<
     parsed[key] = parsePortableSettingValue(rawValue)
   }
   return Object.freeze(parsed)
+}
+
+function parseAgentRun(run: JsonRecord): AgentRun {
+  requireKeys(
+    run,
+    ["schemaVersion", "id", "charterId", "productId", "initiativeId", "agent", "state"],
+    ["revision", "charterDigest", "providerSessionRef", "startedAt", "endedAt", "previousRunId"],
+  )
+  if (requireSafeInteger(run, "schemaVersion") !== 1) throw invalidHostResponse()
+  const revision = Object.hasOwn(run, "revision") ? requireSafeInteger(run, "revision") : undefined
+  if (revision !== undefined && revision < 1) throw invalidHostResponse()
+  const state = requireString(run, "state")
+  if (!(/* keep this aligned with contracts/execution.ts */[
+    "prepared", "running", "paused", "completed", "failed", "cancelled", "unknown",
+  ] as const).includes(state as AgentRunState)) throw invalidHostResponse()
+  const charterDigest = Object.hasOwn(run, "charterDigest") ? requireDigest(run, "charterDigest") : undefined
+  const providerSessionRef = Object.hasOwn(run, "providerSessionRef") ? requireDigest(run, "providerSessionRef") : undefined
+  const startedAt = Object.hasOwn(run, "startedAt") ? requireTimestamp(run, "startedAt") : undefined
+  const endedAt = Object.hasOwn(run, "endedAt") ? requireTimestamp(run, "endedAt") : undefined
+  const previousRunId = Object.hasOwn(run, "previousRunId")
+    ? normalizeUuid(requireString(run, "previousRunId"), "Previous Run ID")
+    : undefined
+  return Object.freeze({
+    schemaVersion: 1,
+    id: normalizeUuid(requireString(run, "id"), "Run ID"),
+    ...(revision !== undefined ? { revision } : {}),
+    charterId: normalizeUuid(requireString(run, "charterId"), "Charter ID"),
+    ...(charterDigest !== undefined ? { charterDigest } : {}),
+    productId: normalizeUuid(requireString(run, "productId"), "Product ID"),
+    initiativeId: normalizeUuid(requireString(run, "initiativeId"), "Initiative ID"),
+    agent: parseAgentSelection(run.agent),
+    state: state as AgentRunState,
+    ...(providerSessionRef !== undefined ? { providerSessionRef } : {}),
+    ...(startedAt !== undefined ? { startedAt } : {}),
+    ...(endedAt !== undefined ? { endedAt } : {}),
+    ...(previousRunId !== undefined ? { previousRunId } : {}),
+  })
+}
+
+function parseHandoffWorkspaceBaseline(baseline: JsonRecord): HandoffWorkspaceBaseline {
+  requireKeys(baseline, ["dirty", "changedFiles"], ["gitHead", "truthClass", "observationError"])
+  const gitHead = Object.hasOwn(baseline, "gitHead") ? requireString(baseline, "gitHead") : undefined
+  if (gitHead !== undefined && !/^[0-9a-f]{7,64}$/iu.test(gitHead)) throw invalidHostResponse()
+  const dirty = baseline.dirty
+  if (dirty !== null && typeof dirty !== "boolean") throw invalidHostResponse()
+  if (!Array.isArray(baseline.changedFiles) || baseline.changedFiles.length > 20_000) throw invalidHostResponse()
+  const changedFiles = Object.freeze(baseline.changedFiles.map((path) => workspaceRelativePath(path)))
+  if (new Set(changedFiles).size !== changedFiles.length) throw invalidHostResponse()
+  const truthClass = Object.hasOwn(baseline, "truthClass")
+    ? requireTruthClass(baseline, "truthClass")
+    : undefined
+  const observationError = Object.hasOwn(baseline, "observationError")
+    ? portableHandoffText(baseline.observationError, 1, 500)
+    : undefined
+  return Object.freeze({
+    ...(gitHead !== undefined ? { gitHead } : {}),
+    dirty,
+    changedFiles,
+    ...(truthClass !== undefined ? { truthClass } : {}),
+    ...(observationError !== undefined ? { observationError } : {}),
+  })
+}
+
+function parseHandoffTextArray(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.length > 512) throw invalidHostResponse()
+  return Object.freeze(value.map((item) => portableHandoffText(item, 1)))
+}
+
+function portableHandoffText(value: unknown, minimum: number, maximum = 5_000): string {
+  const parsed = portableText(value, minimum, maximum)
+  if (parsed !== parsed.trim() ||
+    /(?:^|[\s(="'])(?:~[\\/]|\/(?!\/)[^\s"'<>)]*|[A-Za-z]:[\\/][^\s"'<>)]*|\\\\[^\s"'<>)]*|file:\/\/[^\s"'<>)]*)/u.test(parsed)) {
+    throw invalidHostResponse()
+  }
+  return parsed
+}
+
+function workspaceRelativePath(value: unknown): string {
+  if (typeof value !== "string" || value.length < 1 || value.length > 4_096 || value === ".") throw invalidHostResponse()
+  const segments = value.split("/")
+  if (value.startsWith("/") || /^[A-Za-z]:/u.test(value) || value.startsWith("~") || value.includes("\\") ||
+    value.includes("\0") || /%2e/iu.test(value) || segments.some((segment) => !segment || segment === "." || segment === "..")) {
+    throw invalidHostResponse()
+  }
+  return value
 }
 
 function parseAgentReadinessSnapshot(snapshot: JsonRecord): AgentReadinessSnapshot {

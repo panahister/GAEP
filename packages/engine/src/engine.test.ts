@@ -516,7 +516,7 @@ describe("GAEP local engine", () => {
     expect(after.error).toMatch(/hash/i)
   })
 
-  it("records model truth and blocks handoff while the prior agent process is running", async () => {
+  it("records model truth and blocks handoff while any Run remains non-terminal", async () => {
     const { initiative } = await initialize()
     await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
     const selection = await engine.readSelection()
@@ -534,7 +534,6 @@ describe("GAEP local engine", () => {
     }, "founder")
     await engine.confirmCharter(charter.id, "founder")
     const { run } = await engine.prepareRun(charter.id, "founder")
-    await engine.markRunState(run.id, "running", { kind: "system", id: "test" })
 
     const input = {
       fromRunId: run.id,
@@ -548,6 +547,11 @@ describe("GAEP local engine", () => {
       evidence: [],
     }
     await expect(engine.createHandoff(input, "founder")).rejects.toThrow(/Stop, cancel, or reconcile/)
+    await engine.markRunState(run.id, "running", { kind: "system", id: "test" })
+    await expect(engine.createHandoff(input, "founder")).rejects.toThrow(/Stop, cancel, or reconcile/)
+    await engine.markRunState(run.id, "paused", { kind: "system", id: "test" })
+    await expect(engine.createHandoff(input, "founder")).rejects.toThrow(/Stop, cancel, or reconcile/)
+    await engine.markRunState(run.id, "running", { kind: "system", id: "test" })
     await engine.markRunState(run.id, "unknown", { kind: "system", id: "test" })
     await expect(engine.createHandoff(input, "founder")).rejects.toThrow(/Stop, cancel, or reconcile/)
   })

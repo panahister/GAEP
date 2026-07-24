@@ -37,7 +37,11 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const sourceErrorRoot = join(root, "source-error")
   const badReadinessRoot = join(root, "bad-readiness")
   const badSelectionRoot = join(root, "bad-selection")
-  await Promise.all([workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot].map((path) => mkdir(path)))
+  const badRunsRoot = join(root, "bad-runs")
+  const badHandoffRoot = join(root, "bad-handoff")
+  await Promise.all([
+    workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot, badRunsRoot, badHandoffRoot,
+  ].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
     engineExecutable: process.execPath,
@@ -101,6 +105,71 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.deepEqual(await client.readAgentSelection(), { status: "selected", selection: selected })
     assert.equal(JSON.stringify(selected).includes(privateRoot), false)
     assert.equal(JSON.stringify(selected).includes(privateCredential), false)
+
+    const runs = await client.listRuns()
+    assert.equal(runs.length, 1)
+    assert.equal(runs[0]?.id, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+    assert.equal(runs[0]?.state, "completed")
+    assert.equal(runs[0]?.agent.modelId, selected.modelId)
+    assert.equal(JSON.stringify(runs).includes(privateRoot), false)
+    assert.equal(JSON.stringify(runs).includes(privateCredential), false)
+
+    const handoffInput = {
+      fromRunId: runs[0]!.id,
+      productId: runs[0]!.productId,
+      initiativeId: runs[0]!.initiativeId,
+      toAdapterId: "openai-codex",
+      toModelId: "gpt-5.6-codex-next",
+      toSettings: { reasoningEffort: "medium" },
+      reason: "Switch to the reviewed model",
+      completedWork: ["Selection workflow completed"],
+      unresolvedMatters: ["Native Kiro acceptance remains"],
+      decisions: ["Keep execution disabled"],
+      evidence: ["evidence/kiro-selection.json"],
+      actorId: "founder.kiro-review",
+    } as const
+    const handoff = await client.createHandoff(handoffInput)
+    assert.equal(handoff.id, "dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+    assert.equal(handoff.fromRunId, runs[0]?.id)
+    assert.equal(handoff.toAgent.modelId, "gpt-5.6-codex-next")
+    assert.deepEqual(handoff.workspaceBaseline.changedFiles, ["src/index.ts"])
+    assert.equal(JSON.stringify(handoff).includes(privateRoot), false)
+    assert.equal(JSON.stringify(handoff).includes(privateCredential), false)
+    assert.equal((await client.readAgentSelection()).status, "selected")
+
+    const badRunsClient = await GaepEngineClient.create({
+      workspacePath: badRunsRoot,
+      engineExecutable: process.execPath,
+      engineArgumentsPrefix: [fakeEngine],
+    })
+    try {
+      await assert.rejects(() => badRunsClient.listRuns(), (error) => safeHostError(error, "HOST_RESPONSE_INVALID"))
+    } finally {
+      await badRunsClient.dispose()
+    }
+
+    const badHandoffClient = await GaepEngineClient.create({
+      workspacePath: badHandoffRoot,
+      engineExecutable: process.execPath,
+      engineArgumentsPrefix: [fakeEngine],
+    })
+    try {
+      await assert.rejects(
+        () => badHandoffClient.createHandoff(handoffInput),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await badHandoffClient.dispose()
+    }
+
+    await assert.rejects(
+      () => client.createHandoff({ ...handoffInput, reason: `Inspect ${privateRoot}/${privateCredential}` }),
+      TypeError,
+    )
+    await assert.rejects(
+      () => client.createHandoff({ ...handoffInput, evidence: [`token=${privateCredential}`] }),
+      TypeError,
+    )
 
     const badReadinessClient = await GaepEngineClient.create({
       workspacePath: badReadinessRoot,

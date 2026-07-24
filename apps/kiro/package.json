@@ -34,6 +34,7 @@
     "onCommand:gaepKiro.openProductStudio",
     "onCommand:gaepKiro.agents.readiness",
     "onCommand:gaepKiro.agents.select",
+    "onCommand:gaepKiro.agents.handoff",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -63,6 +64,10 @@
       {
         "command": "gaepKiro.agents.select",
         "title": "GAEP for Kiro: Select Codex or Claude Configuration"
+      },
+      {
+        "command": "gaepKiro.agents.handoff",
+        "title": "GAEP for Kiro: Create Versioned Agent Handoff"
       },
       {
         "command": "gaepKiro.portableDesign.import",
@@ -96,7 +101,7 @@
           "type": "string",
           "default": "gaep.kiro-local-human",
           "scope": "machine",
-          "description": "Portable human actor ID recorded for local imports and guarded agent selections. It cannot contain credentials and workspace overrides are ignored."
+          "description": "Portable human actor ID recorded for local imports, guarded agent selections, and versioned handoffs. It cannot contain credentials and workspace overrides are ignored."
         }
       }
     }
