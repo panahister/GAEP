@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-native-ide-startup-smoke-v1",
+  "recordedAt": "2026-07-24T08:18:13Z",
+  "host": {
+    "platform": "darwin",
+    "architecture": "arm64"
+  },
+  "runtime": {
+    "name": "JetBrains Rider",
+    "productCode": "RD",
+    "version": "2025.3",
+    "buildNumber": "253.28294.87"
+  },
+  "plugin": {
+    "id": "dev.gaep.productstudio",
+    "version": "0.1.0",
+    "name": "GAEP",
+    "bundled": false
+  },
+  "result": "pass",
+  "command": "npm run test:rider:startup",
+  "verified": [
+    "fresh Rider IDE startup marker",
+    "exact custom plugin ID and version loaded",
+    "sandbox plugin mode enabled",
+    "exact required plugin ID configured",
+    "isolated config path",
+    "isolated system path",
+    "isolated plugins path",
+    "isolated log path",
+    "bounded process-tree termination after evidence"
+  ],
+  "sandboxRoot": "apps/rider/.intellijPlatform/sandbox/gaep-rider/RD-2025.3",
+  "claimBoundary": "This proves native Rider startup and exact plugin loading on macOS arm64. It does not prove tool-window interaction, packaged engine execution, plugin-manager installation, signing, other operating systems, Product readiness, or release approval."
+}

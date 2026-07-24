@@ -25,6 +25,7 @@
     "test:vscode:extension-host": "npm run test:extension-host -w gaep-vscode",
     "test:kiro:extension-host": "npm --prefix apps/kiro run test:extension-host",
     "test:rider:package": "./apps/rider/gradlew -p apps/rider --no-daemon clean test buildPlugin verifyPluginStructure verifyInstalledSandbox --no-parallel",
+    "test:rider:startup": "node apps/rider/test/startup-smoke.mjs",
     "test:visual-studio:host": "dotnet build apps/visual-studio/Gaep.VisualStudio/Gaep.VisualStudio.csproj -c Release && node apps/visual-studio/verify-shell.mjs && dotnet build apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj -c Release && dotnet run --project apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj -c Release --no-build",
     "test:watch": "vitest",
     "typecheck": "tsc -b",
