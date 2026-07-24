@@ -708,6 +708,43 @@ describe("engine host protocol", () => {
       expectedChangeRevision: change.revision,
       expectedChangeDigest: canonicalDigest(change),
     }
+    const catalogParams = {
+      expectedProductId: product.id,
+      expectedProductRevision: product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(product),
+    }
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 50,
+      protocolVersion: 1,
+      method: "dashboard.changeImpact.changes",
+      params: catalogParams,
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    const catalog = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 51,
+      protocolVersion: 2,
+      method: "dashboard.changeImpact.changes",
+      params: catalogParams,
+    }) as Record<string, unknown>
+    expect(catalog).toMatchObject({
+      kind: "change-impact-change-catalog",
+      items: [{ recordId: change.id, revision: change.revision, state: "proposed" }],
+      total: 1,
+      omitted: 0,
+      authorityBoundary: "change-catalog-selection-does-not-approve-change-or-authorize-effects",
+    })
+    expect(JSON.stringify(catalog)).not.toContain(workspace)
+    expect(JSON.stringify(catalog)).not.toContain(product.name)
+    expect(JSON.stringify(catalog)).not.toContain(change.title)
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 52,
+      protocolVersion: 2,
+      method: "dashboard.changeImpact.changes",
+      params: { ...catalogParams, approved: true },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
 
     await expect(host.dispatch({
       jsonrpc: "2.0",

@@ -1,5 +1,8 @@
 import { canonicalDigest } from "@gaep/agent-sdk"
 import {
+  changeImpactChangeCatalogContentSchema,
+  changeImpactChangeCatalogRequestSchema,
+  changeImpactChangeCatalogSchema,
   changeImpactDashboardContentSchema,
   changeImpactDashboardRequestSchema,
   changeImpactDashboardSchema,
@@ -10,6 +13,8 @@ import {
   traceImpactSchema,
   workItemSchema,
   type Change,
+  type ChangeImpactChangeCatalog,
+  type ChangeImpactChangeCatalogRequest,
   type ChangeImpactDashboard,
   type ChangeImpactDashboardRequest,
   type Decision,
@@ -41,6 +46,54 @@ export interface ChangeImpactDashboardSources {
   traceImpact: TraceImpact
   decisions: Decision[]
   risks: Risk[]
+}
+
+export function composeChangeImpactChangeCatalog(
+  productValue: Product,
+  changeValues: Change[],
+  requestValue: ChangeImpactChangeCatalogRequest,
+  observedAt = new Date().toISOString(),
+): ChangeImpactChangeCatalog {
+  const request = changeImpactChangeCatalogRequestSchema.parse(requestValue)
+  const product = productSchema.parse(productValue)
+  const changes = changeValues.map((record) => changeSchema.parse(record))
+  const productRevision = product.revision ?? 1
+  const productDigest = canonicalDigest(product)
+  if (
+    request.expectedProductId.toLowerCase() !== product.id.toLowerCase()
+    || request.expectedProductRevision !== productRevision
+    || request.expectedProductDigest !== productDigest
+  ) throw new ChangeImpactProductBindingError()
+  if (changes.some((record) => record.productId.toLowerCase() !== product.id.toLowerCase())) {
+    throw new ChangeImpactProductBindingError()
+  }
+  const catalogItems = changes
+    .map((record) => ({
+      recordType: "change" as const,
+      recordId: record.id,
+      revision: record.revision,
+      digest: canonicalDigest(record),
+      state: record.state,
+      effectEnvelope: record.effectEnvelope,
+    }))
+    .sort((left, right) => compare(left.recordId, right.recordId))
+  const boundedItems = bounded(catalogItems, 256)
+  const content = changeImpactChangeCatalogContentSchema.parse({
+    schemaVersion: 1,
+    kind: "change-impact-change-catalog",
+    product: { recordType: "product", recordId: product.id, revision: productRevision, digest: productDigest },
+    items: boundedItems.values,
+    total: boundedItems.limit.total,
+    omitted: boundedItems.limit.omitted,
+    observedAt,
+    sourceBoundary: "current-governed-change-metadata-only",
+    limitations: [
+      "The catalog contains exact current Change metadata only; Product text, Change text, and source content are withheld.",
+      "At most 256 Changes are shown in deterministic ID order; omitted Changes require another governed selection surface.",
+    ],
+    authorityBoundary: "change-catalog-selection-does-not-approve-change-or-authorize-effects",
+  })
+  return changeImpactChangeCatalogSchema.parse({ ...content, snapshotDigest: canonicalDigest(content) })
 }
 
 const LIMITS = {

@@ -132,6 +132,14 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badDashboardApplicabilityRoot = join(root, "bad-dashboard-applicability")
   const badDashboardDigestRoot = join(root, "bad-dashboard-digest")
   const badDashboardPrivateRoot = join(root, "bad-dashboard-private")
+  const badChangeCatalogBindingRoot = join(root, "bad-change-catalog-binding")
+  const badChangeCatalogDigestRoot = join(root, "bad-change-catalog-digest")
+  const badChangeCatalogPrivateRoot = join(root, "bad-change-catalog-private")
+  const badChangeImpactBindingRoot = join(root, "bad-change-impact-binding")
+  const badChangeImpactCountRoot = join(root, "bad-change-impact-count")
+  const badChangeImpactFreshnessRoot = join(root, "bad-change-impact-freshness")
+  const badChangeImpactDigestRoot = join(root, "bad-change-impact-digest")
+  const badChangeImpactPrivateRoot = join(root, "bad-change-impact-private")
   await Promise.all([
     workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot, badRunsRoot, badHandoffRoot,
     badHandoffBindingRoot, badManagedPreviewRoot, badManagedCriterionRoot, badManagedDigestRoot, badManagedReceiptRoot,
@@ -140,7 +148,9 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     badManagedEvidenceDetailRoot, badManagedEvidenceBindingRoot, discardManagedReviewRoot, badManagedReviewDigestRoot,
     badManagedReviewPrivateRoot, badManagedReviewBindingRoot, badManagedReviewPathRoot, badManagedTransitionDigestRoot,
     badManagedTransitionPrivateRoot, staleManagedReviewRoot, badDashboardBindingRoot, badDashboardApplicabilityRoot,
-    badDashboardDigestRoot, badDashboardPrivateRoot,
+    badDashboardDigestRoot, badDashboardPrivateRoot, badChangeCatalogBindingRoot, badChangeCatalogDigestRoot,
+    badChangeCatalogPrivateRoot, badChangeImpactBindingRoot, badChangeImpactCountRoot, badChangeImpactFreshnessRoot,
+    badChangeImpactDigestRoot, badChangeImpactPrivateRoot,
   ].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
@@ -191,6 +201,67 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     }
     await assert.rejects(
       () => client.readPhaseDashboard({ ...product, digest: "sha256:not-a-digest" }, "phase-0-1a-foundation"),
+      TypeError,
+    )
+
+    const changeCatalog = await client.listChangeImpactChanges(product)
+    assert.equal(changeCatalog.items.length, 1)
+    assert.equal(changeCatalog.items[0]?.recordId, "23232323-2323-4323-8323-232323232323")
+    assert.equal(changeCatalog.items[0]?.state, "active")
+    assert.equal(changeCatalog.omitted, 0)
+    assert.equal(JSON.stringify(changeCatalog).includes("Private Change title"), false)
+    assert.equal(JSON.stringify(changeCatalog).includes(privateRoot), false)
+    assert.equal(JSON.stringify(changeCatalog).includes(privateCredential), false)
+
+    for (const workspacePath of [badChangeCatalogBindingRoot, badChangeCatalogDigestRoot, badChangeCatalogPrivateRoot]) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        const hostileProduct = await hostileClient.readProduct()
+        await assert.rejects(
+          () => hostileClient.listChangeImpactChanges(hostileProduct),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
+
+    const changeImpact = await client.readChangeImpact(product, changeCatalog.items[0]!)
+    assert.equal(changeImpact.change.recordId, changeCatalog.items[0]?.recordId)
+    assert.equal(changeImpact.changedArtifacts[0]?.locator.kind, "workspace-relative")
+    assert.equal(changeImpact.governance.approval.state, "not-established")
+    assert.equal(changeImpact.freshness.state, "current")
+    assert.equal(changeImpact.limits.truncated, false)
+    assert.equal(JSON.stringify(changeImpact).includes("Private Change title"), false)
+    assert.equal(JSON.stringify(changeImpact).includes(privateRoot), false)
+    assert.equal(JSON.stringify(changeImpact).includes(privateCredential), false)
+
+    for (const workspacePath of [
+      badChangeImpactBindingRoot, badChangeImpactCountRoot, badChangeImpactFreshnessRoot,
+      badChangeImpactDigestRoot, badChangeImpactPrivateRoot,
+    ]) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        const hostileProduct = await hostileClient.readProduct()
+        const hostileCatalog = await hostileClient.listChangeImpactChanges(hostileProduct)
+        await assert.rejects(
+          () => hostileClient.readChangeImpact(hostileProduct, hostileCatalog.items[0]!),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
+    await assert.rejects(
+      () => client.readChangeImpact(product, { ...changeCatalog.items[0]!, digest: "sha256:not-a-digest" }),
       TypeError,
     )
 

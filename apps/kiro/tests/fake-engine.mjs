@@ -18,6 +18,11 @@ const stagedEvidenceId = "18181818-1818-4818-8818-181818181818"
 const transitionedResultId = "19191919-1919-4919-8919-191919191919"
 const transitionedEvidenceId = "20202020-2020-4020-8020-202020202020"
 const applyDecisionId = "21212121-2121-4121-8121-212121212121"
+const changeId = "23232323-2323-4323-8323-232323232323"
+const workItemId = "24242424-2424-4424-8424-242424242424"
+const traceId = "25252525-2525-4525-8525-252525252525"
+const decisionId = "26262626-2626-4626-8626-262626262626"
+const riskId = "27272727-2727-4727-8727-272727272727"
 const previewDigest = managedReadOnlyPreview().previewDigest
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
@@ -43,6 +48,10 @@ input.on("line", (line) => {
       return writeResult(id, productRecord())
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
+    case "dashboard.changeImpact.changes":
+      return readChangeCatalog(id, request.params)
+    case "dashboard.changeImpact":
+      return readChangeImpact(id, request.params)
     case "probeAgents":
       if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
       return writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
@@ -148,6 +157,134 @@ function readPhaseDashboard(id, params) {
   const value = { ...content, compositionDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-dashboard-digest")) value.panels[0].title = "Forged dashboard title"
   if (workspacePath.endsWith("bad-dashboard-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function changeRecord() {
+  return {
+    schemaVersion: 1,
+    kind: "change",
+    id: changeId,
+    productId,
+    revision: 3,
+    initiativeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    title: "Private Change title is withheld",
+    summary: "Private Change summary is withheld.",
+    baseline: { kind: "genesis", declaration: "No earlier projection.", rationale: "First projection." },
+    state: "active",
+    effectEnvelope: ["reversible-change"],
+    createdAt: "2026-07-24T12:01:00.000Z",
+    updatedAt: "2026-07-24T12:02:00.000Z",
+  }
+}
+
+function changeReference() {
+  const change = changeRecord()
+  return {
+    recordType: "change",
+    recordId: change.id,
+    revision: change.revision,
+    digest: canonicalDigest(change),
+    state: change.state,
+    effectEnvelope: change.effectEnvelope,
+  }
+}
+
+function readChangeCatalog(id, params) {
+  const productDigest = canonicalDigest(productRecord())
+  if (!exactKeys(params, ["expectedProductId", "expectedProductRevision", "expectedProductDigest"]) ||
+      params.expectedProductId !== productId || params.expectedProductRevision !== 7 ||
+      params.expectedProductDigest !== productDigest) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE CHANGE CATALOG PARAMS")
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "change-impact-change-catalog",
+    product: { recordType: "product", recordId: productId, revision: 7, digest: productDigest },
+    items: [changeReference()],
+    total: 1,
+    omitted: 0,
+    observedAt: "2026-07-24T12:03:00.000Z",
+    sourceBoundary: "current-governed-change-metadata-only",
+    limitations: [
+      "The catalog contains exact current Change metadata only; Product text, Change text, and source content are withheld.",
+    ],
+    authorityBoundary: "change-catalog-selection-does-not-approve-change-or-authorize-effects",
+  }
+  if (workspacePath.endsWith("bad-change-catalog-binding")) content.product.digest = `sha256:${"0".repeat(64)}`
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-change-catalog-digest")) value.items[0].state = "blocked"
+  if (workspacePath.endsWith("bad-change-catalog-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readChangeImpact(id, params) {
+  const productDigest = canonicalDigest(productRecord())
+  const change = changeReference()
+  if (!exactKeys(params, [
+    "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedChangeId",
+    "expectedChangeRevision", "expectedChangeDigest",
+  ]) || params.expectedProductId !== productId || params.expectedProductRevision !== 7 ||
+      params.expectedProductDigest !== productDigest || params.expectedChangeId !== change.recordId ||
+      params.expectedChangeRevision !== change.revision || params.expectedChangeDigest !== change.digest) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE CHANGE IMPACT PARAMS")
+  }
+  const workItem = { recordType: "work-item", recordId: workItemId, revision: 2, digest: `sha256:${"3".repeat(64)}` }
+  const decision = { recordType: "decision", recordId: decisionId, revision: 1, digest: `sha256:${"4".repeat(64)}` }
+  const risk = { recordType: "risk", recordId: riskId, revision: 1, digest: `sha256:${"5".repeat(64)}` }
+  const content = {
+    schemaVersion: 1,
+    kind: "change-impact-dashboard",
+    product: { recordType: "product", recordId: productId, revision: 7, digest: productDigest },
+    change,
+    workItems: [{ record: workItem, state: "in-progress" }],
+    changedArtifacts: [{ sourceWorkItem: workItem, locator: { kind: "workspace-relative", path: "apps/kiro/src/protocol.ts" } }],
+    effectTargets: [{ sourceWorkItem: workItem, locator: { kind: "logical", value: "package.build" } }],
+    affectedUnits: [{
+      direction: "upstream",
+      relationship: "affects",
+      endpoint: risk,
+      trace: { recordId: traceId, revision: 1, assessmentDigest: `sha256:${"6".repeat(64)}`, assessedState: "valid" },
+    }],
+    governance: {
+      approval: { state: "not-established", basis: "current-contract-has-no-change-approval-record" },
+      decisions: [{ record: decision, state: "open", outcome: "not-selected" }],
+      risks: [{ record: risk, state: "open", likelihood: "possible", impact: "major", acceptance: "not-accepted" }],
+      authorityBoundary: "decisions-and-risk-acceptance-do-not-approve-the-change",
+    },
+    freshness: {
+      state: "current",
+      evaluatedAt: "2026-07-24T12:04:00.000Z",
+      unresolvedTraceLinks: 0,
+      invalidTraceLinks: 0,
+      staleTraceLinks: 0,
+      staleGovernanceReferences: 0,
+      traceAnalysisTruncated: false,
+      coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact",
+    },
+    limits: {
+      workItems: { shown: 1, total: 1, omitted: 0 },
+      changedArtifacts: { shown: 1, total: 1, omitted: 0 },
+      effectTargets: { shown: 1, total: 1, omitted: 0 },
+      affectedUnits: { shown: 1, total: 1, omitted: 0 },
+      decisions: { shown: 1, total: 1, omitted: 0 },
+      risks: { shown: 1, total: 1, omitted: 0 },
+      truncated: false,
+    },
+    observedAt: "2026-07-24T12:05:00.000Z",
+    sourceBoundary: "current-governed-records-and-bounded-trace-analysis",
+    limitations: [
+      "Only persisted Work Item scopes and trace links are shown; missing trace does not prove missing impact.",
+      "The current record model has no general Change approval record, so approval remains not established.",
+    ],
+    authorityBoundary: "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects",
+  }
+  if (workspacePath.endsWith("bad-change-impact-binding")) content.change.digest = `sha256:${"0".repeat(64)}`
+  if (workspacePath.endsWith("bad-change-impact-count")) content.limits.workItems.total = 2
+  if (workspacePath.endsWith("bad-change-impact-freshness")) content.freshness.state = "attention-required"
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-change-impact-digest")) value.change.state = "blocked"
+  if (workspacePath.endsWith("bad-change-impact-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

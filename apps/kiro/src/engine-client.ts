@@ -28,6 +28,8 @@ import {
   parseAgentRuns,
   parseAgentSelection,
   parseAgentSelectionState,
+  parseChangeImpactChangeCatalog,
+  parseChangeImpactDashboard,
   parseHostResult,
   parsePhaseDashboardFramework,
   parsePageResult,
@@ -54,6 +56,9 @@ import {
   type ManagedReviewTransition,
   type PortableAgentSettingValue,
   type DeliveryPhaseId,
+  type ChangeImpactChangeCatalog,
+  type ChangeImpactChangeReference,
+  type ChangeImpactDashboard,
   type PhaseDashboardFramework,
 } from "./protocol.js"
 
@@ -152,6 +157,48 @@ export class GaepEngineClient {
         expectedProductRevision: productRevision,
         expectedProductDigest: productDigest,
       }), expected)
+    })
+  }
+
+  listChangeImpactChanges(product: ProductBinding): Promise<ChangeImpactChangeCatalog> {
+    return this.enqueue(async () => {
+      const productId = normalizeUuid(product.id, "Product ID")
+      const productRevision = validateProductRevision(product.revision)
+      const productDigest = product.digest.trim().toLowerCase()
+      if (!/^sha256:[0-9a-f]{64}$/u.test(productDigest)) throw new TypeError("Product digest must be SHA-256")
+      const expectedProduct = { ...product, id: productId, revision: productRevision, digest: productDigest }
+      return parseChangeImpactChangeCatalog(await this.request("dashboard.changeImpact.changes", {
+        expectedProductId: productId,
+        expectedProductRevision: productRevision,
+        expectedProductDigest: productDigest,
+      }), expectedProduct)
+    })
+  }
+
+  readChangeImpact(
+    product: ProductBinding,
+    changeValue: ChangeImpactChangeReference,
+  ): Promise<ChangeImpactDashboard> {
+    return this.enqueue(async () => {
+      const productId = normalizeUuid(product.id, "Product ID")
+      const productRevision = validateProductRevision(product.revision)
+      const productDigest = product.digest.trim().toLowerCase()
+      const changeId = normalizeUuid(changeValue.recordId, "Change ID")
+      const changeRevision = validateProductRevision(changeValue.revision)
+      const changeDigest = changeValue.digest.trim().toLowerCase()
+      if (!/^sha256:[0-9a-f]{64}$/u.test(productDigest) || !/^sha256:[0-9a-f]{64}$/u.test(changeDigest)) {
+        throw new TypeError("Product and Change digests must be SHA-256")
+      }
+      const expectedProduct = { ...product, id: productId, revision: productRevision, digest: productDigest }
+      const expectedChange = { ...changeValue, recordId: changeId, revision: changeRevision, digest: changeDigest }
+      return parseChangeImpactDashboard(await this.request("dashboard.changeImpact", {
+        expectedProductId: productId,
+        expectedProductRevision: productRevision,
+        expectedProductDigest: productDigest,
+        expectedChangeId: changeId,
+        expectedChangeRevision: changeRevision,
+        expectedChangeDigest: changeDigest,
+      }), { product: expectedProduct, change: expectedChange })
     })
   }
 

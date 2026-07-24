@@ -1,5 +1,6 @@
 import { canonicalDigest } from "@gaep/agent-sdk"
 import {
+  changeImpactChangeCatalogContentSchema,
   changeImpactDashboardContentSchema,
   type Change,
   type ChangeImpactDashboardRequest,
@@ -12,7 +13,12 @@ import {
 } from "@gaep/contracts"
 import { describe, expect, it } from "vitest"
 
-import { composeChangeImpactDashboard, ChangeImpactChangeBindingError } from "./change-impact-dashboard.js"
+import {
+  composeChangeImpactChangeCatalog,
+  composeChangeImpactDashboard,
+  ChangeImpactChangeBindingError,
+  ChangeImpactProductBindingError,
+} from "./change-impact-dashboard.js"
 
 const observedAt = "2026-07-24T01:00:01.000Z"
 const evaluatedAt = "2026-07-24T01:00:00.000Z"
@@ -204,6 +210,43 @@ function sources(changeValue: Change = change, traceImpact: TraceImpact = impact
 }
 
 describe("Change/Impact dashboard composition", () => {
+  it("builds a deterministic metadata-only current Change catalog for strict host selectors", () => {
+    const catalog = composeChangeImpactChangeCatalog(product, [change], {
+      expectedProductId: product.id,
+      expectedProductRevision: product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(product),
+    }, observedAt)
+    expect(catalog).toMatchObject({
+      kind: "change-impact-change-catalog",
+      product: { recordId: product.id, revision: product.revision },
+      items: [{ recordId: change.id, revision: change.revision, state: change.state }],
+      total: 1,
+      omitted: 0,
+      authorityBoundary: "change-catalog-selection-does-not-approve-change-or-authorize-effects",
+    })
+    const { snapshotDigest, ...content } = catalog
+    expect(changeImpactChangeCatalogContentSchema.parse(content)).toEqual(content)
+    expect(snapshotDigest).toBe(canonicalDigest(content))
+    expect(JSON.stringify(catalog)).not.toContain(change.title)
+    expect(JSON.stringify(catalog)).not.toContain(product.name)
+  })
+
+  it("rejects stale Product catalog requests and cross-Product Change rows", () => {
+    const request = {
+      expectedProductId: product.id,
+      expectedProductRevision: product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(product),
+    }
+    expect(() => composeChangeImpactChangeCatalog(product, [change], {
+      ...request,
+      expectedProductDigest: `sha256:${"0".repeat(64)}`,
+    }, observedAt)).toThrow(ChangeImpactProductBindingError)
+    expect(() => composeChangeImpactChangeCatalog(product, [{
+      ...change,
+      productId: "00000000-0000-4000-8000-00000000000b",
+    }], request, observedAt)).toThrow(ChangeImpactProductBindingError)
+  })
+
   it("projects exact bounded artifacts, affected units, governance, and freshness without approval authority", () => {
     const dashboard = composeChangeImpactDashboard(sources(), requestFor(), observedAt)
 

@@ -43,6 +43,23 @@ const phaseDashboardPanelCatalog = {
   "agent-model": ["agent-model", "Agent and model"],
 } as const
 
+const changeImpactEffects = [
+  "observe", "provisional", "reversible-change", "external-effect", "destructive-or-irreversible",
+] as const
+const changeImpactStates = ["proposed", "planned", "active", "blocked", "completed", "cancelled"] as const
+const changeImpactWorkItemStates = [
+  "proposed", "planned", "ready", "in-progress", "blocked", "completed", "cancelled",
+] as const
+const changeImpactRelationships = [
+  "targets", "derives-from", "contributes-to", "depends-on", "implements", "satisfies", "validates",
+  "mitigates", "decides", "affects", "supersedes", "related-to",
+] as const
+const changeImpactRecordTypes = [
+  "product", "design-revision", "initiative", "change", "work-item", "requirement", "decision", "risk",
+  "architecture", "evidence", "context-pack", "workflow-plan", "tool-definition", "instruction-privilege-grant",
+  "run-tool-selection", "run", "external",
+] as const
+
 const maximumJsonDepth = 64
 const maximumJsonCollectionEntries = 512
 const summaryKind = "portable-design-snapshot-summary"
@@ -167,6 +184,124 @@ export interface PhaseDashboardFramework {
   readonly limitations: readonly string[]
   readonly authorityBoundary: "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"
   readonly compositionDigest: string
+}
+
+export interface ChangeImpactChangeReference {
+  readonly recordType: "change"
+  readonly recordId: string
+  readonly revision: number
+  readonly digest: string
+  readonly state: typeof changeImpactStates[number]
+  readonly effectEnvelope: readonly typeof changeImpactEffects[number][]
+}
+
+export interface ChangeImpactChangeCatalog {
+  readonly schemaVersion: 1
+  readonly kind: "change-impact-change-catalog"
+  readonly product: { readonly recordType: "product"; readonly recordId: string; readonly revision: number; readonly digest: string }
+  readonly items: readonly ChangeImpactChangeReference[]
+  readonly total: number
+  readonly omitted: number
+  readonly observedAt: string
+  readonly sourceBoundary: "current-governed-change-metadata-only"
+  readonly limitations: readonly string[]
+  readonly authorityBoundary: "change-catalog-selection-does-not-approve-change-or-authorize-effects"
+  readonly snapshotDigest: string
+}
+
+export type ChangeImpactPortableLocator =
+  | { readonly kind: "workspace-relative"; readonly path: string }
+  | { readonly kind: "logical"; readonly value: string }
+  | { readonly kind: "external-uri"; readonly uri: string }
+
+interface ChangeImpactExactReference {
+  readonly recordType: "product" | "work-item" | "decision" | "risk"
+  readonly recordId: string
+  readonly revision: number
+  readonly digest: string
+}
+
+interface ChangeImpactTraceEndpoint {
+  readonly recordType: typeof changeImpactRecordTypes[number]
+  readonly recordId: string
+  readonly revision?: number
+  readonly digest?: string
+}
+
+interface ChangeImpactLimit {
+  readonly shown: number
+  readonly total: number
+  readonly omitted: number
+}
+
+export interface ChangeImpactDashboard {
+  readonly schemaVersion: 1
+  readonly kind: "change-impact-dashboard"
+  readonly product: ChangeImpactExactReference & { readonly recordType: "product" }
+  readonly change: ChangeImpactChangeReference
+  readonly workItems: readonly {
+    readonly record: ChangeImpactExactReference & { readonly recordType: "work-item" }
+    readonly state: typeof changeImpactWorkItemStates[number]
+  }[]
+  readonly changedArtifacts: readonly {
+    readonly sourceWorkItem: ChangeImpactExactReference & { readonly recordType: "work-item" }
+    readonly locator: ChangeImpactPortableLocator
+  }[]
+  readonly effectTargets: readonly {
+    readonly sourceWorkItem: ChangeImpactExactReference & { readonly recordType: "work-item" }
+    readonly locator: ChangeImpactPortableLocator
+  }[]
+  readonly affectedUnits: readonly {
+    readonly direction: "upstream" | "downstream"
+    readonly relationship: typeof changeImpactRelationships[number]
+    readonly endpoint: ChangeImpactTraceEndpoint
+    readonly trace: {
+      readonly recordId: string
+      readonly revision: number
+      readonly assessmentDigest: string
+      readonly assessedState: "valid" | "unresolved" | "stale" | "invalid"
+    }
+  }[]
+  readonly governance: {
+    readonly approval: { readonly state: "not-established"; readonly basis: "current-contract-has-no-change-approval-record" }
+    readonly decisions: readonly {
+      readonly record: ChangeImpactExactReference & { readonly recordType: "decision" }
+      readonly state: "open" | "decided" | "deferred" | "superseded"
+      readonly outcome: "human-selected" | "not-selected"
+    }[]
+    readonly risks: readonly {
+      readonly record: ChangeImpactExactReference & { readonly recordType: "risk" }
+      readonly state: "open" | "treated" | "accepted" | "closed"
+      readonly likelihood: "rare" | "unlikely" | "possible" | "likely" | "almost-certain" | "unknown"
+      readonly impact: "negligible" | "minor" | "moderate" | "major" | "critical" | "unknown"
+      readonly acceptance: "human-accepted" | "not-accepted"
+    }[]
+    readonly authorityBoundary: "decisions-and-risk-acceptance-do-not-approve-the-change"
+  }
+  readonly freshness: {
+    readonly state: "current" | "attention-required"
+    readonly evaluatedAt: string
+    readonly unresolvedTraceLinks: number
+    readonly invalidTraceLinks: number
+    readonly staleTraceLinks: number
+    readonly staleGovernanceReferences: number
+    readonly traceAnalysisTruncated: boolean
+    readonly coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact"
+  }
+  readonly limits: {
+    readonly workItems: ChangeImpactLimit
+    readonly changedArtifacts: ChangeImpactLimit
+    readonly effectTargets: ChangeImpactLimit
+    readonly affectedUnits: ChangeImpactLimit
+    readonly decisions: ChangeImpactLimit
+    readonly risks: ChangeImpactLimit
+    readonly truncated: boolean
+  }
+  readonly observedAt: string
+  readonly sourceBoundary: "current-governed-records-and-bounded-trace-analysis"
+  readonly limitations: readonly string[]
+  readonly authorityBoundary: "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects"
+  readonly snapshotDigest: string
 }
 
 export type AgentTruthClass = "observed" | "provider-declared" | "configured" | "inferred" | "unknown"
@@ -659,6 +794,26 @@ const stableHostErrors = new Map<string, StableHostError>([
     code: -32_038,
     message: "The exact Managed Run discard transition could not be verified; reload the review before any retry.",
   }],
+  ["DASHBOARD_PRODUCT_CONTEXT_CHANGED", {
+    code: -32_039,
+    message: "The Product changed before the phase dashboard was composed; reload the current Product.",
+  }],
+  ["CHANGE_IMPACT_PRODUCT_CONTEXT_CHANGED", {
+    code: -32_040,
+    message: "The Product changed before the Change/Impact projection was composed; reload the current Product.",
+  }],
+  ["CHANGE_IMPACT_CHANGE_CONTEXT_CHANGED", {
+    code: -32_041,
+    message: "The Change changed before the Change/Impact projection was composed; select the current Change again.",
+  }],
+  ["CHANGE_IMPACT_AUDIT_INVALID", {
+    code: -32_042,
+    message: "The Change/Impact projection is unavailable because the governed audit chain is invalid.",
+  }],
+  ["CHANGE_IMPACT_CATALOG_INVALID", {
+    code: -32_043,
+    message: "The current Change catalog could not be verified.",
+  }],
   ["INVALID_PARAMS", {
     code: -32_602,
     message: "The GAEP engine rejected the local request parameters.",
@@ -855,6 +1010,133 @@ export function parsePhaseDashboardFramework(
   const compositionDigest = requireDigest(framework, "compositionDigest")
   if (compositionDigest !== canonicalDigest(content)) throw invalidHostResponse()
   return Object.freeze({ ...content, compositionDigest })
+}
+
+export function parseChangeImpactChangeCatalog(
+  result: unknown,
+  expectedProduct: ProductBinding,
+): ChangeImpactChangeCatalog {
+  const catalog = requireRecord(result)
+  requireExactKeys(catalog, [
+    "schemaVersion", "kind", "product", "items", "total", "omitted", "observedAt", "sourceBoundary",
+    "limitations", "authorityBoundary", "snapshotDigest",
+  ])
+  if (requireSafeInteger(catalog, "schemaVersion") !== 1 ||
+      requireString(catalog, "kind") !== "change-impact-change-catalog" ||
+      requireString(catalog, "sourceBoundary") !== "current-governed-change-metadata-only" ||
+      requireString(catalog, "authorityBoundary") !== "change-catalog-selection-does-not-approve-change-or-authorize-effects") {
+    throw invalidHostResponse()
+  }
+  const product = parseChangeImpactExactReference(catalog.product, "product") as ChangeImpactChangeCatalog["product"]
+  if (product.recordId !== expectedProduct.id || product.revision !== expectedProduct.revision ||
+      product.digest !== expectedProduct.digest) throw invalidHostResponse()
+  if (!Array.isArray(catalog.items) || catalog.items.length > 256) throw invalidHostResponse()
+  const items = Object.freeze(catalog.items.map(parseChangeImpactChangeReference))
+  if (new Set(items.map((item) => item.recordId)).size !== items.length ||
+      items.some((item, index) => index > 0 && items[index - 1]!.recordId >= item.recordId)) throw invalidHostResponse()
+  const total = nonNegativeInteger(catalog, "total", 1_000_000)
+  const omitted = nonNegativeInteger(catalog, "omitted", 1_000_000)
+  if (items.length + omitted !== total) throw invalidHostResponse()
+  const limitations = parseChangeImpactLimitations(catalog.limitations)
+  const content = Object.freeze({
+    schemaVersion: 1 as const,
+    kind: "change-impact-change-catalog" as const,
+    product,
+    items,
+    total,
+    omitted,
+    observedAt: requireTimestamp(catalog, "observedAt"),
+    sourceBoundary: "current-governed-change-metadata-only" as const,
+    limitations,
+    authorityBoundary: "change-catalog-selection-does-not-approve-change-or-authorize-effects" as const,
+  })
+  const snapshotDigest = requireDigest(catalog, "snapshotDigest")
+  if (snapshotDigest !== canonicalDigest(content)) throw invalidHostResponse()
+  return Object.freeze({ ...content, snapshotDigest })
+}
+
+export function parseChangeImpactDashboard(
+  result: unknown,
+  expected: { readonly product: ProductBinding; readonly change: ChangeImpactChangeReference },
+): ChangeImpactDashboard {
+  const dashboard = requireRecord(result)
+  requireExactKeys(dashboard, [
+    "schemaVersion", "kind", "product", "change", "workItems", "changedArtifacts", "effectTargets",
+    "affectedUnits", "governance", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+    "authorityBoundary", "snapshotDigest",
+  ])
+  if (requireSafeInteger(dashboard, "schemaVersion") !== 1 || requireString(dashboard, "kind") !== "change-impact-dashboard" ||
+      requireString(dashboard, "sourceBoundary") !== "current-governed-records-and-bounded-trace-analysis" ||
+      requireString(dashboard, "authorityBoundary") !== "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects") {
+    throw invalidHostResponse()
+  }
+  const product = parseChangeImpactExactReference(dashboard.product, "product") as ChangeImpactDashboard["product"]
+  if (product.recordId !== expected.product.id || product.revision !== expected.product.revision ||
+      product.digest !== expected.product.digest) throw invalidHostResponse()
+  const change = parseChangeImpactChangeReference(dashboard.change)
+  if (change.recordId !== expected.change.recordId || change.revision !== expected.change.revision ||
+      change.digest !== expected.change.digest || change.state !== expected.change.state ||
+      JSON.stringify(change.effectEnvelope) !== JSON.stringify(expected.change.effectEnvelope)) throw invalidHostResponse()
+
+  const workItems = parseChangeImpactArray(dashboard.workItems, 256, (value) => {
+    const row = requireRecord(value)
+    requireExactKeys(row, ["record", "state"])
+    return Object.freeze({
+      record: parseChangeImpactExactReference(row.record, "work-item") as ChangeImpactDashboard["workItems"][number]["record"],
+      state: requireEnum(row, "state", changeImpactWorkItemStates),
+    })
+  })
+  const parseArtifact = (value: unknown): ChangeImpactDashboard["changedArtifacts"][number] => {
+    const row = requireRecord(value)
+    requireExactKeys(row, ["sourceWorkItem", "locator"])
+    return Object.freeze({
+      sourceWorkItem: parseChangeImpactExactReference(row.sourceWorkItem, "work-item") as
+        ChangeImpactDashboard["changedArtifacts"][number]["sourceWorkItem"],
+      locator: parseChangeImpactLocator(row.locator),
+    })
+  }
+  const changedArtifacts = parseChangeImpactArray(dashboard.changedArtifacts, 512, parseArtifact)
+  const effectTargets = parseChangeImpactArray(dashboard.effectTargets, 512, parseArtifact)
+  const affectedUnits = parseChangeImpactArray(dashboard.affectedUnits, 512, parseChangeImpactAffectedUnit)
+  const governance = parseChangeImpactGovernance(dashboard.governance)
+  const freshness = parseChangeImpactFreshness(dashboard.freshness)
+  const limits = parseChangeImpactLimits(dashboard.limits)
+  const categories = [
+    [workItems, limits.workItems],
+    [changedArtifacts, limits.changedArtifacts],
+    [effectTargets, limits.effectTargets],
+    [affectedUnits, limits.affectedUnits],
+    [governance.decisions, limits.decisions],
+    [governance.risks, limits.risks],
+  ] as const
+  if (categories.some(([rows, limit]) => limit.shown !== rows.length)) throw invalidHostResponse()
+  const truncated = freshness.traceAnalysisTruncated || categories.some(([, limit]) => limit.omitted > 0)
+  const attentionRequired = truncated || freshness.unresolvedTraceLinks > 0 || freshness.invalidTraceLinks > 0 ||
+    freshness.staleTraceLinks > 0 || freshness.staleGovernanceReferences > 0
+  const observedAt = requireTimestamp(dashboard, "observedAt")
+  if (limits.truncated !== truncated || (freshness.state === "attention-required") !== attentionRequired ||
+      Date.parse(freshness.evaluatedAt) > Date.parse(observedAt)) throw invalidHostResponse()
+  ensureUniqueChangeImpactRows(workItems, changedArtifacts, effectTargets, affectedUnits, governance)
+  const content = Object.freeze({
+    schemaVersion: 1 as const,
+    kind: "change-impact-dashboard" as const,
+    product,
+    change,
+    workItems,
+    changedArtifacts,
+    effectTargets,
+    affectedUnits,
+    governance,
+    freshness,
+    limits,
+    observedAt,
+    sourceBoundary: "current-governed-records-and-bounded-trace-analysis" as const,
+    limitations: parseChangeImpactLimitations(dashboard.limitations),
+    authorityBoundary: "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects" as const,
+  })
+  const snapshotDigest = requireDigest(dashboard, "snapshotDigest")
+  if (snapshotDigest !== canonicalDigest(content)) throw invalidHostResponse()
+  return Object.freeze({ ...content, snapshotDigest })
 }
 
 export function parseAgentReadiness(result: unknown): readonly AgentReadinessSnapshot[] {
@@ -1730,6 +2012,234 @@ function parsePhaseDashboardDecision(value: unknown): NonNullable<PhaseDashboard
     revision: validateProductRevision(requireSafeInteger(decision, "revision")),
     digest: requireDigest(decision, "digest"),
   })
+}
+
+function parseChangeImpactArray<T>(value: unknown, maximum: number, parse: (entry: unknown) => T): readonly T[] {
+  if (!Array.isArray(value) || value.length > maximum) throw invalidHostResponse()
+  return Object.freeze(value.map(parse))
+}
+
+function parseChangeImpactExactReference(
+  value: unknown,
+  expectedType: ChangeImpactExactReference["recordType"],
+): ChangeImpactExactReference {
+  const reference = requireRecord(value)
+  requireExactKeys(reference, ["recordType", "recordId", "revision", "digest"])
+  if (requireString(reference, "recordType") !== expectedType) throw invalidHostResponse()
+  return Object.freeze({
+    recordType: expectedType,
+    recordId: normalizeUuidValue(reference.recordId, `${expectedType} ID`),
+    revision: validateProductRevision(requireSafeInteger(reference, "revision")),
+    digest: requireDigest(reference, "digest"),
+  })
+}
+
+function parseChangeImpactChangeReference(value: unknown): ChangeImpactChangeReference {
+  const change = requireRecord(value)
+  requireExactKeys(change, ["recordType", "recordId", "revision", "digest", "state", "effectEnvelope"])
+  if (requireString(change, "recordType") !== "change" || !Array.isArray(change.effectEnvelope) ||
+      change.effectEnvelope.length < 1 || change.effectEnvelope.length > changeImpactEffects.length) throw invalidHostResponse()
+  const effectEnvelope = Object.freeze(change.effectEnvelope.map((effect) => {
+    if (typeof effect !== "string" || !changeImpactEffects.includes(effect as typeof changeImpactEffects[number])) {
+      throw invalidHostResponse()
+    }
+    return effect as typeof changeImpactEffects[number]
+  }))
+  if (new Set(effectEnvelope).size !== effectEnvelope.length) throw invalidHostResponse()
+  return Object.freeze({
+    recordType: "change" as const,
+    recordId: normalizeUuidValue(change.recordId, "Change ID"),
+    revision: validateProductRevision(requireSafeInteger(change, "revision")),
+    digest: requireDigest(change, "digest"),
+    state: requireEnum(change, "state", changeImpactStates),
+    effectEnvelope,
+  })
+}
+
+function parseChangeImpactLocator(value: unknown): ChangeImpactPortableLocator {
+  const locator = requireRecord(value)
+  const kind = requireString(locator, "kind")
+  if (kind === "workspace-relative") {
+    requireExactKeys(locator, ["kind", "path"])
+    const path = requireString(locator, "path")
+    const segments = path.split("/")
+    if (path.length < 1 || path.length > 4_096 || (path !== "." && (
+      path.startsWith("/") || /^[A-Za-z]:/u.test(path) || path.startsWith("~") || path.includes("\\") ||
+      path.includes("\0") || /%2e/iu.test(path) || segments.some((segment) => segment === "" || segment === "." || segment === "..")
+    ))) throw invalidHostResponse()
+    return Object.freeze({ kind, path })
+  }
+  if (kind === "logical") {
+    requireExactKeys(locator, ["kind", "value"])
+    const logical = requireString(locator, "value")
+    if (!/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u.test(logical)) throw invalidHostResponse()
+    return Object.freeze({ kind, value: logical })
+  }
+  if (kind !== "external-uri") throw invalidHostResponse()
+  requireExactKeys(locator, ["kind", "uri"])
+  const uri = requireString(locator, "uri")
+  if (uri.length > 8_192) throw invalidHostResponse()
+  try {
+    const parsed = new URL(uri)
+    const sensitive = /(token|password|passwd|secret|signature|credential|api.?key|access.?key|auth)/iu
+    if (!["http:", "https:", "urn:"].includes(parsed.protocol) || parsed.username || parsed.password ||
+        [...parsed.searchParams.keys()].some((key) => sensitive.test(key)) || (parsed.hash && sensitive.test(parsed.hash))) {
+      throw invalidHostResponse()
+    }
+  } catch (error) {
+    if (error instanceof GaepHostError) throw error
+    throw invalidHostResponse()
+  }
+  return Object.freeze({ kind, uri })
+}
+
+function parseChangeImpactTraceEndpoint(value: unknown): ChangeImpactTraceEndpoint {
+  const endpoint = requireRecord(value)
+  requireKeys(endpoint, ["recordType", "recordId"], ["revision", "digest"])
+  const recordType = requireEnum(endpoint, "recordType", changeImpactRecordTypes)
+  if (recordType === "external") {
+    if (Object.hasOwn(endpoint, "revision") || Object.hasOwn(endpoint, "digest")) throw invalidHostResponse()
+    return Object.freeze({ recordType, recordId: portableText(endpoint.recordId, 1, 500) })
+  }
+  if (!Object.hasOwn(endpoint, "revision") || !Object.hasOwn(endpoint, "digest")) throw invalidHostResponse()
+  return Object.freeze({
+    recordType,
+    recordId: normalizeUuidValue(endpoint.recordId, `${recordType} trace endpoint ID`),
+    revision: validateProductRevision(requireSafeInteger(endpoint, "revision")),
+    digest: requireDigest(endpoint, "digest"),
+  })
+}
+
+function parseChangeImpactAffectedUnit(value: unknown): ChangeImpactDashboard["affectedUnits"][number] {
+  const unit = requireRecord(value)
+  requireExactKeys(unit, ["direction", "relationship", "endpoint", "trace"])
+  const trace = requireRecord(unit.trace)
+  requireExactKeys(trace, ["recordId", "revision", "assessmentDigest", "assessedState"])
+  return Object.freeze({
+    direction: requireEnum(unit, "direction", ["upstream", "downstream"] as const),
+    relationship: requireEnum(unit, "relationship", changeImpactRelationships),
+    endpoint: parseChangeImpactTraceEndpoint(unit.endpoint),
+    trace: Object.freeze({
+      recordId: normalizeUuidValue(trace.recordId, "Trace assessment ID"),
+      revision: validateProductRevision(requireSafeInteger(trace, "revision")),
+      assessmentDigest: requireDigest(trace, "assessmentDigest"),
+      assessedState: requireEnum(trace, "assessedState", ["valid", "unresolved", "stale", "invalid"] as const),
+    }),
+  })
+}
+
+function parseChangeImpactGovernance(value: unknown): ChangeImpactDashboard["governance"] {
+  const governance = requireRecord(value)
+  requireExactKeys(governance, ["approval", "decisions", "risks", "authorityBoundary"])
+  const approval = requireRecord(governance.approval)
+  requireExactKeys(approval, ["state", "basis"])
+  if (requireString(approval, "state") !== "not-established" ||
+      requireString(approval, "basis") !== "current-contract-has-no-change-approval-record" ||
+      requireString(governance, "authorityBoundary") !== "decisions-and-risk-acceptance-do-not-approve-the-change") {
+    throw invalidHostResponse()
+  }
+  const decisions = parseChangeImpactArray(governance.decisions, 256, (entry) => {
+    const decision = requireRecord(entry)
+    requireExactKeys(decision, ["record", "state", "outcome"])
+    const state = requireEnum(decision, "state", ["open", "decided", "deferred", "superseded"] as const)
+    const outcome = requireEnum(decision, "outcome", ["human-selected", "not-selected"] as const)
+    if ((state === "decided") !== (outcome === "human-selected")) throw invalidHostResponse()
+    return Object.freeze({
+      record: parseChangeImpactExactReference(decision.record, "decision") as
+        ChangeImpactDashboard["governance"]["decisions"][number]["record"],
+      state,
+      outcome,
+    })
+  })
+  const risks = parseChangeImpactArray(governance.risks, 256, (entry) => {
+    const risk = requireRecord(entry)
+    requireExactKeys(risk, ["record", "state", "likelihood", "impact", "acceptance"])
+    const state = requireEnum(risk, "state", ["open", "treated", "accepted", "closed"] as const)
+    const acceptance = requireEnum(risk, "acceptance", ["human-accepted", "not-accepted"] as const)
+    if ((state === "accepted") !== (acceptance === "human-accepted")) throw invalidHostResponse()
+    return Object.freeze({
+      record: parseChangeImpactExactReference(risk.record, "risk") as
+        ChangeImpactDashboard["governance"]["risks"][number]["record"],
+      state,
+      likelihood: requireEnum(risk, "likelihood", ["rare", "unlikely", "possible", "likely", "almost-certain", "unknown"] as const),
+      impact: requireEnum(risk, "impact", ["negligible", "minor", "moderate", "major", "critical", "unknown"] as const),
+      acceptance,
+    })
+  })
+  return Object.freeze({
+    approval: Object.freeze({ state: "not-established" as const, basis: "current-contract-has-no-change-approval-record" as const }),
+    decisions,
+    risks,
+    authorityBoundary: "decisions-and-risk-acceptance-do-not-approve-the-change" as const,
+  })
+}
+
+function parseChangeImpactFreshness(value: unknown): ChangeImpactDashboard["freshness"] {
+  const freshness = requireRecord(value)
+  requireExactKeys(freshness, [
+    "state", "evaluatedAt", "unresolvedTraceLinks", "invalidTraceLinks", "staleTraceLinks",
+    "staleGovernanceReferences", "traceAnalysisTruncated", "coverageBoundary",
+  ])
+  if (requireString(freshness, "coverageBoundary") !== "absence-of-a-trace-link-does-not-prove-absence-of-impact") {
+    throw invalidHostResponse()
+  }
+  return Object.freeze({
+    state: requireEnum(freshness, "state", ["current", "attention-required"] as const),
+    evaluatedAt: requireTimestamp(freshness, "evaluatedAt"),
+    unresolvedTraceLinks: nonNegativeInteger(freshness, "unresolvedTraceLinks", 1_000_000),
+    invalidTraceLinks: nonNegativeInteger(freshness, "invalidTraceLinks", 1_000_000),
+    staleTraceLinks: nonNegativeInteger(freshness, "staleTraceLinks", 1_000_000),
+    staleGovernanceReferences: nonNegativeInteger(freshness, "staleGovernanceReferences", 1_000_000),
+    traceAnalysisTruncated: requireBoolean(freshness, "traceAnalysisTruncated"),
+    coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact" as const,
+  })
+}
+
+function parseChangeImpactLimit(value: unknown): ChangeImpactLimit {
+  const limit = requireRecord(value)
+  requireExactKeys(limit, ["shown", "total", "omitted"])
+  const shown = nonNegativeInteger(limit, "shown", 1_000_000)
+  const total = nonNegativeInteger(limit, "total", 1_000_000)
+  const omitted = nonNegativeInteger(limit, "omitted", 1_000_000)
+  if (shown + omitted !== total) throw invalidHostResponse()
+  return Object.freeze({ shown, total, omitted })
+}
+
+function parseChangeImpactLimits(value: unknown): ChangeImpactDashboard["limits"] {
+  const limits = requireRecord(value)
+  requireExactKeys(limits, [
+    "workItems", "changedArtifacts", "effectTargets", "affectedUnits", "decisions", "risks", "truncated",
+  ])
+  return Object.freeze({
+    workItems: parseChangeImpactLimit(limits.workItems),
+    changedArtifacts: parseChangeImpactLimit(limits.changedArtifacts),
+    effectTargets: parseChangeImpactLimit(limits.effectTargets),
+    affectedUnits: parseChangeImpactLimit(limits.affectedUnits),
+    decisions: parseChangeImpactLimit(limits.decisions),
+    risks: parseChangeImpactLimit(limits.risks),
+    truncated: requireBoolean(limits, "truncated"),
+  })
+}
+
+function parseChangeImpactLimitations(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 8) throw invalidHostResponse()
+  return Object.freeze(value.map((limitation) => portableText(limitation, 4, 1_000)))
+}
+
+function ensureUniqueChangeImpactRows(
+  workItems: ChangeImpactDashboard["workItems"],
+  changedArtifacts: ChangeImpactDashboard["changedArtifacts"],
+  effectTargets: ChangeImpactDashboard["effectTargets"],
+  affectedUnits: ChangeImpactDashboard["affectedUnits"],
+  governance: ChangeImpactDashboard["governance"],
+): void {
+  const unique = (values: readonly string[]) => new Set(values).size === values.length
+  if (!unique(workItems.map((entry) => entry.record.recordId)) ||
+      !unique(changedArtifacts.map((entry) => `${entry.sourceWorkItem.recordId}:${JSON.stringify(entry.locator)}`)) ||
+      !unique(effectTargets.map((entry) => `${entry.sourceWorkItem.recordId}:${JSON.stringify(entry.locator)}`)) ||
+      !unique(affectedUnits.map((entry) => `${entry.direction}:${entry.endpoint.recordType}:${entry.endpoint.recordId}:${entry.trace.recordId}`)) ||
+      !unique(governance.decisions.map((entry) => entry.record.recordId)) ||
+      !unique(governance.risks.map((entry) => entry.record.recordId))) throw invalidHostResponse()
 }
 
 function canonicalDigest(value: unknown): string {

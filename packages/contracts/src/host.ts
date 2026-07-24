@@ -1,7 +1,11 @@
 import { z } from "zod"
 
 import { portableSelectionSettingsSchema } from "./agent.js"
-import { changeImpactDashboardRequestSchema, phaseDashboardCompositionRequestSchema } from "./dashboard.js"
+import {
+  changeImpactChangeCatalogRequestSchema,
+  changeImpactDashboardRequestSchema,
+  phaseDashboardCompositionRequestSchema,
+} from "./dashboard.js"
 import { effectDescriptorSchema, toolPermissionSchema } from "./execution.js"
 import { initiativeSchema, productSchema } from "./product.js"
 import { productDomainRecordKindSchema, productExportBundleSchema } from "./product-studio.js"
@@ -127,6 +131,7 @@ export const hostImportPreviewParamsSchema = z.object({
 }).strict()
 
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
+export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
 
 export const hostMethodSchema = z.enum([
@@ -152,6 +157,7 @@ export const hostMethodSchema = z.enum([
   "managed.review.apply",
   "managed.review.discard",
   "dashboard.framework",
+  "dashboard.changeImpact.changes",
   "dashboard.changeImpact",
   "verifyAudit",
   "productStudio.designReadiness",
@@ -198,6 +204,7 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("managed.review.apply", hostManagedReviewApplyParamsSchema),
   requestVariant("managed.review.discard", hostManagedReviewDiscardParamsSchema),
   requestVariant("dashboard.framework", hostDashboardFrameworkParamsSchema),
+  requestVariant("dashboard.changeImpact.changes", hostChangeImpactChangeCatalogParamsSchema),
   requestVariant("dashboard.changeImpact", hostChangeImpactDashboardParamsSchema),
   requestVariant("verifyAudit", hostNoParamsSchema.default({})),
   requestVariant("productStudio.designReadiness", z.object({ productId: z.string().uuid() }).strict()),

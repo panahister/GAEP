@@ -255,6 +255,60 @@ export const changeImpactDashboardRequestSchema = z.object({
   expectedChangeDigest: digestSchema,
 }).strict()
 
+export const changeImpactChangeCatalogRequestSchema = z.object({
+  expectedProductId: z.string().uuid(),
+  expectedProductRevision: z.number().int().positive(),
+  expectedProductDigest: digestSchema,
+}).strict()
+
+const changeImpactChangeStateSchema = z.enum(["proposed", "planned", "active", "blocked", "completed", "cancelled"])
+const changeImpactEffectEnvelopeSchema = z.array(effectDescriptorSchema)
+  .min(1)
+  .max(effectDescriptorSchema.options.length)
+  .refine((effects) => new Set(effects).size === effects.length, "Change effects must be unique")
+
+const changeImpactChangeCatalogItemSchema = z.object({
+  recordType: z.literal("change"),
+  ...changeImpactReferenceFields,
+  state: changeImpactChangeStateSchema,
+  effectEnvelope: changeImpactEffectEnvelopeSchema,
+}).strict()
+
+const changeImpactChangeCatalogFields = {
+  schemaVersion: z.literal(1),
+  kind: z.literal("change-impact-change-catalog"),
+  product: phaseDashboardProductBindingSchema,
+  items: z.array(changeImpactChangeCatalogItemSchema).max(256),
+  total: z.number().int().nonnegative(),
+  omitted: z.number().int().nonnegative(),
+  observedAt: z.string().datetime(),
+  sourceBoundary: z.literal("current-governed-change-metadata-only"),
+  limitations: z.array(z.string().trim().min(4).max(1_000)).min(1).max(8),
+  authorityBoundary: z.literal("change-catalog-selection-does-not-approve-change-or-authorize-effects"),
+}
+
+function validateChangeImpactChangeCatalog(value: {
+  items: Array<{ recordId: string }>
+  total: number
+  omitted: number
+}, context: z.RefinementCtx): void {
+  if (value.items.length + value.omitted !== value.total) {
+    context.addIssue({ code: "custom", path: ["total"], message: "Change catalog totals must reconcile exactly" })
+  }
+  if (new Set(value.items.map((item) => item.recordId)).size !== value.items.length) {
+    context.addIssue({ code: "custom", path: ["items"], message: "Change catalog rows must be unique" })
+  }
+}
+
+export const changeImpactChangeCatalogContentSchema = z.object(changeImpactChangeCatalogFields)
+  .strict()
+  .superRefine(validateChangeImpactChangeCatalog)
+
+export const changeImpactChangeCatalogSchema = z.object({
+  ...changeImpactChangeCatalogFields,
+  snapshotDigest: digestSchema,
+}).strict().superRefine(validateChangeImpactChangeCatalog)
+
 const changeImpactWorkItemSchema = z.object({
   record: changeImpactWorkItemReferenceSchema,
   state: changeImpactWorkItemStateSchema,
@@ -318,8 +372,8 @@ const changeImpactDashboardFields = {
   change: z.object({
     ...changeImpactReferenceFields,
     recordType: z.literal("change"),
-    state: z.enum(["proposed", "planned", "active", "blocked", "completed", "cancelled"]),
-    effectEnvelope: z.array(effectDescriptorSchema).min(1).max(effectDescriptorSchema.options.length),
+    state: changeImpactChangeStateSchema,
+    effectEnvelope: changeImpactEffectEnvelopeSchema,
   }).strict(),
   workItems: z.array(changeImpactWorkItemSchema).max(256),
   changedArtifacts: z.array(changeImpactArtifactSchema).max(512),
@@ -441,5 +495,8 @@ export type PhaseDashboardFrameworkContent = z.infer<typeof phaseDashboardFramew
 export type PhaseDashboardFramework = z.infer<typeof phaseDashboardFrameworkSchema>
 export type PhaseDashboardCompositionRequest = z.infer<typeof phaseDashboardCompositionRequestSchema>
 export type ChangeImpactDashboardRequest = z.infer<typeof changeImpactDashboardRequestSchema>
+export type ChangeImpactChangeCatalogRequest = z.infer<typeof changeImpactChangeCatalogRequestSchema>
+export type ChangeImpactChangeCatalogContent = z.infer<typeof changeImpactChangeCatalogContentSchema>
+export type ChangeImpactChangeCatalog = z.infer<typeof changeImpactChangeCatalogSchema>
 export type ChangeImpactDashboardContent = z.infer<typeof changeImpactDashboardContentSchema>
 export type ChangeImpactDashboard = z.infer<typeof changeImpactDashboardSchema>

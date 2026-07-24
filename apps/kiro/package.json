@@ -40,6 +40,7 @@
     "onCommand:gaepKiro.runs.evidence",
     "onCommand:gaepKiro.runs.stagedReview",
     "onCommand:gaepKiro.dashboard.phase",
+    "onCommand:gaepKiro.dashboard.changeImpact",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -89,6 +90,10 @@
       {
         "command": "gaepKiro.dashboard.phase",
         "title": "GAEP for Kiro: Show Phase Dashboard Framework"
+      },
+      {
+        "command": "gaepKiro.dashboard.changeImpact",
+        "title": "GAEP for Kiro: Show Change and Impact Dashboard"
       },
       {
         "command": "gaepKiro.portableDesign.import",

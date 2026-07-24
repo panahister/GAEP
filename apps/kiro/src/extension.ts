@@ -15,6 +15,8 @@ import {
   type AgentRun,
   type AgentSelection,
   type AgentSelectionSetting,
+  type ChangeImpactChangeCatalog,
+  type ChangeImpactDashboard,
   type ManagedReadOnlyPreview,
   type ManagedReadOnlyReceipt,
   type ManagedEvidenceDetail,
@@ -40,6 +42,7 @@ const commandIds = {
   evidence: "gaepKiro.runs.evidence",
   stagedReview: "gaepKiro.runs.stagedReview",
   dashboard: "gaepKiro.dashboard.phase",
+  changeImpact: "gaepKiro.dashboard.changeImpact",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -123,6 +126,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.evidence, () => runUserCommand(() => showManagedEvidenceDashboard(pool))),
     vscode.commands.registerCommand(commandIds.stagedReview, () => runUserCommand(() => reviewManagedStagedChanges(pool))),
     vscode.commands.registerCommand(commandIds.dashboard, () => runUserCommand(() => showPhaseDashboard(pool))),
+    vscode.commands.registerCommand(commandIds.changeImpact, () => runUserCommand(() => showChangeImpactDashboard(pool))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -195,7 +199,7 @@ function productStudioHtml(): string {
     <p>Use the Kiro Command Palette to observe verified local readiness, record one guarded portable Agent Selection, or create a versioned switch handoff from the latest terminal Run.</p>
     <p>Selection and handoff records are configuration and history only. The separate managed read-only command can run one exact, already-confirmed Charter and Workflow Plan after a digest-bound human attestation. It denies every Tool, write, and non-observation effect, uses a bounded timeout, and withholds success if staged changes appear.</p>
     <p>The Managed Run evidence command shows an audit-gated, snapshot-bound page of at most 100 runs and one exact verified detail. It displays portable states, counts, digests and timestamps only; it cannot apply, discard, resume, approve, or infer success.</p>
-    <p>The phase-dashboard command shows the exact Phase 0/1A slice plus required Change/Impact and Agent/Model views. Phase applicability remains attention-required until a governed decision exists; the projection cannot approve or complete a phase.</p>
+    <p>The phase-dashboard command shows the exact Phase 0/1A slice plus required Change/Impact and Agent/Model views. The Change/Impact command separately selects one exact current Change from an audit-gated metadata-only catalog and shows bounded Work Items, portable changed/effect targets, trace assessments, Decisions, Risks, freshness and omissions. Phase applicability remains attention-required until a governed decision exists; neither projection can approve a Change or complete a phase.</p>
     <p>The separate staged-review command can inspect one exact pending Codex inventory of at most 512 workspace-relative changed paths and then, only after a cancel-default digest-bound human decision, ask the engine to apply that inventory or persist discard. It receives no source bytes or general filesystem-write authority. Post-apply Workflow gates are recorded not assessed, so this surface cannot claim governed outcome satisfaction.</p>
   </section>
   <section>
@@ -601,7 +605,7 @@ async function showManagedEvidenceDashboard(pool: EngineClientPool): Promise<Man
     const page = pages.at(-1)!
     await showManagedEvidencePage(page)
     if (page.items.length === 0) {
-      await vscode.window.showInformationMessage("No Managed Runs exist in the verified bounded inventory.")
+      void vscode.window.showInformationMessage("No Managed Runs exist in the verified bounded inventory.")
       return page
     }
     const choices: Array<vscode.QuickPickItem & {
@@ -674,6 +678,76 @@ async function showPhaseDashboard(pool: EngineClientPool): Promise<PhaseDashboar
     "",
     "Boundary: this is a read-only governed-state projection. It grants no mutation, applicability, phase-entry, approval, readiness, acceptance, release, Run, Tool, or effect authority.",
     "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return dashboard
+}
+
+async function showChangeImpactDashboard(pool: EngineClientPool): Promise<ChangeImpactDashboard> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const product = await client.readProduct()
+  const catalog: ChangeImpactChangeCatalog = await client.listChangeImpactChanges(product)
+  if (catalog.items.length === 0) {
+    throw new ConfigurationBoundaryError("No current Change metadata is available for the exact Change/Impact dashboard.")
+  }
+  const selected = await vscode.window.showQuickPick(catalog.items.map((change) => ({
+    label: change.recordId,
+    description: `${change.state} · revision ${change.revision}`,
+    detail: `Effects: ${change.effectEnvelope.join(", ")} · digest ${change.digest}`,
+    change,
+  })), {
+    title: `Select one exact current Change (${catalog.items.length} of ${catalog.total}; ${catalog.omitted} omitted)`,
+    placeHolder: "Open a read-only exact Change/Impact projection; selection grants no approval or effect authority",
+    ignoreFocusOut: true,
+  })
+  if (!selected) throw new WorkflowCancelled()
+  const dashboard = await client.readChangeImpact(product, selected.change)
+  const locator = (value: ChangeImpactDashboard["changedArtifacts"][number]["locator"]): string =>
+    value.kind === "workspace-relative" ? value.path : value.kind === "logical" ? value.value : value.uri
+  const lines = [
+    "GAEP exact Change and impact dashboard",
+    "",
+    `Change: ${dashboard.change.recordId}`,
+    `Change revision / state: ${dashboard.change.revision} / ${dashboard.change.state}`,
+    `Change digest: ${dashboard.change.digest}`,
+    `Product revision: ${dashboard.product.revision}`,
+    `Product digest: ${dashboard.product.digest}`,
+    `Snapshot digest: ${dashboard.snapshotDigest}`,
+    `Effects: ${dashboard.change.effectEnvelope.join(", ")}`,
+    `Freshness: ${dashboard.freshness.state}; observed ${dashboard.observedAt}; trace evaluated ${dashboard.freshness.evaluatedAt}`,
+    "Approval: not established. The current contract has no general Change approval record.",
+    "",
+    `Work Items (${dashboard.limits.workItems.shown}/${dashboard.limits.workItems.total}):`,
+    ...dashboard.workItems.map((entry) => `  ${entry.record.recordId}@${entry.record.revision} · ${entry.state} · ${entry.record.digest}`),
+    "",
+    `Changed artifacts (${dashboard.limits.changedArtifacts.shown}/${dashboard.limits.changedArtifacts.total}):`,
+    ...dashboard.changedArtifacts.map((entry) => `  ${locator(entry.locator)} · ${entry.locator.kind} · Work Item ${entry.sourceWorkItem.recordId}`),
+    "",
+    `Effect targets (${dashboard.limits.effectTargets.shown}/${dashboard.limits.effectTargets.total}):`,
+    ...dashboard.effectTargets.map((entry) => `  ${locator(entry.locator)} · ${entry.locator.kind} · Work Item ${entry.sourceWorkItem.recordId}`),
+    "",
+    `Affected units (${dashboard.limits.affectedUnits.shown}/${dashboard.limits.affectedUnits.total}):`,
+    ...dashboard.affectedUnits.map((entry) =>
+      `  ${entry.direction} · ${entry.endpoint.recordType}:${entry.endpoint.recordId} · ${entry.relationship} · ${entry.trace.assessedState}`),
+    "",
+    `Related Decisions (${dashboard.limits.decisions.shown}/${dashboard.limits.decisions.total}):`,
+    ...dashboard.governance.decisions.map((entry) =>
+      `  ${entry.record.recordId}@${entry.record.revision} · ${entry.state} · ${entry.outcome}`),
+    "",
+    `Related Risks (${dashboard.limits.risks.shown}/${dashboard.limits.risks.total}):`,
+    ...dashboard.governance.risks.map((entry) =>
+      `  ${entry.record.recordId}@${entry.record.revision} · ${entry.state} · ${entry.likelihood}/${entry.impact} · ${entry.acceptance}`),
+    "",
+    `Trace attention: unresolved=${dashboard.freshness.unresolvedTraceLinks}; invalid=${dashboard.freshness.invalidTraceLinks}; stale=${dashboard.freshness.staleTraceLinks}; stale governance=${dashboard.freshness.staleGovernanceReferences}`,
+    `Omissions: ${dashboard.limits.truncated ? "one or more bounded categories are truncated" : "none in bounded categories"}`,
+    "Coverage: absence of a trace link does not prove absence of impact.",
+    ...dashboard.limitations.map((limitation) => `Limit: ${limitation}`),
+    "",
+    "Boundary: this read-only projection grants no Change approval, risk acceptance, mutation, Run, Tool, write, effect, phase-entry, readiness, release, or outcome authority.",
+    "Product text, Change text, Work Item text, source bytes, absolute paths, provider output, prompts, executable state, and credentials are withheld.",
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })

@@ -20,6 +20,7 @@ import {
 import {
   ChangeImpactChangeBindingError,
   ChangeImpactProductBindingError,
+  composeChangeImpactChangeCatalog,
   composeChangeImpactDashboard,
   composePhaseDashboardFramework,
   DashboardProductBindingError,
@@ -63,6 +64,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "managed.review.apply",
   "managed.review.discard",
   "dashboard.framework",
+  "dashboard.changeImpact.changes",
   "dashboard.changeImpact",
   "productStudio.designReadiness",
   "productStudio.search",
@@ -449,6 +451,37 @@ export class EngineHost {
             )
           }
           throw error
+        }
+      }
+      case "dashboard.changeImpact.changes": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_042,
+            "CHANGE_IMPACT_AUDIT_INVALID",
+            "The audit chain is invalid or unavailable; no Change catalog was composed",
+          )
+        }
+        const product = await this.engine.readProduct()
+        try {
+          return composeChangeImpactChangeCatalog(
+            product,
+            await this.engine.productStudio.listChanges(),
+            request.params,
+          )
+        } catch (error) {
+          if (error instanceof ChangeImpactProductBindingError) {
+            throw new HostRpcError(
+              -32_040,
+              "CHANGE_IMPACT_PRODUCT_CONTEXT_CHANGED",
+              "The Product changed before the Change catalog was composed; reload the current Product",
+            )
+          }
+          throw new HostRpcError(
+            -32_043,
+            "CHANGE_IMPACT_CATALOG_INVALID",
+            "The current Change catalog could not be verified",
+          )
         }
       }
       case "dashboard.changeImpact": {
