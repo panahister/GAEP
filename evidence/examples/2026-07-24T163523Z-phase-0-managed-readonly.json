@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase0-example-receipt",
+  "scenario": {
+    "id": "phase-0-managed-readonly-v1",
+    "digest": "sha256:16002212feb50c5dbc6f2f63121eaee36c85d8a3a0fa134758b86bea0c6f4ee9"
+  },
+  "portableRun": {
+    "previewDigest": "sha256:65aa5d0e129e4f1a11beba698620584a38d0aa7951d1d031c3b6312bfd2a8873",
+    "runId": "75112e90-7cd5-4306-b55d-4227075914ec",
+    "managedRunId": "d05bfb46-a965-4051-83b7-cb435d1fb602",
+    "resultDigest": "sha256:16522df57ad324ef3d6b7f6d44e25e0b38b35428db3b0f1c3b39eb8e6506e7da",
+    "evidenceDigest": "sha256:86146c312410b6a6fa16a5c4f0f52f509aeb665185b738cb7abf97a01baa2363",
+    "startedAt": "2026-07-24T16:35:23.486Z",
+    "endedAt": "2026-07-24T16:35:23.542Z"
+  },
+  "summary": {
+    "schemaVersion": 1,
+    "kind": "gaep-phase0-example-semantic-summary",
+    "scenarioId": "phase-0-managed-readonly-v1",
+    "adapterId": "gaep.manual",
+    "agentId": "manual",
+    "modelId": "manual-deterministic-v1",
+    "executionMode": "manual-offline",
+    "state": "completed",
+    "providerDisposition": "completed",
+    "outcomeStatus": "satisfied",
+    "outcomeBasis": "deterministic-offline-runtime",
+    "workflowStrategy": "sequential",
+    "contextPackCount": 1,
+    "toolDefinitionCount": 0,
+    "readScopeCount": 1,
+    "writeScopeCount": 0,
+    "gatePhases": [
+      "charter-evidence",
+      "charter-stop-conditions",
+      "preconditions",
+      "outputs",
+      "evidence",
+      "stop-conditions"
+    ],
+    "completedStepCount": 1,
+    "totalStepCount": 1,
+    "eventTypes": [
+      "lifecycle",
+      "output",
+      "item"
+    ],
+    "eventCount": 3,
+    "actualEffects": [
+      {
+        "effect": "observe",
+        "status": "observed-provisional"
+      }
+    ],
+    "stagingPresent": false,
+    "warnings": [],
+    "auditValid": true,
+    "managedInventoryCount": 1
+  },
+  "summaryDigest": "sha256:751524df05f691e192b744cff2dd46e6ec81e74c45c667e12b93e6dd05e6a113",
+  "expectedSummaryDigest": "sha256:751524df05f691e192b744cff2dd46e6ec81e74c45c667e12b93e6dd05e6a113",
+  "integrity": {
+    "auditValid": true,
+    "auditEventCount": 13,
+    "inventoryCount": 1,
+    "inventorySnapshotDigest": "sha256:a8de4f3b9394953eed836cf36d445633569c694cae3d477ec834d14da9702acd",
+    "recordResultDigestMatches": true,
+    "resultEvidenceDigestMatches": true,
+    "evidenceEventsDigestMatches": true
+  },
+  "authority": {
+    "previewBoundary": "managed-readonly-preview-does-not-grant-execution-or-effect-authority",
+    "receiptBoundary": "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+    "requestedEffects": [
+      "observe"
+    ],
+    "toolPermissions": [
+      {
+        "capability": "all-tools",
+        "mode": "deny",
+        "scope": []
+      }
+    ],
+    "workspaceWriteScope": [],
+    "networkRequirement": "none-deterministic-in-process-runtime"
+  },
+  "limitations": [
+    "Offline deterministic runtime evidence does not validate a real provider.",
+    "This example does not validate native IDE installation, activation, rendering, or accessibility.",
+    "A satisfied scripted outcome is not Product readiness, release acceptance, deployment approval, or production evidence."
+  ]
+}
