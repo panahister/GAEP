@@ -10,6 +10,9 @@ import {
   normalizeUuid,
   validatePage,
   type AgentReadinessSnapshot,
+  type AgentSelection,
+  type AgentSelectionSetting,
+  type PortableAgentSettingValue,
   type PortableDesignSnapshotPage,
   type PortableDesignSnapshotSummary,
   type ProductBinding,
@@ -19,6 +22,7 @@ const productStudioViewType = "gaepKiro.productStudio"
 const commandIds = {
   open: "gaepKiro.openProductStudio",
   readiness: "gaepKiro.agents.readiness",
+  selectAgent: "gaepKiro.agents.select",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -77,6 +81,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand(commandIds.open, () => openProductStudio()),
     vscode.commands.registerCommand(commandIds.readiness, () => runUserCommand(() => showAgentReadiness(pool))),
+    vscode.commands.registerCommand(commandIds.selectAgent, () => runUserCommand(() => selectAgent(pool))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -145,9 +150,9 @@ function productStudioHtml(): string {
     <p>Files, archives, <code>.fig</code> ingestion, OAuth, network fetches, and live design-tool accounts are not supported.</p>
   </section>
   <section>
-    <h2>Codex and Claude readiness</h2>
-    <p>Use the Kiro Command Palette to observe verified local adapter, runtime, model, and capability metadata.</p>
-    <p>This view is observation-only. It cannot select a model, change settings, start an agent, resume work, or grant execution authority.</p>
+    <h2>Codex and Claude</h2>
+    <p>Use the Kiro Command Palette to observe verified local readiness or record one guarded, portable Agent Selection.</p>
+    <p>Selection records configuration only. It does not start a provider, resume work, approve tools or effects, create a Run, or grant execution authority. Active Runs, capability drift, legacy state, invalid state, and post-Run changes fail closed.</p>
   </section>
   <section>
     <h2>Governance boundary</h2>
@@ -293,6 +298,237 @@ async function showAgentReadiness(pool: EngineClientPool): Promise<readonly Agen
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${content}\n` })
   await vscode.window.showTextDocument(document, { preview: true })
   return snapshots
+}
+
+async function selectAgent(pool: EngineClientPool): Promise<AgentSelection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const current = await client.readAgentSelection()
+  if (current.status === "migration-required") {
+    throw new ConfigurationBoundaryError(
+      "The existing legacy Agent Selection requires explicit migration review. Kiro will not overwrite it implicitly.",
+    )
+  }
+  if (current.status === "invalid") {
+    throw new ConfigurationBoundaryError(
+      "The existing Agent Selection is invalid. Repair or review the governed record before selecting another agent.",
+    )
+  }
+
+  const snapshots = await client.probeAgentReadiness()
+  const available = snapshots.filter((snapshot) => snapshot.detected && snapshot.executionInterface !== "unavailable")
+  if (available.length === 0) {
+    throw new ConfigurationBoundaryError("No verified local Codex or Claude adapter is currently available for selection.")
+  }
+  const adapter = await vscode.window.showQuickPick(
+    available.map((snapshot) => ({
+      label: snapshot.agentLabel,
+      description: `${snapshot.adapterId} · ${snapshot.executionInterface} (${snapshot.interfaceMaturity})`,
+      detail: `${snapshot.models.length} model${snapshot.models.length === 1 ? "" : "s"}; ${snapshot.settings.length} portable setting${snapshot.settings.length === 1 ? "" : "s"}`,
+      snapshot,
+    })),
+    {
+      title: "Select one verified local agent adapter",
+      placeHolder: "Selection records portable configuration only; it does not start an agent",
+      ignoreFocusOut: true,
+    },
+  )
+  if (!adapter) throw new WorkflowCancelled()
+
+  const model = await selectAgentModel(adapter.snapshot)
+  const settings = await collectAgentSettings(adapter.snapshot.settings)
+  const actorId = normalizeActorId(machineSetting("actorId", undefined, "gaep.kiro-local-human"))
+  const prior = current.status === "selected"
+    ? ` Current selection: ${current.selection.agentId} / ${current.selection.modelId}.`
+    : ""
+  const confirmation = await vscode.window.showWarningMessage(
+    `Record ${adapter.snapshot.agentLabel} / ${model} with ${Object.keys(settings).length} explicit portable setting${Object.keys(settings).length === 1 ? "" : "s"}?${prior} This does not start a provider, create or resume a Run, approve tools or effects, or grant execution authority. The engine will reject active-Run, capability-drift, legacy, invalid, and post-Run changes that require a handoff.`,
+    { modal: true },
+    "Confirm Selection",
+  )
+  if (confirmation !== "Confirm Selection") throw new WorkflowCancelled()
+  requireTrustedWorkspace()
+  const selected = await client.selectAgent({
+    adapterId: adapter.snapshot.adapterId,
+    modelId: model,
+    settings,
+    actorId,
+  })
+  await showAgentSelectionDocument(selected)
+  await vscode.window.showInformationMessage(
+    `Recorded ${selected.agentId} / ${selected.modelId} as portable Agent Selection. No agent was started and no Run authority was granted.`,
+  )
+  return selected
+}
+
+async function selectAgentModel(snapshot: AgentReadinessSnapshot): Promise<string> {
+  const manual = Symbol("manual-model")
+  const chosen = await vscode.window.showQuickPick(
+    [
+      ...snapshot.models.map((model) => ({
+        label: model.label,
+        description: `${model.id} · ${model.truthClass}${model.alias ? " · alias" : ""}`,
+        value: model.id as string | typeof manual,
+      })),
+      {
+        label: "Enter another model ID…",
+        description: "The engine will verify it against the current capability snapshot",
+        value: manual as string | typeof manual,
+      },
+    ],
+    {
+      title: `Select a model for ${snapshot.agentLabel}`,
+      placeHolder: "Dismiss to leave Agent Selection unchanged",
+      ignoreFocusOut: true,
+    },
+  )
+  if (!chosen) throw new WorkflowCancelled()
+  if (chosen.value !== manual) return chosen.value
+  const entered = await vscode.window.showInputBox({
+    title: `Enter a portable model ID for ${snapshot.agentLabel}`,
+    prompt: "The local engine must verify this model against the current adapter capabilities.",
+    ignoreFocusOut: true,
+    validateInput: (value) => validatePortableInput(value, true, "Model ID"),
+  })
+  if (entered === undefined) throw new WorkflowCancelled()
+  const issue = validatePortableInput(entered, true, "Model ID")
+  if (issue) throw new TypeError(issue)
+  return entered
+}
+
+async function collectAgentSettings(
+  declarations: readonly AgentSelectionSetting[],
+): Promise<Readonly<Record<string, PortableAgentSettingValue>>> {
+  const values: Record<string, PortableAgentSettingValue> = Object.create(null) as Record<string, PortableAgentSettingValue>
+  for (const setting of declarations) {
+    if (setting.sensitive) {
+      throw new ConfigurationBoundaryError(
+        `${setting.label} requires a machine-local credential binding, which this portable Kiro selection flow does not collect or store.`,
+      )
+    }
+    const value = await collectAgentSetting(setting)
+    if (value !== undefined) values[setting.key] = value
+  }
+  return Object.freeze(values)
+}
+
+async function collectAgentSetting(setting: AgentSelectionSetting): Promise<PortableAgentSettingValue | undefined> {
+  if (setting.kind === "select") {
+    const options = setting.options ?? []
+    if (options.length === 0 && setting.required && setting.defaultValue === undefined) {
+      throw new ConfigurationBoundaryError(`${setting.label} is required but the verified adapter declared no selectable values.`)
+    }
+    const useDefault = Symbol("use-default")
+    const choices: Array<vscode.QuickPickItem & { readonly value: string | typeof useDefault }> = []
+    if (!setting.required || setting.defaultValue !== undefined) {
+      choices.push({
+        label: "Use adapter default",
+        description: setting.defaultValue === undefined ? "No explicit override" : `Declared default: ${formatSettingDefault(setting.defaultValue)}`,
+        value: useDefault,
+      })
+    }
+    choices.push(...options.map((option) => ({
+      label: option.label,
+      description: option.value,
+      ...(option.description !== undefined ? { detail: option.description } : {}),
+      value: option.value,
+    })))
+    const selected = await vscode.window.showQuickPick(
+      choices,
+      { title: setting.label, placeHolder: setting.description, ignoreFocusOut: true },
+    )
+    if (!selected) throw new WorkflowCancelled()
+    return selected.value === useDefault ? undefined : selected.value
+  }
+  if (setting.kind === "boolean") {
+    const useDefault = Symbol("use-default")
+    const selected = await vscode.window.showQuickPick(
+      [
+        ...(setting.required && setting.defaultValue === undefined ? [] : [{
+          label: "Use adapter default",
+          description: setting.defaultValue === undefined ? "No explicit override" : `Declared default: ${formatSettingDefault(setting.defaultValue)}`,
+          value: useDefault as boolean | typeof useDefault,
+        }]),
+        { label: "True", value: true as boolean | typeof useDefault },
+        { label: "False", value: false as boolean | typeof useDefault },
+      ],
+      { title: setting.label, placeHolder: setting.description, ignoreFocusOut: true },
+    )
+    if (!selected) throw new WorkflowCancelled()
+    return selected.value === useDefault ? undefined : selected.value
+  }
+
+  const defaultText = setting.defaultValue === undefined ? "" : formatSettingDefault(setting.defaultValue)
+  const entered = await vscode.window.showInputBox({
+    title: setting.label,
+    prompt: setting.kind === "string-list" ? `${setting.description} Enter comma-separated values.` : setting.description,
+    value: defaultText,
+    ignoreFocusOut: true,
+    validateInput: (value) => validateSettingInput(setting, value),
+  })
+  if (entered === undefined) throw new WorkflowCancelled()
+  const issue = validateSettingInput(setting, entered)
+  if (issue) throw new TypeError(issue)
+  if (!entered.trim() && (!setting.required || setting.defaultValue !== undefined)) return undefined
+  if (setting.kind === "number") return Number(entered)
+  if (setting.kind === "string-list") return Object.freeze(entered.split(",").map((value) => value.trim()))
+  return entered
+}
+
+function validateSettingInput(setting: AgentSelectionSetting, value: string): string | undefined {
+  if (!value.trim() && (!setting.required || setting.defaultValue !== undefined)) return undefined
+  if (!value.trim()) return `${setting.label} is required`
+  if (setting.kind === "number") {
+    const parsed = Number(value)
+    if (!Number.isFinite(parsed)) return `${setting.label} must be a finite number`
+    if (setting.minimum !== undefined && parsed < setting.minimum) return `${setting.label} must be at least ${setting.minimum}`
+    if (setting.maximum !== undefined && parsed > setting.maximum) return `${setting.label} must be at most ${setting.maximum}`
+    return undefined
+  }
+  if (setting.kind === "string-list") {
+    const items = value.split(",").map((item) => item.trim())
+    if (items.some((item) => !item)) return `${setting.label} must be a comma-separated list of non-empty values`
+    for (const item of items) {
+      const issue = validatePortableInput(item, true, setting.label)
+      if (issue) return issue
+    }
+    return undefined
+  }
+  return validatePortableInput(value, true, setting.label)
+}
+
+function validatePortableInput(value: string, required: boolean, label: string): string | undefined {
+  if (required && !value) return `${label} is required`
+  if (value.length > 10_000 || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u.test(value) ||
+    /^(?:\/|[A-Za-z]:[\\/]|\\\\|file:\/\/|~[\\/])/u.test(value) ||
+    /\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|\bAKIA[A-Z0-9]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+|^\$\{?[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\}?$/iu.test(value)) {
+    return `${label} must be portable text without paths, controls, or secret-shaped values`
+  }
+  return undefined
+}
+
+function formatSettingDefault(value: PortableAgentSettingValue): string {
+  return Array.isArray(value) ? value.join(", ") : String(value)
+}
+
+async function showAgentSelectionDocument(selection: AgentSelection): Promise<void> {
+  const lines = [
+    "GAEP guarded Agent Selection",
+    "",
+    `Agent: ${selection.agentId}`,
+    `Adapter: ${selection.adapterId}`,
+    `Model: ${selection.modelId}`,
+    `Model evidence: ${selection.modelTruthClass}${selection.modelAlias ? " (alias)" : ""}`,
+    `Selected at: ${selection.selectedAt}`,
+    `Portable settings: ${Object.keys(selection.settings).length}`,
+    ...Object.entries(selection.settings).map(([key, value]) => `  - ${key}: ${formatSettingDefault(value)}`),
+    "",
+    "Boundary: this record does not start a provider, create or resume a Run, approve tools or effects, or grant execution authority.",
+    "Machine-local executable paths, credentials, and raw provider output are not included.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
 }
 
 function renderAgentReadiness(snapshot: AgentReadinessSnapshot): readonly string[] {

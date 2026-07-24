@@ -5,6 +5,7 @@ const bundleId = "22222222-2222-4222-8222-222222222222"
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
 const workspacePath = process.argv[process.argv.indexOf("--workspace") + 1] ?? ""
+let selectedAgent = null
 
 if (process.env.AWS_SECRET_ACCESS_KEY || process.env.OPENAI_API_KEY || process.env.HOME || process.env.USERPROFILE) {
   process.exit(91)
@@ -31,6 +32,17 @@ input.on("line", (line) => {
     case "probeAgents":
       if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
       return writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
+    case "readAgentSelection":
+      if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
+      if (workspacePath.endsWith("bad-selection")) {
+        return writeResult(id, {
+          status: "selected",
+          selection: { ...agentSelection(), runtimeExecutable: `${privateRoot}/${privateCredential}` },
+        })
+      }
+      return writeResult(id, selectedAgent ? { status: "selected", selection: selectedAgent } : { status: "unselected" })
+    case "selectAgent":
+      return selectAgent(id, request.params)
     case "productStudio.portableDesign.import":
       return importSnapshot(id, request.params)
     case "productStudio.portableDesign.list":
@@ -41,6 +53,31 @@ input.on("line", (line) => {
       return writeError(id, -32_601, "METHOD_NOT_FOUND", "PRIVATE METHOD")
   }
 })
+
+function selectAgent(id, params) {
+  if (!exactKeys(params, ["adapterId", "modelId", "settings", "actorId"]) ||
+    params.adapterId !== "openai-codex" || params.modelId !== "gpt-5.6-codex" ||
+    !exactKeys(params.settings, ["reasoningEffort"]) || params.settings.reasoningEffort !== "high" ||
+    params.actorId !== "founder.kiro-review") {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE SELECTION PARAMS")
+  }
+  selectedAgent = agentSelection(params.settings)
+  return writeResult(id, selectedAgent)
+}
+
+function agentSelection(settings = { reasoningEffort: "high" }) {
+  return {
+    schemaVersion: 2,
+    adapterId: "openai-codex",
+    agentId: "codex",
+    modelId: "gpt-5.6-codex",
+    modelTruthClass: "observed",
+    modelAlias: false,
+    settings,
+    selectedAt: "2026-07-24T08:05:00.000Z",
+    capabilityDigest: `sha256:${"e".repeat(64)}`,
+  }
+}
 
 function importSnapshot(id, params) {
   if (!exactKeys(params, ["bundleRoot", "expectedProductId", "expectedProductRevision", "actorId"]) ||

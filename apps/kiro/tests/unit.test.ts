@@ -36,7 +36,8 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const bundleRoot = join(root, "bundle")
   const sourceErrorRoot = join(root, "source-error")
   const badReadinessRoot = join(root, "bad-readiness")
-  await Promise.all([workspace, bundleRoot, sourceErrorRoot, badReadinessRoot].map((path) => mkdir(path)))
+  const badSelectionRoot = join(root, "bad-selection")
+  await Promise.all([workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
     engineExecutable: process.execPath,
@@ -62,12 +63,44 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
       [
         "adapterId", "adapterVersion", "agentId", "agentLabel", "detected", "executionInterface",
         "interfaceMaturity", "limitations", "models", "observedAt", "runtimeVersion", "schemaVersion",
-        "settingsCount", "supportsCancel", "supportsCheckpoints", "supportsModelDiscovery", "supportsResume",
+        "settings", "settingsCount", "supportsCancel", "supportsCheckpoints", "supportsModelDiscovery", "supportsResume",
         "supportsToolSelection",
       ].sort(),
     )
+    assert.deepEqual(readiness[1]?.settings[0], {
+      key: "reasoningEffort",
+      label: "Reasoning effort",
+      description: "Provider-declared reasoning effort for a future governed run.",
+      kind: "select",
+      required: false,
+      sensitive: false,
+      options: [{ value: "high", label: "High" }],
+      truthClass: "provider-declared",
+    })
     assert.equal(JSON.stringify(readiness).includes(privateRoot), false)
     assert.equal(JSON.stringify(readiness).includes(privateCredential), false)
+
+    assert.deepEqual(await client.readAgentSelection(), { status: "unselected" })
+    const selected = await client.selectAgent({
+      adapterId: "openai-codex",
+      modelId: "gpt-5.6-codex",
+      settings: { reasoningEffort: "high" },
+      actorId: "founder.kiro-review",
+    })
+    assert.deepEqual({ ...selected, settings: { ...selected.settings } }, {
+      schemaVersion: 2,
+      adapterId: "openai-codex",
+      agentId: "codex",
+      modelId: "gpt-5.6-codex",
+      modelTruthClass: "observed",
+      modelAlias: false,
+      settings: { reasoningEffort: "high" },
+      selectedAt: "2026-07-24T08:05:00.000Z",
+      capabilityDigest: `sha256:${"e".repeat(64)}`,
+    })
+    assert.deepEqual(await client.readAgentSelection(), { status: "selected", selection: selected })
+    assert.equal(JSON.stringify(selected).includes(privateRoot), false)
+    assert.equal(JSON.stringify(selected).includes(privateCredential), false)
 
     const badReadinessClient = await GaepEngineClient.create({
       workspacePath: badReadinessRoot,
@@ -81,6 +114,20 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
       )
     } finally {
       await badReadinessClient.dispose()
+    }
+
+    const badSelectionClient = await GaepEngineClient.create({
+      workspacePath: badSelectionRoot,
+      engineExecutable: process.execPath,
+      engineArgumentsPrefix: [fakeEngine],
+    })
+    try {
+      await assert.rejects(
+        () => badSelectionClient.readAgentSelection(),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await badSelectionClient.dispose()
     }
 
     const imported = await client.importPortableDesignSnapshot({

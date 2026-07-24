@@ -1,7 +1,7 @@
 {
   "name": "gaep-kiro",
   "displayName": "GAEP for Kiro",
-  "description": "Governed local Product Studio, agent-readiness, and portable-design metadata workflows for Kiro.",
+  "description": "Governed local Product Studio, agent-readiness, guarded agent-selection, and portable-design metadata workflows for Kiro.",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -33,6 +33,7 @@
   "activationEvents": [
     "onCommand:gaepKiro.openProductStudio",
     "onCommand:gaepKiro.agents.readiness",
+    "onCommand:gaepKiro.agents.select",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -58,6 +59,10 @@
       {
         "command": "gaepKiro.agents.readiness",
         "title": "GAEP for Kiro: Show Codex and Claude Readiness"
+      },
+      {
+        "command": "gaepKiro.agents.select",
+        "title": "GAEP for Kiro: Select Codex or Claude Configuration"
       },
       {
         "command": "gaepKiro.portableDesign.import",
@@ -91,7 +96,7 @@
           "type": "string",
           "default": "gaep.kiro-local-human",
           "scope": "machine",
-          "description": "Portable human actor ID recorded for local imports. It cannot contain credentials and workspace overrides are ignored."
+          "description": "Portable human actor ID recorded for local imports and guarded agent selections. It cannot contain credentials and workspace overrides are ignored."
         }
       }
     }

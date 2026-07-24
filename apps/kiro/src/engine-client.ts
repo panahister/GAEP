@@ -17,8 +17,11 @@ import {
   normalizeExistingLocalFolder,
   normalizeUuid,
   parseAgentReadiness,
+  parseAgentSelection,
+  parseAgentSelectionState,
   parseHostResult,
   parsePageResult,
+  parsePortableSelectionSettings,
   parseProductBinding,
   parseSnapshotResult,
   protocolVersion,
@@ -29,6 +32,9 @@ import {
   type PortableDesignSnapshotSummary,
   type ProductBinding,
   type AgentReadinessSnapshot,
+  type AgentSelection,
+  type AgentSelectionState,
+  type PortableAgentSettingValue,
 } from "./protocol.js"
 
 export interface EngineClientOptions {
@@ -93,6 +99,25 @@ export class GaepEngineClient {
 
   probeAgentReadiness(): Promise<readonly AgentReadinessSnapshot[]> {
     return this.enqueue(async () => parseAgentReadiness(await this.request("probeAgents", {})))
+  }
+
+  readAgentSelection(): Promise<AgentSelectionState> {
+    return this.enqueue(async () => parseAgentSelectionState(await this.request("readAgentSelection", {})))
+  }
+
+  selectAgent(input: {
+    readonly adapterId: string
+    readonly modelId: string
+    readonly settings: Readonly<Record<string, PortableAgentSettingValue>>
+    readonly actorId: string
+  }): Promise<AgentSelection> {
+    return this.enqueue(async () => {
+      const adapterId = normalizeSelectionIdentifier(input.adapterId, "Adapter ID")
+      const modelId = normalizeSelectionIdentifier(input.modelId, "Model ID")
+      const settings = normalizeSelectionSettings(input.settings)
+      const actorId = normalizeActorId(input.actorId)
+      return parseAgentSelection(await this.request("selectAgent", { adapterId, modelId, settings, actorId }))
+    })
   }
 
   importPortableDesignSnapshot(input: {
@@ -273,6 +298,27 @@ export class GaepEngineClient {
     child.stdout.destroy()
     child.stderr.destroy()
     if (child.exitCode === null) child.kill()
+  }
+}
+
+function normalizeSelectionIdentifier(value: string, label: string): string {
+  if (typeof value !== "string" || value.length < 1 || value.length > 20_000 ||
+    /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u.test(value) ||
+    /^(?:\/[\S]+|[A-Za-z]:[\\/][\S]+|\\\\[\S]+|file:\/\/[\S]+)$/u.test(value.trim()) ||
+    /(?:^|[\s(="'])(?:\/(?:Users|home|tmp|private|Volumes)\/[^\s"'<>)]*|[A-Za-z]:\\[^\s"'<>)]*|\\\\[^\s"'<>)]*)/u.test(value) ||
+    /\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+/iu.test(value)) {
+    throw new TypeError(`${label} must be verified portable capability text`)
+  }
+  return value
+}
+
+function normalizeSelectionSettings(
+  value: Readonly<Record<string, PortableAgentSettingValue>>,
+): Readonly<Record<string, PortableAgentSettingValue>> {
+  try {
+    return parsePortableSelectionSettings(value)
+  } catch {
+    throw new TypeError("Agent settings must contain only verified portable, non-secret values")
   }
 }
 

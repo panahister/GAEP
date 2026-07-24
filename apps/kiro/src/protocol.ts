@@ -109,6 +109,46 @@ export interface AgentModelReadiness {
   readonly alias: boolean
 }
 
+export type PortableAgentSettingValue = string | number | boolean | readonly string[]
+
+export interface AgentSettingOption {
+  readonly value: string
+  readonly label: string
+  readonly description?: string
+}
+
+export interface AgentSelectionSetting {
+  readonly key: string
+  readonly label: string
+  readonly description: string
+  readonly kind: "select" | "boolean" | "number" | "string" | "string-list"
+  readonly required: boolean
+  readonly sensitive: boolean
+  readonly defaultValue?: PortableAgentSettingValue
+  readonly options?: readonly AgentSettingOption[]
+  readonly minimum?: number
+  readonly maximum?: number
+  readonly truthClass: AgentTruthClass
+}
+
+export interface AgentSelection {
+  readonly schemaVersion: 2
+  readonly adapterId: string
+  readonly agentId: string
+  readonly modelId: string
+  readonly modelTruthClass: AgentTruthClass
+  readonly modelAlias: boolean | null
+  readonly settings: Readonly<Record<string, PortableAgentSettingValue>>
+  readonly selectedAt: string
+  readonly capabilityDigest: string
+}
+
+export type AgentSelectionState =
+  | { readonly status: "unselected" }
+  | { readonly status: "selected"; readonly selection: AgentSelection }
+  | { readonly status: "migration-required"; readonly portableCandidate: AgentSelection }
+  | { readonly status: "invalid" }
+
 export interface AgentReadinessSnapshot {
   readonly schemaVersion: 1
   readonly adapterId: string
@@ -125,6 +165,7 @@ export interface AgentReadinessSnapshot {
   readonly supportsModelDiscovery: boolean
   readonly supportsToolSelection: boolean
   readonly settingsCount: number
+  readonly settings: readonly AgentSelectionSetting[]
   readonly models: readonly AgentModelReadiness[]
   readonly limitations: readonly string[]
   readonly observedAt: string
@@ -187,6 +228,26 @@ const stableHostErrors = new Map<string, StableHostError>([
   ["EXECUTABLE_CHANGED", {
     code: -32_014,
     message: "The configured agent executable changed during capability discovery.",
+  }],
+  ["AGENT_SELECTION_ACTIVE_RUN", {
+    code: -32_015,
+    message: "Agent selection cannot change while a Run is non-terminal.",
+  }],
+  ["AGENT_SELECTION_MIGRATION_REQUIRED", {
+    code: -32_016,
+    message: "The legacy Agent Selection requires explicit re-probe and reconfirmation.",
+  }],
+  ["AGENT_SELECTION_HANDOFF_REQUIRED", {
+    code: -32_017,
+    message: "A versioned handoff is required before changing agent, model, or settings after a Run.",
+  }],
+  ["AGENT_SELECTION_INVALID", {
+    code: -32_018,
+    message: "The persisted Agent Selection is invalid and cannot be replaced implicitly.",
+  }],
+  ["CAPABILITIES_CHANGED", {
+    code: -32_012,
+    message: "Agent capabilities changed during selection; probe again.",
   }],
   ["INVALID_PARAMS", {
     code: -32_602,
@@ -331,6 +392,62 @@ export function parseAgentReadiness(result: unknown): readonly AgentReadinessSna
   return Object.freeze(snapshots.sort((left, right) => left.agentLabel.localeCompare(right.agentLabel)))
 }
 
+export function parseAgentSelectionState(result: unknown): AgentSelectionState {
+  const state = requireRecord(result)
+  const status = requireString(state, "status")
+  if (status === "unselected" || status === "invalid") {
+    requireExactKeys(state, ["status"])
+    return Object.freeze({ status })
+  }
+  if (status === "selected") {
+    requireExactKeys(state, ["status", "selection"])
+    return Object.freeze({ status, selection: parseAgentSelection(state.selection) })
+  }
+  if (status === "migration-required") {
+    requireExactKeys(state, ["status", "portableCandidate"])
+    return Object.freeze({ status, portableCandidate: parseAgentSelection(state.portableCandidate) })
+  }
+  throw invalidHostResponse()
+}
+
+export function parseAgentSelection(result: unknown): AgentSelection {
+  const selection = requireRecord(result)
+  requireExactKeys(selection, [
+    "schemaVersion", "adapterId", "agentId", "modelId", "modelTruthClass", "modelAlias", "settings",
+    "selectedAt", "capabilityDigest",
+  ])
+  if (requireSafeInteger(selection, "schemaVersion") !== 2) throw invalidHostResponse()
+  const modelAlias = selection.modelAlias
+  if (modelAlias !== null && typeof modelAlias !== "boolean") throw invalidHostResponse()
+  const capabilityDigest = requireString(selection, "capabilityDigest")
+  if (!/^sha256:[0-9a-f]{64}$/u.test(capabilityDigest)) throw invalidHostResponse()
+  return Object.freeze({
+    schemaVersion: 2,
+    adapterId: requirePortableText(selection, "adapterId", 1),
+    agentId: requirePortableText(selection, "agentId", 1),
+    modelId: requirePortableText(selection, "modelId", 1),
+    modelTruthClass: requireTruthClass(selection, "modelTruthClass"),
+    modelAlias,
+    settings: parsePortableSelectionSettings(selection.settings),
+    selectedAt: requireTimestamp(selection, "selectedAt"),
+    capabilityDigest,
+  })
+}
+
+export function parsePortableSelectionSettings(value: unknown): Readonly<Record<string, PortableAgentSettingValue>> {
+  const settings = requireRecord(value)
+  const entries = Object.entries(settings)
+  if (entries.length > 128) throw invalidHostResponse()
+  const parsed: Record<string, PortableAgentSettingValue> = Object.create(null) as Record<string, PortableAgentSettingValue>
+  for (const [key, rawValue] of entries) {
+    if (!/^[a-z][a-zA-Z0-9]{0,127}$/u.test(key) ||
+      /(?:apiKey|accessToken|refreshToken|authToken|bearerToken|password|passwd|clientSecret|privateKey|credential)/iu.test(key) ||
+      /^(?:secret|token)$/iu.test(key)) throw invalidHostResponse()
+    parsed[key] = parsePortableSettingValue(rawValue)
+  }
+  return Object.freeze(parsed)
+}
+
 function parseAgentReadinessSnapshot(snapshot: JsonRecord): AgentReadinessSnapshot {
   requireExactKeys(snapshot, [
     "schemaVersion", "adapterId", "adapterVersion", "agentId", "agentLabel", "runtimeVersion", "detected",
@@ -358,7 +475,7 @@ function parseAgentReadinessSnapshot(snapshot: JsonRecord): AgentReadinessSnapsh
     !Array.isArray(snapshot.limitations) || snapshot.limitations.length > 512) {
     throw invalidHostResponse()
   }
-  snapshot.settings.forEach(validateAgentSetting)
+  const settings = Object.freeze(snapshot.settings.map((setting) => parseAgentSetting(setting)))
   const models = Object.freeze(snapshot.models.map((model) => parseAgentModel(requireRecord(model))))
   if (new Set(models.map((model) => model.id)).size !== models.length) throw invalidHostResponse()
   const limitations = Object.freeze(snapshot.limitations.map((limitation) => portableText(limitation)))
@@ -377,7 +494,8 @@ function parseAgentReadinessSnapshot(snapshot: JsonRecord): AgentReadinessSnapsh
     supportsCheckpoints: requireBoolean(snapshot, "supportsCheckpoints"),
     supportsModelDiscovery: requireBoolean(snapshot, "supportsModelDiscovery"),
     supportsToolSelection: requireBoolean(snapshot, "supportsToolSelection"),
-    settingsCount: snapshot.settings.length,
+    settingsCount: settings.length,
+    settings,
     models,
     limitations,
     observedAt: requireTimestamp(snapshot, "observedAt"),
@@ -403,7 +521,7 @@ function parseAgentModel(model: JsonRecord): AgentModelReadiness {
   return Object.freeze({ id, label, truthClass, alias: requireBoolean(model, "alias") })
 }
 
-function validateAgentSetting(value: unknown): void {
+function parseAgentSetting(value: unknown): AgentSelectionSetting {
   const setting = requireRecord(value)
   requireKeys(
     setting,
@@ -412,43 +530,71 @@ function validateAgentSetting(value: unknown): void {
   )
   const key = requireString(setting, "key")
   if (!/^[a-z][a-zA-Z0-9]{0,127}$/u.test(key)) throw invalidHostResponse()
-  requirePortableText(setting, "label", 1)
-  requirePortableText(setting, "description", 1)
-  if (!(["select", "boolean", "number", "string", "string-list"] as const).includes(
-    requireString(setting, "kind") as "select" | "boolean" | "number" | "string" | "string-list",
-  )) throw invalidHostResponse()
-  requireBoolean(setting, "required")
+  const label = requirePortableText(setting, "label", 1)
+  const description = requirePortableText(setting, "description", 1)
+  const kind = requireString(setting, "kind")
+  if (!(["select", "boolean", "number", "string", "string-list"] as const)
+      .includes(kind as AgentSelectionSetting["kind"])) throw invalidHostResponse()
+  const required = requireBoolean(setting, "required")
   const sensitive = requireBoolean(setting, "sensitive")
-  requireTruthClass(setting, "truthClass")
+  const truthClass = requireTruthClass(setting, "truthClass")
+  const defaultValue = Object.hasOwn(setting, "defaultValue")
+    ? parsePortableSettingValue(setting.defaultValue)
+    : undefined
   if (Object.hasOwn(setting, "defaultValue")) {
     if (sensitive) throw invalidHostResponse()
-    validatePortableSettingValue(setting.defaultValue)
   }
+  let options: readonly AgentSettingOption[] | undefined
   if (Object.hasOwn(setting, "options")) {
     if (!Array.isArray(setting.options) || setting.options.length > 256) throw invalidHostResponse()
-    for (const value of setting.options) {
+    options = Object.freeze(setting.options.map((value): AgentSettingOption => {
       const option = requireRecord(value)
       requireKeys(option, ["value", "label"], ["description"])
-      requirePortableText(option, "value")
-      requirePortableText(option, "label")
-      if (Object.hasOwn(option, "description")) requirePortableText(option, "description")
-    }
+      const description = Object.hasOwn(option, "description")
+        ? requirePortableText(option, "description")
+        : undefined
+      return Object.freeze({
+        value: requirePortableText(option, "value"),
+        label: requirePortableText(option, "label"),
+        ...(description !== undefined ? { description } : {}),
+      })
+    }))
   }
+  const bounds: { minimum?: number; maximum?: number } = {}
   for (const name of ["minimum", "maximum"]) {
     if (Object.hasOwn(setting, name) && (typeof setting[name] !== "number" || !Number.isFinite(setting[name]))) {
       throw invalidHostResponse()
     }
+    if (typeof setting[name] === "number") bounds[name as "minimum" | "maximum"] = setting[name]
   }
+  if (bounds.minimum !== undefined && bounds.maximum !== undefined && bounds.minimum > bounds.maximum) {
+    throw invalidHostResponse()
+  }
+  return Object.freeze({
+    key,
+    label,
+    description,
+    kind: kind as AgentSelectionSetting["kind"],
+    required,
+    sensitive,
+    ...(defaultValue !== undefined ? { defaultValue } : {}),
+    ...(options !== undefined ? { options } : {}),
+    ...bounds,
+    truthClass,
+  })
 }
 
-function validatePortableSettingValue(value: unknown): void {
+function parsePortableSettingValue(value: unknown): PortableAgentSettingValue {
   if (typeof value === "string") {
-    portableText(value, 0, 10_000)
-  } else if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw invalidHostResponse()
-  } else if (typeof value !== "boolean") {
-    validatePortableTextArray(value, 256, 10_000)
+    return portableText(value, 0, 10_000)
   }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw invalidHostResponse()
+    return value
+  }
+  if (typeof value === "boolean") return value
+  if (!Array.isArray(value) || value.length > 256) throw invalidHostResponse()
+  return Object.freeze(value.map((item) => portableText(item, 0, 10_000)))
 }
 
 function validatePortableTextArray(value: unknown, maximumItems: number, maximumText = 20_000): void {
