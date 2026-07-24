@@ -22,6 +22,8 @@ const temporaryRoot = await mkdtemp(join(process.platform === "darwin" ? "/tmp" 
 const workspace = join(temporaryRoot, "workspace")
 const profile = join(temporaryRoot, "profile")
 const extensions = join(temporaryRoot, "extensions")
+const packageId = "gaep.gaep-kiro"
+const exactPackage = `${packageId}@0.1.0`
 
 try {
   await Promise.all([workspace, profile, extensions].map((path) => mkdir(path, { recursive: true })))
@@ -39,21 +41,34 @@ try {
     `--extensions-dir=${extensions}`,
     "--disable-telemetry",
   ]
-  await runCli(executable, [
+  const executeCli = (arguments_) => runCli(executable, [
     ...commonCliArguments,
-    "--install-extension",
-    join(extensionDevelopmentPath, "dist/gaep-kiro.vsix"),
-    "--force",
+    ...arguments_,
   ], { env: cliEnvironment, timeout: 60_000, maxBuffer: 1024 * 1024 })
-  const listed = await runCli(executable, [
-    ...commonCliArguments,
-    "--list-extensions",
-    "--show-versions",
-  ], { env: cliEnvironment, timeout: 60_000, maxBuffer: 1024 * 1024 })
-  if (!listed.stdout.split(/\r?\n/u).includes("gaep.gaep-kiro@0.1.0")) {
-    throw new Error("The exact packaged GAEP for Kiro VSIX was not present in the isolated extension inventory")
+  const inventory = async () => {
+    const listed = await executeCli(["--list-extensions", "--show-versions"])
+    return listed.stdout.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean)
   }
-  process.stdout.write("PASS isolated VSIX install/list: gaep.gaep-kiro@0.1.0\n")
+  const assertInventory = async (expected) => {
+    const matches = (await inventory()).filter((line) => line.startsWith(`${packageId}@`))
+    if (expected && (matches.length !== 1 || matches[0] !== exactPackage)) {
+      throw new Error(`Expected exactly ${exactPackage} in the isolated compatible-host inventory; received ${matches.join(", ") || "none"}`)
+    }
+    if (!expected && matches.length !== 0) {
+      throw new Error(`Expected ${packageId} to be absent from the isolated compatible-host inventory; received ${matches.join(", ")}`)
+    }
+  }
+
+  const packagePath = join(extensionDevelopmentPath, "dist/gaep-kiro.vsix")
+  await executeCli(["--install-extension", packagePath, "--force"])
+  await assertInventory(true)
+  await executeCli(["--install-extension", packagePath, "--force"])
+  await assertInventory(true)
+  await executeCli(["--uninstall-extension", packageId])
+  await assertInventory(false)
+  await executeCli(["--install-extension", packagePath, "--force"])
+  await assertInventory(true)
+  process.stdout.write(`PASS isolated compatible-host VSIX install/reinstall/uninstall/absence/reinstall: ${exactPackage}\n`)
   await runTests({
     vscodeExecutablePath: executable,
     extensionDevelopmentPath: testHarnessPath,

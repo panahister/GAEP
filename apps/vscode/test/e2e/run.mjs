@@ -85,6 +85,9 @@ async function runPhase({
 
 async function installPackagedVsix(profile, extensions) {
   if (!installation) return false
+  const packageId = "gaep.gaep-vscode"
+  const exactPackage = `${packageId}@0.1.0`
+  const packagePath = join(extensionDevelopmentPath, "dist/gaep-vscode.vsix")
   const cliEnvironment = {
     ...process.env,
     ELECTRON_RUN_AS_NODE: "1",
@@ -98,21 +101,33 @@ async function installPackagedVsix(profile, extensions) {
     `--extensions-dir=${extensions}`,
     "--disable-telemetry",
   ]
-  await runCli(installation.executable, [
+  const executeCli = (arguments_) => runCli(installation.executable, [
     ...commonArguments,
-    "--install-extension",
-    join(extensionDevelopmentPath, "dist/gaep-vscode.vsix"),
-    "--force",
+    ...arguments_,
   ], { env: cliEnvironment, timeout: 60_000, maxBuffer: 1024 * 1024 })
-  const listed = await runCli(installation.executable, [
-    ...commonArguments,
-    "--list-extensions",
-    "--show-versions",
-  ], { env: cliEnvironment, timeout: 60_000, maxBuffer: 1024 * 1024 })
-  if (!listed.stdout.split(/\r?\n/u).includes("gaep.gaep-vscode@0.1.0")) {
-    throw new Error("The exact packaged GAEP VSIX was not present in the isolated extension inventory")
+  const inventory = async () => {
+    const listed = await executeCli(["--list-extensions", "--show-versions"])
+    return listed.stdout.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean)
   }
-  process.stdout.write("PASS isolated VSIX install/list: gaep.gaep-vscode@0.1.0\n")
+  const assertInventory = async (expected) => {
+    const matches = (await inventory()).filter((line) => line.startsWith(`${packageId}@`))
+    if (expected && (matches.length !== 1 || matches[0] !== exactPackage)) {
+      throw new Error(`Expected exactly ${exactPackage} in the isolated extension inventory; received ${matches.join(", ") || "none"}`)
+    }
+    if (!expected && matches.length !== 0) {
+      throw new Error(`Expected ${packageId} to be absent from the isolated extension inventory; received ${matches.join(", ")}`)
+    }
+  }
+
+  await executeCli(["--install-extension", packagePath, "--force"])
+  await assertInventory(true)
+  await executeCli(["--install-extension", packagePath, "--force"])
+  await assertInventory(true)
+  await executeCli(["--uninstall-extension", packageId])
+  await assertInventory(false)
+  await executeCli(["--install-extension", packagePath, "--force"])
+  await assertInventory(true)
+  process.stdout.write(`PASS isolated VSIX install/reinstall/uninstall/absence/reinstall: ${exactPackage}\n`)
   return true
 }
 

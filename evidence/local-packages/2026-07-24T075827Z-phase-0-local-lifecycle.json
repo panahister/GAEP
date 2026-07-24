@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-ide-package-report-v1",
+  "packageSet": "phase-0-local",
+  "artifacts": [
+    {
+      "host": "vscode",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
+      "status": "produced",
+      "bytes": 355842,
+      "digest": "sha256:a8628f2724df3c862871b18ca476e46dce06c0f721c55b27e4900663686343d0",
+      "verification": "exact-isolated-install-reinstall-uninstall-absence-reinstall-and-activation"
+    },
+    {
+      "host": "kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
+      "status": "produced",
+      "bytes": 16333,
+      "digest": "sha256:9cb8c24931c059fd7d15d34d806169cd5ddd800ace511a0b3dd9c5cb2cdd770e",
+      "verification": "exact-isolated-compatible-host-install-reinstall-uninstall-absence-reinstall-and-activation"
+    },
+    {
+      "host": "rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+      "status": "produced",
+      "bytes": 57020,
+      "digest": "sha256:6f8f7f533e5fbec130b9c8aa13d75e15a04bb508d9c7c01016d29c4c917713e5",
+      "verification": "clean-test-instrumentation-build-and-archive-structure"
+    },
+    {
+      "host": "visual-studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "artifactPath": "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
+      "status": "not-produced-on-this-platform",
+      "verification": "windows-vsix-container-and-install-pending",
+      "limitation": "Native Visual Studio VSIX container creation and installation require Windows and VsixUtil.exe."
+    }
+  ],
+  "summary": {
+    "expected": 4,
+    "produced": 3,
+    "missingNativePlatformArtifacts": 1
+  },
+  "claimBoundary": "Local package evidence is not release signing, publication, supported-OS acceptance, Product readiness, or release approval."
+}

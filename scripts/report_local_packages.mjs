@@ -13,7 +13,7 @@ const definitions = [
     path: "apps/vscode/dist/gaep-vscode.vsix",
     maximumBytes: 32 * 1024 * 1024,
     requiredHere: true,
-    verification: "exact-isolated-install-list-and-activation",
+    verification: "exact-isolated-install-reinstall-uninstall-absence-reinstall-and-activation",
   },
   {
     host: "kiro",
@@ -21,7 +21,7 @@ const definitions = [
     path: "apps/kiro/dist/gaep-kiro.vsix",
     maximumBytes: 8 * 1024 * 1024,
     requiredHere: true,
-    verification: "exact-isolated-compatible-host-install-list-and-activation",
+    verification: "exact-isolated-compatible-host-install-reinstall-uninstall-absence-reinstall-and-activation",
   },
   {
     host: "rider",
