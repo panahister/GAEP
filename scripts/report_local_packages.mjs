@@ -29,7 +29,7 @@ const definitions = [
     path: "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
     maximumBytes: 64 * 1024 * 1024,
     requiredHere: true,
-    verification: "clean-test-instrumentation-build-and-archive-structure",
+    verification: "clean-test-instrumentation-build-archive-structure-and-exact-prepared-sandbox-parity",
   },
   {
     host: "visual-studio",
