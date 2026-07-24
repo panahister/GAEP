@@ -21,6 +21,9 @@ dependencies {
         }
         jetbrainsRuntime()
     }
+    testImplementation(kotlin("test-junit5"))
+    testRuntimeOnly("com.google.code.gson:gson:2.13.1")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
 }
 
 kotlin {
@@ -45,4 +48,10 @@ intellijPlatform {
             recommended()
         }
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
+    maxParallelForks = 1
+    systemProperty("gaep.test.runtimeClasspath", sourceSets["test"].runtimeClasspath.asPath)
 }

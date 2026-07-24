@@ -2,6 +2,7 @@ package dev.gaep.rider
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
+import com.google.gson.JsonObject
 import java.io.BufferedWriter
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
@@ -10,14 +11,14 @@ import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
+import java.nio.charset.CharacterCodingException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 
 class GaepEngineClient(
     private val workspace: Path,
@@ -26,7 +27,6 @@ class GaepEngineClient(
 ) : Closeable, Disposable {
     private data class EngineIdentity(val path: Path, val digest: String)
 
-    private val maxResponseFrameBytes = 1024 * 1024
     private val log = Logger.getInstance(GaepEngineClient::class.java)
     private val ids = AtomicLong(0)
     private val configuredEngineDigest = normalizeDigest(expectedEngineSha256)
@@ -38,38 +38,115 @@ class GaepEngineClient(
     private var boundEnginePath: Path? = null
     private var boundEngineDigest: String? = null
 
+    private data class HostResponse(val raw: String, val envelope: JsonObject)
+
+    @Synchronized
+    fun importPortableDesignSnapshot(
+        bundleRoot: Path,
+        expectedProductId: UUID,
+        expectedProductRevision: Long,
+        actorId: String,
+    ): PortableDesignSnapshotSummary {
+        PortableDesignProtocol.validateProductId(expectedProductId)
+        val normalizedBundleRoot = PortableDesignProtocol.normalizeBundleRoot(bundleRoot)
+        PortableDesignProtocol.validateProductRevision(expectedProductRevision)
+        val normalizedActorId = PortableDesignProtocol.normalizeActorId(actorId)
+        val params = JsonObject().apply {
+            addProperty("bundleRoot", normalizedBundleRoot.toString())
+            addProperty("expectedProductId", expectedProductId.toString())
+            addProperty("expectedProductRevision", expectedProductRevision)
+            addProperty("actorId", normalizedActorId)
+        }
+        return portableRequest("productStudio.portableDesign.import", params) { envelope ->
+            PortableDesignProtocol.parseSnapshotEnvelope(envelope, expectedProductId = expectedProductId)
+        }
+    }
+
+    @Synchronized
+    fun listPortableDesignSnapshots(
+        offset: Int = 0,
+        limit: Int = PortableDesignProtocol.DEFAULT_PAGE_SIZE,
+    ): PortableDesignSnapshotPage {
+        PortableDesignProtocol.validatePage(offset, limit)
+        val params = JsonObject().apply {
+            addProperty("offset", offset)
+            addProperty("limit", limit)
+        }
+        return portableRequest("productStudio.portableDesign.list", params) { envelope ->
+            PortableDesignProtocol.parsePageEnvelope(envelope, offset, limit)
+        }
+    }
+
+    @Synchronized
+    fun readPortableDesignSnapshot(bundleId: UUID): PortableDesignSnapshotSummary {
+        PortableDesignProtocol.validateBundleId(bundleId)
+        val params = JsonObject().apply { addProperty("bundleId", bundleId.toString()) }
+        return portableRequest("productStudio.portableDesign.read", params) { envelope ->
+            PortableDesignProtocol.parseSnapshotEnvelope(envelope, expectedBundleId = bundleId)
+        }
+    }
+
     @Synchronized
     fun request(method: String, paramsJson: String = "{}"): String {
+        val params = PortableDesignProtocol.parseStrictObject(paramsJson)
+        return requestInternal(method, params, protocolVersion = null).raw
+    }
+
+    private fun requestInternal(method: String, params: JsonObject, protocolVersion: Int?): HostResponse {
         try {
             ensureStarted()
             val id = ids.incrementAndGet()
-            val params = JsonParser.parseString(paramsJson)
-            require(params.isJsonObject) { "GAEP engine request params must be a JSON object" }
             val request = JsonObject().apply {
                 addProperty("jsonrpc", "2.0")
                 addProperty("id", id)
                 addProperty("method", method)
                 add("params", params)
+                if (protocolVersion != null) addProperty("protocolVersion", protocolVersion)
             }.toString()
+            if (request.toByteArray(Charsets.UTF_8).size > PortableDesignProtocol.MAX_FRAME_BYTES) {
+                throw GaepHostException(
+                    -32_001,
+                    "FRAME_TOO_LARGE",
+                    "The GAEP engine request exceeded the configured frame boundary.",
+                )
+            }
             writer!!.apply {
                 write(request)
                 newLine()
                 flush()
             }
             val response = readBoundedResponse()
-            val envelope = JsonParser.parseString(response)
-            require(envelope.isJsonObject) { "GAEP engine response must be a JSON object" }
-            val responseId = envelope.asJsonObject.get("id")
+            val envelope = PortableDesignProtocol.parseStrictObject(response)
+            val responseId = envelope.get("id")
             val numericId = responseId
                 ?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }
                 ?.let { runCatching { it.asBigDecimal }.getOrNull() }
             if (numericId == null || numericId.compareTo(java.math.BigDecimal.valueOf(id)) != 0) {
-                error("GAEP engine returned an unexpected response identity")
+                throw PortableDesignProtocol.invalidResponse()
             }
-            return response
+            return HostResponse(response, envelope)
         } catch (error: Exception) {
             stopProcess()
             throw error
+        }
+    }
+
+    private fun <T> portableRequest(method: String, params: JsonObject, parse: (JsonObject) -> T): T {
+        val response = try {
+            requestInternal(method, params, PortableDesignProtocol.PROTOCOL_VERSION)
+        } catch (error: GaepHostException) {
+            throw error
+        } catch (_: Exception) {
+            throw PortableDesignProtocol.hostUnavailable()
+        }
+        return try {
+            parse(response.envelope)
+        } catch (error: GaepHostException) {
+            if (error.kind == "HOST_RESPONSE_INVALID") stopProcess()
+            throw error
+        } catch (_: Exception) {
+            stopProcess()
+            throw PortableDesignProtocol.invalidResponse()
         }
     }
 
@@ -167,20 +244,36 @@ class GaepEngineClient(
             val buffered = pendingResponse.toByteArray()
             val newline = buffered.indexOf('\n'.code.toByte())
             if (newline >= 0) {
-                check(newline <= maxResponseFrameBytes) { "GAEP engine response exceeds the configured byte limit" }
+                if (newline > PortableDesignProtocol.MAX_FRAME_BYTES) {
+                    throw GaepHostException(
+                        -32_002,
+                        "RESPONSE_TOO_LARGE",
+                        "The GAEP engine response exceeded the configured frame boundary.",
+                    )
+                }
                 val length = if (newline > 0 && buffered[newline - 1] == '\r'.code.toByte()) newline - 1 else newline
                 val frame = buffered.copyOfRange(0, length)
                 pendingResponse.reset()
                 if (newline + 1 < buffered.size) pendingResponse.write(buffered, newline + 1, buffered.size - newline - 1)
-                return Charsets.UTF_8.newDecoder()
-                    .onMalformedInput(CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(CodingErrorAction.REPORT)
-                    .decode(ByteBuffer.wrap(frame))
-                    .toString()
+                try {
+                    return Charsets.UTF_8.newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT)
+                        .decode(ByteBuffer.wrap(frame))
+                        .toString()
+                } catch (_: CharacterCodingException) {
+                    throw GaepHostException(-32_700, "INVALID_UTF8", "The GAEP engine response was not valid UTF-8.")
+                }
             }
-            check(buffered.size <= maxResponseFrameBytes) { "GAEP engine response exceeds the configured byte limit" }
+            if (buffered.size > PortableDesignProtocol.MAX_FRAME_BYTES) {
+                throw GaepHostException(
+                    -32_002,
+                    "RESPONSE_TOO_LARGE",
+                    "The GAEP engine response exceeded the configured frame boundary.",
+                )
+            }
             val read = responseInput!!.read(responseBuffer)
-            check(read >= 0) { "GAEP engine closed before responding" }
+            if (read < 0) throw PortableDesignProtocol.hostUnavailable()
             if (read > 0) pendingResponse.write(responseBuffer, 0, read)
         }
     }
