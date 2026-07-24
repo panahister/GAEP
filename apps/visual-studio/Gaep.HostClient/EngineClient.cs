@@ -46,6 +46,19 @@ public sealed class EngineClient : IAsyncDisposable
             PortableDesignProtocol.ParseProductBindingResponse);
     }
 
+    public async Task<IReadOnlyList<AgentReadinessSnapshot>> ProbeAgentReadinessAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await RequestWorkflowAsync(
+            "probeAgents",
+            new Dictionary<string, object?>(),
+            protocolVersion: null,
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            PortableDesignProtocol.ParseAgentReadinessResponse);
+    }
+
     public async Task<PortableDesignSnapshotSummary> ImportPortableDesignSnapshotAsync(
         string bundleRoot,
         Guid expectedProductId,

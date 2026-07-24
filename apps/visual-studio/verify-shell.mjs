@@ -56,6 +56,7 @@ for (const binding of [
   "BundleId",
   "BundlePath",
   "RefreshProductCommand",
+  "RefreshAgentReadinessCommand",
   "ListDesignImportsCommand",
   "ReadDesignImportCommand",
   "ImportDesignBundleCommand",

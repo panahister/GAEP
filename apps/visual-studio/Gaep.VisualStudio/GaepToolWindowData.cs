@@ -22,6 +22,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     {
         this.extensibility = extensibility ?? throw new ArgumentNullException(nameof(extensibility));
         RefreshProductCommand = new AsyncCommand(RefreshProductAsync);
+        RefreshAgentReadinessCommand = new AsyncCommand(RefreshAgentReadinessAsync);
         ListDesignImportsCommand = new AsyncCommand(ListDesignImportsAsync);
         ReadDesignImportCommand = new AsyncCommand(ReadDesignImportAsync);
         ImportDesignBundleCommand = new AsyncCommand(ImportDesignBundleAsync);
@@ -36,10 +37,13 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Codex and Claude readiness is observation-only and cannot select or execute an agent. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand RefreshAgentReadinessCommand { get; }
 
     [DataMember]
     public IAsyncCommand ListDesignImportsCommand { get; }
@@ -96,6 +100,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Refreshing Product",
             (controller, token) => controller.ReadProductAsync(token),
+            cancellationToken);
+
+    private Task RefreshAgentReadinessAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Refreshing agent readiness",
+            (controller, token) => controller.ReadAgentReadinessAsync(token),
             cancellationToken);
 
     private Task ListDesignImportsAsync(object? commandParameter, CancellationToken cancellationToken) =>

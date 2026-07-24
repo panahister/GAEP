@@ -49,8 +49,10 @@ internal static class Program
     {
         var bundleRoot = Path.Combine(temporaryRoot, "portable-bundle");
         var invalidSourceRoot = Path.Combine(temporaryRoot, "source-error");
+        var badReadinessRoot = Path.Combine(temporaryRoot, "bad-readiness");
         Directory.CreateDirectory(bundleRoot);
         Directory.CreateDirectory(invalidSourceRoot);
+        Directory.CreateDirectory(badReadinessRoot);
         var executable = Environment.ProcessPath;
         Check(executable is not null && File.Exists(executable), "Test app host executable is available");
 
@@ -60,6 +62,29 @@ internal static class Program
             "Typed Product binding returns exact identity and revision while ignoring unrelated Product fields");
         Check(!JsonSerializer.Serialize(product).Contains(PrivateRoot, StringComparison.Ordinal),
             "Typed Product binding does not expose unrelated private Product fields");
+
+        var readiness = await client.ProbeAgentReadinessAsync();
+        Check(readiness.Select(snapshot => snapshot.AgentId).SequenceEqual(["claude-code", "codex"]),
+            "Typed readiness returns deterministic Codex and Claude observations");
+        Check(!readiness[0].Detected && readiness[1].Models.Single().Id == "gpt-5.6-codex" &&
+              readiness[1].SettingsCount == 1,
+            "Typed readiness projects observed availability, models, and a settings count");
+        var readinessProperties = typeof(AgentReadinessSnapshot).GetProperties().Select(property => property.Name).ToHashSet();
+        Check(!readinessProperties.Overlaps(["Executable", "ExecutablePath", "Path", "Token", "Credentials", "DefaultValue"]),
+            "Public readiness type excludes executable paths, credentials, tokens, and setting defaults");
+        var readinessJson = JsonSerializer.Serialize(readiness);
+        Check(!readinessJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !readinessJson.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Typed readiness omits private paths and credentials");
+
+        await using (var badReadinessClient = new EngineClient(badReadinessRoot, executable))
+        {
+            var invalidReadiness = await CaptureHostErrorAsync(() => badReadinessClient.ProbeAgentReadinessAsync());
+            Check(invalidReadiness.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidReadiness.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidReadiness.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Readiness rejects an unexpected private executable path without reflecting it");
+        }
         var imported = await client.ImportPortableDesignSnapshotAsync(
             bundleRoot,
             ProductId,
@@ -112,6 +137,14 @@ internal static class Program
               productOutput.Contains("Revision: 7", StringComparison.Ordinal) &&
               !productOutput.Contains(PrivateRoot, StringComparison.Ordinal),
             "Product workflow renders exact public binding metadata only");
+        var readinessOutput = await controller.ReadAgentReadinessAsync();
+        Check(readinessOutput.Contains("OpenAI Codex", StringComparison.Ordinal) &&
+              readinessOutput.Contains("Anthropic Claude Code", StringComparison.Ordinal) &&
+              readinessOutput.Contains("Observation only", StringComparison.Ordinal) &&
+              readinessOutput.Contains("cannot select a model", StringComparison.Ordinal) &&
+              !readinessOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !readinessOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Product workflow renders path-free observation-only readiness");
         var listOutput = await controller.ListPortableDesignSnapshotsAsync();
         Check(listOutput.Contains("Portable design metadata: 1 of 1", StringComparison.Ordinal) &&
               listOutput.Contains("pending human review", StringComparison.Ordinal) &&
@@ -244,14 +277,15 @@ internal static class Program
     {
         var productReadCount = 0;
         var changeProductContext = Path.GetFileName(workspace) == "product-change";
+        var badReadiness = Path.GetFileName(workspace) == "bad-readiness";
         while (await Console.In.ReadLineAsync() is { } line)
         {
             using var request = JsonDocument.Parse(line);
             var root = request.RootElement;
             var id = root.GetProperty("id").GetInt64();
             var method = root.GetProperty("method").GetString();
-            var isProductRead = method == "readProduct";
-            var validEnvelope = isProductRead
+            var isPathFreeRead = method is "readProduct" or "probeAgents";
+            var validEnvelope = isPathFreeRead
                 ? HasOnlyProperties(root, "jsonrpc", "id", "method", "params")
                 : HasOnlyProperties(root, "jsonrpc", "id", "method", "params", "protocolVersion") &&
                   root.GetProperty("protocolVersion").GetInt32() == 2;
@@ -269,6 +303,9 @@ internal static class Program
                         id,
                         parameters,
                         changeProductContext && productReadCount > 1 ? 8 : 7);
+                    break;
+                case "probeAgents":
+                    await HandleProbeAgentsAsync(id, parameters, badReadiness);
                     break;
                 case "productStudio.portableDesign.import":
                     await HandleImportAsync(id, parameters);
@@ -301,6 +338,18 @@ internal static class Program
             ["lifecycleState"] = "candidate",
             ["privateWorkspace"] = PrivateRoot,
         });
+    }
+
+    private static async Task HandleProbeAgentsAsync(long id, JsonElement parameters, bool includePrivatePath)
+    {
+        if (!HasOnlyProperties(parameters))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID READINESS");
+            return;
+        }
+        var snapshots = ReadinessSnapshots();
+        if (includePrivatePath) snapshots[0]["runtimeExecutable"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, snapshots);
     }
 
     private static async Task HandleImportAsync(long id, JsonElement parameters)
@@ -455,6 +504,77 @@ internal static class Program
         },
         ["privacyBoundary"] = "Validated metadata only; no bundle root, artifact path, token value, source bytes, credentials, OAuth state, or external-account state.",
     };
+
+    private static List<Dictionary<string, object?>> ReadinessSnapshots() =>
+    [
+        new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["adapterId"] = "openai-codex",
+            ["adapterVersion"] = "0.1.0",
+            ["agentId"] = "codex",
+            ["agentLabel"] = "OpenAI Codex",
+            ["runtimeVersion"] = "0.42.0",
+            ["detected"] = true,
+            ["executionInterface"] = "cli-jsonl",
+            ["interfaceMaturity"] = "beta",
+            ["supportsResume"] = true,
+            ["supportsCancel"] = true,
+            ["supportsCheckpoints"] = true,
+            ["supportsModelDiscovery"] = true,
+            ["supportsToolSelection"] = true,
+            ["settings"] = new[]
+            {
+                new Dictionary<string, object?>
+                {
+                    ["key"] = "reasoningEffort",
+                    ["label"] = "Reasoning effort",
+                    ["description"] = "Provider-declared reasoning effort for a future governed run.",
+                    ["kind"] = "select",
+                    ["required"] = false,
+                    ["sensitive"] = false,
+                    ["options"] = new[] { new Dictionary<string, object?> { ["value"] = "high", ["label"] = "High" } },
+                    ["truthClass"] = "provider-declared",
+                },
+            },
+            ["models"] = new[]
+            {
+                new Dictionary<string, object?>
+                {
+                    ["id"] = "gpt-5.6-codex",
+                    ["label"] = "GPT-5.6 Codex",
+                    ["description"] = "Observed local Codex model metadata.",
+                    ["reasoningOptions"] = new[] { "high" },
+                    ["contextWindow"] = 200_000,
+                    ["inputModalities"] = new[] { "text", "image" },
+                    ["truthClass"] = "observed",
+                    ["alias"] = false,
+                },
+            },
+            ["limitations"] = new[] { "Capability observation does not authorize execution." },
+            ["observedAt"] = "2026-07-24T08:00:00.000Z",
+        },
+        new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["adapterId"] = "anthropic-claude-code",
+            ["adapterVersion"] = "0.1.0",
+            ["agentId"] = "claude-code",
+            ["agentLabel"] = "Anthropic Claude Code",
+            ["detected"] = false,
+            ["executionInterface"] = "unavailable",
+            ["interfaceMaturity"] = "unknown",
+            ["supportsResume"] = false,
+            ["supportsCancel"] = false,
+            ["supportsCheckpoints"] = false,
+            ["supportsModelDiscovery"] = false,
+            ["supportsToolSelection"] = false,
+            ["settings"] = Array.Empty<object>(),
+            ["models"] = Array.Empty<object>(),
+            ["limitations"] = new[] { "The local Claude Code runtime was not observed." },
+            ["observedAt"] = "2026-07-24T08:00:00.000Z",
+        },
+    ];
 
     private static async Task WriteResultAsync(long id, object result)
     {

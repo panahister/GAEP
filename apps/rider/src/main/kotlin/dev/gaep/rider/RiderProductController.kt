@@ -7,6 +7,17 @@ import java.util.UUID
 internal class RiderProductController(private val client: GaepEngineClient) {
     fun readProduct(): String = renderProduct(client.readProductBinding())
 
+    fun readAgentReadiness(): String = buildString {
+        appendLine("GAEP Codex and Claude readiness")
+        appendLine()
+        appendLine("Observation only: this view cannot select a model, change settings, start an agent, resume work, or grant execution authority.")
+        appendLine("Only verified, path-free capability metadata is shown. Executable paths, provider credentials, and raw engine output are withheld.")
+        client.probeAgentReadiness().forEach { snapshot ->
+            appendLine()
+            append(renderAgentReadiness(snapshot))
+        }
+    }
+
     fun listPortableDesignSnapshots(): String {
         val page = client.listPortableDesignSnapshots(offset = 0, limit = PortableDesignProtocol.DEFAULT_PAGE_SIZE)
         return buildString {
@@ -52,6 +63,37 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Product ID: ${product.id}")
         append("Revision: ${product.revision}")
     }
+
+    private fun renderAgentReadiness(snapshot: AgentReadinessSnapshot): String = buildString {
+        appendLine(snapshot.agentLabel)
+        appendLine("  Adapter: ${snapshot.adapterId} ${snapshot.adapterVersion}")
+        appendLine("  Detected: ${yesNo(snapshot.detected)}")
+        appendLine("  Runtime version: ${snapshot.runtimeVersion ?: "not observed"}")
+        appendLine("  Interface: ${snapshot.executionInterface} (${snapshot.interfaceMaturity})")
+        appendLine(
+            "  Capabilities: resume=${yesNo(snapshot.supportsResume)}, cancel=${yesNo(snapshot.supportsCancel)}, " +
+                "checkpoints=${yesNo(snapshot.supportsCheckpoints)}, model discovery=${yesNo(snapshot.supportsModelDiscovery)}, " +
+                "tool selection=${yesNo(snapshot.supportsToolSelection)}",
+        )
+        appendLine("  Declared settings: ${snapshot.settingsCount}")
+        appendLine("  Models observed: ${snapshot.models.size}")
+        val models = snapshot.models.take(20)
+        if (models.isEmpty()) appendLine("  - none observed")
+        models.forEach { model ->
+            appendLine("  - ${model.label} (${model.id}; ${model.truthClass}${if (model.alias) "; alias" else ""})")
+        }
+        if (snapshot.models.size > models.size) appendLine("  - ${snapshot.models.size - models.size} more withheld from this compact view")
+        appendLine("  Limitations: ${snapshot.limitations.size}")
+        val limitations = snapshot.limitations.take(20)
+        if (limitations.isEmpty()) appendLine("  - none declared")
+        limitations.forEach { appendLine("  - $it") }
+        if (snapshot.limitations.size > limitations.size) {
+            appendLine("  - ${snapshot.limitations.size - limitations.size} more withheld from this compact view")
+        }
+        append("  Observed at: ${snapshot.observedAt}")
+    }
+
+    private fun yesNo(value: Boolean): String = if (value) "yes" else "no"
 
     private fun renderSummary(summary: PortableDesignSnapshotSummary): String = buildString {
         appendLine("Bundle ID: ${summary.bundleId}")

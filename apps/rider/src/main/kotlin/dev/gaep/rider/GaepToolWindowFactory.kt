@@ -48,6 +48,7 @@ class GaepToolWindowFactory : ToolWindowFactory {
         }
 
         addAction("Refresh Product") { controller.readProduct() }
+        addAction("Refresh agent readiness") { controller.readAgentReadiness() }
         addAction("List design imports") { controller.listPortableDesignSnapshots() }
 
         val readButton = JButton("Read design import…").apply {
@@ -92,7 +93,8 @@ class GaepToolWindowFactory : ToolWindowFactory {
         actions.add(importButton)
 
         val governance = JTextArea(
-            "Governance boundary: portable-design imports remain pending human review. " +
+            "Readiness boundary: Codex and Claude capability display is observation-only and cannot select or execute an agent. " +
+                "Governance boundary: portable-design imports remain pending human review. " +
                 "Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. " +
                 "Only validated metadata and digests are displayed; local paths and source content are withheld.",
         ).apply {

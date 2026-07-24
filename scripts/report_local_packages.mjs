@@ -37,7 +37,7 @@ const definitions = [
     path: "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
     maximumBytes: 128 * 1024 * 1024,
     requiredHere: process.platform === "win32",
-    verification: "cross-platform-shell-contribution-remote-ui-binding-and-46-protocol-controller-checks-windows-container-install-pending",
+    verification: "cross-platform-shell-contribution-remote-ui-binding-and-53-protocol-controller-checks-windows-container-install-pending",
   },
 ]
 

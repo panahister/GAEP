@@ -1,6 +1,8 @@
 # GAEP for Kiro
 
-GAEP for Kiro is a local Code OSS/Open VSX-compatible extension boundary for the GAEP engine host. It exposes a static Product Studio panel plus protocol-v2 import, list, and exact-read commands for portable-design snapshot metadata.
+GAEP for Kiro is a local Code OSS/Open VSX-compatible extension boundary for the GAEP engine host. It exposes a static Product Studio panel, a path-free Codex/Claude readiness command, and protocol-v2 import, list, and exact-read commands for portable-design snapshot metadata.
+
+The readiness command is observation-only. It shows a conservative projection of verified adapter, runtime, model, and capability metadata; it cannot select a model, change agent settings, start or resume an agent, or grant execution authority. Executable paths, provider credentials, and raw engine output are never rendered.
 
 The extension starts only the configured local `gaep-engine` executable and sends no requests to external services. Import accepts one existing local folder. Files, archives, `.fig` ingestion, OAuth, network fetches, live design-tool accounts, and provider credentials are outside this extension.
 

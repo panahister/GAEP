@@ -58,7 +58,7 @@
         "source": "package-report",
         "level": "compatible-host-activation-only",
         "requiredVerificationFragments": ["exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-and-activation"],
-        "remainingRequirements": ["native Kiro installation and activation", "provider and model workflows", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
+        "remainingRequirements": ["native Kiro installation and activation", "provider and model selection and execution workflows", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["const client = await GaepEngineClient.create"] }] },
@@ -69,8 +69,8 @@
         { "capabilityId": "exact-product-revision-recheck", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["const current = await client.readProduct()", "current.id !== expected.id || current.revision !== expected.revision"] }] },
         { "capabilityId": "pending-review-governance", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["it is not GAEP approval, a Design Baseline, implementation readiness, or release readiness"] }] },
         { "capabilityId": "metadata-only-privacy", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["Only validated metadata and digests were retained"] }] },
-        { "capabilityId": "codex-readiness", "state": "not-implemented", "reason": "The independent Kiro package does not expose Codex readiness." },
-        { "capabilityId": "claude-readiness", "state": "not-implemented", "reason": "The independent Kiro package does not expose Claude Code readiness." },
+        { "capabilityId": "codex-readiness", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["probeAgentReadiness()", "Observation only: this view cannot select a model"] }] },
+        { "capabilityId": "claude-readiness", "state": "implemented", "probes": [{ "path": "apps/kiro/src/protocol.ts", "contains": ["parseAgentReadiness", "parseAgentReadinessSnapshot"] }] },
         { "capabilityId": "provider-model-selection", "state": "not-implemented", "reason": "Provider and model discovery and selection are not wired." },
         { "capabilityId": "versioned-handoff", "state": "not-implemented", "reason": "Portable provider/model handoff is not wired." },
         { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },
@@ -104,8 +104,8 @@
         { "capabilityId": "exact-product-revision-recheck", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["val initial = client.readProductBinding()", "val current = client.readProductBinding()"] }] },
         { "capabilityId": "pending-review-governance", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["The result remains pending human review"] }] },
         { "capabilityId": "metadata-only-privacy", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["append(\"Privacy: ${summary.privacyBoundary}\")"] }] },
-        { "capabilityId": "codex-readiness", "state": "not-implemented", "reason": "The Rider tool window does not expose Codex readiness." },
-        { "capabilityId": "claude-readiness", "state": "not-implemented", "reason": "The Rider tool window does not expose Claude Code readiness." },
+        { "capabilityId": "codex-readiness", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.probeAgentReadiness()", "Observation only: this view cannot select a model"] }] },
+        { "capabilityId": "claude-readiness", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Refresh agent readiness", "observation-only"] }] },
         { "capabilityId": "provider-model-selection", "state": "not-implemented", "reason": "Provider and model discovery and selection are not wired." },
         { "capabilityId": "versioned-handoff", "state": "not-implemented", "reason": "Portable provider/model handoff is not wired." },
         { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },
@@ -121,7 +121,7 @@
       "runtimeEvidence": {
         "source": "package-report",
         "level": "cross-platform-compile-and-controller-only",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-46-protocol-controller-checks-windows-container-install-pending"],
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-53-protocol-controller-checks-windows-container-install-pending"],
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
@@ -133,8 +133,8 @@
         { "capabilityId": "exact-product-revision-recheck", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["var initial = await client.ReadProductBindingAsync", "var current = await client.ReadProductBindingAsync"] }] },
         { "capabilityId": "pending-review-governance", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["The result remains pending human review"] }] },
         { "capabilityId": "metadata-only-privacy", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": [".Append($\"Privacy: {summary.PrivacyBoundary}\")"] }] },
-        { "capabilityId": "codex-readiness", "state": "not-implemented", "reason": "The Visual Studio tool window does not expose Codex readiness." },
-        { "capabilityId": "claude-readiness", "state": "not-implemented", "reason": "The Visual Studio tool window does not expose Claude Code readiness." },
+        { "capabilityId": "codex-readiness", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ProbeAgentReadinessAsync", "Observation only: this view cannot select a model"] }] },
+        { "capabilityId": "claude-readiness", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Refresh Codex and Claude readiness", "RefreshAgentReadinessCommand"] }] },
         { "capabilityId": "provider-model-selection", "state": "not-implemented", "reason": "Provider and model discovery and selection are not wired." },
         { "capabilityId": "versioned-handoff", "state": "not-implemented", "reason": "Portable provider/model handoff is not wired." },
         { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },

@@ -16,6 +16,7 @@ import {
   normalizeActorId,
   normalizeExistingLocalFolder,
   normalizeUuid,
+  parseAgentReadiness,
   parseHostResult,
   parsePageResult,
   parseProductBinding,
@@ -27,6 +28,7 @@ import {
   type PortableDesignSnapshotPage,
   type PortableDesignSnapshotSummary,
   type ProductBinding,
+  type AgentReadinessSnapshot,
 } from "./protocol.js"
 
 export interface EngineClientOptions {
@@ -87,6 +89,10 @@ export class GaepEngineClient {
 
   readProduct(): Promise<ProductBinding> {
     return this.enqueue(async () => parseProductBinding(await this.request("readProduct", {})))
+  }
+
+  probeAgentReadiness(): Promise<readonly AgentReadinessSnapshot[]> {
+    return this.enqueue(async () => parseAgentReadiness(await this.request("probeAgents", {})))
   }
 
   importPortableDesignSnapshot(input: {

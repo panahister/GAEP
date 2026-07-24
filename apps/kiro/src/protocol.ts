@@ -100,6 +100,36 @@ export interface ProductBinding {
   readonly revision: number
 }
 
+export type AgentTruthClass = "observed" | "provider-declared" | "configured" | "inferred" | "unknown"
+
+export interface AgentModelReadiness {
+  readonly id: string
+  readonly label: string
+  readonly truthClass: AgentTruthClass
+  readonly alias: boolean
+}
+
+export interface AgentReadinessSnapshot {
+  readonly schemaVersion: 1
+  readonly adapterId: string
+  readonly adapterVersion: string
+  readonly agentId: string
+  readonly agentLabel: string
+  readonly runtimeVersion?: string
+  readonly detected: boolean
+  readonly executionInterface: "cli-jsonl" | "cli-stream-json" | "stdio-rpc" | "managed-in-process" | "unavailable"
+  readonly interfaceMaturity: "stable" | "beta" | "experimental" | "unknown"
+  readonly supportsResume: boolean
+  readonly supportsCancel: boolean
+  readonly supportsCheckpoints: boolean
+  readonly supportsModelDiscovery: boolean
+  readonly supportsToolSelection: boolean
+  readonly settingsCount: number
+  readonly models: readonly AgentModelReadiness[]
+  readonly limitations: readonly string[]
+  readonly observedAt: string
+}
+
 export class GaepHostError extends Error {
   override readonly name = "GaepHostError"
 
@@ -142,9 +172,25 @@ const stableHostErrors = new Map<string, StableHostError>([
     code: -32_035,
     message: "The requested portable design snapshot does not exist in the current Product.",
   }],
+  ["INVALID_CAPABILITY_SNAPSHOT", {
+    code: -32_010,
+    message: "The GAEP engine could not verify the agent capability snapshot.",
+  }],
+  ["CAPABILITIES_NOT_AVAILABLE", {
+    code: -32_011,
+    message: "The GAEP engine could not observe agent capabilities.",
+  }],
+  ["EXECUTABLE_UNAVAILABLE", {
+    code: -32_013,
+    message: "The configured agent executable is unavailable.",
+  }],
+  ["EXECUTABLE_CHANGED", {
+    code: -32_014,
+    message: "The configured agent executable changed during capability discovery.",
+  }],
   ["INVALID_PARAMS", {
     code: -32_602,
-    message: "The GAEP engine rejected the portable design request parameters.",
+    message: "The GAEP engine rejected the local request parameters.",
   }],
   ["PROTOCOL_UPGRADE_REQUIRED", {
     code: -32_021,
@@ -172,7 +218,7 @@ export function invalidHostResponse(): GaepHostError {
   return new GaepHostError(
     -32_603,
     "HOST_RESPONSE_INVALID",
-    "The GAEP engine returned a portable design response that could not be verified.",
+    "The GAEP engine returned a local response that could not be verified.",
   )
 }
 
@@ -180,7 +226,7 @@ export function hostUnavailable(): GaepHostError {
   return new GaepHostError(
     -32_603,
     "HOST_UNAVAILABLE",
-    "The local GAEP engine could not complete the portable design request.",
+    "The local GAEP engine could not complete the request.",
   )
 }
 
@@ -273,6 +319,162 @@ export function parseProductBinding(result: unknown): ProductBinding {
   const revision = Object.hasOwn(product, "revision") ? requireSafeInteger(product, "revision") : 1
   validateProductRevision(revision)
   return Object.freeze({ id, name, revision })
+}
+
+export function parseAgentReadiness(result: unknown): readonly AgentReadinessSnapshot[] {
+  if (!Array.isArray(result) || result.length < 1 || result.length > 16) throw invalidHostResponse()
+  const snapshots = result.map((entry) => parseAgentReadinessSnapshot(requireRecord(entry)))
+  if (new Set(snapshots.map((snapshot) => snapshot.adapterId)).size !== snapshots.length ||
+    new Set(snapshots.map((snapshot) => snapshot.agentId)).size !== snapshots.length) {
+    throw invalidHostResponse()
+  }
+  return Object.freeze(snapshots.sort((left, right) => left.agentLabel.localeCompare(right.agentLabel)))
+}
+
+function parseAgentReadinessSnapshot(snapshot: JsonRecord): AgentReadinessSnapshot {
+  requireExactKeys(snapshot, [
+    "schemaVersion", "adapterId", "adapterVersion", "agentId", "agentLabel", "runtimeVersion", "detected",
+    "executionInterface", "interfaceMaturity", "supportsResume", "supportsCancel", "supportsCheckpoints",
+    "supportsModelDiscovery", "supportsToolSelection", "settings", "models", "limitations", "observedAt",
+  ].filter((key) => key !== "runtimeVersion" || Object.hasOwn(snapshot, "runtimeVersion")))
+  if (requireSafeInteger(snapshot, "schemaVersion") !== 1) throw invalidHostResponse()
+  const adapterId = requirePortableText(snapshot, "adapterId", 1)
+  const adapterVersion = requirePortableText(snapshot, "adapterVersion", 1)
+  const agentId = requirePortableText(snapshot, "agentId", 1)
+  const agentLabel = requirePortableText(snapshot, "agentLabel", 1)
+  const runtimeVersion = Object.hasOwn(snapshot, "runtimeVersion")
+    ? requirePortableText(snapshot, "runtimeVersion")
+    : undefined
+  const executionInterface = requireString(snapshot, "executionInterface")
+  const interfaceMaturity = requireString(snapshot, "interfaceMaturity")
+  if (!(["cli-jsonl", "cli-stream-json", "stdio-rpc", "managed-in-process", "unavailable"] as const)
+      .includes(executionInterface as AgentReadinessSnapshot["executionInterface"]) ||
+    !(["stable", "beta", "experimental", "unknown"] as const)
+      .includes(interfaceMaturity as AgentReadinessSnapshot["interfaceMaturity"])) {
+    throw invalidHostResponse()
+  }
+  if (!Array.isArray(snapshot.settings) || snapshot.settings.length > 256 ||
+    !Array.isArray(snapshot.models) || snapshot.models.length > 512 ||
+    !Array.isArray(snapshot.limitations) || snapshot.limitations.length > 512) {
+    throw invalidHostResponse()
+  }
+  snapshot.settings.forEach(validateAgentSetting)
+  const models = Object.freeze(snapshot.models.map((model) => parseAgentModel(requireRecord(model))))
+  if (new Set(models.map((model) => model.id)).size !== models.length) throw invalidHostResponse()
+  const limitations = Object.freeze(snapshot.limitations.map((limitation) => portableText(limitation)))
+  return Object.freeze({
+    schemaVersion: 1,
+    adapterId,
+    adapterVersion,
+    agentId,
+    agentLabel,
+    ...(runtimeVersion !== undefined ? { runtimeVersion } : {}),
+    detected: requireBoolean(snapshot, "detected"),
+    executionInterface: executionInterface as AgentReadinessSnapshot["executionInterface"],
+    interfaceMaturity: interfaceMaturity as AgentReadinessSnapshot["interfaceMaturity"],
+    supportsResume: requireBoolean(snapshot, "supportsResume"),
+    supportsCancel: requireBoolean(snapshot, "supportsCancel"),
+    supportsCheckpoints: requireBoolean(snapshot, "supportsCheckpoints"),
+    supportsModelDiscovery: requireBoolean(snapshot, "supportsModelDiscovery"),
+    supportsToolSelection: requireBoolean(snapshot, "supportsToolSelection"),
+    settingsCount: snapshot.settings.length,
+    models,
+    limitations,
+    observedAt: requireTimestamp(snapshot, "observedAt"),
+  })
+}
+
+function parseAgentModel(model: JsonRecord): AgentModelReadiness {
+  requireKeys(
+    model,
+    ["id", "label", "reasoningOptions", "inputModalities", "truthClass", "alias"],
+    ["description", "contextWindow"],
+  )
+  const id = requirePortableText(model, "id", 1)
+  const label = requirePortableText(model, "label", 1)
+  if (Object.hasOwn(model, "description")) requirePortableText(model, "description")
+  validatePortableTextArray(model.reasoningOptions, 64)
+  validatePortableTextArray(model.inputModalities, 32)
+  if (Object.hasOwn(model, "contextWindow")) {
+    const contextWindow = requireSafeInteger(model, "contextWindow")
+    if (contextWindow < 1) throw invalidHostResponse()
+  }
+  const truthClass = requireTruthClass(model, "truthClass")
+  return Object.freeze({ id, label, truthClass, alias: requireBoolean(model, "alias") })
+}
+
+function validateAgentSetting(value: unknown): void {
+  const setting = requireRecord(value)
+  requireKeys(
+    setting,
+    ["key", "label", "description", "kind", "required", "sensitive", "truthClass"],
+    ["defaultValue", "options", "minimum", "maximum"],
+  )
+  const key = requireString(setting, "key")
+  if (!/^[a-z][a-zA-Z0-9]{0,127}$/u.test(key)) throw invalidHostResponse()
+  requirePortableText(setting, "label", 1)
+  requirePortableText(setting, "description", 1)
+  if (!(["select", "boolean", "number", "string", "string-list"] as const).includes(
+    requireString(setting, "kind") as "select" | "boolean" | "number" | "string" | "string-list",
+  )) throw invalidHostResponse()
+  requireBoolean(setting, "required")
+  const sensitive = requireBoolean(setting, "sensitive")
+  requireTruthClass(setting, "truthClass")
+  if (Object.hasOwn(setting, "defaultValue")) {
+    if (sensitive) throw invalidHostResponse()
+    validatePortableSettingValue(setting.defaultValue)
+  }
+  if (Object.hasOwn(setting, "options")) {
+    if (!Array.isArray(setting.options) || setting.options.length > 256) throw invalidHostResponse()
+    for (const value of setting.options) {
+      const option = requireRecord(value)
+      requireKeys(option, ["value", "label"], ["description"])
+      requirePortableText(option, "value")
+      requirePortableText(option, "label")
+      if (Object.hasOwn(option, "description")) requirePortableText(option, "description")
+    }
+  }
+  for (const name of ["minimum", "maximum"]) {
+    if (Object.hasOwn(setting, name) && (typeof setting[name] !== "number" || !Number.isFinite(setting[name]))) {
+      throw invalidHostResponse()
+    }
+  }
+}
+
+function validatePortableSettingValue(value: unknown): void {
+  if (typeof value === "string") {
+    portableText(value, 0, 10_000)
+  } else if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw invalidHostResponse()
+  } else if (typeof value !== "boolean") {
+    validatePortableTextArray(value, 256, 10_000)
+  }
+}
+
+function validatePortableTextArray(value: unknown, maximumItems: number, maximumText = 20_000): void {
+  if (!Array.isArray(value) || value.length > maximumItems) throw invalidHostResponse()
+  value.forEach((item) => portableText(item, 0, maximumText))
+}
+
+function requirePortableText(record: JsonRecord, name: string, minimum = 0): string {
+  return portableText(requireString(record, name), minimum)
+}
+
+function requireTruthClass(record: JsonRecord, name: string): AgentTruthClass {
+  const value = requireString(record, name)
+  if (!(["observed", "provider-declared", "configured", "inferred", "unknown"] as const)
+      .includes(value as AgentTruthClass)) throw invalidHostResponse()
+  return value as AgentTruthClass
+}
+
+function portableText(value: unknown, minimum = 0, maximum = 20_000): string {
+  if (typeof value !== "string" || value.length < minimum || value.length > maximum || containsControl(value) ||
+    /^(?:\/[^\s]*|[A-Za-z]:[\\/][^\s]*|\\\\[^\s]*|file:\/\/[^\s]*)$/u.test(value.trim()) ||
+    /(?:^|[\s(="'])(?:\/(?:Users|home|tmp|private|Volumes)\/[^\s"'<>)]*|[A-Za-z]:\\[^\s"'<>)]*|\\\\[^\s"'<>)]*)/u.test(value) ||
+    /\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+/iu.test(value)) {
+    throw invalidHostResponse()
+  }
+  return value
 }
 
 export function parseSnapshotResult(
@@ -436,7 +638,7 @@ function parseHostError(error: JsonRecord): GaepHostError {
   requireKeys(data, ["kind"], ["detail"])
   const kind = requireString(data, "kind")
   const stable = stableHostErrors.get(kind)
-  if (!stable) return new GaepHostError(-32_603, "HOST_ERROR", "The GAEP engine could not complete the portable design request.")
+  if (!stable) return new GaepHostError(-32_603, "HOST_ERROR", "The GAEP engine could not complete the request.")
   if (stable.code !== code) return invalidHostResponse()
   return new GaepHostError(stable.code, kind, stable.message)
 }

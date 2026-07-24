@@ -1,7 +1,7 @@
 {
   "name": "gaep-kiro",
   "displayName": "GAEP for Kiro",
-  "description": "Governed local Product Studio and portable-design metadata workflows for Kiro.",
+  "description": "Governed local Product Studio, agent-readiness, and portable-design metadata workflows for Kiro.",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -32,6 +32,7 @@
   ],
   "activationEvents": [
     "onCommand:gaepKiro.openProductStudio",
+    "onCommand:gaepKiro.agents.readiness",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -53,6 +54,10 @@
       {
         "command": "gaepKiro.openProductStudio",
         "title": "GAEP for Kiro: Open Product Studio"
+      },
+      {
+        "command": "gaepKiro.agents.readiness",
+        "title": "GAEP for Kiro: Show Codex and Claude Readiness"
       },
       {
         "command": "gaepKiro.portableDesign.import",

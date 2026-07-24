@@ -27,6 +27,32 @@ public sealed record ProductBinding(
     string Name,
     long Revision);
 
+public sealed record AgentModelReadiness(
+    string Id,
+    string Label,
+    string TruthClass,
+    bool Alias);
+
+public sealed record AgentReadinessSnapshot(
+    int SchemaVersion,
+    string AdapterId,
+    string AdapterVersion,
+    string AgentId,
+    string AgentLabel,
+    string? RuntimeVersion,
+    bool Detected,
+    string ExecutionInterface,
+    string InterfaceMaturity,
+    bool SupportsResume,
+    bool SupportsCancel,
+    bool SupportsCheckpoints,
+    bool SupportsModelDiscovery,
+    bool SupportsToolSelection,
+    int SettingsCount,
+    IReadOnlyList<AgentModelReadiness> Models,
+    IReadOnlyList<string> Limitations,
+    DateTimeOffset ObservedAt);
+
 public sealed record PortableDesignGovernanceMetadata(
     string State,
     bool HumanReviewRequired,

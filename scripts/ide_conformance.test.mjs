@@ -10,7 +10,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const contractPath = join(repositoryRoot, "conformance/phase-0-ide-contract.json")
 const packageReportPath = join(
   repositoryRoot,
-  "evidence/local-packages/2026-07-24T085718Z-phase-0-local-conformance.json",
+  "evidence/local-packages/2026-07-24T092154Z-phase-0-local-readiness.json",
 )
 let temporaryRoot
 
@@ -32,10 +32,22 @@ describe("Phase 0 IDE conformance matrix", () => {
         hosts: report.summary.hosts,
         capabilities: report.summary.capabilities,
         assessments: report.summary.assessments,
+        implemented: report.summary.implemented,
+        partial: report.summary.partial,
+        notImplemented: report.summary["not-implemented"],
         producedPackages: report.summary.producedPackages,
         acceptedHosts: report.summary.acceptedHosts,
       },
-      { hosts: 4, capabilities: 15, assessments: 60, producedPackages: 3, acceptedHosts: 0 },
+      {
+        hosts: 4,
+        capabilities: 15,
+        assessments: 60,
+        implemented: 38,
+        partial: 7,
+        notImplemented: 15,
+        producedPackages: 3,
+        acceptedHosts: 0,
+      },
     )
     assert.deepEqual(report.hosts.map((host) => host.id).sort(), ["kiro", "rider", "visual-studio", "vscode"])
     assert.equal(report.hosts.every((host) => host.acceptance === "incomplete" && host.remainingRequirements.length > 0), true)

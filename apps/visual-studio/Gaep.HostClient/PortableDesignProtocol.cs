@@ -34,7 +34,11 @@ internal static partial class PortableDesignProtocol
             ["PORTABLE_DESIGN_INTEGRITY_INVALID"] = (-32_033, "GAEP could not verify the portable design snapshot inventory and metadata."),
             ["PORTABLE_DESIGN_CONFLICT"] = (-32_034, "The portable design snapshot identity conflicts with governed inventory."),
             ["PORTABLE_DESIGN_NOT_FOUND"] = (-32_035, "The requested portable design snapshot does not exist in the current Product."),
-            ["INVALID_PARAMS"] = (-32_602, "The GAEP engine rejected the portable design request parameters."),
+            ["INVALID_CAPABILITY_SNAPSHOT"] = (-32_010, "The GAEP engine could not verify the agent capability snapshot."),
+            ["CAPABILITIES_NOT_AVAILABLE"] = (-32_011, "The GAEP engine could not observe agent capabilities."),
+            ["EXECUTABLE_UNAVAILABLE"] = (-32_013, "The configured agent executable is unavailable."),
+            ["EXECUTABLE_CHANGED"] = (-32_014, "The configured agent executable changed during capability discovery."),
+            ["INVALID_PARAMS"] = (-32_602, "The GAEP engine rejected the local request parameters."),
             ["PROTOCOL_UPGRADE_REQUIRED"] = (-32_021, "The GAEP engine requires protocol version 2 for portable design requests."),
             ["UNSUPPORTED_PROTOCOL_VERSION"] = (-32_020, "The GAEP engine does not support the requested portable design protocol version."),
             ["FRAME_TOO_LARGE"] = (-32_001, "The GAEP engine rejected a frame that exceeded the protocol boundary."),
@@ -133,6 +137,29 @@ internal static partial class PortableDesignProtocol
         return new ProductBinding(id, name, revision);
     }
 
+    internal static IReadOnlyList<AgentReadinessSnapshot> ParseAgentReadinessResponse(JsonElement envelope)
+    {
+        var result = ReadResult(envelope);
+        if (result.ValueKind != JsonValueKind.Array || result.GetArrayLength() is < 1 or > 16) throw InvalidResponse();
+        foreach (var snapshot in result.EnumerateArray()) ValidateAgentSnapshotShape(snapshot);
+        List<AgentSnapshotWire> wires;
+        try
+        {
+            wires = result.Deserialize<List<AgentSnapshotWire>>(StrictJson) ?? throw InvalidResponse();
+        }
+        catch (JsonException)
+        {
+            throw InvalidResponse();
+        }
+        var snapshots = wires.Select(ParseAgentSnapshot).OrderBy(snapshot => snapshot.AgentLabel, StringComparer.Ordinal).ToArray();
+        if (snapshots.Select(snapshot => snapshot.AdapterId).Distinct(StringComparer.Ordinal).Count() != snapshots.Length ||
+            snapshots.Select(snapshot => snapshot.AgentId).Distinct(StringComparer.Ordinal).Count() != snapshots.Length)
+        {
+            throw InvalidResponse();
+        }
+        return Array.AsReadOnly(snapshots);
+    }
+
     internal static PortableDesignSnapshotPage ParsePageResponse(JsonElement envelope, int expectedOffset, int expectedLimit)
     {
         var result = ReadResult(envelope);
@@ -170,12 +197,12 @@ internal static partial class PortableDesignProtocol
     internal static EngineHostException HostUnavailable() => new(
         -32_603,
         "HOST_UNAVAILABLE",
-        "The GAEP engine host could not complete the portable design request.");
+        "The GAEP engine host could not complete the request.");
 
     internal static EngineHostException InvalidResponse() => new(
         -32_603,
         "HOST_RESPONSE_INVALID",
-        "The GAEP engine returned a portable design response that could not be verified.");
+        "The GAEP engine returned a local response that could not be verified.");
 
     internal static EngineHostException ProductContextChanged() => new(
         -32_031,
@@ -195,7 +222,7 @@ internal static partial class PortableDesignProtocol
             throw ParseHostError(error);
         }
         if (!HasOnlyProperties(envelope, "jsonrpc", "id", "result") ||
-            !envelope.TryGetProperty("result", out var result) || result.ValueKind != JsonValueKind.Object)
+            !envelope.TryGetProperty("result", out var result))
         {
             throw InvalidResponse();
         }
@@ -216,7 +243,7 @@ internal static partial class PortableDesignProtocol
         var rawKind = kindElement.GetString();
         if (rawKind is null || !StableHostErrors.TryGetValue(rawKind, out var stable))
         {
-            return new EngineHostException(-32_603, "HOST_ERROR", "The GAEP engine could not complete the portable design request.");
+            return new EngineHostException(-32_603, "HOST_ERROR", "The GAEP engine could not complete the request.");
         }
         if (code != stable.Code)
         {
@@ -281,6 +308,137 @@ internal static partial class PortableDesignProtocol
             SummaryPrivacyBoundary);
     }
 
+    private static AgentReadinessSnapshot ParseAgentSnapshot(AgentSnapshotWire wire)
+    {
+        if (wire.SchemaVersion != 1 || !ValidPortableText(wire.AdapterId, minimum: 1) ||
+            !ValidPortableText(wire.AdapterVersion, minimum: 1) || !ValidPortableText(wire.AgentId, minimum: 1) ||
+            !ValidPortableText(wire.AgentLabel, minimum: 1) ||
+            (wire.RuntimeVersion is not null && !ValidPortableText(wire.RuntimeVersion)) ||
+            wire.ExecutionInterface is not ("cli-jsonl" or "cli-stream-json" or "stdio-rpc" or "managed-in-process" or "unavailable") ||
+            wire.InterfaceMaturity is not ("stable" or "beta" or "experimental" or "unknown") ||
+            wire.Settings is null || wire.Settings.Count > 256 || wire.Models is null || wire.Models.Count > 512 ||
+            wire.Limitations is null || wire.Limitations.Count > 512 || !TryParseTimestamp(wire.ObservedAt, out var observedAt))
+        {
+            throw InvalidResponse();
+        }
+        foreach (var setting in wire.Settings) ValidateAgentSetting(setting);
+        var models = wire.Models.Select(ParseAgentModel).ToArray();
+        if (models.Select(model => model.Id).Distinct(StringComparer.Ordinal).Count() != models.Length ||
+            wire.Limitations.Any(limitation => !ValidPortableText(limitation)))
+        {
+            throw InvalidResponse();
+        }
+        return new AgentReadinessSnapshot(
+            1,
+            wire.AdapterId!,
+            wire.AdapterVersion!,
+            wire.AgentId!,
+            wire.AgentLabel!,
+            wire.RuntimeVersion,
+            wire.Detected,
+            wire.ExecutionInterface!,
+            wire.InterfaceMaturity!,
+            wire.SupportsResume,
+            wire.SupportsCancel,
+            wire.SupportsCheckpoints,
+            wire.SupportsModelDiscovery,
+            wire.SupportsToolSelection,
+            wire.Settings.Count,
+            Array.AsReadOnly(models),
+            Array.AsReadOnly(wire.Limitations.ToArray()!),
+            observedAt);
+    }
+
+    private static AgentModelReadiness ParseAgentModel(AgentModelWire wire)
+    {
+        if (!ValidPortableText(wire.Id, minimum: 1) || !ValidPortableText(wire.Label, minimum: 1) ||
+            (wire.Description is not null && !ValidPortableText(wire.Description)) ||
+            wire.ContextWindow is <= 0 || wire.ReasoningOptions is null || wire.ReasoningOptions.Count > 64 ||
+            wire.InputModalities is null || wire.InputModalities.Count > 32 || !ValidTruthClass(wire.TruthClass) ||
+            wire.ReasoningOptions.Any(value => !ValidPortableText(value)) ||
+            wire.InputModalities.Any(value => !ValidPortableText(value)))
+        {
+            throw InvalidResponse();
+        }
+        return new AgentModelReadiness(wire.Id!, wire.Label!, wire.TruthClass!, wire.Alias);
+    }
+
+    private static void ValidateAgentSetting(AgentSettingWire wire)
+    {
+        if (wire.Key is null || !SettingKeyPattern().IsMatch(wire.Key) || !ValidPortableText(wire.Label, minimum: 1) ||
+            !ValidPortableText(wire.Description, minimum: 1) ||
+            wire.Kind is not ("select" or "boolean" or "number" or "string" or "string-list") ||
+            !ValidTruthClass(wire.TruthClass) || (wire.Sensitive && wire.DefaultValue.ValueKind != JsonValueKind.Undefined) ||
+            (wire.DefaultValue.ValueKind != JsonValueKind.Undefined && !ValidPortableSettingValue(wire.DefaultValue)) ||
+            (wire.Minimum.ValueKind != JsonValueKind.Undefined && wire.Minimum.ValueKind != JsonValueKind.Number) ||
+            (wire.Maximum.ValueKind != JsonValueKind.Undefined && wire.Maximum.ValueKind != JsonValueKind.Number) ||
+            (wire.Options is not null && (wire.Options.Count > 256 || wire.Options.Any(option =>
+                !ValidPortableText(option.Value) || !ValidPortableText(option.Label) ||
+                (option.Description is not null && !ValidPortableText(option.Description))))))
+        {
+            throw InvalidResponse();
+        }
+    }
+
+    private static bool ValidPortableSettingValue(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.String) return ValidPortableText(value.GetString(), maximum: 10_000);
+        if (value.ValueKind is JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False) return true;
+        return value.ValueKind == JsonValueKind.Array && value.GetArrayLength() <= 256 &&
+            value.EnumerateArray().All(item => item.ValueKind == JsonValueKind.String &&
+                ValidPortableText(item.GetString(), maximum: 10_000));
+    }
+
+    private static bool ValidTruthClass(string? value) =>
+        value is "observed" or "provider-declared" or "configured" or "inferred" or "unknown";
+
+    private static bool ValidPortableText(string? value, int minimum = 0, int maximum = 20_000) =>
+        value is not null && value.Length >= minimum && value.Length <= maximum && !value.Any(char.IsControl) &&
+        !AbsolutePathPattern().IsMatch(value.Trim()) && !PrivatePathPattern().IsMatch(value) && !SecretPattern().IsMatch(value);
+
+    private static void ValidateAgentSnapshotShape(JsonElement snapshot)
+    {
+        if (snapshot.ValueKind != JsonValueKind.Object || !HasRequiredAndAllowedProperties(
+                snapshot,
+                [
+                    "schemaVersion", "adapterId", "adapterVersion", "agentId", "agentLabel", "detected",
+                    "executionInterface", "interfaceMaturity", "supportsResume", "supportsCancel", "supportsCheckpoints",
+                    "supportsModelDiscovery", "supportsToolSelection", "settings", "models", "limitations", "observedAt",
+                ],
+                ["runtimeVersion"]))
+        {
+            throw InvalidResponse();
+        }
+        if (!snapshot.TryGetProperty("settings", out var settings) || settings.ValueKind != JsonValueKind.Array ||
+            !snapshot.TryGetProperty("models", out var models) || models.ValueKind != JsonValueKind.Array ||
+            !snapshot.TryGetProperty("limitations", out var limitations) || limitations.ValueKind != JsonValueKind.Array)
+        {
+            throw InvalidResponse();
+        }
+        foreach (var setting in settings.EnumerateArray())
+        {
+            if (!HasRequiredAndAllowedProperties(
+                    setting,
+                    ["key", "label", "description", "kind", "required", "sensitive", "truthClass"],
+                    ["defaultValue", "options", "minimum", "maximum"])) throw InvalidResponse();
+            if (setting.TryGetProperty("options", out var options))
+            {
+                if (options.ValueKind != JsonValueKind.Array) throw InvalidResponse();
+                foreach (var option in options.EnumerateArray())
+                {
+                    if (!HasRequiredAndAllowedProperties(option, ["value", "label"], ["description"])) throw InvalidResponse();
+                }
+            }
+        }
+        foreach (var model in models.EnumerateArray())
+        {
+            if (!HasRequiredAndAllowedProperties(
+                    model,
+                    ["id", "label", "reasoningOptions", "inputModalities", "truthClass", "alias"],
+                    ["description", "contextWindow"])) throw InvalidResponse();
+        }
+    }
+
     private static PortableDesignClassification ParseClassification(string? value) => value switch
     {
         "public" => PortableDesignClassification.Public,
@@ -331,6 +489,18 @@ internal static partial class PortableDesignProtocol
         return actual.Distinct(StringComparer.Ordinal).Count() == actual.Length && actual.All(allowed.Contains);
     }
 
+    private static bool HasRequiredAndAllowedProperties(
+        JsonElement element,
+        IReadOnlyCollection<string> required,
+        IReadOnlyCollection<string> optional)
+    {
+        if (element.ValueKind != JsonValueKind.Object) return false;
+        var allowed = required.Concat(optional).ToHashSet(StringComparer.Ordinal);
+        var actual = element.EnumerateObject().Select(property => property.Name).ToArray();
+        return actual.Distinct(StringComparer.Ordinal).Count() == actual.Length &&
+            required.All(name => actual.Contains(name, StringComparer.Ordinal)) && actual.All(allowed.Contains);
+    }
+
     private static bool IsNetworkPath(string path)
     {
         if (path.StartsWith("//", StringComparison.Ordinal) || path.StartsWith("\\\\", StringComparison.Ordinal)) return true;
@@ -345,6 +515,18 @@ internal static partial class PortableDesignProtocol
 
     [GeneratedRegex("^sha256:[0-9a-f]{64}$", RegexOptions.CultureInvariant)]
     private static partial Regex DigestPattern();
+
+    [GeneratedRegex("^[a-z][a-zA-Z0-9]{0,127}$", RegexOptions.CultureInvariant)]
+    private static partial Regex SettingKeyPattern();
+
+    [GeneratedRegex(@"^(?:/[^\s]*|[A-Za-z]:[\\/][^\s]*|\\\\[^\s]*|file://[^\s]*)$", RegexOptions.CultureInvariant)]
+    private static partial Regex AbsolutePathPattern();
+
+    [GeneratedRegex(@"(?:^|[\s(=""'])(?:/(?:Users|home|tmp|private|Volumes)/[^\s""'<>)]*|[A-Za-z]:\\[^\s""'<>)]*|\\\\[^\s""'<>)]*)", RegexOptions.CultureInvariant)]
+    private static partial Regex PrivatePathPattern();
+
+    [GeneratedRegex(@"\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex SecretPattern();
 
     private sealed class SnapshotWire
     {
@@ -362,6 +544,62 @@ internal static partial class PortableDesignProtocol
         [JsonRequired] public DigestsWire? Digests { get; init; }
         [JsonRequired] public TimestampsWire? Timestamps { get; init; }
         [JsonRequired] public string? PrivacyBoundary { get; init; }
+    }
+
+    private sealed class AgentSnapshotWire
+    {
+        [JsonRequired] public int SchemaVersion { get; init; }
+        [JsonRequired] public string? AdapterId { get; init; }
+        [JsonRequired] public string? AdapterVersion { get; init; }
+        [JsonRequired] public string? AgentId { get; init; }
+        [JsonRequired] public string? AgentLabel { get; init; }
+        public string? RuntimeVersion { get; init; }
+        [JsonRequired] public bool Detected { get; init; }
+        [JsonRequired] public string? ExecutionInterface { get; init; }
+        [JsonRequired] public string? InterfaceMaturity { get; init; }
+        [JsonRequired] public bool SupportsResume { get; init; }
+        [JsonRequired] public bool SupportsCancel { get; init; }
+        [JsonRequired] public bool SupportsCheckpoints { get; init; }
+        [JsonRequired] public bool SupportsModelDiscovery { get; init; }
+        [JsonRequired] public bool SupportsToolSelection { get; init; }
+        [JsonRequired] public List<AgentSettingWire>? Settings { get; init; }
+        [JsonRequired] public List<AgentModelWire>? Models { get; init; }
+        [JsonRequired] public List<string>? Limitations { get; init; }
+        [JsonRequired] public string? ObservedAt { get; init; }
+    }
+
+    private sealed class AgentModelWire
+    {
+        [JsonRequired] public string? Id { get; init; }
+        [JsonRequired] public string? Label { get; init; }
+        public string? Description { get; init; }
+        [JsonRequired] public List<string>? ReasoningOptions { get; init; }
+        public long? ContextWindow { get; init; }
+        [JsonRequired] public List<string>? InputModalities { get; init; }
+        [JsonRequired] public string? TruthClass { get; init; }
+        [JsonRequired] public bool Alias { get; init; }
+    }
+
+    private sealed class AgentSettingWire
+    {
+        [JsonRequired] public string? Key { get; init; }
+        [JsonRequired] public string? Label { get; init; }
+        [JsonRequired] public string? Description { get; init; }
+        [JsonRequired] public string? Kind { get; init; }
+        [JsonRequired] public bool Required { get; init; }
+        [JsonRequired] public bool Sensitive { get; init; }
+        public JsonElement DefaultValue { get; init; }
+        public List<AgentSettingOptionWire>? Options { get; init; }
+        public JsonElement Minimum { get; init; }
+        public JsonElement Maximum { get; init; }
+        [JsonRequired] public string? TruthClass { get; init; }
+    }
+
+    private sealed class AgentSettingOptionWire
+    {
+        [JsonRequired] public string? Value { get; init; }
+        [JsonRequired] public string? Label { get; init; }
+        public string? Description { get; init; }
     }
 
     private sealed class GovernanceWire

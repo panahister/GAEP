@@ -9,6 +9,7 @@ import {
   normalizeExistingLocalFolder,
   normalizeUuid,
   validatePage,
+  type AgentReadinessSnapshot,
   type PortableDesignSnapshotPage,
   type PortableDesignSnapshotSummary,
   type ProductBinding,
@@ -17,6 +18,7 @@ import {
 const productStudioViewType = "gaepKiro.productStudio"
 const commandIds = {
   open: "gaepKiro.openProductStudio",
+  readiness: "gaepKiro.agents.readiness",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -74,6 +76,7 @@ export function activate(context: vscode.ExtensionContext): void {
       },
     }),
     vscode.commands.registerCommand(commandIds.open, () => openProductStudio()),
+    vscode.commands.registerCommand(commandIds.readiness, () => runUserCommand(() => showAgentReadiness(pool))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -140,6 +143,11 @@ function productStudioHtml(): string {
     <h2>Portable design</h2>
     <p>Use the Kiro Command Palette to import one local bundle folder, list metadata pages, or read one exact snapshot by UUID.</p>
     <p>Files, archives, <code>.fig</code> ingestion, OAuth, network fetches, and live design-tool accounts are not supported.</p>
+  </section>
+  <section>
+    <h2>Codex and Claude readiness</h2>
+    <p>Use the Kiro Command Palette to observe verified local adapter, runtime, model, and capability metadata.</p>
+    <p>This view is observation-only. It cannot select a model, change settings, start an agent, resume work, or grant execution authority.</p>
   </section>
   <section>
     <h2>Governance boundary</h2>
@@ -270,6 +278,51 @@ async function showSnapshotDocument(summary: PortableDesignSnapshotSummary): Pro
   await vscode.window.showTextDocument(document, { preview: true })
 }
 
+async function showAgentReadiness(pool: EngineClientPool): Promise<readonly AgentReadinessSnapshot[]> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const snapshots = await (await pool.get(folder.uri.fsPath)).probeAgentReadiness()
+  const content = [
+    "GAEP Codex and Claude readiness",
+    "",
+    "Observation only: this view cannot select a model, change settings, start an agent, resume work, or grant execution authority.",
+    "Only verified, path-free capability metadata is shown. Executable paths, provider credentials, and raw engine output are withheld.",
+    "",
+    ...snapshots.flatMap(renderAgentReadiness),
+  ].join("\n")
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${content}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return snapshots
+}
+
+function renderAgentReadiness(snapshot: AgentReadinessSnapshot): readonly string[] {
+  const models = snapshot.models.slice(0, 20).map((model) =>
+    `  - ${model.label} (${model.id}; ${model.truthClass}${model.alias ? "; alias" : ""})`,
+  )
+  const limitations = snapshot.limitations.slice(0, 20).map((limitation) => `  - ${limitation}`)
+  return [
+    snapshot.agentLabel,
+    `  Adapter: ${snapshot.adapterId} ${snapshot.adapterVersion}`,
+    `  Detected: ${snapshot.detected ? "yes" : "no"}`,
+    `  Runtime version: ${snapshot.runtimeVersion ?? "not observed"}`,
+    `  Interface: ${snapshot.executionInterface} (${snapshot.interfaceMaturity})`,
+    `  Capabilities: resume=${yesNo(snapshot.supportsResume)}, cancel=${yesNo(snapshot.supportsCancel)}, checkpoints=${yesNo(snapshot.supportsCheckpoints)}, model discovery=${yesNo(snapshot.supportsModelDiscovery)}, tool selection=${yesNo(snapshot.supportsToolSelection)}`,
+    `  Declared settings: ${snapshot.settingsCount}`,
+    `  Models observed: ${snapshot.models.length}`,
+    ...(models.length ? models : ["  - none observed"]),
+    ...(snapshot.models.length > models.length ? [`  - ${snapshot.models.length - models.length} more withheld from this compact view`] : []),
+    `  Limitations: ${snapshot.limitations.length}`,
+    ...(limitations.length ? limitations : ["  - none declared"]),
+    ...(snapshot.limitations.length > limitations.length ? [`  - ${snapshot.limitations.length - limitations.length} more withheld from this compact view`] : []),
+    `  Observed at: ${snapshot.observedAt}`,
+    "",
+  ]
+}
+
+function yesNo(value: boolean): "yes" | "no" {
+  return value ? "yes" : "no"
+}
+
 async function assertExactContext(
   folder: vscode.WorkspaceFolder,
   client: GaepEngineClient,
@@ -353,7 +406,7 @@ async function runUserCommand<T>(operation: () => Promise<T>): Promise<T | undef
       return undefined
     }
     await vscode.window.showErrorMessage(
-      "GAEP for Kiro could not complete the local portable-design request. No raw engine output or provider state was shown.",
+      "GAEP for Kiro could not complete the local request. No raw engine output or provider state was shown.",
     )
     return undefined
   }

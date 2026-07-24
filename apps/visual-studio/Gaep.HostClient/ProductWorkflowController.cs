@@ -8,6 +8,21 @@ public sealed class ProductWorkflowController(EngineClient client)
     public async Task<string> ReadProductAsync(CancellationToken cancellationToken = default) =>
         RenderProduct(await client.ReadProductBindingAsync(cancellationToken));
 
+    public async Task<string> ReadAgentReadinessAsync(CancellationToken cancellationToken = default)
+    {
+        var snapshots = await client.ProbeAgentReadinessAsync(cancellationToken);
+        var output = new StringBuilder()
+            .AppendLine("GAEP Codex and Claude readiness")
+            .AppendLine()
+            .AppendLine("Observation only: this view cannot select a model, change settings, start an agent, resume work, or grant execution authority.")
+            .AppendLine("Only verified, path-free capability metadata is shown. Executable paths, provider credentials, and raw engine output are withheld.");
+        foreach (var snapshot in snapshots)
+        {
+            output.AppendLine().Append(RenderAgentReadiness(snapshot));
+        }
+        return output.ToString();
+    }
+
     public async Task<string> ListPortableDesignSnapshotsAsync(CancellationToken cancellationToken = default)
     {
         var page = await client.ListPortableDesignSnapshotsAsync(cancellationToken: cancellationToken);
@@ -90,6 +105,40 @@ public sealed class ProductWorkflowController(EngineClient client)
         .AppendLine($"Product ID: {product.Id:D}")
         .Append($"Revision: {product.Revision}")
         .ToString();
+
+    private static string RenderAgentReadiness(AgentReadinessSnapshot snapshot)
+    {
+        var output = new StringBuilder()
+            .AppendLine(snapshot.AgentLabel)
+            .AppendLine($"  Adapter: {snapshot.AdapterId} {snapshot.AdapterVersion}")
+            .AppendLine($"  Detected: {YesNo(snapshot.Detected)}")
+            .AppendLine($"  Runtime version: {snapshot.RuntimeVersion ?? "not observed"}")
+            .AppendLine($"  Interface: {snapshot.ExecutionInterface} ({snapshot.InterfaceMaturity})")
+            .AppendLine($"  Capabilities: resume={YesNo(snapshot.SupportsResume)}, cancel={YesNo(snapshot.SupportsCancel)}, checkpoints={YesNo(snapshot.SupportsCheckpoints)}, model discovery={YesNo(snapshot.SupportsModelDiscovery)}, tool selection={YesNo(snapshot.SupportsToolSelection)}")
+            .AppendLine($"  Declared settings: {snapshot.SettingsCount}")
+            .AppendLine($"  Models observed: {snapshot.Models.Count}");
+        var models = snapshot.Models.Take(20).ToArray();
+        if (models.Length == 0) output.AppendLine("  - none observed");
+        foreach (var model in models)
+        {
+            output.AppendLine($"  - {model.Label} ({model.Id}; {model.TruthClass}{(model.Alias ? "; alias" : "")})");
+        }
+        if (snapshot.Models.Count > models.Length)
+        {
+            output.AppendLine($"  - {snapshot.Models.Count - models.Length} more withheld from this compact view");
+        }
+        output.AppendLine($"  Limitations: {snapshot.Limitations.Count}");
+        var limitations = snapshot.Limitations.Take(20).ToArray();
+        if (limitations.Length == 0) output.AppendLine("  - none declared");
+        foreach (var limitation in limitations) output.AppendLine($"  - {limitation}");
+        if (snapshot.Limitations.Count > limitations.Length)
+        {
+            output.AppendLine($"  - {snapshot.Limitations.Count - limitations.Length} more withheld from this compact view");
+        }
+        return output.Append($"  Observed at: {snapshot.ObservedAt.ToString("O", CultureInfo.InvariantCulture)}").ToString();
+    }
+
+    private static string YesNo(bool value) => value ? "yes" : "no";
 
     private static string RenderSummary(PortableDesignSnapshotSummary summary) => new StringBuilder()
         .AppendLine($"Bundle ID: {summary.BundleId:D}")

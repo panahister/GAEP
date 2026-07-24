@@ -35,7 +35,8 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const workspace = join(root, "workspace")
   const bundleRoot = join(root, "bundle")
   const sourceErrorRoot = join(root, "source-error")
-  await Promise.all([workspace, bundleRoot, sourceErrorRoot].map((path) => mkdir(path)))
+  const badReadinessRoot = join(root, "bad-readiness")
+  await Promise.all([workspace, bundleRoot, sourceErrorRoot, badReadinessRoot].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
     engineExecutable: process.execPath,
@@ -50,6 +51,37 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     const product = await client.readProduct()
     assert.deepEqual(product, { id: productId, name: "Example Product", revision: 7 })
     assert.equal(JSON.stringify(product).includes(privateCredential), false)
+
+    const readiness = await client.probeAgentReadiness()
+    assert.deepEqual(readiness.map((agent) => agent.agentId), ["claude-code", "codex"])
+    assert.equal(readiness[0]?.detected, false)
+    assert.equal(readiness[1]?.models[0]?.id, "gpt-5.6-codex")
+    assert.equal(readiness[1]?.settingsCount, 1)
+    assert.deepEqual(
+      Object.keys(readiness[1] ?? {}).sort(),
+      [
+        "adapterId", "adapterVersion", "agentId", "agentLabel", "detected", "executionInterface",
+        "interfaceMaturity", "limitations", "models", "observedAt", "runtimeVersion", "schemaVersion",
+        "settingsCount", "supportsCancel", "supportsCheckpoints", "supportsModelDiscovery", "supportsResume",
+        "supportsToolSelection",
+      ].sort(),
+    )
+    assert.equal(JSON.stringify(readiness).includes(privateRoot), false)
+    assert.equal(JSON.stringify(readiness).includes(privateCredential), false)
+
+    const badReadinessClient = await GaepEngineClient.create({
+      workspacePath: badReadinessRoot,
+      engineExecutable: process.execPath,
+      engineArgumentsPrefix: [fakeEngine],
+    })
+    try {
+      await assert.rejects(
+        () => badReadinessClient.probeAgentReadiness(),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await badReadinessClient.dispose()
+    }
 
     const imported = await client.importPortableDesignSnapshot({
       bundleRoot,

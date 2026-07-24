@@ -4,6 +4,7 @@ const productId = "11111111-1111-4111-8111-111111111111"
 const bundleId = "22222222-2222-4222-8222-222222222222"
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
+const workspacePath = process.argv[process.argv.indexOf("--workspace") + 1] ?? ""
 
 if (process.env.AWS_SECRET_ACCESS_KEY || process.env.OPENAI_API_KEY || process.env.HOME || process.env.USERPROFILE) {
   process.exit(91)
@@ -27,6 +28,9 @@ input.on("line", (line) => {
         revision: 7,
         providerState: privateCredential,
       })
+    case "probeAgents":
+      if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
+      return writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
     case "productStudio.portableDesign.import":
       return importSnapshot(id, request.params)
     case "productStudio.portableDesign.list":
@@ -138,6 +142,67 @@ function snapshot(id = bundleId) {
     },
     privacyBoundary: "Validated metadata only; no bundle root, artifact path, token value, source bytes, credentials, OAuth state, or external-account state.",
   }
+}
+
+function readinessSnapshots(includePrivatePath) {
+  const codex = {
+    schemaVersion: 1,
+    adapterId: "openai-codex",
+    adapterVersion: "0.1.0",
+    agentId: "codex",
+    agentLabel: "OpenAI Codex",
+    runtimeVersion: "0.42.0",
+    detected: true,
+    executionInterface: "cli-jsonl",
+    interfaceMaturity: "beta",
+    supportsResume: true,
+    supportsCancel: true,
+    supportsCheckpoints: true,
+    supportsModelDiscovery: true,
+    supportsToolSelection: true,
+    settings: [{
+      key: "reasoningEffort",
+      label: "Reasoning effort",
+      description: "Provider-declared reasoning effort for a future governed run.",
+      kind: "select",
+      required: false,
+      sensitive: false,
+      options: [{ value: "high", label: "High" }],
+      truthClass: "provider-declared",
+    }],
+    models: [{
+      id: "gpt-5.6-codex",
+      label: "GPT-5.6 Codex",
+      description: "Observed local Codex model metadata.",
+      reasoningOptions: ["high"],
+      contextWindow: 200000,
+      inputModalities: ["text", "image"],
+      truthClass: "observed",
+      alias: false,
+    }],
+    limitations: ["Capability observation does not authorize execution."],
+    observedAt: "2026-07-24T08:00:00.000Z",
+  }
+  if (includePrivatePath) codex.runtimeExecutable = `${privateRoot}/${privateCredential}`
+  return [codex, {
+    schemaVersion: 1,
+    adapterId: "anthropic-claude-code",
+    adapterVersion: "0.1.0",
+    agentId: "claude-code",
+    agentLabel: "Anthropic Claude Code",
+    detected: false,
+    executionInterface: "unavailable",
+    interfaceMaturity: "unknown",
+    supportsResume: false,
+    supportsCancel: false,
+    supportsCheckpoints: false,
+    supportsModelDiscovery: false,
+    supportsToolSelection: false,
+    settings: [],
+    models: [],
+    limitations: ["The local Claude Code runtime was not observed."],
+    observedAt: "2026-07-24T08:00:00.000Z",
+  }]
 }
 
 function writeResult(id, result) {

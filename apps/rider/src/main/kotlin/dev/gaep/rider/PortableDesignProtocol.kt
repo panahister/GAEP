@@ -40,6 +40,34 @@ data class ProductBinding(
     val revision: Long,
 )
 
+data class AgentModelReadiness(
+    val id: String,
+    val label: String,
+    val truthClass: String,
+    val alias: Boolean,
+)
+
+data class AgentReadinessSnapshot(
+    val schemaVersion: Int,
+    val adapterId: String,
+    val adapterVersion: String,
+    val agentId: String,
+    val agentLabel: String,
+    val runtimeVersion: String?,
+    val detected: Boolean,
+    val executionInterface: String,
+    val interfaceMaturity: String,
+    val supportsResume: Boolean,
+    val supportsCancel: Boolean,
+    val supportsCheckpoints: Boolean,
+    val supportsModelDiscovery: Boolean,
+    val supportsToolSelection: Boolean,
+    val settingsCount: Int,
+    val models: List<AgentModelReadiness>,
+    val limitations: List<String>,
+    val observedAt: Instant,
+)
+
 data class PortableDesignGovernanceMetadata(
     val state: String,
     val humanReviewRequired: Boolean,
@@ -132,6 +160,13 @@ internal object PortableDesignProtocol {
     private val actorIdPattern = Regex("^[A-Za-z0-9][A-Za-z0-9._:@+-]*$")
     private val toolPattern = Regex("^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
     private val digestPattern = Regex("^sha256:[0-9a-f]{64}$")
+    private val settingKeyPattern = Regex("^[a-z][a-zA-Z0-9]{0,127}$")
+    private val absolutePathPattern = Regex("""^(?:/\S*|[A-Za-z]:[\\/]\S*|\\\\\S*|file://\S*)$""")
+    private val privatePathPattern = Regex("""(?:^|[\s(="'])(?:/(?:Users|home|tmp|private|Volumes)/[^\s"'<>)]*|[A-Za-z]:\\[^\s"'<>)]*|\\\\[^\s"'<>)]*)""")
+    private val secretPattern = Regex(
+        """\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+""",
+        RegexOption.IGNORE_CASE,
+    )
     private val uuidPattern = Regex(
         "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
     )
@@ -161,7 +196,20 @@ internal object PortableDesignProtocol {
             -32_035,
             "The requested portable design snapshot does not exist in the current Product.",
         ),
-        "INVALID_PARAMS" to StableHostError(-32_602, "The GAEP engine rejected the portable design request parameters."),
+        "INVALID_CAPABILITY_SNAPSHOT" to StableHostError(
+            -32_010,
+            "The GAEP engine could not verify the agent capability snapshot.",
+        ),
+        "CAPABILITIES_NOT_AVAILABLE" to StableHostError(
+            -32_011,
+            "The GAEP engine could not observe agent capabilities.",
+        ),
+        "EXECUTABLE_UNAVAILABLE" to StableHostError(-32_013, "The configured agent executable is unavailable."),
+        "EXECUTABLE_CHANGED" to StableHostError(
+            -32_014,
+            "The configured agent executable changed during capability discovery.",
+        ),
+        "INVALID_PARAMS" to StableHostError(-32_602, "The GAEP engine rejected the local request parameters."),
         "PROTOCOL_UPGRADE_REQUIRED" to StableHostError(
             -32_021,
             "The GAEP engine requires protocol version 2 for portable design requests.",
@@ -258,6 +306,19 @@ internal object PortableDesignProtocol {
         return ProductBinding(id, name, revision)
     }
 
+    fun parseAgentReadinessEnvelope(envelope: JsonObject): List<AgentReadinessSnapshot> {
+        val result = readResult(envelope)
+        if (!result.isJsonArray || result.asJsonArray.size() !in 1..16) throw invalidResponse()
+        val snapshots = result.asJsonArray.map { parseAgentReadinessSnapshot(it.requireObject()) }
+            .sortedBy { it.agentLabel }
+        if (snapshots.map { it.adapterId }.distinct().size != snapshots.size ||
+            snapshots.map { it.agentId }.distinct().size != snapshots.size
+        ) {
+            throw invalidResponse()
+        }
+        return snapshots
+    }
+
     fun parsePageEnvelope(envelope: JsonObject, expectedOffset: Int, expectedLimit: Int): PortableDesignSnapshotPage {
         val page = readResult(envelope).requireObject()
         page.requireExactKeys("items", "offset", "limit", "total", "hasMore", "governanceBoundary", "privacyBoundary")
@@ -293,13 +354,13 @@ internal object PortableDesignProtocol {
     fun invalidResponse(): GaepHostException = GaepHostException(
         -32_603,
         "HOST_RESPONSE_INVALID",
-        "The GAEP engine returned a portable design response that could not be verified.",
+        "The GAEP engine returned a local response that could not be verified.",
     )
 
     fun hostUnavailable(): GaepHostException = GaepHostException(
         -32_603,
         "HOST_UNAVAILABLE",
-        "The GAEP engine host could not complete the portable design request.",
+        "The GAEP engine host could not complete the request.",
     )
 
     fun productContextChanged(): GaepHostException = GaepHostException(
@@ -326,7 +387,7 @@ internal object PortableDesignProtocol {
         if (!data.keySet().all { it == "kind" || it == "detail" } || !data.has("kind")) throw invalidResponse()
         val kind = data.requireString("kind")
         val stable = stableHostErrors[kind]
-            ?: return GaepHostException(-32_603, "HOST_ERROR", "The GAEP engine could not complete the portable design request.")
+            ?: return GaepHostException(-32_603, "HOST_ERROR", "The GAEP engine could not complete the request.")
         if (code != stable.code) throw invalidResponse()
         return GaepHostException(stable.code, kind, stable.message)
     }
@@ -441,6 +502,141 @@ internal object PortableDesignProtocol {
             timestamps = PortableDesignTimestamps(sourceExportedAt, importedAt),
             privacyBoundary = SUMMARY_PRIVACY_BOUNDARY,
         )
+    }
+
+    private fun parseAgentReadinessSnapshot(snapshot: JsonObject): AgentReadinessSnapshot {
+        snapshot.requireKeys(
+            required = setOf(
+                "schemaVersion", "adapterId", "adapterVersion", "agentId", "agentLabel", "detected",
+                "executionInterface", "interfaceMaturity", "supportsResume", "supportsCancel",
+                "supportsCheckpoints", "supportsModelDiscovery", "supportsToolSelection", "settings", "models",
+                "limitations", "observedAt",
+            ),
+            optional = setOf("runtimeVersion"),
+        )
+        if (snapshot.requireInt("schemaVersion") != 1) throw invalidResponse()
+        val settings = snapshot.get("settings")?.takeIf(JsonElement::isJsonArray)?.asJsonArray ?: throw invalidResponse()
+        val models = snapshot.get("models")?.takeIf(JsonElement::isJsonArray)?.asJsonArray ?: throw invalidResponse()
+        val limitations = snapshot.get("limitations")?.takeIf(JsonElement::isJsonArray)?.asJsonArray ?: throw invalidResponse()
+        if (settings.size() > 256 || models.size() > 512 || limitations.size() > 512) throw invalidResponse()
+        settings.forEach { validateAgentSetting(it.requireObject()) }
+        val parsedModels = models.map { parseAgentModel(it.requireObject()) }
+        if (parsedModels.map { it.id }.distinct().size != parsedModels.size) throw invalidResponse()
+        return AgentReadinessSnapshot(
+            schemaVersion = 1,
+            adapterId = snapshot.requirePortableText("adapterId", minimum = 1),
+            adapterVersion = snapshot.requirePortableText("adapterVersion", minimum = 1),
+            agentId = snapshot.requirePortableText("agentId", minimum = 1),
+            agentLabel = snapshot.requirePortableText("agentLabel", minimum = 1),
+            runtimeVersion = snapshot.get("runtimeVersion")?.let { portableText(it.requireString()) },
+            detected = snapshot.requireBoolean("detected"),
+            executionInterface = snapshot.requireString("executionInterface").takeIf {
+                it in setOf("cli-jsonl", "cli-stream-json", "stdio-rpc", "managed-in-process", "unavailable")
+            } ?: throw invalidResponse(),
+            interfaceMaturity = snapshot.requireString("interfaceMaturity").takeIf {
+                it in setOf("stable", "beta", "experimental", "unknown")
+            } ?: throw invalidResponse(),
+            supportsResume = snapshot.requireBoolean("supportsResume"),
+            supportsCancel = snapshot.requireBoolean("supportsCancel"),
+            supportsCheckpoints = snapshot.requireBoolean("supportsCheckpoints"),
+            supportsModelDiscovery = snapshot.requireBoolean("supportsModelDiscovery"),
+            supportsToolSelection = snapshot.requireBoolean("supportsToolSelection"),
+            settingsCount = settings.size(),
+            models = parsedModels,
+            limitations = limitations.map { portableText(it.requireString()) },
+            observedAt = snapshot.requireInstant("observedAt"),
+        )
+    }
+
+    private fun parseAgentModel(model: JsonObject): AgentModelReadiness {
+        model.requireKeys(
+            required = setOf("id", "label", "reasoningOptions", "inputModalities", "truthClass", "alias"),
+            optional = setOf("description", "contextWindow"),
+        )
+        model.get("description")?.let { portableText(it.requireString()) }
+        model.get("contextWindow")?.let {
+            if (!it.isJsonPrimitive || !it.asJsonPrimitive.isNumber || it.asBigDecimal <= BigDecimal.ZERO ||
+                runCatching { it.asBigDecimal.toBigIntegerExact().longValueExact() }.isFailure
+            ) {
+                throw invalidResponse()
+            }
+        }
+        validatePortableTextArray(model.get("reasoningOptions"), 64)
+        validatePortableTextArray(model.get("inputModalities"), 32)
+        return AgentModelReadiness(
+            id = model.requirePortableText("id", minimum = 1),
+            label = model.requirePortableText("label", minimum = 1),
+            truthClass = model.requireTruthClass("truthClass"),
+            alias = model.requireBoolean("alias"),
+        )
+    }
+
+    private fun validateAgentSetting(setting: JsonObject) {
+        setting.requireKeys(
+            required = setOf("key", "label", "description", "kind", "required", "sensitive", "truthClass"),
+            optional = setOf("defaultValue", "options", "minimum", "maximum"),
+        )
+        if (!settingKeyPattern.matches(setting.requireString("key"))) throw invalidResponse()
+        setting.requirePortableText("label", minimum = 1)
+        setting.requirePortableText("description", minimum = 1)
+        if (setting.requireString("kind") !in setOf("select", "boolean", "number", "string", "string-list")) {
+            throw invalidResponse()
+        }
+        setting.requireBoolean("required")
+        val sensitive = setting.requireBoolean("sensitive")
+        setting.requireTruthClass("truthClass")
+        setting.get("defaultValue")?.let {
+            if (sensitive) throw invalidResponse()
+            validatePortableSettingValue(it)
+        }
+        setting.get("options")?.let { rawOptions ->
+            if (!rawOptions.isJsonArray || rawOptions.asJsonArray.size() > 256) throw invalidResponse()
+            rawOptions.asJsonArray.forEach { rawOption ->
+                val option = rawOption.requireObject()
+                option.requireKeys(setOf("value", "label"), setOf("description"))
+                option.requirePortableText("value")
+                option.requirePortableText("label")
+                option.get("description")?.let { portableText(it.requireString()) }
+            }
+        }
+        listOf("minimum", "maximum").forEach { name ->
+            setting.get(name)?.let { if (!it.isJsonPrimitive || !it.asJsonPrimitive.isNumber) throw invalidResponse() }
+        }
+    }
+
+    private fun validatePortableSettingValue(value: JsonElement) {
+        if (value.isJsonPrimitive) {
+            val primitive = value.asJsonPrimitive
+            when {
+                primitive.isString -> portableText(primitive.asString, maximum = 10_000)
+                primitive.isNumber || primitive.isBoolean -> Unit
+                else -> throw invalidResponse()
+            }
+        } else {
+            validatePortableTextArray(value, 256, 10_000)
+        }
+    }
+
+    private fun validatePortableTextArray(value: JsonElement?, maximumItems: Int, maximumText: Int = 20_000) {
+        if (value == null || !value.isJsonArray || value.asJsonArray.size() > maximumItems) throw invalidResponse()
+        value.asJsonArray.forEach { portableText(it.requireString(), maximum = maximumText) }
+    }
+
+    private fun JsonObject.requirePortableText(name: String, minimum: Int = 0): String =
+        portableText(requireString(name), minimum)
+
+    private fun JsonObject.requireTruthClass(name: String): String = requireString(name).takeIf {
+        it in setOf("observed", "provider-declared", "configured", "inferred", "unknown")
+    } ?: throw invalidResponse()
+
+    private fun portableText(value: String, minimum: Int = 0, maximum: Int = 20_000): String {
+        if (value.length !in minimum..maximum || value.any(Char::isISOControl) ||
+            absolutePathPattern.matches(value.trim()) || privatePathPattern.containsMatchIn(value) ||
+            secretPattern.containsMatchIn(value)
+        ) {
+            throw invalidResponse()
+        }
+        return value
     }
 
     private fun readJsonValue(reader: JsonReader, depth: Int): JsonElement {

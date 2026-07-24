@@ -20,6 +20,7 @@ class PortableDesignClientTest {
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
+        val badReadinessRoot = Files.createDirectory(temporaryRoot.resolve("bad-readiness"))
         val executable = createFakeEngineLauncher(temporaryRoot)
         GaepEngineClient(temporaryRoot, executable.toString()).use { client ->
             val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -66,10 +67,36 @@ class PortableDesignClientTest {
             assertEquals("Founder Product", product.name)
             assertEquals(7, product.revision)
 
+            val readiness = client.probeAgentReadiness()
+            assertEquals(listOf("claude-code", "codex"), readiness.map { it.agentId })
+            assertFalse(readiness.first().detected)
+            assertEquals("gpt-5.6-codex", readiness.last().models.single().id)
+            assertEquals(1, readiness.last().settingsCount)
+            val readinessFields = AgentReadinessSnapshot::class.java.declaredFields.map { it.name }.toSet()
+            assertFalse(readinessFields.any { field ->
+                listOf("executable", "path", "token", "credential", "defaultValue").any {
+                    field.contains(it, ignoreCase = true)
+                }
+            })
+            val readinessSerialized = Gson().toJson(readiness)
+            assertFalse(readinessSerialized.contains(privateRoot))
+            assertFalse(readinessSerialized.contains(privateCredential))
+
+            GaepEngineClient(badReadinessRoot, executable.toString()).use { badReadinessClient ->
+                val invalidReadiness = hostError { badReadinessClient.probeAgentReadiness() }
+                assertEquals("HOST_RESPONSE_INVALID", invalidReadiness.kind)
+                assertPrivateTextWithheld(invalidReadiness)
+            }
+
             val controller = RiderProductController(client)
             val productView = controller.readProduct()
             assertTrue(productView.contains("Founder Product"))
             assertTrue(productView.contains("Revision: 7"))
+            val readinessView = controller.readAgentReadiness()
+            assertTrue(readinessView.contains("OpenAI Codex"))
+            assertTrue(readinessView.contains("Anthropic Claude Code"))
+            assertTrue(readinessView.contains("Observation only"))
+            assertTrue(readinessView.contains("cannot select a model"))
             val listView = controller.listPortableDesignSnapshots()
             assertTrue(listView.contains(bundleId.toString()))
             assertTrue(listView.contains("pending human review"))
@@ -79,7 +106,7 @@ class PortableDesignClientTest {
             val importView = controller.importPortableDesignSnapshot(bundleRoot, "founder.review")
             assertTrue(importView.contains("exact Product revision 7"))
             assertTrue(importView.contains("not approval or a baseline"))
-            listOf(productView, listView, readView, importView).forEach { rendered ->
+            listOf(productView, readinessView, listView, readView, importView).forEach { rendered ->
                 assertFalse(rendered.contains(bundleRoot.toString()))
                 assertFalse(rendered.contains(privateRoot))
                 assertFalse(rendered.contains(privateCredential))

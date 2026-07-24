@@ -21,6 +21,9 @@
         <Button x:Name="RefreshProductButton" Content="Refresh Product"
                 Command="{Binding RefreshProductCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="RefreshAgentReadinessButton" Content="Refresh Codex and Claude readiness"
+                Command="{Binding RefreshAgentReadinessCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Portable design metadata" FontWeight="SemiBold" />
         <Button x:Name="ListDesignImportsButton" Content="List design imports"
@@ -52,6 +55,7 @@
   <DataTemplate.Triggers>
     <DataTrigger Binding="{Binding Busy}" Value="True">
       <Setter TargetName="RefreshProductButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="RefreshAgentReadinessButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ListDesignImportsButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ReadDesignImportButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ImportDesignBundleButton" Property="IsEnabled" Value="False" />

@@ -48,6 +48,13 @@ class GaepEngineClient(
     ) { envelope -> PortableDesignProtocol.parseProductBindingEnvelope(envelope) }
 
     @Synchronized
+    fun probeAgentReadiness(): List<AgentReadinessSnapshot> = portableRequest(
+        "probeAgents",
+        JsonObject(),
+        protocolVersion = null,
+    ) { envelope -> PortableDesignProtocol.parseAgentReadinessEnvelope(envelope) }
+
+    @Synchronized
     fun importPortableDesignSnapshot(
         bundleRoot: Path,
         expectedProductId: UUID,

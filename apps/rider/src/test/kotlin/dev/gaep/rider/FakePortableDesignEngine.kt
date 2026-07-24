@@ -2,6 +2,7 @@ package dev.gaep.rider
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.JsonElement
 import java.util.UUID
 
 private val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -22,18 +23,20 @@ internal val invalidTimestampBundleId: UUID = UUID.fromString("ffffffff-ffff-4ff
 internal const val privateRoot = "/Users/private/design-bundle"
 internal const val privateCredential = "PRIVATE-OAUTH-TOKEN"
 
-fun main() {
+fun main(arguments: Array<String>) {
+    val workspacePath = arguments.getOrNull(arguments.indexOf("--workspace") + 1).orEmpty()
     generateSequence(::readLine).forEach { line ->
         val request = JsonParser.parseString(line).asJsonObject
         val id = request.get("id").asLong
         val method = request.get("method").asString
-        val expectedKeys = if (method == "readProduct") {
+        val pathFreeMethod = method == "readProduct" || method == "probeAgents"
+        val expectedKeys = if (pathFreeMethod) {
             setOf("jsonrpc", "id", "method", "params")
         } else {
             setOf("jsonrpc", "id", "method", "params", "protocolVersion")
         }
         if (request.keySet() != expectedKeys || request.get("jsonrpc").asString != "2.0" ||
-            (method != "readProduct" && request.get("protocolVersion").asInt != 2)
+            (!pathFreeMethod && request.get("protocolVersion").asInt != 2)
         ) {
             writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID ENVELOPE")
             return@forEach
@@ -48,6 +51,7 @@ fun main() {
                     addProperty("lifecycleState", "active")
                 },
             )
+            "probeAgents" -> writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
             "productStudio.portableDesign.import" -> handleImport(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.list" -> handleList(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.read" -> handleRead(id, request.getAsJsonObject("params"))
@@ -197,7 +201,79 @@ private fun snapshot(id: UUID = bundleId): JsonObject = JsonParser.parseString(
     """.trimIndent(),
 ).asJsonObject
 
-private fun writeResult(id: Long, result: JsonObject) {
+private fun readinessSnapshots(includePrivatePath: Boolean): JsonElement {
+    val snapshots = JsonParser.parseString(
+        """
+        [
+          {
+            "schemaVersion": 1,
+            "adapterId": "openai-codex",
+            "adapterVersion": "0.1.0",
+            "agentId": "codex",
+            "agentLabel": "OpenAI Codex",
+            "runtimeVersion": "0.42.0",
+            "detected": true,
+            "executionInterface": "cli-jsonl",
+            "interfaceMaturity": "beta",
+            "supportsResume": true,
+            "supportsCancel": true,
+            "supportsCheckpoints": true,
+            "supportsModelDiscovery": true,
+            "supportsToolSelection": true,
+            "settings": [
+              {
+                "key": "reasoningEffort",
+                "label": "Reasoning effort",
+                "description": "Provider-declared reasoning effort for a future governed run.",
+                "kind": "select",
+                "required": false,
+                "sensitive": false,
+                "options": [{ "value": "high", "label": "High" }],
+                "truthClass": "provider-declared"
+              }
+            ],
+            "models": [
+              {
+                "id": "gpt-5.6-codex",
+                "label": "GPT-5.6 Codex",
+                "description": "Observed local Codex model metadata.",
+                "reasoningOptions": ["high"],
+                "contextWindow": 200000,
+                "inputModalities": ["text", "image"],
+                "truthClass": "observed",
+                "alias": false
+              }
+            ],
+            "limitations": ["Capability observation does not authorize execution."],
+            "observedAt": "2026-07-24T08:00:00.000Z"
+          },
+          {
+            "schemaVersion": 1,
+            "adapterId": "anthropic-claude-code",
+            "adapterVersion": "0.1.0",
+            "agentId": "claude-code",
+            "agentLabel": "Anthropic Claude Code",
+            "detected": false,
+            "executionInterface": "unavailable",
+            "interfaceMaturity": "unknown",
+            "supportsResume": false,
+            "supportsCancel": false,
+            "supportsCheckpoints": false,
+            "supportsModelDiscovery": false,
+            "supportsToolSelection": false,
+            "settings": [],
+            "models": [],
+            "limitations": ["The local Claude Code runtime was not observed."],
+            "observedAt": "2026-07-24T08:00:00.000Z"
+          }
+        ]
+        """.trimIndent(),
+    ).asJsonArray
+    if (includePrivatePath) snapshots[0].asJsonObject.addProperty("runtimeExecutable", "$privateRoot/$privateCredential")
+    return snapshots
+}
+
+private fun writeResult(id: Long, result: JsonElement) {
     println(JsonObject().apply {
         addProperty("jsonrpc", "2.0")
         addProperty("id", id)
