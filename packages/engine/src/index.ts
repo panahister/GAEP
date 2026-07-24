@@ -1,3 +1,4 @@
+export * from "./change-impact-dashboard.js"
 export * from "./dashboard-framework.js"
 export * from "./engine.js"
 export * from "./managed-execution.js"

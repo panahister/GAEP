@@ -652,24 +652,26 @@ export const traceEndpointSchema = z.object({
   }
 })
 
+export const traceRelationshipSchema = z.enum([
+  "targets",
+  "derives-from",
+  "contributes-to",
+  "depends-on",
+  "implements",
+  "satisfies",
+  "validates",
+  "mitigates",
+  "decides",
+  "affects",
+  "supersedes",
+  "related-to",
+])
+
 export const traceLinkSchema = rejectSecrets(z.object({
   ...recordBaseShape,
   kind: z.literal("trace-link"),
   source: traceEndpointSchema,
-  relationship: z.enum([
-    "targets",
-    "derives-from",
-    "contributes-to",
-    "depends-on",
-    "implements",
-    "satisfies",
-    "validates",
-    "mitigates",
-    "decides",
-    "affects",
-    "supersedes",
-    "related-to",
-  ]),
+  relationship: traceRelationshipSchema,
   target: traceEndpointSchema,
   state: z.enum(["valid", "unresolved", "stale", "invalid"]),
   provenance: z.object({
@@ -1127,6 +1129,7 @@ export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>
 export type ExactDomainRecordType = z.infer<typeof exactDomainRecordTypeSchema>
 export type ExactDomainRecordReference = z.infer<typeof exactDomainRecordReferenceSchema>
 export type TraceEndpoint = z.infer<typeof traceEndpointSchema>
+export type TraceRelationship = z.infer<typeof traceRelationshipSchema>
 export type TraceLink = z.infer<typeof traceLinkSchema>
 export type TraceImpact = z.infer<typeof traceImpactSchema>
 export type ProductDomainRecordKind = z.infer<typeof productDomainRecordKindSchema>

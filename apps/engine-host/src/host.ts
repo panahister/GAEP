@@ -13,10 +13,18 @@ import {
   hostMethodSchema,
   hostRequestSchema,
   type AdapterCapabilities,
+  type Change,
   type HostRequest,
   type Run,
 } from "@gaep/contracts"
-import { composePhaseDashboardFramework, DashboardProductBindingError, GaepEngine } from "@gaep/engine"
+import {
+  ChangeImpactChangeBindingError,
+  ChangeImpactProductBindingError,
+  composeChangeImpactDashboard,
+  composePhaseDashboardFramework,
+  DashboardProductBindingError,
+  GaepEngine,
+} from "@gaep/engine"
 import { z, ZodError } from "zod"
 
 import {
@@ -55,6 +63,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "managed.review.apply",
   "managed.review.discard",
   "dashboard.framework",
+  "dashboard.changeImpact",
   "productStudio.designReadiness",
   "productStudio.search",
   "productStudio.exportBuild",
@@ -437,6 +446,74 @@ export class EngineHost {
               -32_039,
               "DASHBOARD_PRODUCT_CONTEXT_CHANGED",
               "The Product changed before the dashboard framework was composed; reload the current Product",
+            )
+          }
+          throw error
+        }
+      }
+      case "dashboard.changeImpact": {
+        const product = await this.engine.readProduct()
+        if (
+          request.params.expectedProductId.toLowerCase() !== product.id.toLowerCase()
+          || request.params.expectedProductRevision !== (product.revision ?? 1)
+          || request.params.expectedProductDigest !== canonicalDigest(product)
+        ) {
+          throw new HostRpcError(
+            -32_040,
+            "CHANGE_IMPACT_PRODUCT_CONTEXT_CHANGED",
+            "The Product changed before the Change/Impact dashboard was composed; reload the current Product",
+          )
+        }
+        let change: Change
+        try {
+          change = await this.engine.productStudio.readChange(request.params.expectedChangeId)
+        } catch {
+          throw new HostRpcError(
+            -32_041,
+            "CHANGE_IMPACT_CHANGE_CONTEXT_CHANGED",
+            "The Change is unavailable or changed before impact composition; reload the current Change",
+          )
+        }
+        const changeDigest = canonicalDigest(change)
+        if (
+          request.params.expectedChangeRevision !== change.revision
+          || request.params.expectedChangeDigest !== changeDigest
+        ) {
+          throw new HostRpcError(
+            -32_041,
+            "CHANGE_IMPACT_CHANGE_CONTEXT_CHANGED",
+            "The Change changed before the Change/Impact dashboard was composed; reload the current Change",
+          )
+        }
+        const [workItems, traceImpact, decisions, risks] = await Promise.all([
+          this.engine.productStudio.listWorkItems(),
+          this.engine.productStudio.impactAnalysis({
+            recordType: "change",
+            recordId: change.id,
+            revision: change.revision,
+            digest: changeDigest,
+          }),
+          this.engine.productStudio.listDecisions(),
+          this.engine.productStudio.listRisks(),
+        ])
+        try {
+          return composeChangeImpactDashboard(
+            { product, change, workItems, traceImpact, decisions, risks },
+            request.params,
+          )
+        } catch (error) {
+          if (error instanceof ChangeImpactProductBindingError) {
+            throw new HostRpcError(
+              -32_040,
+              "CHANGE_IMPACT_PRODUCT_CONTEXT_CHANGED",
+              "The Product changed before the Change/Impact dashboard was composed; reload the current Product",
+            )
+          }
+          if (error instanceof ChangeImpactChangeBindingError) {
+            throw new HostRpcError(
+              -32_041,
+              "CHANGE_IMPACT_CHANGE_CONTEXT_CHANGED",
+              "The Change changed before the Change/Impact dashboard was composed; reload the current Change",
             )
           }
           throw error

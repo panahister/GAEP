@@ -675,4 +675,84 @@ describe("engine host protocol", () => {
       params: { ...params, applicability: "applicable", ready: true },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
   })
+
+  it("composes a bounded Change/Impact dashboard from exact current Product and Change bindings", async () => {
+    const { initiativeId } = await createProductAndInitiative()
+    const product = await host.engine.readProduct()
+    const change = await host.engine.productStudio.createChange({
+      initiativeId,
+      title: "Host Change/Impact projection",
+      summary: "Expose one exact bounded Change without adding approval or effect authority.",
+      baseline: { kind: "genesis", declaration: "No shared host projection exists.", rationale: "First host slice." },
+      effectEnvelope: ["reversible-change"],
+    }, product.revision ?? 1, "gaep.host-test")
+    const workItem = await host.engine.productStudio.createWorkItem({
+      changeId: change.id,
+      title: "Bind one changed artifact",
+      objective: "Prove the host returns only current portable dashboard data.",
+      dependsOn: [],
+      completionCriteria: ["The exact response validates"],
+      evidenceCriteria: ["Hostile request tests pass"],
+      scope: {
+        read: [{ kind: "workspace-relative", path: "." }],
+        write: [{ kind: "workspace-relative", path: "packages/engine/src/change-impact-dashboard.ts" }],
+        effects: [],
+      },
+      owner: { kind: "agent", id: "gaep.host-test" },
+    }, product.revision ?? 1, "gaep.host-test")
+    const params = {
+      expectedProductId: product.id,
+      expectedProductRevision: product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(product),
+      expectedChangeId: change.id,
+      expectedChangeRevision: change.revision,
+      expectedChangeDigest: canonicalDigest(change),
+    }
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 5,
+      protocolVersion: 1,
+      method: "dashboard.changeImpact",
+      params,
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+
+    const result = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 6,
+      protocolVersion: 2,
+      method: "dashboard.changeImpact",
+      params,
+    }) as Record<string, unknown>
+    expect(result).toMatchObject({
+      kind: "change-impact-dashboard",
+      change: { recordId: change.id, state: "proposed", effectEnvelope: ["reversible-change"] },
+      workItems: [{ record: { recordId: workItem.id }, state: "proposed" }],
+      changedArtifacts: [{ locator: { kind: "workspace-relative", path: "packages/engine/src/change-impact-dashboard.ts" } }],
+      governance: {
+        approval: { state: "not-established", basis: "current-contract-has-no-change-approval-record" },
+        authorityBoundary: "decisions-and-risk-acceptance-do-not-approve-the-change",
+      },
+      freshness: { state: "current" },
+      authorityBoundary: "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects",
+    })
+    expect(JSON.stringify(result)).not.toContain(workspace)
+    expect(JSON.stringify(result)).not.toContain(product.name)
+    expect(JSON.stringify(result)).not.toContain(change.title)
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 7,
+      protocolVersion: 2,
+      method: "dashboard.changeImpact",
+      params: { ...params, expectedChangeDigest: `sha256:${"0".repeat(64)}` },
+    })).rejects.toMatchObject({ kind: "CHANGE_IMPACT_CHANGE_CONTEXT_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 8,
+      protocolVersion: 2,
+      method: "dashboard.changeImpact",
+      params: { ...params, approved: true },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+  })
 })
