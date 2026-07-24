@@ -1,0 +1,102 @@
+import { createHash } from "node:crypto"
+import { createReadStream } from "node:fs"
+import { lstat } from "node:fs/promises"
+import { basename, dirname, join, relative, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+
+const definitions = [
+  {
+    host: "vscode",
+    packageId: "gaep.gaep-vscode@0.1.0",
+    path: "apps/vscode/dist/gaep-vscode.vsix",
+    maximumBytes: 32 * 1024 * 1024,
+    requiredHere: true,
+    verification: "exact-isolated-install-list-and-activation",
+  },
+  {
+    host: "kiro",
+    packageId: "gaep.gaep-kiro@0.1.0",
+    path: "apps/kiro/dist/gaep-kiro.vsix",
+    maximumBytes: 8 * 1024 * 1024,
+    requiredHere: true,
+    verification: "exact-isolated-compatible-host-install-list-and-activation",
+  },
+  {
+    host: "rider",
+    packageId: "dev.gaep.productstudio@0.1.0",
+    path: "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+    maximumBytes: 64 * 1024 * 1024,
+    requiredHere: true,
+    verification: "clean-test-instrumentation-build-and-archive-structure",
+  },
+  {
+    host: "visual-studio",
+    packageId: "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+    path: "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
+    maximumBytes: 128 * 1024 * 1024,
+    requiredHere: process.platform === "win32",
+    verification: "windows-vsix-container-and-install-pending",
+  },
+]
+
+async function digest(path) {
+  const hash = createHash("sha256")
+  for await (const chunk of createReadStream(path)) hash.update(chunk)
+  return `sha256:${hash.digest("hex")}`
+}
+
+async function inspect(definition) {
+  const path = join(repositoryRoot, definition.path)
+  let metadata
+  try {
+    metadata = await lstat(path)
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      if (definition.requiredHere) throw new Error(`Required local package is missing: ${definition.path}`)
+      return {
+        host: definition.host,
+        packageId: definition.packageId,
+        artifactPath: definition.path,
+        status: "not-produced-on-this-platform",
+        verification: definition.verification,
+        limitation: "Native Visual Studio VSIX container creation and installation require Windows and VsixUtil.exe.",
+      }
+    }
+    throw error
+  }
+  if (!metadata.isFile() || metadata.isSymbolicLink() || metadata.size < 1 || metadata.size > definition.maximumBytes) {
+    throw new Error(`Local package is unsafe or outside its size bound: ${definition.path}`)
+  }
+  if (basename(path) !== basename(definition.path) || relative(repositoryRoot, path).startsWith("..")) {
+    throw new Error(`Local package path escaped the repository: ${definition.path}`)
+  }
+  return {
+    host: definition.host,
+    packageId: definition.packageId,
+    artifactPath: definition.path,
+    status: "produced",
+    bytes: metadata.size,
+    digest: await digest(path),
+    verification: definition.verification,
+  }
+}
+
+const artifacts = []
+for (const definition of definitions) artifacts.push(await inspect(definition))
+const produced = artifacts.filter((artifact) => artifact.status === "produced").length
+const report = {
+  schemaVersion: 1,
+  kind: "gaep-local-ide-package-report-v1",
+  packageSet: "phase-0-local",
+  artifacts,
+  summary: {
+    expected: definitions.length,
+    produced,
+    missingNativePlatformArtifacts: definitions.length - produced,
+  },
+  claimBoundary: "Local package evidence is not release signing, publication, supported-OS acceptance, Product readiness, or release approval.",
+}
+
+process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
