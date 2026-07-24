@@ -1,10 +1,19 @@
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
-import { lstat } from "node:fs/promises"
-import { basename, dirname, join, relative, resolve } from "node:path"
+import { lstat, writeFile } from "node:fs/promises"
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+let outputPath
+if (process.argv.length > 2) {
+  if (process.argv.length !== 4 || process.argv[2] !== "--output") throw new Error("Usage: report_local_packages.mjs [--output <repository-relative-path>]")
+  outputPath = resolve(repositoryRoot, process.argv[3])
+  const outputRelative = relative(repositoryRoot, outputPath)
+  if (outputRelative === "" || outputRelative === ".." || outputRelative.startsWith(`..${sep}`) || isAbsolute(outputRelative)) {
+    throw new Error("Local package report output must stay inside the repository")
+  }
+}
 
 const definitions = [
   {
@@ -37,7 +46,7 @@ const definitions = [
     path: "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
     maximumBytes: 128 * 1024 * 1024,
     requiredHere: process.platform === "win32",
-    verification: "cross-platform-shell-contribution-remote-ui-binding-and-53-protocol-controller-checks-windows-container-install-pending",
+    verification: "cross-platform-shell-contribution-remote-ui-binding-and-63-protocol-controller-checks-windows-container-install-pending",
   },
 ]
 
@@ -99,4 +108,6 @@ const report = {
   claimBoundary: "Local package evidence is not release signing, publication, supported-OS acceptance, Product readiness, or release approval.",
 }
 
-process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+const serialized = `${JSON.stringify(report, null, 2)}\n`
+if (outputPath) await writeFile(outputPath, serialized, { encoding: "utf8", flag: "wx" })
+process.stdout.write(serialized)
