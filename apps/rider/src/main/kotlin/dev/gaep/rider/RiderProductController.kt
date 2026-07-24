@@ -130,6 +130,47 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun previewManagedReadOnly(charterId: String, workflowPlanId: String): ManagedReadOnlyPreview =
+        client.previewManagedReadOnly(
+            charterId = parseUuid(charterId, "Charter ID"),
+            workflowPlanId = parseUuid(workflowPlanId, "Workflow Plan ID"),
+        )
+
+    fun renderManagedReadOnlyPreview(preview: ManagedReadOnlyPreview): String = buildString {
+        appendLine("GAEP managed read-only execution preview")
+        appendLine()
+        appendLine("Exact preview digest: ${preview.previewDigest}")
+        appendLine("Product: ${preview.productId}")
+        appendLine("Initiative: ${preview.initiativeId}")
+        appendLine("Charter: ${preview.charterId}")
+        appendLine("Charter digest: ${preview.charterDigest}")
+        appendLine("Workflow Plan: ${preview.workflowPlanId}")
+        appendLine("Workflow Plan digest: ${preview.workflowPlanDigest}")
+        appendLine("Provider binding: ${preview.agentId} / ${preview.modelId} (${preview.adapterId})")
+        appendLine("Selection digest: ${preview.selectionDigest}")
+        appendLine("Strategy: ${preview.strategy}")
+        appendLine("Steps: ${preview.stepIds.size}")
+        appendLine("Context packs: ${preview.contextPackCount}")
+        appendLine("Declared reads: ${preview.readScopeCount}")
+        appendLine("Evidence and stop gates: ${preview.gates.size}")
+        preview.gates.forEach { gate ->
+            appendLine("  - ${gate.key} [${gate.phase}]${gate.stepId?.let { "; step=$it" }.orEmpty()}")
+            appendLine("    Criteria digest: ${gate.criteriaDigest}")
+            if (gate.criteria.isEmpty()) appendLine("    Criteria: none declared")
+            gate.criteria.forEach { appendLine("    - $it") }
+        }
+        appendLine()
+        appendLine("Authority boundary: ${preview.authorityBoundary}")
+        appendLine("Every Tool permission is denied. No tool definitions, write scopes, or non-observation effects are granted.")
+        append("This preview does not execute work; the exact digest must be attested separately.")
+    }
+
+    fun executeManagedReadOnly(
+        preview: ManagedReadOnlyPreview,
+        actorId: String,
+        timeoutMs: Int = 120_000,
+    ): String = renderManagedReadOnlyReceipt(client.executeManagedReadOnly(preview, timeoutMs, actorId))
+
     fun listPortableDesignSnapshots(): String {
         val page = client.listPortableDesignSnapshots(offset = 0, limit = PortableDesignProtocol.DEFAULT_PAGE_SIZE)
         return buildString {
@@ -248,6 +289,35 @@ internal class RiderProductController(private val client: GaepEngineClient) {
                 "create a Run, approve tools or effects, or grant execution authority.",
         )
         append("Machine-local paths, credentials, provider sessions, and raw provider output are not included.")
+    }
+
+    private fun renderManagedReadOnlyReceipt(receipt: ManagedReadOnlyReceipt): String = buildString {
+        appendLine("GAEP managed read-only execution receipt")
+        appendLine()
+        appendLine("Governed Run: ${receipt.runId}")
+        appendLine("Managed Run: ${receipt.managedRunId}")
+        appendLine("Exact preview digest: ${receipt.previewDigest}")
+        appendLine("Product: ${receipt.productId}")
+        appendLine("Initiative: ${receipt.initiativeId}")
+        appendLine("Provider binding: ${receipt.agentId} / ${receipt.modelId} (${receipt.adapterId})")
+        appendLine("Mode: ${receipt.mode}")
+        appendLine("Governed state: ${receipt.state}")
+        appendLine("Provider disposition: ${receipt.providerDisposition}")
+        appendLine("Governed outcome: ${receipt.outcomeStatus}")
+        appendLine("Outcome basis: ${receipt.outcomeBasis}")
+        appendLine("Completed steps: ${receipt.completedStepCount} of ${receipt.totalStepCount}")
+        appendLine("Verified event count: ${receipt.eventCount}")
+        appendLine("Result digest: ${receipt.resultDigest}")
+        appendLine("Evidence digest: ${receipt.evidenceDigest}")
+        appendLine("Warnings: ${receipt.warnings.size}")
+        if (receipt.warnings.isEmpty()) appendLine("  - none")
+        receipt.warnings.forEach { appendLine("  - $it") }
+        appendLine("Started: ${receipt.startedAt}")
+        appendLine("Ended: ${receipt.endedAt}")
+        appendLine()
+        appendLine("Provider completion and governed outcome are separate claims; one never substitutes for the other.")
+        appendLine("Authority boundary: ${receipt.authorityBoundary}")
+        append("No local paths, credentials, provider sessions, raw provider output, or source bytes are included.")
     }
 
     private fun renderSettingValue(value: PortableAgentSettingValue): String = when (value) {

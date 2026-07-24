@@ -1,14 +1,22 @@
 package dev.gaep.rider
 
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.google.gson.JsonElement
+import com.google.gson.JsonPrimitive
+import java.security.MessageDigest
 import java.util.UUID
 
 private val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
 private val initiativeId = UUID.fromString("22222222-2222-4222-8222-222222222222")
 internal val runId: UUID = UUID.fromString("12121212-1212-4121-8121-121212121212")
 private val charterId: UUID = UUID.fromString("13131313-1313-4131-8131-131313131313")
+internal val managedCharterId: UUID = charterId
+internal val workflowPlanId: UUID = UUID.fromString("15151515-1515-4151-8151-151515151515")
+internal val managedRunId: UUID = UUID.fromString("16161616-1616-4161-8161-161616161616")
+internal val governedManagedRunId: UUID = UUID.fromString("17171717-1717-4171-8171-171717171717")
+internal val workflowStepId: UUID = UUID.fromString("18181818-1818-4181-8181-181818181818")
 internal val handoffId: UUID = UUID.fromString("14141414-1414-4141-8141-141414141414")
 internal val bundleId: UUID = UUID.fromString("33333333-3333-4333-8333-333333333333")
 internal val missingBundleId: UUID = UUID.fromString("44444444-4444-4444-8444-444444444444")
@@ -86,12 +94,163 @@ fun main(arguments: Array<String>) {
                 workspacePath.endsWith("bad-handoff"),
                 workspacePath.endsWith("bad-handoff-binding"),
             )
+            "managed.readonly.preview" -> handleManagedReadOnlyPreview(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "managed.readonly.execute" -> handleManagedReadOnlyExecute(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
             "productStudio.portableDesign.import" -> handleImport(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.list" -> handleList(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.read" -> handleRead(id, request.getAsJsonObject("params"))
             else -> writeError(id, -32_601, "METHOD_NOT_FOUND", "PRIVATE UNKNOWN METHOD")
         }
     }
+}
+
+private fun handleManagedReadOnlyPreview(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("charterId", "workflowPlanId") ||
+        params.get("charterId").asString != managedCharterId.toString() ||
+        params.get("workflowPlanId").asString != workflowPlanId.toString()
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED PREVIEW")
+        return
+    }
+    writeResult(id, managedReadOnlyPreview(workspacePath))
+}
+
+private fun handleManagedReadOnlyExecute(id: Long, params: JsonObject, workspacePath: String) {
+    val preview = managedReadOnlyPreview("")
+    if (params.keySet() != setOf(
+            "actorId", "charterId", "workflowPlanId", "expectedPreviewDigest", "timeoutMs", "confirmation",
+        ) || params.get("actorId").asString != "founder.review" ||
+        params.get("charterId").asString != managedCharterId.toString() ||
+        params.get("workflowPlanId").asString != workflowPlanId.toString() ||
+        params.get("expectedPreviewDigest").asString != preview.get("previewDigest").asString ||
+        params.get("timeoutMs").asInt != 120_000 ||
+        params.get("confirmation").asString != "attest-exact-managed-readonly-preview"
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED EXECUTION")
+        return
+    }
+    val receipt = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "managed-readonly-receipt")
+        addProperty("previewDigest", preview.get("previewDigest").asString)
+        addProperty("runId", governedManagedRunId.toString())
+        addProperty("managedRunId", managedRunId.toString())
+        addProperty("productId", productId.toString())
+        addProperty("initiativeId", initiativeId.toString())
+        addProperty("adapterId", "openai-codex")
+        addProperty("agentId", "codex")
+        addProperty("modelId", "gpt-5.6-codex")
+        addProperty("mode", "codex-staged")
+        addProperty("state", "completed")
+        addProperty("providerDisposition", "completed")
+        addProperty("outcomeStatus", "satisfied")
+        addProperty("outcomeBasis", "postcondition-evaluator")
+        addProperty("eventCount", 5)
+        addProperty("completedStepCount", 1)
+        addProperty("totalStepCount", 1)
+        addProperty("resultDigest", "sha256:${"8".repeat(64)}")
+        addProperty("evidenceDigest", "sha256:${"9".repeat(64)}")
+        add("warnings", JsonArray())
+        addProperty("startedAt", "2026-07-24T09:00:00.000Z")
+        addProperty("endedAt", "2026-07-24T09:00:05.000Z")
+        addProperty(
+            "authorityBoundary",
+            "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+        )
+    }
+    if (workspacePath.endsWith("bad-managed-receipt")) {
+        receipt.addProperty("rawProviderOutput", "$privateRoot/$privateCredential")
+    }
+    if (workspacePath.endsWith("bad-managed-binding")) {
+        receipt.addProperty("modelId", "private-unbound-model")
+    }
+    writeResult(id, receipt)
+}
+
+private fun managedReadOnlyPreview(workspacePath: String): JsonObject {
+    val preview = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "managed-readonly-preview")
+        addProperty("productId", productId.toString())
+        addProperty("initiativeId", initiativeId.toString())
+        addProperty("charterId", managedCharterId.toString())
+        addProperty("charterDigest", "sha256:${"3".repeat(64)}")
+        addProperty("workflowPlanId", workflowPlanId.toString())
+        addProperty("workflowPlanDigest", "sha256:${"4".repeat(64)}")
+        addProperty("adapterId", "openai-codex")
+        addProperty("agentId", "codex")
+        addProperty("modelId", "gpt-5.6-codex")
+        addProperty("selectionDigest", "sha256:${"5".repeat(64)}")
+        addProperty("strategy", "sequential")
+        add("stepIds", JsonArray().apply { add(workflowStepId.toString()) })
+        addProperty("contextPackCount", 1)
+        addProperty("readScopeCount", 2)
+        add("gates", JsonArray().apply {
+            add(managedGate("charter:required-evidence", null, "charter-evidence", listOf("Record verified output evidence")))
+            add(managedGate("charter:stop-conditions", null, "charter-stop-conditions", listOf("Stop on any attempted write")))
+            add(managedGate("step:$workflowStepId:preconditions", workflowStepId, "preconditions", listOf("Read scope remains exact")))
+            add(managedGate("step:$workflowStepId:outputs", workflowStepId, "outputs", listOf("Return an observation summary")))
+            add(managedGate("step:$workflowStepId:evidence", workflowStepId, "evidence", listOf("Record deterministic evidence")))
+            add(managedGate("step:$workflowStepId:stop-conditions", workflowStepId, "stop-conditions", listOf("Stop if a Tool is requested")))
+        })
+        addProperty(
+            "authorityBoundary",
+            "managed-readonly-preview-does-not-grant-execution-or-effect-authority",
+        )
+    }
+    if (workspacePath.endsWith("bad-managed-criterion")) {
+        val gate = preview.getAsJsonArray("gates")[0].asJsonObject
+        val criteria = JsonArray().apply { add("Inspect $privateRoot; token=$privateCredential") }
+        gate.add("criteria", criteria)
+        gate.addProperty("criteriaDigest", canonicalDigest(criteria))
+    }
+    preview.addProperty("previewDigest", canonicalDigest(preview))
+    if (workspacePath.endsWith("bad-managed-preview")) {
+        preview.addProperty("workspacePath", "$privateRoot/$privateCredential")
+    }
+    if (workspacePath.endsWith("bad-managed-digest")) {
+        preview.addProperty("previewDigest", "sha256:${"0".repeat(64)}")
+    }
+    return preview
+}
+
+private fun managedGate(
+    key: String,
+    stepId: UUID?,
+    phase: String,
+    criteriaValues: List<String>,
+): JsonObject {
+    val criteria = JsonArray().apply { criteriaValues.forEach(::add) }
+    return JsonObject().apply {
+        addProperty("key", key)
+        stepId?.let { addProperty("stepId", it.toString()) }
+        addProperty("phase", phase)
+        add("criteria", criteria)
+        addProperty("criteriaDigest", canonicalDigest(criteria))
+    }
+}
+
+private fun canonicalDigest(value: JsonElement): String {
+    val bytes = MessageDigest.getInstance("SHA-256").digest(canonicalJson(value).toByteArray(Charsets.UTF_8))
+    return "sha256:" + bytes.joinToString("") { byte ->
+        (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+    }
+}
+
+private fun canonicalJson(value: JsonElement): String = when {
+    value.isJsonObject -> value.asJsonObject.keySet().sorted().joinToString(",", "{", "}") { key ->
+        "${JsonPrimitive(key)}:${canonicalJson(value.asJsonObject.get(key))}"
+    }
+    value.isJsonArray -> value.asJsonArray.joinToString(",", "[", "]") { canonicalJson(it) }
+    else -> value.toString()
 }
 
 private fun handleSelectAgent(id: Long, params: JsonObject) {

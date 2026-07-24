@@ -151,6 +151,50 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun previewManagedReadOnly(
+        charterId: UUID,
+        workflowPlanId: UUID,
+    ): ManagedReadOnlyPreview {
+        require(charterId != UUID(0, 0)) { "Charter ID must be a non-empty UUID" }
+        require(workflowPlanId != UUID(0, 0)) { "Workflow Plan ID must be a non-empty UUID" }
+        val params = JsonObject().apply {
+            addProperty("charterId", charterId.toString())
+            addProperty("workflowPlanId", workflowPlanId.toString())
+        }
+        return portableRequest("managed.readonly.preview", params) { envelope ->
+            PortableDesignProtocol.parseManagedReadOnlyPreviewEnvelope(
+                envelope,
+                expectedCharterId = charterId,
+                expectedWorkflowPlanId = workflowPlanId,
+            )
+        }
+    }
+
+    @Synchronized
+    fun executeManagedReadOnly(
+        preview: ManagedReadOnlyPreview,
+        timeoutMs: Int,
+        actorId: String,
+    ): ManagedReadOnlyReceipt {
+        PortableDesignProtocol.validateManagedReadOnlyPreview(preview)
+        require(timeoutMs in 1_000..300_000) {
+            "Managed read-only timeout must be between 1,000 and 300,000 milliseconds"
+        }
+        val normalizedActorId = PortableDesignProtocol.normalizeActorId(actorId)
+        val params = JsonObject().apply {
+            addProperty("actorId", normalizedActorId)
+            addProperty("charterId", preview.charterId.toString())
+            addProperty("workflowPlanId", preview.workflowPlanId.toString())
+            addProperty("expectedPreviewDigest", preview.previewDigest)
+            addProperty("timeoutMs", timeoutMs)
+            addProperty("confirmation", "attest-exact-managed-readonly-preview")
+        }
+        return portableRequest("managed.readonly.execute", params) { envelope ->
+            PortableDesignProtocol.parseManagedReadOnlyReceiptEnvelope(envelope, preview)
+        }
+    }
+
+    @Synchronized
     fun importPortableDesignSnapshot(
         bundleRoot: Path,
         expectedProductId: UUID,

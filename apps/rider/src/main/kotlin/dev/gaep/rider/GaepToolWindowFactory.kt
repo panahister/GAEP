@@ -15,6 +15,7 @@ import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.GridLayout
 import java.nio.file.Path
+import java.util.UUID
 import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.JTextArea
@@ -83,6 +84,14 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += handoffButton
         actions.add(handoffButton)
 
+        val managedReadOnlyButton = JButton("Run managed read-only work…").apply {
+            addActionListener {
+                beginManagedReadOnly(project, controller, status, output, buttons)
+            }
+        }
+        buttons += managedReadOnlyButton
+        actions.add(managedReadOnlyButton)
+
         addAction("List design imports") { controller.listPortableDesignSnapshots() }
 
         val readButton = JButton("Read design import…").apply {
@@ -129,6 +138,8 @@ class GaepToolWindowFactory : ToolWindowFactory {
         val governance = JTextArea(
             "Agent boundary: Codex and Claude readiness is observation-only; guarded selection and versioned handoff record portable configuration and history only. " +
                 "They cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. " +
+                "Managed read-only execution is a separate digest-bound command: every Tool permission remains denied, only observation is allowed, " +
+                "and provider completion is reported separately from the governed outcome. " +
                 "Governance boundary: portable-design imports remain pending human review. " +
                 "Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. " +
                 "Only validated metadata and digests are displayed; local paths and source content are withheld.",
@@ -153,6 +164,105 @@ class GaepToolWindowFactory : ToolWindowFactory {
         val content = ContentFactory.getInstance().createContent(panel, "Product", false)
         content.setDisposer(client)
         toolWindow.contentManager.addContent(content)
+    }
+
+    private fun beginManagedReadOnly(
+        project: Project,
+        controller: RiderProductController,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+    ) {
+        val charterId = promptManagedUuid(
+            project,
+            label = "Execution Charter ID",
+            prompt = "Enter the exact confirmed managed Execution Charter UUID.",
+        ) ?: return
+        val workflowPlanId = promptManagedUuid(
+            project,
+            label = "Workflow Plan ID",
+            prompt = "Enter the exact Workflow Plan UUID bound by that Charter.",
+        ) ?: return
+        buttons.forEach { it.isEnabled = false }
+        status.text = "Loading exact managed read-only preview…"
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching { controller.previewManagedReadOnly(charterId, workflowPlanId) }
+                .onSuccess { preview ->
+                    ApplicationManager.getApplication().invokeLater {
+                        val previewText = controller.renderManagedReadOnlyPreview(preview)
+                        output.text = previewText
+                        output.caretPosition = 0
+                        val decision = Messages.showDialog(
+                            project,
+                            "Attest this exact managed read-only preview?\n\n" +
+                                "Preview digest: ${preview.previewDigest}\n" +
+                                "Provider: ${preview.agentId} / ${preview.modelId} (${preview.adapterId})\n" +
+                                "Strategy: ${preview.strategy}; steps: ${preview.stepIds.size}; gates: ${preview.gates.size}\n" +
+                                "Declared reads: ${preview.readScopeCount}; context packs: ${preview.contextPackCount}\n\n" +
+                                "Every Tool permission is denied. No write scope or non-observation effect is granted. " +
+                                "The timeout is fixed at 120 seconds. This blocking local protocol does not provide interactive cancel or resume. " +
+                                "Any Codex stage with changes, conflict, or pending review is discarded or rejected; only a proven zero-change stage may close automatically. " +
+                                "Provider completion and governed outcome remain separate claims.",
+                            "Attest Exact Managed Read-Only Preview",
+                            arrayOf("Attest Exact Preview and Run", "Cancel"),
+                            1,
+                            Messages.getWarningIcon(),
+                        )
+                        if (decision != 0) {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "Managed read-only execution cancelled",
+                                "$previewText\n\nExecution was cancelled. The preview granted no execution or effect authority.",
+                            )
+                            return@invokeLater
+                        }
+                        status.text = "Executing attested managed read-only work…"
+                        ApplicationManager.getApplication().executeOnPooledThread {
+                            val actorId = System.getenv("GAEP_ACTOR_ID") ?: "gaep.rider-local-human"
+                            runCatching {
+                                controller.executeManagedReadOnly(
+                                    preview = preview,
+                                    actorId = actorId,
+                                    timeoutMs = 120_000,
+                                )
+                            }.onSuccess { result ->
+                                ApplicationManager.getApplication().invokeLater {
+                                    finishRequest(status, output, buttons, "GAEP managed read-only receipt verified", result)
+                                }
+                            }.onFailure { error ->
+                                ApplicationManager.getApplication().invokeLater {
+                                    finishRequest(status, output, buttons, "GAEP managed read-only request stopped", safeError(error))
+                                }
+                            }
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    ApplicationManager.getApplication().invokeLater {
+                        finishRequest(status, output, buttons, "GAEP managed read-only request stopped", safeError(error))
+                    }
+                }
+        }
+    }
+
+    private fun promptManagedUuid(project: Project, label: String, prompt: String): String? {
+        while (true) {
+            val entered = Messages.showInputDialog(
+                project,
+                prompt,
+                "Managed Read-Only Execution",
+                Messages.getQuestionIcon(),
+            ) ?: return null
+            val normalized = entered.trim()
+            val parsed = runCatching {
+                require(normalized.matches(Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
+                UUID.fromString(normalized).also { require(it != UUID(0, 0)) }
+            }
+            if (parsed.isSuccess) return parsed.getOrThrow().toString()
+            Messages.showErrorDialog(project, "$label must be a non-empty UUID.", "Managed Read-Only Execution")
+        }
     }
 
     private fun beginAgentSelection(

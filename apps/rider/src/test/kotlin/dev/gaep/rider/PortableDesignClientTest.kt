@@ -27,6 +27,11 @@ class PortableDesignClientTest {
         val badRunsRoot = Files.createDirectory(temporaryRoot.resolve("bad-runs"))
         val badHandoffRoot = Files.createDirectory(temporaryRoot.resolve("bad-handoff"))
         val badHandoffBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-handoff-binding"))
+        val badManagedPreviewRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-preview"))
+        val badManagedCriterionRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-criterion"))
+        val badManagedDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-digest"))
+        val badManagedReceiptRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-receipt"))
+        val badManagedBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-binding"))
         val executable = createFakeEngineLauncher(temporaryRoot)
         GaepEngineClient(temporaryRoot, executable.toString()).use { client ->
             val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -124,6 +129,88 @@ class PortableDesignClientTest {
             assertEquals(selectedState.selection, runs.single().agent)
             assertFalse(Gson().toJson(runs).contains(privateRoot))
             assertFalse(Gson().toJson(runs).contains(privateCredential))
+
+            val managedPreview = controller.previewManagedReadOnly(
+                managedCharterId.toString(),
+                workflowPlanId.toString(),
+            )
+            assertEquals(managedCharterId, managedPreview.charterId)
+            assertEquals(workflowPlanId, managedPreview.workflowPlanId)
+            assertEquals(listOf(workflowStepId), managedPreview.stepIds)
+            assertEquals(6, managedPreview.gates.size)
+            assertEquals(2, managedPreview.readScopeCount)
+            assertTrue(managedPreview.previewDigest.startsWith("sha256:"))
+            val managedPreviewJson = Gson().toJson(managedPreview)
+            assertFalse(managedPreviewJson.contains(privateRoot))
+            assertFalse(managedPreviewJson.contains(privateCredential))
+            val managedPreviewFields = ManagedReadOnlyPreview::class.java.declaredFields.map { it.name }.toSet()
+            assertFalse(managedPreviewFields.any { field ->
+                listOf("path", "token", "credential", "raw", "session", "tool").any {
+                    field.contains(it, ignoreCase = true)
+                }
+            })
+            val managedPreviewView = controller.renderManagedReadOnlyPreview(managedPreview)
+            assertTrue(managedPreviewView.contains(managedPreview.previewDigest))
+            assertTrue(managedPreviewView.contains("Every Tool permission is denied"))
+            assertTrue(managedPreviewView.contains("This preview does not execute work"))
+            val managedReceiptView = controller.executeManagedReadOnly(
+                preview = managedPreview,
+                actorId = "founder.review",
+                timeoutMs = 120_000,
+            )
+            assertTrue(managedReceiptView.contains(governedManagedRunId.toString()))
+            assertTrue(managedReceiptView.contains(managedRunId.toString()))
+            assertTrue(managedReceiptView.contains("Governed outcome: satisfied"))
+            assertTrue(managedReceiptView.contains("Provider completion and governed outcome are separate claims"))
+            assertFalse(managedReceiptView.contains(privateRoot))
+            assertFalse(managedReceiptView.contains(privateCredential))
+            val managedReceiptFields = ManagedReadOnlyReceipt::class.java.declaredFields.map { it.name }.toSet()
+            assertFalse(managedReceiptFields.any { field ->
+                listOf("path", "token", "credential", "raw", "session", "output").any {
+                    field.contains(it, ignoreCase = true)
+                }
+            })
+            assertFailsWith<IllegalArgumentException> {
+                client.executeManagedReadOnly(managedPreview, timeoutMs = 999, actorId = "founder.review")
+            }
+            assertFailsWith<IllegalArgumentException> {
+                client.executeManagedReadOnly(
+                    managedPreview.copy(previewDigest = "sha256:${"0".repeat(64)}"),
+                    timeoutMs = 120_000,
+                    actorId = "founder.review",
+                )
+            }
+            val privateCriterion = managedPreview.gates.first().copy(
+                criteria = listOf("Inspect $privateRoot; token=$privateCredential"),
+            )
+            val invalidPrivatePreview = managedPreview.copy(
+                gates = listOf(privateCriterion) + managedPreview.gates.drop(1),
+            )
+            val invalidPrivateCriterion = hostError {
+                client.executeManagedReadOnly(invalidPrivatePreview, timeoutMs = 120_000, actorId = "founder.review")
+            }
+            assertEquals("HOST_RESPONSE_INVALID", invalidPrivateCriterion.kind)
+            assertPrivateTextWithheld(invalidPrivateCriterion)
+
+            listOf(badManagedPreviewRoot, badManagedCriterionRoot, badManagedDigestRoot).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val invalidPreview = hostError {
+                        hostileClient.previewManagedReadOnly(managedCharterId, workflowPlanId)
+                    }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidPreview.kind)
+                    assertPrivateTextWithheld(invalidPreview)
+                }
+            }
+            listOf(badManagedReceiptRoot, badManagedBindingRoot).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val preview = hostileClient.previewManagedReadOnly(managedCharterId, workflowPlanId)
+                    val invalidReceipt = hostError {
+                        hostileClient.executeManagedReadOnly(preview, timeoutMs = 120_000, actorId = "founder.review")
+                    }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidReceipt.kind)
+                    assertPrivateTextWithheld(invalidReceipt)
+                }
+            }
 
             val handoffContext = controller.readAgentHandoffContext()
             assertEquals(runId, handoffContext.sourceRun.id)
@@ -274,7 +361,10 @@ class PortableDesignClientTest {
             val importView = controller.importPortableDesignSnapshot(bundleRoot, "founder.review")
             assertTrue(importView.contains("exact Product revision 7"))
             assertTrue(importView.contains("not approval or a baseline"))
-            listOf(productView, readinessView, selectedView, handoffView, listView, readView, importView).forEach { rendered ->
+            listOf(
+                productView, readinessView, selectedView, managedPreviewView, managedReceiptView,
+                handoffView, listView, readView, importView,
+            ).forEach { rendered ->
                 assertFalse(rendered.contains(bundleRoot.toString()))
                 assertFalse(rendered.contains(privateRoot))
                 assertFalse(rendered.contains(privateCredential))

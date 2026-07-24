@@ -12,6 +12,7 @@ import java.io.StringReader
 import java.math.BigDecimal
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
 
@@ -145,6 +146,63 @@ data class AgentHandoff(
     val acknowledgedAt: Instant?,
 )
 
+data class ManagedReadOnlyGatePreview(
+    val key: String,
+    val stepId: UUID?,
+    val phase: String,
+    val criteria: List<String>,
+    val criteriaDigest: String,
+)
+
+data class ManagedReadOnlyPreview(
+    val schemaVersion: Int,
+    val kind: String,
+    val productId: UUID,
+    val initiativeId: UUID,
+    val charterId: UUID,
+    val charterDigest: String,
+    val workflowPlanId: UUID,
+    val workflowPlanDigest: String,
+    val adapterId: String,
+    val agentId: String,
+    val modelId: String,
+    val selectionDigest: String,
+    val strategy: String,
+    val stepIds: List<UUID>,
+    val contextPackCount: Int,
+    val readScopeCount: Int,
+    val gates: List<ManagedReadOnlyGatePreview>,
+    val authorityBoundary: String,
+    val previewDigest: String,
+)
+
+data class ManagedReadOnlyReceipt(
+    val schemaVersion: Int,
+    val kind: String,
+    val previewDigest: String,
+    val runId: UUID,
+    val managedRunId: UUID,
+    val productId: UUID,
+    val initiativeId: UUID,
+    val adapterId: String,
+    val agentId: String,
+    val modelId: String,
+    val mode: String,
+    val state: String,
+    val providerDisposition: String,
+    val outcomeStatus: String,
+    val outcomeBasis: String,
+    val eventCount: Int,
+    val completedStepCount: Int,
+    val totalStepCount: Int,
+    val resultDigest: String,
+    val evidenceDigest: String,
+    val warnings: List<String>,
+    val startedAt: Instant,
+    val endedAt: Instant,
+    val authorityBoundary: String,
+)
+
 data class AgentReadinessSnapshot(
     val schemaVersion: Int,
     val adapterId: String,
@@ -245,7 +303,7 @@ internal object PortableDesignProtocol {
     const val MAX_FRAME_BYTES = 1024 * 1024
     const val MAX_SAFE_PRODUCT_REVISION = 9_007_199_254_740_991L
     private const val MAX_JSON_DEPTH = 64
-    private const val MAX_JSON_COLLECTION_ENTRIES = 512
+    private const val MAX_JSON_COLLECTION_ENTRIES = 4_096
     private const val SUMMARY_KIND = "portable-design-snapshot-summary"
     private const val GOVERNANCE_STATE = "pending-human-review"
     private const val CLAIM_BOUNDARY = "import-validation-is-not-design-approval-or-baseline"
@@ -256,6 +314,10 @@ internal object PortableDesignProtocol {
         "Every item remains pending human review; source review is an upstream claim only."
     private const val PAGE_PRIVACY_BOUNDARY =
         "Items contain validated metadata and digests only; local paths and source content are omitted."
+    private const val MANAGED_PREVIEW_BOUNDARY =
+        "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
+    private const val MANAGED_RECEIPT_BOUNDARY =
+        "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority"
     private val actorIdPattern = Regex("^[A-Za-z0-9][A-Za-z0-9._:@+-]*$")
     private val toolPattern = Regex("^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
     private val digestPattern = Regex("^sha256:[0-9a-f]{64}$")
@@ -337,6 +399,14 @@ internal object PortableDesignProtocol {
         "AGENT_SELECTION_INVALID" to StableHostError(
             -32_018,
             "The persisted Agent Selection is invalid and cannot be replaced implicitly.",
+        ),
+        "MANAGED_READ_ONLY_PREVIEW_CHANGED" to StableHostError(
+            -32_022,
+            "The managed read-only preview changed before execution; review the current preview.",
+        ),
+        "MANAGED_READ_ONLY_RECEIPT_INVALID" to StableHostError(
+            -32_023,
+            "GAEP could not verify the managed read-only terminal evidence.",
         ),
         "INVALID_PARAMS" to StableHostError(-32_602, "The GAEP engine rejected the local request parameters."),
         "PROTOCOL_UPGRADE_REQUIRED" to StableHostError(
@@ -597,6 +667,198 @@ internal object PortableDesignProtocol {
             capabilityDifferences = parseHandoffTextArray(handoff.get("capabilityDifferences")),
             createdAt = handoff.requireInstant("createdAt"),
             acknowledgedAt = handoff.get("acknowledgedAt")?.let { parseInstant(it) },
+        )
+    }
+
+    fun parseManagedReadOnlyPreviewEnvelope(
+        envelope: JsonObject,
+        expectedCharterId: UUID,
+        expectedWorkflowPlanId: UUID,
+    ): ManagedReadOnlyPreview {
+        val preview = readResult(envelope).requireObject()
+        preview.requireExactKeys(
+            "schemaVersion", "kind", "productId", "initiativeId", "charterId", "charterDigest",
+            "workflowPlanId", "workflowPlanDigest", "adapterId", "agentId", "modelId", "selectionDigest",
+            "strategy", "stepIds", "contextPackCount", "readScopeCount", "gates", "authorityBoundary",
+            "previewDigest",
+        )
+        if (preview.requireInt("schemaVersion") != 1 ||
+            preview.requireString("kind") != "managed-readonly-preview" ||
+            preview.requireString("authorityBoundary") != MANAGED_PREVIEW_BOUNDARY
+        ) {
+            throw invalidResponse()
+        }
+        val productId = preview.requireNonEmptyUuid("productId")
+        val initiativeId = preview.requireNonEmptyUuid("initiativeId")
+        val charterId = preview.requireNonEmptyUuid("charterId")
+        val workflowPlanId = preview.requireNonEmptyUuid("workflowPlanId")
+        if (charterId != expectedCharterId || workflowPlanId != expectedWorkflowPlanId) throw invalidResponse()
+        val strategy = preview.requireString("strategy").takeIf { it in setOf("sequential", "parallel-readonly") }
+            ?: throw invalidResponse()
+        val rawStepIds = preview.get("stepIds")
+        val rawGates = preview.get("gates")
+        if (rawStepIds == null || !rawStepIds.isJsonArray || rawStepIds.asJsonArray.size() !in 1..512 ||
+            rawGates == null || !rawGates.isJsonArray || rawGates.asJsonArray.size() !in 2..2_050
+        ) {
+            throw invalidResponse()
+        }
+        val stepIds = rawStepIds.asJsonArray.map { parseNonEmptyUuid(it.requireString()) }.toList()
+        if (stepIds.distinct().size != stepIds.size) throw invalidResponse()
+        val gates = rawGates.asJsonArray.map { parseManagedReadOnlyGate(it.requireObject(), stepIds.toSet()) }.toList()
+        if (gates.map { it.key }.distinct().size != gates.size) throw invalidResponse()
+        val contextPackCount = preview.requireInt("contextPackCount")
+        val readScopeCount = preview.requireInt("readScopeCount")
+        if (contextPackCount !in 0..512 || readScopeCount !in 0..100_000) throw invalidResponse()
+        val previewDigest = preview.requireDigest("previewDigest")
+        val digestBody = preview.deepCopy().apply { remove("previewDigest") }
+        if (previewDigest != canonicalDigest(digestBody)) throw invalidResponse()
+        return ManagedReadOnlyPreview(
+            schemaVersion = 1,
+            kind = "managed-readonly-preview",
+            productId = productId,
+            initiativeId = initiativeId,
+            charterId = charterId,
+            charterDigest = preview.requireDigest("charterDigest"),
+            workflowPlanId = workflowPlanId,
+            workflowPlanDigest = preview.requireDigest("workflowPlanDigest"),
+            adapterId = preview.requirePortableText("adapterId", minimum = 1),
+            agentId = preview.requirePortableText("agentId", minimum = 1),
+            modelId = preview.requirePortableText("modelId", minimum = 1),
+            selectionDigest = preview.requireDigest("selectionDigest"),
+            strategy = strategy,
+            stepIds = stepIds,
+            contextPackCount = contextPackCount,
+            readScopeCount = readScopeCount,
+            gates = gates,
+            authorityBoundary = MANAGED_PREVIEW_BOUNDARY,
+            previewDigest = previewDigest,
+        )
+    }
+
+    fun parseManagedReadOnlyReceiptEnvelope(
+        envelope: JsonObject,
+        preview: ManagedReadOnlyPreview,
+    ): ManagedReadOnlyReceipt {
+        validateManagedReadOnlyPreview(preview)
+        val receipt = readResult(envelope).requireObject()
+        receipt.requireExactKeys(
+            "schemaVersion", "kind", "previewDigest", "runId", "managedRunId", "productId", "initiativeId",
+            "adapterId", "agentId", "modelId", "mode", "state", "providerDisposition", "outcomeStatus",
+            "outcomeBasis", "eventCount", "completedStepCount", "totalStepCount", "resultDigest",
+            "evidenceDigest", "warnings", "startedAt", "endedAt", "authorityBoundary",
+        )
+        if (receipt.requireInt("schemaVersion") != 1 ||
+            receipt.requireString("kind") != "managed-readonly-receipt" ||
+            receipt.requireString("authorityBoundary") != MANAGED_RECEIPT_BOUNDARY
+        ) {
+            throw invalidResponse()
+        }
+        val productId = receipt.requireNonEmptyUuid("productId")
+        val initiativeId = receipt.requireNonEmptyUuid("initiativeId")
+        val adapterId = receipt.requirePortableText("adapterId", minimum = 1)
+        val agentId = receipt.requirePortableText("agentId", minimum = 1)
+        val modelId = receipt.requirePortableText("modelId", minimum = 1)
+        val previewDigest = receipt.requireDigest("previewDigest")
+        if (previewDigest != preview.previewDigest || productId != preview.productId ||
+            initiativeId != preview.initiativeId || adapterId != preview.adapterId ||
+            agentId != preview.agentId || modelId != preview.modelId
+        ) {
+            throw invalidResponse()
+        }
+        val mode = receipt.requireOneOf("mode", setOf("codex-staged", "manual-offline", "claude-context-only"))
+        val state = receipt.requireOneOf(
+            "state",
+            setOf("review-required", "completed", "failed", "cancelled", "timed-out", "unknown", "conflict", "discarded"),
+        )
+        val providerDisposition = receipt.requireOneOf(
+            "providerDisposition",
+            setOf("completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown"),
+        )
+        val outcomeStatus = receipt.requireOneOf("outcomeStatus", setOf("satisfied", "failed", "not-assessed", "indeterminate"))
+        val outcomeBasis = receipt.requireOneOf(
+            "outcomeBasis",
+            setOf("postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure"),
+        )
+        val eventCount = receipt.requireBoundedNonNegativeInt("eventCount", 4_096)
+        val completedStepCount = receipt.requireBoundedNonNegativeInt("completedStepCount", 512)
+        val totalStepCount = receipt.requireBoundedNonNegativeInt("totalStepCount", 512)
+        if (totalStepCount != preview.stepIds.size || completedStepCount > totalStepCount ||
+            (state == "completed" && (providerDisposition != "completed" || outcomeStatus != "satisfied"))
+        ) {
+            throw invalidResponse()
+        }
+        val warningValues = setOf(
+            "provider-warning-redacted", "provider-output-redacted", "coordinator-failure", "runtime-output-truncated",
+            "staging-read-confinement-unattested", "postcondition-evaluator-failed", "local-cleanup-pending",
+            "local-cleanup-failed", "runtime-warning",
+        )
+        val rawWarnings = receipt.get("warnings")
+        if (rawWarnings == null || !rawWarnings.isJsonArray || rawWarnings.asJsonArray.size() > 128) throw invalidResponse()
+        val warnings = rawWarnings.asJsonArray.map { it.requireString().takeIf(warningValues::contains) ?: throw invalidResponse() }
+        val startedAt = receipt.requireInstant("startedAt")
+        val endedAt = receipt.requireInstant("endedAt")
+        if (endedAt.isBefore(startedAt)) throw invalidResponse()
+        return ManagedReadOnlyReceipt(
+            schemaVersion = 1,
+            kind = "managed-readonly-receipt",
+            previewDigest = previewDigest,
+            runId = receipt.requireNonEmptyUuid("runId"),
+            managedRunId = receipt.requireNonEmptyUuid("managedRunId"),
+            productId = productId,
+            initiativeId = initiativeId,
+            adapterId = adapterId,
+            agentId = agentId,
+            modelId = modelId,
+            mode = mode,
+            state = state,
+            providerDisposition = providerDisposition,
+            outcomeStatus = outcomeStatus,
+            outcomeBasis = outcomeBasis,
+            eventCount = eventCount,
+            completedStepCount = completedStepCount,
+            totalStepCount = totalStepCount,
+            resultDigest = receipt.requireDigest("resultDigest"),
+            evidenceDigest = receipt.requireDigest("evidenceDigest"),
+            warnings = warnings,
+            startedAt = startedAt,
+            endedAt = endedAt,
+            authorityBoundary = MANAGED_RECEIPT_BOUNDARY,
+        )
+    }
+
+    fun validateManagedReadOnlyPreview(preview: ManagedReadOnlyPreview) {
+        require(preview.productId != UUID(0, 0) && preview.initiativeId != UUID(0, 0) &&
+            preview.charterId != UUID(0, 0) && preview.workflowPlanId != UUID(0, 0)
+        ) { "Managed read-only preview identities must be non-empty UUIDs" }
+        val body = managedReadOnlyPreviewBody(preview)
+        require(preview.previewDigest == canonicalDigest(body)) { "Managed read-only preview digest is invalid" }
+    }
+
+    private fun parseManagedReadOnlyGate(gate: JsonObject, stepIds: Set<UUID>): ManagedReadOnlyGatePreview {
+        gate.requireKeys(
+            required = setOf("key", "phase", "criteria", "criteriaDigest"),
+            optional = setOf("stepId"),
+        )
+        val phase = gate.requireOneOf(
+            "phase",
+            setOf("preconditions", "outputs", "evidence", "stop-conditions", "charter-evidence", "charter-stop-conditions"),
+        )
+        val stepId = gate.get("stepId")?.let { parseNonEmptyUuid(it.requireString()) }
+        val charterGate = phase == "charter-evidence" || phase == "charter-stop-conditions"
+        if (charterGate == (stepId != null) || (stepId != null && stepId !in stepIds)) throw invalidResponse()
+        val rawCriteria = gate.get("criteria")
+        if (rawCriteria == null || !rawCriteria.isJsonArray || rawCriteria.asJsonArray.size() > 256) throw invalidResponse()
+        val criteria = rawCriteria.asJsonArray.map {
+            portableHandoffText(it.requireString(), minimum = 1, maximum = 2_000)
+        }.toList()
+        val criteriaDigest = gate.requireDigest("criteriaDigest")
+        if (criteriaDigest != canonicalDigest(rawCriteria)) throw invalidResponse()
+        return ManagedReadOnlyGatePreview(
+            key = portableHandoffText(gate.requireString("key"), minimum = 1, maximum = 500),
+            stepId = stepId,
+            phase = phase,
+            criteria = criteria,
+            criteriaDigest = criteriaDigest,
         )
     }
 
@@ -1119,6 +1381,100 @@ internal object PortableDesignProtocol {
         return value
     }
 
+    private fun managedReadOnlyPreviewBody(preview: ManagedReadOnlyPreview): JsonObject {
+        require(preview.schemaVersion == 1 && preview.kind == "managed-readonly-preview") {
+            "Managed read-only preview identity is invalid"
+        }
+        require(preview.authorityBoundary == MANAGED_PREVIEW_BOUNDARY) {
+            "Managed read-only preview authority boundary is invalid"
+        }
+        require(preview.productId != UUID(0, 0) && preview.initiativeId != UUID(0, 0) &&
+            preview.charterId != UUID(0, 0) && preview.workflowPlanId != UUID(0, 0)
+        ) { "Managed read-only preview identities must be non-empty UUIDs" }
+        require(digestPattern.matches(preview.charterDigest) && digestPattern.matches(preview.workflowPlanDigest) &&
+            digestPattern.matches(preview.selectionDigest) && digestPattern.matches(preview.previewDigest)
+        ) { "Managed read-only preview digests are invalid" }
+        portableText(preview.adapterId, minimum = 1)
+        portableText(preview.agentId, minimum = 1)
+        portableText(preview.modelId, minimum = 1)
+        require(preview.strategy in setOf("sequential", "parallel-readonly")) {
+            "Managed read-only preview strategy is invalid"
+        }
+        require(preview.stepIds.size in 1..512 && preview.stepIds.none { it == UUID(0, 0) } &&
+            preview.stepIds.distinct().size == preview.stepIds.size
+        ) { "Managed read-only preview steps are invalid" }
+        require(preview.contextPackCount in 0..512 && preview.readScopeCount in 0..100_000) {
+            "Managed read-only preview counts are invalid"
+        }
+        require(preview.gates.size in 2..2_050 && preview.gates.map { it.key }.distinct().size == preview.gates.size) {
+            "Managed read-only preview gates are invalid"
+        }
+        val stepIds = preview.stepIds.toSet()
+        val gates = JsonArray().apply {
+            preview.gates.forEach { gate ->
+                val charterGate = gate.phase == "charter-evidence" || gate.phase == "charter-stop-conditions"
+                require(gate.phase in setOf(
+                    "preconditions", "outputs", "evidence", "stop-conditions",
+                    "charter-evidence", "charter-stop-conditions",
+                ) && charterGate != (gate.stepId != null) &&
+                    (gate.stepId == null || (gate.stepId != UUID(0, 0) && gate.stepId in stepIds))
+                ) { "Managed read-only preview gate binding is invalid" }
+                val key = portableHandoffText(gate.key, minimum = 1, maximum = 500)
+                require(gate.criteria.size <= 256) { "Managed read-only preview gate criteria are invalid" }
+                val criteria = JsonArray().apply {
+                    gate.criteria.forEach { criterion ->
+                        add(portableHandoffText(criterion, minimum = 1, maximum = 2_000))
+                    }
+                }
+                require(digestPattern.matches(gate.criteriaDigest) &&
+                    gate.criteriaDigest == canonicalDigest(criteria)
+                ) { "Managed read-only preview gate digest is invalid" }
+                add(JsonObject().apply {
+                    addProperty("key", key)
+                    gate.stepId?.let { addProperty("stepId", it.toString()) }
+                    addProperty("phase", gate.phase)
+                    add("criteria", criteria)
+                    addProperty("criteriaDigest", gate.criteriaDigest)
+                })
+            }
+        }
+        return JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "managed-readonly-preview")
+            addProperty("productId", preview.productId.toString())
+            addProperty("initiativeId", preview.initiativeId.toString())
+            addProperty("charterId", preview.charterId.toString())
+            addProperty("charterDigest", preview.charterDigest)
+            addProperty("workflowPlanId", preview.workflowPlanId.toString())
+            addProperty("workflowPlanDigest", preview.workflowPlanDigest)
+            addProperty("adapterId", preview.adapterId)
+            addProperty("agentId", preview.agentId)
+            addProperty("modelId", preview.modelId)
+            addProperty("selectionDigest", preview.selectionDigest)
+            addProperty("strategy", preview.strategy)
+            add("stepIds", JsonArray().apply { preview.stepIds.forEach { add(it.toString()) } })
+            addProperty("contextPackCount", preview.contextPackCount)
+            addProperty("readScopeCount", preview.readScopeCount)
+            add("gates", gates)
+            addProperty("authorityBoundary", MANAGED_PREVIEW_BOUNDARY)
+        }
+    }
+
+    private fun canonicalDigest(value: JsonElement): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(canonicalJson(value).toByteArray(Charsets.UTF_8))
+        return "sha256:" + bytes.joinToString("") { byte ->
+            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+        }
+    }
+
+    private fun canonicalJson(value: JsonElement): String = when {
+        value.isJsonObject -> value.asJsonObject.keySet().sorted().joinToString(",", "{", "}") { key ->
+            "${JsonPrimitive(key)}:${canonicalJson(value.asJsonObject.get(key))}"
+        }
+        value.isJsonArray -> value.asJsonArray.joinToString(",", "[", "]") { canonicalJson(it) }
+        else -> value.toString()
+    }
+
     private fun readJsonValue(reader: JsonReader, depth: Int): JsonElement {
         if (depth > MAX_JSON_DEPTH) throw invalidResponse()
         return when (reader.peek()) {
@@ -1181,6 +1537,15 @@ internal object PortableDesignProtocol {
         }
     }
 
+    private fun JsonObject.requireBoundedNonNegativeInt(name: String, maximum: Int): Int =
+        requireInt(name).takeIf { it in 0..maximum } ?: throw invalidResponse()
+
+    private fun JsonObject.requireOneOf(name: String, values: Set<String>): String =
+        requireString(name).takeIf(values::contains) ?: throw invalidResponse()
+
+    private fun JsonObject.requireNonEmptyUuid(name: String): UUID =
+        parseNonEmptyUuid(get(name)?.requireString() ?: throw invalidResponse())
+
     private fun JsonObject.requireLong(name: String): Long {
         val value = get(name)
         if (value == null || !value.isJsonPrimitive || !value.asJsonPrimitive.isNumber) throw invalidResponse()
@@ -1218,6 +1583,9 @@ internal object PortableDesignProtocol {
             throw invalidResponse()
         }
     }
+
+    private fun parseNonEmptyUuid(value: String): UUID =
+        parseUuid(value).takeIf { it != UUID(0, 0) } ?: throw invalidResponse()
 
     private fun isNetworkPath(path: String): Boolean = path.startsWith("//") || path.startsWith("\\\\")
 }
