@@ -72,7 +72,7 @@
         { "capabilityId": "codex-readiness", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["probeAgentReadiness()", "Observation only: this view cannot select a model"] }] },
         { "capabilityId": "claude-readiness", "state": "implemented", "probes": [{ "path": "apps/kiro/src/protocol.ts", "contains": ["parseAgentReadiness", "parseAgentReadinessSnapshot"] }] },
         { "capabilityId": "provider-model-selection", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function selectAgent", "client.selectAgent({", "Confirm Selection"] }] },
-        { "capabilityId": "versioned-handoff", "state": "not-implemented", "reason": "Portable provider/model handoff is not wired." },
+        { "capabilityId": "versioned-handoff", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function handoffAgent", "client.createHandoff({", "Create Handoff and Switch"] }] },
         { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },
         { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
         { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "Only a static Product boundary and portable-design commands exist." }
@@ -107,7 +107,7 @@
         { "capabilityId": "codex-readiness", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.probeAgentReadiness()", "Observation only: this view cannot select a model"] }] },
         { "capabilityId": "claude-readiness", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Refresh agent readiness", "observation-only"] }] },
         { "capabilityId": "provider-model-selection", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["beginAgentSelection", "controller.selectAgent(", "Confirm Selection"] }] },
-        { "capabilityId": "versioned-handoff", "state": "not-implemented", "reason": "Portable provider/model handoff is not wired." },
+        { "capabilityId": "versioned-handoff", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["beginAgentHandoff", "controller.createAgentHandoff(", "Create Handoff and Switch"] }] },
         { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },
         { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
         { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "The native surface currently exposes Product and portable-design metadata only." }
@@ -121,7 +121,7 @@
       "runtimeEvidence": {
         "source": "package-report",
         "level": "cross-platform-compile-and-controller-only",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-63-protocol-controller-checks-windows-container-install-pending"],
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-77-protocol-controller-checks-windows-container-install-pending"],
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
@@ -136,7 +136,7 @@
         { "capabilityId": "codex-readiness", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ProbeAgentReadinessAsync", "Observation only: this view cannot select a model"] }] },
         { "capabilityId": "claude-readiness", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Refresh Codex and Claude readiness", "RefreshAgentReadinessCommand"] }] },
         { "capabilityId": "provider-model-selection", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["LoadAgentSelectionCommand", "SelectAgentCommand", "Confirm guarded selection"] }] },
-        { "capabilityId": "versioned-handoff", "state": "not-implemented", "reason": "Portable provider/model handoff is not wired." },
+        { "capabilityId": "versioned-handoff", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["LoadAgentHandoffCommand", "CreateAgentHandoffCommand", "Create versioned handoff"] }] },
         { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },
         { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
         { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "The Remote UI currently exposes Product and portable-design metadata only." }
