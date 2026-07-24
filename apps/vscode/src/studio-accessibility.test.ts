@@ -271,6 +271,46 @@ function snapshot(route: StudioRoute, revision: number): StudioSnapshot {
     workspace: { label: "Isolated test workspace", trusted: true, connectivity: "online", health: "valid" },
     navigation: sections(),
     surface: { kind: "ready", title: "Ready", issues: [], actions: [] },
+    dashboard: {
+      schemaVersion: 1,
+      kind: "phase-dashboard-framework",
+      catalogVersion: "gaep-phase-dashboards-v1",
+      product: {
+        recordType: "product",
+        recordId: "00000000-0000-4000-8000-000000000001",
+        revision: 2,
+        digest: `sha256:${"a".repeat(64)}`,
+      },
+      phase: { id: "phase-0-1a-foundation", label: "Phase 0 / 1A — Four-IDE Platform Foundation" },
+      panels: [
+        {
+          id: "foundation-summary",
+          role: "phase",
+          title: "Foundation summary and readiness",
+          applicability: { status: "unknown", basis: "not-evaluated" },
+          state: "attention-required",
+        },
+        {
+          id: "change-impact",
+          role: "change-impact",
+          title: "Change and impact",
+          applicability: { status: "applicable", basis: "phase-contract" },
+          state: "active",
+        },
+        {
+          id: "agent-model",
+          role: "agent-model",
+          title: "Agent and model",
+          applicability: { status: "applicable", basis: "phase-contract" },
+          state: "active",
+        },
+      ],
+      observedAt: "2026-07-24T00:00:00.000Z",
+      sourceBoundary: "governed-repository-and-engine-only",
+      limitations: ["This projection grants no phase or readiness authority."],
+      authorityBoundary: "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
+      compositionDigest: `sha256:${"b".repeat(64)}`,
+    },
     page: pageFor(route),
     inspector: route === "trace" ? {
       title: "Trace record",
@@ -362,6 +402,9 @@ describe("Product Studio rendered accessibility", () => {
       expect(dom.window.document.getElementById("studio-page-title")?.textContent, route).toBeTruthy()
       expect(dom.window.document.querySelectorAll(".studio-nav button"), route).toHaveLength(studioRoutes.length)
       expect(dom.window.document.querySelectorAll("#studio-route-select option"), route).toHaveLength(studioRoutes.length)
+      expect(dom.window.document.querySelector('[aria-label="Phase-scoped dashboard framework"]'), route).not.toBeNull()
+      expect(dom.window.document.body.textContent, route).toMatch(/Unknown — governed decision required/)
+      expect(dom.window.document.body.textContent, route).toMatch(/does not prove phase approval, readiness, acceptance, or applicability/)
       for (const element of dom.window.document.querySelectorAll<HTMLElement>("[tabindex]")) {
         expect(Number(element.getAttribute("tabindex")), `${route}: ${element.outerHTML}`).toBeLessThanOrEqual(0)
       }

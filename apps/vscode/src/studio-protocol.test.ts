@@ -112,6 +112,46 @@ function snapshot(route: StudioRoute): StudioSnapshot {
     workspace: { label: "Workspace", trusted: true, connectivity: "online", health: "valid" },
     navigation: studioRoutes.map((candidate) => ({ route: candidate, state: "not-started", gapCount: 0 })),
     surface: { kind: "ready", title: "Ready", issues: [], actions: [] },
+    dashboard: {
+      schemaVersion: 1,
+      kind: "phase-dashboard-framework",
+      catalogVersion: "gaep-phase-dashboards-v1",
+      product: {
+        recordType: "product",
+        recordId: "00000000-0000-4000-8000-000000000001",
+        revision: 2,
+        digest: `sha256:${"a".repeat(64)}`,
+      },
+      phase: { id: "phase-0-1a-foundation", label: "Phase 0 / 1A — Four-IDE Platform Foundation" },
+      panels: [
+        {
+          id: "foundation-summary",
+          role: "phase",
+          title: "Foundation summary and readiness",
+          applicability: { status: "unknown", basis: "not-evaluated" },
+          state: "attention-required",
+        },
+        {
+          id: "change-impact",
+          role: "change-impact",
+          title: "Change and impact",
+          applicability: { status: "applicable", basis: "phase-contract" },
+          state: "active",
+        },
+        {
+          id: "agent-model",
+          role: "agent-model",
+          title: "Agent and model",
+          applicability: { status: "applicable", basis: "phase-contract" },
+          state: "active",
+        },
+      ],
+      observedAt: "2026-07-24T00:00:00.000Z",
+      sourceBoundary: "governed-repository-and-engine-only",
+      limitations: ["This projection grants no phase or readiness authority."],
+      authorityBoundary: "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
+      compositionDigest: `sha256:${"b".repeat(64)}`,
+    },
     page: pageFor(route),
     footer: { draftState: "clean", validationSummary: "Not validated" },
   }
@@ -146,6 +186,15 @@ describe("Product Studio protocol", () => {
     for (const route of studioRoutes) expect(isStudioSnapshot(snapshot(route)), route).toBe(true)
     expect(isStudioSnapshot({ ...snapshot("overview"), route: "trace" })).toBe(false)
     expect(isStudioSnapshot({ ...snapshot("overview"), unexpected: true })).toBe(false)
+    expect(isStudioSnapshot({
+      ...snapshot("overview"),
+      dashboard: { ...snapshot("overview").dashboard, ready: true },
+    })).toBe(false)
+    const forgedDashboard = structuredClone(snapshot("overview"))
+    if (!forgedDashboard.dashboard) throw new Error("Expected dashboard fixture")
+    forgedDashboard.dashboard.panels[0]!.applicability = { status: "applicable", basis: "not-evaluated" }
+    forgedDashboard.dashboard.panels[0]!.state = "active"
+    expect(isStudioSnapshot(forgedDashboard)).toBe(false)
   })
 
   it("requires bounded Managed Run evidence, handoff history, and normalized event fields", () => {

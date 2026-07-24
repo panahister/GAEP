@@ -1,3 +1,5 @@
+import type { PhaseDashboardFramework } from "@gaep/contracts"
+
 export const studioProtocolVersion = 1 as const
 
 export const studioRoutes = [
@@ -402,6 +404,7 @@ export interface StudioSnapshot {
   workspace: StudioWorkspaceSnapshot
   navigation: StudioNavigationItem[]
   surface: StudioSurfaceState
+  dashboard?: PhaseDashboardFramework
   page: StudioPageSnapshot
   inspector?: StudioInspectorSnapshot
   footer: StudioFooterSnapshot
@@ -498,6 +501,26 @@ const domainPageKindSet = new Set<string>(studioDomainPageKinds)
 const completionStateSet = new Set<string>(["not-started", "in-progress", "complete", "blocked", "invalid"])
 const surfaceKindSet = new Set<string>(studioSurfaceKinds)
 const draftStateSet = new Set<string>(studioDraftStates)
+const phaseDashboardCatalog = {
+  "phase-0-1a-foundation": ["Phase 0 / 1A — Four-IDE Platform Foundation", "foundation-summary"],
+  "phase-1b-product": ["Phase 1B — Product P0–P4", "product-architecture"],
+  "phase-1c-acceptance": ["Phase 1C — Four-IDE Phase 1 Release", "phase-release-readiness"],
+  "phase-2-design": ["Phase 2 — UX and Figma Loop", "ux-figma"],
+  "phase-3a-readiness": ["Phase 3A — Backlog and Implementation Readiness", "backlog-readiness"],
+  "phase-3b-implementation": ["Phase 3B — Controlled Implementation and QA", "implementation-qa"],
+  "phase-4-release-learning": ["Phase 4 — Release, Publish, and Learning", "release-learning"],
+} as const
+const phaseDashboardPanelCatalog = {
+  "foundation-summary": ["phase", "Foundation summary and readiness"],
+  "product-architecture": ["phase", "Product and architecture"],
+  "phase-release-readiness": ["phase", "Phase release readiness"],
+  "ux-figma": ["phase", "UX and Figma"],
+  "backlog-readiness": ["phase", "Backlog and implementation readiness"],
+  "implementation-qa": ["phase", "Controlled implementation and QA"],
+  "release-learning": ["phase", "Release and learning"],
+  "change-impact": ["change-impact", "Change and impact"],
+  "agent-model": ["agent-model", "Agent and model"],
+} as const
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -522,6 +545,55 @@ function isOptionalString(value: unknown): value is string | undefined {
 
 function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0
+}
+
+function isExactDashboardReference(value: unknown, recordType: "product" | "decision"): boolean {
+  return isRecord(value) && hasOnlyKeys(value, ["recordType", "recordId", "revision", "digest"]) &&
+    value.recordType === recordType && typeof value.recordId === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value.recordId) &&
+    isNonNegativeInteger(value.revision) && value.revision > 0 && typeof value.digest === "string" &&
+    /^sha256:[0-9a-f]{64}$/u.test(value.digest)
+}
+
+function isDashboardApplicability(value: unknown): boolean {
+  if (!isRecord(value) || !hasOnlyKeys(value, ["status", "basis", "decision"])) return false
+  if (!["applicable", "not-applicable", "unknown"].includes(String(value.status)) ||
+      !["phase-contract", "governed-decision", "not-evaluated"].includes(String(value.basis))) return false
+  if (value.basis === "phase-contract") return value.status === "applicable" && value.decision === undefined
+  if (value.basis === "not-evaluated") return value.status === "unknown" && value.decision === undefined
+  return value.status !== "unknown" && isExactDashboardReference(value.decision, "decision")
+}
+
+function isPhaseDashboardFramework(value: unknown): value is PhaseDashboardFramework {
+  if (!isRecord(value) || !hasOnlyKeys(value, [
+    "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt", "sourceBoundary",
+    "limitations", "authorityBoundary", "compositionDigest",
+  ])) return false
+  if (value.schemaVersion !== 1 || value.kind !== "phase-dashboard-framework" ||
+      value.catalogVersion !== "gaep-phase-dashboards-v1" || !isExactDashboardReference(value.product, "product") ||
+      !isRecord(value.phase) || !hasOnlyKeys(value.phase, ["id", "label"]) || typeof value.phase.id !== "string" ||
+      !(value.phase.id in phaseDashboardCatalog) || typeof value.phase.label !== "string") return false
+  const phase = phaseDashboardCatalog[value.phase.id as keyof typeof phaseDashboardCatalog]
+  if (value.phase.label !== phase[0] || !Array.isArray(value.panels) || value.panels.length !== 3) return false
+  const expected = [phase[1], "change-impact", "agent-model"] as const
+  for (const [index, panel] of value.panels.entries()) {
+    if (!isRecord(panel) || !hasOnlyKeys(panel, ["id", "role", "title", "applicability", "state"]) ||
+        panel.id !== expected[index] || typeof panel.id !== "string" || !(panel.id in phaseDashboardPanelCatalog)) return false
+    const definition = phaseDashboardPanelCatalog[panel.id as keyof typeof phaseDashboardPanelCatalog]
+    if (panel.role !== definition[0] || panel.title !== definition[1] || !isDashboardApplicability(panel.applicability) ||
+        !isRecord(panel.applicability)) return false
+    const expectedState = panel.applicability.status === "applicable"
+      ? "active"
+      : panel.applicability.status === "not-applicable"
+        ? "not-applicable"
+        : "attention-required"
+    if (panel.state !== expectedState) return false
+  }
+  return typeof value.observedAt === "string" && Number.isFinite(Date.parse(value.observedAt)) &&
+    value.sourceBoundary === "governed-repository-and-engine-only" && Array.isArray(value.limitations) &&
+    value.limitations.length >= 1 && value.limitations.length <= 8 && value.limitations.every((item) => isNonEmptyString(item) && item.length <= 1_000) &&
+    value.authorityBoundary === "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence" &&
+    typeof value.compositionDigest === "string" && /^sha256:[0-9a-f]{64}$/u.test(value.compositionDigest)
 }
 
 function isOpaqueContextGeneration(value: unknown): value is string {
@@ -939,7 +1011,7 @@ function routeMatchesPage(route: StudioRoute, page: Record<string, unknown>): bo
 
 export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
   if (!isRecord(value) || !hasOnlyKeys(value, [
-    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "page", "inspector", "footer",
+    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "page", "inspector", "footer",
   ])) return false
   if (value.protocolVersion !== studioProtocolVersion || !isOpaqueContextGeneration(value.contextGeneration) ||
     !isNonNegativeInteger(value.snapshotRevision) || !isStudioRoute(value.route)) {
@@ -951,6 +1023,7 @@ export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
     !["online", "offline", "provider-absent"].includes(String(value.workspace.connectivity)) ||
     !isNonEmptyString(value.workspace.health)) return false
   if (!isStudioSurfaceState(value.surface)) return false
+  if (value.dashboard !== undefined && !isPhaseDashboardFramework(value.dashboard)) return false
   if (!Array.isArray(value.navigation) || value.navigation.length !== studioRoutes.length) return false
   const navigationRoutes = value.navigation.flatMap((entry) =>
     isRecord(entry) && hasOnlyKeys(entry, ["route", "state", "gapCount"]) && isStudioRoute(entry.route) &&

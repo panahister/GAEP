@@ -573,6 +573,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const studioDataSource = new CurrentEngineStudioDataSource({
     contextGeneration: () => studioContextGeneration,
+    deliveryPhase: () => "phase-0-1a-foundation",
     trusted: () => vscode.workspace.isTrusted,
     workspace: () => selectedFolder ? { name: selectedFolder.name, path: selectedFolder.uri.fsPath } : undefined,
     engine: () => engine,

@@ -1,5 +1,7 @@
 /// <reference lib="dom" />
 
+import type { PhaseDashboardFramework } from "@gaep/contracts"
+
 import {
   isStudioAction,
   parseHostToStudioMessage,
@@ -197,7 +199,10 @@ class StudioShell {
     const main = element("main", "studio-main")
     main.id = "studio-main"
     main.tabIndex = -1
-    if (snapshot.surface.kind === "ready") main.append(this.renderPage(snapshot))
+    if (snapshot.surface.kind === "ready") {
+      main.append(this.renderPage(snapshot))
+      if (snapshot.dashboard) main.append(this.renderPhaseDashboard(snapshot.dashboard))
+    }
     else main.append(this.renderSurfaceState(snapshot.surface))
     workspace.append(main)
     if (snapshot.inspector) workspace.append(this.renderInspector(snapshot.inspector))
@@ -863,6 +868,53 @@ class StudioShell {
     }
     if (inspector.actions.length > 0) aside.append(this.renderActionRow(inspector.actions))
     return aside
+  }
+
+  private renderPhaseDashboard(dashboard: PhaseDashboardFramework): HTMLElement {
+    const section = element("section", "section phase-dashboard-framework")
+    section.setAttribute("aria-label", "Phase-scoped dashboard framework")
+    section.append(
+      element("h3", undefined, "Delivery phase dashboards"),
+      element("p", "prose", dashboard.phase.label),
+      element(
+        "p",
+        "prose muted",
+        `Exact Product revision ${dashboard.product.revision}; observed ${dashboard.observedAt}. This projection does not prove phase approval, readiness, acceptance, or applicability.`,
+      ),
+    )
+    section.append(this.renderTable({
+      id: "phase-dashboard-framework",
+      title: "Required dashboard views",
+      columns: [
+        { key: "view", label: "View" },
+        { key: "role", label: "Role" },
+        { key: "applicability", label: "Applicability" },
+        { key: "state", label: "Presentation state" },
+      ],
+      rows: dashboard.panels.map((panel) => ({
+        id: panel.id,
+        cells: {
+          view: panel.title,
+          role: panel.role === "phase" ? "Phase-specific" : panel.title,
+          applicability: panel.applicability.status === "unknown"
+            ? "Unknown — governed decision required"
+            : panel.applicability.status === "not-applicable"
+              ? "Not applicable — governed decision bound"
+              : panel.applicability.basis === "phase-contract"
+                ? "Applicable — required by phase contract"
+                : "Applicable — governed decision bound",
+          state: panel.state === "attention-required"
+            ? "Attention required"
+            : panel.state === "not-applicable"
+              ? "Not applicable"
+              : "Active",
+        },
+        actions: [],
+      })),
+      actions: [],
+    }))
+    section.append(this.renderStringList("Projection limits", dashboard.limitations))
+    return section
   }
 
   private renderFooter(snapshot: StudioSnapshot): HTMLElement {

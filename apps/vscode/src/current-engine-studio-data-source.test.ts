@@ -680,6 +680,7 @@ function harness(options: HarnessOptions = {}) {
   }
   const context: CurrentEngineStudioContext = {
     contextGeneration: () => contextGeneration,
+    deliveryPhase: () => "phase-0-1a-foundation",
     trusted: () => options.trusted ?? true,
     workspace: () => options.withWorkspace === false ? undefined : ({ name: "Example Product", path: workspacePath }),
     engine: () => engine,
@@ -760,6 +761,19 @@ describe("current-engine Product Studio data source", () => {
     const architecture = await source.readSnapshot("architecture")
     expect(architecture.surface.kind).toBe("ready")
     expect(architecture.page.design?.sectionId).toBe("architecture")
+    expect(architecture.dashboard).toMatchObject({
+      phase: { id: "phase-0-1a-foundation" },
+      panels: [
+        { id: "foundation-summary", state: "attention-required" },
+        { id: "change-impact", state: "active" },
+        { id: "agent-model", state: "active" },
+      ],
+    })
+    const dashboard = architecture.dashboard
+    if (!dashboard) throw new Error("Expected a Product-bound phase dashboard")
+    const { compositionDigest, ...dashboardContent } = dashboard
+    expect(compositionDigest).toBe(canonicalDigest(dashboardContent))
+    expect(JSON.stringify(dashboard)).not.toContain(product.name)
     const readiness = await source.readSnapshot("readiness")
     expect(readiness.page.kind).toBe("readiness")
     expect(readiness.page.kind === "readiness" && readiness.page.statement).toMatch(/Design readiness is ready/i)

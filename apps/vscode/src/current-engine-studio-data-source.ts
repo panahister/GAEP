@@ -31,8 +31,12 @@ import type {
   WorkItem,
   WorkflowPlan,
   WorkspaceHealthIssue,
+  DeliveryPhaseId,
+  PhaseDashboardFramework,
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
+import { canonicalDigest } from "@gaep/agent-sdk"
+import { composePhaseDashboardFramework } from "@gaep/engine"
 import type {
   ManagedRunListPage,
   ManagedRunListPageInput,
@@ -115,6 +119,7 @@ export type ExistingStudioCommand =
 
 export interface CurrentEngineStudioContext {
   contextGeneration(): string
+  deliveryPhase(): DeliveryPhaseId
   trusted(): boolean
   workspace(): { name: string; path: string } | undefined
   engine(): CurrentStudioEngineReader | undefined
@@ -2304,6 +2309,14 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       ? portableDesignSnapshotInspector(observed.selectedPortableDesignSnapshot)
       : this.selectedRecordId ? inspectorFor(observed, this.selectedRecordId) : undefined
     const sections = sectionsFor(observed)
+    const dashboard: PhaseDashboardFramework | undefined = observed.product
+      ? composePhaseDashboardFramework(observed.product, {
+          phase: this.context.deliveryPhase(),
+          expectedProductId: observed.product.id,
+          expectedProductRevision: observed.product.revision ?? 1,
+          expectedProductDigest: canonicalDigest(observed.product),
+        })
+      : undefined
     this.offeredProductRevision = observed.product?.revision ?? (observed.product ? 1 : undefined)
     return {
       protocolVersion: studioProtocolVersion,
@@ -2318,6 +2331,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       },
       navigation: sections,
       surface: surfaceFor(route, this.context, observed),
+      ...(dashboard ? { dashboard } : {}),
       page: page.page,
       ...(selectedInspector ?? page.inspector ? { inspector: selectedInspector ?? page.inspector } : {}),
       footer: {
