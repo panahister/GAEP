@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { portableSelectionSettingsSchema, truthClassSchema } from "./agent.js"
 import { effectDescriptorSchema } from "./execution.js"
 import {
   portableLocatorSchema,
@@ -487,6 +488,308 @@ export const changeImpactDashboardSchema = z.object({
   snapshotDigest: digestSchema,
 }).strict().superRefine(validateChangeImpactDashboard)
 
+const agentModelPortableTextSchema = z.string().trim().min(1).max(20_000)
+
+const agentModelExpectedSelectionSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("unselected") }).strict(),
+  z.object({ status: z.literal("selected"), selectionDigest: digestSchema }).strict(),
+  z.object({ status: z.literal("migration-required"), selectionDigest: digestSchema }).strict(),
+  z.object({ status: z.literal("invalid") }).strict(),
+])
+
+const agentModelExpectedCapabilitySchema = z.object({
+  adapterId: agentModelPortableTextSchema,
+  agentId: agentModelPortableTextSchema,
+  capabilityDigest: digestSchema,
+}).strict()
+
+export const agentModelDashboardRequestSchema = z.object({
+  expectedProductId: z.string().uuid(),
+  expectedProductRevision: z.number().int().positive(),
+  expectedProductDigest: digestSchema,
+  expectedSelection: agentModelExpectedSelectionSchema,
+  expectedCapabilities: z.array(agentModelExpectedCapabilitySchema).min(1).max(16),
+}).strict().superRefine((request, context) => {
+  const keys = request.expectedCapabilities.map((entry) => `${entry.adapterId}:${entry.agentId}`)
+  if (new Set(keys).size !== keys.length) {
+    context.addIssue({ code: "custom", path: ["expectedCapabilities"], message: "Expected capability bindings must be unique" })
+  }
+})
+
+const agentModelSelectionProjectionSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("unselected") }).strict(),
+  z.object({ status: z.literal("invalid") }).strict(),
+  z.object({
+    status: z.literal("selected"),
+    selectionDigest: digestSchema,
+    adapterId: agentModelPortableTextSchema,
+    agentId: agentModelPortableTextSchema,
+    modelId: agentModelPortableTextSchema,
+    modelTruthClass: truthClassSchema,
+    modelAlias: z.boolean().nullable(),
+    settings: portableSelectionSettingsSchema,
+    selectedAt: z.string().datetime(),
+    capabilityDigest: digestSchema,
+    capabilityState: z.enum(["current", "stale"]),
+  }).strict(),
+  z.object({
+    status: z.literal("migration-required"),
+    selectionDigest: digestSchema,
+    adapterId: agentModelPortableTextSchema,
+    agentId: agentModelPortableTextSchema,
+    modelId: agentModelPortableTextSchema,
+    modelTruthClass: truthClassSchema,
+    modelAlias: z.boolean().nullable(),
+    settings: portableSelectionSettingsSchema,
+    selectedAt: z.string().datetime(),
+    capabilityDigest: digestSchema,
+    capabilityState: z.literal("migration-required"),
+  }).strict(),
+])
+
+const agentModelLimitSchema = z.object({
+  shown: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  omitted: z.number().int().nonnegative(),
+}).strict().superRefine((limit, context) => {
+  if (limit.shown + limit.omitted !== limit.total) {
+    context.addIssue({ code: "custom", message: "Agent/Model limit totals must reconcile exactly" })
+  }
+})
+
+const agentModelCapabilitiesSchema = z.object({
+  adapterId: agentModelPortableTextSchema,
+  adapterVersion: agentModelPortableTextSchema,
+  agentId: agentModelPortableTextSchema,
+  agentLabel: agentModelPortableTextSchema,
+  runtimeVersion: agentModelPortableTextSchema.nullable(),
+  capabilityDigest: digestSchema,
+  detected: z.boolean(),
+  executionInterface: z.enum(["cli-jsonl", "cli-stream-json", "stdio-rpc", "managed-in-process", "unavailable"]),
+  interfaceMaturity: z.enum(["stable", "beta", "experimental", "unknown"]),
+  support: z.object({
+    resume: z.boolean(),
+    cancel: z.boolean(),
+    checkpoints: z.boolean(),
+    modelDiscovery: z.boolean(),
+    toolSelection: z.boolean(),
+  }).strict(),
+  modelCount: z.number().int().nonnegative().max(512),
+  limitations: z.object({
+    values: z.array(agentModelPortableTextSchema).max(64),
+    shown: z.number().int().nonnegative().max(64),
+    total: z.number().int().nonnegative().max(512),
+    omitted: z.number().int().nonnegative().max(512),
+  }).strict().superRefine((limitations, context) => {
+    if (limitations.values.length !== limitations.shown || limitations.shown + limitations.omitted !== limitations.total) {
+      context.addIssue({ code: "custom", message: "Capability limitation totals must reconcile exactly" })
+    }
+  }),
+  observedAt: z.string().datetime(),
+  selected: z.boolean(),
+}).strict()
+
+const agentModelRunReferenceSchema = z.object({
+  recordType: z.literal("run"),
+  recordId: z.string().uuid(),
+  revision: z.number().int().positive(),
+  digest: digestSchema,
+}).strict()
+
+const agentModelManagedProjectionSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("not-observed-in-bounded-window") }).strict(),
+  z.object({
+    status: z.literal("observed"),
+    record: z.object({
+      recordType: z.literal("managed-run"),
+      recordId: z.string().uuid(),
+      revision: z.number().int().positive(),
+      digest: digestSchema,
+    }).strict(),
+    mode: z.enum(["codex-staged", "manual-offline", "claude-context-only"]),
+    state: z.enum([
+      "prepared", "running", "review-required", "applying", "completed", "failed", "cancelled", "timed-out",
+      "unknown", "conflict", "discarded",
+    ]),
+    attemptNumber: z.number().int().positive().max(1_000_000),
+    bindingsDigest: digestSchema,
+    provider: z.object({
+      adapterId: agentModelPortableTextSchema,
+      agentId: agentModelPortableTextSchema,
+      modelId: agentModelPortableTextSchema,
+      capabilityDigest: digestSchema,
+    }).strict(),
+    result: z.discriminatedUnion("status", [
+      z.object({ status: z.literal("not-bound") }).strict(),
+      z.object({
+        status: z.literal("bound"),
+        recordId: z.string().uuid(),
+        digest: digestSchema,
+        providerDisposition: z.enum(["completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown"]),
+        outcomeStatus: z.enum(["satisfied", "failed", "not-assessed", "indeterminate"]),
+        evidence: z.object({
+          recordId: z.string().uuid(),
+          digest: digestSchema,
+          eventCount: z.number().int().nonnegative().max(4_096),
+          eventsDigest: digestSchema,
+          actualEffectCount: z.number().int().nonnegative().max(32),
+          capturedAt: z.string().datetime(),
+        }).strict(),
+      }).strict(),
+    ]),
+  }).strict(),
+])
+
+const agentModelRunSchema = z.object({
+  record: agentModelRunReferenceSchema,
+  initiativeId: z.string().uuid(),
+  state: z.enum(["prepared", "running", "paused", "completed", "failed", "cancelled", "unknown"]),
+  agent: z.object({
+    adapterId: agentModelPortableTextSchema,
+    agentId: agentModelPortableTextSchema,
+    modelId: agentModelPortableTextSchema,
+    selectionDigest: digestSchema,
+  }).strict(),
+  startedAt: z.string().datetime().nullable(),
+  endedAt: z.string().datetime().nullable(),
+  managed: agentModelManagedProjectionSchema,
+}).strict()
+
+const agentModelHandoffSchema = z.object({
+  record: z.object({
+    recordType: z.literal("handoff"),
+    recordId: z.string().uuid(),
+    revision: z.literal(1),
+    digest: digestSchema,
+  }).strict(),
+  fromRun: agentModelRunReferenceSchema,
+  toSelection: z.object({
+    adapterId: agentModelPortableTextSchema,
+    agentId: agentModelPortableTextSchema,
+    modelId: agentModelPortableTextSchema,
+    selectionDigest: digestSchema,
+  }).strict(),
+  state: z.enum(["pending-acknowledgement", "acknowledged"]),
+  createdAt: z.string().datetime(),
+  acknowledgedAt: z.string().datetime().nullable(),
+}).strict()
+
+const unavailableProviderMetricSchema = z.object({
+  state: z.literal("unavailable"),
+  basis: z.literal("current-managed-records-have-no-provider-usage-or-cost-contract"),
+}).strict()
+
+const agentModelDashboardFields = {
+  schemaVersion: z.literal(1),
+  kind: z.literal("agent-model-dashboard"),
+  product: phaseDashboardProductBindingSchema,
+  capabilities: z.array(agentModelCapabilitiesSchema).max(16),
+  selection: agentModelSelectionProjectionSchema,
+  runs: z.array(agentModelRunSchema).max(256),
+  handoffs: z.array(agentModelHandoffSchema).max(256),
+  providerMetrics: z.object({
+    usage: unavailableProviderMetricSchema,
+    cost: unavailableProviderMetricSchema,
+  }).strict(),
+  freshness: z.object({
+    state: z.enum(["current", "attention-required"]),
+    selectionCapabilityState: z.enum(["current", "unselected", "stale", "migration-required", "invalid"]),
+    oldestCapabilityObservedAt: z.string().datetime(),
+    newestCapabilityObservedAt: z.string().datetime(),
+    truncated: z.boolean(),
+    coverageBoundary: z.literal("bounded-current-records-do-not-prove-provider-account-or-native-host-readiness"),
+  }).strict(),
+  limits: z.object({
+    capabilities: agentModelLimitSchema,
+    runs: agentModelLimitSchema,
+    handoffs: agentModelLimitSchema,
+    managedRuns: agentModelLimitSchema,
+    truncated: z.boolean(),
+  }).strict(),
+  observedAt: z.string().datetime(),
+  sourceBoundary: z.literal("current-governed-agent-selection-run-handoff-and-managed-evidence-metadata"),
+  limitations: z.array(z.string().trim().min(4).max(1_000)).min(1).max(8),
+  authorityBoundary: z.literal("agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects"),
+}
+
+function validateAgentModelDashboard(value: {
+  capabilities: Array<{ adapterId: string; agentId: string; capabilityDigest: string; selected: boolean; observedAt: string }>
+  selection: { status: string; adapterId?: string; agentId?: string; capabilityDigest?: string; capabilityState?: string }
+  runs: Array<{ record: { recordId: string }; managed: { status: string; record?: { recordId: string } } }>
+  handoffs: Array<{ record: { recordId: string }; fromRun: { recordId: string } }>
+  freshness: { state: "current" | "attention-required"; selectionCapabilityState: string; oldestCapabilityObservedAt: string; newestCapabilityObservedAt: string; truncated: boolean }
+  limits: {
+    capabilities: { shown: number; omitted: number }
+    runs: { shown: number; omitted: number }
+    handoffs: { shown: number; omitted: number }
+    managedRuns: { shown: number; omitted: number }
+    truncated: boolean
+  }
+  observedAt: string
+}, context: z.RefinementCtx): void {
+  const unique = (values: string[], path: Array<string | number>) => {
+    if (new Set(values).size !== values.length) context.addIssue({ code: "custom", path, message: "Agent/Model rows must be unique" })
+  }
+  unique(value.capabilities.map((entry) => `${entry.adapterId}:${entry.agentId}`), ["capabilities"])
+  unique(value.runs.map((entry) => entry.record.recordId), ["runs"])
+  unique(value.handoffs.map((entry) => entry.record.recordId), ["handoffs"])
+  unique(value.runs.flatMap((entry) => entry.managed.status === "observed" && entry.managed.record ? [entry.managed.record.recordId] : []), ["runs", "managed"])
+  const categories = [
+    ["capabilities", value.capabilities.length, value.limits.capabilities],
+    ["runs", value.runs.length, value.limits.runs],
+    ["handoffs", value.handoffs.length, value.limits.handoffs],
+  ] as const
+  for (const [name, length, limit] of categories) {
+    if (limit.shown !== length) context.addIssue({ code: "custom", path: ["limits", name, "shown"], message: "Shown count must match projected rows" })
+  }
+  const shouldBeTruncated = categories.some(([, , limit]) => limit.omitted > 0) || value.limits.managedRuns.omitted > 0
+  if (value.limits.truncated !== shouldBeTruncated || value.freshness.truncated !== shouldBeTruncated) {
+    context.addIssue({ code: "custom", path: ["limits", "truncated"], message: "Truncation must reflect every omitted source row" })
+  }
+  const expectedSelectionState = value.selection.status === "selected"
+    ? value.selection.capabilityState
+    : value.selection.status
+  if (value.freshness.selectionCapabilityState !== expectedSelectionState) {
+    context.addIssue({ code: "custom", path: ["freshness", "selectionCapabilityState"], message: "Selection capability freshness differs from the projected selection" })
+  }
+  const selectedRows = value.capabilities.filter((entry) => entry.selected)
+  if (value.selection.status === "selected") {
+    if (selectedRows.length !== 1 || selectedRows[0]?.adapterId !== value.selection.adapterId ||
+        selectedRows[0]?.agentId !== value.selection.agentId) {
+      context.addIssue({ code: "custom", path: ["capabilities"], message: "Selected capability row must match the exact selection" })
+    }
+    const current = selectedRows[0]?.capabilityDigest === value.selection.capabilityDigest
+    if (current !== (value.selection.capabilityState === "current")) {
+      context.addIssue({ code: "custom", path: ["selection", "capabilityState"], message: "Selection capability state must reflect the observed digest" })
+    }
+  } else if (selectedRows.length !== 0) {
+    context.addIssue({ code: "custom", path: ["capabilities"], message: "Only a current selected state can mark a capability selected" })
+  }
+  const shouldRequireAttention = shouldBeTruncated || ["stale", "migration-required", "invalid"].includes(value.freshness.selectionCapabilityState)
+  if ((value.freshness.state === "attention-required") !== shouldRequireAttention) {
+    context.addIssue({ code: "custom", path: ["freshness", "state"], message: "Freshness must expose selection drift and bounded omissions" })
+  }
+  if (Date.parse(value.freshness.oldestCapabilityObservedAt) > Date.parse(value.freshness.newestCapabilityObservedAt) ||
+      Date.parse(value.freshness.newestCapabilityObservedAt) > Date.parse(value.observedAt)) {
+    context.addIssue({ code: "custom", path: ["freshness"], message: "Capability observation range is invalid" })
+  }
+  const runIds = new Set(value.runs.map((entry) => entry.record.recordId))
+  for (const [index, handoff] of value.handoffs.entries()) {
+    if (!runIds.has(handoff.fromRun.recordId) && value.limits.runs.omitted === 0) {
+      context.addIssue({ code: "custom", path: ["handoffs", index, "fromRun"], message: "Handoff source Run is absent from a complete Run projection" })
+    }
+  }
+}
+
+export const agentModelDashboardContentSchema = z.object(agentModelDashboardFields)
+  .strict()
+  .superRefine(validateAgentModelDashboard)
+
+export const agentModelDashboardSchema = z.object({
+  ...agentModelDashboardFields,
+  snapshotDigest: digestSchema,
+}).strict().superRefine(validateAgentModelDashboard)
+
 export type DeliveryPhaseId = z.infer<typeof deliveryPhaseIdSchema>
 export type PhaseDashboardId = z.infer<typeof phaseDashboardIdSchema>
 export type DashboardApplicability = z.infer<typeof dashboardApplicabilitySchema>
@@ -500,3 +803,6 @@ export type ChangeImpactChangeCatalogContent = z.infer<typeof changeImpactChange
 export type ChangeImpactChangeCatalog = z.infer<typeof changeImpactChangeCatalogSchema>
 export type ChangeImpactDashboardContent = z.infer<typeof changeImpactDashboardContentSchema>
 export type ChangeImpactDashboard = z.infer<typeof changeImpactDashboardSchema>
+export type AgentModelDashboardRequest = z.infer<typeof agentModelDashboardRequestSchema>
+export type AgentModelDashboardContent = z.infer<typeof agentModelDashboardContentSchema>
+export type AgentModelDashboard = z.infer<typeof agentModelDashboardSchema>

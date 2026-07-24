@@ -706,6 +706,26 @@ export class GaepEngine {
     })
   }
 
+  async listHandoffs(): Promise<Handoff[]> {
+    let names: string[]
+    try {
+      names = (await this.repository.readDirectory(this.repository.resolve("handoffs")))
+        .filter((name) => /^[0-9a-f-]+\.json$/i.test(name))
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") return []
+      throw error
+    }
+    if (names.length > 2_000) throw new Error("Handoff inventory exceeds the 2,000-record observation limit")
+    const handoffs: Handoff[] = []
+    for (let index = 0; index < names.length; index += 64) {
+      handoffs.push(...await Promise.all(names.slice(index, index + 64).map((name) =>
+        this.repository.readJson(this.repository.resolve("handoffs", name), handoffSchema),
+      )))
+    }
+    return handoffs.sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id))
+  }
+
   async recoverInterruptedRuns(actorId: string): Promise<Run[]> {
     const managedRecovered = await this.managedExecution.recoverInterrupted(actorId)
     const recoveredManagedRuns = await Promise.all(managedRecovered.map((managed) =>

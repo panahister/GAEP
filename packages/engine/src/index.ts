@@ -1,3 +1,4 @@
+export * from "./agent-model-dashboard.js"
 export * from "./change-impact-dashboard.js"
 export * from "./dashboard-framework.js"
 export * from "./engine.js"

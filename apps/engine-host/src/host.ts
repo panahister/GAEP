@@ -18,8 +18,12 @@ import {
   type Run,
 } from "@gaep/contracts"
 import {
+  AgentModelCapabilityBindingError,
+  AgentModelProductBindingError,
+  AgentModelSelectionBindingError,
   ChangeImpactChangeBindingError,
   ChangeImpactProductBindingError,
+  composeAgentModelDashboard,
   composeChangeImpactChangeCatalog,
   composeChangeImpactDashboard,
   composePhaseDashboardFramework,
@@ -66,6 +70,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "dashboard.framework",
   "dashboard.changeImpact.changes",
   "dashboard.changeImpact",
+  "dashboard.agentModel",
   "productStudio.designReadiness",
   "productStudio.search",
   "productStudio.exportBuild",
@@ -560,6 +565,69 @@ export class EngineHost {
           throw error
         }
       }
+      case "dashboard.agentModel": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_044,
+            "AGENT_MODEL_AUDIT_INVALID",
+            "The audit chain is invalid or unavailable; no Agent/Model dashboard was composed",
+          )
+        }
+        try {
+          const capabilities = this.boundCapabilitySnapshots(request.params.expectedCapabilities)
+          const [product, selection, runs, handoffs, managedPage] = await Promise.all([
+            this.engine.readProduct(),
+            this.engine.readSelectionState(),
+            this.engine.listRuns(),
+            this.engine.listHandoffs(),
+            this.engine.listManagedRunsPage({ offset: 0, limit: 200 }),
+          ])
+          const managedRuns = await Promise.all(managedPage.items.map(async (record) => {
+            if (!record.resultId) return { record }
+            const result = await this.engine.readManagedRunResult(record.resultId)
+            const evidence = await this.engine.readManagedRunEvidence(result.evidenceId)
+            return { record, result, evidence }
+          }))
+          return composeAgentModelDashboard({
+            product,
+            capabilities,
+            selection,
+            runs,
+            handoffs,
+            managedRuns,
+            managedRunTotal: managedPage.total,
+          }, request.params)
+        } catch (error) {
+          if (error instanceof AgentModelProductBindingError) {
+            throw new HostRpcError(
+              -32_045,
+              "AGENT_MODEL_PRODUCT_CONTEXT_CHANGED",
+              "The Product changed before the Agent/Model dashboard was composed; reload the current Product",
+            )
+          }
+          if (error instanceof AgentModelCapabilityBindingError) {
+            throw new HostRpcError(
+              -32_046,
+              "AGENT_MODEL_CAPABILITIES_CHANGED",
+              "Agent capabilities changed before the dashboard was composed; probe the current agents again",
+            )
+          }
+          if (error instanceof AgentModelSelectionBindingError) {
+            throw new HostRpcError(
+              -32_047,
+              "AGENT_MODEL_SELECTION_CHANGED",
+              "The Agent Selection changed before the dashboard was composed; reload the current selection",
+            )
+          }
+          if (error instanceof HostRpcError) throw error
+          throw new HostRpcError(
+            -32_048,
+            "AGENT_MODEL_DASHBOARD_INVALID",
+            "The current Agent/Model dashboard sources could not be verified",
+          )
+        }
+      }
       case "verifyAudit":
         return this.engine.repository.verifyAudit()
       case "productStudio.designReadiness": {
@@ -618,6 +686,23 @@ export class EngineHost {
   private async refreshCapabilitySnapshots(): Promise<AdapterCapabilities[]> {
     const observed = await Promise.all([...this.engine.adapters.keys()].map((adapterId) => this.observeAdapter(adapterId)))
     return observed.map((snapshot) => structuredClone(snapshot.capabilities))
+  }
+
+  private boundCapabilitySnapshots(
+    expected: Array<{ adapterId: string; agentId: string; capabilityDigest: string }>,
+  ): AdapterCapabilities[] {
+    if (expected.length !== this.engine.adapters.size ||
+        [...this.engine.adapters.keys()].some((adapterId) => !expected.some((binding) => binding.adapterId === adapterId))) {
+      throw new AgentModelCapabilityBindingError()
+    }
+    return expected.map((binding) => {
+      const snapshot = this.capabilitySnapshots.get(binding.adapterId)
+      if (!snapshot || snapshot.capabilities.agentId !== binding.agentId ||
+          capabilityDigest(snapshot.capabilities) !== binding.capabilityDigest) {
+        throw new AgentModelCapabilityBindingError()
+      }
+      return structuredClone(snapshot.capabilities)
+    })
   }
 
   private managedEvidenceReaders() {

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   canonicalDigest,
+  capabilityDigest,
   fingerprintExecutable,
   type AdapterProbeResult,
 } from "@gaep/agent-sdk"
@@ -804,6 +805,114 @@ describe("engine host protocol", () => {
       protocolVersion: 2,
       method: "dashboard.changeImpact",
       params: { ...params, approved: true },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+  })
+
+  it("composes an exact Agent/Model dashboard from cached capability and selection observations", async () => {
+    await mockCodex()
+    const { productId } = await createProductAndInitiative()
+    const capabilities = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 60,
+      method: "probeAgents",
+      params: {},
+    }) as AdapterCapabilities[]
+    await host.dispatch({
+      jsonrpc: "2.0",
+      id: 61,
+      method: "selectAgent",
+      params: {
+        adapterId: "gaep.codex-cli",
+        modelId: "gpt-test",
+        settings: { sandbox: "read-only", approvalPolicy: "fail-closed-noninteractive" },
+      },
+    })
+    const product = await host.engine.readProduct()
+    const selectionState = await host.engine.readSelectionState()
+    if (selectionState.status !== "selected") throw new Error("Host test requires a current selection")
+    const params = {
+      expectedProductId: productId,
+      expectedProductRevision: product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(product),
+      expectedSelection: {
+        status: "selected" as const,
+        selectionDigest: canonicalDigest(selectionState.selection),
+      },
+      expectedCapabilities: capabilities.map((entry) => ({
+        adapterId: entry.adapterId,
+        agentId: entry.agentId,
+        capabilityDigest: capabilityDigest(entry),
+      })),
+    }
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 62,
+      protocolVersion: 1,
+      method: "dashboard.agentModel",
+      params,
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    const dashboard = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 63,
+      protocolVersion: 2,
+      method: "dashboard.agentModel",
+      params,
+    }) as Record<string, unknown>
+    expect(dashboard).toMatchObject({
+      kind: "agent-model-dashboard",
+      product: { recordId: productId, revision: product.revision },
+      selection: {
+        status: "selected",
+        adapterId: "gaep.codex-cli",
+        modelId: "gpt-test",
+        capabilityState: "current",
+      },
+      providerMetrics: {
+        usage: { state: "unavailable" },
+        cost: { state: "unavailable" },
+      },
+      freshness: { state: "current", selectionCapabilityState: "current", truncated: false },
+      limits: { runs: { total: 0 }, handoffs: { total: 0 }, managedRuns: { total: 0 } },
+      authorityBoundary: "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects",
+    })
+    expect(JSON.stringify(dashboard)).not.toContain(workspace)
+    expect(JSON.stringify(dashboard)).not.toContain(product.name)
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 64,
+      protocolVersion: 2,
+      method: "dashboard.agentModel",
+      params: {
+        ...params,
+        expectedCapabilities: params.expectedCapabilities.map((entry, index) =>
+          index === 0 ? { ...entry, capabilityDigest: `sha256:${"0".repeat(64)}` } : entry),
+      },
+    })).rejects.toMatchObject({ kind: "AGENT_MODEL_CAPABILITIES_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 65,
+      protocolVersion: 2,
+      method: "dashboard.agentModel",
+      params: {
+        ...params,
+        expectedSelection: { status: "selected", selectionDigest: `sha256:${"0".repeat(64)}` },
+      },
+    })).rejects.toMatchObject({ kind: "AGENT_MODEL_SELECTION_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 66,
+      protocolVersion: 2,
+      method: "dashboard.agentModel",
+      params: { ...params, expectedCapabilities: params.expectedCapabilities.slice(0, 1) },
+    })).rejects.toMatchObject({ kind: "AGENT_MODEL_CAPABILITIES_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 67,
+      protocolVersion: 2,
+      method: "dashboard.agentModel",
+      params: { ...params, authorizeLaunch: true },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
   })
 })

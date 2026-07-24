@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import { portableSelectionSettingsSchema } from "./agent.js"
 import {
+  agentModelDashboardRequestSchema,
   changeImpactChangeCatalogRequestSchema,
   changeImpactDashboardRequestSchema,
   phaseDashboardCompositionRequestSchema,
@@ -133,6 +134,7 @@ export const hostImportPreviewParamsSchema = z.object({
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
+export const hostAgentModelDashboardParamsSchema = agentModelDashboardRequestSchema
 
 export const hostMethodSchema = z.enum([
   "ping",
@@ -159,6 +161,7 @@ export const hostMethodSchema = z.enum([
   "dashboard.framework",
   "dashboard.changeImpact.changes",
   "dashboard.changeImpact",
+  "dashboard.agentModel",
   "verifyAudit",
   "productStudio.designReadiness",
   "productStudio.search",
@@ -206,6 +209,7 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("dashboard.framework", hostDashboardFrameworkParamsSchema),
   requestVariant("dashboard.changeImpact.changes", hostChangeImpactChangeCatalogParamsSchema),
   requestVariant("dashboard.changeImpact", hostChangeImpactDashboardParamsSchema),
+  requestVariant("dashboard.agentModel", hostAgentModelDashboardParamsSchema),
   requestVariant("verifyAudit", hostNoParamsSchema.default({})),
   requestVariant("productStudio.designReadiness", z.object({ productId: z.string().uuid() }).strict()),
   requestVariant("productStudio.search", hostSearchProductStudioParamsSchema),

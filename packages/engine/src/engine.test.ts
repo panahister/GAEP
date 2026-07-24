@@ -413,6 +413,7 @@ describe("GAEP local engine", () => {
       decisions: [],
       evidence: [],
     }, "founder")
+    await expect(engine.listHandoffs()).resolves.toEqual([handoff])
     const capabilityName = (await readdir(join(workspace, ".gaep", "runtime")))
       .find((name) => /^capabilities-[0-9a-f]{64}\.json$/.test(name))!
     const persisted = await Promise.all([
