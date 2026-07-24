@@ -19,7 +19,8 @@
     { "id": "staged-effectful-review", "label": "Preview, review, apply or discard workflow" },
     { "id": "evidence-dashboard", "label": "Run, evidence, recovery and provider-truth dashboard" },
     { "id": "phase-dashboard-framework", "label": "Exact phase-scoped dashboard framework projection" },
-    { "id": "change-impact-dashboard", "label": "Exact current Change and impact projection" }
+    { "id": "change-impact-dashboard", "label": "Exact current Change and impact projection" },
+    { "id": "agent-model-dashboard", "label": "Exact current Agent and Model evidence projection" }
   ],
   "hosts": [
     {
@@ -58,6 +59,11 @@
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["const selection: ChangeImpactDashboardRequest = {", "this.readChangeImpactDashboard(selection)", "return composeChangeImpactDashboard("] },
           { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isChangeImpactDashboard", "isPortableChangeImpactLocator", "value.freshness.coverageBoundary !== \"absence-of-a-trace-link-does-not-prove-absence-of-impact\"", "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects"] },
           { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderChangeImpactDashboard(snapshot.changeImpact)", "Approval is not established", "This read-only projection cannot approve the Change, accept risk, or authorize effects"] }
+        ] },
+        { "capabilityId": "agent-model-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["this.composeAgentModelDashboard(observed)", "return composeAgentModelDashboard({", "expectedSelection"] },
+          { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isAgentModelDashboard", "isAgentModelSelection(value.selection)", "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects"] },
+          { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderAgentModelDashboard(snapshot.agentModel)", "Agent and model evidence", "This read-only projection cannot select or switch an agent, hand off work, launch a Run, or authorize effects"] }
         ] }
       ]
     },
@@ -112,6 +118,11 @@
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showChangeImpactDashboard", "client.listChangeImpactChanges(product)", "client.readChangeImpact(product, selected.change)", "grants no Change approval, risk acceptance, mutation"] },
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["listChangeImpactChanges(product: ProductBinding)", "this.request(\"dashboard.changeImpact.changes\"", "readChangeImpact(", "this.request(\"dashboard.changeImpact\""] },
           { "path": "apps/kiro/src/protocol.ts", "contains": ["parseChangeImpactChangeCatalog(", "parseChangeImpactDashboard(", "snapshotDigest !== canonicalDigest(content)", "ensureUniqueChangeImpactRows"] }
+        ] },
+        { "capabilityId": "agent-model-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["agentModel: \"gaepKiro.dashboard.agentModel\"", "async function showAgentModelDashboard", "client.readAgentModel(product)"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["async readAgentModel(product: ProductBinding)", "this.request(\"dashboard.agentModel\"", "parseAgentModelDashboard"] },
+          { "path": "apps/kiro/src/protocol.ts", "contains": ["export function parseAgentModelDashboard", "parseAgentModelSelection", "snapshotDigest !== canonicalDigest(content)"] }
         ] }
       ]
     },
@@ -170,6 +181,12 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun listChangeImpactChanges(", "portableRequest(\"dashboard.changeImpact.changes\"", "fun readChangeImpact(", "portableRequest(\"dashboard.changeImpact\""] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parseChangeImpactChangeCatalogEnvelope(", "parseChangeImpactDashboardEnvelope(", "snapshotDigest != canonicalDigest(digestBody)", "ensureUniqueChangeImpactRows"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP exact Change and impact dashboard", "grants no Change approval, risk acceptance, mutation"] }
+        ] },
+        { "capabilityId": "agent-model-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Show Agent and model", "controller.readAgentModel()"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readAgentModel(product: ProductBinding)", "portableRequest(\"dashboard.agentModel\"", "parseAgentModelDashboardEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["fun parseAgentModelDashboardEnvelope", "parseAgentModelSelection", "snapshotDigest != canonicalDigest(digestBody)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["fun readAgentModel(): String", "renderAgentModelDashboard(client.readAgentModel(product))", "GAEP exact Agent and Model dashboard"] }
         ] }
       ]
     },
@@ -181,7 +198,7 @@
       "runtimeEvidence": {
         "source": "package-report",
         "level": "cross-platform-packaged-engine-client-workflow-local",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-195-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending"],
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-213-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending"],
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
@@ -233,6 +250,13 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ListChangeImpactChangesAsync(", "\"dashboard.changeImpact.changes\"", "ReadChangeImpactAsync(", "\"dashboard.changeImpact\""] },
           { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseChangeImpactChangeCatalogResponse(", "ParseChangeImpactDashboardResponse(", "snapshotDigest != CanonicalDigest(WithoutProperty(result, \"snapshotDigest\"))", "EnsureUniqueChangeImpactRows"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP exact Change and impact dashboard", "grants no Change approval, risk acceptance, mutation"] }
+        ] },
+        { "capabilityId": "agent-model-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Agent and model", "Show exact Agent and model", "ShowAgentModelCommand"] },
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["private Task ShowAgentModelAsync(", "controller.ReadAgentModelAsync(token)"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadAgentModelAsync(", "\"dashboard.agentModel\"", "ParseAgentModelDashboardResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseAgentModelDashboardResponse(", "ParseAgentModelSelection", "snapshotDigest != CanonicalDigest(WithoutProperty(result, \"snapshotDigest\"))"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["ReadAgentModelAsync(", "RenderAgentModelDashboard", "GAEP exact Agent and Model dashboard"] }
         ] }
       ]
     }
