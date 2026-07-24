@@ -58,7 +58,7 @@
         "source": "package-report",
         "level": "compatible-host-activation-only",
         "requiredVerificationFragments": ["exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-and-activation"],
-        "remainingRequirements": ["native Kiro installation and activation", "provider execution workflows", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
+        "remainingRequirements": ["native Kiro installation and activation", "real-provider managed read-only workflow acceptance", "interactive cancellation and resume", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["const client = await GaepEngineClient.create"] }] },
@@ -73,7 +73,11 @@
         { "capabilityId": "claude-readiness", "state": "implemented", "probes": [{ "path": "apps/kiro/src/protocol.ts", "contains": ["parseAgentReadiness", "parseAgentReadinessSnapshot"] }] },
         { "capabilityId": "provider-model-selection", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function selectAgent", "client.selectAgent({", "Confirm Selection"] }] },
         { "capabilityId": "versioned-handoff", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function handoffAgent", "client.createHandoff({", "Create Handoff and Switch"] }] },
-        { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },
+        { "capabilityId": "managed-readonly-execution", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function runManagedReadOnly", "Attest Exact Preview and Run", "showManagedReadOnlyReceipt(receipt)"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["previewManagedReadOnly(", "executeManagedReadOnly(", "attest-exact-managed-readonly-preview"] },
+          { "path": "apps/kiro/src/protocol.ts", "contains": ["parseManagedReadOnlyPreview", "previewDigest !== canonicalDigest(body)", "parseManagedReadOnlyReceipt"] }
+        ] },
         { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
         { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "Only a static Product boundary and portable-design commands exist." }
       ]
