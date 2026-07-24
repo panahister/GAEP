@@ -55,6 +55,33 @@ class GaepEngineClient(
     ) { envelope -> PortableDesignProtocol.parseAgentReadinessEnvelope(envelope) }
 
     @Synchronized
+    fun readAgentSelection(): AgentSelectionState = portableRequest(
+        "readAgentSelection",
+        JsonObject(),
+    ) { envelope -> PortableDesignProtocol.parseAgentSelectionStateEnvelope(envelope) }
+
+    @Synchronized
+    fun selectAgent(
+        adapterId: String,
+        modelId: String,
+        settings: Map<String, PortableAgentSettingValue>,
+        actorId: String,
+    ): AgentSelection {
+        val normalizedAdapterId = PortableDesignProtocol.normalizeSelectionIdentifier(adapterId, "Adapter ID")
+        val normalizedModelId = PortableDesignProtocol.normalizeSelectionIdentifier(modelId, "Model ID")
+        val normalizedActorId = PortableDesignProtocol.normalizeActorId(actorId)
+        val params = JsonObject().apply {
+            addProperty("adapterId", normalizedAdapterId)
+            addProperty("modelId", normalizedModelId)
+            add("settings", PortableDesignProtocol.portableSelectionSettingsToJson(settings))
+            addProperty("actorId", normalizedActorId)
+        }
+        return portableRequest("selectAgent", params) { envelope ->
+            PortableDesignProtocol.parseAgentSelectionEnvelope(envelope)
+        }
+    }
+
+    @Synchronized
     fun importPortableDesignSnapshot(
         bundleRoot: Path,
         expectedProductId: UUID,

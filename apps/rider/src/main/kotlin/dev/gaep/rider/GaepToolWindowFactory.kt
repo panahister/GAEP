@@ -19,6 +19,14 @@ import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.JTextArea
 
+private data class AgentSelectionDraft(
+    val adapter: AgentReadinessSnapshot,
+    val modelId: String,
+    val settings: Map<String, PortableAgentSettingValue>,
+)
+
+private class AgentSelectionCancelled : RuntimeException()
+
 class GaepToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val workspace = project.basePath
@@ -49,6 +57,15 @@ class GaepToolWindowFactory : ToolWindowFactory {
 
         addAction("Refresh Product") { controller.readProduct() }
         addAction("Refresh agent readiness") { controller.readAgentReadiness() }
+
+        val selectionButton = JButton("Select agent configuration…").apply {
+            addActionListener {
+                beginAgentSelection(project, controller, status, output, buttons)
+            }
+        }
+        buttons += selectionButton
+        actions.add(selectionButton)
+
         addAction("List design imports") { controller.listPortableDesignSnapshots() }
 
         val readButton = JButton("Read design import…").apply {
@@ -93,7 +110,8 @@ class GaepToolWindowFactory : ToolWindowFactory {
         actions.add(importButton)
 
         val governance = JTextArea(
-            "Readiness boundary: Codex and Claude capability display is observation-only and cannot select or execute an agent. " +
+            "Agent boundary: Codex and Claude readiness is observation-only; guarded selection records portable configuration only. " +
+                "Selection cannot start a provider, create or resume a Run, approve tools or effects, or grant execution authority. " +
                 "Governance boundary: portable-design imports remain pending human review. " +
                 "Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. " +
                 "Only validated metadata and digests are displayed; local paths and source content are withheld.",
@@ -120,6 +138,248 @@ class GaepToolWindowFactory : ToolWindowFactory {
         toolWindow.contentManager.addContent(content)
     }
 
+    private fun beginAgentSelection(
+        project: Project,
+        controller: RiderProductController,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+    ) {
+        buttons.forEach { it.isEnabled = false }
+        status.text = "Loading verified agent capabilities…"
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching { controller.readAgentSelectionContext() }
+                .onSuccess { context ->
+                    ApplicationManager.getApplication().invokeLater {
+                        val draft = runCatching { promptAgentSelection(project, context) }
+                            .getOrElse { error ->
+                                if (error is AgentSelectionCancelled) {
+                                    finishRequest(
+                                        status,
+                                        output,
+                                        buttons,
+                                        "Agent Selection unchanged",
+                                        "Selection was cancelled. No provider was started and no state changed.",
+                                    )
+                                } else {
+                                    finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                                }
+                                return@invokeLater
+                            }
+                        if (draft == null) {
+                            finishRequest(status, output, buttons, "Agent Selection unchanged", "Selection was cancelled. No provider was started and no state changed.")
+                            return@invokeLater
+                        }
+                        val prior = (context.current as? AgentSelectionState.Selected)?.selection?.let {
+                            " Current selection: ${it.agentId} / ${it.modelId}."
+                        }.orEmpty()
+                        val decision = Messages.showYesNoDialog(
+                            project,
+                            "Record ${draft.adapter.agentLabel} / ${draft.modelId} with ${draft.settings.size} explicit portable setting(s)?$prior " +
+                                "This does not start a provider, create or resume a Run, approve tools or effects, or grant execution authority. " +
+                                "The engine will reject active-Run, capability-drift, legacy, invalid, and post-Run changes that require a handoff.",
+                            "Confirm Guarded Agent Selection",
+                            "Confirm Selection",
+                            "Cancel",
+                            Messages.getWarningIcon(),
+                        )
+                        if (decision != Messages.YES) {
+                            finishRequest(status, output, buttons, "Agent Selection unchanged", "Selection was cancelled. No provider was started and no state changed.")
+                            return@invokeLater
+                        }
+                        status.text = "Recording guarded Agent Selection…"
+                        ApplicationManager.getApplication().executeOnPooledThread {
+                            val actorId = System.getenv("GAEP_ACTOR_ID") ?: "gaep.rider-local-human"
+                            runCatching {
+                                controller.selectAgent(
+                                    draft.adapter.adapterId,
+                                    draft.modelId,
+                                    draft.settings,
+                                    actorId,
+                                )
+                            }.onSuccess { result ->
+                                ApplicationManager.getApplication().invokeLater {
+                                    finishRequest(status, output, buttons, "GAEP engine ready", result)
+                                }
+                            }.onFailure { error ->
+                                ApplicationManager.getApplication().invokeLater {
+                                    finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                                }
+                            }
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    ApplicationManager.getApplication().invokeLater {
+                        finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                    }
+                }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun promptAgentSelection(project: Project, context: AgentSelectionContext): AgentSelectionDraft? {
+        val adapterLabels = context.available.mapIndexed { index, adapter ->
+            "${index + 1}. ${adapter.agentLabel} — ${adapter.adapterId} (${adapter.executionInterface}, ${adapter.interfaceMaturity})"
+        }.toTypedArray()
+        val chosenAdapter = Messages.showChooseDialog(
+            project,
+            "Select one verified local agent adapter. Selection records configuration only; it does not start an agent.",
+            "Select Agent Adapter",
+            Messages.getQuestionIcon(),
+            adapterLabels,
+            adapterLabels.first(),
+        )
+        if (chosenAdapter < 0) return null
+        val adapter = context.available.getOrNull(chosenAdapter)
+            ?: throw IllegalArgumentException("Select one verified adapter from the current capability snapshot.")
+
+        val manualModel = "Enter another model ID…"
+        val modelLabels = adapter.models.mapIndexed { index, model ->
+            "${index + 1}. ${model.label} — ${model.id} (${model.truthClass}${if (model.alias) ", alias" else ""})"
+        } + manualModel
+        val chosenModel = Messages.showChooseDialog(
+            project,
+            "Select a model for ${adapter.agentLabel}. The engine will verify it against the current capability snapshot.",
+            "Select Agent Model",
+            Messages.getQuestionIcon(),
+            modelLabels.toTypedArray(),
+            modelLabels.first(),
+        )
+        if (chosenModel < 0) return null
+        val modelId = if (chosenModel == modelLabels.lastIndex) {
+            val entered = Messages.showInputDialog(
+                project,
+                "Enter a portable model ID. The engine must verify it against the current adapter capabilities.",
+                "Enter Agent Model ID",
+                Messages.getQuestionIcon(),
+            ) ?: return null
+            PortableDesignProtocol.normalizeSelectionIdentifier(entered, "Model ID")
+        } else {
+            adapter.models[chosenModel].id
+        }
+
+        val settings = linkedMapOf<String, PortableAgentSettingValue>()
+        adapter.settings.forEach { setting ->
+            if (setting.sensitive) {
+                throw IllegalArgumentException(
+                    "${setting.label} requires a machine-local credential binding, which this portable Rider selection flow does not collect or store.",
+                )
+            }
+            promptAgentSetting(project, setting)?.let { settings[setting.key] = it }
+        }
+        return AgentSelectionDraft(adapter, modelId, settings.toMap())
+    }
+
+    private fun promptAgentSetting(
+        project: Project,
+        setting: AgentSelectionSetting,
+    ): PortableAgentSettingValue? = when (setting.kind) {
+        "select" -> promptSelectSetting(project, setting)
+        "boolean" -> promptBooleanSetting(project, setting)
+        "number", "string", "string-list" -> promptTextSetting(project, setting)
+        else -> throw IllegalArgumentException("${setting.label} has an unsupported portable setting kind.")
+    }
+
+    @Suppress("DEPRECATION")
+    private fun promptSelectSetting(project: Project, setting: AgentSelectionSetting): PortableAgentSettingValue? {
+        val useDefault = "Use adapter default — ${setting.defaultValue?.let(::formatSettingValue) ?: "no explicit override"}"
+        val choices = buildList {
+            if (!setting.required || setting.defaultValue != null) add(useDefault)
+            addAll((setting.options ?: emptyList()).mapIndexed { index, option ->
+                "${index + 1}. ${option.label} — ${option.value}"
+            })
+        }
+        require(choices.isNotEmpty()) { "${setting.label} is required but the verified adapter declared no selectable values." }
+        val chosen = Messages.showChooseDialog(
+            project,
+            setting.description,
+            setting.label,
+            Messages.getQuestionIcon(),
+            choices.toTypedArray(),
+            choices.first(),
+        )
+        if (chosen < 0) throw AgentSelectionCancelled()
+        if (choices[chosen] == useDefault) return null
+        val index = chosen - if (choices.first() == useDefault) 1 else 0
+        val value = setting.options?.getOrNull(index)?.value
+            ?: throw IllegalArgumentException("Select one verified value for ${setting.label}.")
+        return PortableAgentSettingValue.Text(value)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun promptBooleanSetting(project: Project, setting: AgentSelectionSetting): PortableAgentSettingValue? {
+        val canDefault = !setting.required || setting.defaultValue != null
+        val choices = buildList {
+            if (canDefault) add("Use adapter default — ${setting.defaultValue?.let(::formatSettingValue) ?: "no explicit override"}")
+            add("True")
+            add("False")
+        }
+        val chosen = Messages.showChooseDialog(
+            project,
+            setting.description,
+            setting.label,
+            Messages.getQuestionIcon(),
+            choices.toTypedArray(),
+            choices.first(),
+        )
+        if (chosen < 0) throw AgentSelectionCancelled()
+        return when (choices[chosen]) {
+            "True" -> PortableAgentSettingValue.Flag(true)
+            "False" -> PortableAgentSettingValue.Flag(false)
+            else -> null
+        }
+    }
+
+    private fun promptTextSetting(project: Project, setting: AgentSelectionSetting): PortableAgentSettingValue? {
+        while (true) {
+            val initial = setting.defaultValue?.let(::formatSettingValue).orEmpty()
+            val prompt = if (setting.kind == "string-list") {
+                "${setting.description} Enter comma-separated values. Leave blank to use the adapter default when permitted."
+            } else {
+                "${setting.description} Leave blank to use the adapter default when permitted."
+            }
+            val entered = Messages.showInputDialog(project, prompt, setting.label, Messages.getQuestionIcon(), initial, null)
+                ?: throw AgentSelectionCancelled()
+            if (entered.isBlank() && (!setting.required || setting.defaultValue != null)) return null
+            val parsed = runCatching {
+                when (setting.kind) {
+                    "number" -> {
+                        val number = entered.toBigDecimal()
+                        require(setting.minimum == null || number >= setting.minimum) {
+                            "${setting.label} must be at least ${setting.minimum?.toPlainString()}"
+                        }
+                        require(setting.maximum == null || number <= setting.maximum) {
+                            "${setting.label} must be at most ${setting.maximum?.toPlainString()}"
+                        }
+                        PortableAgentSettingValue.Decimal(number)
+                    }
+                    "string-list" -> {
+                        val items = entered.split(',').map(String::trim)
+                        require(items.isNotEmpty() && items.none(String::isEmpty)) {
+                            "${setting.label} must be a comma-separated list of non-empty values"
+                        }
+                        PortableAgentSettingValue.TextList(
+                            items.map { PortableDesignProtocol.normalizePortableSettingText(it, setting.label, minimum = 1) },
+                        )
+                    }
+                    else -> PortableAgentSettingValue.Text(
+                        PortableDesignProtocol.normalizePortableSettingText(entered, setting.label, minimum = 1),
+                    )
+                }
+            }
+            if (parsed.isSuccess) return parsed.getOrThrow()
+            Messages.showErrorDialog(project, safeError(parsed.exceptionOrNull()!!), setting.label)
+        }
+    }
+
+    private fun formatSettingValue(value: PortableAgentSettingValue): String = when (value) {
+        is PortableAgentSettingValue.Text -> value.value
+        is PortableAgentSettingValue.Decimal -> value.value.toPlainString()
+        is PortableAgentSettingValue.Flag -> value.value.toString()
+        is PortableAgentSettingValue.TextList -> value.value.joinToString(", ")
+    }
+
     private fun runRequest(
         label: String,
         status: JBLabel,
@@ -133,21 +393,28 @@ class GaepToolWindowFactory : ToolWindowFactory {
             runCatching(task)
                 .onSuccess { result ->
                     ApplicationManager.getApplication().invokeLater {
-                        status.text = "GAEP engine ready"
-                        output.text = result
-                        output.caretPosition = 0
-                        buttons.forEach { it.isEnabled = true }
+                        finishRequest(status, output, buttons, "GAEP engine ready", result)
                     }
                 }
                 .onFailure { error ->
                     ApplicationManager.getApplication().invokeLater {
-                        status.text = "GAEP request stopped"
-                        output.text = safeError(error)
-                        output.caretPosition = 0
-                        buttons.forEach { it.isEnabled = true }
+                        finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
                     }
                 }
         }
+    }
+
+    private fun finishRequest(
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+        statusText: String,
+        result: String,
+    ) {
+        status.text = statusText
+        output.text = result
+        output.caretPosition = 0
+        buttons.forEach { it.isEnabled = true }
     }
 
     private fun safeError(error: Throwable): String = when (error) {

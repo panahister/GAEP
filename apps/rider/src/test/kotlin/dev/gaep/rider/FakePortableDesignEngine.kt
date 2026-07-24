@@ -22,6 +22,7 @@ internal val invalidCountBundleId: UUID = UUID.fromString("eeeeeeee-eeee-4eee-8e
 internal val invalidTimestampBundleId: UUID = UUID.fromString("ffffffff-ffff-4fff-8fff-ffffffffffff")
 internal const val privateRoot = "/Users/private/design-bundle"
 internal const val privateCredential = "PRIVATE-OAUTH-TOKEN"
+private var selectedAgent: JsonObject? = null
 
 fun main(arguments: Array<String>) {
     val workspacePath = arguments.getOrNull(arguments.indexOf("--workspace") + 1).orEmpty()
@@ -52,6 +53,27 @@ fun main(arguments: Array<String>) {
                 },
             )
             "probeAgents" -> writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
+            "readAgentSelection" -> {
+                if (workspacePath.endsWith("bad-selection")) {
+                    writeResult(id, JsonObject().apply {
+                        addProperty("status", "selected")
+                        add("selection", agentSelection().apply {
+                            addProperty("runtimeExecutable", "$privateRoot/$privateCredential")
+                        })
+                    })
+                } else {
+                    writeResult(id, JsonObject().apply {
+                        val current = selectedAgent
+                        if (current == null) {
+                            addProperty("status", "unselected")
+                        } else {
+                            addProperty("status", "selected")
+                            add("selection", current)
+                        }
+                    })
+                }
+            }
+            "selectAgent" -> handleSelectAgent(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.import" -> handleImport(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.list" -> handleList(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.read" -> handleRead(id, request.getAsJsonObject("params"))
@@ -59,6 +81,34 @@ fun main(arguments: Array<String>) {
         }
     }
 }
+
+private fun handleSelectAgent(id: Long, params: JsonObject) {
+    val settings = params.getAsJsonObject("settings")
+    if (params.keySet() != setOf("adapterId", "modelId", "settings", "actorId") ||
+        params.get("adapterId").asString != "openai-codex" ||
+        params.get("modelId").asString != "gpt-5.6-codex" ||
+        settings.keySet() != setOf("reasoningEffort") || settings.get("reasoningEffort").asString != "high" ||
+        params.get("actorId").asString !in setOf("founder.portable-design-review", "founder.review")
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID SELECTION")
+        return
+    }
+    selectedAgent = agentSelection(settings)
+    writeResult(id, selectedAgent!!)
+}
+
+private fun agentSelection(settings: JsonObject = JsonObject().apply { addProperty("reasoningEffort", "high") }): JsonObject =
+    JsonObject().apply {
+        addProperty("schemaVersion", 2)
+        addProperty("adapterId", "openai-codex")
+        addProperty("agentId", "codex")
+        addProperty("modelId", "gpt-5.6-codex")
+        addProperty("modelTruthClass", "observed")
+        addProperty("modelAlias", false)
+        add("settings", settings)
+        addProperty("selectedAt", "2026-07-24T08:05:00.000Z")
+        addProperty("capabilityDigest", "sha256:${"e".repeat(64)}")
+    }
 
 private fun handleImport(id: Long, params: JsonObject) {
     if (params.keySet() != setOf("bundleRoot", "expectedProductId", "expectedProductRevision", "actorId") ||

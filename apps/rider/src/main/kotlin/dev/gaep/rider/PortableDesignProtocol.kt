@@ -47,6 +47,52 @@ data class AgentModelReadiness(
     val alias: Boolean,
 )
 
+sealed interface PortableAgentSettingValue {
+    data class Text(val value: String) : PortableAgentSettingValue
+    data class Decimal(val value: BigDecimal) : PortableAgentSettingValue
+    data class Flag(val value: Boolean) : PortableAgentSettingValue
+    data class TextList(val value: List<String>) : PortableAgentSettingValue
+}
+
+data class AgentSettingOption(
+    val value: String,
+    val label: String,
+    val description: String?,
+)
+
+data class AgentSelectionSetting(
+    val key: String,
+    val label: String,
+    val description: String,
+    val kind: String,
+    val required: Boolean,
+    val sensitive: Boolean,
+    val defaultValue: PortableAgentSettingValue?,
+    val options: List<AgentSettingOption>?,
+    val minimum: BigDecimal?,
+    val maximum: BigDecimal?,
+    val truthClass: String,
+)
+
+data class AgentSelection(
+    val schemaVersion: Int,
+    val adapterId: String,
+    val agentId: String,
+    val modelId: String,
+    val modelTruthClass: String,
+    val modelAlias: Boolean?,
+    val settings: Map<String, PortableAgentSettingValue>,
+    val selectedAt: Instant,
+    val capabilityDigest: String,
+)
+
+sealed interface AgentSelectionState {
+    data object Unselected : AgentSelectionState
+    data class Selected(val selection: AgentSelection) : AgentSelectionState
+    data class MigrationRequired(val portableCandidate: AgentSelection) : AgentSelectionState
+    data object Invalid : AgentSelectionState
+}
+
 data class AgentReadinessSnapshot(
     val schemaVersion: Int,
     val adapterId: String,
@@ -63,6 +109,7 @@ data class AgentReadinessSnapshot(
     val supportsModelDiscovery: Boolean,
     val supportsToolSelection: Boolean,
     val settingsCount: Int,
+    val settings: List<AgentSelectionSetting>,
     val models: List<AgentModelReadiness>,
     val limitations: List<String>,
     val observedAt: Instant,
@@ -162,9 +209,18 @@ internal object PortableDesignProtocol {
     private val digestPattern = Regex("^sha256:[0-9a-f]{64}$")
     private val settingKeyPattern = Regex("^[a-z][a-zA-Z0-9]{0,127}$")
     private val absolutePathPattern = Regex("""^(?:/\S*|[A-Za-z]:[\\/]\S*|\\\\\S*|file://\S*)$""")
+    private val portableSettingPathPattern = Regex("""^(?:/|[A-Za-z]:[\\/]|\\\\|file://|~[\\/])""")
     private val privatePathPattern = Regex("""(?:^|[\s(="'])(?:/(?:Users|home|tmp|private|Volumes)/[^\s"'<>)]*|[A-Za-z]:\\[^\s"'<>)]*|\\\\[^\s"'<>)]*)""")
     private val secretPattern = Regex(
-        """\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+""",
+        """\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|\bAKIA[A-Z0-9]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+""",
+        RegexOption.IGNORE_CASE,
+    )
+    private val secretSettingKeyPattern = Regex(
+        "(?:apiKey|accessToken|refreshToken|authToken|bearerToken|password|passwd|clientSecret|privateKey|credential)",
+        RegexOption.IGNORE_CASE,
+    )
+    private val secretEnvironmentSettingPattern = Regex(
+        "^\\$\\{?[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*}?$",
         RegexOption.IGNORE_CASE,
     )
     private val uuidPattern = Regex(
@@ -208,6 +264,26 @@ internal object PortableDesignProtocol {
         "EXECUTABLE_CHANGED" to StableHostError(
             -32_014,
             "The configured agent executable changed during capability discovery.",
+        ),
+        "CAPABILITIES_CHANGED" to StableHostError(
+            -32_012,
+            "Agent capabilities changed during selection; probe again.",
+        ),
+        "AGENT_SELECTION_ACTIVE_RUN" to StableHostError(
+            -32_015,
+            "Agent selection cannot change while a Run is non-terminal.",
+        ),
+        "AGENT_SELECTION_MIGRATION_REQUIRED" to StableHostError(
+            -32_016,
+            "The legacy Agent Selection requires explicit re-probe and reconfirmation.",
+        ),
+        "AGENT_SELECTION_HANDOFF_REQUIRED" to StableHostError(
+            -32_017,
+            "A versioned handoff is required before changing agent, model, or settings after a Run.",
+        ),
+        "AGENT_SELECTION_INVALID" to StableHostError(
+            -32_018,
+            "The persisted Agent Selection is invalid and cannot be replaced implicitly.",
         ),
         "INVALID_PARAMS" to StableHostError(-32_602, "The GAEP engine rejected the local request parameters."),
         "PROTOCOL_UPGRADE_REQUIRED" to StableHostError(
@@ -257,6 +333,28 @@ internal object PortableDesignProtocol {
             "Actor ID must be a portable human principal"
         }
         return normalized
+    }
+
+    fun normalizeSelectionIdentifier(value: String, label: String): String = try {
+        portableText(value, minimum = 1)
+    } catch (_: GaepHostException) {
+        throw IllegalArgumentException("$label must be verified portable capability text")
+    }
+
+    fun normalizePortableSettingText(value: String, label: String, minimum: Int = 0): String = try {
+        portableSettingText(value, minimum)
+    } catch (_: GaepHostException) {
+        throw IllegalArgumentException("$label must be portable text without paths, controls, or secret-shaped values")
+    }
+
+    fun portableSelectionSettingsToJson(settings: Map<String, PortableAgentSettingValue>): JsonObject {
+        require(settings.size <= 128) { "Agent settings may contain at most 128 portable values" }
+        return JsonObject().apply {
+            settings.forEach { (key, value) ->
+                require(validSettingKey(key)) { "Agent settings must use portable non-secret keys" }
+                add(key, portableSettingValueToJson(value))
+            }
+        }
     }
 
     fun validatePage(offset: Int, limit: Int) {
@@ -318,6 +416,32 @@ internal object PortableDesignProtocol {
         }
         return snapshots
     }
+
+    fun parseAgentSelectionStateEnvelope(envelope: JsonObject): AgentSelectionState {
+        val state = readResult(envelope).requireObject()
+        return when (state.requireString("status")) {
+            "unselected" -> {
+                state.requireExactKeys("status")
+                AgentSelectionState.Unselected
+            }
+            "selected" -> {
+                state.requireExactKeys("status", "selection")
+                AgentSelectionState.Selected(parseAgentSelection(state.get("selection").requireObject()))
+            }
+            "migration-required" -> {
+                state.requireExactKeys("status", "portableCandidate")
+                AgentSelectionState.MigrationRequired(parseAgentSelection(state.get("portableCandidate").requireObject()))
+            }
+            "invalid" -> {
+                state.requireExactKeys("status")
+                AgentSelectionState.Invalid
+            }
+            else -> throw invalidResponse()
+        }
+    }
+
+    fun parseAgentSelectionEnvelope(envelope: JsonObject): AgentSelection =
+        parseAgentSelection(readResult(envelope).requireObject())
 
     fun parsePageEnvelope(envelope: JsonObject, expectedOffset: Int, expectedLimit: Int): PortableDesignSnapshotPage {
         val page = readResult(envelope).requireObject()
@@ -519,7 +643,8 @@ internal object PortableDesignProtocol {
         val models = snapshot.get("models")?.takeIf(JsonElement::isJsonArray)?.asJsonArray ?: throw invalidResponse()
         val limitations = snapshot.get("limitations")?.takeIf(JsonElement::isJsonArray)?.asJsonArray ?: throw invalidResponse()
         if (settings.size() > 256 || models.size() > 512 || limitations.size() > 512) throw invalidResponse()
-        settings.forEach { validateAgentSetting(it.requireObject()) }
+        val parsedSettings = settings.map { parseAgentSetting(it.requireObject()) }
+        if (parsedSettings.map { it.key }.distinct().size != parsedSettings.size) throw invalidResponse()
         val parsedModels = models.map { parseAgentModel(it.requireObject()) }
         if (parsedModels.map { it.id }.distinct().size != parsedModels.size) throw invalidResponse()
         return AgentReadinessSnapshot(
@@ -542,6 +667,7 @@ internal object PortableDesignProtocol {
             supportsModelDiscovery = snapshot.requireBoolean("supportsModelDiscovery"),
             supportsToolSelection = snapshot.requireBoolean("supportsToolSelection"),
             settingsCount = settings.size(),
+            settings = parsedSettings,
             models = parsedModels,
             limitations = limitations.map { portableText(it.requireString()) },
             observedAt = snapshot.requireInstant("observedAt"),
@@ -571,49 +697,131 @@ internal object PortableDesignProtocol {
         )
     }
 
-    private fun validateAgentSetting(setting: JsonObject) {
+    private fun parseAgentSetting(setting: JsonObject): AgentSelectionSetting {
         setting.requireKeys(
             required = setOf("key", "label", "description", "kind", "required", "sensitive", "truthClass"),
             optional = setOf("defaultValue", "options", "minimum", "maximum"),
         )
-        if (!settingKeyPattern.matches(setting.requireString("key"))) throw invalidResponse()
-        setting.requirePortableText("label", minimum = 1)
-        setting.requirePortableText("description", minimum = 1)
-        if (setting.requireString("kind") !in setOf("select", "boolean", "number", "string", "string-list")) {
+        val key = setting.requireString("key")
+        if (!settingKeyPattern.matches(key)) throw invalidResponse()
+        val label = setting.requirePortableText("label", minimum = 1)
+        val description = setting.requirePortableText("description", minimum = 1)
+        val kind = setting.requireString("kind")
+        if (kind !in setOf("select", "boolean", "number", "string", "string-list")) {
             throw invalidResponse()
         }
-        setting.requireBoolean("required")
+        val required = setting.requireBoolean("required")
         val sensitive = setting.requireBoolean("sensitive")
-        setting.requireTruthClass("truthClass")
-        setting.get("defaultValue")?.let {
+        val truthClass = setting.requireTruthClass("truthClass")
+        val defaultValue = setting.get("defaultValue")?.let {
             if (sensitive) throw invalidResponse()
-            validatePortableSettingValue(it)
+            parsePortableSettingValue(it)
         }
-        setting.get("options")?.let { rawOptions ->
+        val options = setting.get("options")?.let { rawOptions ->
             if (!rawOptions.isJsonArray || rawOptions.asJsonArray.size() > 256) throw invalidResponse()
-            rawOptions.asJsonArray.forEach { rawOption ->
+            rawOptions.asJsonArray.map { rawOption ->
                 val option = rawOption.requireObject()
                 option.requireKeys(setOf("value", "label"), setOf("description"))
-                option.requirePortableText("value")
-                option.requirePortableText("label")
-                option.get("description")?.let { portableText(it.requireString()) }
+                AgentSettingOption(
+                    value = option.requirePortableText("value"),
+                    label = option.requirePortableText("label"),
+                    description = option.get("description")?.let { portableText(it.requireString()) },
+                )
+            }.toList()
+        }
+        val minimum = setting.get("minimum")?.let { parseFiniteDecimal(it) }
+        val maximum = setting.get("maximum")?.let { parseFiniteDecimal(it) }
+        if (minimum != null && maximum != null && minimum > maximum) throw invalidResponse()
+        return AgentSelectionSetting(
+            key = key,
+            label = label,
+            description = description,
+            kind = kind,
+            required = required,
+            sensitive = sensitive,
+            defaultValue = defaultValue,
+            options = options,
+            minimum = minimum,
+            maximum = maximum,
+            truthClass = truthClass,
+        )
+    }
+
+    private fun parseAgentSelection(selection: JsonObject): AgentSelection {
+        selection.requireExactKeys(
+            "schemaVersion", "adapterId", "agentId", "modelId", "modelTruthClass", "modelAlias", "settings",
+            "selectedAt", "capabilityDigest",
+        )
+        if (selection.requireInt("schemaVersion") != 2) throw invalidResponse()
+        val rawAlias = selection.get("modelAlias") ?: throw invalidResponse()
+        val modelAlias = when {
+            rawAlias.isJsonNull -> null
+            rawAlias.isJsonPrimitive && rawAlias.asJsonPrimitive.isBoolean -> rawAlias.asBoolean
+            else -> throw invalidResponse()
+        }
+        return AgentSelection(
+            schemaVersion = 2,
+            adapterId = selection.requirePortableText("adapterId", minimum = 1),
+            agentId = selection.requirePortableText("agentId", minimum = 1),
+            modelId = selection.requirePortableText("modelId", minimum = 1),
+            modelTruthClass = selection.requireTruthClass("modelTruthClass"),
+            modelAlias = modelAlias,
+            settings = parsePortableSelectionSettings(selection.get("settings").requireObject()),
+            selectedAt = selection.requireInstant("selectedAt"),
+            capabilityDigest = selection.requireDigest("capabilityDigest"),
+        )
+    }
+
+    private fun parsePortableSelectionSettings(settings: JsonObject): Map<String, PortableAgentSettingValue> {
+        if (settings.size() > 128 || settings.keySet().any { !validSettingKey(it) }) throw invalidResponse()
+        return settings.entrySet().associate { (key, value) -> key to parsePortableSettingValue(value) }
+    }
+
+    private fun validSettingKey(key: String): Boolean = settingKeyPattern.matches(key) &&
+        !secretSettingKeyPattern.containsMatchIn(key) && !key.equals("secret", ignoreCase = true) &&
+        !key.equals("token", ignoreCase = true)
+
+    private fun parsePortableSettingValue(value: JsonElement): PortableAgentSettingValue {
+        if (value.isJsonPrimitive) {
+            val primitive = value.asJsonPrimitive
+            return when {
+                primitive.isString -> PortableAgentSettingValue.Text(portableSettingText(primitive.asString))
+                primitive.isNumber -> PortableAgentSettingValue.Decimal(parseFiniteDecimal(primitive))
+                primitive.isBoolean -> PortableAgentSettingValue.Flag(primitive.asBoolean)
+                else -> throw invalidResponse()
             }
         }
-        listOf("minimum", "maximum").forEach { name ->
-            setting.get(name)?.let { if (!it.isJsonPrimitive || !it.asJsonPrimitive.isNumber) throw invalidResponse() }
+        if (!value.isJsonArray || value.asJsonArray.size() > 256) throw invalidResponse()
+        return PortableAgentSettingValue.TextList(
+            value.asJsonArray.map { portableSettingText(it.requireString()) }.toList(),
+        )
+    }
+
+    private fun portableSettingValueToJson(value: PortableAgentSettingValue): JsonElement = when (value) {
+        is PortableAgentSettingValue.Text -> JsonPrimitive(portableSettingTextInput(value.value))
+        is PortableAgentSettingValue.Decimal -> {
+            require(value.value.toDouble().isFinite()) { "Agent number settings must be finite" }
+            JsonPrimitive(value.value)
+        }
+        is PortableAgentSettingValue.Flag -> JsonPrimitive(value.value)
+        is PortableAgentSettingValue.TextList -> JsonArray().apply {
+            require(value.value.size <= 256) { "Agent string-list settings may contain at most 256 values" }
+            value.value.forEach { add(portableSettingTextInput(it)) }
         }
     }
 
-    private fun validatePortableSettingValue(value: JsonElement) {
-        if (value.isJsonPrimitive) {
-            val primitive = value.asJsonPrimitive
-            when {
-                primitive.isString -> portableText(primitive.asString, maximum = 10_000)
-                primitive.isNumber || primitive.isBoolean -> Unit
-                else -> throw invalidResponse()
-            }
-        } else {
-            validatePortableTextArray(value, 256, 10_000)
+    private fun portableSettingTextInput(value: String): String = try {
+        portableSettingText(value)
+    } catch (_: GaepHostException) {
+        throw IllegalArgumentException("Agent settings must contain only verified portable, non-secret values")
+    }
+
+    private fun parseFiniteDecimal(value: JsonElement): BigDecimal {
+        if (!value.isJsonPrimitive || !value.asJsonPrimitive.isNumber) throw invalidResponse()
+        return try {
+            value.asBigDecimal.also { if (!it.toDouble().isFinite()) throw invalidResponse() }
+        } catch (_: Exception) {
+            throw invalidResponse()
         }
     }
 
@@ -633,6 +841,16 @@ internal object PortableDesignProtocol {
         if (value.length !in minimum..maximum || value.any(Char::isISOControl) ||
             absolutePathPattern.matches(value.trim()) || privatePathPattern.containsMatchIn(value) ||
             secretPattern.containsMatchIn(value)
+        ) {
+            throw invalidResponse()
+        }
+        return value
+    }
+
+    private fun portableSettingText(value: String, minimum: Int = 0): String {
+        if (value.length !in minimum..10_000 || value.any(Char::isISOControl) ||
+            portableSettingPathPattern.containsMatchIn(value) || secretPattern.containsMatchIn(value) ||
+            secretEnvironmentSettingPattern.matches(value)
         ) {
             throw invalidResponse()
         }

@@ -6,10 +6,12 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission
+import java.math.BigDecimal
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class PortableDesignClientTest {
@@ -21,6 +23,7 @@ class PortableDesignClientTest {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
         val badReadinessRoot = Files.createDirectory(temporaryRoot.resolve("bad-readiness"))
+        val badSelectionRoot = Files.createDirectory(temporaryRoot.resolve("bad-selection"))
         val executable = createFakeEngineLauncher(temporaryRoot)
         GaepEngineClient(temporaryRoot, executable.toString()).use { client ->
             val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -72,6 +75,9 @@ class PortableDesignClientTest {
             assertFalse(readiness.first().detected)
             assertEquals("gpt-5.6-codex", readiness.last().models.single().id)
             assertEquals(1, readiness.last().settingsCount)
+            assertEquals("reasoningEffort", readiness.last().settings.single().key)
+            assertEquals("select", readiness.last().settings.single().kind)
+            assertFalse(readiness.last().settings.single().sensitive)
             val readinessFields = AgentReadinessSnapshot::class.java.declaredFields.map { it.name }.toSet()
             assertFalse(readinessFields.any { field ->
                 listOf("executable", "path", "token", "credential", "defaultValue").any {
@@ -82,13 +88,68 @@ class PortableDesignClientTest {
             assertFalse(readinessSerialized.contains(privateRoot))
             assertFalse(readinessSerialized.contains(privateCredential))
 
+            assertEquals(AgentSelectionState.Unselected, client.readAgentSelection())
+            val controller = RiderProductController(client)
+            val selectionContext = controller.readAgentSelectionContext()
+            assertEquals(listOf("codex"), selectionContext.available.map { it.agentId })
+            val selectedView = controller.selectAgent(
+                adapterId = "openai-codex",
+                modelId = "gpt-5.6-codex",
+                settings = mapOf("reasoningEffort" to PortableAgentSettingValue.Text("high")),
+                actorId = "founder.review",
+            )
+            assertTrue(selectedView.contains("GAEP guarded Agent Selection"))
+            assertTrue(selectedView.contains("codex"))
+            assertTrue(selectedView.contains("gpt-5.6-codex"))
+            assertTrue(selectedView.contains("does not start a provider"))
+            assertFalse(selectedView.contains(privateRoot))
+            assertFalse(selectedView.contains(privateCredential))
+            val selectedState = assertIs<AgentSelectionState.Selected>(client.readAgentSelection())
+            assertEquals("openai-codex", selectedState.selection.adapterId)
+            assertEquals(PortableAgentSettingValue.Text("high"), selectedState.selection.settings["reasoningEffort"])
+            assertFalse(Gson().toJson(selectedState).contains(privateRoot))
+            assertFalse(Gson().toJson(selectedState).contains(privateCredential))
+            val selectionFields = AgentSelection::class.java.declaredFields.map { it.name }.toSet()
+            assertFalse(selectionFields.any { field ->
+                listOf("executable", "path", "token", "credential").any { field.contains(it, ignoreCase = true) }
+            })
+            assertFailsWith<IllegalArgumentException> {
+                client.selectAgent(
+                    "openai-codex",
+                    "gpt-5.6-codex",
+                    mapOf("apiKey" to PortableAgentSettingValue.Text("private")),
+                    "founder.review",
+                )
+            }
+            assertFailsWith<IllegalArgumentException> {
+                client.selectAgent(
+                    "openai-codex",
+                    "gpt-5.6-codex",
+                    mapOf("reasoningEffort" to PortableAgentSettingValue.Text("/Users/private/config")),
+                    "founder.review",
+                )
+            }
+            assertFailsWith<IllegalArgumentException> {
+                client.selectAgent(
+                    "openai-codex",
+                    "gpt-5.6-codex",
+                    mapOf("budget" to PortableAgentSettingValue.Decimal(BigDecimal("1e100000"))),
+                    "founder.review",
+                )
+            }
+
             GaepEngineClient(badReadinessRoot, executable.toString()).use { badReadinessClient ->
                 val invalidReadiness = hostError { badReadinessClient.probeAgentReadiness() }
                 assertEquals("HOST_RESPONSE_INVALID", invalidReadiness.kind)
                 assertPrivateTextWithheld(invalidReadiness)
             }
 
-            val controller = RiderProductController(client)
+            GaepEngineClient(badSelectionRoot, executable.toString()).use { badSelectionClient ->
+                val invalidSelection = hostError { badSelectionClient.readAgentSelection() }
+                assertEquals("HOST_RESPONSE_INVALID", invalidSelection.kind)
+                assertPrivateTextWithheld(invalidSelection)
+            }
+
             val productView = controller.readProduct()
             assertTrue(productView.contains("Founder Product"))
             assertTrue(productView.contains("Revision: 7"))
@@ -106,7 +167,7 @@ class PortableDesignClientTest {
             val importView = controller.importPortableDesignSnapshot(bundleRoot, "founder.review")
             assertTrue(importView.contains("exact Product revision 7"))
             assertTrue(importView.contains("not approval or a baseline"))
-            listOf(productView, readinessView, listView, readView, importView).forEach { rendered ->
+            listOf(productView, readinessView, selectedView, listView, readView, importView).forEach { rendered ->
                 assertFalse(rendered.contains(bundleRoot.toString()))
                 assertFalse(rendered.contains(privateRoot))
                 assertFalse(rendered.contains(privateCredential))

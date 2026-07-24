@@ -4,6 +4,11 @@ import java.nio.file.Path
 import java.util.Locale
 import java.util.UUID
 
+internal data class AgentSelectionContext(
+    val current: AgentSelectionState,
+    val available: List<AgentReadinessSnapshot>,
+)
+
 internal class RiderProductController(private val client: GaepEngineClient) {
     fun readProduct(): String = renderProduct(client.readProductBinding())
 
@@ -17,6 +22,30 @@ internal class RiderProductController(private val client: GaepEngineClient) {
             append(renderAgentReadiness(snapshot))
         }
     }
+
+    fun readAgentSelectionContext(): AgentSelectionContext {
+        val current = client.readAgentSelection()
+        if (current is AgentSelectionState.MigrationRequired) {
+            throw IllegalArgumentException(
+                "The existing legacy Agent Selection requires explicit migration review. Rider will not overwrite it implicitly.",
+            )
+        }
+        if (current == AgentSelectionState.Invalid) {
+            throw IllegalArgumentException(
+                "The existing Agent Selection is invalid. Repair or review the governed record before selecting another agent.",
+            )
+        }
+        val available = client.probeAgentReadiness().filter { it.detected && it.executionInterface != "unavailable" }
+        require(available.isNotEmpty()) { "No verified local Codex or Claude adapter is currently available for selection." }
+        return AgentSelectionContext(current, available)
+    }
+
+    fun selectAgent(
+        adapterId: String,
+        modelId: String,
+        settings: Map<String, PortableAgentSettingValue>,
+        actorId: String,
+    ): String = renderAgentSelection(client.selectAgent(adapterId, modelId, settings, actorId))
 
     fun listPortableDesignSnapshots(): String {
         val page = client.listPortableDesignSnapshots(offset = 0, limit = PortableDesignProtocol.DEFAULT_PAGE_SIZE)
@@ -91,6 +120,32 @@ internal class RiderProductController(private val client: GaepEngineClient) {
             appendLine("  - ${snapshot.limitations.size - limitations.size} more withheld from this compact view")
         }
         append("  Observed at: ${snapshot.observedAt}")
+    }
+
+    private fun renderAgentSelection(selection: AgentSelection): String = buildString {
+        appendLine("GAEP guarded Agent Selection")
+        appendLine()
+        appendLine("Agent: ${selection.agentId}")
+        appendLine("Adapter: ${selection.adapterId}")
+        appendLine("Model: ${selection.modelId}")
+        appendLine(
+            "Model evidence: ${selection.modelTruthClass}${if (selection.modelAlias == true) " (alias)" else ""}",
+        )
+        appendLine("Selected at: ${selection.selectedAt}")
+        appendLine("Portable settings: ${selection.settings.size}")
+        selection.settings.forEach { (key, value) -> appendLine("  - $key: ${renderSettingValue(value)}") }
+        appendLine()
+        appendLine(
+            "Boundary: this record does not start a provider, create or resume a Run, approve tools or effects, or grant execution authority.",
+        )
+        append("Machine-local executable paths, credentials, and raw provider output are not included.")
+    }
+
+    private fun renderSettingValue(value: PortableAgentSettingValue): String = when (value) {
+        is PortableAgentSettingValue.Text -> value.value
+        is PortableAgentSettingValue.Decimal -> value.value.toPlainString()
+        is PortableAgentSettingValue.Flag -> value.value.toString()
+        is PortableAgentSettingValue.TextList -> value.value.joinToString(", ")
     }
 
     private fun yesNo(value: Boolean): String = if (value) "yes" else "no"
