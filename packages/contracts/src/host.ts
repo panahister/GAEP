@@ -85,6 +85,7 @@ export const hostImportPreviewParamsSchema = z.object({
 export const hostMethodSchema = z.enum([
   "ping",
   "probeAgents",
+  "platformReadiness",
   "workspaceHealth",
   "readProduct",
   "createProduct",
@@ -121,6 +122,7 @@ function requestVariant<Method extends string, Params extends z.ZodType>(method:
 export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("ping", hostNoParamsSchema.default({})),
   requestVariant("probeAgents", hostNoParamsSchema.default({})),
+  requestVariant("platformReadiness", hostNoParamsSchema.default({})),
   requestVariant("workspaceHealth", hostNoParamsSchema.default({})),
   requestVariant("readProduct", hostNoParamsSchema.default({})),
   requestVariant("createProduct", z.object({ actorId: hostActorIdSchema, product: hostProductInputSchema }).strict()),

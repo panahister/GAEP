@@ -1,5 +1,0 @@
-<!-- BEGIN PDLC UPGRADE SHORTCUT -->
-## `UPG__` — Apply Package Improvements (PDLC family)
-
-When the user types `UPG__` (uppercase, double underscore) anywhere in a prompt, immediately invoke the **Family Upgrade Agent** (`.kiro/agents/family-upgrade-agent.md`). It detects which PDLC packages are installed (`.aiflc/pdlc/ai-*-rules/`), reads `.aiflc/pdlc/MIGRATION_CATALOGUE.md`, and finds which output-feature improvements (clickable reference links, table+diagram visual pairing, and any future ones) are missing from the EXISTING `pdlc-ws/` artifacts. It reports the pending improvements per package and asks the user to **Apply or Skip for each package**, previews every change, honors the `ownership` field (auto for `generated`, confirm for `hybrid`, skip for `user`), and is idempotent (already-applied improvements are skipped). Non-destructive and report-and-confirm — no change is written without confirmation. No further clarification needed — treat `UPG__` as a direct command to run the agent.
-<!-- END PDLC UPGRADE SHORTCUT -->

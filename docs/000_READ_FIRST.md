@@ -14,6 +14,8 @@ Read this file before creating, changing, approving, or generating any GAEP arti
 
 For a self-contained, source-code-independent overview suitable for stakeholder orientation and external Product evaluation, read the [GAEP Platform and Product Identity Manifest](GAEP_PLATFORM_PRODUCT_IDENTITY_MANIFEST.md). The Manifest is an informative Product-direction synthesis; it does not replace this guide, the Constitution, or an approved specification and explicitly discloses the pending Product/Initiative semantic transition.
 
+For active implementation, phase status, and the feature-by-feature handoff contract used by Codex and Claude Code, read the [GAEP Feature Delivery Tracker](06_Roadmap/054_GAEP_FEATURE_DELIVERY_TRACKER.md). No feature or phase is complete merely because code was generated; the tracker requires test evidence and explicit Product Owner acceptance before `Done` is recorded.
+
 ## What GAEP Is
 
 GAEP is a vendor-, technology-, architecture-, tool-, and test-methodology-neutral platform for governing how artificial intelligence participates in engineering. Its generic unit of work is the **Engineering Initiative**, which may be a product, service, library, integration, migration, infrastructure capability, security improvement, defect fix, research activity, or another bounded engineering effort.

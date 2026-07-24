@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "changeSetId": "GAEP-P0-CS01",
+  "generatedAt": "2026-07-24T08:56:53.296Z",
+  "engineVersion": "0.1.0",
+  "providers": [
+    {
+      "adapterId": "gaep.codex-cli",
+      "agentId": "codex-cli",
+      "agentLabel": "Codex",
+      "detected": false,
+      "executionInterface": "unavailable",
+      "supportsModelDiscovery": false,
+      "models": [],
+      "truthClass": "not-observed",
+      "observedAt": "2026-07-24T08:56:53.378Z"
+    },
+    {
+      "adapterId": "gaep.claude-code-cli",
+      "agentId": "claude-code-cli",
+      "agentLabel": "Claude Code",
+      "detected": true,
+      "runtimeVersion": "2.1.218",
+      "executionInterface": "cli-stream-json",
+      "supportsModelDiscovery": false,
+      "models": [
+        {
+          "id": "sonnet",
+          "label": "Sonnet alias",
+          "alias": true
+        },
+        {
+          "id": "opus",
+          "label": "Opus alias",
+          "alias": true
+        }
+      ],
+      "truthClass": "observed",
+      "observedAt": "2026-07-24T08:56:53.579Z"
+    }
+  ],
+  "workspace": {
+    "status": "uninitialized",
+    "initialized": false,
+    "auditValid": true,
+    "lockPresent": false,
+    "issueCount": 0,
+    "truthClass": "observed",
+    "observedAt": "2026-07-24T08:56:53.580Z"
+  },
+  "hostMatrix": [
+    {
+      "host": "vscode",
+      "state": "passed",
+      "source": "observation",
+      "observation": {
+        "host": "vscode",
+        "checkId": "vscode.extension-host.e2e",
+        "state": "passed",
+        "truthClass": "observed",
+        "observedAt": "2026-07-24T08:55:54.053Z",
+        "evidenceSource": "readiness-evidence.json",
+        "executionResult": "executed",
+        "evidenceDigest": "sha256:cbfe97de2e9f7ba63eeb3230dda29f9c2ad55e51e40f473c51e210f3179d77ce"
+      }
+    },
+    {
+      "host": "visual-studio",
+      "state": "pending-environment",
+      "source": "base-default"
+    },
+    {
+      "host": "rider",
+      "state": "pending-environment",
+      "source": "base-default"
+    },
+    {
+      "host": "kiro",
+      "state": "pending-environment",
+      "source": "base-default"
+    }
+  ],
+  "boundaryChecks": [
+    {
+      "checkId": "engine-host.platformReadiness.v2",
+      "target": "engine-host-rpc",
+      "state": "passed",
+      "truthClass": "observed",
+      "observedAt": "2026-07-24T08:56:53.296Z",
+      "evidenceSource": "packages/conformance/src/rpc-conformance.ts",
+      "detail": "v2 returned a schema-valid Base Snapshot; v1 was correctly rejected as PROTOCOL_UPGRADE_REQUIRED."
+    }
+  ]
+}

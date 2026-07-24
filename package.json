@@ -7,6 +7,7 @@
     "packages/contracts",
     "packages/agent-sdk",
     "packages/engine",
+    "packages/conformance",
     "packages/adapters/*",
     "apps/engine-host",
     "apps/vscode"
@@ -16,6 +17,10 @@
     "check": "npm run typecheck && npm run test && npm run validate:docs",
     "check:founder": "npm run check && npm run test:vscode:extension-host",
     "clean": "npm run clean --workspaces --if-present",
+    "conformance:phase0": "npm run build -w @gaep/conformance",
+    "evidence:vscode": "node examples/phase0-readiness/emit-vscode-observation.mjs",
+    "example:phase0": "node examples/phase0-readiness/run.mjs",
+    "test:lifecycle": "ruby scripts/test/lifecycle_consistency_test.rb",
     "package:vscode": "npm run package -w gaep-vscode",
     "test": "vitest run",
     "test:vscode:extension-host": "npm run test:extension-host -w gaep-vscode",

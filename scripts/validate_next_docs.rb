@@ -8,9 +8,14 @@ require "open3"
 require "set"
 require "yaml"
 
+require_relative "lib/report_lifecycle"
+
 ROOT = Pathname.new(__dir__).join("..").expand_path
 NEXT_DOCS = ROOT.join("docs", "next")
 LEGACY_DOCS = ROOT.join("docs")
+# Operational delivery records (pre-implementation change reports) are governed by their own
+# structure checks below, not by the legacy-migration map.
+OPERATIONAL_REPORTS_DIR = ROOT.join("docs", "06_Roadmap", "pre_implementation_change_reports")
 LEGACY_MIGRATION_MAP = NEXT_DOCS.join("08_Roadmap_and_Adoption", "004_LEGACY_MIGRATION_MAP.md")
 OWNER_ROLE_REGISTRY_ID = "GAEP-REG-008"
 PRODUCT_DECISION_CROSSWALK = NEXT_DOCS.join("06_GAEP_On_GAEP", "011_PRODUCT_DECISION_CROSSWALK.md")
@@ -414,7 +419,10 @@ end
 
 if LEGACY_MIGRATION_MAP.exist?
   migration_text = LEGACY_MIGRATION_MAP.read
-  legacy_files = LEGACY_DOCS.glob("**/*.md").reject { |path| path.to_s.start_with?(NEXT_DOCS.to_s + File::SEPARATOR) }
+  legacy_files = LEGACY_DOCS.glob("**/*.md").reject do |path|
+    path.to_s.start_with?(NEXT_DOCS.to_s + File::SEPARATOR) ||
+      path.to_s.start_with?(OPERATIONAL_REPORTS_DIR.to_s + File::SEPARATOR)
+  end
   legacy_files.each do |path|
     legacy_relative = path.relative_path_from(LEGACY_DOCS).to_s
     unless migration_text.include?("`#{legacy_relative}`")
@@ -423,6 +431,48 @@ if LEGACY_MIGRATION_MAP.exist?
   end
 else
   errors << "missing legacy migration map #{LEGACY_MIGRATION_MAP.relative_path_from(ROOT)}"
+end
+
+# Operational delivery records: validate report naming, required sections, allowed statuses,
+# and approval markers instead of treating them as legacy migration inputs.
+if OPERATIONAL_REPORTS_DIR.directory?
+  report_name = /\APHASE_.+_PRE_IMPLEMENTATION_CHANGE_REPORT\.md\z/
+  allowed_statuses = [
+    "Awaiting Approval", "Approved", "In Implementation",
+    "Implemented — Ready for Test", "Accepted", "Withdrawn"
+  ]
+  required_sections = [
+    "## 1. Executive Summary",
+    "## 4. Proposed",
+    "## 5. Exact Planned File Changes",
+    "## 12. Approval Request",
+  ]
+  register_path = OPERATIONAL_REPORTS_DIR.join("README.md")
+  register_text = register_path.exist? ? register_path.read : ""
+  OPERATIONAL_REPORTS_DIR.glob("*.md").each do |path|
+    name = path.basename.to_s
+    next if name == "README.md"
+    next if name.start_with?("_TEMPLATE")
+    rel = path.relative_path_from(ROOT).to_s
+    text = path.read
+    errors << "#{rel}: report file name must match PHASE_<N>_<CS-ID>_PRE_IMPLEMENTATION_CHANGE_REPORT.md" unless name.match?(report_name)
+    required_sections.each do |section|
+      errors << "#{rel}: missing required section '#{section}'" unless text.include?(section)
+    end
+    status_line = text[/^\|\s*\*\*Status\*\*\s*\|\s*(.+?)\s*\|/, 1]
+    if status_line.nil?
+      errors << "#{rel}: missing '| **Status** | ... |' field"
+    elsif allowed_statuses.none? { |status| status_line.include?(status) }
+      errors << "#{rel}: Status '#{status_line}' is not an allowed operational-report status"
+    end
+    unless text.include?("AWAITING PRODUCT OWNER APPROVAL") || text.include?("APPROVE ")
+      errors << "#{rel}: missing an approval marker (AWAITING PRODUCT OWNER APPROVAL or an APPROVE command)"
+    end
+    # Lifecycle consistency between the report body and the Change Set Register.
+    ReportLifecycle.inconsistencies(text, ReportLifecycle.register_status(register_text, name)).each do |finding|
+      errors << "#{rel}: #{finding}"
+    end
+  end
 end
 
 if documents.key?(OWNER_ROLE_REGISTRY_ID)

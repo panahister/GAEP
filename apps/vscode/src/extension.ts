@@ -17,10 +17,13 @@ import {
   type AdapterCapabilities,
   type AgentSetting,
   type Initiative,
+  type PlatformReadinessSnapshot,
   type ToolPermission,
 } from "@gaep/contracts"
 import { GaepEngine, initiativeTransitions } from "@gaep/engine"
 import * as vscode from "vscode"
+
+import { formatPlatformReadinessLines } from "./platform-readiness-format.js"
 
 import { ActiveRunRegistry } from "./run-registry.js"
 import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-source.js"
@@ -1450,6 +1453,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       diagnostics.info(`Managed active runs: ${activeAgentRuns.list().map((run) => run.runId).join(", ") || "none"}`)
       diagnostics.info(`Local actor: ${localActor.id} (machine-local attribution only; not an approval authority)`)
       diagnostics.show(true)
+    }),
+    vscode.commands.registerCommand("gaep.showPlatformReadiness", async (): Promise<PlatformReadinessSnapshot | undefined> => {
+      // Dedicated returning handler (not wrapped by safely()): the E2E must receive the actual
+      // returned snapshot and must fail if readiness computation fails.
+      try {
+        if (!vscode.workspace.isTrusted) throw new Error("Trust the workspace before GAEP can inspect platform readiness")
+        diagnostics.info("=== GAEP Platform Readiness (read-only) ===")
+        if (!engine) {
+          diagnostics.info("No GAEP Product root selected; select a Product root to compute provider and workspace readiness.")
+          diagnostics.info("Four-IDE Host Matrix defaults: vscode=not-run; visual-studio/rider/kiro=pending-environment (no host executed).")
+          diagnostics.show(true)
+          return undefined
+        }
+        const snapshot = await engine.computePlatformReadiness()
+        for (const line of formatPlatformReadinessLines(snapshot)) diagnostics.info(line)
+        diagnostics.info("Host install/conformance is not inferred here; matrix rows stay at engine defaults until an executed conformance observation is merged.")
+        diagnostics.show(true)
+        return snapshot
+      } catch (error) {
+        logDiagnostic("Platform readiness failed", error)
+        const message = error instanceof Error ? error.message : "Unknown GAEP failure"
+        await vscode.window.showErrorMessage(message, "Show Diagnostics").then((selected) => {
+          if (selected === "Show Diagnostics") diagnostics.show(true)
+        })
+        return undefined
+      }
     }),
     vscode.commands.registerCommand("gaep.manageWorkspaceTrust", () => vscode.commands.executeCommand("workbench.trust.manage")),
     vscode.commands.registerCommand("gaep.migrateLegacyAgentSelection", () => vscode.commands.executeCommand("gaep.selectAgent")),

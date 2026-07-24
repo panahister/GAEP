@@ -23,6 +23,7 @@ import { HostRpcError, invalidParamsError, MAX_RPC_FRAME_BYTES, normalizeRpcErro
 const PROTOCOL_VERSION = 2
 const SUPPORTED_PROTOCOL_VERSIONS = [1, 2] as const
 const v2OnlyMethods = new Set<HostRequest["method"]>([
+  "platformReadiness",
   "workspaceHealth",
   "migrateLegacySelection",
   "productStudio.designReadiness",
@@ -147,6 +148,8 @@ export class EngineHost {
         }
       case "probeAgents":
         return this.refreshCapabilitySnapshots()
+      case "platformReadiness":
+        return this.engine.computePlatformReadiness()
       case "workspaceHealth":
         return this.engine.workspaceHealth()
       case "readProduct":

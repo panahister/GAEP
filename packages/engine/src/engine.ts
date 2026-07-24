@@ -25,6 +25,7 @@ import {
   type ManagedRunEvidence,
   type ManagedRunRecord,
   type ManagedRunResult,
+  type PlatformReadinessSnapshot,
   type Product,
   type Run,
   type ToolPermission,
@@ -39,6 +40,7 @@ import {
   type AgentInvocation,
 } from "@gaep/agent-sdk"
 
+import { computePlatformReadinessSnapshot } from "./platform-readiness.js"
 import { GaepRepository, type GaepRepositoryOptions } from "./repository.js"
 import {
   ManagedExecutionService,
@@ -165,6 +167,16 @@ export class GaepEngine {
       [...this.adapters.values()].map((adapter) => this.probeAdapter(adapter, { refreshModels: true })),
     )
     return results.map((result) => result.capabilities)
+  }
+
+  /**
+   * Produce the Base Platform Readiness Snapshot: provider readiness (`probeAgents`) plus
+   * workspace readiness (`workspaceHealth`), with the Four-IDE Host Matrix left at its defaults.
+   * The engine makes no host-conformance claim and accepts no host-conformance input.
+   */
+  async computePlatformReadiness(): Promise<PlatformReadinessSnapshot> {
+    const [providers, workspace] = await Promise.all([this.probeAgents(), this.workspaceHealth()])
+    return computePlatformReadinessSnapshot({ providers, workspace })
   }
 
   async createProduct(input: ProductInput, actorId: string): Promise<Product> {

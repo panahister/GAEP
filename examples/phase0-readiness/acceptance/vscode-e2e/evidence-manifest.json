@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "parentChangeSetId": "GAEP-P0-CS01",
+  "correctionSetId": "GAEP-P0-CS01-C1",
+  "host": "vscode",
+  "checkId": "vscode.extension-host.e2e",
+  "subjectDigest": "sha256:c6ea90eda14bb97644d09b8c3c0e3af23987c43b26d91575d7edaf03be51f9eb",
+  "artifacts": [
+    {
+      "path": "readiness-evidence.json",
+      "digest": "sha256:cbfe97de2e9f7ba63eeb3230dda29f9c2ad55e51e40f473c51e210f3179d77ce"
+    },
+    {
+      "path": "observation.json",
+      "digest": "sha256:d6e79760c19baa3b975cacbe0d4d4b4e81b3994a0b6b819d96cb78431109670f"
+    }
+  ]
+}

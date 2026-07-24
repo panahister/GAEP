@@ -8,7 +8,7 @@ import {
   fingerprintExecutable,
   type AdapterProbeResult,
 } from "@gaep/agent-sdk"
-import type { AdapterCapabilities, ProductExportBundle } from "@gaep/contracts"
+import { platformReadinessSnapshotSchema, type AdapterCapabilities, type ProductExportBundle } from "@gaep/contracts"
 
 import { EngineHost } from "./host.js"
 
@@ -218,6 +218,24 @@ describe("engine host protocol", () => {
         confirmation: "reconfirm-portable-agent-selection",
       },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({ jsonrpc: "2.0", id: 6, method: "platformReadiness", params: {} }))
+      .rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+  })
+
+  it("returns a schema-valid Base Platform Readiness Snapshot over protocol v2", async () => {
+    const snapshot = platformReadinessSnapshotSchema.parse(
+      await host.dispatch({ jsonrpc: "2.0", id: 1, protocolVersion: 2, method: "platformReadiness", params: {} }),
+    )
+    expect(snapshot.providers.map((provider) => provider.adapterId).sort()).toEqual([
+      "gaep.claude-code-cli",
+      "gaep.codex-cli",
+    ])
+    expect(snapshot.hostMatrix.map((row) => ({ host: row.host, state: row.state, source: row.source }))).toEqual([
+      { host: "vscode", state: "not-run", source: "base-default" },
+      { host: "visual-studio", state: "pending-environment", source: "base-default" },
+      { host: "rider", state: "pending-environment", source: "base-default" },
+      { host: "kiro", state: "pending-environment", source: "base-default" },
+    ])
   })
 
   it("rejects unknown methods, malformed params, caller capability injection, and oversized direct requests", async () => {

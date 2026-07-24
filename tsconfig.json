@@ -4,6 +4,7 @@
     { "path": "packages/contracts" },
     { "path": "packages/agent-sdk" },
     { "path": "packages/engine" },
+    { "path": "packages/conformance" },
     { "path": "packages/adapters/codex" },
     { "path": "packages/adapters/claude" },
     { "path": "apps/engine-host" },

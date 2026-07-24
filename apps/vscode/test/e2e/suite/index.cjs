@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict")
 const { access } = require("node:fs/promises")
+const { writeFileSync } = require("node:fs")
 const path = require("node:path")
 
 const vscode = require("vscode")
@@ -103,14 +104,67 @@ async function openStudio() {
   return tab
 }
 
+const FOUR_IDE_HOSTS = ["kiro", "rider", "visual-studio", "vscode"]
+
+/**
+ * Write an untracked candidate signal into the exact directory the producer created
+ * (GAEP_E2E_CANDIDATE_DIR). The suite never publishes tracked acceptance artifacts; the
+ * producer builds, verifies, and atomically publishes the durable bundle from this signal.
+ */
+/**
+ * Only a fixed failure CODE is signalled — never a raw error message. The producer maps the
+ * code to an allowlisted one-line summary, so absolute paths, candidate directories, newlines,
+ * logs, and secrets can never reach tracked evidence.
+ */
+function writeCandidateSignal(outcome, snapshot, failureCode) {
+  const candidateDir = process.env.GAEP_E2E_CANDIDATE_DIR
+  if (process.env.GAEP_E2E_EMIT_OBSERVATION !== "1" || !candidateDir) return
+  try {
+    const signal = { outcome, observedAt: new Date().toISOString() }
+    if (snapshot) signal.snapshot = snapshot
+    if (failureCode) signal.failureCode = failureCode
+    writeFileSync(path.join(candidateDir, "candidate-result.json"), `${JSON.stringify(signal, null, 2)}\n`)
+  } catch (error) {
+    process.stdout.write(`GAEP candidate signal write failed: ${error && error.message}\n`)
+  }
+}
+
+async function assertPlatformReadinessReadOnly(root) {
+  const registered = new Set(await vscode.commands.getCommands(true))
+  assert.ok(registered.has("gaep.showPlatformReadiness"), "gaep.showPlatformReadiness must be registered after activation")
+  let snapshot
+  let failureCode = "assertion-failed"
+  try {
+    // Computation proof: the command must return the actual computed snapshot.
+    failureCode = "readiness-command-failed"
+    snapshot = await vscode.commands.executeCommand("gaep.showPlatformReadiness")
+    assert.ok(snapshot && typeof snapshot === "object", "the readiness command must return a computed snapshot")
+    assert.ok(Array.isArray(snapshot.providers), "the readiness snapshot must carry a providers array")
+    failureCode = "matrix-assertion-failed"
+    assert.deepEqual(
+      (snapshot.hostMatrix || []).map((row) => row.host).sort(),
+      FOUR_IDE_HOSTS,
+      "the readiness snapshot must carry exactly the Four-IDE host matrix",
+    )
+    // Read-only proof: executing the command must not create Product state.
+    failureCode = "workspace-mutation-detected"
+    await assertAbsent(path.join(root, ".gaep"))
+  } catch (error) {
+    writeCandidateSignal("failed", snapshot, failureCode)
+    throw error
+  }
+  writeCandidateSignal("passed", snapshot)
+}
+
 async function runOpenPhase() {
   await assertWorkspace(1)
   const extension = await activateExtension()
   await assertCommandsAndViews(extension)
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
+  await assertPlatformReadinessReadOnly(expectedRoots()[0])
   await openStudio()
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
-  process.stdout.write("PASS open: activation, all contributed commands, four native views, and Product Studio open\n")
+  process.stdout.write("PASS open: activation, all contributed commands, four native views, read-only platform readiness, and Product Studio open\n")
 }
 
 async function runMultiRootPhase() {

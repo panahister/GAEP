@@ -1,0 +1,3 @@
+# Machine-local raw logs from the readiness runner are not tracked.
+# The durable proof (acceptance/*.json and acceptance/*.md) IS tracked.
+evidence/

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "parentChangeSetId": "GAEP-P0-CS01",
+  "correctionSetId": "GAEP-P0-CS01-C1",
+  "checkId": "vscode.extension-host.e2e",
+  "observedAt": "2026-07-24T08:55:54.053Z",
+  "subjectDigest": "sha256:c6ea90eda14bb97644d09b8c3c0e3af23987c43b26d91575d7edaf03be51f9eb",
+  "executionResult": "executed",
+  "testOutcome": "passed",
+  "snapshot": {
+    "schemaVersion": 1,
+    "generatedAt": "2026-07-24T08:55:50.283Z",
+    "engineVersion": "0.1.0",
+    "providers": [
+      {
+        "adapterId": "gaep.codex-cli",
+        "agentId": "codex-cli",
+        "agentLabel": "Codex",
+        "detected": false,
+        "executionInterface": "unavailable",
+        "supportsModelDiscovery": false,
+        "models": [],
+        "truthClass": "not-observed",
+        "observedAt": "2026-07-24T08:55:49.385Z"
+      },
+      {
+        "adapterId": "gaep.claude-code-cli",
+        "agentId": "claude-code-cli",
+        "agentLabel": "Claude Code",
+        "detected": true,
+        "runtimeVersion": "2.1.218",
+        "executionInterface": "cli-stream-json",
+        "supportsModelDiscovery": false,
+        "models": [
+          {
+            "id": "sonnet",
+            "label": "Sonnet alias",
+            "alias": true
+          },
+          {
+            "id": "opus",
+            "label": "Opus alias",
+            "alias": true
+          }
+        ],
+        "truthClass": "observed",
+        "observedAt": "2026-07-24T08:55:50.282Z"
+      }
+    ],
+    "workspace": {
+      "status": "uninitialized",
+      "initialized": false,
+      "auditValid": true,
+      "lockPresent": false,
+      "issueCount": 0,
+      "truthClass": "observed",
+      "observedAt": "2026-07-24T08:55:50.283Z"
+    },
+    "hostMatrix": [
+      {
+        "host": "vscode",
+        "state": "not-run",
+        "source": "base-default"
+      },
+      {
+        "host": "visual-studio",
+        "state": "pending-environment",
+        "source": "base-default"
+      },
+      {
+        "host": "rider",
+        "state": "pending-environment",
+        "source": "base-default"
+      },
+      {
+        "host": "kiro",
+        "state": "pending-environment",
+        "source": "base-default"
+      }
+    ]
+  }
+}

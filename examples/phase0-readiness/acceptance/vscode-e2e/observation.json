@@ -1,0 +1,12 @@
+{
+  "observation": {
+    "host": "vscode",
+    "checkId": "vscode.extension-host.e2e",
+    "state": "passed",
+    "truthClass": "observed",
+    "observedAt": "2026-07-24T08:55:54.053Z",
+    "evidenceSource": "readiness-evidence.json",
+    "executionResult": "executed",
+    "evidenceDigest": "sha256:cbfe97de2e9f7ba63eeb3230dda29f9c2ad55e51e40f473c51e210f3179d77ce"
+  }
+}
