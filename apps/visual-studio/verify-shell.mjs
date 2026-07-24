@@ -59,6 +59,7 @@ for (const binding of [
   "ShowPhaseDashboardCommand",
   "LoadChangeImpactCommand",
   "ShowChangeImpactCommand",
+  "ShowAgentModelCommand",
   "AvailableChangeChoices",
   "SelectedChangeChoice",
   "RefreshAgentReadinessCommand",
@@ -105,6 +106,10 @@ requireText(remoteUi, /Show Phase 0\/1A dashboards/u,
   "Visual Studio Product Studio does not expose the explicit phase-dashboard projection")
 requireText(remoteUi, /Show exact Change and impact/u,
   "Visual Studio Product Studio does not expose exact Change and impact projection")
+requireText(remoteUi, /Show exact Agent and model/u,
+  "Visual Studio Product Studio does not expose exact Agent and model projection")
+requireText(remoteUi, /cannot select or switch an agent, create a handoff, launch a Run, authorize effects, establish readiness, or invent provider usage or cost/u,
+  "Visual Studio Agent and model action does not communicate its no-authority and unavailable-metric boundary")
 requireText(remoteUi, /Selection grants no Change approval, Risk acceptance, mutation, Run, Tool, write, or effect authority/u,
   "Visual Studio Change and impact action does not communicate its no-authority boundary")
 requireText(remoteUi, /Confirm guarded selection/u,

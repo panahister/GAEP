@@ -54,6 +54,12 @@ public sealed class ProductWorkflowController(EngineClient client)
             await client.ReadChangeImpactAsync(context.Product, change, cancellationToken));
     }
 
+    public async Task<string> ReadAgentModelAsync(CancellationToken cancellationToken = default)
+    {
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        return RenderAgentModelDashboard(await client.ReadAgentModelAsync(product, cancellationToken));
+    }
+
     public async Task<string> ReadAgentReadinessAsync(CancellationToken cancellationToken = default)
     {
         var snapshots = await client.ProbeAgentReadinessAsync(cancellationToken);
@@ -642,6 +648,81 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append(
                 "Product text, Change text, Work Item text, source bytes, absolute paths, provider output, prompts, " +
                 "executable state, and credentials are withheld.")
+            .ToString();
+    }
+
+    private static string RenderAgentModelDashboard(AgentModelDashboard dashboard)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP exact Agent and Model dashboard")
+            .AppendLine()
+            .AppendLine($"Product revision: {dashboard.ProductRevision}")
+            .AppendLine($"Product digest: {dashboard.ProductDigest}")
+            .AppendLine($"Snapshot digest: {dashboard.SnapshotDigest}")
+            .AppendLine(
+                $"Freshness: {dashboard.Freshness.State}; selection capability " +
+                dashboard.Freshness.SelectionCapabilityState)
+            .AppendLine(
+                $"Capability observation range: {dashboard.Freshness.OldestCapabilityObservedAt:O} to " +
+                $"{dashboard.Freshness.NewestCapabilityObservedAt:O}")
+            .AppendLine("Provider usage: unavailable; current Managed Run records have no provider usage contract.")
+            .AppendLine("Provider cost: unavailable; current Managed Run records have no provider cost contract.")
+            .AppendLine();
+        var selection = dashboard.Selection;
+        if (selection.Status is "selected" or "migration-required")
+        {
+            output.AppendLine($"Selection: {selection.Status}; {selection.AdapterId}/{selection.AgentId}; {selection.ModelId}")
+                .AppendLine($"Selection digest: {selection.SelectionDigest}")
+                .AppendLine($"Selection capability: {selection.CapabilityState}; {selection.CapabilityDigest}");
+            foreach (var (key, value) in selection.Settings)
+            {
+                output.AppendLine($"  setting {key}={RenderSettingValue(value)}");
+            }
+        }
+        else
+        {
+            output.AppendLine($"Selection: {selection.Status}");
+        }
+        output.AppendLine()
+            .AppendLine($"Observed capabilities ({dashboard.CapabilityLimit.Shown}/{dashboard.CapabilityLimit.Total}):");
+        foreach (var capability in dashboard.Capabilities)
+        {
+            output.AppendLine(
+                $"  {capability.AdapterId}/{capability.AgentId}; {capability.AgentLabel}; " +
+                $"{capability.ExecutionInterface}/{capability.InterfaceMaturity}; models={capability.ModelCount}; " +
+                $"selected={capability.Selected.ToString().ToLowerInvariant()}; {capability.CapabilityDigest}");
+        }
+        output.AppendLine().AppendLine($"Runs ({dashboard.RunLimit.Shown}/{dashboard.RunLimit.Total}):");
+        foreach (var run in dashboard.Runs)
+        {
+            var managed = run.Managed.Status == "observed"
+                ? $"{run.Managed.State}/attempt-{run.Managed.AttemptNumber}/{run.Managed.ResultStatus}"
+                : run.Managed.Status;
+            output.AppendLine(
+                $"  {run.RecordId:D}@{run.Revision}; {run.State}; " +
+                $"{run.AdapterId}/{run.AgentId}/{run.ModelId}; managed={managed}");
+        }
+        output.AppendLine()
+            .AppendLine($"Agent/model handoffs ({dashboard.HandoffLimit.Shown}/{dashboard.HandoffLimit.Total}):");
+        foreach (var handoff in dashboard.Handoffs)
+        {
+            output.AppendLine(
+                $"  {handoff.RecordId:D}; Run {handoff.FromRunId:D} -> " +
+                $"{handoff.ToAdapterId}/{handoff.ToAgentId}/{handoff.ToModelId}; {handoff.State}");
+        }
+        output.AppendLine()
+            .AppendLine($"Managed Run observations: {dashboard.ManagedRunLimit.Shown}/{dashboard.ManagedRunLimit.Total}")
+            .AppendLine(
+                $"Omissions: {(dashboard.Truncated ? "one or more bounded categories are truncated" : "none in reported categories")}")
+            .AppendLine("Coverage: bounded current records do not prove provider-account or native-host readiness.");
+        foreach (var limitation in dashboard.Limitations) output.AppendLine($"Limit: {limitation}");
+        return output.AppendLine()
+            .AppendLine(
+                "Boundary: this read-only projection cannot select or switch an agent, create a handoff, launch a Run, " +
+                "authorize a Tool/write/effect, approve an outcome, establish readiness, or grant release authority.")
+            .Append(
+                "Product text, Run narrative, source bytes, absolute paths, provider output, prompts, executable state, " +
+                "credentials, and sensitive setting values are withheld.")
             .ToString();
     }
 

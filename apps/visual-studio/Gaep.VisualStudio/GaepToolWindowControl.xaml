@@ -39,6 +39,13 @@
                 Command="{Binding ShowChangeImpactCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
+        <TextBlock Text="Agent and model" FontWeight="SemiBold" />
+        <TextBlock Text="Show an exact Product-, capability-, and selection-bound metadata projection. It cannot select or switch an agent, create a handoff, launch a Run, authorize effects, establish readiness, or invent provider usage or cost."
+                   TextWrapping="Wrap" Margin="0,4,0,8" />
+        <Button x:Name="ShowAgentModelButton" Content="Show exact Agent and model"
+                Command="{Binding ShowAgentModelCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
         <Button x:Name="RefreshAgentReadinessButton" Content="Refresh Codex and Claude readiness"
                 Command="{Binding RefreshAgentReadinessCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />

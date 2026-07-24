@@ -209,7 +209,8 @@ public sealed record AgentSelection(
     bool? ModelAlias,
     IReadOnlyDictionary<string, PortableAgentSettingValue> Settings,
     DateTimeOffset SelectedAt,
-    string CapabilityDigest);
+    string CapabilityDigest,
+    string SelectionDigest);
 
 public enum AgentSelectionStatus
 {
@@ -530,7 +531,94 @@ public sealed record AgentReadinessSnapshot(
     IReadOnlyList<AgentSelectionSetting> Settings,
     IReadOnlyList<AgentModelReadiness> Models,
     IReadOnlyList<string> Limitations,
-    DateTimeOffset ObservedAt);
+    DateTimeOffset ObservedAt,
+    string CapabilityDigest);
+
+public sealed record AgentModelLimit(long Shown, long Total, long Omitted);
+
+public sealed record AgentModelCapability(
+    string AdapterId,
+    string AdapterVersion,
+    string AgentId,
+    string AgentLabel,
+    string? RuntimeVersion,
+    string CapabilityDigest,
+    bool Detected,
+    string ExecutionInterface,
+    string InterfaceMaturity,
+    long ModelCount,
+    long LimitationShown,
+    long LimitationTotal,
+    DateTimeOffset ObservedAt,
+    bool Selected);
+
+public sealed record AgentModelSelectionProjection(
+    string Status,
+    string? SelectionDigest,
+    string? AdapterId,
+    string? AgentId,
+    string? ModelId,
+    string? ModelTruthClass,
+    bool? ModelAlias,
+    IReadOnlyDictionary<string, PortableAgentSettingValue> Settings,
+    DateTimeOffset? SelectedAt,
+    string? CapabilityDigest,
+    string? CapabilityState);
+
+public sealed record AgentModelManagedProjection(
+    string Status,
+    Guid? RecordId,
+    string? State,
+    long? AttemptNumber,
+    string? ResultStatus,
+    string? ProviderDisposition,
+    string? OutcomeStatus,
+    Guid? EvidenceId,
+    long? EventCount,
+    long? ActualEffectCount);
+
+public sealed record AgentModelRunProjection(
+    Guid RecordId,
+    long Revision,
+    string State,
+    string AdapterId,
+    string AgentId,
+    string ModelId,
+    AgentModelManagedProjection Managed);
+
+public sealed record AgentModelHandoffProjection(
+    Guid RecordId,
+    Guid FromRunId,
+    string ToAdapterId,
+    string ToAgentId,
+    string ToModelId,
+    string State,
+    DateTimeOffset CreatedAt);
+
+public sealed record AgentModelFreshness(
+    string State,
+    string SelectionCapabilityState,
+    DateTimeOffset OldestCapabilityObservedAt,
+    DateTimeOffset NewestCapabilityObservedAt,
+    bool Truncated);
+
+public sealed record AgentModelDashboard(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    IReadOnlyList<AgentModelCapability> Capabilities,
+    AgentModelSelectionProjection Selection,
+    IReadOnlyList<AgentModelRunProjection> Runs,
+    IReadOnlyList<AgentModelHandoffProjection> Handoffs,
+    AgentModelFreshness Freshness,
+    AgentModelLimit CapabilityLimit,
+    AgentModelLimit RunLimit,
+    AgentModelLimit HandoffLimit,
+    AgentModelLimit ManagedRunLimit,
+    bool Truncated,
+    DateTimeOffset ObservedAt,
+    IReadOnlyList<string> Limitations,
+    string SnapshotDigest);
 
 public sealed record PortableDesignGovernanceMetadata(
     string State,

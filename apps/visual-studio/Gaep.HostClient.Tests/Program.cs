@@ -99,6 +99,12 @@ internal static class Program
         var badChangeImpactFreshnessRoot = Path.Combine(temporaryRoot, "bad-change-impact-freshness");
         var badChangeImpactDigestRoot = Path.Combine(temporaryRoot, "bad-change-impact-digest");
         var badChangeImpactPrivateRoot = Path.Combine(temporaryRoot, "bad-change-impact-private");
+        var badAgentModelBindingRoot = Path.Combine(temporaryRoot, "bad-agent-model-binding");
+        var badAgentModelCountRoot = Path.Combine(temporaryRoot, "bad-agent-model-count");
+        var badAgentModelFreshnessRoot = Path.Combine(temporaryRoot, "bad-agent-model-freshness");
+        var badAgentModelMetricsRoot = Path.Combine(temporaryRoot, "bad-agent-model-metrics");
+        var badAgentModelDigestRoot = Path.Combine(temporaryRoot, "bad-agent-model-digest");
+        var badAgentModelPrivateRoot = Path.Combine(temporaryRoot, "bad-agent-model-private");
         var badManagedPreviewRoot = Path.Combine(temporaryRoot, "bad-managed-preview");
         var badManagedCriterionRoot = Path.Combine(temporaryRoot, "bad-managed-criterion");
         var badManagedDigestRoot = Path.Combine(temporaryRoot, "bad-managed-digest");
@@ -138,6 +144,12 @@ internal static class Program
         Directory.CreateDirectory(badChangeImpactFreshnessRoot);
         Directory.CreateDirectory(badChangeImpactDigestRoot);
         Directory.CreateDirectory(badChangeImpactPrivateRoot);
+        Directory.CreateDirectory(badAgentModelBindingRoot);
+        Directory.CreateDirectory(badAgentModelCountRoot);
+        Directory.CreateDirectory(badAgentModelFreshnessRoot);
+        Directory.CreateDirectory(badAgentModelMetricsRoot);
+        Directory.CreateDirectory(badAgentModelDigestRoot);
+        Directory.CreateDirectory(badAgentModelPrivateRoot);
         Directory.CreateDirectory(badManagedPreviewRoot);
         Directory.CreateDirectory(badManagedCriterionRoot);
         Directory.CreateDirectory(badManagedDigestRoot);
@@ -350,6 +362,48 @@ internal static class Program
                 changeCatalog.Items.Single() with { Digest = "sha256:not-a-digest" }),
             "Invalid Change dashboard digests fail before transport");
 
+        var agentModel = await client.ReadAgentModelAsync(product);
+        Check(agentModel.ProductDigest == product.Digest && agentModel.Capabilities.Count == 2 &&
+              agentModel.Selection.Status == "unselected" && agentModel.Freshness.State == "current" &&
+              agentModel.CapabilityLimit.Total == 2 && !agentModel.Truncated &&
+              agentModel.Runs.Count == 0 && agentModel.Handoffs.Count == 0,
+            "Typed Agent/Model dashboard preserves exact unselected capability and freshness metadata");
+        var agentModelJson = JsonSerializer.Serialize(agentModel);
+        Check(!agentModelJson.Contains("Founder Product", StringComparison.Ordinal) &&
+              !agentModelJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !agentModelJson.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Typed Agent/Model dashboard withholds Product text, private paths, and credentials");
+        var agentModelOutput = await new ProductWorkflowController(client).ReadAgentModelAsync();
+        Check(agentModelOutput.Contains("GAEP exact Agent and Model dashboard", StringComparison.Ordinal) &&
+              agentModelOutput.Contains("Provider usage: unavailable", StringComparison.Ordinal) &&
+              agentModelOutput.Contains("cannot select or switch an agent", StringComparison.Ordinal) &&
+              !agentModelOutput.Contains("Founder Product", StringComparison.Ordinal) &&
+              !agentModelOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !agentModelOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Agent/Model workflow renders metadata only with unavailable metrics and explicit no-authority boundaries");
+        foreach (var hostileRoot in new[]
+                 {
+                     badAgentModelBindingRoot,
+                     badAgentModelCountRoot,
+                     badAgentModelFreshnessRoot,
+                     badAgentModelMetricsRoot,
+                     badAgentModelDigestRoot,
+                     badAgentModelPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var hostileProduct = await hostileClient.ReadProductBindingAsync();
+            var invalidDashboard = await CaptureHostErrorAsync(
+                () => hostileClient.ReadAgentModelAsync(hostileProduct));
+            Check(invalidDashboard.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidDashboard.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidDashboard.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Agent/Model dashboard rejects hostile binding, count, freshness, metric, digest, and private-field drift");
+        }
+        await ExpectAsync<ArgumentException>(
+            () => client.ReadAgentModelAsync(product with { Digest = "sha256:not-a-digest" }),
+            "Invalid Agent/Model Product digests fail before transport");
+
         var readiness = await client.ProbeAgentReadinessAsync();
         Check(readiness.Select(snapshot => snapshot.AgentId).SequenceEqual(["claude-code", "codex"]),
             "Typed readiness returns deterministic Codex and Claude observations");
@@ -399,6 +453,16 @@ internal static class Program
         var selectionProperties = typeof(AgentSelection).GetProperties().Select(property => property.Name).ToHashSet();
         Check(!selectionProperties.Overlaps(["Executable", "ExecutablePath", "Path", "Token", "Credentials"]),
             "Public Agent Selection has no machine-local runtime or credential fields");
+        var selectedAgentModel = await client.ReadAgentModelAsync(product);
+        Check(selectedAgentModel.Selection.Status == "selected" &&
+              selectedAgentModel.Selection.CapabilityState == "stale" &&
+              selectedAgentModel.Freshness.State == "attention-required" &&
+              selectedAgentModel.Capabilities.Count(capability => capability.Selected) == 1,
+            "Agent/Model dashboard exposes selected capability drift without promoting readiness");
+        var selectedAgentModelJson = JsonSerializer.Serialize(selectedAgentModel);
+        Check(!selectedAgentModelJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !selectedAgentModelJson.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Selected Agent/Model dashboard remains private-safe");
         await ExpectAsync<ArgumentException>(
             () => client.SelectAgentAsync(
                 "openai-codex",
@@ -1135,6 +1199,12 @@ internal static class Program
         var badChangeImpactFreshness = Path.GetFileName(workspace) == "bad-change-impact-freshness";
         var badChangeImpactDigest = Path.GetFileName(workspace) == "bad-change-impact-digest";
         var badChangeImpactPrivate = Path.GetFileName(workspace) == "bad-change-impact-private";
+        var badAgentModelBinding = Path.GetFileName(workspace) == "bad-agent-model-binding";
+        var badAgentModelCount = Path.GetFileName(workspace) == "bad-agent-model-count";
+        var badAgentModelFreshness = Path.GetFileName(workspace) == "bad-agent-model-freshness";
+        var badAgentModelMetrics = Path.GetFileName(workspace) == "bad-agent-model-metrics";
+        var badAgentModelDigest = Path.GetFileName(workspace) == "bad-agent-model-digest";
+        var badAgentModelPrivate = Path.GetFileName(workspace) == "bad-agent-model-private";
         var badManagedPreview = Path.GetFileName(workspace) == "bad-managed-preview";
         var badManagedCriterion = Path.GetFileName(workspace) == "bad-managed-criterion";
         var badManagedDigest = Path.GetFileName(workspace) == "bad-managed-digest";
@@ -1211,6 +1281,18 @@ internal static class Program
                         badChangeImpactFreshness,
                         badChangeImpactDigest,
                         badChangeImpactPrivate);
+                    break;
+                case "dashboard.agentModel":
+                    await HandleAgentModelAsync(
+                        id,
+                        parameters,
+                        selectedAgent,
+                        badAgentModelBinding,
+                        badAgentModelCount,
+                        badAgentModelFreshness,
+                        badAgentModelMetrics,
+                        badAgentModelDigest,
+                        badAgentModelPrivate);
                     break;
                 case "readAgentSelection":
                     if (!HasOnlyProperties(parameters))
@@ -2504,6 +2586,195 @@ internal static class Program
         if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, dashboard);
     }
+
+    private static async Task HandleAgentModelAsync(
+        long id,
+        JsonElement parameters,
+        Dictionary<string, object?>? selectedAgent,
+        bool mismatchBinding,
+        bool invalidateCount,
+        bool invalidateFreshness,
+        bool invalidateMetrics,
+        bool invalidateDigest,
+        bool includePrivateField)
+    {
+        var productDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        var readiness = ReadinessSnapshots();
+        var expectedCapabilities = readiness.Select(snapshot => new Dictionary<string, object?>
+        {
+            ["adapterId"] = snapshot["adapterId"],
+            ["agentId"] = snapshot["agentId"],
+            ["capabilityDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(snapshot)),
+        })
+            .OrderBy(
+                value => $"{value["adapterId"]}:{value["agentId"]}",
+                StringComparer.Ordinal)
+            .ToArray();
+        var expectedSelection = selectedAgent is null
+            ? new Dictionary<string, object?> { ["status"] = "unselected" }
+            : new Dictionary<string, object?>
+            {
+                ["status"] = "selected",
+                ["selectionDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(selectedAgent)),
+            };
+        if (!HasOnlyProperties(
+                parameters,
+                "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedSelection",
+                "expectedCapabilities") ||
+            parameters.GetProperty("expectedProductId").GetString() != ProductId.ToString("D") ||
+            parameters.GetProperty("expectedProductRevision").GetInt64() != 7 ||
+            parameters.GetProperty("expectedProductDigest").GetString() != productDigest ||
+            CanonicalDigest(parameters.GetProperty("expectedSelection")) !=
+                CanonicalDigest(JsonSerializer.SerializeToElement(expectedSelection)) ||
+            CanonicalDigest(parameters.GetProperty("expectedCapabilities")) !=
+                CanonicalDigest(JsonSerializer.SerializeToElement(expectedCapabilities)))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID AGENT MODEL REQUEST");
+            return;
+        }
+        var capabilities = readiness.Select(snapshot =>
+        {
+            var source = JsonSerializer.SerializeToElement(snapshot);
+            var limitationValues = source.GetProperty("limitations").EnumerateArray()
+                .Select(value => value.GetString()!).ToArray();
+            return new Dictionary<string, object?>
+            {
+                ["adapterId"] = source.GetProperty("adapterId").GetString(),
+                ["adapterVersion"] = source.GetProperty("adapterVersion").GetString(),
+                ["agentId"] = source.GetProperty("agentId").GetString(),
+                ["agentLabel"] = source.GetProperty("agentLabel").GetString(),
+                ["runtimeVersion"] = source.TryGetProperty("runtimeVersion", out var runtimeVersion)
+                    ? runtimeVersion.GetString()
+                    : null,
+                ["capabilityDigest"] = CanonicalDigest(source),
+                ["detected"] = source.GetProperty("detected").GetBoolean(),
+                ["executionInterface"] = source.GetProperty("executionInterface").GetString(),
+                ["interfaceMaturity"] = source.GetProperty("interfaceMaturity").GetString(),
+                ["support"] = new Dictionary<string, object?>
+                {
+                    ["resume"] = source.GetProperty("supportsResume").GetBoolean(),
+                    ["cancel"] = source.GetProperty("supportsCancel").GetBoolean(),
+                    ["checkpoints"] = source.GetProperty("supportsCheckpoints").GetBoolean(),
+                    ["modelDiscovery"] = source.GetProperty("supportsModelDiscovery").GetBoolean(),
+                    ["toolSelection"] = source.GetProperty("supportsToolSelection").GetBoolean(),
+                },
+                ["modelCount"] = source.GetProperty("models").GetArrayLength(),
+                ["limitations"] = new Dictionary<string, object?>
+                {
+                    ["values"] = limitationValues,
+                    ["shown"] = limitationValues.Length,
+                    ["total"] = limitationValues.Length,
+                    ["omitted"] = 0,
+                },
+                ["observedAt"] = source.GetProperty("observedAt").GetString(),
+                ["selected"] = selectedAgent is not null &&
+                    Equals(selectedAgent["adapterId"], source.GetProperty("adapterId").GetString()) &&
+                    Equals(selectedAgent["agentId"], source.GetProperty("agentId").GetString()),
+            };
+        }).OrderBy(
+            value => $"{value["adapterId"]}:{value["agentId"]}",
+            StringComparer.Ordinal).ToArray();
+        Dictionary<string, object?> selection;
+        if (selectedAgent is null)
+        {
+            selection = new Dictionary<string, object?> { ["status"] = "unselected" };
+        }
+        else
+        {
+            var selectedCapability = capabilities.Single(value =>
+                Equals(value["adapterId"], selectedAgent["adapterId"]) &&
+                Equals(value["agentId"], selectedAgent["agentId"]));
+            selection = new Dictionary<string, object?>
+            {
+                ["status"] = "selected",
+                ["selectionDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(selectedAgent)),
+                ["adapterId"] = selectedAgent["adapterId"],
+                ["agentId"] = selectedAgent["agentId"],
+                ["modelId"] = selectedAgent["modelId"],
+                ["modelTruthClass"] = selectedAgent["modelTruthClass"],
+                ["modelAlias"] = selectedAgent["modelAlias"],
+                ["settings"] = selectedAgent["settings"],
+                ["selectedAt"] = selectedAgent["selectedAt"],
+                ["capabilityDigest"] = selectedAgent["capabilityDigest"],
+                ["capabilityState"] = Equals(
+                    selectedCapability["capabilityDigest"],
+                    selectedAgent["capabilityDigest"])
+                    ? "current"
+                    : "stale",
+            };
+        }
+        var selectionCapabilityState = (string)(Equals(selection["status"], "selected")
+            ? selection["capabilityState"]!
+            : selection["status"]!);
+        var dashboard = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "agent-model-dashboard",
+            ["product"] = ExactReference(
+                "product",
+                ProductId,
+                7,
+                mismatchBinding ? $"sha256:{new string('0', 64)}" : productDigest),
+            ["capabilities"] = capabilities,
+            ["selection"] = selection,
+            ["runs"] = Array.Empty<object>(),
+            ["handoffs"] = Array.Empty<object>(),
+            ["providerMetrics"] = new Dictionary<string, object?>
+            {
+                ["usage"] = AgentModelUnavailableMetric(),
+                ["cost"] = invalidateMetrics
+                    ? new Dictionary<string, object?> { ["state"] = "available", ["amount"] = 0 }
+                    : AgentModelUnavailableMetric(),
+            },
+            ["freshness"] = new Dictionary<string, object?>
+            {
+                ["state"] = invalidateFreshness
+                    ? "attention-required"
+                    : selectionCapabilityState == "stale" ? "attention-required" : "current",
+                ["selectionCapabilityState"] = selectionCapabilityState,
+                ["oldestCapabilityObservedAt"] = "2026-07-24T08:00:00.000Z",
+                ["newestCapabilityObservedAt"] = "2026-07-24T08:00:00.000Z",
+                ["truncated"] = false,
+                ["coverageBoundary"] =
+                    "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness",
+            },
+            ["limits"] = new Dictionary<string, object?>
+            {
+                ["capabilities"] = AgentModelLimit(2, invalidateCount ? 3 : 2),
+                ["runs"] = AgentModelLimit(0),
+                ["handoffs"] = AgentModelLimit(0),
+                ["managedRuns"] = AgentModelLimit(0),
+                ["truncated"] = false,
+            },
+            ["observedAt"] = "2026-07-24T12:06:00.000Z",
+            ["sourceBoundary"] =
+                "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata",
+            ["limitations"] = new[]
+            {
+                "Capability truth is bounded to current portable observations and does not prove provider-account readiness.",
+                "Current managed records have no provider usage or cost contract, so both metrics remain unavailable.",
+            },
+            ["authorityBoundary"] =
+                "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects",
+        };
+        RefreshCanonicalDigest(dashboard, "snapshotDigest");
+        if (invalidateDigest) capabilities[0]["agentLabel"] = "Forged label";
+        if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, dashboard);
+    }
+
+    private static Dictionary<string, object?> AgentModelUnavailableMetric() => new()
+    {
+        ["state"] = "unavailable",
+        ["basis"] = "current-managed-records-have-no-provider-usage-or-cost-contract",
+    };
+
+    private static Dictionary<string, object?> AgentModelLimit(int shown, int? total = null) => new()
+    {
+        ["shown"] = shown,
+        ["total"] = total ?? shown,
+        ["omitted"] = (total ?? shown) - shown,
+    };
 
     private static Dictionary<string, object?> ExactReference(
         string recordType,

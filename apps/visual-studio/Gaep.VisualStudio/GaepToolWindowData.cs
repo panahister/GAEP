@@ -86,6 +86,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         ShowPhaseDashboardCommand = new AsyncCommand(ShowPhaseDashboardAsync);
         LoadChangeImpactCommand = new AsyncCommand(LoadChangeImpactAsync);
         ShowChangeImpactCommand = new AsyncCommand(ShowChangeImpactAsync);
+        ShowAgentModelCommand = new AsyncCommand(ShowAgentModelAsync);
         RefreshAgentReadinessCommand = new AsyncCommand(RefreshAgentReadinessAsync);
         LoadAgentSelectionCommand = new AsyncCommand(LoadAgentSelectionAsync);
         SelectAgentCommand = new AsyncCommand(SelectAgentAsync);
@@ -114,7 +115,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Change/Impact selection and projection are exact audit-gated metadata views; they cannot approve a Change, accept a Risk, mutate records, or authorize effects. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Change/Impact selection and projection are exact audit-gated metadata views; they cannot approve a Change, accept a Risk, mutate records, or authorize effects. Agent/Model is an exact Product-, capability-, and selection-bound metadata projection; it cannot select, switch, hand off, launch, authorize effects, establish readiness, or invent usage/cost. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
@@ -127,6 +128,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ShowChangeImpactCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ShowAgentModelCommand { get; }
 
     [DataMember]
     public IAsyncCommand RefreshAgentReadinessCommand { get; }
@@ -384,6 +388,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
                     ?? throw new ArgumentException("Select one exact Change from the verified current catalog.");
                 return controller.ReadChangeImpactAsync(context, change, token);
             },
+            cancellationToken);
+
+    private Task ShowAgentModelAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Agent and Model projection",
+            (controller, _, token) => controller.ReadAgentModelAsync(token),
             cancellationToken);
 
     private Task RefreshAgentReadinessAsync(object? commandParameter, CancellationToken cancellationToken) =>

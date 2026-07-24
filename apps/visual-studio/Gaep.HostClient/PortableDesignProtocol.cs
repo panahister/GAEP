@@ -37,6 +37,8 @@ internal static partial class PortableDesignProtocol
         "change-catalog-selection-does-not-approve-change-or-authorize-effects";
     private const string ChangeDashboardAuthorityBoundary =
         "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects";
+    private const string AgentModelAuthorityBoundary =
+        "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects";
     private static readonly HashSet<string> ChangeImpactEffects = new(StringComparer.Ordinal)
     {
         "observe", "provisional", "reversible-change", "external-effect", "destructive-or-irreversible",
@@ -908,6 +910,554 @@ internal static partial class PortableDesignProtocol
                 .Where(property => property.Name != propertyName)
                 .ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal));
 
+    internal static AgentModelDashboard ParseAgentModelDashboardResponse(
+        JsonElement envelope,
+        ProductBinding expectedProduct,
+        IReadOnlyList<AgentReadinessSnapshot> expectedCapabilities,
+        AgentSelectionState expectedSelection)
+    {
+        var result = ReadResult(envelope);
+        if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                result,
+                "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs",
+                "providerMetrics", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+                "authorityBoundary", "snapshotDigest") ||
+            !result.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var schema) ||
+            schema != 1 || ParseRequiredEnum(result, "kind", "agent-model-dashboard") != "agent-model-dashboard" ||
+            ParseRequiredEnum(
+                result,
+                "sourceBoundary",
+                "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata") !=
+                "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" ||
+            ParseRequiredEnum(result, "authorityBoundary", AgentModelAuthorityBoundary) != AgentModelAuthorityBoundary)
+        {
+            throw InvalidResponse();
+        }
+        var product = ParseAgentModelReference(result.GetProperty("product"), "product");
+        if (product.RecordId != expectedProduct.Id || product.Revision != expectedProduct.Revision ||
+            product.Digest != expectedProduct.Digest)
+        {
+            throw InvalidResponse();
+        }
+        var capabilityElement = result.GetProperty("capabilities");
+        if (capabilityElement.ValueKind != JsonValueKind.Array || capabilityElement.GetArrayLength() is < 1 or > 16 ||
+            capabilityElement.GetArrayLength() != expectedCapabilities.Count ||
+            expectedCapabilities.Select(value => $"{value.AdapterId}:{value.AgentId}")
+                .Distinct(StringComparer.Ordinal).Count() != expectedCapabilities.Count)
+        {
+            throw InvalidResponse();
+        }
+        var expectedByKey = expectedCapabilities.ToDictionary(
+            value => $"{value.AdapterId}:{value.AgentId}",
+            StringComparer.Ordinal);
+        var capabilities = capabilityElement.EnumerateArray().Select(row =>
+        {
+            var key = $"{ParseRequiredPortableText(row, "adapterId")}:{ParseRequiredPortableText(row, "agentId")}";
+            return ParseAgentModelCapability(
+                row,
+                expectedByKey.TryGetValue(key, out var expected) ? expected : throw InvalidResponse());
+        }).ToArray();
+        var capabilityKeys = capabilities.Select(value => $"{value.AdapterId}:{value.AgentId}").ToArray();
+        if (capabilityKeys.Distinct(StringComparer.Ordinal).Count() != capabilityKeys.Length ||
+            capabilityKeys.Zip(capabilityKeys.Skip(1)).Any(pair =>
+                StringComparer.Ordinal.Compare(pair.First, pair.Second) >= 0))
+        {
+            throw InvalidResponse();
+        }
+        var selection = ParseAgentModelSelection(result.GetProperty("selection"), expectedSelection, capabilities);
+        var runElement = result.GetProperty("runs");
+        var handoffElement = result.GetProperty("handoffs");
+        if (runElement.ValueKind != JsonValueKind.Array || runElement.GetArrayLength() > 256 ||
+            handoffElement.ValueKind != JsonValueKind.Array || handoffElement.GetArrayLength() > 256)
+        {
+            throw InvalidResponse();
+        }
+        var runs = runElement.EnumerateArray().Select(ParseAgentModelRun).ToArray();
+        var handoffs = handoffElement.EnumerateArray().Select(ParseAgentModelHandoff).ToArray();
+        if (runs.Select(value => value.RecordId).Distinct().Count() != runs.Length ||
+            handoffs.Select(value => value.RecordId).Distinct().Count() != handoffs.Length ||
+            runs.Where(value => value.Managed.RecordId.HasValue).Select(value => value.Managed.RecordId!.Value)
+                .Distinct().Count() != runs.Count(value => value.Managed.RecordId.HasValue))
+        {
+            throw InvalidResponse();
+        }
+        ValidateAgentModelMetrics(result.GetProperty("providerMetrics"));
+        var freshness = ParseAgentModelFreshness(result.GetProperty("freshness"));
+        var limitsElement = result.GetProperty("limits");
+        if (!HasOnlyProperties(limitsElement, "capabilities", "runs", "handoffs", "managedRuns", "truncated"))
+        {
+            throw InvalidResponse();
+        }
+        var capabilityLimit = ParseAgentModelLimit(limitsElement.GetProperty("capabilities"));
+        var runLimit = ParseAgentModelLimit(limitsElement.GetProperty("runs"));
+        var handoffLimit = ParseAgentModelLimit(limitsElement.GetProperty("handoffs"));
+        var managedRunLimit = ParseAgentModelLimit(limitsElement.GetProperty("managedRuns"));
+        var limitsTruncated = ParseRequiredBoolean(limitsElement, "truncated");
+        if (capabilityLimit.Shown != capabilities.LongLength || runLimit.Shown != runs.LongLength ||
+            handoffLimit.Shown != handoffs.LongLength ||
+            managedRunLimit.Shown != runs.LongCount(value => value.Managed.Status == "observed"))
+        {
+            throw InvalidResponse();
+        }
+        var truncated = new[] { capabilityLimit, runLimit, handoffLimit, managedRunLimit }
+            .Any(limit => limit.Omitted > 0);
+        var selectionCapabilityState = selection.Status == "selected"
+            ? selection.CapabilityState ?? throw InvalidResponse()
+            : selection.Status;
+        var attentionRequired = truncated || selectionCapabilityState is "stale" or "migration-required" or "invalid";
+        var selectedCapabilities = capabilities.Where(value => value.Selected).ToArray();
+        if (freshness.SelectionCapabilityState != selectionCapabilityState || freshness.Truncated != truncated ||
+            limitsTruncated != truncated || (freshness.State == "attention-required") != attentionRequired)
+        {
+            throw InvalidResponse();
+        }
+        if (selection.Status == "selected")
+        {
+            if (selectedCapabilities.Length != 1 || selectedCapabilities[0].AdapterId != selection.AdapterId ||
+                selectedCapabilities[0].AgentId != selection.AgentId ||
+                ((selectedCapabilities[0].CapabilityDigest == selection.CapabilityDigest) !=
+                    (selection.CapabilityState == "current")))
+            {
+                throw InvalidResponse();
+            }
+        }
+        else if (selectedCapabilities.Length != 0)
+        {
+            throw InvalidResponse();
+        }
+        if (runLimit.Omitted == 0 && handoffs.Any(handoff => runs.All(run => run.RecordId != handoff.FromRunId)))
+        {
+            throw InvalidResponse();
+        }
+        var observedAt = ParseRequiredTimestamp(result, "observedAt");
+        if (freshness.OldestCapabilityObservedAt > freshness.NewestCapabilityObservedAt ||
+            freshness.NewestCapabilityObservedAt > observedAt)
+        {
+            throw InvalidResponse();
+        }
+        var limitations = ParseChangeImpactLimitations(result.GetProperty("limitations"));
+        var snapshotDigest = ParseRequiredDigest(result, "snapshotDigest");
+        if (snapshotDigest != CanonicalDigest(WithoutProperty(result, "snapshotDigest"))) throw InvalidResponse();
+        return new AgentModelDashboard(
+            product.RecordId,
+            product.Revision,
+            product.Digest,
+            Array.AsReadOnly(capabilities),
+            selection,
+            Array.AsReadOnly(runs),
+            Array.AsReadOnly(handoffs),
+            freshness,
+            capabilityLimit,
+            runLimit,
+            handoffLimit,
+            managedRunLimit,
+            truncated,
+            observedAt,
+            limitations,
+            snapshotDigest);
+    }
+
+    private static ChangeImpactExactReference ParseAgentModelReference(JsonElement reference, string expectedType)
+    {
+        if (reference.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(reference, "recordType", "recordId", "revision", "digest") ||
+            ParseRequiredEnum(reference, "recordType", expectedType) != expectedType)
+        {
+            throw InvalidResponse();
+        }
+        return new ChangeImpactExactReference(
+            expectedType,
+            ParseRequiredGuid(reference, "recordId"),
+            ParsePositiveLong(reference, "revision"),
+            ParseRequiredDigest(reference, "digest"));
+    }
+
+    private static AgentModelCapability ParseAgentModelCapability(
+        JsonElement row,
+        AgentReadinessSnapshot expected)
+    {
+        if (row.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                row,
+                "adapterId", "adapterVersion", "agentId", "agentLabel", "runtimeVersion", "capabilityDigest",
+                "detected", "executionInterface", "interfaceMaturity", "support", "modelCount", "limitations",
+                "observedAt", "selected"))
+        {
+            throw InvalidResponse();
+        }
+        var runtimeElement = row.GetProperty("runtimeVersion");
+        string? runtimeVersion = runtimeElement.ValueKind switch
+        {
+            JsonValueKind.Null => null,
+            JsonValueKind.String when ValidPortableText(runtimeElement.GetString(), minimum: 1) => runtimeElement.GetString(),
+            _ => throw InvalidResponse(),
+        };
+        var support = row.GetProperty("support");
+        if (!HasOnlyProperties(support, "resume", "cancel", "checkpoints", "modelDiscovery", "toolSelection"))
+        {
+            throw InvalidResponse();
+        }
+        var limitationElement = row.GetProperty("limitations");
+        if (!HasOnlyProperties(limitationElement, "values", "shown", "total", "omitted") ||
+            limitationElement.GetProperty("values").ValueKind != JsonValueKind.Array ||
+            limitationElement.GetProperty("values").GetArrayLength() > 64)
+        {
+            throw InvalidResponse();
+        }
+        var limitationValues = limitationElement.GetProperty("values").EnumerateArray().Select(value =>
+        {
+            if (value.ValueKind != JsonValueKind.String || !ValidPortableText(value.GetString(), minimum: 1))
+            {
+                throw InvalidResponse();
+            }
+            return value.GetString()!;
+        }).ToArray();
+        var limitationShown = ParseBoundedNonNegativeLong(limitationElement, "shown", 64);
+        var limitationTotal = ParseBoundedNonNegativeLong(limitationElement, "total", 512);
+        var limitationOmitted = ParseBoundedNonNegativeLong(limitationElement, "omitted", 512);
+        if (limitationShown != limitationValues.LongLength || limitationShown + limitationOmitted != limitationTotal)
+        {
+            throw InvalidResponse();
+        }
+        var parsed = new AgentModelCapability(
+            ParseRequiredPortableText(row, "adapterId"),
+            ParseRequiredPortableText(row, "adapterVersion"),
+            ParseRequiredPortableText(row, "agentId"),
+            ParseRequiredPortableText(row, "agentLabel"),
+            runtimeVersion,
+            ParseRequiredDigest(row, "capabilityDigest"),
+            ParseRequiredBoolean(row, "detected"),
+            ParseRequiredEnum(
+                row,
+                "executionInterface",
+                "cli-jsonl", "cli-stream-json", "stdio-rpc", "managed-in-process", "unavailable"),
+            ParseRequiredEnum(row, "interfaceMaturity", "stable", "beta", "experimental", "unknown"),
+            ParseBoundedNonNegativeLong(row, "modelCount", 512),
+            limitationShown,
+            limitationTotal,
+            ParseRequiredTimestamp(row, "observedAt"),
+            ParseRequiredBoolean(row, "selected"));
+        if (parsed.AdapterId != expected.AdapterId || parsed.AdapterVersion != expected.AdapterVersion ||
+            parsed.AgentId != expected.AgentId || parsed.AgentLabel != expected.AgentLabel ||
+            parsed.RuntimeVersion != expected.RuntimeVersion || parsed.CapabilityDigest != expected.CapabilityDigest ||
+            parsed.Detected != expected.Detected || parsed.ExecutionInterface != expected.ExecutionInterface ||
+            parsed.InterfaceMaturity != expected.InterfaceMaturity || parsed.ModelCount != expected.Models.Count ||
+            parsed.LimitationTotal != expected.Limitations.Count ||
+            !limitationValues.SequenceEqual(expected.Limitations.Take(64), StringComparer.Ordinal) ||
+            parsed.ObservedAt != expected.ObservedAt ||
+            ParseRequiredBoolean(support, "resume") != expected.SupportsResume ||
+            ParseRequiredBoolean(support, "cancel") != expected.SupportsCancel ||
+            ParseRequiredBoolean(support, "checkpoints") != expected.SupportsCheckpoints ||
+            ParseRequiredBoolean(support, "modelDiscovery") != expected.SupportsModelDiscovery ||
+            ParseRequiredBoolean(support, "toolSelection") != expected.SupportsToolSelection)
+        {
+            throw InvalidResponse();
+        }
+        return parsed;
+    }
+
+    private static AgentModelSelectionProjection ParseAgentModelSelection(
+        JsonElement selection,
+        AgentSelectionState expected,
+        IReadOnlyList<AgentModelCapability> capabilities)
+    {
+        if (selection.ValueKind != JsonValueKind.Object) throw InvalidResponse();
+        var status = ParseRequiredEnum(selection, "status", "unselected", "selected", "migration-required", "invalid");
+        var expectedStatus = expected.Status switch
+        {
+            AgentSelectionStatus.Unselected => "unselected",
+            AgentSelectionStatus.Selected => "selected",
+            AgentSelectionStatus.MigrationRequired => "migration-required",
+            AgentSelectionStatus.Invalid => "invalid",
+            _ => throw InvalidResponse(),
+        };
+        if (status != expectedStatus) throw InvalidResponse();
+        if (status is "unselected" or "invalid")
+        {
+            if (!HasOnlyProperties(selection, "status")) throw InvalidResponse();
+            return new AgentModelSelectionProjection(
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new System.Collections.ObjectModel.ReadOnlyDictionary<string, PortableAgentSettingValue>(
+                    new Dictionary<string, PortableAgentSettingValue>(StringComparer.Ordinal)),
+                null,
+                null,
+                null);
+        }
+        if (!HasOnlyProperties(
+                selection,
+                "status", "selectionDigest", "adapterId", "agentId", "modelId", "modelTruthClass", "modelAlias",
+                "settings", "selectedAt", "capabilityDigest", "capabilityState"))
+        {
+            throw InvalidResponse();
+        }
+        var current = status == "selected" ? expected.Selection : expected.PortableCandidate;
+        if (current is null) throw InvalidResponse();
+        var aliasElement = selection.GetProperty("modelAlias");
+        if (aliasElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False or JsonValueKind.Null))
+        {
+            throw InvalidResponse();
+        }
+        var capabilityState = status == "selected"
+            ? ParseRequiredEnum(selection, "capabilityState", "current", "stale")
+            : ParseRequiredEnum(selection, "capabilityState", "migration-required");
+        var parsed = new AgentModelSelectionProjection(
+            status,
+            ParseRequiredDigest(selection, "selectionDigest"),
+            ParseRequiredPortableText(selection, "adapterId"),
+            ParseRequiredPortableText(selection, "agentId"),
+            ParseRequiredPortableText(selection, "modelId"),
+            ParseRequiredEnum(
+                selection,
+                "modelTruthClass",
+                "observed", "provider-declared", "configured", "inferred", "unknown"),
+            aliasElement.ValueKind == JsonValueKind.Null ? null : aliasElement.GetBoolean(),
+            ParsePortableAgentSettings(selection.GetProperty("settings")),
+            ParseRequiredTimestamp(selection, "selectedAt"),
+            ParseRequiredDigest(selection, "capabilityDigest"),
+            capabilityState);
+        if (parsed.SelectionDigest != current.SelectionDigest || parsed.AdapterId != current.AdapterId ||
+            parsed.AgentId != current.AgentId || parsed.ModelId != current.ModelId ||
+            parsed.ModelTruthClass != current.ModelTruthClass || parsed.ModelAlias != current.ModelAlias ||
+            parsed.SelectedAt != current.SelectedAt || parsed.CapabilityDigest != current.CapabilityDigest)
+        {
+            throw InvalidResponse();
+        }
+        if (status == "selected")
+        {
+            var capability = capabilities.SingleOrDefault(value =>
+                value.AdapterId == parsed.AdapterId && value.AgentId == parsed.AgentId) ?? throw InvalidResponse();
+            if ((capability.CapabilityDigest == parsed.CapabilityDigest) != (capabilityState == "current"))
+            {
+                throw InvalidResponse();
+            }
+        }
+        return parsed;
+    }
+
+    private static IReadOnlyDictionary<string, PortableAgentSettingValue> ParsePortableAgentSettings(JsonElement settings)
+    {
+        if (settings.ValueKind != JsonValueKind.Object || settings.EnumerateObject().Take(129).Count() > 128)
+        {
+            throw InvalidResponse();
+        }
+        var parsed = new Dictionary<string, PortableAgentSettingValue>(StringComparer.Ordinal);
+        foreach (var property in settings.EnumerateObject())
+        {
+            if (!ValidPortableSettingKey(property.Name) ||
+                !parsed.TryAdd(property.Name, ParsePortableSettingValue(property.Value)))
+            {
+                throw InvalidResponse();
+            }
+        }
+        return new System.Collections.ObjectModel.ReadOnlyDictionary<string, PortableAgentSettingValue>(parsed);
+    }
+
+    private static AgentModelRunProjection ParseAgentModelRun(JsonElement row)
+    {
+        if (row.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(row, "record", "initiativeId", "state", "agent", "startedAt", "endedAt", "managed"))
+        {
+            throw InvalidResponse();
+        }
+        var record = ParseAgentModelReference(row.GetProperty("record"), "run");
+        _ = ParseRequiredGuid(row, "initiativeId");
+        var agent = row.GetProperty("agent");
+        if (!HasOnlyProperties(agent, "adapterId", "agentId", "modelId", "selectionDigest")) throw InvalidResponse();
+        var startedAt = ParseNullableTimestamp(row.GetProperty("startedAt"));
+        var endedAt = ParseNullableTimestamp(row.GetProperty("endedAt"));
+        if (startedAt.HasValue && endedAt.HasValue && endedAt.Value < startedAt.Value) throw InvalidResponse();
+        _ = ParseRequiredDigest(agent, "selectionDigest");
+        return new AgentModelRunProjection(
+            record.RecordId,
+            record.Revision,
+            ParseRequiredEnum(row, "state", "prepared", "running", "paused", "completed", "failed", "cancelled", "unknown"),
+            ParseRequiredPortableText(agent, "adapterId"),
+            ParseRequiredPortableText(agent, "agentId"),
+            ParseRequiredPortableText(agent, "modelId"),
+            ParseAgentModelManaged(row.GetProperty("managed")));
+    }
+
+    private static AgentModelManagedProjection ParseAgentModelManaged(JsonElement managed)
+    {
+        if (managed.ValueKind != JsonValueKind.Object) throw InvalidResponse();
+        var status = ParseRequiredEnum(managed, "status", "not-observed-in-bounded-window", "observed");
+        if (status == "not-observed-in-bounded-window")
+        {
+            if (!HasOnlyProperties(managed, "status")) throw InvalidResponse();
+            return new AgentModelManagedProjection(status, null, null, null, null, null, null, null, null, null);
+        }
+        if (!HasOnlyProperties(
+                managed,
+                "status", "record", "mode", "state", "attemptNumber", "bindingsDigest", "provider", "result"))
+        {
+            throw InvalidResponse();
+        }
+        var record = ParseAgentModelReference(managed.GetProperty("record"), "managed-run");
+        _ = ParseRequiredEnum(managed, "mode", "codex-staged", "manual-offline", "claude-context-only");
+        var state = ParseRequiredEnum(
+            managed,
+            "state",
+            "prepared", "running", "review-required", "applying", "completed", "failed", "cancelled", "timed-out",
+            "unknown", "conflict", "discarded");
+        var attempt = ParsePositiveLong(managed, "attemptNumber");
+        if (attempt > 1_000_000) throw InvalidResponse();
+        _ = ParseRequiredDigest(managed, "bindingsDigest");
+        var provider = managed.GetProperty("provider");
+        if (!HasOnlyProperties(provider, "adapterId", "agentId", "modelId", "capabilityDigest")) throw InvalidResponse();
+        _ = ParseRequiredPortableText(provider, "adapterId");
+        _ = ParseRequiredPortableText(provider, "agentId");
+        _ = ParseRequiredPortableText(provider, "modelId");
+        _ = ParseRequiredDigest(provider, "capabilityDigest");
+        var result = managed.GetProperty("result");
+        var resultStatus = ParseRequiredEnum(result, "status", "not-bound", "bound");
+        if (resultStatus == "not-bound")
+        {
+            if (!HasOnlyProperties(result, "status")) throw InvalidResponse();
+            return new AgentModelManagedProjection(
+                status, record.RecordId, state, attempt, resultStatus, null, null, null, null, null);
+        }
+        if (!HasOnlyProperties(
+                result,
+                "status", "recordId", "digest", "providerDisposition", "outcomeStatus", "evidence"))
+        {
+            throw InvalidResponse();
+        }
+        _ = ParseRequiredGuid(result, "recordId");
+        _ = ParseRequiredDigest(result, "digest");
+        var providerDisposition = ParseRequiredEnum(
+            result,
+            "providerDisposition",
+            "completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown");
+        var outcomeStatus = ParseRequiredEnum(result, "outcomeStatus", "satisfied", "failed", "not-assessed", "indeterminate");
+        var evidence = result.GetProperty("evidence");
+        if (!HasOnlyProperties(
+                evidence,
+                "recordId", "digest", "eventCount", "eventsDigest", "actualEffectCount", "capturedAt"))
+        {
+            throw InvalidResponse();
+        }
+        var evidenceId = ParseRequiredGuid(evidence, "recordId");
+        _ = ParseRequiredDigest(evidence, "digest");
+        var eventCount = ParseBoundedNonNegativeLong(evidence, "eventCount", 4_096);
+        _ = ParseRequiredDigest(evidence, "eventsDigest");
+        var actualEffectCount = ParseBoundedNonNegativeLong(evidence, "actualEffectCount", 32);
+        _ = ParseRequiredTimestamp(evidence, "capturedAt");
+        return new AgentModelManagedProjection(
+            status,
+            record.RecordId,
+            state,
+            attempt,
+            resultStatus,
+            providerDisposition,
+            outcomeStatus,
+            evidenceId,
+            eventCount,
+            actualEffectCount);
+    }
+
+    private static AgentModelHandoffProjection ParseAgentModelHandoff(JsonElement row)
+    {
+        if (row.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(row, "record", "fromRun", "toSelection", "state", "createdAt", "acknowledgedAt"))
+        {
+            throw InvalidResponse();
+        }
+        var record = ParseAgentModelReference(row.GetProperty("record"), "handoff");
+        if (record.Revision != 1) throw InvalidResponse();
+        var fromRun = ParseAgentModelReference(row.GetProperty("fromRun"), "run");
+        var toSelection = row.GetProperty("toSelection");
+        if (!HasOnlyProperties(toSelection, "adapterId", "agentId", "modelId", "selectionDigest"))
+        {
+            throw InvalidResponse();
+        }
+        _ = ParseRequiredDigest(toSelection, "selectionDigest");
+        var state = ParseRequiredEnum(row, "state", "pending-acknowledgement", "acknowledged");
+        var createdAt = ParseRequiredTimestamp(row, "createdAt");
+        var acknowledgedAt = ParseNullableTimestamp(row.GetProperty("acknowledgedAt"));
+        if ((state == "acknowledged") != acknowledgedAt.HasValue ||
+            (acknowledgedAt.HasValue && acknowledgedAt.Value < createdAt))
+        {
+            throw InvalidResponse();
+        }
+        return new AgentModelHandoffProjection(
+            record.RecordId,
+            fromRun.RecordId,
+            ParseRequiredPortableText(toSelection, "adapterId"),
+            ParseRequiredPortableText(toSelection, "agentId"),
+            ParseRequiredPortableText(toSelection, "modelId"),
+            state,
+            createdAt);
+    }
+
+    private static void ValidateAgentModelMetrics(JsonElement metrics)
+    {
+        if (!HasOnlyProperties(metrics, "usage", "cost")) throw InvalidResponse();
+        foreach (var name in new[] { "usage", "cost" })
+        {
+            var metric = metrics.GetProperty(name);
+            if (!HasOnlyProperties(metric, "state", "basis") ||
+                ParseRequiredEnum(metric, "state", "unavailable") != "unavailable" ||
+                ParseRequiredEnum(
+                    metric,
+                    "basis",
+                    "current-managed-records-have-no-provider-usage-or-cost-contract") !=
+                    "current-managed-records-have-no-provider-usage-or-cost-contract")
+            {
+                throw InvalidResponse();
+            }
+        }
+    }
+
+    private static AgentModelFreshness ParseAgentModelFreshness(JsonElement freshness)
+    {
+        if (!HasOnlyProperties(
+                freshness,
+                "state", "selectionCapabilityState", "oldestCapabilityObservedAt", "newestCapabilityObservedAt",
+                "truncated", "coverageBoundary") ||
+            ParseRequiredEnum(
+                freshness,
+                "coverageBoundary",
+                "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness") !=
+                "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness")
+        {
+            throw InvalidResponse();
+        }
+        return new AgentModelFreshness(
+            ParseRequiredEnum(freshness, "state", "current", "attention-required"),
+            ParseRequiredEnum(
+                freshness,
+                "selectionCapabilityState",
+                "current", "unselected", "stale", "migration-required", "invalid"),
+            ParseRequiredTimestamp(freshness, "oldestCapabilityObservedAt"),
+            ParseRequiredTimestamp(freshness, "newestCapabilityObservedAt"),
+            ParseRequiredBoolean(freshness, "truncated"));
+    }
+
+    private static AgentModelLimit ParseAgentModelLimit(JsonElement limit)
+    {
+        if (!HasOnlyProperties(limit, "shown", "total", "omitted")) throw InvalidResponse();
+        var shown = ParseBoundedNonNegativeLong(limit, "shown", 1_000_000);
+        var total = ParseBoundedNonNegativeLong(limit, "total", 1_000_000);
+        var omitted = ParseBoundedNonNegativeLong(limit, "omitted", 1_000_000);
+        if (shown + omitted != total) throw InvalidResponse();
+        return new AgentModelLimit(shown, total, omitted);
+    }
+
+    private static DateTimeOffset? ParseNullableTimestamp(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Null) return null;
+        if (value.ValueKind != JsonValueKind.String || !TryParseTimestamp(value.GetString(), out var parsed))
+        {
+            throw InvalidResponse();
+        }
+        return parsed;
+    }
+
     internal static IReadOnlyList<AgentReadinessSnapshot> ParseAgentReadinessResponse(JsonElement envelope)
     {
         var result = ReadResult(envelope);
@@ -922,7 +1472,9 @@ internal static partial class PortableDesignProtocol
         {
             throw InvalidResponse();
         }
-        var snapshots = wires.Select(ParseAgentSnapshot).OrderBy(snapshot => snapshot.AgentLabel, StringComparer.Ordinal).ToArray();
+        var rawSnapshots = result.EnumerateArray().ToArray();
+        var snapshots = wires.Select((wire, index) => ParseAgentSnapshot(wire, CanonicalDigest(rawSnapshots[index])))
+            .OrderBy(snapshot => snapshot.AgentLabel, StringComparer.Ordinal).ToArray();
         if (snapshots.Select(snapshot => snapshot.AdapterId).Distinct(StringComparer.Ordinal).Count() != snapshots.Length ||
             snapshots.Select(snapshot => snapshot.AgentId).Distinct(StringComparer.Ordinal).Count() != snapshots.Length)
         {
@@ -2258,7 +2810,7 @@ internal static partial class PortableDesignProtocol
             SummaryPrivacyBoundary);
     }
 
-    private static AgentReadinessSnapshot ParseAgentSnapshot(AgentSnapshotWire wire)
+    private static AgentReadinessSnapshot ParseAgentSnapshot(AgentSnapshotWire wire, string capabilityDigest)
     {
         if (wire.SchemaVersion != 1 || !ValidPortableText(wire.AdapterId, minimum: 1) ||
             !ValidPortableText(wire.AdapterVersion, minimum: 1) || !ValidPortableText(wire.AgentId, minimum: 1) ||
@@ -2298,7 +2850,8 @@ internal static partial class PortableDesignProtocol
             Array.AsReadOnly(settings),
             Array.AsReadOnly(models),
             Array.AsReadOnly(wire.Limitations.ToArray()!),
-            observedAt);
+            observedAt,
+            capabilityDigest);
     }
 
     private static AgentModelReadiness ParseAgentModel(AgentModelWire wire)
@@ -2424,7 +2977,8 @@ internal static partial class PortableDesignProtocol
             aliasElement.ValueKind == JsonValueKind.Null ? null : aliasElement.GetBoolean(),
             new System.Collections.ObjectModel.ReadOnlyDictionary<string, PortableAgentSettingValue>(settings),
             selectedAt,
-            digestElement.GetString()!);
+            digestElement.GetString()!,
+            CanonicalDigest(selection));
     }
 
     private static AgentRun ParseAgentRun(JsonElement run)

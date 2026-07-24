@@ -141,6 +141,63 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseChangeImpactDashboardResponse(envelope, product, change));
     }
 
+    public async Task<AgentModelDashboard> ReadAgentModelAsync(
+        ProductBinding product,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        if (product.Id == Guid.Empty) throw new ArgumentException("Product identity must not be empty.", nameof(product));
+        PortableDesignProtocol.ValidateProductRevision(product.Revision);
+        PortableDesignProtocol.ValidateProductDigest(product.Digest);
+        var capabilities = await ProbeAgentReadinessAsync(cancellationToken);
+        var selection = await ReadAgentSelectionAsync(cancellationToken);
+        IReadOnlyDictionary<string, object?> expectedSelection = selection.Status switch
+        {
+            AgentSelectionStatus.Selected when selection.Selection is not null =>
+                new Dictionary<string, object?>
+                {
+                    ["status"] = "selected",
+                    ["selectionDigest"] = selection.Selection.SelectionDigest,
+                },
+            AgentSelectionStatus.MigrationRequired when selection.PortableCandidate is not null =>
+                new Dictionary<string, object?>
+                {
+                    ["status"] = "migration-required",
+                    ["selectionDigest"] = selection.PortableCandidate.SelectionDigest,
+                },
+            AgentSelectionStatus.Unselected => new Dictionary<string, object?> { ["status"] = "unselected" },
+            AgentSelectionStatus.Invalid => new Dictionary<string, object?> { ["status"] = "invalid" },
+            _ => throw new ArgumentException("Agent Selection state is incomplete.", nameof(product)),
+        };
+        var expectedCapabilities = capabilities
+            .OrderBy(capability => $"{capability.AdapterId}:{capability.AgentId}", StringComparer.Ordinal)
+            .Select(capability => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
+            {
+                ["adapterId"] = capability.AdapterId,
+                ["agentId"] = capability.AgentId,
+                ["capabilityDigest"] = capability.CapabilityDigest,
+            })
+            .ToArray();
+        using var response = await RequestPortableDesignAsync(
+            "dashboard.agentModel",
+            new Dictionary<string, object?>
+            {
+                ["expectedProductId"] = product.Id,
+                ["expectedProductRevision"] = product.Revision,
+                ["expectedProductDigest"] = product.Digest,
+                ["expectedSelection"] = expectedSelection,
+                ["expectedCapabilities"] = expectedCapabilities,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseAgentModelDashboardResponse(
+                envelope,
+                product,
+                capabilities,
+                selection));
+    }
+
     public async Task<IReadOnlyList<AgentReadinessSnapshot>> ProbeAgentReadinessAsync(
         CancellationToken cancellationToken = default)
     {
