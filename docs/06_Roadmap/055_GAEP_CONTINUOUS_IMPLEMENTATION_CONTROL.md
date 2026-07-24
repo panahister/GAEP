@@ -13,15 +13,15 @@
 
 | Field | Current value |
 |---|---|
-| Overall progress | `77%` |
+| Overall progress | `78%` |
 | Wave | `Wave 4 now includes durable sequential and bounded parallel-readonly restart/resume for observation-only multi-step runs in addition to the accepted single-step staged-review boundary; Waves 5–7 remain partially complete across VS Code, engine-host, Visual Studio, Rider, and Kiro` |
 | State | `IN_PROGRESS` |
 | Working branch | `codex/gaep-hardwork-completion` |
 | Starting commit | `eab8374cc5974eea25bcad4659f46e1b0da92108` |
-| Last stable checkpoint | `9f1af97` — cross-version isolated VSIX lifecycle after exact Rider package/prepared-sandbox checkpoint `7a084b3` and deterministic package evidence checkpoint `c3991aa` |
-| Active work | Native Rider sandbox startup/plugin-load validation and remaining native-host/readiness gaps without weakening execution, recovery, evidence, or human-governance boundaries |
+| Last stable checkpoint | `663259f` — bounded native Rider 2025.3 sandbox startup/plugin-load evidence after cross-version VSIX lifecycle checkpoint `9f1af97` and exact package/prepared-sandbox checkpoint `7a084b3` |
+| Active work | Rider native Product tool-window workflow parity and remaining native-host/readiness gaps without weakening execution, recovery, evidence, or human-governance boundaries |
 | Blockers | Formal baseline/readiness remain human-governance blocked. Codex Security scan `49188fb1-8d29-4bd8-a0f4-f2c684a0d9af` was explicitly skipped by the Product Owner after Codex scan limits prevented continuation; no final security result exists. Visual Studio VSIX container/install validation requires Windows; native Kiro and Rider sandbox execution, power-loss and hostile same-UID guarantees remain unverified |
-| Next exact action | Exercise a bounded Rider 2025.3 sandbox launch from the resolved local platform artifact, verify exact GAEP plugin loading from logs/runtime state, and keep interactive workflow acceptance separate |
+| Next exact action | Surface the already typed portable-design import/list/read client through the Rider Product tool window with bounded background execution, conservative governance copy and controller-level tests |
 
 Progress is earned only when an exit condition has current validation evidence. Starting work does not advance the percentage.
 
@@ -167,6 +167,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | 7 | Extended exact isolated VSIX validation through same-version reinstall, uninstall, confirmed absence, clean reinstall and installed-package activation | PARTIAL_COMPLETE | `27973bf`; VS Code and Kiro-compatible lifecycles pass in temporary profiles and the aggregate gate remains 471 passed with 1 conditional skip. Cross-version transitions and native Kiro remain unverified |
 | 2026-07-24 | 7 | Bound the Rider package gate to exact packaged-JAR/prepared-sandbox byte parity and descriptor identity | PARTIAL_COMPLETE | `7a084b3`; clean test, instrumentation, package, structure and prepared-sandbox parity pass, and the second run reuses Gradle's configuration cache. Plugin-manager installation and interactive `runIde` remain unverified |
 | 2026-07-24 | 7 | Added transparent synthetic prior-version fixtures and proved exact cross-version VSIX replacement through final current-package activation | PARTIAL_COMPLETE | `9f1af97`; VS Code and Kiro-compatible hosts pass prior-version install, `0.1.0` upgrade, same-version reinstall, forced rollback, uninstall/absence, final `0.1.0` reinstall and independent installed-package activation. Fixtures are not historic builds, release artifacts or production rollback payloads |
+| 2026-07-24 | 7 | Converted native Rider launch into a bounded repeatable sandbox startup and exact plugin-load smoke | PARTIAL_COMPLETE | `663259f`; Rider 2025.3 build 253.28294.87 on macOS arm64 loads `dev.gaep.productstudio@0.1.0` with exact isolated config/system/plugins/log paths and the process tree is terminated after evidence. The Java UI bundle was not addressable by the automation bridge, so tool-window interaction remains unverified |
 
 ## 9. Wave 4 Durable Review Boundary — Accepted Local POSIX Slice
 
@@ -208,7 +209,7 @@ If work stops at this checkpoint, resume by:
 1. checking out `codex/gaep-hardwork-completion`;
 2. verifying that it descends from `eab8374cc5974eea25bcad4659f46e1b0da92108`;
 3. reading this document and `054_GAEP_FEATURE_DELIVERY_TRACKER.md`;
-4. treating cross-version isolated VSIX lifecycle validation as clean at `9f1af97`, exact Rider package/prepared-sandbox parity as clean at `7a084b3`, deterministic local package/checksum evidence as clean at `c3991aa`, the Visual Studio shell as clean for its declared non-Windows compile slice at `27a5149`, exact installed VSIX activation as clean at `7e46bad`, aggregate Managed Stage storage control as clean at `2ab4f1e`, bounded Managed Run inventory as clean at `973267d`, bounded parallel-readonly orchestration as clean at `af995e7`, sequential observation-only multi-step recovery as clean at `cc72c6c`, aggregate integration as clean at `6a3829b`, Wave 4 single-step durability as clean at `338b7c8` and Kiro-compatible packaging as clean at `7541940`; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, and the Rider client is clean at `b305fec`;
+4. treating bounded native Rider sandbox startup/plugin loading as clean at `663259f`, cross-version isolated VSIX lifecycle validation as clean at `9f1af97`, exact Rider package/prepared-sandbox parity as clean at `7a084b3`, deterministic local package/checksum evidence as clean at `c3991aa`, the Visual Studio shell as clean for its declared non-Windows compile slice at `27a5149`, exact installed VSIX activation as clean at `7e46bad`, aggregate Managed Stage storage control as clean at `2ab4f1e`, bounded Managed Run inventory as clean at `973267d`, bounded parallel-readonly orchestration as clean at `af995e7`, sequential observation-only multi-step recovery as clean at `cc72c6c`, aggregate integration as clean at `6a3829b`, Wave 4 single-step durability as clean at `338b7c8` and Kiro-compatible packaging as clean at `7541940`; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, and the Rider client is clean at `b305fec`;
 5. preserving the Product Owner decision to skip the limited Codex Security scan; do not claim a completed security review or resume it without a new explicit request;
 6. retaining the aggregate root evidence recorded for `cc72c6c`, or rerunning it if implementation changes source; and
-7. continuing with bounded native Rider sandbox startup/plugin-load validation and the strongest locally executable host/readiness work without weakening checkpoint, evidence, staged-review, or native-runtime truth boundaries.
+7. continuing with Rider native Product tool-window workflow parity and the strongest locally executable host/readiness work without weakening checkpoint, evidence, staged-review, or native-runtime truth boundaries.
