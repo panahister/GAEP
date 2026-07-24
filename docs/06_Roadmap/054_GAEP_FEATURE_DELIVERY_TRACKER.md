@@ -83,13 +83,13 @@ This table must be recounted and updated after every status change.
 
 | Registry | Total | ✅ Done | 🟡 In Progress | 🧪 Ready for Test | 🔎 In Review | ⛔ Blocked | ⏸ Deferred | ❌ Backlog |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Cross-platform capabilities | 35 | 3 | 24 | 0 | 0 | 0 | 0 | 8 |
+| Cross-platform capabilities | 35 | 3 | 25 | 0 | 0 | 0 | 0 | 7 |
 | Phase 1 — Product P0–P4 | 36 | 1 | 21 | 0 | 0 | 0 | 0 | 14 |
 | Phase 2 — UX and Figma | 26 | 0 | 8 | 0 | 0 | 0 | 0 | 18 |
 | Phase 3A — Backlog and Readiness | 24 | 0 | 8 | 0 | 0 | 0 | 0 | 16 |
 | Phase 3B — Implementation and QA | 30 | 0 | 15 | 0 | 0 | 0 | 0 | 15 |
 | Phase 4 — Release and Learning | 17 | 0 | 8 | 0 | 0 | 0 | 0 | 9 |
-| **All tracked features** | **168** | **4** | **84** | **0** | **0** | **0** | **0** | **80** |
+| **All tracked features** | **168** | **4** | **85** | **0** | **0** | **0** | **0** | **79** |
 
 ## 6. Cross-Platform Capability Registry
 
@@ -125,7 +125,7 @@ These capabilities are cross-cutting. The target milestone is the first phase in
 | PLT-26 | Freshness and Evidence Cues | Phase 0 / 1A | Show freshness, source, confidence, and stale state | `🟡 In Progress` | Cues are partial; policy and validation are incomplete |
 | PLT-27 | Four-IDE Conformance Suite | Phase 0 / 1A | Shared contract tests for four IDEs and two providers | `❌ Backlog` | A comprehensive suite and matrix report do not exist |
 | PLT-28 | Realistic Example Runner | Phase 0 / 1A | Repeatable realistic example with inspectable outputs | `❌ Backlog` | The runner and canonical example path do not exist |
-| PLT-29 | Per-Phase Package and Acceptance Report | Phase 0 / 1A | Package, checksum, test report, and known gaps for every phase | `❌ Backlog` | A phase-oriented delivery pipeline does not exist |
+| PLT-29 | Per-Phase Package and Acceptance Report | Phase 0 / 1A | Package, checksum, test report, and known gaps for every phase | `🟡 In Progress` | `c3991aa` adds a deterministic Phase 0 local package inventory and exact dated checksum report for VS Code, Kiro and Rider while preserving the Windows-only Visual Studio gap and non-release claim boundary; later phase reports and full acceptance evidence remain |
 | PLT-30 | Governed Figma MCP Adapter | Phase 2 | Governed Figma read, import, write, and synchronization | `❌ Backlog` | A complete adapter and contract do not exist |
 | PLT-31 | Rider Native Plugin | Phase 0 / 1A | Native JetBrains/Rider plugin with sandbox and installation tests | `🟡 In Progress` | `b3101a4` produces a clean instrumented plugin ZIP with warning-free archive validation; native sandbox installation and complete Product workflow parity remain |
 | PLT-32 | Kiro Installable Package | Phase 0 / 1A | Independent Kiro installation and compatibility validation | `🟡 In Progress` | `7e46bad` packages, installs, inventories and activates the exact independent VSIX through a separate compatible-host harness. Native Kiro installation remains unverified because no Kiro binary is available |
@@ -429,6 +429,7 @@ Every status change must add a new row. Previous rows must not be deleted or rew
 | 2026-07-24 | Codex | Phase 0 / 1A foundation | PLT-32, PLT-33 | `❌ Backlog` -> `🟡 In Progress` | Kiro-compatible source and package checkpoint `7541940`; root `npm run verify`, exact isolated VSIX install/list, compatible extension-host smoke and zero-vulnerability dependency audit pass | Product Owner approved continuous local implementation, not native-Kiro or feature completion acceptance | Native Kiro, native Windows, provider/model switching and complete dashboard parity remain unverified; no feature advanced to Ready for Test or Done |
 | 2026-07-24 | Codex | Wave 4 durable local recovery | None | No feature status changes | Managed Stage storage checkpoint `2ab4f1e`; 60 focused tests with 1 platform-conditional skip, root typecheck/build, 43 aggregate test files with 471 passed plus 1 conditional skip, and structural/candidate documentation validation pass | Product Owner approved continuous local implementation, not feature completion or release/readiness acceptance | Added bounded global stage inventory and explicit registered-orphan scavenging. Live and unknown roots remain protected; no feature advanced to Ready for Test or Done |
 | 2026-07-24 | Codex | Phase 0 / 1A local packaging | PLT-03, PLT-04, PLT-20, PLT-31 to PLT-35 | PLT-04 and PLT-35: `❌ Backlog` -> `🟡 In Progress`; no other status changes | Checkpoints `b3101a4`, `7e46bad`, and `27a5149`; exact installed VS Code/Kiro-compatible VSIX activation, clean Rider ZIP/structure verification, compiled Visual Studio out-of-process shell/generated contributions, 35 host-client checks, and the 471-test aggregate gate pass | Product Owner approved continuous local implementation, not native-host, feature completion, or release acceptance | Windows Visual Studio container/install, native Rider/Kiro runtime, complete workflows, upgrade/rollback, signing and supported-OS matrices remain |
+| 2026-07-24 | Codex | Phase 0 / 1A package evidence | PLT-29 | `❌ Backlog` -> `🟡 In Progress` | Checkpoint `c3991aa`; `npm run report:local-packages` and `evidence/local-packages/2026-07-24T075135Z-phase-0-local.json` record bounded artifact paths, exact package IDs/versions, byte sizes, SHA-256 digests, verification levels and the native Visual Studio gap | Product Owner approved continuous local implementation, not phase completion, readiness, release or publication | Three local artifacts are produced; native Windows VSIX, signing, publication, supported-OS acceptance and later phase reports remain. No feature advanced to Ready for Test or Done |
 
 ## 19. Integrity Checks for This File
 
