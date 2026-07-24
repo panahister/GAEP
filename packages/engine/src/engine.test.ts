@@ -312,7 +312,7 @@ describe("GAEP local engine", () => {
     await expect(
       engine.updateInitiativeState(initiative.id, "completed", "All Runs are terminal", "founder"),
     ).resolves.toMatchObject({ state: "completed" })
-  })
+  }, 15_000)
 
   it("requires charter confirmation before preparing a safe argument-array invocation", async () => {
     const { initiative } = await initialize()

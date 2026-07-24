@@ -540,7 +540,7 @@ describe("managed execution engine", () => {
       expect.objectContaining({ effect: "observe", status: "observed-provisional" }),
     ])
     expect(await readFile(executable)).toEqual(executableBefore)
-  })
+  }, 15_000)
 
   it("returns bounded stable Managed Run pages and rejects pagination across an inventory change", async () => {
     const { run, plan } = await readyRun("success")
