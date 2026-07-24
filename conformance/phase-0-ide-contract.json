@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-0-ide-conformance-contract-v1",
+  "phase": "phase-0-local",
+  "capabilities": [
+    { "id": "shared-engine-boundary", "label": "Shared GAEP engine boundary" },
+    { "id": "product-binding-read", "label": "Exact Product identity and revision read" },
+    { "id": "portable-design-list", "label": "Bounded portable-design metadata list" },
+    { "id": "portable-design-read", "label": "Exact portable-design metadata read" },
+    { "id": "portable-design-local-import", "label": "Local-folder portable-design import" },
+    { "id": "exact-product-revision-recheck", "label": "Product identity and revision recheck before import" },
+    { "id": "pending-review-governance", "label": "Non-escalating pending-human-review boundary" },
+    { "id": "metadata-only-privacy", "label": "Metadata-and-digest-only output boundary" },
+    { "id": "codex-readiness", "label": "Codex discovery and capability readiness" },
+    { "id": "claude-readiness", "label": "Claude Code discovery and capability readiness" },
+    { "id": "provider-model-selection", "label": "Provider and model discovery and selection" },
+    { "id": "versioned-handoff", "label": "Versioned provider and model handoff" },
+    { "id": "managed-readonly-execution", "label": "Managed read-only execution" },
+    { "id": "staged-effectful-review", "label": "Preview, review, apply or discard workflow" },
+    { "id": "evidence-dashboard", "label": "Run, evidence, recovery and provider-truth dashboard" }
+  ],
+  "hosts": [
+    {
+      "id": "vscode",
+      "displayName": "VS Code",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "packagePlatforms": ["darwin", "linux", "win32"],
+      "runtimeEvidence": {
+        "source": "package-report",
+        "level": "installed-package-activation-local",
+        "requiredVerificationFragments": ["exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-and-activation"],
+        "remainingRequirements": ["supported-OS installation matrix", "packaged-engine workflow acceptance", "Product Owner acceptance"]
+      },
+      "capabilityAssessments": [
+        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/vscode/src/extension.ts", "contains": ["engine = new GaepEngine(folder.uri.fsPath"] }] },
+        { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["const product = await context.readProduct()"] }] },
+        { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["studio.listPortableDesignSnapshots"] }] },
+        { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["studio.readPortableDesignSnapshot"] }] },
+        { "capabilityId": "portable-design-local-import", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["context.importSnapshot", "selectLocalBundleFolder"] }] },
+        { "capabilityId": "exact-product-revision-recheck", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["current = await context.readProduct()", "currentRevision(current) !== expectedProduct.revision"] }] },
+        { "capabilityId": "pending-review-governance", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["it is not GAEP approval, a Design Baseline, implementation readiness, or release readiness"] }] },
+        { "capabilityId": "metadata-only-privacy", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["Only validated privacy-safe metadata and digests were saved"] }] },
+        { "capabilityId": "codex-readiness", "state": "partial", "reason": "Shared adapter readiness exists, but four-host supported-version acceptance is incomplete." },
+        { "capabilityId": "claude-readiness", "state": "partial", "reason": "Capability-truth probing exists, but live Claude invocation and four-host acceptance are incomplete." },
+        { "capabilityId": "provider-model-selection", "state": "partial", "reason": "Selection surfaces exist, but complete live discovery and provenance acceptance are incomplete." },
+        { "capabilityId": "versioned-handoff", "state": "partial", "reason": "Portable handoff observation exists, but complete bidirectional provider/model acceptance is incomplete." },
+        { "capabilityId": "managed-readonly-execution", "state": "partial", "reason": "Managed observation-only execution is implemented for declared slices; full provider and native-host parity is incomplete." },
+        { "capabilityId": "staged-effectful-review", "state": "partial", "reason": "Single-step Codex staged review is durable; effectful multi-step and four-host parity remain fail-closed." },
+        { "capabilityId": "evidence-dashboard", "state": "partial", "reason": "Bounded evidence and recovery views exist; accessibility and four-host dashboard parity remain incomplete." }
+      ]
+    },
+    {
+      "id": "kiro",
+      "displayName": "Kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "packagePlatforms": ["darwin", "linux", "win32"],
+      "runtimeEvidence": {
+        "source": "package-report",
+        "level": "compatible-host-activation-only",
+        "requiredVerificationFragments": ["exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-and-activation"],
+        "remainingRequirements": ["native Kiro installation and activation", "provider and model workflows", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
+      },
+      "capabilityAssessments": [
+        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["const client = await GaepEngineClient.create"] }] },
+        { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["const initial = await client.readProduct()"] }] },
+        { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function listPortableDesign", ".listPortableDesignSnapshots(offset, limit)"] }] },
+        { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function readPortableDesign", "client.readPortableDesignSnapshot(bundleId)"] }] },
+        { "capabilityId": "portable-design-local-import", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function importPortableDesign", "client.importPortableDesignSnapshot"] }] },
+        { "capabilityId": "exact-product-revision-recheck", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["const current = await client.readProduct()", "current.id !== expected.id || current.revision !== expected.revision"] }] },
+        { "capabilityId": "pending-review-governance", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["it is not GAEP approval, a Design Baseline, implementation readiness, or release readiness"] }] },
+        { "capabilityId": "metadata-only-privacy", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["Only validated metadata and digests were retained"] }] },
+        { "capabilityId": "codex-readiness", "state": "not-implemented", "reason": "The independent Kiro package does not expose Codex readiness." },
+        { "capabilityId": "claude-readiness", "state": "not-implemented", "reason": "The independent Kiro package does not expose Claude Code readiness." },
+        { "capabilityId": "provider-model-selection", "state": "not-implemented", "reason": "Provider and model discovery and selection are not wired." },
+        { "capabilityId": "versioned-handoff", "state": "not-implemented", "reason": "Portable provider/model handoff is not wired." },
+        { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },
+        { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
+        { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "Only a static Product boundary and portable-design commands exist." }
+      ]
+    },
+    {
+      "id": "rider",
+      "displayName": "Rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "packagePlatforms": ["darwin", "linux", "win32"],
+      "runtimeEvidence": {
+        "source": "json-evidence",
+        "level": "native-startup-plugin-load-only",
+        "reportPath": "evidence/ide-smokes/2026-07-24T081813Z-rider-startup.json",
+        "expectedKind": "gaep-native-ide-startup-smoke-v1",
+        "assertions": [
+          { "path": ["result"], "equals": "pass" },
+          { "path": ["plugin", "id"], "equals": "dev.gaep.productstudio" },
+          { "path": ["plugin", "version"], "equals": "0.1.0" }
+        ],
+        "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window automation", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
+      },
+      "capabilityAssessments": [
+        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["GaepEngineClient(Path.of(workspace))"] }] },
+        { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.readProductBinding()"] }] },
+        { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.listPortableDesignSnapshots"] }] },
+        { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.readPortableDesignSnapshot(normalized)"] }] },
+        { "capabilityId": "portable-design-local-import", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.importPortableDesignSnapshot"] }] },
+        { "capabilityId": "exact-product-revision-recheck", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["val initial = client.readProductBinding()", "val current = client.readProductBinding()"] }] },
+        { "capabilityId": "pending-review-governance", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["The result remains pending human review"] }] },
+        { "capabilityId": "metadata-only-privacy", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["append(\"Privacy: ${summary.privacyBoundary}\")"] }] },
+        { "capabilityId": "codex-readiness", "state": "not-implemented", "reason": "The Rider tool window does not expose Codex readiness." },
+        { "capabilityId": "claude-readiness", "state": "not-implemented", "reason": "The Rider tool window does not expose Claude Code readiness." },
+        { "capabilityId": "provider-model-selection", "state": "not-implemented", "reason": "Provider and model discovery and selection are not wired." },
+        { "capabilityId": "versioned-handoff", "state": "not-implemented", "reason": "Portable provider/model handoff is not wired." },
+        { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },
+        { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
+        { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "The native surface currently exposes Product and portable-design metadata only." }
+      ]
+    },
+    {
+      "id": "visual-studio",
+      "displayName": "Visual Studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "packagePlatforms": ["win32"],
+      "runtimeEvidence": {
+        "source": "package-report",
+        "level": "cross-platform-compile-and-controller-only",
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-46-protocol-controller-checks-windows-container-install-pending"],
+        "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
+      },
+      "capabilityAssessments": [
+        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["await using var client = new EngineClient(workspace)"] }] },
+        { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ReadProductBindingAsync"] }] },
+        { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ListPortableDesignSnapshotsAsync"] }] },
+        { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ReadPortableDesignSnapshotAsync"] }] },
+        { "capabilityId": "portable-design-local-import", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ImportPortableDesignSnapshotAsync"] }] },
+        { "capabilityId": "exact-product-revision-recheck", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["var initial = await client.ReadProductBindingAsync", "var current = await client.ReadProductBindingAsync"] }] },
+        { "capabilityId": "pending-review-governance", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["The result remains pending human review"] }] },
+        { "capabilityId": "metadata-only-privacy", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": [".Append($\"Privacy: {summary.PrivacyBoundary}\")"] }] },
+        { "capabilityId": "codex-readiness", "state": "not-implemented", "reason": "The Visual Studio tool window does not expose Codex readiness." },
+        { "capabilityId": "claude-readiness", "state": "not-implemented", "reason": "The Visual Studio tool window does not expose Claude Code readiness." },
+        { "capabilityId": "provider-model-selection", "state": "not-implemented", "reason": "Provider and model discovery and selection are not wired." },
+        { "capabilityId": "versioned-handoff", "state": "not-implemented", "reason": "Portable provider/model handoff is not wired." },
+        { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },
+        { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
+        { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "The Remote UI currently exposes Product and portable-design metadata only." }
+      ]
+    }
+  ],
+  "claimBoundary": "This contract records source-level capability presence, exact local package state and bounded runtime evidence. It is not native-host acceptance, supported-platform certification, Product readiness, release approval or security review."
+}
