@@ -56,6 +56,13 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private AgentSettingEditorData[] agentSettingInputs = [];
     private AgentSelectionContext? agentSelectionContext;
     private string? agentSelectionWorkspace;
+    private AgentHandoffContext? agentHandoffContext;
+    private string? agentHandoffWorkspace;
+    private string handoffReason = string.Empty;
+    private string handoffCompletedWork = string.Empty;
+    private string handoffUnresolvedMatters = string.Empty;
+    private string handoffDecisions = string.Empty;
+    private string handoffEvidence = string.Empty;
     private bool busy;
 
     public GaepToolWindowData(VisualStudioExtensibility extensibility)
@@ -65,6 +72,8 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RefreshAgentReadinessCommand = new AsyncCommand(RefreshAgentReadinessAsync);
         LoadAgentSelectionCommand = new AsyncCommand(LoadAgentSelectionAsync);
         SelectAgentCommand = new AsyncCommand(SelectAgentAsync);
+        LoadAgentHandoffCommand = new AsyncCommand(LoadAgentHandoffAsync);
+        CreateAgentHandoffCommand = new AsyncCommand(CreateAgentHandoffAsync);
         ListDesignImportsCommand = new AsyncCommand(ListDesignImportsAsync);
         ReadDesignImportCommand = new AsyncCommand(ReadDesignImportAsync);
         ImportDesignBundleCommand = new AsyncCommand(ImportDesignBundleAsync);
@@ -79,7 +88,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Codex and Claude readiness is observation-only. Guarded selection records portable configuration only; it cannot start a provider, create or resume a Run, approve tools or effects, or grant execution authority. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
@@ -92,6 +101,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand SelectAgentCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadAgentHandoffCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand CreateAgentHandoffCommand { get; }
 
     [DataMember]
     public IAsyncCommand ListDesignImportsCommand { get; }
@@ -162,6 +177,41 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     }
 
     [DataMember]
+    public string HandoffReason
+    {
+        get => handoffReason;
+        set => SetProperty(ref handoffReason, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string HandoffCompletedWork
+    {
+        get => handoffCompletedWork;
+        set => SetProperty(ref handoffCompletedWork, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string HandoffUnresolvedMatters
+    {
+        get => handoffUnresolvedMatters;
+        set => SetProperty(ref handoffUnresolvedMatters, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string HandoffDecisions
+    {
+        get => handoffDecisions;
+        set => SetProperty(ref handoffDecisions, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string HandoffEvidence
+    {
+        get => handoffEvidence;
+        set => SetProperty(ref handoffEvidence, value ?? string.Empty);
+    }
+
+    [DataMember]
     public string Status
     {
         get => status;
@@ -202,6 +252,8 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
                 var context = await controller.ReadAgentSelectionContextAsync(token);
                 agentSelectionContext = context;
                 agentSelectionWorkspace = workspace;
+                agentHandoffContext = null;
+                agentHandoffWorkspace = null;
                 ConfigureAgentSelection(context);
                 return "Verified local adapter, model, and non-sensitive portable-setting choices are ready. Review them below, then use Confirm guarded selection. No provider has been started and no state has changed.";
             },
@@ -227,6 +279,71 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
             cancellationToken,
             confirmationMessage:
                 "Record the selected verified adapter, model, and explicit non-sensitive portable settings? This does not start a provider, create or resume a Run, approve tools or effects, or grant execution authority. The engine will reject active-Run, capability-drift, legacy, invalid, and post-Run changes that require a handoff.");
+
+    private Task LoadAgentHandoffAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading versioned Agent Handoff",
+            async (controller, workspace, token) =>
+            {
+                var context = await controller.ReadAgentHandoffContextAsync(token);
+                agentHandoffContext = context;
+                agentHandoffWorkspace = workspace;
+                var selectionContext = new AgentSelectionContext(
+                    new AgentSelectionState(AgentSelectionStatus.Selected, context.Current, null),
+                    context.Available);
+                agentSelectionContext = selectionContext;
+                agentSelectionWorkspace = workspace;
+                ConfigureAgentSelection(selectionContext);
+                HandoffReason = string.Empty;
+                HandoffCompletedWork = string.Empty;
+                HandoffUnresolvedMatters = string.Empty;
+                HandoffDecisions = string.Empty;
+                HandoffEvidence = string.Empty;
+                return $"Versioned handoff context is bound to terminal Run {context.SourceRun.Id:D} and the exact current Agent Selection. Choose a changed target, enter portable history below, then confirm. No provider has been started and no state has changed.";
+            },
+            cancellationToken);
+
+    private Task CreateAgentHandoffAsync(object? commandParameter, CancellationToken cancellationToken)
+    {
+        var sourceRun = agentHandoffContext?.SourceRun.Id.ToString("D") ?? "not loaded";
+        return RunRequestAsync(
+            "Recording versioned Agent Handoff",
+            (controller, workspace, token) =>
+            {
+                var context = agentHandoffContext
+                    ?? throw new ArgumentException("Load the current versioned Agent Handoff context before confirming.");
+                if (!StringComparer.Ordinal.Equals(agentHandoffWorkspace, workspace))
+                {
+                    throw new ArgumentException("The workspace changed after Agent Handoff context was loaded. Load it again.");
+                }
+                var selectionContext = agentSelectionContext
+                    ?? throw new ArgumentException("Load the current versioned Agent Handoff context before confirming.");
+                var snapshot = ResolveSelectedAgent(selectionContext);
+                var inputs = AgentSettingInputs.ToDictionary(input => input.Key, input => input.Value, StringComparer.Ordinal);
+                var settings = ProductWorkflowController.BuildAgentSelectionSettings(snapshot, inputs);
+                var reason = ProductWorkflowController.NormalizeHandoffReason(HandoffReason);
+                var completedWork = ProductWorkflowController.BuildHandoffTextList(HandoffCompletedWork, "Completed work");
+                var unresolvedMatters = ProductWorkflowController.BuildHandoffTextList(HandoffUnresolvedMatters, "Unresolved matters");
+                var decisions = ProductWorkflowController.BuildHandoffTextList(HandoffDecisions, "Decisions");
+                var evidence = ProductWorkflowController.BuildHandoffTextList(HandoffEvidence, "Evidence");
+                var actorId = Environment.GetEnvironmentVariable("GAEP_ACTOR_ID") ?? "gaep.visual-studio-local-human";
+                return controller.CreateAgentHandoffAsync(
+                    context,
+                    snapshot.AdapterId,
+                    SelectedModelId,
+                    settings,
+                    reason,
+                    completedWork,
+                    unresolvedMatters,
+                    decisions,
+                    evidence,
+                    actorId,
+                    token);
+            },
+            cancellationToken,
+            confirmationMessage:
+                $"Create a versioned handoff from terminal Run {sourceRun} to the selected changed adapter, model, and portable settings? The exact current selection, Run history, target identity/settings, and portable handoff details will be revalidated. This does not start or resume a provider, create a Run, approve tools or effects, or grant execution authority.");
+    }
 
     private Task ListDesignImportsAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(

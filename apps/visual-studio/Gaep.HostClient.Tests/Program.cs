@@ -12,6 +12,9 @@ internal static class Program
     private static readonly Guid OversizedBundleId = Guid.Parse("77777777-7777-4777-8777-777777777777");
     private static readonly Guid ExtraErrorEnvelopeBundleId = Guid.Parse("88888888-8888-4888-8888-888888888888");
     private static readonly Guid WrongErrorCodeBundleId = Guid.Parse("99999999-9999-4999-8999-999999999999");
+    private static readonly Guid RunId = Guid.Parse("12121212-1212-4121-8121-121212121212");
+    private static readonly Guid CharterId = Guid.Parse("13131313-1313-4131-8131-131313131313");
+    private static readonly Guid HandoffId = Guid.Parse("14141414-1414-4141-8141-141414141414");
     private const string PrivateRoot = "/Users/private/design-bundle";
     private const string PrivateCredential = "PRIVATE-OAUTH-TOKEN";
     private static int passed;
@@ -51,10 +54,16 @@ internal static class Program
         var invalidSourceRoot = Path.Combine(temporaryRoot, "source-error");
         var badReadinessRoot = Path.Combine(temporaryRoot, "bad-readiness");
         var badSelectionRoot = Path.Combine(temporaryRoot, "bad-selection");
+        var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
+        var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
+        var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
         Directory.CreateDirectory(bundleRoot);
         Directory.CreateDirectory(invalidSourceRoot);
         Directory.CreateDirectory(badReadinessRoot);
         Directory.CreateDirectory(badSelectionRoot);
+        Directory.CreateDirectory(badRunsRoot);
+        Directory.CreateDirectory(badHandoffRoot);
+        Directory.CreateDirectory(badHandoffBindingRoot);
         var executable = Environment.ProcessPath;
         Check(executable is not null && File.Exists(executable), "Test app host executable is available");
 
@@ -68,7 +77,7 @@ internal static class Program
         var readiness = await client.ProbeAgentReadinessAsync();
         Check(readiness.Select(snapshot => snapshot.AgentId).SequenceEqual(["claude-code", "codex"]),
             "Typed readiness returns deterministic Codex and Claude observations");
-        Check(!readiness[0].Detected && readiness[1].Models.Single().Id == "gpt-5.6-codex" &&
+        Check(!readiness[0].Detected && readiness[1].Models.Any(model => model.Id == "gpt-5.6-codex") &&
               readiness[1].SettingsCount == 1 && readiness[1].Settings.Single().Key == "reasoningEffort" &&
               readiness[1].Settings.Single().Kind == "select" && !readiness[1].Settings.Single().Sensitive,
             "Typed readiness projects observed availability, models, and portable setting descriptors");
@@ -131,6 +140,83 @@ internal static class Program
                 },
                 "founder.review"),
             "Path-bearing setting values fail before transport");
+
+        var runs = await client.ListRunsAsync();
+        Check(runs.Count == 1 && runs[0].Id == RunId && runs[0].State == AgentRunState.Completed &&
+              runs[0].Agent.ModelId == "gpt-5.6-codex" && runs[0].EndedAt.HasValue,
+            "Typed Run history returns the exact latest terminal source binding");
+        var runJson = JsonSerializer.Serialize(runs);
+        Check(!runJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !runJson.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Typed Run history omits private paths and credentials");
+        var runProperties = typeof(AgentRun).GetProperties().Select(property => property.Name).ToHashSet();
+        Check(!runProperties.Overlaps(["Executable", "ExecutablePath", "Path", "Token", "Credentials"]),
+            "Public Run history has no machine-local executable, path, token, or credential fields");
+
+        var handoffContext = await controller.ReadAgentHandoffContextAsync();
+        Check(handoffContext.SourceRun.Id == RunId && handoffContext.Current.ModelId == "gpt-5.6-codex" &&
+              handoffContext.Available.Single(snapshot => snapshot.AgentId == "codex").Detected,
+            "Handoff context binds the latest terminal Run, exact current selection, and observed adapter");
+        var targetSettings = ProductWorkflowController.BuildAgentSelectionSettings(
+            handoffContext.Available.Single(snapshot => snapshot.AgentId == "codex"),
+            new Dictionary<string, string> { ["reasoningEffort"] = "medium" });
+        var handoffOutput = await controller.CreateAgentHandoffAsync(
+            handoffContext,
+            "openai-codex",
+            "gpt-5.6-codex-next",
+            targetSettings,
+            "Switch to the reviewed model",
+            ["Selection workflow completed"],
+            ["Native Visual Studio acceptance remains"],
+            ["Keep execution disabled"],
+            ["evidence/visual-studio-selection.json"],
+            "founder.review");
+        Check(handoffOutput.Contains("GAEP versioned Agent Handoff", StringComparison.Ordinal) &&
+              handoffOutput.Contains(HandoffId.ToString("D"), StringComparison.Ordinal) &&
+              handoffOutput.Contains(RunId.ToString("D"), StringComparison.Ordinal) &&
+              handoffOutput.Contains("gpt-5.6-codex-next", StringComparison.Ordinal) &&
+              handoffOutput.Contains("did not start or resume a provider", StringComparison.Ordinal) &&
+              !handoffOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !handoffOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Versioned handoff renders an exact private-safe non-executing receipt");
+        var switchedSelection = await client.ReadAgentSelectionAsync();
+        Check(switchedSelection.Status == AgentSelectionStatus.Selected &&
+              switchedSelection.Selection?.ModelId == "gpt-5.6-codex-next" &&
+              switchedSelection.Selection.Settings["reasoningEffort"] == new PortableAgentText("medium"),
+            "Successful handoff atomically records the exact changed portable selection");
+        var handoffProperties = typeof(AgentHandoff).GetProperties().Select(property => property.Name).ToHashSet();
+        Check(!handoffProperties.Overlaps([
+                "Executable", "ExecutablePath", "Path", "Token", "Credentials", "ProviderSession", "Session",
+            ]),
+            "Public handoff receipt has no executable, path, token, credential, or provider-session fields");
+        await ExpectAsync<ArgumentException>(
+            () => CreateTestHandoffAsync(client, reason: $"Inspect {PrivateRoot}/{PrivateCredential}"),
+            "Absolute-path and credential-bearing handoff reasons fail before transport");
+
+        await using (var badRunsClient = new EngineClient(badRunsRoot, executable))
+        {
+            var invalidRuns = await CaptureHostErrorAsync(() => badRunsClient.ListRunsAsync());
+            Check(invalidRuns.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidRuns.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidRuns.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Run history rejects an unexpected private executable path without reflecting it");
+        }
+
+        await using (var badHandoffClient = new EngineClient(badHandoffRoot, executable))
+        {
+            var invalidHandoff = await CaptureHostErrorAsync(() => CreateTestHandoffAsync(badHandoffClient));
+            Check(invalidHandoff.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidHandoff.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidHandoff.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Handoff receipt rejects an unexpected private executable path without reflecting it");
+        }
+
+        await using (var badHandoffBindingClient = new EngineClient(badHandoffBindingRoot, executable))
+        {
+            var mismatchedHandoff = await CaptureHostErrorAsync(() => CreateTestHandoffAsync(badHandoffBindingClient));
+            Check(mismatchedHandoff.Kind == "HOST_RESPONSE_INVALID",
+                "Handoff receipt rejects a returned target setting that differs from the exact request");
+        }
 
         await using (var badReadinessClient = new EngineClient(badReadinessRoot, executable))
         {
@@ -301,6 +387,27 @@ internal static class Program
         Check(oversized.Kind == "RESPONSE_TOO_LARGE", "The existing one MiB response-frame bound remains enforced");
     }
 
+    private static Task<AgentHandoff> CreateTestHandoffAsync(
+        EngineClient client,
+        string reason = "Switch to the reviewed model") =>
+        client.CreateHandoffAsync(
+            RunId,
+            ProductId,
+            InitiativeId,
+            "openai-codex",
+            "codex",
+            "gpt-5.6-codex-next",
+            new Dictionary<string, PortableAgentSettingValue>
+            {
+                ["reasoningEffort"] = new PortableAgentText("medium"),
+            },
+            reason,
+            ["Selection workflow completed"],
+            ["Native Visual Studio acceptance remains"],
+            ["Keep execution disabled"],
+            ["evidence/visual-studio-selection.json"],
+            "founder.review");
+
     private static async Task<EngineHostException> CaptureHostErrorAsync(Func<Task> action)
     {
         try
@@ -342,6 +449,9 @@ internal static class Program
         var changeProductContext = Path.GetFileName(workspace) == "product-change";
         var badReadiness = Path.GetFileName(workspace) == "bad-readiness";
         var badSelection = Path.GetFileName(workspace) == "bad-selection";
+        var badRuns = Path.GetFileName(workspace) == "bad-runs";
+        var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
+        var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
         Dictionary<string, object?>? selectedAgent = null;
         while (await Console.In.ReadLineAsync() is { } line)
         {
@@ -401,6 +511,23 @@ internal static class Program
                 case "selectAgent":
                     selectedAgent = await HandleSelectAgentAsync(id, parameters);
                     break;
+                case "listRuns":
+                    if (!HasOnlyProperties(parameters))
+                    {
+                        await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID RUN LIST");
+                    }
+                    else
+                    {
+                        await WriteResultAsync(id, new[] { AgentRun(badRuns) });
+                    }
+                    break;
+                case "createHandoff":
+                    selectedAgent = await HandleCreateHandoffAsync(
+                        id,
+                        parameters,
+                        badHandoff,
+                        badHandoffBinding);
+                    break;
                 case "productStudio.portableDesign.import":
                     await HandleImportAsync(id, parameters);
                     break;
@@ -446,6 +573,109 @@ internal static class Program
         ["selectedAt"] = "2026-07-24T08:05:00.000Z",
         ["capabilityDigest"] = $"sha256:{new string('e', 64)}",
     };
+
+    private static Dictionary<string, object?> TargetAgentSelection()
+    {
+        var selection = AgentSelection(new Dictionary<string, object?> { ["reasoningEffort"] = "medium" });
+        selection["modelId"] = "gpt-5.6-codex-next";
+        selection["selectedAt"] = "2026-07-24T08:10:00.000Z";
+        selection["capabilityDigest"] = $"sha256:{new string('f', 64)}";
+        return selection;
+    }
+
+    private static Dictionary<string, object?> AgentRun(bool includePrivatePath = false)
+    {
+        var run = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["id"] = RunId.ToString("D"),
+            ["revision"] = 3,
+            ["charterId"] = CharterId.ToString("D"),
+            ["charterDigest"] = $"sha256:{new string('1', 64)}",
+            ["productId"] = ProductId.ToString("D"),
+            ["initiativeId"] = InitiativeId.ToString("D"),
+            ["agent"] = AgentSelection(),
+            ["state"] = "completed",
+            ["providerSessionRef"] = $"sha256:{new string('2', 64)}",
+            ["startedAt"] = "2026-07-24T08:00:00.000Z",
+            ["endedAt"] = "2026-07-24T08:04:00.000Z",
+        };
+        if (includePrivatePath) run["runtimeExecutable"] = $"{PrivateRoot}/{PrivateCredential}";
+        return run;
+    }
+
+    private static async Task<Dictionary<string, object?>?> HandleCreateHandoffAsync(
+        long id,
+        JsonElement parameters,
+        bool includePrivatePath,
+        bool mismatchTargetSetting)
+    {
+        if (!HasOnlyProperties(parameters, "actorId", "handoff") ||
+            parameters.GetProperty("actorId").GetString() != "founder.review" ||
+            !parameters.TryGetProperty("handoff", out var handoff) ||
+            !HasOnlyProperties(
+                handoff,
+                "fromRunId",
+                "toAdapterId",
+                "toModelId",
+                "toSettings",
+                "reason",
+                "completedWork",
+                "unresolvedMatters",
+                "decisions",
+                "evidence") ||
+            handoff.GetProperty("fromRunId").GetString() != RunId.ToString("D") ||
+            handoff.GetProperty("toAdapterId").GetString() != "openai-codex" ||
+            handoff.GetProperty("toModelId").GetString() != "gpt-5.6-codex-next" ||
+            !HasOnlyProperties(handoff.GetProperty("toSettings"), "reasoningEffort") ||
+            handoff.GetProperty("toSettings").GetProperty("reasoningEffort").GetString() != "medium" ||
+            handoff.GetProperty("reason").GetString() != "Switch to the reviewed model" ||
+            !StringArrayEquals(handoff.GetProperty("completedWork"), "Selection workflow completed") ||
+            !StringArrayEquals(handoff.GetProperty("unresolvedMatters"), "Native Visual Studio acceptance remains") ||
+            !StringArrayEquals(handoff.GetProperty("decisions"), "Keep execution disabled") ||
+            !StringArrayEquals(handoff.GetProperty("evidence"), "evidence/visual-studio-selection.json"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID HANDOFF");
+            return null;
+        }
+        var target = TargetAgentSelection();
+        var receipt = AgentHandoff(target);
+        if (includePrivatePath) receipt["runtimeExecutable"] = $"{PrivateRoot}/{PrivateCredential}";
+        if (mismatchTargetSetting)
+        {
+            target["settings"] = new Dictionary<string, object?> { ["reasoningEffort"] = "high" };
+        }
+        await WriteResultAsync(id, receipt);
+        return target;
+    }
+
+    private static Dictionary<string, object?> AgentHandoff(Dictionary<string, object?> target) => new()
+    {
+        ["schemaVersion"] = 1,
+        ["id"] = HandoffId.ToString("D"),
+        ["productId"] = ProductId.ToString("D"),
+        ["initiativeId"] = InitiativeId.ToString("D"),
+        ["fromRunId"] = RunId.ToString("D"),
+        ["toAgent"] = target,
+        ["reason"] = "Switch to the reviewed model",
+        ["workspaceBaseline"] = new Dictionary<string, object?>
+        {
+            ["gitHead"] = "abcdef1",
+            ["dirty"] = true,
+            ["changedFiles"] = new[] { "src/index.cs" },
+            ["truthClass"] = "observed",
+        },
+        ["completedWork"] = new[] { "Selection workflow completed" },
+        ["unresolvedMatters"] = new[] { "Native Visual Studio acceptance remains" },
+        ["decisions"] = new[] { "Keep execution disabled" },
+        ["evidence"] = new[] { "evidence/visual-studio-selection.json" },
+        ["capabilityDifferences"] = new[] { "Model changes from gpt-5.6-codex to gpt-5.6-codex-next." },
+        ["createdAt"] = "2026-07-24T08:10:00.000Z",
+    };
+
+    private static bool StringArrayEquals(JsonElement value, string expected) =>
+        value.ValueKind == JsonValueKind.Array && value.GetArrayLength() == 1 &&
+        value[0].ValueKind == JsonValueKind.String && value[0].GetString() == expected;
 
     private static async Task HandleReadProductAsync(long id, JsonElement parameters, long revision)
     {
@@ -657,7 +887,11 @@ internal static class Program
                     ["kind"] = "select",
                     ["required"] = false,
                     ["sensitive"] = false,
-                    ["options"] = new[] { new Dictionary<string, object?> { ["value"] = "high", ["label"] = "High" } },
+                    ["options"] = new[]
+                    {
+                        new Dictionary<string, object?> { ["value"] = "high", ["label"] = "High" },
+                        new Dictionary<string, object?> { ["value"] = "medium", ["label"] = "Medium" },
+                    },
                     ["truthClass"] = "provider-declared",
                 },
             },
@@ -669,6 +903,17 @@ internal static class Program
                     ["label"] = "GPT-5.6 Codex",
                     ["description"] = "Observed local Codex model metadata.",
                     ["reasoningOptions"] = new[] { "high" },
+                    ["contextWindow"] = 200_000,
+                    ["inputModalities"] = new[] { "text", "image" },
+                    ["truthClass"] = "observed",
+                    ["alias"] = false,
+                },
+                new Dictionary<string, object?>
+                {
+                    ["id"] = "gpt-5.6-codex-next",
+                    ["label"] = "GPT-5.6 Codex Next",
+                    ["description"] = "Observed local Codex model metadata for a reviewed handoff target.",
+                    ["reasoningOptions"] = new[] { "medium", "high" },
                     ["contextWindow"] = 200_000,
                     ["inputModalities"] = new[] { "text", "image" },
                     ["truthClass"] = "observed",

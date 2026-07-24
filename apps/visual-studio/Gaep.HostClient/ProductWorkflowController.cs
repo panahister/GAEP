@@ -7,6 +7,11 @@ public sealed record AgentSelectionContext(
     AgentSelectionState Current,
     IReadOnlyList<AgentReadinessSnapshot> Available);
 
+public sealed record AgentHandoffContext(
+    AgentSelection Current,
+    AgentRun SourceRun,
+    IReadOnlyList<AgentReadinessSnapshot> Available);
+
 public sealed class ProductWorkflowController(EngineClient client)
 {
     public async Task<string> ReadProductAsync(CancellationToken cancellationToken = default) =>
@@ -63,6 +68,110 @@ public sealed class ProductWorkflowController(EngineClient client)
             settings,
             actorId,
             cancellationToken));
+
+    public async Task<AgentHandoffContext> ReadAgentHandoffContextAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var state = await client.ReadAgentSelectionAsync(cancellationToken);
+        var current = state.Status switch
+        {
+            AgentSelectionStatus.Selected when state.Selection is not null => state.Selection,
+            AgentSelectionStatus.Unselected => throw new ArgumentException(
+                "No prior Agent Selection exists. Use guarded selection before creating Runs or handoffs."),
+            AgentSelectionStatus.MigrationRequired => throw new ArgumentException(
+                "The existing legacy Agent Selection requires explicit migration review before a versioned handoff."),
+            _ => throw new ArgumentException(
+                "The existing Agent Selection is invalid. Repair or review the governed record before creating a handoff."),
+        };
+        var runs = await client.ListRunsAsync(cancellationToken);
+        var active = runs.Where(run => !IsTerminalRun(run)).ToArray();
+        if (active.Length > 0)
+        {
+            throw new ArgumentException(
+                $"A versioned handoff cannot be created while {active.Length} Run(s) are non-terminal. Stop, cancel, or reconcile the Run first.");
+        }
+        var sourceRun = runs.FirstOrDefault()
+            ?? throw new ArgumentException("No prior terminal Run exists to bind as the source of a versioned handoff.");
+        if (!SamePortableBinding(sourceRun.Agent, current))
+        {
+            throw new ArgumentException(
+                "The latest terminal Run is not bound to the current Agent Selection. Refresh or reconcile governed state before handing off.");
+        }
+        var available = (await client.ProbeAgentReadinessAsync(cancellationToken))
+            .Where(snapshot => snapshot.Detected && snapshot.ExecutionInterface != "unavailable")
+            .ToArray();
+        if (available.Length == 0)
+        {
+            throw new ArgumentException("No verified local Codex or Claude adapter is currently available for handoff.");
+        }
+        return new AgentHandoffContext(current, sourceRun, Array.AsReadOnly(available));
+    }
+
+    public async Task<string> CreateAgentHandoffAsync(
+        AgentHandoffContext context,
+        string toAdapterId,
+        string toModelId,
+        IReadOnlyDictionary<string, PortableAgentSettingValue> toSettings,
+        string reason,
+        IReadOnlyList<string> completedWork,
+        IReadOnlyList<string> unresolvedMatters,
+        IReadOnlyList<string> decisions,
+        IReadOnlyList<string> evidence,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (SamePortableBinding(context.Current, toAdapterId, toModelId, toSettings))
+        {
+            throw new ArgumentException(
+                "The handoff target is identical to the current portable Agent Selection. Choose a different adapter, model, or setting.");
+        }
+        if (completedWork.Count == 0 && unresolvedMatters.Count == 0 && decisions.Count == 0 && evidence.Count == 0)
+        {
+            throw new ArgumentException(
+                "Record at least one completed-work, unresolved-matter, decision, or portable evidence entry before creating a handoff.");
+        }
+        var freshSelection = await client.ReadAgentSelectionAsync(cancellationToken);
+        var freshRuns = await client.ListRunsAsync(cancellationToken);
+        var freshSource = freshRuns.FirstOrDefault();
+        if (freshSelection.Status != AgentSelectionStatus.Selected || freshSelection.Selection is null ||
+            !SameExactSelection(freshSelection.Selection, context.Current) || freshRuns.Any(run => !IsTerminalRun(run)) ||
+            freshSource is null || !SameExactRun(freshSource, context.SourceRun) ||
+            !SamePortableBinding(freshSource.Agent, context.Current))
+        {
+            throw new ArgumentException(
+                "Agent Selection or Run history changed while the handoff form was open. No handoff was requested; reopen the flow and review fresh state.");
+        }
+        var target = context.Available.SingleOrDefault(snapshot => snapshot.AdapterId == toAdapterId)
+            ?? throw new ArgumentException("Select one verified adapter from the loaded handoff capability snapshot.");
+        var handoff = await client.CreateHandoffAsync(
+            context.SourceRun.Id,
+            context.SourceRun.ProductId,
+            context.SourceRun.InitiativeId,
+            toAdapterId,
+            target.AgentId,
+            toModelId,
+            toSettings,
+            reason,
+            completedWork,
+            unresolvedMatters,
+            decisions,
+            evidence,
+            actorId,
+            cancellationToken);
+        return RenderAgentHandoff(handoff);
+    }
+
+    public static string NormalizeHandoffReason(string value) =>
+        PortableDesignProtocol.ValidateHandoffText(value, "Handoff reason", 2, 5_000);
+
+    public static IReadOnlyList<string> BuildHandoffTextList(string value, string label)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return Array.Empty<string>();
+        return PortableDesignProtocol.ValidateHandoffTextList(
+            value.Split(',', StringSplitOptions.TrimEntries),
+            label);
+    }
 
     public static IReadOnlyDictionary<string, PortableAgentSettingValue> BuildAgentSelectionSettings(
         AgentReadinessSnapshot snapshot,
@@ -235,6 +344,25 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    private static string RenderAgentHandoff(AgentHandoff handoff)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP versioned Agent Handoff")
+            .AppendLine()
+            .AppendLine($"Handoff: {handoff.Id:D}")
+            .AppendLine($"Source Run: {handoff.FromRunId:D}")
+            .AppendLine($"Target: {handoff.ToAgent.AgentId} / {handoff.ToAgent.ModelId}")
+            .AppendLine($"Created at: {handoff.CreatedAt.ToString("O", CultureInfo.InvariantCulture)}")
+            .AppendLine($"Workspace observation: dirty={(handoff.WorkspaceBaseline.Dirty.HasValue ? handoff.WorkspaceBaseline.Dirty.Value.ToString().ToLowerInvariant() : "unknown")}; changed files={handoff.WorkspaceBaseline.ChangedFiles.Count}; truth={handoff.WorkspaceBaseline.TruthClass ?? "not recorded"}")
+            .AppendLine($"Preserved entries: completed={handoff.CompletedWork.Count}; unresolved={handoff.UnresolvedMatters.Count}; decisions={handoff.Decisions.Count}; evidence={handoff.Evidence.Count}")
+            .AppendLine("Capability differences:");
+        foreach (var difference in handoff.CapabilityDifferences) output.AppendLine($"  - {difference}");
+        return output.AppendLine()
+            .AppendLine("Boundary: the handoff atomically replaced portable Agent Selection, but did not start or resume a provider, create a Run, approve tools or effects, or grant execution authority.")
+            .Append("Machine-local paths, credentials, provider sessions, and raw provider output are not included.")
+            .ToString();
+    }
+
     private static PortableAgentSettingValue ParseSelectSetting(AgentSelectionSetting setting, string raw)
     {
         var option = setting.Options?.FirstOrDefault(option => option.Value == raw)
@@ -279,6 +407,34 @@ public sealed class ProductWorkflowController(EngineClient client)
         PortableAgentTextList list => string.Join(", ", list.Value),
         _ => "unsupported",
     };
+
+    private static bool IsTerminalRun(AgentRun run) => run.State is
+        AgentRunState.Completed or AgentRunState.Failed or AgentRunState.Cancelled;
+
+    private static bool SamePortableBinding(AgentSelection left, AgentSelection right) =>
+        SamePortableBinding(left, right.AdapterId, right.ModelId, right.Settings);
+
+    private static bool SamePortableBinding(
+        AgentSelection left,
+        string adapterId,
+        string modelId,
+        IReadOnlyDictionary<string, PortableAgentSettingValue> settings) =>
+        left.AdapterId == adapterId && left.ModelId == modelId &&
+        PortableDesignProtocol.PortableSettingsEqual(left.Settings, settings);
+
+    private static bool SameExactSelection(AgentSelection left, AgentSelection right) =>
+        left.SchemaVersion == right.SchemaVersion && left.AdapterId == right.AdapterId && left.AgentId == right.AgentId &&
+        left.ModelId == right.ModelId && left.ModelTruthClass == right.ModelTruthClass && left.ModelAlias == right.ModelAlias &&
+        left.SelectedAt == right.SelectedAt && left.CapabilityDigest == right.CapabilityDigest &&
+        PortableDesignProtocol.PortableSettingsEqual(left.Settings, right.Settings);
+
+    private static bool SameExactRun(AgentRun left, AgentRun right) =>
+        left.SchemaVersion == right.SchemaVersion && left.Id == right.Id && left.Revision == right.Revision &&
+        left.CharterId == right.CharterId && left.CharterDigest == right.CharterDigest &&
+        left.ProductId == right.ProductId && left.InitiativeId == right.InitiativeId &&
+        SameExactSelection(left.Agent, right.Agent) && left.State == right.State &&
+        left.ProviderSessionRef == right.ProviderSessionRef && left.StartedAt == right.StartedAt &&
+        left.EndedAt == right.EndedAt && left.PreviousRunId == right.PreviousRunId;
 
     private static string YesNo(bool value) => value ? "yes" : "no";
 

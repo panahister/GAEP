@@ -57,6 +57,36 @@
                 Command="{Binding SelectAgentCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
+        <TextBlock Text="Versioned Agent Handoff" FontWeight="SemiBold" />
+        <TextBlock Text="Load the latest terminal Run and exact current selection, choose a changed target above, then preserve portable history. A handoff records continuity only; it does not execute an agent or create a Run."
+                   TextWrapping="Wrap" Margin="0,4,0,8" />
+        <Button x:Name="LoadAgentHandoffButton" Content="Load versioned handoff context"
+                Command="{Binding LoadAgentHandoffCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <TextBlock Text="Handoff reason" />
+        <TextBox Text="{Binding HandoffReason, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Completed work (comma-separated portable entries)" />
+        <TextBox Text="{Binding HandoffCompletedWork, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Unresolved matters (comma-separated portable entries)" />
+        <TextBox Text="{Binding HandoffUnresolvedMatters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Decisions (comma-separated portable entries)" />
+        <TextBox Text="{Binding HandoffDecisions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Evidence (comma-separated workspace-relative references)" />
+        <TextBox Text="{Binding HandoffEvidence, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="CreateAgentHandoffButton" Content="Create versioned handoff"
+                Command="{Binding CreateAgentHandoffCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
         <TextBlock Text="Portable design metadata" FontWeight="SemiBold" />
         <Button x:Name="ListDesignImportsButton" Content="List design imports"
                 Command="{Binding ListDesignImportsCommand}" MinHeight="28" Margin="0,4,0,8"
@@ -90,6 +120,8 @@
       <Setter TargetName="RefreshAgentReadinessButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadAgentSelectionButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="SelectAgentButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="LoadAgentHandoffButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="CreateAgentHandoffButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ListDesignImportsButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ReadDesignImportButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ImportDesignBundleButton" Property="IsEnabled" Value="False" />

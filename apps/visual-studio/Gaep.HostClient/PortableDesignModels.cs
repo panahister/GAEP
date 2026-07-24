@@ -85,6 +85,56 @@ public sealed record AgentSelectionState(
     AgentSelection? Selection,
     AgentSelection? PortableCandidate);
 
+public enum AgentRunState
+{
+    Prepared,
+    Running,
+    Paused,
+    Completed,
+    Failed,
+    Cancelled,
+    Unknown,
+}
+
+public sealed record AgentRun(
+    int SchemaVersion,
+    Guid Id,
+    long? Revision,
+    Guid CharterId,
+    string? CharterDigest,
+    Guid ProductId,
+    Guid InitiativeId,
+    AgentSelection Agent,
+    AgentRunState State,
+    string? ProviderSessionRef,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? EndedAt,
+    Guid? PreviousRunId);
+
+public sealed record HandoffWorkspaceBaseline(
+    string? GitHead,
+    bool? Dirty,
+    IReadOnlyList<string> ChangedFiles,
+    string? TruthClass,
+    string? ObservationError);
+
+public sealed record AgentHandoff(
+    int SchemaVersion,
+    Guid Id,
+    Guid ProductId,
+    Guid InitiativeId,
+    Guid FromRunId,
+    AgentSelection ToAgent,
+    string Reason,
+    HandoffWorkspaceBaseline WorkspaceBaseline,
+    IReadOnlyList<string> CompletedWork,
+    IReadOnlyList<string> UnresolvedMatters,
+    IReadOnlyList<string> Decisions,
+    IReadOnlyList<string> Evidence,
+    IReadOnlyList<string> CapabilityDifferences,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? AcknowledgedAt);
+
 public sealed record AgentReadinessSnapshot(
     int SchemaVersion,
     string AdapterId,

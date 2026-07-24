@@ -96,6 +96,81 @@ public sealed class EngineClient : IAsyncDisposable
             PortableDesignProtocol.ParseAgentSelectionResponse);
     }
 
+    public async Task<IReadOnlyList<AgentRun>> ListRunsAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await RequestPortableDesignAsync(
+            "listRuns",
+            new Dictionary<string, object?>(),
+            cancellationToken);
+        return ParsePortableDesignResponse(response, PortableDesignProtocol.ParseAgentRunsResponse);
+    }
+
+    public async Task<AgentHandoff> CreateHandoffAsync(
+        Guid fromRunId,
+        Guid productId,
+        Guid initiativeId,
+        string toAdapterId,
+        string toAgentId,
+        string toModelId,
+        IReadOnlyDictionary<string, PortableAgentSettingValue> toSettings,
+        string reason,
+        IReadOnlyList<string> completedWork,
+        IReadOnlyList<string> unresolvedMatters,
+        IReadOnlyList<string> decisions,
+        IReadOnlyList<string> evidence,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        if (fromRunId == Guid.Empty) throw new ArgumentException("Source Run ID must be a non-empty UUID.", nameof(fromRunId));
+        if (productId == Guid.Empty) throw new ArgumentException("Product ID must be a non-empty UUID.", nameof(productId));
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must be a non-empty UUID.", nameof(initiativeId));
+        var normalizedAdapterId = PortableDesignProtocol.ValidateSelectionIdentifier(toAdapterId, "Target Adapter ID");
+        var normalizedAgentId = PortableDesignProtocol.ValidateSelectionIdentifier(toAgentId, "Target Agent ID");
+        var normalizedModelId = PortableDesignProtocol.ValidateSelectionIdentifier(toModelId, "Target Model ID");
+        var normalizedSettings = PortableDesignProtocol.SerializePortableAgentSettings(toSettings);
+        var normalizedReason = PortableDesignProtocol.ValidateHandoffText(reason, "Handoff reason", 2, 5_000);
+        var normalizedCompleted = PortableDesignProtocol.ValidateHandoffTextList(completedWork, "Completed work");
+        var normalizedUnresolved = PortableDesignProtocol.ValidateHandoffTextList(unresolvedMatters, "Unresolved matters");
+        var normalizedDecisions = PortableDesignProtocol.ValidateHandoffTextList(decisions, "Decisions");
+        var normalizedEvidence = PortableDesignProtocol.ValidateHandoffTextList(evidence, "Evidence");
+        var normalizedActorId = PortableDesignProtocol.ValidateActorId(actorId);
+        using var response = await RequestPortableDesignAsync(
+            "createHandoff",
+            new Dictionary<string, object?>
+            {
+                ["actorId"] = normalizedActorId,
+                ["handoff"] = new Dictionary<string, object?>
+                {
+                    ["fromRunId"] = fromRunId,
+                    ["toAdapterId"] = normalizedAdapterId,
+                    ["toModelId"] = normalizedModelId,
+                    ["toSettings"] = normalizedSettings,
+                    ["reason"] = normalizedReason,
+                    ["completedWork"] = normalizedCompleted,
+                    ["unresolvedMatters"] = normalizedUnresolved,
+                    ["decisions"] = normalizedDecisions,
+                    ["evidence"] = normalizedEvidence,
+                },
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseAgentHandoffResponse(
+                envelope,
+                fromRunId,
+                productId,
+                initiativeId,
+                normalizedAdapterId,
+                normalizedAgentId,
+                normalizedModelId,
+                toSettings,
+                normalizedReason,
+                normalizedCompleted,
+                normalizedUnresolved,
+                normalizedDecisions,
+                normalizedEvidence));
+    }
+
     public async Task<PortableDesignSnapshotSummary> ImportPortableDesignSnapshotAsync(
         string bundleRoot,
         Guid expectedProductId,

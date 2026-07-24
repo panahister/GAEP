@@ -106,6 +106,41 @@ internal static partial class PortableDesignProtocol
         return value;
     }
 
+    internal static string ValidateHandoffText(string value, string label, int minimum, int maximum)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        var normalized = value.Trim();
+        if (normalized.Length < minimum || normalized.Length > maximum || normalized.Any(char.IsControl) ||
+            HandoffPathPattern().IsMatch(normalized) || SecretPattern().IsMatch(normalized))
+        {
+            throw new ArgumentException(
+                $"{label} must be portable text without paths, controls, or secret-shaped values.",
+                nameof(value));
+        }
+        return normalized;
+    }
+
+    internal static IReadOnlyList<string> ValidateHandoffTextList(
+        IReadOnlyList<string> values,
+        string label)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        if (values.Count > 256) throw new ArgumentException($"{label} may contain at most 256 entries.", nameof(values));
+        return Array.AsReadOnly(values.Select(value => ValidateHandoffText(value, label, 1, 2_000)).ToArray());
+    }
+
+    internal static bool PortableSettingsEqual(
+        IReadOnlyDictionary<string, PortableAgentSettingValue> left,
+        IReadOnlyDictionary<string, PortableAgentSettingValue> right)
+    {
+        if (left.Count != right.Count) return false;
+        foreach (var (key, value) in left)
+        {
+            if (!right.TryGetValue(key, out var candidate) || !PortableSettingValuesEqual(value, candidate)) return false;
+        }
+        return true;
+    }
+
     internal static IReadOnlyDictionary<string, object?> SerializePortableAgentSettings(
         IReadOnlyDictionary<string, PortableAgentSettingValue> settings)
     {
@@ -231,6 +266,102 @@ internal static partial class PortableDesignProtocol
     }
 
     internal static AgentSelection ParseAgentSelectionResponse(JsonElement envelope) => ParseAgentSelection(ReadResult(envelope));
+
+    internal static IReadOnlyList<AgentRun> ParseAgentRunsResponse(JsonElement envelope)
+    {
+        var result = ReadResult(envelope);
+        if (result.ValueKind != JsonValueKind.Array || result.GetArrayLength() > 512) throw InvalidResponse();
+        var runs = result.EnumerateArray().Select(ParseAgentRun).ToArray();
+        if (runs.Select(run => run.Id).Distinct().Count() != runs.Length) throw InvalidResponse();
+        return Array.AsReadOnly(runs);
+    }
+
+    internal static AgentHandoff ParseAgentHandoffResponse(
+        JsonElement envelope,
+        Guid expectedFromRunId,
+        Guid expectedProductId,
+        Guid expectedInitiativeId,
+        string expectedAdapterId,
+        string expectedAgentId,
+        string expectedModelId,
+        IReadOnlyDictionary<string, PortableAgentSettingValue> expectedSettings,
+        string expectedReason,
+        IReadOnlyList<string> expectedCompletedWork,
+        IReadOnlyList<string> expectedUnresolvedMatters,
+        IReadOnlyList<string> expectedDecisions,
+        IReadOnlyList<string> expectedEvidence)
+    {
+        var handoff = ReadResult(envelope);
+        if (!HasRequiredAndAllowedProperties(
+                handoff,
+                [
+                    "schemaVersion", "id", "productId", "initiativeId", "fromRunId", "toAgent", "reason",
+                    "workspaceBaseline", "completedWork", "unresolvedMatters", "decisions", "evidence",
+                    "capabilityDifferences", "createdAt",
+                ],
+                ["acknowledgedAt"]) ||
+            handoff.GetProperty("schemaVersion").GetInt32() != 1)
+        {
+            throw InvalidResponse();
+        }
+        var id = ParseRequiredGuid(handoff, "id");
+        var productId = ParseRequiredGuid(handoff, "productId");
+        var initiativeId = ParseRequiredGuid(handoff, "initiativeId");
+        var fromRunId = ParseRequiredGuid(handoff, "fromRunId");
+        if (fromRunId != expectedFromRunId || productId != expectedProductId || initiativeId != expectedInitiativeId)
+        {
+            throw InvalidResponse();
+        }
+        var toAgent = ParseAgentSelection(handoff.GetProperty("toAgent"));
+        if (toAgent.AdapterId != expectedAdapterId || toAgent.AgentId != expectedAgentId ||
+            toAgent.ModelId != expectedModelId || !PortableSettingsEqual(toAgent.Settings, expectedSettings))
+        {
+            throw InvalidResponse();
+        }
+        var reason = ParseHandoffText(handoff.GetProperty("reason"), 2);
+        var completedWork = ParseHandoffTextArray(handoff.GetProperty("completedWork"));
+        var unresolvedMatters = ParseHandoffTextArray(handoff.GetProperty("unresolvedMatters"));
+        var decisions = ParseHandoffTextArray(handoff.GetProperty("decisions"));
+        var evidence = ParseHandoffTextArray(handoff.GetProperty("evidence"));
+        if (reason != expectedReason || !completedWork.SequenceEqual(expectedCompletedWork, StringComparer.Ordinal) ||
+            !unresolvedMatters.SequenceEqual(expectedUnresolvedMatters, StringComparer.Ordinal) ||
+            !decisions.SequenceEqual(expectedDecisions, StringComparer.Ordinal) ||
+            !evidence.SequenceEqual(expectedEvidence, StringComparer.Ordinal))
+        {
+            throw InvalidResponse();
+        }
+        if (!handoff.TryGetProperty("createdAt", out var createdElement) || createdElement.ValueKind != JsonValueKind.String ||
+            !TryParseTimestamp(createdElement.GetString(), out var createdAt))
+        {
+            throw InvalidResponse();
+        }
+        DateTimeOffset? acknowledgedAt = null;
+        if (handoff.TryGetProperty("acknowledgedAt", out var acknowledgedElement))
+        {
+            if (acknowledgedElement.ValueKind != JsonValueKind.String ||
+                !TryParseTimestamp(acknowledgedElement.GetString(), out var parsedAcknowledged))
+            {
+                throw InvalidResponse();
+            }
+            acknowledgedAt = parsedAcknowledged;
+        }
+        return new AgentHandoff(
+            1,
+            id,
+            productId,
+            initiativeId,
+            fromRunId,
+            toAgent,
+            reason,
+            ParseHandoffWorkspaceBaseline(handoff.GetProperty("workspaceBaseline")),
+            completedWork,
+            unresolvedMatters,
+            decisions,
+            evidence,
+            ParseHandoffTextArray(handoff.GetProperty("capabilityDifferences")),
+            createdAt,
+            acknowledgedAt);
+    }
 
     internal static PortableDesignSnapshotPage ParsePageResponse(JsonElement envelope, int expectedOffset, int expectedLimit)
     {
@@ -549,6 +680,166 @@ internal static partial class PortableDesignProtocol
             digestElement.GetString()!);
     }
 
+    private static AgentRun ParseAgentRun(JsonElement run)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                run,
+                ["schemaVersion", "id", "charterId", "productId", "initiativeId", "agent", "state"],
+                ["revision", "charterDigest", "providerSessionRef", "startedAt", "endedAt", "previousRunId"]) ||
+            run.GetProperty("schemaVersion").GetInt32() != 1)
+        {
+            throw InvalidResponse();
+        }
+        long? revision = null;
+        if (run.TryGetProperty("revision", out var revisionElement))
+        {
+            if (!revisionElement.TryGetInt64(out var parsedRevision) || parsedRevision < 1) throw InvalidResponse();
+            revision = parsedRevision;
+        }
+        var state = run.GetProperty("state").GetString() switch
+        {
+            "prepared" => AgentRunState.Prepared,
+            "running" => AgentRunState.Running,
+            "paused" => AgentRunState.Paused,
+            "completed" => AgentRunState.Completed,
+            "failed" => AgentRunState.Failed,
+            "cancelled" => AgentRunState.Cancelled,
+            "unknown" => AgentRunState.Unknown,
+            _ => throw InvalidResponse(),
+        };
+        return new AgentRun(
+            1,
+            ParseRequiredGuid(run, "id"),
+            revision,
+            ParseRequiredGuid(run, "charterId"),
+            ParseOptionalDigest(run, "charterDigest"),
+            ParseRequiredGuid(run, "productId"),
+            ParseRequiredGuid(run, "initiativeId"),
+            ParseAgentSelection(run.GetProperty("agent")),
+            state,
+            ParseOptionalDigest(run, "providerSessionRef"),
+            ParseOptionalTimestamp(run, "startedAt"),
+            ParseOptionalTimestamp(run, "endedAt"),
+            ParseOptionalGuid(run, "previousRunId"));
+    }
+
+    private static HandoffWorkspaceBaseline ParseHandoffWorkspaceBaseline(JsonElement baseline)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                baseline,
+                ["dirty", "changedFiles"],
+                ["gitHead", "truthClass", "observationError"]) ||
+            !baseline.TryGetProperty("dirty", out var dirtyElement) ||
+            dirtyElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False or JsonValueKind.Null) ||
+            !baseline.TryGetProperty("changedFiles", out var changedElement) ||
+            changedElement.ValueKind != JsonValueKind.Array || changedElement.GetArrayLength() > 20_000)
+        {
+            throw InvalidResponse();
+        }
+        string? gitHead = null;
+        if (baseline.TryGetProperty("gitHead", out var headElement))
+        {
+            gitHead = headElement.ValueKind == JsonValueKind.String ? headElement.GetString() : null;
+            if (gitHead is null || !GitHeadPattern().IsMatch(gitHead)) throw InvalidResponse();
+        }
+        string? truthClass = null;
+        if (baseline.TryGetProperty("truthClass", out var truthElement))
+        {
+            truthClass = truthElement.ValueKind == JsonValueKind.String ? truthElement.GetString() : null;
+            if (!ValidTruthClass(truthClass)) throw InvalidResponse();
+        }
+        string? observationError = null;
+        if (baseline.TryGetProperty("observationError", out var errorElement))
+        {
+            observationError = ParseHandoffText(errorElement, 1, 500);
+        }
+        var changedFiles = changedElement.EnumerateArray().Select(ParseWorkspaceRelativePath).ToArray();
+        if (changedFiles.Distinct(StringComparer.Ordinal).Count() != changedFiles.Length) throw InvalidResponse();
+        return new HandoffWorkspaceBaseline(
+            gitHead,
+            dirtyElement.ValueKind == JsonValueKind.Null ? null : dirtyElement.GetBoolean(),
+            Array.AsReadOnly(changedFiles),
+            truthClass,
+            observationError);
+    }
+
+    private static IReadOnlyList<string> ParseHandoffTextArray(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.Array || value.GetArrayLength() > 512) throw InvalidResponse();
+        return Array.AsReadOnly(value.EnumerateArray().Select(item => ParseHandoffText(item, 1)).ToArray());
+    }
+
+    private static string ParseHandoffText(JsonElement value, int minimum, int maximum = 5_000)
+    {
+        if (value.ValueKind != JsonValueKind.String) throw InvalidResponse();
+        var text = value.GetString();
+        if (text is null || text != text.Trim() || text.Length < minimum || text.Length > maximum ||
+            text.Any(char.IsControl) || HandoffPathPattern().IsMatch(text) || SecretPattern().IsMatch(text))
+        {
+            throw InvalidResponse();
+        }
+        return text;
+    }
+
+    private static string ParseWorkspaceRelativePath(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.String) throw InvalidResponse();
+        var path = value.GetString();
+        if (path is null || path.Length is < 1 or > 4_096 || path == "." || path.StartsWith("/", StringComparison.Ordinal) ||
+            DrivePrefixPattern().IsMatch(path) || path.StartsWith('~') || path.Contains('\\') || path.Contains('\0') ||
+            EncodedDotPattern().IsMatch(path))
+        {
+            throw InvalidResponse();
+        }
+        var segments = path.Split('/');
+        if (segments.Any(segment => segment is "" or "." or "..")) throw InvalidResponse();
+        return path;
+    }
+
+    private static Guid ParseRequiredGuid(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String ||
+            !Guid.TryParseExact(value.GetString(), "D", out var parsed) || parsed == Guid.Empty)
+        {
+            throw InvalidResponse();
+        }
+        return parsed;
+    }
+
+    private static Guid? ParseOptionalGuid(JsonElement element, string name) =>
+        element.TryGetProperty(name, out _) ? ParseRequiredGuid(element, name) : null;
+
+    private static string? ParseOptionalDigest(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value)) return null;
+        if (value.ValueKind != JsonValueKind.String || !DigestPattern().IsMatch(value.GetString() ?? string.Empty))
+        {
+            throw InvalidResponse();
+        }
+        return value.GetString();
+    }
+
+    private static DateTimeOffset? ParseOptionalTimestamp(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value)) return null;
+        if (value.ValueKind != JsonValueKind.String || !TryParseTimestamp(value.GetString(), out var timestamp))
+        {
+            throw InvalidResponse();
+        }
+        return timestamp;
+    }
+
+    private static bool PortableSettingValuesEqual(PortableAgentSettingValue left, PortableAgentSettingValue right) =>
+        (left, right) switch
+        {
+            (PortableAgentText leftText, PortableAgentText rightText) => leftText.Value == rightText.Value,
+            (PortableAgentNumber leftNumber, PortableAgentNumber rightNumber) => leftNumber.Value.Equals(rightNumber.Value),
+            (PortableAgentBoolean leftBoolean, PortableAgentBoolean rightBoolean) => leftBoolean.Value == rightBoolean.Value,
+            (PortableAgentTextList leftList, PortableAgentTextList rightList) =>
+                leftList.Value.SequenceEqual(rightList.Value, StringComparer.Ordinal),
+            _ => false,
+        };
+
     private static bool ValidTruthClass(string? value) =>
         value is "observed" or "provider-declared" or "configured" or "inferred" or "unknown";
 
@@ -716,6 +1007,18 @@ internal static partial class PortableDesignProtocol
 
     [GeneratedRegex(@"(?:^|[\s(=""'])(?:/(?:Users|home|tmp|private|Volumes)/[^\s""'<>)]*|[A-Za-z]:\\[^\s""'<>)]*|\\\\[^\s""'<>)]*)", RegexOptions.CultureInvariant)]
     private static partial Regex PrivatePathPattern();
+
+    [GeneratedRegex(@"(?:^|[\s(=""'])(?:~[\\/]|/(?!/)[^\s""'<>)]*|[A-Za-z]:[\\/][^\s""'<>)]*|\\\\[^\s""'<>)]*|file://[^\s""'<>)]*)", RegexOptions.CultureInvariant)]
+    private static partial Regex HandoffPathPattern();
+
+    [GeneratedRegex("^[0-9a-fA-F]{7,64}$", RegexOptions.CultureInvariant)]
+    private static partial Regex GitHeadPattern();
+
+    [GeneratedRegex("^[A-Za-z]:", RegexOptions.CultureInvariant)]
+    private static partial Regex DrivePrefixPattern();
+
+    [GeneratedRegex("%2e", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex EncodedDotPattern();
 
     [GeneratedRegex(@"\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|\bAKIA[A-Z0-9]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex SecretPattern();

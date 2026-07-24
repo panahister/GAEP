@@ -59,11 +59,18 @@ for (const binding of [
   "RefreshAgentReadinessCommand",
   "LoadAgentSelectionCommand",
   "SelectAgentCommand",
+  "LoadAgentHandoffCommand",
+  "CreateAgentHandoffCommand",
   "AvailableAgentChoices",
   "SelectedAgentChoice",
   "AvailableModelIds",
   "SelectedModelId",
   "AgentSettingInputs",
+  "HandoffReason",
+  "HandoffCompletedWork",
+  "HandoffUnresolvedMatters",
+  "HandoffDecisions",
+  "HandoffEvidence",
   "ListDesignImportsCommand",
   "ReadDesignImportCommand",
   "ImportDesignBundleCommand",
@@ -78,6 +85,8 @@ requireText(remoteUi, /Import local bundle as pending review/u,
   "Visual Studio import action does not communicate its pending-review boundary")
 requireText(remoteUi, /Confirm guarded selection/u,
   "Visual Studio selection action does not communicate its guarded confirmation boundary")
+requireText(remoteUi, /Create versioned handoff/u,
+  "Visual Studio handoff action does not communicate its versioned-record boundary")
 
 if (process.platform === "win32") {
   await regularFile(join(output, "Gaep.VisualStudio.vsix"), 128 * 1024 * 1024)
