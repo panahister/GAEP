@@ -13,15 +13,15 @@
 
 | Field | Current value |
 |---|---|
-| Overall progress | `74%` |
+| Overall progress | `76%` |
 | Wave | `Wave 4 now includes durable sequential and bounded parallel-readonly restart/resume for observation-only multi-step runs in addition to the accepted single-step staged-review boundary; Waves 5–7 remain partially complete across VS Code, engine-host, Visual Studio, Rider, and Kiro` |
 | State | `IN_PROGRESS` |
 | Working branch | `codex/gaep-hardwork-completion` |
 | Starting commit | `eab8374cc5974eea25bcad4659f46e1b0da92108` |
-| Last stable checkpoint | `c3991aa` — deterministic local IDE package inventory and checksum evidence after compiled Visual Studio shell checkpoint `27a5149`, exact installed VSIX activation checkpoint `7e46bad`, and Rider package repair `b3101a4` |
-| Active work | Exact isolated VS Code and Kiro package lifecycle validation and remaining native-host/readiness gaps without weakening execution, recovery, evidence, or human-governance boundaries |
+| Last stable checkpoint | `7a084b3` — exact Rider package/prepared-sandbox parity after isolated VSIX lifecycle checkpoint `27973bf` and deterministic package evidence checkpoint `c3991aa` |
+| Active work | Cross-version isolated VS Code and Kiro upgrade/rollback fixture validation and remaining native-host/readiness gaps without weakening execution, recovery, evidence, or human-governance boundaries |
 | Blockers | Formal baseline/readiness remain human-governance blocked. Codex Security scan `49188fb1-8d29-4bd8-a0f4-f2c684a0d9af` was explicitly skipped by the Product Owner after Codex scan limits prevented continuation; no final security result exists. Visual Studio VSIX container/install validation requires Windows; native Kiro and Rider sandbox execution, power-loss and hostile same-UID guarantees remain unverified |
-| Next exact action | Extend the isolated VS Code and Kiro package smokes to prove bounded reinstall, uninstall, absence, reinstall and exact-version activation without touching a normal IDE profile |
+| Next exact action | Add transparent prior-version test fixtures to prove isolated VS Code and Kiro-compatible upgrade and rollback transitions before final exact-version activation, without treating the fixtures as release artifacts |
 
 Progress is earned only when an exit condition has current validation evidence. Starting work does not advance the percentage.
 
@@ -164,6 +164,8 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | 3 and 7 | Replaced source-extension activation claims with exact installed VSIX activation for VS Code and Kiro-compatible hosts | PARTIAL_COMPLETE | `7e46bad`; isolated install/list checks bind exact package IDs and versions, and separate test harnesses prove installed command/view/Product Studio activation without workspace mutation. Upgrade/rollback and native Kiro remain |
 | 2026-07-24 | 7 | Added the native out-of-process Visual Studio extension project, command and Remote UI Product Studio shell | PARTIAL_COMPLETE | `27a5149`; cross-platform compile validates generated contributions and host-client payload, while the existing 35 protocol checks remain green. Windows VSIX creation/install and complete Product workflow wiring remain |
 | 2026-07-24 | 7 | Added a deterministic four-host package inventory and preserved an exact dated checksum report for every locally producible IDE artifact | PARTIAL_COMPLETE | `c3991aa`; VS Code, Kiro and Rider packages are regular bounded files with recorded SHA-256 digests. Visual Studio remains explicitly Windows-only and unproduced on this host; signing, publication, supported-OS acceptance and release approval are not claimed |
+| 2026-07-24 | 7 | Extended exact isolated VSIX validation through same-version reinstall, uninstall, confirmed absence, clean reinstall and installed-package activation | PARTIAL_COMPLETE | `27973bf`; VS Code and Kiro-compatible lifecycles pass in temporary profiles and the aggregate gate remains 471 passed with 1 conditional skip. Cross-version transitions and native Kiro remain unverified |
+| 2026-07-24 | 7 | Bound the Rider package gate to exact packaged-JAR/prepared-sandbox byte parity and descriptor identity | PARTIAL_COMPLETE | `7a084b3`; clean test, instrumentation, package, structure and prepared-sandbox parity pass, and the second run reuses Gradle's configuration cache. Plugin-manager installation and interactive `runIde` remain unverified |
 
 ## 9. Wave 4 Durable Review Boundary — Accepted Local POSIX Slice
 
@@ -205,7 +207,7 @@ If work stops at this checkpoint, resume by:
 1. checking out `codex/gaep-hardwork-completion`;
 2. verifying that it descends from `eab8374cc5974eea25bcad4659f46e1b0da92108`;
 3. reading this document and `054_GAEP_FEATURE_DELIVERY_TRACKER.md`;
-4. treating deterministic local package/checksum evidence as clean at `c3991aa`, the Visual Studio shell as clean for its declared non-Windows compile slice at `27a5149`, exact installed VSIX activation as clean at `7e46bad`, Rider packaging as clean at `b3101a4`, aggregate Managed Stage storage control as clean at `2ab4f1e`, bounded Managed Run inventory as clean at `973267d`, bounded parallel-readonly orchestration as clean at `af995e7`, sequential observation-only multi-step recovery as clean at `cc72c6c`, aggregate integration as clean at `6a3829b`, Wave 4 single-step durability as clean at `338b7c8` and Kiro-compatible packaging as clean at `7541940`; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, and the Rider client is clean at `b305fec`;
+4. treating exact Rider package/prepared-sandbox parity as clean at `7a084b3`, isolated VSIX lifecycle validation as clean at `27973bf`, deterministic local package/checksum evidence as clean at `c3991aa`, the Visual Studio shell as clean for its declared non-Windows compile slice at `27a5149`, exact installed VSIX activation as clean at `7e46bad`, aggregate Managed Stage storage control as clean at `2ab4f1e`, bounded Managed Run inventory as clean at `973267d`, bounded parallel-readonly orchestration as clean at `af995e7`, sequential observation-only multi-step recovery as clean at `cc72c6c`, aggregate integration as clean at `6a3829b`, Wave 4 single-step durability as clean at `338b7c8` and Kiro-compatible packaging as clean at `7541940`; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, and the Rider client is clean at `b305fec`;
 5. preserving the Product Owner decision to skip the limited Codex Security scan; do not claim a completed security review or resume it without a new explicit request;
 6. retaining the aggregate root evidence recorded for `cc72c6c`, or rerunning it if implementation changes source; and
-7. continuing with exact isolated VS Code/Kiro package lifecycle validation and the strongest locally executable host/readiness work without weakening checkpoint, evidence, staged-review, or native-runtime truth boundaries.
+7. continuing with transparent cross-version VS Code/Kiro-compatible upgrade/rollback fixture validation and the strongest locally executable host/readiness work without weakening checkpoint, evidence, staged-review, or native-runtime truth boundaries.
