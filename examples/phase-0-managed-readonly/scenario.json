@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase0-example-scenario",
+  "id": "phase-0-managed-readonly-v1",
+  "actorId": "phase0-example-owner",
+  "product": {
+    "name": "Atlas Release Readiness",
+    "summary": "A local-first desktop product preparing a bounded release candidate review.",
+    "problem": "Scattered release evidence can make provider completion look like product readiness.",
+    "affectedUsers": "Product owners and release engineers",
+    "desiredOutcome": "Produce a traceable readiness observation without modifying source files or contacting a provider.",
+    "successSignals": [
+      "The run is bound to an exact preview and governed context",
+      "Provider completion and outcome status remain separately recorded",
+      "The resulting evidence can be independently verified"
+    ],
+    "firstWorkflow": "Review a fixed release evidence packet through the offline managed runtime.",
+    "exclusions": [
+      "Deployment",
+      "Source changes",
+      "Network or provider access",
+      "Release acceptance"
+    ],
+    "profile": "software"
+  },
+  "initiative": {
+    "title": "Review the Atlas release evidence packet",
+    "outcome": "A bounded observation records what the supplied evidence can and cannot establish.",
+    "scope": [
+      "Release evidence review",
+      "Portable managed-run receipt"
+    ],
+    "exclusions": [
+      "Workspace mutation",
+      "External effects",
+      "Human acceptance substitution"
+    ]
+  },
+  "context": {
+    "source": "atlas-release-evidence-packet-v1",
+    "content": "Candidate 0.1.0 has local build and contract-test evidence. Native Windows installation and human acceptance are not recorded. Deployment is outside this review.",
+    "objective": "Supply the exact release facts and explicit evidence gaps for a bounded observation.",
+    "selectionReason": "This is the canonical, fixed input for the offline Phase 0 example.",
+    "sufficiencyCriteria": [
+      "The candidate version and local evidence are stated",
+      "Unverified native installation and human acceptance remain explicit",
+      "Deployment remains excluded"
+    ]
+  },
+  "workflow": {
+    "title": "Observe release readiness evidence",
+    "objective": "Produce one offline observation from the governed release evidence packet.",
+    "stepTitle": "Record the bounded readiness observation",
+    "stepObjective": "Process the exact context without tools, writes, network access, or external effects.",
+    "preconditions": [
+      "The exact release evidence Context Pack is present and current"
+    ],
+    "outputs": [
+      "A normalized deterministic observation"
+    ],
+    "evidenceCriteria": [
+      "Portable event and result digests are committed"
+    ],
+    "stopConditions": [
+      "Stop when the deterministic script reaches its terminal event"
+    ]
+  },
+  "charter": {
+    "objective": "Produce one bounded offline readiness observation with no tool or write authority.",
+    "forbiddenActions": [
+      "Do not access tools, network services, credentials, or source workspace files",
+      "Do not claim release readiness or human acceptance"
+    ],
+    "stopConditions": [
+      "Stop after the deterministic script reaches its terminal fixture"
+    ],
+    "requiredEvidence": [
+      "Normalized event evidence",
+      "An explicit provider disposition and outcome status",
+      "Cross-record result and evidence digests"
+    ]
+  },
+  "execution": {
+    "adapterId": "gaep.manual",
+    "agentId": "manual",
+    "modelId": "manual-deterministic-v1",
+    "script": "success",
+    "timeoutMs": 30000
+  }
+}

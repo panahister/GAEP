@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase0-example-semantic-summary",
+  "scenarioId": "phase-0-managed-readonly-v1",
+  "adapterId": "gaep.manual",
+  "agentId": "manual",
+  "modelId": "manual-deterministic-v1",
+  "executionMode": "manual-offline",
+  "state": "completed",
+  "providerDisposition": "completed",
+  "outcomeStatus": "satisfied",
+  "outcomeBasis": "deterministic-offline-runtime",
+  "workflowStrategy": "sequential",
+  "contextPackCount": 1,
+  "toolDefinitionCount": 0,
+  "readScopeCount": 1,
+  "writeScopeCount": 0,
+  "gatePhases": [
+    "charter-evidence",
+    "charter-stop-conditions",
+    "preconditions",
+    "outputs",
+    "evidence",
+    "stop-conditions"
+  ],
+  "completedStepCount": 1,
+  "totalStepCount": 1,
+  "eventTypes": [
+    "lifecycle",
+    "output",
+    "item"
+  ],
+  "eventCount": 3,
+  "actualEffects": [
+    {
+      "effect": "observe",
+      "status": "observed-provisional"
+    }
+  ],
+  "stagingPresent": false,
+  "warnings": [],
+  "auditValid": true,
+  "managedInventoryCount": 1
+}
