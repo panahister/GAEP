@@ -4,5 +4,21 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GaepRepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../..'))</GaepRepositoryRoot>
+    <GaepPackagedEngineDirectory>$(BaseIntermediateOutputPath)$(Configuration)/$(TargetFramework)/packaged-engine</GaepPackagedEngineDirectory>
+    <GaepPackagedEngineModule>$(GaepPackagedEngineDirectory)/gaep-engine.mjs</GaepPackagedEngineModule>
+    <GaepPackagedEngineMetadata>$(GaepPackagedEngineDirectory)/PackagedEngineBuild.g.cs</GaepPackagedEngineMetadata>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(GaepPackagedEngineMetadata)" Visible="false" />
+    <EmbeddedResource
+      Include="$(GaepPackagedEngineModule)"
+      LogicalName="Gaep.HostClient.PackagedEngine.gaep-engine.mjs" />
+    <InternalsVisibleTo Include="Gaep.HostClient.Tests" />
+  </ItemGroup>
+  <Target Name="BuildGaepPackagedEngine" BeforeTargets="PrepareResources">
+    <Exec
+      WorkingDirectory="$(GaepRepositoryRoot)"
+      Command="node &quot;$(GaepRepositoryRoot)/scripts/build_engine_bundle.mjs&quot; --output &quot;$(MSBuildProjectDirectory)/$(GaepPackagedEngineModule)&quot; --csharp-output &quot;$(MSBuildProjectDirectory)/$(GaepPackagedEngineMetadata)&quot;" />
+  </Target>
 </Project>

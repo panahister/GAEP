@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Runtime.Loader;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -38,6 +39,13 @@ internal static class Program
 
     private static async Task<int> Main(string[] args)
     {
+        var packageArgument = Array.IndexOf(args, "--verify-package");
+        if (packageArgument >= 0)
+        {
+            var packagePath = packageArgument + 1 < args.Length ? args[packageArgument + 1] : string.Empty;
+            VerifyPackageAssembly(packagePath);
+            return 0;
+        }
         var workspaceArgument = Array.IndexOf(args, "--workspace");
         if (workspaceArgument >= 0)
         {
@@ -123,6 +131,80 @@ internal static class Program
         Directory.CreateDirectory(staleManagedReviewRoot);
         var executable = Environment.ProcessPath;
         Check(executable is not null && File.Exists(executable), "Test app host executable is available");
+
+        var safeEnvironment = VisualStudioEngineClientFactory.SafeEngineEnvironment(
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Path"] = "/safe/bin",
+                ["pathext"] = ".EXE;.CMD",
+                ["OPENAI_API_KEY"] = "private-openai-key",
+                ["AWS_SECRET_ACCESS_KEY"] = "private-aws-secret",
+                ["HOME"] = "/private/home",
+            });
+        Check(safeEnvironment["PATH"] == "/safe/bin" && safeEnvironment["PATHEXT"] == ".EXE;.CMD" &&
+              safeEnvironment["GAEP_HOST_SURFACE"] == "visual-studio-product-studio" &&
+              !safeEnvironment.ContainsKey("OPENAI_API_KEY") &&
+              !safeEnvironment.ContainsKey("AWS_SECRET_ACCESS_KEY") &&
+              !safeEnvironment.ContainsKey("HOME"),
+            "Visual Studio engine environment preserves launch essentials and strips inherited provider authority");
+
+        var packagedWorkspace = Path.Combine(temporaryRoot, "packaged-workspace");
+        var packagedCache = Path.Combine(temporaryRoot, "packaged-cache");
+        Directory.CreateDirectory(packagedWorkspace);
+        var nodeExecutable = FindExecutable("node");
+        var packageEnvironment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["PATH"] = Environment.GetEnvironmentVariable("PATH") ?? string.Empty,
+            ["GAEP_ENGINE_RUNTIME_EXECUTABLE"] = nodeExecutable,
+            ["GAEP_ENGINE_RUNTIME_SHA256"] = Sha256File(nodeExecutable),
+            ["OPENAI_API_KEY"] = "private-openai-key",
+        };
+        await ExpectAsync<ArgumentException>(
+            () => Task.FromResult(VisualStudioEngineClientFactory.Create(
+                packagedWorkspace,
+                new Dictionary<string, string> { ["PATH"] = packageEnvironment["PATH"] },
+                packagedCache)),
+            "Package mode rejects a mutable PATH-only runtime lookup");
+        await using (var packagedClient = VisualStudioEngineClientFactory.Create(
+            packagedWorkspace,
+            packageEnvironment,
+            packagedCache))
+        {
+            var emptyEvidence = await packagedClient.ListManagedEvidenceAsync(offset: 0, limit: 100);
+            Check(emptyEvidence.Offset == 0 && emptyEvidence.Limit == 100 && emptyEvidence.Total == 0 &&
+                  emptyEvidence.Items.Count == 0 && !emptyEvidence.HasMore,
+                "Embedded package engine executes a real empty managed-evidence request through the strict client");
+        }
+        Check(!Directory.Exists(Path.Combine(packagedWorkspace, ".gaep")),
+            "Read-only packaged-engine evidence flow does not create workspace state");
+
+        var materializedEngine = VisualStudioPackagedEngine.Materialize(packagedCache);
+        var mismatchedRuntimeEnvironment = new Dictionary<string, string>(packageEnvironment, StringComparer.OrdinalIgnoreCase)
+        {
+            ["GAEP_ENGINE_RUNTIME_SHA256"] = new string('0', 64),
+        };
+        await using (var mismatchedRuntimeClient = VisualStudioEngineClientFactory.Create(
+            packagedWorkspace,
+            mismatchedRuntimeEnvironment,
+            packagedCache))
+        {
+            var mismatch = await CaptureHostErrorAsync(() => mismatchedRuntimeClient.ListManagedEvidenceAsync());
+            Check(mismatch.Kind == "HOST_UNAVAILABLE" &&
+                  !mismatch.Message.Contains(nodeExecutable, StringComparison.Ordinal),
+                "A mismatched absolute runtime identity fails closed without reflecting its local path");
+        }
+        await using (var mismatchedClient = new EngineClient(
+            packagedWorkspace,
+            nodeExecutable,
+            Sha256File(nodeExecutable),
+            materializedEngine with { ExpectedSha256 = new string('0', 64) },
+            packageEnvironment))
+        {
+            var mismatch = await CaptureHostErrorAsync(() => mismatchedClient.ListManagedEvidenceAsync());
+            Check(mismatch.Kind == "HOST_UNAVAILABLE" &&
+                  !mismatch.Message.Contains(materializedEngine.Path, StringComparison.Ordinal),
+                "A mismatched embedded module identity fails closed without reflecting its local path");
+        }
 
         await using var client = new EngineClient(temporaryRoot, executable);
         var product = await client.ReadProductBindingAsync();
@@ -820,6 +902,79 @@ internal static class Program
     {
         if (!condition) throw new InvalidOperationException(description);
         passed++;
+    }
+
+    private static string FindExecutable(string name)
+    {
+        var extensions = OperatingSystem.IsWindows()
+            ? (Environment.GetEnvironmentVariable("PATHEXT") ?? ".EXE;.CMD;.BAT")
+                .Split(';', StringSplitOptions.RemoveEmptyEntries)
+            : [string.Empty];
+        foreach (var directory in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+                     .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            foreach (var extension in extensions)
+            {
+                var candidate = Path.Combine(
+                    directory,
+                    name.EndsWith(extension, StringComparison.OrdinalIgnoreCase) ? name : name + extension);
+                if (File.Exists(candidate)) return Path.GetFullPath(candidate);
+            }
+        }
+        throw new FileNotFoundException($"The {name} test runtime was not found.");
+    }
+
+    private static string Sha256File(string path)
+    {
+        using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return Convert.ToHexString(SHA256.HashData(input)).ToLowerInvariant();
+    }
+
+    private static void VerifyPackageAssembly(string requestedPath)
+    {
+        const string resourceName = "Gaep.HostClient.PackagedEngine.gaep-engine.mjs";
+        const int maxEngineBytes = 8 * 1024 * 1024;
+        var packagePath = Path.GetFullPath(requestedPath);
+        var packageInfo = new FileInfo(packagePath);
+        if (!packageInfo.Exists || packageInfo.LinkTarget is not null || packageInfo.Length is < 1 or > 16 * 1024 * 1024)
+        {
+            throw new InvalidOperationException("The packaged Visual Studio HostClient assembly is missing or unsafe.");
+        }
+
+        using var expectedResource = typeof(VisualStudioPackagedEngine).Assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException("The independently built HostClient engine resource is missing.");
+        if (expectedResource.Length is < 1 or > maxEngineBytes)
+        {
+            throw new InvalidOperationException("The independently built HostClient engine resource is outside its boundary.");
+        }
+        var expectedDigest = Convert.ToHexString(SHA256.HashData(expectedResource)).ToLowerInvariant();
+
+        var loadContext = new AssemblyLoadContext("gaep-visual-studio-package-verifier", isCollectible: true);
+        try
+        {
+            var packageAssembly = loadContext.LoadFromAssemblyPath(packagePath);
+            var resources = packageAssembly.GetManifestResourceNames();
+            if (resources.Count(name => name == resourceName) != 1)
+            {
+                throw new InvalidOperationException("The packaged Visual Studio HostClient engine resource is missing or ambiguous.");
+            }
+            using var packagedResource = packageAssembly.GetManifestResourceStream(resourceName)
+                ?? throw new InvalidOperationException("The packaged Visual Studio HostClient engine resource cannot be read.");
+            if (packagedResource.Length is < 1 or > maxEngineBytes)
+            {
+                throw new InvalidOperationException("The packaged Visual Studio HostClient engine resource is outside its boundary.");
+            }
+            var packagedDigest = Convert.ToHexString(SHA256.HashData(packagedResource)).ToLowerInvariant();
+            if (!StringComparer.Ordinal.Equals(packagedDigest, expectedDigest))
+            {
+                throw new InvalidOperationException("The packaged Visual Studio HostClient engine differs from the verified build resource.");
+            }
+            Console.WriteLine($"GAEP Visual Studio packaged HostClient engine resource: PASS (sha256:{packagedDigest})");
+        }
+        finally
+        {
+            loadContext.Unload();
+        }
     }
 
     private static async Task RunFakeHostAsync(string workspace)

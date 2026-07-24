@@ -783,7 +783,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
                 }
             }
             var workspace = ProductWorkflowController.NormalizeWorkspacePath(WorkspacePath);
-            await using var client = new EngineClient(workspace);
+            await using var client = VisualStudioEngineClientFactory.Create(workspace);
             var controller = new ProductWorkflowController(client);
             Output = await action(controller, workspace, cancellationToken);
             Status = "GAEP engine ready";

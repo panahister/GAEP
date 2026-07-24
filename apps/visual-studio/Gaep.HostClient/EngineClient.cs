@@ -12,19 +12,26 @@ public sealed class EngineClient : IAsyncDisposable
     private readonly string workspacePath;
     private readonly string requestedEngineExecutable;
     private readonly string? configuredEngineDigest;
+    private readonly PackagedEngineModule? packagedEngineModule;
+    private readonly string? configuredPackagedEngineDigest;
+    private readonly IReadOnlyDictionary<string, string> childEnvironment;
     private readonly SemaphoreSlim requestGate = new(1, 1);
     private readonly byte[] responseReadBuffer = new byte[8192];
     private readonly List<byte> pendingResponseBytes = [];
     private Process? process;
     private string? boundEnginePath;
     private string? boundEngineDigest;
+    private string? boundPackagedEnginePath;
+    private string? boundPackagedEngineDigest;
     private long nextId;
     private bool disposed;
 
     public EngineClient(
         string workspacePath,
         string? engineExecutable = null,
-        string? expectedEngineSha256 = null)
+        string? expectedEngineSha256 = null,
+        PackagedEngineModule? packagedEngineModule = null,
+        IReadOnlyDictionary<string, string>? sourceEnvironment = null)
     {
         this.workspacePath = Path.GetFullPath(workspacePath);
         requestedEngineExecutable = engineExecutable
@@ -32,6 +39,16 @@ public sealed class EngineClient : IAsyncDisposable
             ?? "gaep-engine";
         configuredEngineDigest = NormalizeDigest(
             expectedEngineSha256 ?? Environment.GetEnvironmentVariable("GAEP_ENGINE_SHA256"));
+        this.packagedEngineModule = packagedEngineModule;
+        configuredPackagedEngineDigest = NormalizeDigest(packagedEngineModule?.ExpectedSha256);
+        if (packagedEngineModule is not null && configuredPackagedEngineDigest is null)
+        {
+            throw new ArgumentException(
+                "Expected packaged engine SHA-256 must contain exactly 64 hexadecimal characters.",
+                nameof(packagedEngineModule));
+        }
+        childEnvironment = VisualStudioEngineClientFactory.SafeEngineEnvironment(
+            sourceEnvironment ?? CaptureEnvironment());
     }
 
     public async Task<ProductBinding> ReadProductBindingAsync(CancellationToken cancellationToken = default)
@@ -532,6 +549,7 @@ public sealed class EngineClient : IAsyncDisposable
         process = null;
         pendingResponseBytes.Clear();
         var identity = ResolveAndVerifyEngine();
+        var packagedIdentity = ResolveAndVerifyPackagedEngine();
         var start = new ProcessStartInfo
         {
             FileName = identity.Path,
@@ -541,6 +559,9 @@ public sealed class EngineClient : IAsyncDisposable
             RedirectStandardError = true,
             CreateNoWindow = true,
         };
+        start.Environment.Clear();
+        foreach (var entry in childEnvironment) start.Environment[entry.Key] = entry.Value;
+        if (packagedIdentity is not null) start.ArgumentList.Add(packagedIdentity.Value.Path);
         start.ArgumentList.Add("--workspace");
         start.ArgumentList.Add(workspacePath);
         var started = Process.Start(start) ?? throw new InvalidOperationException("Unable to start the GAEP engine host.");
@@ -552,6 +573,13 @@ public sealed class EngineClient : IAsyncDisposable
             if (!StringComparer.Ordinal.Equals(postStartDigest, identity.Digest))
             {
                 throw new InvalidOperationException("The GAEP engine executable changed while the host process was starting.");
+            }
+            if (packagedIdentity is not null &&
+                !StringComparer.Ordinal.Equals(
+                    ComputeDigest(packagedIdentity.Value.Path),
+                    packagedIdentity.Value.Digest))
+            {
+                throw new InvalidOperationException("The packaged GAEP engine changed while the host process was starting.");
             }
             process = started;
         }
@@ -591,11 +619,34 @@ public sealed class EngineClient : IAsyncDisposable
         return (path, digest);
     }
 
+    private (string Path, string Digest)? ResolveAndVerifyPackagedEngine()
+    {
+        if (packagedEngineModule is null) return null;
+        var path = ResolveAbsoluteRegularFile(packagedEngineModule.Path);
+        var digest = ComputeDigest(path);
+        if (!StringComparer.Ordinal.Equals(configuredPackagedEngineDigest, digest))
+        {
+            throw new InvalidOperationException("The packaged GAEP engine does not match its embedded SHA-256 digest.");
+        }
+        if (boundPackagedEnginePath is not null && !PathComparer.Equals(boundPackagedEnginePath, path))
+        {
+            throw new InvalidOperationException("The resolved packaged GAEP engine changed after this client was bound.");
+        }
+        if (boundPackagedEngineDigest is not null &&
+            !StringComparer.Ordinal.Equals(boundPackagedEngineDigest, digest))
+        {
+            throw new InvalidOperationException("The bound packaged GAEP engine changed after this client was created.");
+        }
+        boundPackagedEnginePath ??= path;
+        boundPackagedEngineDigest ??= digest;
+        return (path, digest);
+    }
+
     private static StringComparer PathComparer => OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
 
-    private static string ResolveExecutable(string requested)
+    private string ResolveExecutable(string requested)
     {
         var candidates = new List<string>();
         if (Path.IsPathRooted(requested) || requested.Contains(Path.DirectorySeparatorChar) ||
@@ -606,9 +657,10 @@ public sealed class EngineClient : IAsyncDisposable
         else
         {
             var extensions = OperatingSystem.IsWindows()
-                ? (Environment.GetEnvironmentVariable("PATHEXT") ?? ".EXE;.CMD;.BAT").Split(';', StringSplitOptions.RemoveEmptyEntries)
+                ? (VisualStudioEngineClientFactory.EnvironmentValue(childEnvironment, "PATHEXT") ?? ".EXE;.CMD;.BAT")
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries)
                 : [""];
-            foreach (var directory in (Environment.GetEnvironmentVariable("PATH") ?? "")
+            foreach (var directory in (VisualStudioEngineClientFactory.EnvironmentValue(childEnvironment, "PATH") ?? "")
                          .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
             {
                 foreach (var extension in extensions)
@@ -629,6 +681,26 @@ public sealed class EngineClient : IAsyncDisposable
         throw new FileNotFoundException("The GAEP engine executable could not be resolved to an existing file.");
     }
 
+    private static string ResolveAbsoluteRegularFile(string requested)
+    {
+        if (!Path.IsPathRooted(requested))
+        {
+            throw new ArgumentException("The package-local GAEP engine path must be absolute.", nameof(requested));
+        }
+        var file = new FileInfo(Path.GetFullPath(requested));
+        if (!file.Exists)
+        {
+            throw new FileNotFoundException("The package-local GAEP engine could not be resolved to an existing file.");
+        }
+        var target = file.LinkTarget is null ? null : file.ResolveLinkTarget(returnFinalTarget: true);
+        var resolved = new FileInfo(Path.GetFullPath(target?.FullName ?? file.FullName));
+        if (!resolved.Exists || (resolved.Attributes & FileAttributes.Directory) != 0)
+        {
+            throw new InvalidOperationException("The resolved package-local GAEP engine is not a regular file.");
+        }
+        return resolved.FullName;
+    }
+
     private static string ComputeDigest(string path)
     {
         using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -645,6 +717,16 @@ public sealed class EngineClient : IAsyncDisposable
             throw new ArgumentException("Expected engine SHA-256 must contain exactly 64 hexadecimal characters.", nameof(value));
         }
         return normalized;
+    }
+
+    private static Dictionary<string, string> CaptureEnvironment()
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+        {
+            if (entry.Key is string key && entry.Value is string value) result[key] = value;
+        }
+        return result;
     }
 
     private async Task<string> ReadBoundedResponseAsync(CancellationToken cancellationToken)
