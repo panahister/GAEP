@@ -16,7 +16,7 @@ import {
   type HostRequest,
   type Run,
 } from "@gaep/contracts"
-import { GaepEngine } from "@gaep/engine"
+import { composePhaseDashboardFramework, DashboardProductBindingError, GaepEngine } from "@gaep/engine"
 import { z, ZodError } from "zod"
 
 import {
@@ -54,6 +54,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "managed.review.read",
   "managed.review.apply",
   "managed.review.discard",
+  "dashboard.framework",
   "productStudio.designReadiness",
   "productStudio.search",
   "productStudio.exportBuild",
@@ -424,6 +425,21 @@ export class EngineHost {
             "MANAGED_REVIEW_DISCARD_FAILED",
             "The exact Managed Run discard transition could not be verified; reload the review before any retry",
           )
+        }
+      }
+      case "dashboard.framework": {
+        const product = await this.engine.readProduct()
+        try {
+          return composePhaseDashboardFramework(product, request.params)
+        } catch (error) {
+          if (error instanceof DashboardProductBindingError) {
+            throw new HostRpcError(
+              -32_039,
+              "DASHBOARD_PRODUCT_CONTEXT_CHANGED",
+              "The Product changed before the dashboard framework was composed; reload the current Product",
+            )
+          }
+          throw error
         }
       }
       case "verifyAudit":

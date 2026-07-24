@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { portableSelectionSettingsSchema } from "./agent.js"
+import { phaseDashboardCompositionRequestSchema } from "./dashboard.js"
 import { effectDescriptorSchema, toolPermissionSchema } from "./execution.js"
 import { initiativeSchema, productSchema } from "./product.js"
 import { productDomainRecordKindSchema, productExportBundleSchema } from "./product-studio.js"
@@ -125,6 +126,8 @@ export const hostImportPreviewParamsSchema = z.object({
   bundle: productExportBundleSchema,
 }).strict()
 
+export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
+
 export const hostMethodSchema = z.enum([
   "ping",
   "probeAgents",
@@ -147,6 +150,7 @@ export const hostMethodSchema = z.enum([
   "managed.review.read",
   "managed.review.apply",
   "managed.review.discard",
+  "dashboard.framework",
   "verifyAudit",
   "productStudio.designReadiness",
   "productStudio.search",
@@ -191,6 +195,7 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("managed.review.read", hostManagedReviewReadParamsSchema),
   requestVariant("managed.review.apply", hostManagedReviewApplyParamsSchema),
   requestVariant("managed.review.discard", hostManagedReviewDiscardParamsSchema),
+  requestVariant("dashboard.framework", hostDashboardFrameworkParamsSchema),
   requestVariant("verifyAudit", hostNoParamsSchema.default({})),
   requestVariant("productStudio.designReadiness", z.object({ productId: z.string().uuid() }).strict()),
   requestVariant("productStudio.search", hostSearchProductStudioParamsSchema),

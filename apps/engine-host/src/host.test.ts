@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  canonicalDigest,
   fingerprintExecutable,
   type AdapterProbeResult,
 } from "@gaep/agent-sdk"
@@ -621,5 +622,57 @@ describe("engine host protocol", () => {
       method: "productStudio.importPreview",
       params: { bundle },
     })).resolves.toMatchObject({ importMutation: "not-performed" })
+  })
+
+  it("composes a private-safe phase dashboard from an exact current Product binding", async () => {
+    await createProductAndInitiative()
+    const product = await host.engine.readProduct()
+    const params = {
+      phase: "phase-2-design",
+      expectedProductId: product.id,
+      expectedProductRevision: product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(product),
+    }
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "dashboard.framework",
+      params,
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+
+    const result = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 2,
+      protocolVersion: 2,
+      method: "dashboard.framework",
+      params,
+    }) as Record<string, unknown>
+    expect(result).toMatchObject({
+      phase: { id: "phase-2-design" },
+      panels: [
+        { id: "ux-figma", state: "attention-required" },
+        { id: "change-impact", state: "active" },
+        { id: "agent-model", state: "active" },
+      ],
+      authorityBoundary: "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
+    })
+    expect(JSON.stringify(result)).not.toContain(workspace)
+    expect(JSON.stringify(result)).not.toContain(product.name)
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 3,
+      protocolVersion: 2,
+      method: "dashboard.framework",
+      params: { ...params, expectedProductDigest: `sha256:${"0".repeat(64)}` },
+    })).rejects.toMatchObject({ kind: "DASHBOARD_PRODUCT_CONTEXT_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 4,
+      protocolVersion: 2,
+      method: "dashboard.framework",
+      params: { ...params, applicability: "applicable", ready: true },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
   })
 })
