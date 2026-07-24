@@ -56,12 +56,15 @@
       "packagePlatforms": ["darwin", "linux", "win32"],
       "runtimeEvidence": {
         "source": "package-report",
-        "level": "compatible-host-activation-only",
-        "requiredVerificationFragments": ["exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-and-activation"],
-        "remainingRequirements": ["native Kiro installation and activation", "real-provider managed read-only workflow acceptance", "interactive cancellation and resume", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
+        "level": "compatible-host-packaged-engine-workflow-local",
+        "requiredVerificationFragments": ["exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-digest-bound-package-local-empty-evidence-workflow"],
+        "remainingRequirements": ["native Kiro installation and activation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
-        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["const client = await GaepEngineClient.create"] }] },
+        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["const client = await GaepEngineClient.create", "packagedEngine:", "expectedSha256: __GAEP_PACKAGED_ENGINE_SHA256__"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["resolveAndVerifyPackagedEngine", "The packaged GAEP engine changed while the host process was starting", "ELECTRON_RUN_AS_NODE"] }
+        ] },
         { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["const initial = await client.readProduct()"] }] },
         { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function listPortableDesign", ".listPortableDesignSnapshots(offset, limit)"] }] },
         { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function readPortableDesign", "client.readPortableDesignSnapshot(bundleId)"] }] },

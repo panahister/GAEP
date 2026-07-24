@@ -11,6 +11,7 @@ const runtimeSources = new Set(["package-report", "json-evidence"])
 const runtimeLevels = new Set([
   "installed-package-activation-local",
   "compatible-host-activation-only",
+  "compatible-host-packaged-engine-workflow-local",
   "native-startup-plugin-load-only",
   "cross-platform-compile-and-controller-only",
 ])
