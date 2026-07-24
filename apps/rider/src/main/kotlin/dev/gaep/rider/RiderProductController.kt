@@ -417,6 +417,9 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Product digest: ${dashboard.productDigest}")
         appendLine("Composition digest: ${dashboard.compositionDigest}")
         appendLine("Observed: ${dashboard.observedAt}")
+        appendLine("Source: ${dashboard.sourceBoundary}")
+        appendLine("Evidence freshness: ${dashboard.evidenceCues.freshness}")
+        appendLine("Confidence: not assessed; no governed confidence evaluation is bound.")
         appendLine()
         dashboard.panels.forEach { panel ->
             appendLine(
@@ -451,6 +454,9 @@ internal class RiderProductController(private val client: GaepEngineClient) {
             "Freshness: ${dashboard.freshness.state}; observed ${dashboard.observedAt}; " +
                 "trace evaluated ${dashboard.freshness.evaluatedAt}",
         )
+        appendLine("Source: ${dashboard.sourceBoundary}")
+        appendLine("Evidence freshness: ${dashboard.evidenceCues.freshness}")
+        appendLine("Confidence: not assessed; no governed confidence evaluation is bound.")
         appendLine("Approval: not established. The current contract has no general Change approval record.")
         appendLine()
         appendLine("Work Items (${dashboard.limits.workItems.shown}/${dashboard.limits.workItems.total}):")
@@ -522,6 +528,9 @@ internal class RiderProductController(private val client: GaepEngineClient) {
             "Freshness: ${dashboard.freshness.state}; selection capability " +
                 dashboard.freshness.selectionCapabilityState,
         )
+        appendLine("Source: ${dashboard.sourceBoundary}")
+        appendLine("Evidence freshness: ${dashboard.evidenceCues.freshness}")
+        appendLine("Confidence: not assessed; no governed confidence evaluation is bound.")
         appendLine(
             "Capability observation range: ${dashboard.freshness.oldestCapabilityObservedAt} to " +
                 dashboard.freshness.newestCapabilityObservedAt,

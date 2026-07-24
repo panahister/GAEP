@@ -21,7 +21,8 @@
     { "id": "phase-dashboard-framework", "label": "Exact phase-scoped dashboard framework projection" },
     { "id": "change-impact-dashboard", "label": "Exact current Change and impact projection" },
     { "id": "agent-model-dashboard", "label": "Exact current Agent and Model evidence projection" },
-    { "id": "accessible-dashboard-tables", "label": "Accessible dashboard sorting, filtering, textual alternative, and bounded metadata export" }
+    { "id": "accessible-dashboard-tables", "label": "Accessible dashboard sorting, filtering, textual alternative, and bounded metadata export" },
+    { "id": "freshness-evidence-cues", "label": "Governed dashboard source, freshness, confidence, and stale-state cues" }
   ],
   "hosts": [
     {
@@ -69,6 +70,10 @@
         { "capabilityId": "accessible-dashboard-tables", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/studio-client.ts", "contains": ["filterInput.maxLength = 256", "Filter visible metadata", "Copy visible rows as CSV", "navigator.clipboard.writeText", "resultStatus.setAttribute(\"aria-live\", \"polite\")"] },
           { "path": "apps/vscode/src/studio-accessibility.test.ts", "contains": ["keeps table sorting keyboard-focused, filters visible metadata, and exports only the visible CSV rows", "copied 1 visible metadata row as CSV"] }
+        ] },
+        { "capabilityId": "freshness-evidence-cues", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isDashboardEvidenceCues", "value.freshness === expectedFreshness", "no-governed-confidence-evaluation-is-bound"] },
+          { "path": "apps/vscode/src/studio-client.ts", "contains": ["Source: ${dashboard.sourceBoundary}", "Evidence freshness: ${dashboard.evidenceCues.freshness}", "Confidence: not assessed; no governed confidence evaluation is bound"] }
         ] }
       ]
     },
@@ -132,6 +137,10 @@
         { "capabilityId": "accessible-dashboard-tables", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/accessible-table.ts", "contains": ["Accessible table filters can contain at most 256 characters", "renderAccessibleTableText", "accessibleTableCsv", "const neutralized"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showAccessibleDashboardTables", "Copy Visible Rows as CSV", "vscode.env.clipboard.writeText(accessibleTableCsv(view))"] }
+        ] },
+        { "capabilityId": "freshness-evidence-cues", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/protocol.ts", "contains": ["function parseDashboardEvidenceCues", "freshness !== expectedFreshness", "no-governed-confidence-evaluation-is-bound"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["Source: ${dashboard.sourceBoundary}", "Evidence freshness: ${dashboard.evidenceCues.freshness}", "Confidence: not assessed; no governed confidence evaluation is bound"] }
         ] }
       ]
     },
@@ -200,6 +209,10 @@
         { "capabilityId": "accessible-dashboard-tables", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/AccessibleDashboardTables.kt", "contains": ["Accessible table filters can contain at most 256 characters", "fun render(view: AccessibleTableView)", "fun csv(view: AccessibleTableView)"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Browse accessible dashboard tables", "Copy Visible Rows as CSV", "CopyPasteManager.getInstance().setContents"] }
+        ] },
+        { "capabilityId": "freshness-evidence-cues", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["private fun parseDashboardEvidenceCues", "freshness != expectedFreshness", "no-governed-confidence-evaluation-is-bound"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["Source: ${dashboard.sourceBoundary}", "Evidence freshness: ${dashboard.evidenceCues.freshness}", "Confidence: not assessed; no governed confidence evaluation is bound"] }
         ] }
       ]
     },
@@ -211,7 +224,7 @@
       "runtimeEvidence": {
         "source": "package-report",
         "level": "cross-platform-packaged-engine-client-workflow-local",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-223-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending"],
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-229-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending"],
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
@@ -275,6 +288,10 @@
           { "path": "apps/visual-studio/Gaep.HostClient/AccessibleDashboardTables.cs", "contains": ["Accessible table filters contain at most 256 characters", "public static string Render(AccessibleTableView view)", "public static string Csv(AccessibleTableView view)"] },
           { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Render accessible table and prepare visible CSV", "ApplicationCommands.SelectAll", "ApplicationCommands.Copy"] },
           { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["AccessibleDashboardTables.View(table, AccessibleFilter, sortKey, direction)", "AccessibleCsv = view.Rows.Count == 0", "visible-row CSV is ready for native Select All and Copy"] }
+        ] },
+        { "capabilityId": "freshness-evidence-cues", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseDashboardEvidenceCues", "freshness != expectedFreshness", "no-governed-confidence-evaluation-is-bound"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["Source: {dashboard.SourceBoundary}", "Evidence freshness: {dashboard.EvidenceCues.Freshness}", "Confidence: not assessed; no governed confidence evaluation is bound"] }
         ] }
       ]
     }

@@ -977,6 +977,11 @@ class StudioShell {
         "prose muted",
         `Exact Product revision ${dashboard.product.revision}; observed ${dashboard.observedAt}. This projection does not prove phase approval, readiness, acceptance, or applicability.`,
       ),
+      element(
+        "p",
+        "prose muted",
+        `Source: ${dashboard.sourceBoundary}. Evidence freshness: ${dashboard.evidenceCues.freshness}. Confidence: not assessed; no governed confidence evaluation is bound.`,
+      ),
     )
     section.append(this.renderTable({
       id: "phase-dashboard-framework",
@@ -1028,6 +1033,11 @@ class StudioShell {
         "p",
         "prose muted",
         `Observed ${dashboard.observedAt}; trace evaluated ${dashboard.freshness.evaluatedAt}. This read-only projection cannot approve the Change, accept risk, or authorize effects.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        `Source: ${dashboard.sourceBoundary}. Evidence freshness: ${dashboard.evidenceCues.freshness}. Confidence: not assessed; no governed confidence evaluation is bound.`,
       ),
       this.renderDefinitionGroup("Exact snapshot binding", [
         { term: "Change ID", value: dashboard.change.recordId },
@@ -1178,6 +1188,11 @@ class StudioShell {
         "p",
         "prose muted",
         `Observed ${dashboard.observedAt}. This read-only projection cannot select or switch an agent, hand off work, launch a Run, or authorize effects.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        `Source: ${dashboard.sourceBoundary}. Evidence freshness: ${dashboard.evidenceCues.freshness}. Confidence: not assessed; no governed confidence evaluation is bound.`,
       ),
       this.renderDefinitionGroup("Exact snapshot binding", [
         { term: "Product ID", value: dashboard.product.recordId },

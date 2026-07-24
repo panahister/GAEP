@@ -71,6 +71,10 @@ export function composePhaseDashboardFramework(
       commonPanel("change-impact"),
       commonPanel("agent-model"),
     ],
+    evidenceCues: {
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
     observedAt,
     sourceBoundary: "governed-repository-and-engine-only",
     limitations: [

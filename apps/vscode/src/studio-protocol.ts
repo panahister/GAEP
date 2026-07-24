@@ -580,9 +580,18 @@ function isDashboardApplicability(value: unknown): boolean {
   return value.status !== "unknown" && isExactDashboardReference(value.decision, "decision")
 }
 
+function isDashboardEvidenceCues(value: unknown, expectedFreshness?: string): boolean {
+  return isRecord(value) && hasOnlyKeys(value, ["freshness", "confidence"]) &&
+    ["current", "potentially-stale", "stale", "unknown"].includes(String(value.freshness)) &&
+    (expectedFreshness === undefined || value.freshness === expectedFreshness) &&
+    isRecord(value.confidence) && hasOnlyKeys(value.confidence, ["state", "basis"]) &&
+    value.confidence.state === "not-assessed" &&
+    value.confidence.basis === "no-governed-confidence-evaluation-is-bound"
+}
+
 function isPhaseDashboardFramework(value: unknown): value is PhaseDashboardFramework {
   if (!isRecord(value) || !hasOnlyKeys(value, [
-    "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt", "sourceBoundary",
+    "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "evidenceCues", "observedAt", "sourceBoundary",
     "limitations", "authorityBoundary", "compositionDigest",
   ])) return false
   if (value.schemaVersion !== 1 || value.kind !== "phase-dashboard-framework" ||
@@ -605,7 +614,8 @@ function isPhaseDashboardFramework(value: unknown): value is PhaseDashboardFrame
         : "attention-required"
     if (panel.state !== expectedState) return false
   }
-  return typeof value.observedAt === "string" && Number.isFinite(Date.parse(value.observedAt)) &&
+  return isDashboardEvidenceCues(value.evidenceCues, "current") &&
+    typeof value.observedAt === "string" && Number.isFinite(Date.parse(value.observedAt)) &&
     value.sourceBoundary === "governed-repository-and-engine-only" && Array.isArray(value.limitations) &&
     value.limitations.length >= 1 && value.limitations.length <= 8 && value.limitations.every((item) => isNonEmptyString(item) && item.length <= 1_000) &&
     value.authorityBoundary === "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence" &&
@@ -672,7 +682,7 @@ function isChangeImpactLimit(value: unknown): value is { shown: number; total: n
 function isChangeImpactDashboard(value: unknown): value is ChangeImpactDashboard {
   if (!isRecord(value) || !hasOnlyKeys(value, [
     "schemaVersion", "kind", "product", "change", "workItems", "changedArtifacts", "effectTargets", "affectedUnits",
-    "governance", "freshness", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+    "governance", "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
   ]) || value.schemaVersion !== 1 || value.kind !== "change-impact-dashboard" ||
     !isExactDashboardReference(value.product, "product") || !isRecord(value.change) || !hasOnlyKeys(value.change, [
       "recordType", "recordId", "revision", "digest", "state", "effectEnvelope",
@@ -746,8 +756,14 @@ function isChangeImpactDashboard(value: unknown): value is ChangeImpactDashboard
     isChangeImpactLimit(limit) && limit.omitted > 0)
   const shouldRequireAttention = shouldBeTruncated || value.freshness.unresolvedTraceLinks > 0 ||
     value.freshness.invalidTraceLinks > 0 || value.freshness.staleTraceLinks > 0 || value.freshness.staleGovernanceReferences > 0
+  const expectedEvidenceFreshness = value.freshness.staleTraceLinks > 0 || value.freshness.staleGovernanceReferences > 0
+    ? "stale"
+    : value.freshness.unresolvedTraceLinks > 0 || value.freshness.invalidTraceLinks > 0 || shouldBeTruncated
+      ? "potentially-stale"
+      : "current"
   if (value.limits.truncated !== shouldBeTruncated ||
       ((value.freshness.state === "attention-required") !== shouldRequireAttention) ||
+      !isDashboardEvidenceCues(value.evidenceCues, expectedEvidenceFreshness) ||
       typeof value.observedAt !== "string" || !Number.isFinite(Date.parse(value.observedAt)) ||
       Date.parse(value.freshness.evaluatedAt) > Date.parse(value.observedAt) ||
       value.sourceBoundary !== "current-governed-records-and-bounded-trace-analysis" ||
@@ -851,7 +867,7 @@ function isAgentModelManaged(value: unknown): boolean {
 function isAgentModelDashboard(value: unknown): value is AgentModelDashboard {
   if (!isRecord(value) || !hasOnlyKeys(value, [
     "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs", "providerMetrics",
-    "freshness", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+    "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
   ]) || value.schemaVersion !== 1 || value.kind !== "agent-model-dashboard" ||
     !isAgentModelReference(value.product, "product") || !Array.isArray(value.capabilities) || value.capabilities.length > 16 ||
     !isAgentModelSelection(value.selection) || !Array.isArray(value.runs) || value.runs.length > 256 ||
@@ -909,8 +925,16 @@ function isAgentModelDashboard(value: unknown): value is AgentModelDashboard {
   const truncated = categories.some(([, limit]) => limit.omitted > 0) || value.limits.managedRuns.omitted > 0
   const selection = value.selection as Record<string, unknown>
   const selectionState = selection.status === "selected" ? selection.capabilityState : selection.status
+  const expectedEvidenceFreshness = selectionState === "stale"
+    ? "stale"
+    : selectionState === "invalid"
+      ? "unknown"
+      : truncated || selectionState === "migration-required"
+        ? "potentially-stale"
+        : "current"
   const selectedCapabilities = value.capabilities.filter((entry) => isRecord(entry) && entry.selected)
   if (value.freshness.selectionCapabilityState !== selectionState || value.limits.truncated !== truncated || value.freshness.truncated !== truncated ||
+    !isDashboardEvidenceCues(value.evidenceCues, expectedEvidenceFreshness) ||
     ((value.freshness.state === "attention-required") !== (truncated || ["stale", "migration-required", "invalid"].includes(String(selectionState))))) return false
   if (selection.status === "selected") {
     if (selectedCapabilities.length !== 1 || selectedCapabilities[0]?.adapterId !== selection.adapterId ||

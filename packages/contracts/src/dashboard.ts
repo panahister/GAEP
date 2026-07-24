@@ -93,6 +93,14 @@ export const phaseDashboardProductBindingSchema = z.object({
   digest: digestSchema,
 }).strict()
 
+export const dashboardEvidenceCuesSchema = z.object({
+  freshness: z.enum(["current", "potentially-stale", "stale", "unknown"]),
+  confidence: z.object({
+    state: z.literal("not-assessed"),
+    basis: z.literal("no-governed-confidence-evaluation-is-bound"),
+  }).strict(),
+}).strict()
+
 const dashboardApplicabilityDecisionSchema = z.object({
   recordType: z.literal("decision"),
   recordId: z.string().uuid(),
@@ -169,6 +177,7 @@ const phaseDashboardFrameworkFields = {
     label: z.string().trim().min(2).max(160),
   }).strict(),
   panels: z.array(phaseDashboardPanelSchema).length(3),
+  evidenceCues: dashboardEvidenceCuesSchema.extend({ freshness: z.literal("current") }),
   observedAt: z.string().datetime(),
   sourceBoundary: z.literal("governed-repository-and-engine-only"),
   limitations: z.array(z.string().trim().min(4).max(1_000)).min(1).max(8),
@@ -399,6 +408,7 @@ const changeImpactDashboardFields = {
     traceAnalysisTruncated: z.boolean(),
     coverageBoundary: z.literal("absence-of-a-trace-link-does-not-prove-absence-of-impact"),
   }).strict(),
+  evidenceCues: dashboardEvidenceCuesSchema,
   limits: z.object({
     workItems: changeImpactLimitSchema,
     changedArtifacts: changeImpactLimitSchema,
@@ -429,6 +439,7 @@ function validateChangeImpactDashboard(value: {
     staleGovernanceReferences: number
     traceAnalysisTruncated: boolean
   }
+  evidenceCues: { freshness: "current" | "potentially-stale" | "stale" | "unknown" }
   limits: {
     workItems: { shown: number; omitted: number }
     changedArtifacts: { shown: number; omitted: number }
@@ -464,6 +475,14 @@ function validateChangeImpactDashboard(value: {
     || shouldBeTruncated
   if ((value.freshness.state === "attention-required") !== shouldRequireAttention) {
     context.addIssue({ code: "custom", path: ["freshness", "state"], message: "Freshness state must reflect trace uncertainty and truncation" })
+  }
+  const expectedEvidenceFreshness = value.freshness.staleTraceLinks > 0 || value.freshness.staleGovernanceReferences > 0
+    ? "stale"
+    : value.freshness.unresolvedTraceLinks > 0 || value.freshness.invalidTraceLinks > 0 || shouldBeTruncated
+      ? "potentially-stale"
+      : "current"
+  if (value.evidenceCues.freshness !== expectedEvidenceFreshness) {
+    context.addIssue({ code: "custom", path: ["evidenceCues", "freshness"], message: "Evidence freshness must expose stale, uncertain, and omitted inputs" })
   }
   if (Date.parse(value.freshness.evaluatedAt) > Date.parse(value.observedAt)) {
     context.addIssue({ code: "custom", path: ["freshness", "evaluatedAt"], message: "Trace analysis cannot be newer than dashboard observation" })
@@ -699,6 +718,7 @@ const agentModelDashboardFields = {
     truncated: z.boolean(),
     coverageBoundary: z.literal("bounded-current-records-do-not-prove-provider-account-or-native-host-readiness"),
   }).strict(),
+  evidenceCues: dashboardEvidenceCuesSchema,
   limits: z.object({
     capabilities: agentModelLimitSchema,
     runs: agentModelLimitSchema,
@@ -718,6 +738,7 @@ function validateAgentModelDashboard(value: {
   runs: Array<{ record: { recordId: string }; managed: { status: string; record?: { recordId: string } } }>
   handoffs: Array<{ record: { recordId: string }; fromRun: { recordId: string } }>
   freshness: { state: "current" | "attention-required"; selectionCapabilityState: string; oldestCapabilityObservedAt: string; newestCapabilityObservedAt: string; truncated: boolean }
+  evidenceCues: { freshness: "current" | "potentially-stale" | "stale" | "unknown" }
   limits: {
     capabilities: { shown: number; omitted: number }
     runs: { shown: number; omitted: number }
@@ -769,6 +790,16 @@ function validateAgentModelDashboard(value: {
   if ((value.freshness.state === "attention-required") !== shouldRequireAttention) {
     context.addIssue({ code: "custom", path: ["freshness", "state"], message: "Freshness must expose selection drift and bounded omissions" })
   }
+  const expectedEvidenceFreshness = value.freshness.selectionCapabilityState === "stale"
+    ? "stale"
+    : value.freshness.selectionCapabilityState === "invalid"
+      ? "unknown"
+      : shouldBeTruncated || value.freshness.selectionCapabilityState === "migration-required"
+        ? "potentially-stale"
+        : "current"
+  if (value.evidenceCues.freshness !== expectedEvidenceFreshness) {
+    context.addIssue({ code: "custom", path: ["evidenceCues", "freshness"], message: "Evidence freshness must expose selection drift and bounded omissions" })
+  }
   if (Date.parse(value.freshness.oldestCapabilityObservedAt) > Date.parse(value.freshness.newestCapabilityObservedAt) ||
       Date.parse(value.freshness.newestCapabilityObservedAt) > Date.parse(value.observedAt)) {
     context.addIssue({ code: "custom", path: ["freshness"], message: "Capability observation range is invalid" })
@@ -793,6 +824,7 @@ export const agentModelDashboardSchema = z.object({
 export type DeliveryPhaseId = z.infer<typeof deliveryPhaseIdSchema>
 export type PhaseDashboardId = z.infer<typeof phaseDashboardIdSchema>
 export type DashboardApplicability = z.infer<typeof dashboardApplicabilitySchema>
+export type DashboardEvidenceCues = z.infer<typeof dashboardEvidenceCuesSchema>
 export type PhaseDashboardPanel = z.infer<typeof phaseDashboardPanelSchema>
 export type PhaseDashboardFrameworkContent = z.infer<typeof phaseDashboardFrameworkContentSchema>
 export type PhaseDashboardFramework = z.infer<typeof phaseDashboardFrameworkSchema>

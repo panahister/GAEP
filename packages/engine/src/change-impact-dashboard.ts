@@ -347,6 +347,14 @@ export function composeChangeImpactDashboard(
       traceAnalysisTruncated: traceImpact.truncated,
       coverageBoundary: traceImpact.coverageBoundary,
     },
+    evidenceCues: {
+      freshness: staleTraceLinks > 0 || staleGovernanceReferences > 0
+        ? "stale"
+        : unresolvedTraceLinks > 0 || invalidTraceLinks > 0 || truncated
+          ? "potentially-stale"
+          : "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
     limits: {
       workItems: boundedWorkItems.limit,
       changedArtifacts: boundedArtifacts.limit,

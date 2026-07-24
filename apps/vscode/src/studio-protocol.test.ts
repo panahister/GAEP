@@ -147,6 +147,10 @@ function snapshot(route: StudioRoute): StudioSnapshot {
           state: "active",
         },
       ],
+      evidenceCues: {
+        freshness: "current",
+        confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+      },
       observedAt: "2026-07-24T00:00:00.000Z",
       sourceBoundary: "governed-repository-and-engine-only",
       limitations: ["This projection grants no phase or readiness authority."],
@@ -199,6 +203,10 @@ function changeImpactDashboard(): NonNullable<StudioSnapshot["changeImpact"]> {
       staleGovernanceReferences: 0,
       traceAnalysisTruncated: false,
       coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact",
+    },
+    evidenceCues: {
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
     },
     limits: {
       workItems: emptyLimit,
@@ -259,6 +267,10 @@ function agentModelDashboard(): NonNullable<StudioSnapshot["agentModel"]> {
       truncated: false,
       coverageBoundary: "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness" as const,
     },
+    evidenceCues: {
+      freshness: "current" as const,
+      confidence: { state: "not-assessed" as const, basis: "no-governed-confidence-evaluation-is-bound" as const },
+    },
     limits: {
       capabilities: { shown: 1, total: 1, omitted: 0 },
       runs: { shown: 0, total: 0, omitted: 0 },
@@ -312,6 +324,11 @@ describe("Product Studio protocol", () => {
     forgedDashboard.dashboard.panels[0]!.applicability = { status: "applicable", basis: "not-evaluated" }
     forgedDashboard.dashboard.panels[0]!.state = "active"
     expect(isStudioSnapshot(forgedDashboard)).toBe(false)
+    const forgedEvidenceCue = structuredClone(snapshot("overview"))
+    if (!forgedEvidenceCue.dashboard) throw new Error("Expected dashboard fixture")
+    const mutableEvidenceCue = forgedEvidenceCue.dashboard.evidenceCues as unknown as { freshness: string }
+    mutableEvidenceCue.freshness = "unknown"
+    expect(isStudioSnapshot(forgedEvidenceCue)).toBe(false)
   })
 
   it("accepts only an internally consistent Change and impact projection on Delivery", () => {
@@ -326,6 +343,13 @@ describe("Product Studio protocol", () => {
       changeImpact: {
         ...delivery.changeImpact,
         freshness: { ...delivery.changeImpact.freshness, state: "attention-required" },
+      },
+    })).toBe(false)
+    expect(isStudioSnapshot({
+      ...delivery,
+      changeImpact: {
+        ...delivery.changeImpact,
+        evidenceCues: { ...delivery.changeImpact.evidenceCues, freshness: "stale" },
       },
     })).toBe(false)
     expect(isStudioSnapshot({
@@ -360,6 +384,16 @@ describe("Product Studio protocol", () => {
       agentModel: {
         ...agents.agentModel,
         freshness: { ...agents.agentModel.freshness, state: "attention-required" },
+      },
+    })).toBe(false)
+    expect(isStudioSnapshot({
+      ...agents,
+      agentModel: {
+        ...agents.agentModel,
+        evidenceCues: {
+          ...agents.agentModel.evidenceCues,
+          confidence: { ...agents.agentModel.evidenceCues.confidence, state: "supported" },
+        },
       },
     })).toBe(false)
     expect(isStudioSnapshot({

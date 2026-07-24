@@ -343,7 +343,7 @@ internal static partial class PortableDesignProtocol
         var result = ReadResult(envelope);
         if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
                 result,
-                "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt",
+                "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "evidenceCues", "observedAt",
                 "sourceBoundary", "limitations", "authorityBoundary", "compositionDigest") ||
             !result.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var schema) ||
             schema != 1 || ParseRequiredEnum(result, "kind", "phase-dashboard-framework") != "phase-dashboard-framework" ||
@@ -421,7 +421,9 @@ internal static partial class PortableDesignProtocol
             expectedPhase,
             phaseDefinition.Label,
             Array.AsReadOnly(panels),
+            ParseDashboardEvidenceCues(result.GetProperty("evidenceCues"), "current"),
             observedAt,
+            "governed-repository-and-engine-only",
             Array.AsReadOnly(limitations.ToArray()),
             compositionDigest);
     }
@@ -547,7 +549,7 @@ internal static partial class PortableDesignProtocol
         if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
                 result,
                 "schemaVersion", "kind", "product", "change", "workItems", "changedArtifacts", "effectTargets",
-                "affectedUnits", "governance", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+                "affectedUnits", "governance", "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations",
                 "authorityBoundary", "snapshotDigest") ||
             !result.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var schema) ||
             schema != 1 || ParseRequiredEnum(result, "kind", "change-impact-dashboard") != "change-impact-dashboard" ||
@@ -689,6 +691,12 @@ internal static partial class PortableDesignProtocol
         var truncated = freshness.TraceAnalysisTruncated || categories.Any(category => category.Limit.Omitted > 0);
         var attentionRequired = truncated || freshness.UnresolvedTraceLinks > 0 || freshness.InvalidTraceLinks > 0 ||
             freshness.StaleTraceLinks > 0 || freshness.StaleGovernanceReferences > 0;
+        var evidenceFreshness = freshness.StaleTraceLinks > 0 || freshness.StaleGovernanceReferences > 0
+            ? "stale"
+            : freshness.UnresolvedTraceLinks > 0 || freshness.InvalidTraceLinks > 0 || truncated
+                ? "potentially-stale"
+                : "current";
+        var evidenceCues = ParseDashboardEvidenceCues(result.GetProperty("evidenceCues"), evidenceFreshness);
         var observedAt = ParseRequiredTimestamp(result, "observedAt");
         if (limits.Truncated != truncated || (freshness.State == "attention-required") != attentionRequired ||
             freshness.EvaluatedAt > observedAt)
@@ -711,8 +719,10 @@ internal static partial class PortableDesignProtocol
             Array.AsReadOnly(decisions),
             Array.AsReadOnly(risks),
             freshness,
+            evidenceCues,
             limits,
             observedAt,
+            "current-governed-records-and-bounded-trace-analysis",
             limitations,
             snapshotDigest);
     }
@@ -920,7 +930,7 @@ internal static partial class PortableDesignProtocol
         if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
                 result,
                 "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs",
-                "providerMetrics", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+                "providerMetrics", "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations",
                 "authorityBoundary", "snapshotDigest") ||
             !result.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var schema) ||
             schema != 1 || ParseRequiredEnum(result, "kind", "agent-model-dashboard") != "agent-model-dashboard" ||
@@ -1005,6 +1015,15 @@ internal static partial class PortableDesignProtocol
             ? selection.CapabilityState ?? throw InvalidResponse()
             : selection.Status;
         var attentionRequired = truncated || selectionCapabilityState is "stale" or "migration-required" or "invalid";
+        var evidenceFreshness = selectionCapabilityState switch
+        {
+            "stale" => "stale",
+            "invalid" => "unknown",
+            "migration-required" => "potentially-stale",
+            _ when truncated => "potentially-stale",
+            _ => "current",
+        };
+        var evidenceCues = ParseDashboardEvidenceCues(result.GetProperty("evidenceCues"), evidenceFreshness);
         var selectedCapabilities = capabilities.Where(value => value.Selected).ToArray();
         if (freshness.SelectionCapabilityState != selectionCapabilityState || freshness.Truncated != truncated ||
             limitsTruncated != truncated || (freshness.State == "attention-required") != attentionRequired)
@@ -1047,14 +1066,38 @@ internal static partial class PortableDesignProtocol
             Array.AsReadOnly(runs),
             Array.AsReadOnly(handoffs),
             freshness,
+            evidenceCues,
             capabilityLimit,
             runLimit,
             handoffLimit,
             managedRunLimit,
             truncated,
             observedAt,
+            "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata",
             limitations,
             snapshotDigest);
+    }
+
+    private static DashboardEvidenceCues ParseDashboardEvidenceCues(JsonElement value, string expectedFreshness)
+    {
+        if (value.ValueKind != JsonValueKind.Object || !HasOnlyProperties(value, "freshness", "confidence"))
+        {
+            throw InvalidResponse();
+        }
+        var freshness = ParseRequiredEnum(value, "freshness", "current", "potentially-stale", "stale", "unknown");
+        var confidence = value.GetProperty("confidence");
+        if (freshness != expectedFreshness || confidence.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(confidence, "state", "basis") ||
+            ParseRequiredEnum(confidence, "state", "not-assessed") != "not-assessed" ||
+            ParseRequiredEnum(confidence, "basis", "no-governed-confidence-evaluation-is-bound") !=
+                "no-governed-confidence-evaluation-is-bound")
+        {
+            throw InvalidResponse();
+        }
+        return new DashboardEvidenceCues(
+            freshness,
+            "not-assessed",
+            "no-governed-confidence-evaluation-is-bound");
     }
 
     private static ChangeImpactExactReference ParseAgentModelReference(JsonElement reference, string expectedType)

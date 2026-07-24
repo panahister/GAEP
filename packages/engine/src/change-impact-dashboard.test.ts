@@ -267,6 +267,10 @@ describe("Change/Impact dashboard composition", () => {
       authorityBoundary: "decisions-and-risk-acceptance-do-not-approve-the-change",
     })
     expect(dashboard.freshness).toMatchObject({ state: "current", staleGovernanceReferences: 0 })
+    expect(dashboard.evidenceCues).toEqual({
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    })
     expect(dashboard.limits.truncated).toBe(false)
     const { snapshotDigest, ...content } = dashboard
     expect(snapshotDigest).toBe(canonicalDigest(content))
@@ -299,6 +303,10 @@ describe("Change/Impact dashboard composition", () => {
     })).toThrow()
     expect(() => changeImpactDashboardContentSchema.parse({
       ...content,
+      evidenceCues: { ...content.evidenceCues, freshness: "stale" },
+    })).toThrow()
+    expect(() => changeImpactDashboardContentSchema.parse({
+      ...content,
       limits: {
         ...content.limits,
         workItems: { ...content.limits.workItems, total: content.limits.workItems.total + 1 },
@@ -326,6 +334,7 @@ describe("Change/Impact dashboard composition", () => {
       staleTraceLinks: 2,
       staleGovernanceReferences: 1,
     })
+    expect(dashboard.evidenceCues.freshness).toBe("stale")
     expect(dashboard.governance.approval.state).toBe("not-established")
   })
 })

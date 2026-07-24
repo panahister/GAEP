@@ -89,6 +89,7 @@ internal static class Program
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
         var badDashboardBindingRoot = Path.Combine(temporaryRoot, "bad-dashboard-binding");
         var badDashboardApplicabilityRoot = Path.Combine(temporaryRoot, "bad-dashboard-applicability");
+        var badDashboardEvidenceCuesRoot = Path.Combine(temporaryRoot, "bad-dashboard-evidence-cues");
         var badDashboardDigestRoot = Path.Combine(temporaryRoot, "bad-dashboard-digest");
         var badDashboardPrivateRoot = Path.Combine(temporaryRoot, "bad-dashboard-private");
         var badChangeCatalogBindingRoot = Path.Combine(temporaryRoot, "bad-change-catalog-binding");
@@ -97,12 +98,14 @@ internal static class Program
         var badChangeImpactBindingRoot = Path.Combine(temporaryRoot, "bad-change-impact-binding");
         var badChangeImpactCountRoot = Path.Combine(temporaryRoot, "bad-change-impact-count");
         var badChangeImpactFreshnessRoot = Path.Combine(temporaryRoot, "bad-change-impact-freshness");
+        var badChangeImpactEvidenceCuesRoot = Path.Combine(temporaryRoot, "bad-change-impact-evidence-cues");
         var badChangeImpactDigestRoot = Path.Combine(temporaryRoot, "bad-change-impact-digest");
         var badChangeImpactPrivateRoot = Path.Combine(temporaryRoot, "bad-change-impact-private");
         var badAgentModelBindingRoot = Path.Combine(temporaryRoot, "bad-agent-model-binding");
         var badAgentModelCountRoot = Path.Combine(temporaryRoot, "bad-agent-model-count");
         var badAgentModelFreshnessRoot = Path.Combine(temporaryRoot, "bad-agent-model-freshness");
         var badAgentModelMetricsRoot = Path.Combine(temporaryRoot, "bad-agent-model-metrics");
+        var badAgentModelEvidenceCuesRoot = Path.Combine(temporaryRoot, "bad-agent-model-evidence-cues");
         var badAgentModelDigestRoot = Path.Combine(temporaryRoot, "bad-agent-model-digest");
         var badAgentModelPrivateRoot = Path.Combine(temporaryRoot, "bad-agent-model-private");
         var badManagedPreviewRoot = Path.Combine(temporaryRoot, "bad-managed-preview");
@@ -134,6 +137,7 @@ internal static class Program
         Directory.CreateDirectory(badHandoffBindingRoot);
         Directory.CreateDirectory(badDashboardBindingRoot);
         Directory.CreateDirectory(badDashboardApplicabilityRoot);
+        Directory.CreateDirectory(badDashboardEvidenceCuesRoot);
         Directory.CreateDirectory(badDashboardDigestRoot);
         Directory.CreateDirectory(badDashboardPrivateRoot);
         Directory.CreateDirectory(badChangeCatalogBindingRoot);
@@ -142,12 +146,14 @@ internal static class Program
         Directory.CreateDirectory(badChangeImpactBindingRoot);
         Directory.CreateDirectory(badChangeImpactCountRoot);
         Directory.CreateDirectory(badChangeImpactFreshnessRoot);
+        Directory.CreateDirectory(badChangeImpactEvidenceCuesRoot);
         Directory.CreateDirectory(badChangeImpactDigestRoot);
         Directory.CreateDirectory(badChangeImpactPrivateRoot);
         Directory.CreateDirectory(badAgentModelBindingRoot);
         Directory.CreateDirectory(badAgentModelCountRoot);
         Directory.CreateDirectory(badAgentModelFreshnessRoot);
         Directory.CreateDirectory(badAgentModelMetricsRoot);
+        Directory.CreateDirectory(badAgentModelEvidenceCuesRoot);
         Directory.CreateDirectory(badAgentModelDigestRoot);
         Directory.CreateDirectory(badAgentModelPrivateRoot);
         Directory.CreateDirectory(badManagedPreviewRoot);
@@ -310,14 +316,17 @@ internal static class Program
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
                   "foundation-summary", "change-impact", "agent-model",
-              ]),
-            "Typed phase dashboard preserves the explicit phase and canonical three-panel order");
+              ]) && dashboard.EvidenceCues.Freshness == "current" &&
+              dashboard.EvidenceCues.ConfidenceState == "not-assessed",
+            "Typed phase dashboard preserves the explicit phase, canonical panel order, and governed evidence cues");
         Check(dashboard.Panels.Select(panel => panel.State).SequenceEqual([
                   "attention-required", "active", "active",
               ]) && dashboard.ProductDigest == product.Digest,
             "Typed phase dashboard preserves conservative applicability state and exact Product binding");
         var dashboardOutput = await new ProductWorkflowController(client).ReadPhaseDashboardAsync();
         Check(dashboardOutput.Contains("GAEP phase-scoped dashboard framework", StringComparison.Ordinal) &&
+              dashboardOutput.Contains("Evidence freshness: current", StringComparison.Ordinal) &&
+              dashboardOutput.Contains("Confidence: not assessed", StringComparison.Ordinal) &&
               dashboardOutput.Contains("applicability=unknown (not-evaluated)", StringComparison.Ordinal) &&
               dashboardOutput.Contains("grants no mutation, applicability, phase-entry", StringComparison.Ordinal) &&
               !dashboardOutput.Contains("Founder Product", StringComparison.Ordinal) &&
@@ -333,6 +342,7 @@ internal static class Program
                  {
                      badDashboardBindingRoot,
                      badDashboardApplicabilityRoot,
+                     badDashboardEvidenceCuesRoot,
                      badDashboardDigestRoot,
                      badDashboardPrivateRoot,
                  })
@@ -344,7 +354,7 @@ internal static class Program
             Check(invalidDashboard.Kind == "HOST_RESPONSE_INVALID" &&
                   !invalidDashboard.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
                   !invalidDashboard.Message.Contains(PrivateCredential, StringComparison.Ordinal),
-                "Phase dashboard rejects hostile binding, applicability, digest, and private-field drift");
+                "Phase dashboard rejects hostile binding, applicability, evidence-cue, digest, and private-field drift");
         }
         await ExpectAsync<ArgumentException>(
             () => client.ReadPhaseDashboardAsync(product with { Digest = "sha256:not-a-digest" }),
@@ -357,6 +367,8 @@ internal static class Program
             "Typed Change catalog preserves one exact current metadata-only Change binding");
         var changeDashboard = await client.ReadChangeImpactAsync(product, changeCatalog.Items.Single());
         Check(changeDashboard.Change.RecordId == ChangeId && changeDashboard.Freshness.State == "current" &&
+              changeDashboard.EvidenceCues.Freshness == "current" &&
+              changeDashboard.EvidenceCues.ConfidenceState == "not-assessed" &&
               changeDashboard.WorkItems.Count == 1 &&
               changeDashboard.ChangedArtifacts.Single().Locator.Kind == "workspace-relative" &&
               changeDashboard.EffectTargets.Single().Locator.Kind == "logical" &&
@@ -369,6 +381,8 @@ internal static class Program
         var changeContext = await changeController.ReadChangeImpactContextAsync();
         var changeOutput = await changeController.ReadChangeImpactAsync(changeContext, changeContext.Catalog.Items.Single());
         Check(changeOutput.Contains("GAEP exact Change and impact dashboard", StringComparison.Ordinal) &&
+              changeOutput.Contains("Evidence freshness: current", StringComparison.Ordinal) &&
+              changeOutput.Contains("Confidence: not assessed", StringComparison.Ordinal) &&
               changeOutput.Contains("Approval: not established", StringComparison.Ordinal) &&
               changeOutput.Contains("absence of a trace link does not prove absence of impact", StringComparison.Ordinal) &&
               changeOutput.Contains("grants no Change approval, risk acceptance, mutation", StringComparison.Ordinal) &&
@@ -410,6 +424,7 @@ internal static class Program
                      badChangeImpactBindingRoot,
                      badChangeImpactCountRoot,
                      badChangeImpactFreshnessRoot,
+                     badChangeImpactEvidenceCuesRoot,
                      badChangeImpactDigestRoot,
                      badChangeImpactPrivateRoot,
                  })
@@ -422,7 +437,7 @@ internal static class Program
             Check(invalidDashboard.Kind == "HOST_RESPONSE_INVALID" &&
                   !invalidDashboard.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
                   !invalidDashboard.Message.Contains(PrivateCredential, StringComparison.Ordinal),
-                "Change/Impact dashboard rejects hostile binding, count, freshness, digest, and private-field drift");
+                "Change/Impact dashboard rejects hostile binding, count, freshness, evidence-cue, digest, and private-field drift");
         }
         await ExpectAsync<ArgumentException>(
             () => client.ReadChangeImpactAsync(
@@ -433,6 +448,8 @@ internal static class Program
         var agentModel = await client.ReadAgentModelAsync(product);
         Check(agentModel.ProductDigest == product.Digest && agentModel.Capabilities.Count == 2 &&
               agentModel.Selection.Status == "unselected" && agentModel.Freshness.State == "current" &&
+              agentModel.EvidenceCues.Freshness == "current" &&
+              agentModel.EvidenceCues.ConfidenceState == "not-assessed" &&
               agentModel.CapabilityLimit.Total == 2 && !agentModel.Truncated &&
               agentModel.Runs.Count == 0 && agentModel.Handoffs.Count == 0,
             "Typed Agent/Model dashboard preserves exact unselected capability and freshness metadata");
@@ -443,6 +460,8 @@ internal static class Program
             "Typed Agent/Model dashboard withholds Product text, private paths, and credentials");
         var agentModelOutput = await new ProductWorkflowController(client).ReadAgentModelAsync();
         Check(agentModelOutput.Contains("GAEP exact Agent and Model dashboard", StringComparison.Ordinal) &&
+              agentModelOutput.Contains("Evidence freshness: current", StringComparison.Ordinal) &&
+              agentModelOutput.Contains("Confidence: not assessed", StringComparison.Ordinal) &&
               agentModelOutput.Contains("Provider usage: unavailable", StringComparison.Ordinal) &&
               agentModelOutput.Contains("cannot select or switch an agent", StringComparison.Ordinal) &&
               !agentModelOutput.Contains("Founder Product", StringComparison.Ordinal) &&
@@ -464,6 +483,7 @@ internal static class Program
                      badAgentModelCountRoot,
                      badAgentModelFreshnessRoot,
                      badAgentModelMetricsRoot,
+                     badAgentModelEvidenceCuesRoot,
                      badAgentModelDigestRoot,
                      badAgentModelPrivateRoot,
                  })
@@ -475,7 +495,7 @@ internal static class Program
             Check(invalidDashboard.Kind == "HOST_RESPONSE_INVALID" &&
                   !invalidDashboard.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
                   !invalidDashboard.Message.Contains(PrivateCredential, StringComparison.Ordinal),
-                "Agent/Model dashboard rejects hostile binding, count, freshness, metric, digest, and private-field drift");
+                "Agent/Model dashboard rejects hostile binding, count, freshness, metric, evidence-cue, digest, and private-field drift");
         }
         await ExpectAsync<ArgumentException>(
             () => client.ReadAgentModelAsync(product with { Digest = "sha256:not-a-digest" }),
@@ -534,6 +554,7 @@ internal static class Program
         Check(selectedAgentModel.Selection.Status == "selected" &&
               selectedAgentModel.Selection.CapabilityState == "stale" &&
               selectedAgentModel.Freshness.State == "attention-required" &&
+              selectedAgentModel.EvidenceCues.Freshness == "stale" &&
               selectedAgentModel.Capabilities.Count(capability => capability.Selected) == 1,
             "Agent/Model dashboard exposes selected capability drift without promoting readiness");
         var selectedAgentModelJson = JsonSerializer.Serialize(selectedAgentModel);
@@ -1314,6 +1335,7 @@ internal static class Program
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
         var badDashboardBinding = Path.GetFileName(workspace) == "bad-dashboard-binding";
         var badDashboardApplicability = Path.GetFileName(workspace) == "bad-dashboard-applicability";
+        var badDashboardEvidenceCues = Path.GetFileName(workspace) == "bad-dashboard-evidence-cues";
         var badDashboardDigest = Path.GetFileName(workspace) == "bad-dashboard-digest";
         var badDashboardPrivate = Path.GetFileName(workspace) == "bad-dashboard-private";
         var badChangeCatalogBinding = Path.GetFileName(workspace) == "bad-change-catalog-binding";
@@ -1322,12 +1344,14 @@ internal static class Program
         var badChangeImpactBinding = Path.GetFileName(workspace) == "bad-change-impact-binding";
         var badChangeImpactCount = Path.GetFileName(workspace) == "bad-change-impact-count";
         var badChangeImpactFreshness = Path.GetFileName(workspace) == "bad-change-impact-freshness";
+        var badChangeImpactEvidenceCues = Path.GetFileName(workspace) == "bad-change-impact-evidence-cues";
         var badChangeImpactDigest = Path.GetFileName(workspace) == "bad-change-impact-digest";
         var badChangeImpactPrivate = Path.GetFileName(workspace) == "bad-change-impact-private";
         var badAgentModelBinding = Path.GetFileName(workspace) == "bad-agent-model-binding";
         var badAgentModelCount = Path.GetFileName(workspace) == "bad-agent-model-count";
         var badAgentModelFreshness = Path.GetFileName(workspace) == "bad-agent-model-freshness";
         var badAgentModelMetrics = Path.GetFileName(workspace) == "bad-agent-model-metrics";
+        var badAgentModelEvidenceCues = Path.GetFileName(workspace) == "bad-agent-model-evidence-cues";
         var badAgentModelDigest = Path.GetFileName(workspace) == "bad-agent-model-digest";
         var badAgentModelPrivate = Path.GetFileName(workspace) == "bad-agent-model-private";
         var badManagedPreview = Path.GetFileName(workspace) == "bad-managed-preview";
@@ -1386,6 +1410,7 @@ internal static class Program
                         parameters,
                         badDashboardBinding,
                         badDashboardApplicability,
+                        badDashboardEvidenceCues,
                         badDashboardDigest,
                         badDashboardPrivate);
                     break;
@@ -1404,6 +1429,7 @@ internal static class Program
                         badChangeImpactBinding,
                         badChangeImpactCount,
                         badChangeImpactFreshness,
+                        badChangeImpactEvidenceCues,
                         badChangeImpactDigest,
                         badChangeImpactPrivate);
                     break;
@@ -1416,6 +1442,7 @@ internal static class Program
                         badAgentModelCount,
                         badAgentModelFreshness,
                         badAgentModelMetrics,
+                        badAgentModelEvidenceCues,
                         badAgentModelDigest,
                         badAgentModelPrivate);
                     break;
@@ -2404,6 +2431,7 @@ internal static class Program
         JsonElement parameters,
         bool mismatchBinding,
         bool invalidateApplicability,
+        bool invalidateEvidenceCues,
         bool invalidateDigest,
         bool includePrivateField)
     {
@@ -2448,6 +2476,7 @@ internal static class Program
                 PhaseDashboardPanel("change-impact", "change-impact", "Change and impact", "applicable", "phase-contract", "active"),
                 PhaseDashboardPanel("agent-model", "agent-model", "Agent and model", "applicable", "phase-contract", "active"),
             },
+            ["evidenceCues"] = DashboardEvidenceCues("current"),
             ["observedAt"] = "2026-07-24T12:00:00.000Z",
             ["sourceBoundary"] = "governed-repository-and-engine-only",
             ["limitations"] = new[]
@@ -2458,6 +2487,10 @@ internal static class Program
             ["authorityBoundary"] =
                 "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
         };
+        if (invalidateEvidenceCues)
+        {
+            ((Dictionary<string, object?>)dashboard["evidenceCues"]!)["freshness"] = "unknown";
+        }
         RefreshCanonicalDigest(dashboard, "compositionDigest");
         if (invalidateDigest)
         {
@@ -2574,6 +2607,7 @@ internal static class Program
         bool mismatchBinding,
         bool invalidateCount,
         bool invalidateFreshness,
+        bool invalidateEvidenceCues,
         bool invalidateDigest,
         bool includePrivateField)
     {
@@ -2695,6 +2729,7 @@ internal static class Program
                 ["authorityBoundary"] = "decisions-and-risk-acceptance-do-not-approve-the-change",
             },
             ["freshness"] = freshness,
+            ["evidenceCues"] = DashboardEvidenceCues("current"),
             ["limits"] = limits,
             ["observedAt"] = "2026-07-24T12:05:00.000Z",
             ["sourceBoundary"] = "current-governed-records-and-bounded-trace-analysis",
@@ -2706,6 +2741,10 @@ internal static class Program
             ["authorityBoundary"] =
                 "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects",
         };
+        if (invalidateEvidenceCues)
+        {
+            ((Dictionary<string, object?>)dashboard["evidenceCues"]!)["freshness"] = "stale";
+        }
         RefreshCanonicalDigest(dashboard, "snapshotDigest");
         if (invalidateDigest) ((Dictionary<string, object?>)dashboard["change"]!)["state"] = "blocked";
         if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
@@ -2720,6 +2759,7 @@ internal static class Program
         bool invalidateCount,
         bool invalidateFreshness,
         bool invalidateMetrics,
+        bool invalidateEvidenceCues,
         bool invalidateDigest,
         bool includePrivateField)
     {
@@ -2863,6 +2903,7 @@ internal static class Program
                 ["coverageBoundary"] =
                     "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness",
             },
+            ["evidenceCues"] = DashboardEvidenceCues(selectionCapabilityState == "stale" ? "stale" : "current"),
             ["limits"] = new Dictionary<string, object?>
             {
                 ["capabilities"] = AgentModelLimit(2, invalidateCount ? 3 : 2),
@@ -2882,6 +2923,11 @@ internal static class Program
             ["authorityBoundary"] =
                 "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects",
         };
+        if (invalidateEvidenceCues)
+        {
+            ((Dictionary<string, object?>)((Dictionary<string, object?>)dashboard["evidenceCues"]!)["confidence"]!)["state"] =
+                "supported";
+        }
         RefreshCanonicalDigest(dashboard, "snapshotDigest");
         if (invalidateDigest) capabilities[0]["agentLabel"] = "Forged label";
         if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
@@ -2892,6 +2938,16 @@ internal static class Program
     {
         ["state"] = "unavailable",
         ["basis"] = "current-managed-records-have-no-provider-usage-or-cost-contract",
+    };
+
+    private static Dictionary<string, object?> DashboardEvidenceCues(string freshness) => new()
+    {
+        ["freshness"] = freshness,
+        ["confidence"] = new Dictionary<string, object?>
+        {
+            ["state"] = "not-assessed",
+            ["basis"] = "no-governed-confidence-evaluation-is-bound",
+        },
     };
 
     private static Dictionary<string, object?> AgentModelLimit(int shown, int? total = null) => new()

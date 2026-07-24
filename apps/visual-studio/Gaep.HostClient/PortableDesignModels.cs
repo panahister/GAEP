@@ -56,6 +56,11 @@ public sealed record PhaseDashboardPanel(
     PhaseDashboardApplicability Applicability,
     string State);
 
+public sealed record DashboardEvidenceCues(
+    string Freshness,
+    string ConfidenceState,
+    string ConfidenceBasis);
+
 public sealed record PhaseDashboardFramework(
     Guid ProductId,
     long ProductRevision,
@@ -63,7 +68,9 @@ public sealed record PhaseDashboardFramework(
     DeliveryPhaseId Phase,
     string PhaseLabel,
     IReadOnlyList<PhaseDashboardPanel> Panels,
+    DashboardEvidenceCues EvidenceCues,
     DateTimeOffset ObservedAt,
+    string SourceBoundary,
     IReadOnlyList<string> Limitations,
     string CompositionDigest);
 
@@ -161,8 +168,10 @@ public sealed record ChangeImpactDashboard(
     IReadOnlyList<ChangeImpactDecision> Decisions,
     IReadOnlyList<ChangeImpactRisk> Risks,
     ChangeImpactFreshness Freshness,
+    DashboardEvidenceCues EvidenceCues,
     ChangeImpactLimits Limits,
     DateTimeOffset ObservedAt,
+    string SourceBoundary,
     IReadOnlyList<string> Limitations,
     string SnapshotDigest);
 
@@ -611,12 +620,14 @@ public sealed record AgentModelDashboard(
     IReadOnlyList<AgentModelRunProjection> Runs,
     IReadOnlyList<AgentModelHandoffProjection> Handoffs,
     AgentModelFreshness Freshness,
+    DashboardEvidenceCues EvidenceCues,
     AgentModelLimit CapabilityLimit,
     AgentModelLimit RunLimit,
     AgentModelLimit HandoffLimit,
     AgentModelLimit ManagedRunLimit,
     bool Truncated,
     DateTimeOffset ObservedAt,
+    string SourceBoundary,
     IReadOnlyList<string> Limitations,
     string SnapshotDigest);
 

@@ -172,6 +172,14 @@ export interface PhaseDashboardPanel {
   readonly state: "active" | "not-applicable" | "attention-required"
 }
 
+export interface DashboardEvidenceCues {
+  readonly freshness: "current" | "potentially-stale" | "stale" | "unknown"
+  readonly confidence: {
+    readonly state: "not-assessed"
+    readonly basis: "no-governed-confidence-evaluation-is-bound"
+  }
+}
+
 export interface PhaseDashboardFramework {
   readonly schemaVersion: 1
   readonly kind: "phase-dashboard-framework"
@@ -179,6 +187,7 @@ export interface PhaseDashboardFramework {
   readonly product: { readonly recordType: "product"; readonly recordId: string; readonly revision: number; readonly digest: string }
   readonly phase: { readonly id: DeliveryPhaseId; readonly label: string }
   readonly panels: readonly PhaseDashboardPanel[]
+  readonly evidenceCues: DashboardEvidenceCues & { readonly freshness: "current" }
   readonly observedAt: string
   readonly sourceBoundary: "governed-repository-and-engine-only"
   readonly limitations: readonly string[]
@@ -288,6 +297,7 @@ export interface ChangeImpactDashboard {
     readonly traceAnalysisTruncated: boolean
     readonly coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact"
   }
+  readonly evidenceCues: DashboardEvidenceCues
   readonly limits: {
     readonly workItems: ChangeImpactLimit
     readonly changedArtifacts: ChangeImpactLimit
@@ -414,6 +424,7 @@ export interface AgentModelDashboard {
     readonly truncated: boolean
     readonly coverageBoundary: "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness"
   }
+  readonly evidenceCues: DashboardEvidenceCues
   readonly limits: {
     readonly capabilities: AgentModelLimit
     readonly runs: AgentModelLimit
@@ -1079,13 +1090,30 @@ export function normalizeDeliveryPhaseId(value: unknown): DeliveryPhaseId {
   return value as DeliveryPhaseId
 }
 
+function parseDashboardEvidenceCues(value: unknown, expectedFreshness: DashboardEvidenceCues["freshness"]): DashboardEvidenceCues {
+  const cues = requireRecord(value)
+  requireExactKeys(cues, ["freshness", "confidence"])
+  const freshness = requireEnum(cues, "freshness", ["current", "potentially-stale", "stale", "unknown"] as const)
+  const confidence = requireRecord(cues.confidence)
+  requireExactKeys(confidence, ["state", "basis"])
+  if (freshness !== expectedFreshness || requireString(confidence, "state") !== "not-assessed" ||
+      requireString(confidence, "basis") !== "no-governed-confidence-evaluation-is-bound") throw invalidHostResponse()
+  return Object.freeze({
+    freshness,
+    confidence: Object.freeze({
+      state: "not-assessed" as const,
+      basis: "no-governed-confidence-evaluation-is-bound" as const,
+    }),
+  })
+}
+
 export function parsePhaseDashboardFramework(
   result: unknown,
   expected: { readonly phase: DeliveryPhaseId; readonly product: ProductBinding },
 ): PhaseDashboardFramework {
   const framework = requireRecord(result)
   requireExactKeys(framework, [
-    "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt", "sourceBoundary",
+    "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "evidenceCues", "observedAt", "sourceBoundary",
     "limitations", "authorityBoundary", "compositionDigest",
   ])
   if (requireSafeInteger(framework, "schemaVersion") !== 1 ||
@@ -1127,6 +1155,8 @@ export function parsePhaseDashboardFramework(
     product: productBinding,
     phase: Object.freeze({ id: phaseId, label: definition[0] }),
     panels,
+    evidenceCues: parseDashboardEvidenceCues(framework.evidenceCues, "current") as
+      DashboardEvidenceCues & { readonly freshness: "current" },
     observedAt: requireTimestamp(framework, "observedAt"),
     sourceBoundary: "governed-repository-and-engine-only" as const,
     limitations,
@@ -1187,7 +1217,7 @@ export function parseChangeImpactDashboard(
   const dashboard = requireRecord(result)
   requireExactKeys(dashboard, [
     "schemaVersion", "kind", "product", "change", "workItems", "changedArtifacts", "effectTargets",
-    "affectedUnits", "governance", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+    "affectedUnits", "governance", "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations",
     "authorityBoundary", "snapshotDigest",
   ])
   if (requireSafeInteger(dashboard, "schemaVersion") !== 1 || requireString(dashboard, "kind") !== "change-impact-dashboard" ||
@@ -1238,6 +1268,12 @@ export function parseChangeImpactDashboard(
   const truncated = freshness.traceAnalysisTruncated || categories.some(([, limit]) => limit.omitted > 0)
   const attentionRequired = truncated || freshness.unresolvedTraceLinks > 0 || freshness.invalidTraceLinks > 0 ||
     freshness.staleTraceLinks > 0 || freshness.staleGovernanceReferences > 0
+  const evidenceFreshness = freshness.staleTraceLinks > 0 || freshness.staleGovernanceReferences > 0
+    ? "stale"
+    : freshness.unresolvedTraceLinks > 0 || freshness.invalidTraceLinks > 0 || truncated
+      ? "potentially-stale"
+      : "current"
+  const evidenceCues = parseDashboardEvidenceCues(dashboard.evidenceCues, evidenceFreshness)
   const observedAt = requireTimestamp(dashboard, "observedAt")
   if (limits.truncated !== truncated || (freshness.state === "attention-required") !== attentionRequired ||
       Date.parse(freshness.evaluatedAt) > Date.parse(observedAt)) throw invalidHostResponse()
@@ -1253,6 +1289,7 @@ export function parseChangeImpactDashboard(
     affectedUnits,
     governance,
     freshness,
+    evidenceCues,
     limits,
     observedAt,
     sourceBoundary: "current-governed-records-and-bounded-trace-analysis" as const,
@@ -1275,7 +1312,7 @@ export function parseAgentModelDashboard(
   const dashboard = requireRecord(result)
   requireExactKeys(dashboard, [
     "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs", "providerMetrics",
-    "freshness", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+    "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
   ])
   if (requireSafeInteger(dashboard, "schemaVersion") !== 1 || requireString(dashboard, "kind") !== "agent-model-dashboard" ||
       requireString(dashboard, "sourceBoundary") !== "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" ||
@@ -1318,6 +1355,14 @@ export function parseAgentModelDashboard(
   const truncated = categories.some(([, limit]) => limit.omitted > 0) || limits.managedRuns.omitted > 0
   const selectionCapabilityState = selection.status === "selected" ? selection.capabilityState : selection.status
   const attentionRequired = truncated || ["stale", "migration-required", "invalid"].includes(selectionCapabilityState)
+  const evidenceFreshness = selectionCapabilityState === "stale"
+    ? "stale"
+    : selectionCapabilityState === "invalid"
+      ? "unknown"
+      : truncated || selectionCapabilityState === "migration-required"
+        ? "potentially-stale"
+        : "current"
+  const evidenceCues = parseDashboardEvidenceCues(dashboard.evidenceCues, evidenceFreshness)
   const selectedCapabilities = capabilities.filter((entry) => entry.selected)
   if (freshness.selectionCapabilityState !== selectionCapabilityState || freshness.truncated !== truncated ||
       limits.truncated !== truncated || (freshness.state === "attention-required") !== attentionRequired) throw invalidHostResponse()
@@ -1344,6 +1389,7 @@ export function parseAgentModelDashboard(
     handoffs,
     providerMetrics,
     freshness,
+    evidenceCues,
     limits,
     observedAt,
     sourceBoundary: "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" as const,

@@ -51,6 +51,10 @@ describe("phase dashboard framework composition", () => {
       state: "attention-required",
     })
     expect(result.panels.slice(1).every((panel) => panel.state === "active")).toBe(true)
+    expect(result.evidenceCues).toEqual({
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    })
   })
 
   it("is deterministic for an exact Product, request, and observation time", () => {

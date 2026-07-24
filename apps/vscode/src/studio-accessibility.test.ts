@@ -307,6 +307,10 @@ function snapshot(route: StudioRoute, revision: number): StudioSnapshot {
           state: "active",
         },
       ],
+      evidenceCues: {
+        freshness: "current",
+        confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+      },
       observedAt: "2026-07-24T00:00:00.000Z",
       sourceBoundary: "governed-repository-and-engine-only",
       limitations: ["This projection grants no phase or readiness authority."],
@@ -364,6 +368,10 @@ function changeImpactDashboard(): NonNullable<StudioSnapshot["changeImpact"]> {
       traceAnalysisTruncated: false,
       coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact",
     },
+    evidenceCues: {
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
     limits: {
       workItems: emptyLimit,
       changedArtifacts: emptyLimit,
@@ -404,6 +412,10 @@ function agentModelDashboard(): NonNullable<StudioSnapshot["agentModel"]> {
       state: "current" as const, selectionCapabilityState: "unselected" as const,
       oldestCapabilityObservedAt: observedAt, newestCapabilityObservedAt: observedAt, truncated: false,
       coverageBoundary: "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness" as const,
+    },
+    evidenceCues: {
+      freshness: "current" as const,
+      confidence: { state: "not-assessed" as const, basis: "no-governed-confidence-evaluation-is-bound" as const },
     },
     limits: {
       capabilities: { shown: 1, total: 1, omitted: 0 }, runs: { shown: 0, total: 0, omitted: 0 },
@@ -502,6 +514,8 @@ describe("Product Studio rendered accessibility", () => {
       expect(dom.window.document.querySelectorAll(".studio-nav button"), route).toHaveLength(studioRoutes.length)
       expect(dom.window.document.querySelectorAll("#studio-route-select option"), route).toHaveLength(studioRoutes.length)
       expect(dom.window.document.querySelector('[aria-label="Phase-scoped dashboard framework"]'), route).not.toBeNull()
+      expect(dom.window.document.body.textContent, route).toMatch(/Evidence freshness: current/i)
+      expect(dom.window.document.body.textContent, route).toMatch(/Confidence: not assessed/i)
       expect(dom.window.document.body.textContent, route).toMatch(/Unknown — governed decision required/)
       expect(dom.window.document.body.textContent, route).toMatch(/does not prove phase approval, readiness, acceptance, or applicability/)
       for (const element of dom.window.document.querySelectorAll<HTMLElement>("[tabindex]")) {
@@ -574,6 +588,8 @@ describe("Product Studio rendered accessibility", () => {
     expect(document.querySelector('[aria-label="Exact Change and impact dashboard"]')).not.toBeNull()
     expect(document.body.textContent).toMatch(/Selected Change and impact/i)
     expect(document.body.textContent).toMatch(/Approval is not established/i)
+    expect(document.body.textContent).toMatch(/Evidence freshness: current/i)
+    expect(document.body.textContent).toMatch(/Confidence: not assessed/i)
     expect(document.body.textContent).toMatch(/Changed artifacts/i)
     expect(document.body.textContent).toMatch(/Affected units from persisted trace/i)
     expect(document.body.textContent).toMatch(/cannot approve the Change, accept risk, or authorize effects/i)
@@ -592,6 +608,8 @@ describe("Product Studio rendered accessibility", () => {
     expect(document.querySelector('[aria-label="Exact Agent and Model dashboard"]')).not.toBeNull()
     expect(document.body.textContent).toMatch(/Agent and model evidence/i)
     expect(document.body.textContent).toMatch(/Observed agent capabilities/i)
+    expect(document.body.textContent).toMatch(/Evidence freshness: current/i)
+    expect(document.body.textContent).toMatch(/Confidence: not assessed/i)
     expect(document.body.textContent).toMatch(/Provider usage.*Unavailable/i)
     expect(document.body.textContent).toMatch(/cannot select or switch an agent, hand off work, launch a Run, or authorize effects/i)
     const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")

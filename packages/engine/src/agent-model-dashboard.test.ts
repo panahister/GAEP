@@ -299,6 +299,10 @@ describe("Agent/Model dashboard composition", () => {
       cost: { state: "unavailable", basis: "current-managed-records-have-no-provider-usage-or-cost-contract" },
     })
     expect(dashboard.freshness).toMatchObject({ state: "current", selectionCapabilityState: "current", truncated: false })
+    expect(dashboard.evidenceCues).toEqual({
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    })
     const { snapshotDigest, ...content } = dashboard
     expect(snapshotDigest).toBe(canonicalDigest(content))
     expect(JSON.stringify(dashboard)).not.toContain(product.name)
@@ -314,6 +318,7 @@ describe("Agent/Model dashboard composition", () => {
     )
     expect(dashboard.selection).toMatchObject({ status: "selected", capabilityState: "stale" })
     expect(dashboard.freshness).toMatchObject({ state: "attention-required", selectionCapabilityState: "stale" })
+    expect(dashboard.evidenceCues.freshness).toBe("stale")
     expect(dashboard.providerMetrics.cost.state).toBe("unavailable")
   })
 
@@ -326,6 +331,7 @@ describe("Agent/Model dashboard composition", () => {
     expect(dashboard.limits.handoffs).toEqual({ shown: 1, total: 3, omitted: 2 })
     expect(dashboard.limits.truncated).toBe(true)
     expect(dashboard.freshness).toMatchObject({ state: "attention-required", truncated: true })
+    expect(dashboard.evidenceCues.freshness).toBe("potentially-stale")
   })
 
   it("keeps unselected state current while migration and invalid state require attention", () => {
@@ -337,6 +343,7 @@ describe("Agent/Model dashboard composition", () => {
     expect(unselected.selection).toEqual({ status: "unselected" })
     expect(unselected.capabilities.every((entry) => !entry.selected)).toBe(true)
     expect(unselected.freshness).toMatchObject({ state: "current", selectionCapabilityState: "unselected" })
+    expect(unselected.evidenceCues.freshness).toBe("current")
 
     const migration = composeAgentModelDashboard(
       { ...sources(), selection: { status: "migration-required", portableCandidate: selection } },
@@ -349,6 +356,7 @@ describe("Agent/Model dashboard composition", () => {
     expect(migration.selection).toMatchObject({ status: "migration-required", capabilityState: "migration-required" })
     expect(migration.capabilities.every((entry) => !entry.selected)).toBe(true)
     expect(migration.freshness).toMatchObject({ state: "attention-required", selectionCapabilityState: "migration-required" })
+    expect(migration.evidenceCues.freshness).toBe("potentially-stale")
 
     const invalid = composeAgentModelDashboard(
       { ...sources(), selection: { status: "invalid" } },
@@ -357,6 +365,7 @@ describe("Agent/Model dashboard composition", () => {
     )
     expect(invalid.selection).toEqual({ status: "invalid" })
     expect(invalid.freshness).toMatchObject({ state: "attention-required", selectionCapabilityState: "invalid" })
+    expect(invalid.evidenceCues.freshness).toBe("unknown")
   })
 
   it("rejects stale Product, capability, and selection request bindings", () => {

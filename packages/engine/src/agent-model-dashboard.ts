@@ -410,6 +410,16 @@ export function composeAgentModelDashboard(
       truncated,
       coverageBoundary: "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness",
     },
+    evidenceCues: {
+      freshness: selectionCapabilityState === "stale"
+        ? "stale"
+        : selectionCapabilityState === "invalid"
+          ? "unknown"
+          : truncated || selectionCapabilityState === "migration-required"
+            ? "potentially-stale"
+            : "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
     limits: {
       capabilities: boundedCapabilities.limit,
       runs: boundedRuns.limit,

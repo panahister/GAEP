@@ -581,6 +581,9 @@ public sealed class ProductWorkflowController(EngineClient client)
             .AppendLine($"Product digest: {dashboard.ProductDigest}")
             .AppendLine($"Composition digest: {dashboard.CompositionDigest}")
             .AppendLine($"Observed: {dashboard.ObservedAt:O}")
+            .AppendLine($"Source: {dashboard.SourceBoundary}")
+            .AppendLine($"Evidence freshness: {dashboard.EvidenceCues.Freshness}")
+            .AppendLine("Confidence: not assessed; no governed confidence evaluation is bound.")
             .AppendLine();
         foreach (var panel in dashboard.Panels)
         {
@@ -620,6 +623,9 @@ public sealed class ProductWorkflowController(EngineClient client)
             .AppendLine(
                 $"Freshness: {dashboard.Freshness.State}; observed {dashboard.ObservedAt:O}; " +
                 $"trace evaluated {dashboard.Freshness.EvaluatedAt:O}")
+            .AppendLine($"Source: {dashboard.SourceBoundary}")
+            .AppendLine($"Evidence freshness: {dashboard.EvidenceCues.Freshness}")
+            .AppendLine("Confidence: not assessed; no governed confidence evaluation is bound.")
             .AppendLine("Approval: not established. The current contract has no general Change approval record.")
             .AppendLine()
             .AppendLine($"Work Items ({dashboard.Limits.WorkItems.Shown}/{dashboard.Limits.WorkItems.Total}):");
@@ -696,6 +702,9 @@ public sealed class ProductWorkflowController(EngineClient client)
             .AppendLine(
                 $"Freshness: {dashboard.Freshness.State}; selection capability " +
                 dashboard.Freshness.SelectionCapabilityState)
+            .AppendLine($"Source: {dashboard.SourceBoundary}")
+            .AppendLine($"Evidence freshness: {dashboard.EvidenceCues.Freshness}")
+            .AppendLine("Confidence: not assessed; no governed confidence evaluation is bound.")
             .AppendLine(
                 $"Capability observation range: {dashboard.Freshness.OldestCapabilityObservedAt:O} to " +
                 $"{dashboard.Freshness.NewestCapabilityObservedAt:O}")

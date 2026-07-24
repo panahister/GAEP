@@ -201,6 +201,7 @@ private fun handlePhaseDashboard(id: Long, params: JsonObject, workspacePath: St
             add(phaseDashboardPanel("change-impact", "change-impact", "Change and impact", "applicable", "phase-contract", "active"))
             add(phaseDashboardPanel("agent-model", "agent-model", "Agent and model", "applicable", "phase-contract", "active"))
         })
+        add("evidenceCues", dashboardEvidenceCues("current"))
         addProperty("observedAt", "2026-07-24T12:00:00.000Z")
         addProperty("sourceBoundary", "governed-repository-and-engine-only")
         add("limitations", JsonArray().apply {
@@ -220,6 +221,9 @@ private fun handlePhaseDashboard(id: Long, params: JsonObject, workspacePath: St
             })
             addProperty("state", "active")
         }
+    }
+    if (workspacePath.endsWith("bad-dashboard-evidence-cues")) {
+        content.getAsJsonObject("evidenceCues").addProperty("freshness", "unknown")
     }
     val value = content.deepCopy().apply { addProperty("compositionDigest", canonicalDigest(content)) }
     if (workspacePath.endsWith("bad-dashboard-digest")) {
@@ -406,6 +410,7 @@ private fun handleChangeImpact(id: Long, params: JsonObject, workspacePath: Stri
             addProperty("traceAnalysisTruncated", false)
             addProperty("coverageBoundary", "absence-of-a-trace-link-does-not-prove-absence-of-impact")
         })
+        add("evidenceCues", dashboardEvidenceCues("current"))
         add("limits", JsonObject().apply {
             listOf("workItems", "changedArtifacts", "effectTargets", "affectedUnits", "decisions", "risks").forEach { key ->
                 add(key, JsonObject().apply {
@@ -432,6 +437,9 @@ private fun handleChangeImpact(id: Long, params: JsonObject, workspacePath: Stri
     }
     if (workspacePath.endsWith("bad-change-impact-freshness")) {
         content.getAsJsonObject("freshness").addProperty("state", "attention-required")
+    }
+    if (workspacePath.endsWith("bad-change-impact-evidence-cues")) {
+        content.getAsJsonObject("evidenceCues").addProperty("freshness", "stale")
     }
     val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
     if (workspacePath.endsWith("bad-change-impact-digest")) {
@@ -593,6 +601,7 @@ private fun handleAgentModel(id: Long, params: JsonObject, workspacePath: String
                 "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness",
             )
         })
+        add("evidenceCues", dashboardEvidenceCues(if (selectionCapabilityState == "stale") "stale" else "current"))
         add("limits", JsonObject().apply {
             add("capabilities", agentModelLimit(2))
             add("runs", agentModelLimit(0))
@@ -622,6 +631,9 @@ private fun handleAgentModel(id: Long, params: JsonObject, workspacePath: String
     }
     if (workspacePath.endsWith("bad-agent-model-freshness")) {
         content.getAsJsonObject("freshness").addProperty("state", "attention-required")
+    }
+    if (workspacePath.endsWith("bad-agent-model-evidence-cues")) {
+        content.getAsJsonObject("evidenceCues").getAsJsonObject("confidence").addProperty("state", "supported")
     }
     if (workspacePath.endsWith("bad-agent-model-metrics")) {
         content.getAsJsonObject("providerMetrics").add("cost", JsonObject().apply {
@@ -1596,6 +1608,14 @@ private fun readinessSnapshots(includePrivatePath: Boolean): JsonElement {
     ).asJsonArray
     if (includePrivatePath) snapshots[0].asJsonObject.addProperty("runtimeExecutable", "$privateRoot/$privateCredential")
     return snapshots
+}
+
+private fun dashboardEvidenceCues(freshness: String) = JsonObject().apply {
+    addProperty("freshness", freshness)
+    add("confidence", JsonObject().apply {
+        addProperty("state", "not-assessed")
+        addProperty("basis", "no-governed-confidence-evaluation-is-bound")
+    })
 }
 
 private fun writeResult(id: Long, result: JsonElement) {

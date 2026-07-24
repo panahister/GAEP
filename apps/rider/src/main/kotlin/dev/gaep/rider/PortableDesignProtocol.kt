@@ -73,6 +73,12 @@ data class PhaseDashboardPanel(
     val state: String,
 )
 
+data class DashboardEvidenceCues(
+    val freshness: String,
+    val confidenceState: String,
+    val confidenceBasis: String,
+)
+
 data class PhaseDashboardFramework(
     val productId: UUID,
     val productRevision: Long,
@@ -80,7 +86,9 @@ data class PhaseDashboardFramework(
     val phase: DeliveryPhaseId,
     val phaseLabel: String,
     val panels: List<PhaseDashboardPanel>,
+    val evidenceCues: DashboardEvidenceCues,
     val observedAt: Instant,
+    val sourceBoundary: String,
     val limitations: List<String>,
     val compositionDigest: String,
 )
@@ -190,8 +198,10 @@ data class ChangeImpactDashboard(
     val decisions: List<ChangeImpactDecision>,
     val risks: List<ChangeImpactRisk>,
     val freshness: ChangeImpactFreshness,
+    val evidenceCues: DashboardEvidenceCues,
     val limits: ChangeImpactLimits,
     val observedAt: Instant,
+    val sourceBoundary: String,
     val limitations: List<String>,
     val snapshotDigest: String,
 )
@@ -279,12 +289,14 @@ data class AgentModelDashboard(
     val runs: List<AgentModelRunProjection>,
     val handoffs: List<AgentModelHandoffProjection>,
     val freshness: AgentModelFreshness,
+    val evidenceCues: DashboardEvidenceCues,
     val capabilityLimit: AgentModelLimit,
     val runLimit: AgentModelLimit,
     val handoffLimit: AgentModelLimit,
     val managedRunLimit: AgentModelLimit,
     val truncated: Boolean,
     val observedAt: Instant,
+    val sourceBoundary: String,
     val limitations: List<String>,
     val snapshotDigest: String,
 )
@@ -1133,7 +1145,7 @@ internal object PortableDesignProtocol {
     ): PhaseDashboardFramework {
         val framework = readResult(envelope).requireObject()
         framework.requireExactKeys(
-            "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt",
+            "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "evidenceCues", "observedAt",
             "sourceBoundary", "limitations", "authorityBoundary", "compositionDigest",
         )
         if (framework.requireInt("schemaVersion") != 1 ||
@@ -1186,7 +1198,9 @@ internal object PortableDesignProtocol {
             phase = phaseId,
             phaseLabel = phaseDefinition.first,
             panels = panels,
+            evidenceCues = parseDashboardEvidenceCues(framework.get("evidenceCues"), "current"),
             observedAt = observedAt,
+            sourceBoundary = "governed-repository-and-engine-only",
             limitations = limitations,
             compositionDigest = compositionDigest,
         )
@@ -1249,7 +1263,7 @@ internal object PortableDesignProtocol {
         val dashboard = readResult(envelope).requireObject()
         dashboard.requireExactKeys(
             "schemaVersion", "kind", "product", "change", "workItems", "changedArtifacts", "effectTargets",
-            "affectedUnits", "governance", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+            "affectedUnits", "governance", "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations",
             "authorityBoundary", "snapshotDigest",
         )
         if (dashboard.requireInt("schemaVersion") != 1 ||
@@ -1362,6 +1376,14 @@ internal object PortableDesignProtocol {
         val truncated = freshness.traceAnalysisTruncated || categories.any { (_, limit) -> limit.omitted > 0 }
         val attentionRequired = truncated || freshness.unresolvedTraceLinks > 0 || freshness.invalidTraceLinks > 0 ||
             freshness.staleTraceLinks > 0 || freshness.staleGovernanceReferences > 0
+        val evidenceFreshness = if (freshness.staleTraceLinks > 0 || freshness.staleGovernanceReferences > 0) {
+            "stale"
+        } else if (freshness.unresolvedTraceLinks > 0 || freshness.invalidTraceLinks > 0 || truncated) {
+            "potentially-stale"
+        } else {
+            "current"
+        }
+        val evidenceCues = parseDashboardEvidenceCues(dashboard.get("evidenceCues"), evidenceFreshness)
         val observedAt = dashboard.requireInstant("observedAt")
         if (limits.truncated != truncated || (freshness.state == "attention-required") != attentionRequired ||
             freshness.evaluatedAt.isAfter(observedAt)
@@ -1385,8 +1407,10 @@ internal object PortableDesignProtocol {
             decisions,
             risks,
             freshness,
+            evidenceCues,
             limits,
             observedAt,
+            "current-governed-records-and-bounded-trace-analysis",
             limitations,
             snapshotDigest,
         )
@@ -1401,7 +1425,7 @@ internal object PortableDesignProtocol {
         val dashboard = readResult(envelope).requireObject()
         dashboard.requireExactKeys(
             "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs",
-            "providerMetrics", "freshness", "limits", "observedAt", "sourceBoundary", "limitations",
+            "providerMetrics", "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations",
             "authorityBoundary", "snapshotDigest",
         )
         if (dashboard.requireInt("schemaVersion") != 1 ||
@@ -1476,6 +1500,13 @@ internal object PortableDesignProtocol {
             selection.status
         }
         val attentionRequired = truncated || selectionCapabilityState in setOf("stale", "migration-required", "invalid")
+        val evidenceFreshness = when {
+            selectionCapabilityState == "stale" -> "stale"
+            selectionCapabilityState == "invalid" -> "unknown"
+            truncated || selectionCapabilityState == "migration-required" -> "potentially-stale"
+            else -> "current"
+        }
+        val evidenceCues = parseDashboardEvidenceCues(dashboard.get("evidenceCues"), evidenceFreshness)
         val selectedCapabilities = capabilities.filter { it.selected }
         if (freshness.selectionCapabilityState != selectionCapabilityState || freshness.truncated != truncated ||
             limitsTruncated != truncated || (freshness.state == "attention-required") != attentionRequired
@@ -1515,12 +1546,14 @@ internal object PortableDesignProtocol {
             runs = runs,
             handoffs = handoffs,
             freshness = freshness,
+            evidenceCues = evidenceCues,
             capabilityLimit = capabilityLimit,
             runLimit = runLimit,
             handoffLimit = handoffLimit,
             managedRunLimit = managedRunLimit,
             truncated = truncated,
             observedAt = observedAt,
+            sourceBoundary = "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata",
             limitations = limitations,
             snapshotDigest = snapshotDigest,
         )
@@ -3601,6 +3634,22 @@ internal object PortableDesignProtocol {
             newestCapabilityObservedAt = freshness.requireInstant("newestCapabilityObservedAt"),
             truncated = freshness.requireBoolean("truncated"),
         )
+    }
+
+    private fun parseDashboardEvidenceCues(value: JsonElement?, expectedFreshness: String): DashboardEvidenceCues {
+        val cues = value.requireObject()
+        cues.requireExactKeys("freshness", "confidence")
+        val freshness = cues.requireOneOf("freshness", setOf("current", "potentially-stale", "stale", "unknown"))
+        val confidence = cues.get("confidence").requireObject()
+        confidence.requireExactKeys("state", "basis")
+        val state = confidence.requireString("state")
+        val basis = confidence.requireString("basis")
+        if (freshness != expectedFreshness || state != "not-assessed" ||
+            basis != "no-governed-confidence-evaluation-is-bound"
+        ) {
+            throw invalidResponse()
+        }
+        return DashboardEvidenceCues(freshness, state, basis)
     }
 
     private fun parseAgentModelLimit(value: JsonElement?): AgentModelLimit {

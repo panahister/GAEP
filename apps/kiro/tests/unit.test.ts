@@ -198,6 +198,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const staleManagedReviewRoot = join(root, "stale-managed-review")
   const badDashboardBindingRoot = join(root, "bad-dashboard-binding")
   const badDashboardApplicabilityRoot = join(root, "bad-dashboard-applicability")
+  const badDashboardEvidenceCuesRoot = join(root, "bad-dashboard-evidence-cues")
   const badDashboardDigestRoot = join(root, "bad-dashboard-digest")
   const badDashboardPrivateRoot = join(root, "bad-dashboard-private")
   const badChangeCatalogBindingRoot = join(root, "bad-change-catalog-binding")
@@ -206,11 +207,13 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badChangeImpactBindingRoot = join(root, "bad-change-impact-binding")
   const badChangeImpactCountRoot = join(root, "bad-change-impact-count")
   const badChangeImpactFreshnessRoot = join(root, "bad-change-impact-freshness")
+  const badChangeImpactEvidenceCuesRoot = join(root, "bad-change-impact-evidence-cues")
   const badChangeImpactDigestRoot = join(root, "bad-change-impact-digest")
   const badChangeImpactPrivateRoot = join(root, "bad-change-impact-private")
   const badAgentModelBindingRoot = join(root, "bad-agent-model-binding")
   const badAgentModelCountRoot = join(root, "bad-agent-model-count")
   const badAgentModelFreshnessRoot = join(root, "bad-agent-model-freshness")
+  const badAgentModelEvidenceCuesRoot = join(root, "bad-agent-model-evidence-cues")
   const badAgentModelMetricsRoot = join(root, "bad-agent-model-metrics")
   const badAgentModelDigestRoot = join(root, "bad-agent-model-digest")
   const badAgentModelPrivateRoot = join(root, "bad-agent-model-private")
@@ -222,10 +225,13 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     badManagedEvidenceDetailRoot, badManagedEvidenceBindingRoot, discardManagedReviewRoot, badManagedReviewDigestRoot,
     badManagedReviewPrivateRoot, badManagedReviewBindingRoot, badManagedReviewPathRoot, badManagedTransitionDigestRoot,
     badManagedTransitionPrivateRoot, staleManagedReviewRoot, badDashboardBindingRoot, badDashboardApplicabilityRoot,
+    badDashboardEvidenceCuesRoot,
     badDashboardDigestRoot, badDashboardPrivateRoot, badChangeCatalogBindingRoot, badChangeCatalogDigestRoot,
     badChangeCatalogPrivateRoot, badChangeImpactBindingRoot, badChangeImpactCountRoot, badChangeImpactFreshnessRoot,
+    badChangeImpactEvidenceCuesRoot,
     badChangeImpactDigestRoot, badChangeImpactPrivateRoot, badAgentModelBindingRoot, badAgentModelCountRoot,
-    badAgentModelFreshnessRoot, badAgentModelMetricsRoot, badAgentModelDigestRoot, badAgentModelPrivateRoot,
+    badAgentModelFreshnessRoot, badAgentModelEvidenceCuesRoot, badAgentModelMetricsRoot, badAgentModelDigestRoot,
+    badAgentModelPrivateRoot,
   ].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
@@ -252,12 +258,15 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.deepEqual(dashboard.panels.map((panel) => panel.id), ["foundation-summary", "change-impact", "agent-model"])
     assert.deepEqual(dashboard.panels.map((panel) => panel.state), ["attention-required", "active", "active"])
     assert.equal(dashboard.product.digest, product.digest)
+    assert.equal(dashboard.evidenceCues.freshness, "current")
+    assert.equal(dashboard.evidenceCues.confidence.state, "not-assessed")
     assert.equal(JSON.stringify(dashboard).includes("Example Product"), false)
     assert.equal(JSON.stringify(dashboard).includes(privateRoot), false)
     assert.equal(JSON.stringify(dashboard).includes(privateCredential), false)
 
     for (const workspacePath of [
-      badDashboardBindingRoot, badDashboardApplicabilityRoot, badDashboardDigestRoot, badDashboardPrivateRoot,
+      badDashboardBindingRoot, badDashboardApplicabilityRoot, badDashboardEvidenceCuesRoot,
+      badDashboardDigestRoot, badDashboardPrivateRoot,
     ]) {
       const hostileClient = await GaepEngineClient.create({
         workspacePath,
@@ -310,6 +319,8 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.equal(changeImpact.changedArtifacts[0]?.locator.kind, "workspace-relative")
     assert.equal(changeImpact.governance.approval.state, "not-established")
     assert.equal(changeImpact.freshness.state, "current")
+    assert.equal(changeImpact.evidenceCues.freshness, "current")
+    assert.equal(changeImpact.evidenceCues.confidence.state, "not-assessed")
     assert.equal(changeImpact.limits.truncated, false)
     assert.equal(JSON.stringify(changeImpact).includes("Private Change title"), false)
     assert.equal(JSON.stringify(changeImpact).includes(privateRoot), false)
@@ -317,6 +328,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
 
     for (const workspacePath of [
       badChangeImpactBindingRoot, badChangeImpactCountRoot, badChangeImpactFreshnessRoot,
+      badChangeImpactEvidenceCuesRoot,
       badChangeImpactDigestRoot, badChangeImpactPrivateRoot,
     ]) {
       const hostileClient = await GaepEngineClient.create({
@@ -347,13 +359,16 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.equal(agentModel.providerMetrics.usage.state, "unavailable")
     assert.equal(agentModel.providerMetrics.cost.state, "unavailable")
     assert.equal(agentModel.freshness.state, "current")
+    assert.equal(agentModel.evidenceCues.freshness, "current")
+    assert.equal(agentModel.evidenceCues.confidence.state, "not-assessed")
     assert.equal(agentModel.limits.truncated, false)
     assert.equal(JSON.stringify(agentModel).includes("Example Product"), false)
     assert.equal(JSON.stringify(agentModel).includes(privateRoot), false)
     assert.equal(JSON.stringify(agentModel).includes(privateCredential), false)
 
     for (const workspacePath of [
-      badAgentModelBindingRoot, badAgentModelCountRoot, badAgentModelFreshnessRoot, badAgentModelMetricsRoot,
+      badAgentModelBindingRoot, badAgentModelCountRoot, badAgentModelFreshnessRoot,
+      badAgentModelEvidenceCuesRoot, badAgentModelMetricsRoot,
       badAgentModelDigestRoot, badAgentModelPrivateRoot,
     ]) {
       const hostileClient = await GaepEngineClient.create({
@@ -440,6 +455,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     })
     assert.equal(selectedAgentModel.capabilities.filter((entry) => entry.selected).length, 1)
     assert.equal(selectedAgentModel.freshness.state, "attention-required")
+    assert.equal(selectedAgentModel.evidenceCues.freshness, "stale")
 
     const runs = await client.listRuns()
     assert.equal(runs.length, 1)

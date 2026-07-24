@@ -180,6 +180,7 @@ class PortableDesignClientTest {
         val staleManagedReviewRoot = Files.createDirectory(temporaryRoot.resolve("stale-managed-review"))
         val badDashboardBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-binding"))
         val badDashboardApplicabilityRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-applicability"))
+        val badDashboardEvidenceCuesRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-evidence-cues"))
         val badDashboardDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-digest"))
         val badDashboardPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-private"))
         val badChangeCatalogBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-catalog-binding"))
@@ -188,11 +189,13 @@ class PortableDesignClientTest {
         val badChangeImpactBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-binding"))
         val badChangeImpactCountRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-count"))
         val badChangeImpactFreshnessRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-freshness"))
+        val badChangeImpactEvidenceCuesRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-evidence-cues"))
         val badChangeImpactDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-digest"))
         val badChangeImpactPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-change-impact-private"))
         val badAgentModelBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-binding"))
         val badAgentModelCountRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-count"))
         val badAgentModelFreshnessRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-freshness"))
+        val badAgentModelEvidenceCuesRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-evidence-cues"))
         val badAgentModelMetricsRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-metrics"))
         val badAgentModelDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-digest"))
         val badAgentModelPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-private"))
@@ -248,9 +251,11 @@ class PortableDesignClientTest {
             assertEquals(listOf("foundation-summary", "change-impact", "agent-model"), dashboard.panels.map { it.id })
             assertEquals(listOf("attention-required", "active", "active"), dashboard.panels.map { it.state })
             assertEquals(product.digest, dashboard.productDigest)
+            assertEquals("current", dashboard.evidenceCues.freshness)
             val dashboardView = RiderProductController(client).readPhaseDashboard()
             assertTrue(dashboardView.contains("GAEP phase-scoped dashboard framework"))
             assertTrue(dashboardView.contains("applicability=unknown (not-evaluated)"))
+            assertTrue(dashboardView.contains("Confidence: not assessed"))
             assertTrue(dashboardView.contains("grants no mutation, applicability, phase-entry"))
             assertFalse(dashboardView.contains("Founder Product"))
             assertFalse(dashboardView.contains(privateRoot))
@@ -263,6 +268,7 @@ class PortableDesignClientTest {
             listOf(
                 badDashboardBindingRoot,
                 badDashboardApplicabilityRoot,
+                badDashboardEvidenceCuesRoot,
                 badDashboardDigestRoot,
                 badDashboardPrivateRoot,
             ).forEach { root ->
@@ -286,6 +292,7 @@ class PortableDesignClientTest {
             val changeDashboard = client.readChangeImpact(product, changeCatalog.items.single())
             assertEquals(changeId, changeDashboard.change.recordId)
             assertEquals("current", changeDashboard.freshness.state)
+            assertEquals("current", changeDashboard.evidenceCues.freshness)
             assertEquals(1, changeDashboard.workItems.size)
             assertEquals("workspace-relative", changeDashboard.changedArtifacts.single().locator.kind)
             assertEquals("logical", changeDashboard.effectTargets.single().locator.kind)
@@ -298,6 +305,7 @@ class PortableDesignClientTest {
             val changeView = RiderProductController(client).readChangeImpact(changeContext, changeContext.catalog.items.single())
             assertTrue(changeView.contains("GAEP exact Change and impact dashboard"))
             assertTrue(changeView.contains("Approval: not established"))
+            assertTrue(changeView.contains("Confidence: not assessed"))
             assertTrue(changeView.contains("absence of a trace link does not prove absence of impact"))
             assertTrue(changeView.contains("grants no Change approval, risk acceptance, mutation"))
             assertFalse(changeView.contains("Founder Product"))
@@ -337,6 +345,7 @@ class PortableDesignClientTest {
                 badChangeImpactBindingRoot,
                 badChangeImpactCountRoot,
                 badChangeImpactFreshnessRoot,
+                badChangeImpactEvidenceCuesRoot,
                 badChangeImpactDigestRoot,
                 badChangeImpactPrivateRoot,
             ).forEach { root ->
@@ -360,6 +369,7 @@ class PortableDesignClientTest {
             assertEquals(2, agentModel.capabilities.size)
             assertEquals("unselected", agentModel.selection.status)
             assertEquals("current", agentModel.freshness.state)
+            assertEquals("current", agentModel.evidenceCues.freshness)
             assertEquals(2, agentModel.capabilityLimit.total)
             assertFalse(agentModel.truncated)
             assertTrue(agentModel.runs.isEmpty())
@@ -370,6 +380,7 @@ class PortableDesignClientTest {
             val agentModelView = RiderProductController(client).readAgentModel()
             assertTrue(agentModelView.contains("GAEP exact Agent and Model dashboard"))
             assertTrue(agentModelView.contains("Provider usage: unavailable"))
+            assertTrue(agentModelView.contains("Confidence: not assessed"))
             assertTrue(agentModelView.contains("cannot select or switch an agent"))
             assertFalse(agentModelView.contains("Founder Product"))
             assertFalse(agentModelView.contains(privateRoot))
@@ -385,6 +396,7 @@ class PortableDesignClientTest {
                 badAgentModelBindingRoot,
                 badAgentModelCountRoot,
                 badAgentModelFreshnessRoot,
+                badAgentModelEvidenceCuesRoot,
                 badAgentModelMetricsRoot,
                 badAgentModelDigestRoot,
                 badAgentModelPrivateRoot,

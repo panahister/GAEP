@@ -143,6 +143,10 @@ function readPhaseDashboard(id, params) {
         state: "active",
       },
     ],
+    evidenceCues: {
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
     observedAt: "2026-07-24T12:00:00.000Z",
     sourceBoundary: "governed-repository-and-engine-only",
     limitations: [
@@ -156,6 +160,7 @@ function readPhaseDashboard(id, params) {
     content.panels[0].applicability = { status: "applicable", basis: "not-evaluated" }
     content.panels[0].state = "active"
   }
+  if (workspacePath.endsWith("bad-dashboard-evidence-cues")) content.evidenceCues.freshness = "unknown"
   const value = { ...content, compositionDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-dashboard-digest")) value.panels[0].title = "Forged dashboard title"
   if (workspacePath.endsWith("bad-dashboard-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
@@ -264,6 +269,10 @@ function readChangeImpact(id, params) {
       traceAnalysisTruncated: false,
       coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact",
     },
+    evidenceCues: {
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
     limits: {
       workItems: { shown: 1, total: 1, omitted: 0 },
       changedArtifacts: { shown: 1, total: 1, omitted: 0 },
@@ -284,6 +293,7 @@ function readChangeImpact(id, params) {
   if (workspacePath.endsWith("bad-change-impact-binding")) content.change.digest = `sha256:${"0".repeat(64)}`
   if (workspacePath.endsWith("bad-change-impact-count")) content.limits.workItems.total = 2
   if (workspacePath.endsWith("bad-change-impact-freshness")) content.freshness.state = "attention-required"
+  if (workspacePath.endsWith("bad-change-impact-evidence-cues")) content.evidenceCues.freshness = "stale"
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-change-impact-digest")) value.change.state = "blocked"
   if (workspacePath.endsWith("bad-change-impact-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
@@ -368,6 +378,10 @@ function readAgentModel(id, params) {
       truncated: false,
       coverageBoundary: "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness",
     },
+    evidenceCues: {
+      freshness: selectionCapabilityState === "stale" ? "stale" : "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
     limits: {
       capabilities: { shown: 2, total: 2, omitted: 0 },
       runs: { shown: 0, total: 0, omitted: 0 },
@@ -386,6 +400,7 @@ function readAgentModel(id, params) {
   if (workspacePath.endsWith("bad-agent-model-binding")) content.product.digest = `sha256:${"0".repeat(64)}`
   if (workspacePath.endsWith("bad-agent-model-count")) content.limits.capabilities.total = 3
   if (workspacePath.endsWith("bad-agent-model-freshness")) content.freshness.state = "attention-required"
+  if (workspacePath.endsWith("bad-agent-model-evidence-cues")) content.evidenceCues.confidence.state = "supported"
   if (workspacePath.endsWith("bad-agent-model-metrics")) content.providerMetrics.cost = { state: "available", amount: 0 }
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-agent-model-digest")) value.capabilities[0].agentLabel = "Forged label"
