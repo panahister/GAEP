@@ -2,7 +2,7 @@
 
 **Governed AI Engineering Platform (GAEP)**  
 **Document ID:** GAEP-RDM-054  
-**Version:** 1.0.5  
+**Version:** 1.0.6  
 **Status:** Active Delivery Control  
 **Last Updated:** 2026-07-24  
 **Authority:** Feature delivery status and phase acceptance  
@@ -83,13 +83,13 @@ This table must be recounted and updated after every status change.
 
 | Registry | Total | ✅ Done | 🟡 In Progress | 🧪 Ready for Test | 🔎 In Review | ⛔ Blocked | ⏸ Deferred | ❌ Backlog |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Cross-platform capabilities | 35 | 3 | 25 | 0 | 0 | 0 | 0 | 7 |
+| Cross-platform capabilities | 35 | 3 | 27 | 0 | 0 | 0 | 0 | 5 |
 | Phase 1 — Product P0–P4 | 36 | 1 | 21 | 0 | 0 | 0 | 0 | 14 |
 | Phase 2 — UX and Figma | 26 | 0 | 8 | 0 | 0 | 0 | 0 | 18 |
 | Phase 3A — Backlog and Readiness | 24 | 0 | 8 | 0 | 0 | 0 | 0 | 16 |
 | Phase 3B — Implementation and QA | 30 | 0 | 15 | 0 | 0 | 0 | 0 | 15 |
 | Phase 4 — Release and Learning | 17 | 0 | 8 | 0 | 0 | 0 | 0 | 9 |
-| **All tracked features** | **168** | **4** | **85** | **0** | **0** | **0** | **0** | **79** |
+| **All tracked features** | **168** | **4** | **87** | **0** | **0** | **0** | **0** | **77** |
 
 ## 6. Cross-Platform Capability Registry
 
@@ -97,11 +97,11 @@ These capabilities are cross-cutting. The target milestone is the first phase in
 
 | ID | Feature | Target milestone | Required outcome | Current status | Current evidence or gap |
 |---|---|---|---|---|---|
-| PLT-01 | Shared GAEP Engine | Phase 0 / 1A | One shared engine with no behavioral forks between hosts | `🟡 In Progress` | Core and shared packages exist; the four-host conformance boundary is incomplete |
+| PLT-01 | Shared GAEP Engine | Phase 0 / 1A | One shared engine with no behavioral forks between hosts | `🟡 In Progress` | `f9c3425` adds machine-checked shared-engine source probes for all four hosts, but packaged-engine workflow evidence and complete behavioral parity remain incomplete |
 | PLT-02 | Portable `.gaep` Workspace | Phase 0 / 1A | Portable, version-controlled state and artifacts | `✅ Done` | A portable workspace exists in the current codebase; regression testing is required in every phase |
 | PLT-03 | VS Code Installable VSIX | Phase 0 / 1A | Real VSIX build, installation, upgrade, and smoke testing | `🟡 In Progress` | `7e46bad` packages, installs, inventories and activates the exact VSIX through an independent isolated harness; upgrade/rollback and supported-OS acceptance remain |
 | PLT-04 | Visual Studio Native VSIX | Phase 0 / 1A | Native Visual Studio extension installable on Windows | `🟡 In Progress` | `c65d1ac` wires the compiled out-of-process Remote UI to exact Product binding and governed portable-design list/read/import with 46 protocol/controller checks; Windows container creation, installation and rendered interaction remain |
-| PLT-05 | Four-IDE Behavioral Parity | Phase 0 / 1A | Equivalent behavior in VS Code, Visual Studio, Rider, and Kiro | `❌ Backlog` | A complete conformance contract and matrix do not exist |
+| PLT-05 | Four-IDE Behavioral Parity | Phase 0 / 1A | Equivalent behavior in VS Code, Visual Studio, Rider, and Kiro | `🟡 In Progress` | `f9c3425` establishes the executable Phase 0 contract and honest 60-cell matrix: 32 implemented, 7 partial and 21 not implemented; the phase gate remains incomplete with zero accepted hosts |
 | PLT-06 | Codex Detection | Phase 0 / 1A | Discover executable, version, authentication readiness, and capabilities | `✅ Done` | Basic detection exists; four-host regression coverage is still required |
 | PLT-07 | Claude Code Detection | Phase 0 / 1A | Discover Claude Code, version, authentication readiness, and capabilities | `🟡 In Progress` | Partial detection exists; host paths and readiness checks are incomplete |
 | PLT-08 | Codex Model Discovery and Selection | Phase 0 / 1A | Display and select the Codex models available to the user | `🟡 In Progress` | Discovery and selection are partial and lack four-IDE conformance |
@@ -123,9 +123,9 @@ These capabilities are cross-cutting. The target milestone is the first phase in
 | PLT-24 | Agent and Model Dashboard | Phase 0 / 1A | Provider, model, run status, cost/usage, and handoff evidence | `🟡 In Progress` | The foundation is partial; execution truth and four-host coverage are incomplete |
 | PLT-25 | Accessible Dashboard Tables | Phase 0 / 1A | Keyboard and screen-reader support, sorting, filtering, and export | `🟡 In Progress` | A table foundation exists; accessibility conformance is incomplete |
 | PLT-26 | Freshness and Evidence Cues | Phase 0 / 1A | Show freshness, source, confidence, and stale state | `🟡 In Progress` | Cues are partial; policy and validation are incomplete |
-| PLT-27 | Four-IDE Conformance Suite | Phase 0 / 1A | Shared contract tests for four IDEs and two providers | `❌ Backlog` | A comprehensive suite and matrix report do not exist |
+| PLT-27 | Four-IDE Conformance Suite | Phase 0 / 1A | Shared contract tests for four IDEs and two providers | `🟡 In Progress` | `f9c3425` verifies 15 capabilities across four hosts against source markers, exact package bytes/digests and bounded runtime evidence, and fails closed on source or package drift. Provider workflows, native matrices and acceptance remain incomplete |
 | PLT-28 | Realistic Example Runner | Phase 0 / 1A | Repeatable realistic example with inspectable outputs | `❌ Backlog` | The runner and canonical example path do not exist |
-| PLT-29 | Per-Phase Package and Acceptance Report | Phase 0 / 1A | Package, checksum, test report, and known gaps for every phase | `🟡 In Progress` | `c3991aa` adds the deterministic Phase 0 inventory; the latest snapshot at `c65d1ac` records exact VS Code, Kiro and Rider package hashes plus Visual Studio's 46 cross-platform workflow checks while preserving the Windows-only VSIX gap and non-release claim boundary. Later phase reports and full acceptance evidence remain |
+| PLT-29 | Per-Phase Package and Acceptance Report | Phase 0 / 1A | Package, checksum, test report, and known gaps for every phase | `🟡 In Progress` | `f9c3425` adds the dated Phase 0 conformance report and refreshed exact package hashes after all host reruns while preserving native, supported-platform, human-acceptance and non-release gaps. Later phase reports and full acceptance evidence remain |
 | PLT-30 | Governed Figma MCP Adapter | Phase 2 | Governed Figma read, import, write, and synchronization | `❌ Backlog` | A complete adapter and contract do not exist |
 | PLT-31 | Rider Native Plugin | Phase 0 / 1A | Native JetBrains/Rider plugin with sandbox and installation tests | `🟡 In Progress` | `5801b9f` adds a tested native Product tool window for exact Product binding and governed portable-design list/read/import after `663259f` native startup and `7a084b3` package/sandbox parity; plugin-manager installation, automated UI interaction and complete cross-host workflow parity remain |
 | PLT-32 | Kiro Installable Package | Phase 0 / 1A | Independent Kiro installation and compatibility validation | `🟡 In Progress` | `7e46bad` packages, installs, inventories and activates the exact independent VSIX through a separate compatible-host harness. Native Kiro installation remains unverified because no Kiro binary is available |
@@ -435,6 +435,7 @@ Every status change must add a new row. Previous rows must not be deleted or rew
 | 2026-07-24 | Codex | Phase 0 / 1A native Rider startup | PLT-31, PLT-35 | No feature status changes | Checkpoint `663259f`; `npm run test:rider:startup` launches Rider 2025.3 build 253.28294.87 on macOS arm64, verifies exact `dev.gaep.productstudio@0.1.0` load and isolated paths, then terminates the process tree; `evidence/ide-smokes/2026-07-24T081813Z-rider-startup.json` records the result and claim boundary | Product Owner approved continuous local implementation, not feature completion, readiness, interactive acceptance or release | The computer-use bridge detected the generic JetBrains Java process but could not address its UI. Tool-window interaction, packaged engine execution, plugin-manager installation, other operating systems, signing and publication remain |
 | 2026-07-24 | Codex | Phase 0 / 1A Rider Product workflow | PLT-21, PLT-29, PLT-31 | No feature status changes | Checkpoint `5801b9f`; the clean Rider test/package/structure/sandbox-parity gate and bounded native startup pass. Controller coverage verifies exact Product parsing, list/read/import metadata, revision rebinding, privacy-safe output and invalid UUID rejection; `evidence/local-packages/2026-07-24T082603Z-phase-0-local-rider-workflow.json` records current package hashes | Product Owner approved continuous local implementation, not feature completion, interactive acceptance, cross-host parity or release | File selection and import confirmation exist in the native UI, but the Java window was not addressable by the automation bridge. Packaged engine execution, plugin-manager installation, full dashboard parity, signing and other operating systems remain |
 | 2026-07-24 | Codex | Phase 0 / 1A Visual Studio Product workflow | PLT-04, PLT-21, PLT-29 | No feature status changes | Checkpoint `c65d1ac`; the out-of-process Remote UI and typed HostClient compile with zero warnings, Product binding and governed portable-design list/read/import pass 46 protocol/controller checks, root `npm run check` passes, and `evidence/local-packages/2026-07-24T084224Z-phase-0-local-visual-studio-workflow.json` records package hashes and limits | Product Owner approved continuous local implementation, not Windows installation, rendered interaction, cross-host parity, feature completion or release | Import uses a cancel-default confirmation and two exact Product reads; private host details are suppressed. Native Windows VSIX creation/install/activation, solution-path auto-selection, packaged engine execution, signing and supported-version acceptance remain |
+| 2026-07-24 | Codex | Phase 0 / 1A four-host conformance | PLT-01, PLT-05, PLT-27, PLT-29 | PLT-05 and PLT-27: `❌ Backlog` -> `🟡 In Progress`; no other status changes | Checkpoint `f9c3425`; `npm run test:ide-conformance` passes 3 current/hostile tests, `npm run verify:ide-conformance` validates 60 assessments and exact package/runtime evidence, all locally executable host gates pass, and `evidence/ide-conformance/2026-07-24T085804Z-phase-0-local.json` records 32 implemented, 7 partial, 21 not implemented and zero accepted hosts | Product Owner approved continuous local implementation, not parity completion, native-host acceptance, readiness or release | The verifier passes truth consistency while `phaseGate` remains `incomplete`. Native Kiro/Visual Studio, interactive Rider/Visual Studio, provider/model workflows in three hosts, packaged-engine execution, supported-platform matrices and human acceptance remain |
 
 ## 19. Integrity Checks for This File
 
