@@ -1,4 +1,7 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -19,6 +22,8 @@ internal static partial class PortableDesignProtocol
     private const string SummaryPrivacyBoundary = "Validated metadata only; no bundle root, artifact path, token value, source bytes, credentials, OAuth state, or external-account state.";
     private const string PageGovernanceBoundary = "Every item remains pending human review; source review is an upstream claim only.";
     private const string PagePrivacyBoundary = "Items contain validated metadata and digests only; local paths and source content are omitted.";
+    private const string ManagedPreviewBoundary = "managed-readonly-preview-does-not-grant-execution-or-effect-authority";
+    private const string ManagedReceiptBoundary = "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority";
     private static readonly JsonSerializerOptions StrictJson = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -43,6 +48,8 @@ internal static partial class PortableDesignProtocol
             ["AGENT_SELECTION_MIGRATION_REQUIRED"] = (-32_016, "The legacy Agent Selection requires explicit re-probe and reconfirmation."),
             ["AGENT_SELECTION_HANDOFF_REQUIRED"] = (-32_017, "A versioned handoff is required before changing agent, model, or settings after a Run."),
             ["AGENT_SELECTION_INVALID"] = (-32_018, "The persisted Agent Selection is invalid and cannot be replaced implicitly."),
+            ["MANAGED_READ_ONLY_PREVIEW_CHANGED"] = (-32_022, "The managed read-only preview changed before execution; review the current preview."),
+            ["MANAGED_READ_ONLY_RECEIPT_INVALID"] = (-32_023, "GAEP could not verify the managed read-only terminal evidence."),
             ["INVALID_PARAMS"] = (-32_602, "The GAEP engine rejected the local request parameters."),
             ["PROTOCOL_UPGRADE_REQUIRED"] = (-32_021, "The GAEP engine requires protocol version 2 for portable design requests."),
             ["UNSUPPORTED_PROTOCOL_VERSION"] = (-32_020, "The GAEP engine does not support the requested portable design protocol version."),
@@ -361,6 +368,182 @@ internal static partial class PortableDesignProtocol
             ParseHandoffTextArray(handoff.GetProperty("capabilityDifferences")),
             createdAt,
             acknowledgedAt);
+    }
+
+    internal static ManagedReadOnlyPreview ParseManagedReadOnlyPreviewResponse(
+        JsonElement envelope,
+        Guid expectedCharterId,
+        Guid expectedWorkflowPlanId)
+    {
+        var preview = ReadResult(envelope);
+        if (!HasOnlyProperties(
+                preview,
+                "schemaVersion", "kind", "productId", "initiativeId", "charterId", "charterDigest",
+                "workflowPlanId", "workflowPlanDigest", "adapterId", "agentId", "modelId", "selectionDigest",
+                "strategy", "stepIds", "contextPackCount", "readScopeCount", "gates", "authorityBoundary",
+                "previewDigest") ||
+            preview.GetProperty("schemaVersion").GetInt32() != 1 ||
+            preview.GetProperty("kind").GetString() != "managed-readonly-preview" ||
+            preview.GetProperty("authorityBoundary").GetString() != ManagedPreviewBoundary)
+        {
+            throw InvalidResponse();
+        }
+        var charterId = ParseRequiredGuid(preview, "charterId");
+        var workflowPlanId = ParseRequiredGuid(preview, "workflowPlanId");
+        if (expectedCharterId == Guid.Empty || expectedWorkflowPlanId == Guid.Empty ||
+            charterId != expectedCharterId || workflowPlanId != expectedWorkflowPlanId)
+        {
+            throw InvalidResponse();
+        }
+        if (!preview.TryGetProperty("stepIds", out var stepIdsElement) ||
+            stepIdsElement.ValueKind != JsonValueKind.Array || stepIdsElement.GetArrayLength() is < 1 or > 512 ||
+            !preview.TryGetProperty("gates", out var gatesElement) ||
+            gatesElement.ValueKind != JsonValueKind.Array || gatesElement.GetArrayLength() is < 2 or > 2_050)
+        {
+            throw InvalidResponse();
+        }
+        var stepIds = stepIdsElement.EnumerateArray().Select(ParseRequiredGuidValue).ToArray();
+        if (stepIds.Distinct().Count() != stepIds.Length) throw InvalidResponse();
+        var stepIdSet = stepIds.ToHashSet();
+        var gates = gatesElement.EnumerateArray().Select(gate => ParseManagedReadOnlyGate(gate, stepIdSet)).ToArray();
+        if (gates.Select(gate => gate.Key).Distinct(StringComparer.Ordinal).Count() != gates.Length)
+        {
+            throw InvalidResponse();
+        }
+        var contextPackCount = ParseBoundedNonNegativeInt(preview, "contextPackCount", 512);
+        var readScopeCount = ParseBoundedNonNegativeInt(preview, "readScopeCount", 100_000);
+        var parsed = new ManagedReadOnlyPreview(
+            1,
+            "managed-readonly-preview",
+            ParseRequiredGuid(preview, "productId"),
+            ParseRequiredGuid(preview, "initiativeId"),
+            charterId,
+            ParseRequiredDigest(preview, "charterDigest"),
+            workflowPlanId,
+            ParseRequiredDigest(preview, "workflowPlanDigest"),
+            ParseRequiredPortableText(preview, "adapterId"),
+            ParseRequiredPortableText(preview, "agentId"),
+            ParseRequiredPortableText(preview, "modelId"),
+            ParseRequiredDigest(preview, "selectionDigest"),
+            ParseRequiredEnum(preview, "strategy", "sequential", "parallel-readonly"),
+            Array.AsReadOnly(stepIds),
+            contextPackCount,
+            readScopeCount,
+            Array.AsReadOnly(gates),
+            ManagedPreviewBoundary,
+            ParseRequiredDigest(preview, "previewDigest"));
+        ValidateManagedReadOnlyPreview(parsed);
+        return parsed;
+    }
+
+    internal static ManagedReadOnlyReceipt ParseManagedReadOnlyReceiptResponse(
+        JsonElement envelope,
+        ManagedReadOnlyPreview preview)
+    {
+        ValidateManagedReadOnlyPreview(preview);
+        var receipt = ReadResult(envelope);
+        if (!HasOnlyProperties(
+                receipt,
+                "schemaVersion", "kind", "previewDigest", "runId", "managedRunId", "productId", "initiativeId",
+                "adapterId", "agentId", "modelId", "mode", "state", "providerDisposition", "outcomeStatus",
+                "outcomeBasis", "eventCount", "completedStepCount", "totalStepCount", "resultDigest",
+                "evidenceDigest", "warnings", "startedAt", "endedAt", "authorityBoundary") ||
+            receipt.GetProperty("schemaVersion").GetInt32() != 1 ||
+            receipt.GetProperty("kind").GetString() != "managed-readonly-receipt" ||
+            receipt.GetProperty("authorityBoundary").GetString() != ManagedReceiptBoundary)
+        {
+            throw InvalidResponse();
+        }
+        var previewDigest = ParseRequiredDigest(receipt, "previewDigest");
+        var productId = ParseRequiredGuid(receipt, "productId");
+        var initiativeId = ParseRequiredGuid(receipt, "initiativeId");
+        var adapterId = ParseRequiredPortableText(receipt, "adapterId");
+        var agentId = ParseRequiredPortableText(receipt, "agentId");
+        var modelId = ParseRequiredPortableText(receipt, "modelId");
+        if (previewDigest != preview.PreviewDigest || productId != preview.ProductId ||
+            initiativeId != preview.InitiativeId || adapterId != preview.AdapterId ||
+            agentId != preview.AgentId || modelId != preview.ModelId)
+        {
+            throw InvalidResponse();
+        }
+        var mode = ParseRequiredEnum(receipt, "mode", "codex-staged", "manual-offline", "claude-context-only");
+        var state = ParseRequiredEnum(
+            receipt,
+            "state",
+            "review-required", "completed", "failed", "cancelled", "timed-out", "unknown", "conflict", "discarded");
+        var providerDisposition = ParseRequiredEnum(
+            receipt,
+            "providerDisposition",
+            "completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown");
+        var outcomeStatus = ParseRequiredEnum(receipt, "outcomeStatus", "satisfied", "failed", "not-assessed", "indeterminate");
+        var outcomeBasis = ParseRequiredEnum(
+            receipt,
+            "outcomeBasis",
+            "postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure");
+        var eventCount = ParseBoundedNonNegativeInt(receipt, "eventCount", 4_096);
+        var completedStepCount = ParseBoundedNonNegativeInt(receipt, "completedStepCount", 512);
+        var totalStepCount = ParseBoundedNonNegativeInt(receipt, "totalStepCount", 512);
+        if (totalStepCount != preview.StepIds.Count || completedStepCount > totalStepCount ||
+            (state == "completed" && (providerDisposition != "completed" || outcomeStatus != "satisfied")))
+        {
+            throw InvalidResponse();
+        }
+        if (!receipt.TryGetProperty("warnings", out var warningsElement) ||
+            warningsElement.ValueKind != JsonValueKind.Array || warningsElement.GetArrayLength() > 128)
+        {
+            throw InvalidResponse();
+        }
+        string[] warningValues =
+        [
+            "provider-warning-redacted", "provider-output-redacted", "coordinator-failure", "runtime-output-truncated",
+            "staging-read-confinement-unattested", "postcondition-evaluator-failed", "local-cleanup-pending",
+            "local-cleanup-failed", "runtime-warning",
+        ];
+        var warnings = warningsElement.EnumerateArray().Select(warning =>
+        {
+            var value = warning.ValueKind == JsonValueKind.String ? warning.GetString() : null;
+            return value is not null && warningValues.Contains(value, StringComparer.Ordinal)
+                ? value
+                : throw InvalidResponse();
+        }).ToArray();
+        var startedAt = ParseRequiredTimestamp(receipt, "startedAt");
+        var endedAt = ParseRequiredTimestamp(receipt, "endedAt");
+        if (endedAt < startedAt) throw InvalidResponse();
+        return new ManagedReadOnlyReceipt(
+            1,
+            "managed-readonly-receipt",
+            previewDigest,
+            ParseRequiredGuid(receipt, "runId"),
+            ParseRequiredGuid(receipt, "managedRunId"),
+            productId,
+            initiativeId,
+            adapterId,
+            agentId,
+            modelId,
+            mode,
+            state,
+            providerDisposition,
+            outcomeStatus,
+            outcomeBasis,
+            eventCount,
+            completedStepCount,
+            totalStepCount,
+            ParseRequiredDigest(receipt, "resultDigest"),
+            ParseRequiredDigest(receipt, "evidenceDigest"),
+            Array.AsReadOnly(warnings),
+            startedAt,
+            endedAt,
+            ManagedReceiptBoundary);
+    }
+
+    internal static void ValidateManagedReadOnlyPreview(ManagedReadOnlyPreview preview)
+    {
+        ArgumentNullException.ThrowIfNull(preview);
+        var body = BuildManagedReadOnlyPreviewBody(preview);
+        if (preview.PreviewDigest != CanonicalDigest(body))
+        {
+            throw new ArgumentException("Managed read-only preview digest is invalid.", nameof(preview));
+        }
     }
 
     internal static PortableDesignSnapshotPage ParsePageResponse(JsonElement envelope, int expectedOffset, int expectedLimit)
@@ -723,6 +906,150 @@ internal static partial class PortableDesignProtocol
             ParseOptionalGuid(run, "previousRunId"));
     }
 
+    private static ManagedReadOnlyGatePreview ParseManagedReadOnlyGate(
+        JsonElement gate,
+        IReadOnlySet<Guid> stepIds)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                gate,
+                ["key", "phase", "criteria", "criteriaDigest"],
+                ["stepId"]))
+        {
+            throw InvalidResponse();
+        }
+        var phase = ParseRequiredEnum(
+            gate,
+            "phase",
+            "preconditions", "outputs", "evidence", "stop-conditions", "charter-evidence", "charter-stop-conditions");
+        Guid? stepId = gate.TryGetProperty("stepId", out var stepElement)
+            ? ParseRequiredGuidValue(stepElement)
+            : null;
+        var charterGate = phase is "charter-evidence" or "charter-stop-conditions";
+        if ((charterGate && stepId.HasValue) || (!charterGate && !stepId.HasValue) ||
+            (stepId.HasValue && !stepIds.Contains(stepId.Value)) ||
+            !gate.TryGetProperty("criteria", out var criteriaElement) ||
+            criteriaElement.ValueKind != JsonValueKind.Array || criteriaElement.GetArrayLength() > 256)
+        {
+            throw InvalidResponse();
+        }
+        var criteria = criteriaElement.EnumerateArray().Select(item => ParseHandoffText(item, 1, 2_000)).ToArray();
+        var criteriaDigest = ParseRequiredDigest(gate, "criteriaDigest");
+        if (criteriaDigest != CanonicalDigest(criteriaElement)) throw InvalidResponse();
+        return new ManagedReadOnlyGatePreview(
+            ParseHandoffText(gate.GetProperty("key"), 1, 500),
+            stepId,
+            phase,
+            Array.AsReadOnly(criteria),
+            criteriaDigest);
+    }
+
+    private static JsonElement BuildManagedReadOnlyPreviewBody(ManagedReadOnlyPreview preview)
+    {
+        if (preview.SchemaVersion != 1 || preview.Kind != "managed-readonly-preview" ||
+            preview.AuthorityBoundary != ManagedPreviewBoundary || preview.ProductId == Guid.Empty ||
+            preview.InitiativeId == Guid.Empty || preview.CharterId == Guid.Empty ||
+            preview.WorkflowPlanId == Guid.Empty || !DigestPattern().IsMatch(preview.CharterDigest) ||
+            !DigestPattern().IsMatch(preview.WorkflowPlanDigest) || !DigestPattern().IsMatch(preview.SelectionDigest) ||
+            !DigestPattern().IsMatch(preview.PreviewDigest) || !ValidPortableText(preview.AdapterId, minimum: 1) ||
+            !ValidPortableText(preview.AgentId, minimum: 1) || !ValidPortableText(preview.ModelId, minimum: 1) ||
+            preview.Strategy is not ("sequential" or "parallel-readonly") || preview.StepIds.Count is < 1 or > 512 ||
+            preview.StepIds.Any(stepId => stepId == Guid.Empty) || preview.StepIds.Distinct().Count() != preview.StepIds.Count ||
+            preview.ContextPackCount is < 0 or > 512 || preview.ReadScopeCount is < 0 or > 100_000 ||
+            preview.Gates.Count is < 2 or > 2_050 ||
+            preview.Gates.Select(gate => gate.Key).Distinct(StringComparer.Ordinal).Count() != preview.Gates.Count)
+        {
+            throw new ArgumentException("Managed read-only preview is invalid.", nameof(preview));
+        }
+        var stepIds = preview.StepIds.ToHashSet();
+        var gates = preview.Gates.Select(gate =>
+        {
+            var charterGate = gate.Phase is "charter-evidence" or "charter-stop-conditions";
+            if (gate.Phase is not ("preconditions" or "outputs" or "evidence" or "stop-conditions" or
+                    "charter-evidence" or "charter-stop-conditions") ||
+                (charterGate && gate.StepId.HasValue) || (!charterGate && !gate.StepId.HasValue) ||
+                (gate.StepId.HasValue && (gate.StepId == Guid.Empty || !stepIds.Contains(gate.StepId.Value))) ||
+                gate.Criteria.Count > 256)
+            {
+                throw new ArgumentException("Managed read-only preview gate binding is invalid.", nameof(preview));
+            }
+            var key = ValidateHandoffText(gate.Key, "Managed gate key", 1, 500);
+            var criteria = gate.Criteria.Select(criterion =>
+                ValidateHandoffText(criterion, "Managed gate criterion", 1, 2_000)).ToArray();
+            var criteriaElement = JsonSerializer.SerializeToElement(criteria);
+            if (!DigestPattern().IsMatch(gate.CriteriaDigest) || gate.CriteriaDigest != CanonicalDigest(criteriaElement))
+            {
+                throw new ArgumentException("Managed read-only preview gate digest is invalid.", nameof(preview));
+            }
+            var body = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["key"] = key,
+                ["phase"] = gate.Phase,
+                ["criteria"] = criteria,
+                ["criteriaDigest"] = gate.CriteriaDigest,
+            };
+            if (gate.StepId.HasValue) body["stepId"] = gate.StepId.Value;
+            return body;
+        }).ToArray();
+        var body = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "managed-readonly-preview",
+            ["productId"] = preview.ProductId,
+            ["initiativeId"] = preview.InitiativeId,
+            ["charterId"] = preview.CharterId,
+            ["charterDigest"] = preview.CharterDigest,
+            ["workflowPlanId"] = preview.WorkflowPlanId,
+            ["workflowPlanDigest"] = preview.WorkflowPlanDigest,
+            ["adapterId"] = preview.AdapterId,
+            ["agentId"] = preview.AgentId,
+            ["modelId"] = preview.ModelId,
+            ["selectionDigest"] = preview.SelectionDigest,
+            ["strategy"] = preview.Strategy,
+            ["stepIds"] = preview.StepIds,
+            ["contextPackCount"] = preview.ContextPackCount,
+            ["readScopeCount"] = preview.ReadScopeCount,
+            ["gates"] = gates,
+            ["authorityBoundary"] = ManagedPreviewBoundary,
+        };
+        return JsonSerializer.SerializeToElement(body);
+    }
+
+    private static string CanonicalDigest(JsonElement value)
+    {
+        using var output = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(
+                   output,
+                   new JsonWriterOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
+        {
+            WriteCanonicalJson(writer, value);
+        }
+        return $"sha256:{Convert.ToHexString(SHA256.HashData(output.ToArray())).ToLowerInvariant()}";
+    }
+
+    private static void WriteCanonicalJson(Utf8JsonWriter writer, JsonElement value)
+    {
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var property in value.EnumerateObject().OrderBy(property => property.Name, StringComparer.Ordinal))
+                {
+                    writer.WritePropertyName(property.Name);
+                    WriteCanonicalJson(writer, property.Value);
+                }
+                writer.WriteEndObject();
+                break;
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in value.EnumerateArray()) WriteCanonicalJson(writer, item);
+                writer.WriteEndArray();
+                break;
+            default:
+                value.WriteTo(writer);
+                break;
+        }
+    }
+
     private static HandoffWorkspaceBaseline ParseHandoffWorkspaceBaseline(JsonElement baseline)
     {
         if (!HasRequiredAndAllowedProperties(
@@ -804,6 +1131,66 @@ internal static partial class PortableDesignProtocol
             throw InvalidResponse();
         }
         return parsed;
+    }
+
+    private static Guid ParseRequiredGuidValue(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.String ||
+            !Guid.TryParseExact(value.GetString(), "D", out var parsed) || parsed == Guid.Empty)
+        {
+            throw InvalidResponse();
+        }
+        return parsed;
+    }
+
+    private static string ParseRequiredDigest(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String ||
+            !DigestPattern().IsMatch(value.GetString() ?? string.Empty))
+        {
+            throw InvalidResponse();
+        }
+        return value.GetString()!;
+    }
+
+    private static string ParseRequiredPortableText(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String ||
+            !ValidPortableText(value.GetString(), minimum: 1))
+        {
+            throw InvalidResponse();
+        }
+        return value.GetString()!;
+    }
+
+    private static string ParseRequiredEnum(JsonElement element, string name, params string[] values)
+    {
+        if (!element.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String ||
+            value.GetString() is not { } parsed || !values.Contains(parsed, StringComparer.Ordinal))
+        {
+            throw InvalidResponse();
+        }
+        return parsed;
+    }
+
+    private static int ParseBoundedNonNegativeInt(JsonElement element, string name, int maximum)
+    {
+        if (!element.TryGetProperty(name, out var value) || !value.TryGetInt32(out var parsed) ||
+            parsed < 0 || parsed > maximum)
+        {
+            throw InvalidResponse();
+        }
+        return parsed;
+    }
+
+    private static DateTimeOffset ParseRequiredTimestamp(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String ||
+            !TryParseTimestamp(value.GetString(), out var timestamp))
+        {
+            throw InvalidResponse();
+        }
+        return timestamp;
     }
 
     private static Guid? ParseOptionalGuid(JsonElement element, string name) =>

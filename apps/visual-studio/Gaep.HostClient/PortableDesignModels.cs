@@ -135,6 +135,60 @@ public sealed record AgentHandoff(
     DateTimeOffset CreatedAt,
     DateTimeOffset? AcknowledgedAt);
 
+public sealed record ManagedReadOnlyGatePreview(
+    string Key,
+    Guid? StepId,
+    string Phase,
+    IReadOnlyList<string> Criteria,
+    string CriteriaDigest);
+
+public sealed record ManagedReadOnlyPreview(
+    int SchemaVersion,
+    string Kind,
+    Guid ProductId,
+    Guid InitiativeId,
+    Guid CharterId,
+    string CharterDigest,
+    Guid WorkflowPlanId,
+    string WorkflowPlanDigest,
+    string AdapterId,
+    string AgentId,
+    string ModelId,
+    string SelectionDigest,
+    string Strategy,
+    IReadOnlyList<Guid> StepIds,
+    int ContextPackCount,
+    int ReadScopeCount,
+    IReadOnlyList<ManagedReadOnlyGatePreview> Gates,
+    string AuthorityBoundary,
+    string PreviewDigest);
+
+public sealed record ManagedReadOnlyReceipt(
+    int SchemaVersion,
+    string Kind,
+    string PreviewDigest,
+    Guid RunId,
+    Guid ManagedRunId,
+    Guid ProductId,
+    Guid InitiativeId,
+    string AdapterId,
+    string AgentId,
+    string ModelId,
+    string Mode,
+    string State,
+    string ProviderDisposition,
+    string OutcomeStatus,
+    string OutcomeBasis,
+    int EventCount,
+    int CompletedStepCount,
+    int TotalStepCount,
+    string ResultDigest,
+    string EvidenceDigest,
+    IReadOnlyList<string> Warnings,
+    DateTimeOffset StartedAt,
+    DateTimeOffset EndedAt,
+    string AuthorityBoundary);
+
 public sealed record AgentReadinessSnapshot(
     int SchemaVersion,
     string AdapterId,

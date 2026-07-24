@@ -63,6 +63,10 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private string handoffUnresolvedMatters = string.Empty;
     private string handoffDecisions = string.Empty;
     private string handoffEvidence = string.Empty;
+    private string managedCharterId = string.Empty;
+    private string managedWorkflowPlanId = string.Empty;
+    private ManagedReadOnlyPreview? managedReadOnlyPreview;
+    private string? managedReadOnlyWorkspace;
     private bool busy;
 
     public GaepToolWindowData(VisualStudioExtensibility extensibility)
@@ -74,6 +78,8 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         SelectAgentCommand = new AsyncCommand(SelectAgentAsync);
         LoadAgentHandoffCommand = new AsyncCommand(LoadAgentHandoffAsync);
         CreateAgentHandoffCommand = new AsyncCommand(CreateAgentHandoffAsync);
+        LoadManagedReadOnlyPreviewCommand = new AsyncCommand(LoadManagedReadOnlyPreviewAsync);
+        ExecuteManagedReadOnlyCommand = new AsyncCommand(ExecuteManagedReadOnlyAsync);
         ListDesignImportsCommand = new AsyncCommand(ListDesignImportsAsync);
         ReadDesignImportCommand = new AsyncCommand(ReadDesignImportAsync);
         ImportDesignBundleCommand = new AsyncCommand(ImportDesignBundleAsync);
@@ -88,7 +94,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
@@ -107,6 +113,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand CreateAgentHandoffCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadManagedReadOnlyPreviewCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ExecuteManagedReadOnlyCommand { get; }
 
     [DataMember]
     public IAsyncCommand ListDesignImportsCommand { get; }
@@ -209,6 +221,20 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     {
         get => handoffEvidence;
         set => SetProperty(ref handoffEvidence, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string ManagedCharterId
+    {
+        get => managedCharterId;
+        set => SetProperty(ref managedCharterId, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string ManagedWorkflowPlanId
+    {
+        get => managedWorkflowPlanId;
+        set => SetProperty(ref managedWorkflowPlanId, value ?? string.Empty);
     }
 
     [DataMember]
@@ -343,6 +369,64 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
             cancellationToken,
             confirmationMessage:
                 $"Create a versioned handoff from terminal Run {sourceRun} to the selected changed adapter, model, and portable settings? The exact current selection, Run history, target identity/settings, and portable handoff details will be revalidated. This does not start or resume a provider, create a Run, approve tools or effects, or grant execution authority.");
+    }
+
+    private Task LoadManagedReadOnlyPreviewAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact managed read-only preview",
+            async (controller, workspace, token) =>
+            {
+                var preview = await controller.PreviewManagedReadOnlyAsync(
+                    ManagedCharterId,
+                    ManagedWorkflowPlanId,
+                    token);
+                managedReadOnlyPreview = preview;
+                managedReadOnlyWorkspace = workspace;
+                return ProductWorkflowController.RenderManagedReadOnlyPreview(preview);
+            },
+            cancellationToken);
+
+    private Task ExecuteManagedReadOnlyAsync(object? commandParameter, CancellationToken cancellationToken)
+    {
+        var preview = managedReadOnlyPreview;
+        if (preview is null)
+        {
+            Status = "Managed read-only preview is not loaded";
+            Output = "Load and review the exact managed read-only preview before attesting execution.";
+            return Task.CompletedTask;
+        }
+        return RunRequestAsync(
+            "Executing attested managed read-only work",
+            (controller, workspace, token) =>
+            {
+                if (!StringComparer.Ordinal.Equals(managedReadOnlyWorkspace, workspace))
+                {
+                    throw new ArgumentException(
+                        "The workspace changed after the managed read-only preview was loaded. Load and review it again.");
+                }
+                if (!ReferenceEquals(preview, managedReadOnlyPreview))
+                {
+                    throw new ArgumentException(
+                        "The managed read-only preview changed before execution. Load and review it again.");
+                }
+                var actorId = Environment.GetEnvironmentVariable("GAEP_ACTOR_ID") ?? "gaep.visual-studio-local-human";
+                return controller.ExecuteManagedReadOnlyAsync(
+                    preview,
+                    actorId,
+                    timeoutMs: 120_000,
+                    cancellationToken: token);
+            },
+            cancellationToken,
+            confirmationMessage:
+                $"Attest this exact managed read-only preview?\n\n" +
+                $"Preview digest: {preview.PreviewDigest}\n" +
+                $"Provider: {preview.AgentId} / {preview.ModelId} ({preview.AdapterId})\n" +
+                $"Strategy: {preview.Strategy}; steps: {preview.StepIds.Count}; gates: {preview.Gates.Count}\n" +
+                $"Declared reads: {preview.ReadScopeCount}; context packs: {preview.ContextPackCount}\n\n" +
+                "Every Tool permission is denied. No write scope or non-observation effect is granted. " +
+                "The timeout is fixed at 120 seconds. The local protocol does not provide interactive provider cancel or resume. " +
+                "Any Codex stage with changes, conflict, or pending review is discarded or rejected; only a proven zero-change stage may close automatically. " +
+                "Provider completion and governed outcome remain separate claims.");
     }
 
     private Task ListDesignImportsAsync(object? commandParameter, CancellationToken cancellationToken) =>

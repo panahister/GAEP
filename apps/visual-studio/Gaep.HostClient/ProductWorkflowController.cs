@@ -162,6 +162,59 @@ public sealed class ProductWorkflowController(EngineClient client)
         return RenderAgentHandoff(handoff);
     }
 
+    public Task<ManagedReadOnlyPreview> PreviewManagedReadOnlyAsync(
+        string charterId,
+        string workflowPlanId,
+        CancellationToken cancellationToken = default) =>
+        client.PreviewManagedReadOnlyAsync(
+            ParseRequiredId(charterId, "Charter ID"),
+            ParseRequiredId(workflowPlanId, "Workflow Plan ID"),
+            cancellationToken);
+
+    public static string RenderManagedReadOnlyPreview(ManagedReadOnlyPreview preview)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP managed read-only execution preview")
+            .AppendLine()
+            .AppendLine($"Exact preview digest: {preview.PreviewDigest}")
+            .AppendLine($"Product: {preview.ProductId:D}")
+            .AppendLine($"Initiative: {preview.InitiativeId:D}")
+            .AppendLine($"Charter: {preview.CharterId:D}")
+            .AppendLine($"Charter digest: {preview.CharterDigest}")
+            .AppendLine($"Workflow Plan: {preview.WorkflowPlanId:D}")
+            .AppendLine($"Workflow Plan digest: {preview.WorkflowPlanDigest}")
+            .AppendLine($"Provider binding: {preview.AgentId} / {preview.ModelId} ({preview.AdapterId})")
+            .AppendLine($"Selection digest: {preview.SelectionDigest}")
+            .AppendLine($"Strategy: {preview.Strategy}")
+            .AppendLine($"Steps: {preview.StepIds.Count}")
+            .AppendLine($"Context packs: {preview.ContextPackCount}")
+            .AppendLine($"Declared reads: {preview.ReadScopeCount}")
+            .AppendLine($"Evidence and stop gates: {preview.Gates.Count}");
+        foreach (var gate in preview.Gates)
+        {
+            output.AppendLine($"  - {gate.Key} [{gate.Phase}]{(gate.StepId.HasValue ? $"; step={gate.StepId.Value:D}" : string.Empty)}")
+                .AppendLine($"    Criteria digest: {gate.CriteriaDigest}");
+            if (gate.Criteria.Count == 0) output.AppendLine("    Criteria: none declared");
+            foreach (var criterion in gate.Criteria) output.AppendLine($"    - {criterion}");
+        }
+        return output.AppendLine()
+            .AppendLine($"Authority boundary: {preview.AuthorityBoundary}")
+            .AppendLine("Every Tool permission is denied. No tool definitions, write scopes, or non-observation effects are granted.")
+            .Append("This preview does not execute work; the exact digest must be attested separately.")
+            .ToString();
+    }
+
+    public async Task<string> ExecuteManagedReadOnlyAsync(
+        ManagedReadOnlyPreview preview,
+        string actorId,
+        int timeoutMs = 120_000,
+        CancellationToken cancellationToken = default) =>
+        RenderManagedReadOnlyReceipt(await client.ExecuteManagedReadOnlyAsync(
+            preview,
+            timeoutMs,
+            actorId,
+            cancellationToken));
+
     public static string NormalizeHandoffReason(string value) =>
         PortableDesignProtocol.ValidateHandoffText(value, "Handoff reason", 2, 5_000);
 
@@ -363,6 +416,38 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    private static string RenderManagedReadOnlyReceipt(ManagedReadOnlyReceipt receipt)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP managed read-only execution receipt")
+            .AppendLine()
+            .AppendLine($"Governed Run: {receipt.RunId:D}")
+            .AppendLine($"Managed Run: {receipt.ManagedRunId:D}")
+            .AppendLine($"Exact preview digest: {receipt.PreviewDigest}")
+            .AppendLine($"Product: {receipt.ProductId:D}")
+            .AppendLine($"Initiative: {receipt.InitiativeId:D}")
+            .AppendLine($"Provider binding: {receipt.AgentId} / {receipt.ModelId} ({receipt.AdapterId})")
+            .AppendLine($"Mode: {receipt.Mode}")
+            .AppendLine($"Governed state: {receipt.State}")
+            .AppendLine($"Provider disposition: {receipt.ProviderDisposition}")
+            .AppendLine($"Governed outcome: {receipt.OutcomeStatus}")
+            .AppendLine($"Outcome basis: {receipt.OutcomeBasis}")
+            .AppendLine($"Completed steps: {receipt.CompletedStepCount} of {receipt.TotalStepCount}")
+            .AppendLine($"Verified event count: {receipt.EventCount}")
+            .AppendLine($"Result digest: {receipt.ResultDigest}")
+            .AppendLine($"Evidence digest: {receipt.EvidenceDigest}")
+            .AppendLine($"Warnings: {receipt.Warnings.Count}");
+        if (receipt.Warnings.Count == 0) output.AppendLine("  - none");
+        foreach (var warning in receipt.Warnings) output.AppendLine($"  - {warning}");
+        return output.AppendLine($"Started: {receipt.StartedAt.ToString("O", CultureInfo.InvariantCulture)}")
+            .AppendLine($"Ended: {receipt.EndedAt.ToString("O", CultureInfo.InvariantCulture)}")
+            .AppendLine()
+            .AppendLine("Provider completion and governed outcome are separate claims; one never substitutes for the other.")
+            .AppendLine($"Authority boundary: {receipt.AuthorityBoundary}")
+            .Append("No local paths, credentials, provider sessions, raw provider output, or source bytes are included.")
+            .ToString();
+    }
+
     private static PortableAgentSettingValue ParseSelectSetting(AgentSelectionSetting setting, string raw)
     {
         var option = setting.Options?.FirstOrDefault(option => option.Value == raw)
@@ -464,6 +549,16 @@ public sealed class ProductWorkflowController(EngineClient client)
             throw new ArgumentException("Bundle ID must be a non-empty UUID.", nameof(value));
         }
         return bundleId;
+    }
+
+    private static Guid ParseRequiredId(string value, string label)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        if (!Guid.TryParseExact(value.Trim(), "D", out var id) || id == Guid.Empty)
+        {
+            throw new ArgumentException($"{label} must be a non-empty UUID.", nameof(value));
+        }
+        return id;
     }
 
     private static string PortableName<T>(T value) where T : struct, Enum

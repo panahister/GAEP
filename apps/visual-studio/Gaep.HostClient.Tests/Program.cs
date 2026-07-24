@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Gaep.HostClient;
 
@@ -15,6 +18,10 @@ internal static class Program
     private static readonly Guid RunId = Guid.Parse("12121212-1212-4121-8121-121212121212");
     private static readonly Guid CharterId = Guid.Parse("13131313-1313-4131-8131-131313131313");
     private static readonly Guid HandoffId = Guid.Parse("14141414-1414-4141-8141-141414141414");
+    private static readonly Guid WorkflowPlanId = Guid.Parse("15151515-1515-4151-8151-151515151515");
+    private static readonly Guid ManagedRunId = Guid.Parse("16161616-1616-4161-8161-161616161616");
+    private static readonly Guid GovernedManagedRunId = Guid.Parse("17171717-1717-4171-8171-171717171717");
+    private static readonly Guid WorkflowStepId = Guid.Parse("18181818-1818-4181-8181-181818181818");
     private const string PrivateRoot = "/Users/private/design-bundle";
     private const string PrivateCredential = "PRIVATE-OAUTH-TOKEN";
     private static int passed;
@@ -57,6 +64,11 @@ internal static class Program
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
+        var badManagedPreviewRoot = Path.Combine(temporaryRoot, "bad-managed-preview");
+        var badManagedCriterionRoot = Path.Combine(temporaryRoot, "bad-managed-criterion");
+        var badManagedDigestRoot = Path.Combine(temporaryRoot, "bad-managed-digest");
+        var badManagedReceiptRoot = Path.Combine(temporaryRoot, "bad-managed-receipt");
+        var badManagedBindingRoot = Path.Combine(temporaryRoot, "bad-managed-binding");
         Directory.CreateDirectory(bundleRoot);
         Directory.CreateDirectory(invalidSourceRoot);
         Directory.CreateDirectory(badReadinessRoot);
@@ -64,6 +76,11 @@ internal static class Program
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
+        Directory.CreateDirectory(badManagedPreviewRoot);
+        Directory.CreateDirectory(badManagedCriterionRoot);
+        Directory.CreateDirectory(badManagedDigestRoot);
+        Directory.CreateDirectory(badManagedReceiptRoot);
+        Directory.CreateDirectory(badManagedBindingRoot);
         var executable = Environment.ProcessPath;
         Check(executable is not null && File.Exists(executable), "Test app host executable is available");
 
@@ -152,6 +169,96 @@ internal static class Program
         var runProperties = typeof(AgentRun).GetProperties().Select(property => property.Name).ToHashSet();
         Check(!runProperties.Overlaps(["Executable", "ExecutablePath", "Path", "Token", "Credentials"]),
             "Public Run history has no machine-local executable, path, token, or credential fields");
+
+        var managedPreview = await controller.PreviewManagedReadOnlyAsync(
+            CharterId.ToString("D"),
+            WorkflowPlanId.ToString("D"));
+        Check(managedPreview.CharterId == CharterId && managedPreview.WorkflowPlanId == WorkflowPlanId &&
+              managedPreview.StepIds.SequenceEqual([WorkflowStepId]) && managedPreview.Gates.Count == 6 &&
+              managedPreview.ReadScopeCount == 2 && managedPreview.PreviewDigest.StartsWith("sha256:", StringComparison.Ordinal),
+            "Managed read-only preview binds exact identities, steps, gates, reads, and canonical digest");
+        var managedPreviewJson = JsonSerializer.Serialize(managedPreview);
+        Check(!managedPreviewJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !managedPreviewJson.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Typed managed read-only preview omits private paths and credentials");
+        var managedPreviewProperties = typeof(ManagedReadOnlyPreview).GetProperties().Select(property => property.Name).ToHashSet();
+        Check(!managedPreviewProperties.Overlaps([
+                "Path", "Token", "Credential", "RawOutput", "ProviderSession", "ToolDefinitions",
+            ]),
+            "Public managed read-only preview has no path, credential, raw-output, provider-session, or tool-definition fields");
+        var managedPreviewOutput = ProductWorkflowController.RenderManagedReadOnlyPreview(managedPreview);
+        Check(managedPreviewOutput.Contains(managedPreview.PreviewDigest, StringComparison.Ordinal) &&
+              managedPreviewOutput.Contains("Every Tool permission is denied", StringComparison.Ordinal) &&
+              managedPreviewOutput.Contains("This preview does not execute work", StringComparison.Ordinal),
+            "Managed read-only preview renders exact digest and non-authority boundaries");
+        var managedReceipt = await client.ExecuteManagedReadOnlyAsync(managedPreview, 120_000, "founder.review");
+        Check(managedReceipt.RunId == GovernedManagedRunId && managedReceipt.ManagedRunId == ManagedRunId &&
+              managedReceipt.PreviewDigest == managedPreview.PreviewDigest && managedReceipt.State == "completed" &&
+              managedReceipt.ProviderDisposition == "completed" && managedReceipt.OutcomeStatus == "satisfied",
+            "Typed managed read-only receipt binds exact Run identities, preview, provider disposition, and governed outcome");
+        var managedReceiptJson = JsonSerializer.Serialize(managedReceipt);
+        Check(!managedReceiptJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !managedReceiptJson.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Typed managed read-only receipt omits private paths and credentials");
+        var managedReceiptProperties = typeof(ManagedReadOnlyReceipt).GetProperties().Select(property => property.Name).ToHashSet();
+        Check(!managedReceiptProperties.Overlaps([
+                "Path", "Token", "Credential", "RawOutput", "ProviderSession", "SourceBytes",
+            ]),
+            "Public managed read-only receipt has no path, credential, raw-output, provider-session, or source-byte fields");
+        var managedReceiptOutput = await controller.ExecuteManagedReadOnlyAsync(
+            managedPreview,
+            "founder.review",
+            timeoutMs: 120_000);
+        Check(managedReceiptOutput.Contains(GovernedManagedRunId.ToString("D"), StringComparison.Ordinal) &&
+              managedReceiptOutput.Contains(ManagedRunId.ToString("D"), StringComparison.Ordinal) &&
+              managedReceiptOutput.Contains("Governed outcome: satisfied", StringComparison.Ordinal) &&
+              managedReceiptOutput.Contains("Provider completion and governed outcome are separate claims", StringComparison.Ordinal) &&
+              !managedReceiptOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !managedReceiptOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Managed read-only workflow renders a private-safe receipt with separate provider and outcome truth");
+        await ExpectAsync<ArgumentOutOfRangeException>(
+            () => client.ExecuteManagedReadOnlyAsync(managedPreview, 999, "founder.review"),
+            "Managed read-only timeout is bounded before transport");
+        await ExpectAsync<ArgumentException>(
+            () => client.ExecuteManagedReadOnlyAsync(
+                managedPreview with { PreviewDigest = $"sha256:{new string('0', 64)}" },
+                120_000,
+                "founder.review"),
+            "A locally forged managed preview digest fails before transport");
+        var privateCriterionGate = managedPreview.Gates[0] with
+        {
+            Criteria = Array.AsReadOnly(new[] { $"Inspect {PrivateRoot}; token={PrivateCredential}" }),
+        };
+        await ExpectAsync<ArgumentException>(
+            () => client.ExecuteManagedReadOnlyAsync(
+                managedPreview with
+                {
+                    Gates = Array.AsReadOnly(new[] { privateCriterionGate }.Concat(managedPreview.Gates.Skip(1)).ToArray()),
+                },
+                120_000,
+                "founder.review"),
+            "Private-path and secret-shaped managed criteria fail before transport");
+
+        foreach (var hostileRoot in new[] { badManagedPreviewRoot, badManagedCriterionRoot, badManagedDigestRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalidPreview = await CaptureHostErrorAsync(() => hostileClient.PreviewManagedReadOnlyAsync(CharterId, WorkflowPlanId));
+            Check(invalidPreview.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidPreview.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidPreview.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Hostile managed preview fields, criteria, and digests fail closed without reflection");
+        }
+        foreach (var hostileRoot in new[] { badManagedReceiptRoot, badManagedBindingRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var preview = await hostileClient.PreviewManagedReadOnlyAsync(CharterId, WorkflowPlanId);
+            var invalidReceipt = await CaptureHostErrorAsync(() =>
+                hostileClient.ExecuteManagedReadOnlyAsync(preview, 120_000, "founder.review"));
+            Check(invalidReceipt.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidReceipt.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidReceipt.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Hostile managed receipt private fields and identity rebinding fail closed without reflection");
+        }
 
         var handoffContext = await controller.ReadAgentHandoffContextAsync();
         Check(handoffContext.SourceRun.Id == RunId && handoffContext.Current.ModelId == "gpt-5.6-codex" &&
@@ -452,6 +559,11 @@ internal static class Program
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
+        var badManagedPreview = Path.GetFileName(workspace) == "bad-managed-preview";
+        var badManagedCriterion = Path.GetFileName(workspace) == "bad-managed-criterion";
+        var badManagedDigest = Path.GetFileName(workspace) == "bad-managed-digest";
+        var badManagedReceipt = Path.GetFileName(workspace) == "bad-managed-receipt";
+        var badManagedBinding = Path.GetFileName(workspace) == "bad-managed-binding";
         Dictionary<string, object?>? selectedAgent = null;
         while (await Console.In.ReadLineAsync() is { } line)
         {
@@ -527,6 +639,21 @@ internal static class Program
                         parameters,
                         badHandoff,
                         badHandoffBinding);
+                    break;
+                case "managed.readonly.preview":
+                    await HandleManagedReadOnlyPreviewAsync(
+                        id,
+                        parameters,
+                        badManagedPreview,
+                        badManagedCriterion,
+                        badManagedDigest);
+                    break;
+                case "managed.readonly.execute":
+                    await HandleManagedReadOnlyExecuteAsync(
+                        id,
+                        parameters,
+                        badManagedReceipt,
+                        badManagedBinding);
                     break;
                 case "productStudio.portableDesign.import":
                     await HandleImportAsync(id, parameters);
@@ -672,6 +799,175 @@ internal static class Program
         ["capabilityDifferences"] = new[] { "Model changes from gpt-5.6-codex to gpt-5.6-codex-next." },
         ["createdAt"] = "2026-07-24T08:10:00.000Z",
     };
+
+    private static async Task HandleManagedReadOnlyPreviewAsync(
+        long id,
+        JsonElement parameters,
+        bool includePrivateField,
+        bool includePrivateCriterion,
+        bool invalidateDigest)
+    {
+        if (!HasOnlyProperties(parameters, "charterId", "workflowPlanId") ||
+            parameters.GetProperty("charterId").GetString() != CharterId.ToString("D") ||
+            parameters.GetProperty("workflowPlanId").GetString() != WorkflowPlanId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED PREVIEW");
+            return;
+        }
+        await WriteResultAsync(id, ManagedReadOnlyPreview(includePrivateField, includePrivateCriterion, invalidateDigest));
+    }
+
+    private static async Task HandleManagedReadOnlyExecuteAsync(
+        long id,
+        JsonElement parameters,
+        bool includePrivateField,
+        bool mismatchBinding)
+    {
+        var preview = ManagedReadOnlyPreview();
+        if (!HasOnlyProperties(
+                parameters,
+                "actorId", "charterId", "workflowPlanId", "expectedPreviewDigest", "timeoutMs", "confirmation") ||
+            parameters.GetProperty("actorId").GetString() != "founder.review" ||
+            parameters.GetProperty("charterId").GetString() != CharterId.ToString("D") ||
+            parameters.GetProperty("workflowPlanId").GetString() != WorkflowPlanId.ToString("D") ||
+            parameters.GetProperty("expectedPreviewDigest").GetString() != (string)preview["previewDigest"]! ||
+            parameters.GetProperty("timeoutMs").GetInt32() != 120_000 ||
+            parameters.GetProperty("confirmation").GetString() != "attest-exact-managed-readonly-preview")
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED EXECUTION");
+            return;
+        }
+        var receipt = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "managed-readonly-receipt",
+            ["previewDigest"] = preview["previewDigest"],
+            ["runId"] = GovernedManagedRunId.ToString("D"),
+            ["managedRunId"] = ManagedRunId.ToString("D"),
+            ["productId"] = ProductId.ToString("D"),
+            ["initiativeId"] = InitiativeId.ToString("D"),
+            ["adapterId"] = "openai-codex",
+            ["agentId"] = "codex",
+            ["modelId"] = "gpt-5.6-codex",
+            ["mode"] = "codex-staged",
+            ["state"] = "completed",
+            ["providerDisposition"] = "completed",
+            ["outcomeStatus"] = "satisfied",
+            ["outcomeBasis"] = "postcondition-evaluator",
+            ["eventCount"] = 5,
+            ["completedStepCount"] = 1,
+            ["totalStepCount"] = 1,
+            ["resultDigest"] = $"sha256:{new string('8', 64)}",
+            ["evidenceDigest"] = $"sha256:{new string('9', 64)}",
+            ["warnings"] = Array.Empty<string>(),
+            ["startedAt"] = "2026-07-24T09:00:00.000Z",
+            ["endedAt"] = "2026-07-24T09:00:05.000Z",
+            ["authorityBoundary"] = "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+        };
+        if (includePrivateField) receipt["rawProviderOutput"] = $"{PrivateRoot}/{PrivateCredential}";
+        if (mismatchBinding) receipt["modelId"] = "private-unbound-model";
+        await WriteResultAsync(id, receipt);
+    }
+
+    private static Dictionary<string, object?> ManagedReadOnlyPreview(
+        bool includePrivateField = false,
+        bool includePrivateCriterion = false,
+        bool invalidateDigest = false)
+    {
+        var gates = new[]
+        {
+            ManagedGate("charter:required-evidence", null, "charter-evidence", ["Record verified output evidence"]),
+            ManagedGate("charter:stop-conditions", null, "charter-stop-conditions", ["Stop on any attempted write"]),
+            ManagedGate($"step:{WorkflowStepId:D}:preconditions", WorkflowStepId, "preconditions", ["Read scope remains exact"]),
+            ManagedGate($"step:{WorkflowStepId:D}:outputs", WorkflowStepId, "outputs", ["Return an observation summary"]),
+            ManagedGate($"step:{WorkflowStepId:D}:evidence", WorkflowStepId, "evidence", ["Record deterministic evidence"]),
+            ManagedGate($"step:{WorkflowStepId:D}:stop-conditions", WorkflowStepId, "stop-conditions", ["Stop if a Tool is requested"]),
+        };
+        if (includePrivateCriterion)
+        {
+            var criteria = new[] { $"Inspect {PrivateRoot}; token={PrivateCredential}" };
+            gates[0]["criteria"] = criteria;
+            gates[0]["criteriaDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(criteria));
+        }
+        var preview = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "managed-readonly-preview",
+            ["productId"] = ProductId.ToString("D"),
+            ["initiativeId"] = InitiativeId.ToString("D"),
+            ["charterId"] = CharterId.ToString("D"),
+            ["charterDigest"] = $"sha256:{new string('3', 64)}",
+            ["workflowPlanId"] = WorkflowPlanId.ToString("D"),
+            ["workflowPlanDigest"] = $"sha256:{new string('4', 64)}",
+            ["adapterId"] = "openai-codex",
+            ["agentId"] = "codex",
+            ["modelId"] = "gpt-5.6-codex",
+            ["selectionDigest"] = $"sha256:{new string('5', 64)}",
+            ["strategy"] = "sequential",
+            ["stepIds"] = new[] { WorkflowStepId.ToString("D") },
+            ["contextPackCount"] = 1,
+            ["readScopeCount"] = 2,
+            ["gates"] = gates,
+            ["authorityBoundary"] = "managed-readonly-preview-does-not-grant-execution-or-effect-authority",
+        };
+        preview["previewDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(preview));
+        if (includePrivateField) preview["workspacePath"] = $"{PrivateRoot}/{PrivateCredential}";
+        if (invalidateDigest) preview["previewDigest"] = $"sha256:{new string('0', 64)}";
+        return preview;
+    }
+
+    private static Dictionary<string, object?> ManagedGate(
+        string key,
+        Guid? stepId,
+        string phase,
+        string[] criteria)
+    {
+        var gate = new Dictionary<string, object?>
+        {
+            ["key"] = key,
+            ["phase"] = phase,
+            ["criteria"] = criteria,
+            ["criteriaDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(criteria)),
+        };
+        if (stepId.HasValue) gate["stepId"] = stepId.Value.ToString("D");
+        return gate;
+    }
+
+    private static string CanonicalDigest(JsonElement value)
+    {
+        using var output = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(
+                   output,
+                   new JsonWriterOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
+        {
+            WriteCanonicalJson(writer, value);
+        }
+        return $"sha256:{Convert.ToHexString(SHA256.HashData(output.ToArray())).ToLowerInvariant()}";
+    }
+
+    private static void WriteCanonicalJson(Utf8JsonWriter writer, JsonElement value)
+    {
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var property in value.EnumerateObject().OrderBy(property => property.Name, StringComparer.Ordinal))
+                {
+                    writer.WritePropertyName(property.Name);
+                    WriteCanonicalJson(writer, property.Value);
+                }
+                writer.WriteEndObject();
+                break;
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in value.EnumerateArray()) WriteCanonicalJson(writer, item);
+                writer.WriteEndArray();
+                break;
+            default:
+                value.WriteTo(writer);
+                break;
+        }
+    }
 
     private static bool StringArrayEquals(JsonElement value, string expected) =>
         value.ValueKind == JsonValueKind.Array && value.GetArrayLength() == 1 &&

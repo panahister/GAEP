@@ -87,6 +87,24 @@
                 Command="{Binding CreateAgentHandoffCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
+        <TextBlock Text="Managed Read-Only Execution" FontWeight="SemiBold" />
+        <TextBlock Text="Load an exact confirmed managed Charter and its bound Workflow Plan, review every digest and gate, then attest through a separate cancel-default command. Every Tool remains denied and only observation is allowed."
+                   TextWrapping="Wrap" Margin="0,4,0,8" />
+        <TextBlock Text="Exact Execution Charter UUID" />
+        <TextBox Text="{Binding ManagedCharterId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Exact Workflow Plan UUID" />
+        <TextBox Text="{Binding ManagedWorkflowPlanId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="LoadManagedReadOnlyPreviewButton" Content="Load exact managed read-only preview"
+                Command="{Binding LoadManagedReadOnlyPreviewCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="ExecuteManagedReadOnlyButton" Content="Attest exact preview and run"
+                Command="{Binding ExecuteManagedReadOnlyCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
         <TextBlock Text="Portable design metadata" FontWeight="SemiBold" />
         <Button x:Name="ListDesignImportsButton" Content="List design imports"
                 Command="{Binding ListDesignImportsCommand}" MinHeight="28" Margin="0,4,0,8"
@@ -122,6 +140,8 @@
       <Setter TargetName="SelectAgentButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadAgentHandoffButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="CreateAgentHandoffButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="LoadManagedReadOnlyPreviewButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ExecuteManagedReadOnlyButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ListDesignImportsButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ReadDesignImportButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ImportDesignBundleButton" Property="IsEnabled" Value="False" />

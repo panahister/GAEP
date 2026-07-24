@@ -171,6 +171,66 @@ public sealed class EngineClient : IAsyncDisposable
                 normalizedEvidence));
     }
 
+    public async Task<ManagedReadOnlyPreview> PreviewManagedReadOnlyAsync(
+        Guid charterId,
+        Guid workflowPlanId,
+        CancellationToken cancellationToken = default)
+    {
+        if (charterId == Guid.Empty)
+        {
+            throw new ArgumentException("Charter ID must be a non-empty UUID.", nameof(charterId));
+        }
+        if (workflowPlanId == Guid.Empty)
+        {
+            throw new ArgumentException("Workflow Plan ID must be a non-empty UUID.", nameof(workflowPlanId));
+        }
+        using var response = await RequestPortableDesignAsync(
+            "managed.readonly.preview",
+            new Dictionary<string, object?>
+            {
+                ["charterId"] = charterId,
+                ["workflowPlanId"] = workflowPlanId,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseManagedReadOnlyPreviewResponse(
+                envelope,
+                charterId,
+                workflowPlanId));
+    }
+
+    public async Task<ManagedReadOnlyReceipt> ExecuteManagedReadOnlyAsync(
+        ManagedReadOnlyPreview preview,
+        int timeoutMs,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        PortableDesignProtocol.ValidateManagedReadOnlyPreview(preview);
+        if (timeoutMs is < 1_000 or > 300_000)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(timeoutMs),
+                "Managed read-only timeout must be between 1,000 and 300,000 milliseconds.");
+        }
+        var normalizedActorId = PortableDesignProtocol.ValidateActorId(actorId);
+        using var response = await RequestPortableDesignAsync(
+            "managed.readonly.execute",
+            new Dictionary<string, object?>
+            {
+                ["actorId"] = normalizedActorId,
+                ["charterId"] = preview.CharterId,
+                ["workflowPlanId"] = preview.WorkflowPlanId,
+                ["expectedPreviewDigest"] = preview.PreviewDigest,
+                ["timeoutMs"] = timeoutMs,
+                ["confirmation"] = "attest-exact-managed-readonly-preview",
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseManagedReadOnlyReceiptResponse(envelope, preview));
+    }
+
     public async Task<PortableDesignSnapshotSummary> ImportPortableDesignSnapshotAsync(
         string bundleRoot,
         Guid expectedProductId,
