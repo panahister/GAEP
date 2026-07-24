@@ -18,9 +18,11 @@ internal static class Program
 
     private static async Task<int> Main(string[] args)
     {
-        if (args.Contains("--workspace", StringComparer.Ordinal))
+        var workspaceArgument = Array.IndexOf(args, "--workspace");
+        if (workspaceArgument >= 0)
         {
-            await RunFakeHostAsync();
+            var workspace = workspaceArgument + 1 < args.Length ? args[workspaceArgument + 1] : string.Empty;
+            await RunFakeHostAsync(workspace);
             return 0;
         }
 
@@ -53,6 +55,11 @@ internal static class Program
         Check(executable is not null && File.Exists(executable), "Test app host executable is available");
 
         await using var client = new EngineClient(temporaryRoot, executable);
+        var product = await client.ReadProductBindingAsync();
+        Check(product == new ProductBinding(ProductId, "Founder Product", 7),
+            "Typed Product binding returns exact identity and revision while ignoring unrelated Product fields");
+        Check(!JsonSerializer.Serialize(product).Contains(PrivateRoot, StringComparison.Ordinal),
+            "Typed Product binding does not expose unrelated private Product fields");
         var imported = await client.ImportPortableDesignSnapshotAsync(
             bundleRoot,
             ProductId,
@@ -97,6 +104,50 @@ internal static class Program
             "List preserves the governance boundary");
         var read = await client.ReadPortableDesignSnapshotAsync(BundleId);
         Check(read == imported, "Exact read returns the requested bundle metadata");
+
+        var controller = new ProductWorkflowController(client);
+        var productOutput = await controller.ReadProductAsync();
+        Check(productOutput.Contains("Product: Founder Product", StringComparison.Ordinal) &&
+              productOutput.Contains($"Product ID: {ProductId:D}", StringComparison.Ordinal) &&
+              productOutput.Contains("Revision: 7", StringComparison.Ordinal) &&
+              !productOutput.Contains(PrivateRoot, StringComparison.Ordinal),
+            "Product workflow renders exact public binding metadata only");
+        var listOutput = await controller.ListPortableDesignSnapshotsAsync();
+        Check(listOutput.Contains("Portable design metadata: 1 of 1", StringComparison.Ordinal) &&
+              listOutput.Contains("pending human review", StringComparison.Ordinal) &&
+              !listOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !listOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Product workflow lists bounded governed metadata without private content");
+        var readOutput = await controller.ReadPortableDesignSnapshotAsync(BundleId.ToString("D"));
+        Check(readOutput.Contains($"Bundle ID: {BundleId:D}", StringComparison.Ordinal) &&
+              readOutput.Contains("GAEP approval=false", StringComparison.Ordinal),
+            "Product workflow reads one exact governed snapshot");
+        var importOutput = await controller.ImportPortableDesignSnapshotAsync(
+            bundleRoot,
+            "gaep.visual-studio-local-human");
+        Check(importOutput.Contains("exact Product revision 7", StringComparison.Ordinal) &&
+              importOutput.Contains("remains pending human review", StringComparison.Ordinal) &&
+              !importOutput.Contains(bundleRoot, StringComparison.Ordinal),
+            "Product workflow binds import to two matching Product reads and omits the local root");
+        Check(ProductWorkflowController.NormalizeWorkspacePath(temporaryRoot) == Path.GetFullPath(temporaryRoot),
+            "Product workflow accepts an existing absolute local workspace");
+        await ExpectAsync<ArgumentException>(
+            () => Task.FromResult(ProductWorkflowController.NormalizeWorkspacePath("relative/workspace")),
+            "Relative workspaces fail before engine launch");
+        Check(!ProductWorkflowController.SafeError(new InvalidOperationException($"secret={PrivateCredential}"))
+                .Contains(PrivateCredential, StringComparison.Ordinal),
+            "Unexpected workflow failures map to a stable private message");
+
+        var changingWorkspace = Path.Combine(temporaryRoot, "product-change");
+        Directory.CreateDirectory(changingWorkspace);
+        await using var changingClient = new EngineClient(changingWorkspace, executable);
+        var changingController = new ProductWorkflowController(changingClient);
+        var changed = await CaptureHostErrorAsync(() => changingController.ImportPortableDesignSnapshotAsync(
+            bundleRoot,
+            "gaep.visual-studio-local-human"));
+        Check(changed.Kind == "PORTABLE_DESIGN_PRODUCT_CONTEXT_CHANGED" &&
+              changed.Code == -32_031,
+            "Product workflow stops when identity or revision changes between binding reads");
 
         await ExpectAsync<ArgumentException>(
             () => client.ImportPortableDesignSnapshotAsync("relative/bundle", ProductId, 7, "founder.review"),
@@ -189,23 +240,36 @@ internal static class Program
         passed++;
     }
 
-    private static async Task RunFakeHostAsync()
+    private static async Task RunFakeHostAsync(string workspace)
     {
+        var productReadCount = 0;
+        var changeProductContext = Path.GetFileName(workspace) == "product-change";
         while (await Console.In.ReadLineAsync() is { } line)
         {
             using var request = JsonDocument.Parse(line);
             var root = request.RootElement;
             var id = root.GetProperty("id").GetInt64();
-            if (!HasOnlyProperties(root, "jsonrpc", "id", "method", "params", "protocolVersion") ||
-                root.GetProperty("jsonrpc").GetString() != "2.0" || root.GetProperty("protocolVersion").GetInt32() != 2)
+            var method = root.GetProperty("method").GetString();
+            var isProductRead = method == "readProduct";
+            var validEnvelope = isProductRead
+                ? HasOnlyProperties(root, "jsonrpc", "id", "method", "params")
+                : HasOnlyProperties(root, "jsonrpc", "id", "method", "params", "protocolVersion") &&
+                  root.GetProperty("protocolVersion").GetInt32() == 2;
+            if (!validEnvelope || root.GetProperty("jsonrpc").GetString() != "2.0")
             {
                 await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID ENVELOPE");
                 continue;
             }
-            var method = root.GetProperty("method").GetString();
             var parameters = root.GetProperty("params");
             switch (method)
             {
+                case "readProduct":
+                    productReadCount++;
+                    await HandleReadProductAsync(
+                        id,
+                        parameters,
+                        changeProductContext && productReadCount > 1 ? 8 : 7);
+                    break;
                 case "productStudio.portableDesign.import":
                     await HandleImportAsync(id, parameters);
                     break;
@@ -222,12 +286,30 @@ internal static class Program
         }
     }
 
+    private static async Task HandleReadProductAsync(long id, JsonElement parameters, long revision)
+    {
+        if (!HasOnlyProperties(parameters))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PRODUCT READ");
+            return;
+        }
+        await WriteResultAsync(id, new Dictionary<string, object?>
+        {
+            ["id"] = ProductId.ToString("D"),
+            ["name"] = "Founder Product",
+            ["revision"] = revision,
+            ["lifecycleState"] = "candidate",
+            ["privateWorkspace"] = PrivateRoot,
+        });
+    }
+
     private static async Task HandleImportAsync(long id, JsonElement parameters)
     {
         if (!HasOnlyProperties(parameters, "bundleRoot", "expectedProductId", "expectedProductRevision", "actorId") ||
             parameters.GetProperty("expectedProductId").GetString() != ProductId.ToString("D") ||
             parameters.GetProperty("expectedProductRevision").GetInt64() != 7 ||
-            parameters.GetProperty("actorId").GetString() is not ("founder.portable-design-review" or "founder.review"))
+            parameters.GetProperty("actorId").GetString() is not (
+                "founder.portable-design-review" or "founder.review" or "gaep.visual-studio-local-human"))
         {
             await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PARAMS");
             return;

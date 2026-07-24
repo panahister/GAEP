@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
 const root = dirname(fileURLToPath(import.meta.url))
 const output = join(root, "Gaep.VisualStudio", "bin", "Release", "net8.0-windows8.0")
 const generated = join(root, "Gaep.VisualStudio", "obj", "Release", "net8.0-windows8.0")
+const remoteUiSource = join(root, "Gaep.VisualStudio", "GaepToolWindowControl.xaml")
 
 async function regularFile(path, maximumBytes) {
   const metadata = await lstat(path)
@@ -22,6 +23,7 @@ await regularFile(join(output, "Gaep.VisualStudio.dll"), 16 * 1024 * 1024)
 await regularFile(join(output, "Gaep.HostClient.dll"), 16 * 1024 * 1024)
 await regularFile(join(generated, "extension.vsixmanifest"), 1024 * 1024)
 await regularFile(join(generated, "extension.json"), 1024 * 1024)
+await regularFile(remoteUiSource, 1024 * 1024)
 
 const manifest = await readFile(join(generated, "extension.vsixmanifest"), "utf8")
 requireText(manifest, /Id="Gaep\.VisualStudio\.90e45161-916c-4c39-b2bf-c2379c168fe9"/u, "Visual Studio extension ID changed")
@@ -47,6 +49,25 @@ if (!Array.isArray(contributions.services) || contributions.services.length !== 
     contributions.services.some((service) => service.host !== "dotnetExtensibility" || service.allowHostingInProcess !== false)) {
   throw new Error("Visual Studio GAEP services are not exclusively out of process")
 }
+
+const remoteUi = await readFile(remoteUiSource, "utf8")
+for (const binding of [
+  "WorkspacePath",
+  "BundleId",
+  "BundlePath",
+  "RefreshProductCommand",
+  "ListDesignImportsCommand",
+  "ReadDesignImportCommand",
+  "ImportDesignBundleCommand",
+  "Status",
+  "Output",
+  "Busy",
+]) {
+  requireText(remoteUi, new RegExp(`\\{Binding ${binding}(?:[,}])`, "u"),
+    `Visual Studio Product workflow binding is missing: ${binding}`)
+}
+requireText(remoteUi, /Import local bundle as pending review/u,
+  "Visual Studio import action does not communicate its pending-review boundary")
 
 if (process.platform === "win32") {
   await regularFile(join(output, "Gaep.VisualStudio.vsix"), 128 * 1024 * 1024)

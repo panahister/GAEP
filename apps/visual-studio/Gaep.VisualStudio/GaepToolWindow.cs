@@ -21,7 +21,7 @@ public sealed class GaepToolWindow : ToolWindow
 
     public override Task InitializeAsync(CancellationToken cancellationToken)
     {
-        dataContext = new GaepToolWindowData();
+        dataContext = new GaepToolWindowData(Extensibility);
         return Task.CompletedTask;
     }
 

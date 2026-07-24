@@ -34,6 +34,18 @@ public sealed class EngineClient : IAsyncDisposable
             expectedEngineSha256 ?? Environment.GetEnvironmentVariable("GAEP_ENGINE_SHA256"));
     }
 
+    public async Task<ProductBinding> ReadProductBindingAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await RequestWorkflowAsync(
+            "readProduct",
+            new Dictionary<string, object?>(),
+            protocolVersion: null,
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            PortableDesignProtocol.ParseProductBindingResponse);
+    }
+
     public async Task<PortableDesignSnapshotSummary> ImportPortableDesignSnapshotAsync(
         string bundleRoot,
         Guid expectedProductId,
@@ -169,10 +181,21 @@ public sealed class EngineClient : IAsyncDisposable
         string method,
         IReadOnlyDictionary<string, object?> parameters,
         CancellationToken cancellationToken)
+        => await RequestWorkflowAsync(
+            method,
+            parameters,
+            PortableDesignProtocol.ProtocolVersion,
+            cancellationToken);
+
+    private async Task<JsonDocument> RequestWorkflowAsync(
+        string method,
+        IReadOnlyDictionary<string, object?> parameters,
+        int? protocolVersion,
+        CancellationToken cancellationToken)
     {
         try
         {
-            return await RequestAsync(method, parameters, PortableDesignProtocol.ProtocolVersion, cancellationToken);
+            return await RequestAsync(method, parameters, protocolVersion, cancellationToken);
         }
         catch (OperationCanceledException)
         {

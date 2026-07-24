@@ -4,18 +4,57 @@
               xmlns:colors="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0">
   <Border Background="{DynamicResource {x:Static colors:EnvironmentColors.ToolWindowBackgroundBrushKey}}"
           TextElement.Foreground="{DynamicResource {x:Static colors:EnvironmentColors.ToolWindowTextBrushKey}}"
-          Padding="20">
-    <StackPanel MaxWidth="760" HorizontalAlignment="Left" VerticalAlignment="Top">
-      <TextBlock Text="{Binding Heading}" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,10" />
-      <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,0,0,16" />
-      <Border BorderBrush="{DynamicResource {x:Static colors:EnvironmentColors.ToolWindowBorderBrushKey}}"
-              BorderThickness="1" Padding="12" Margin="0,0,0,16">
-        <StackPanel>
-          <TextBlock Text="Local engine boundary" FontWeight="SemiBold" Margin="0,0,0,6" />
-          <TextBlock Text="{Binding EngineBoundary}" TextWrapping="Wrap" />
-        </StackPanel>
-      </Border>
-      <TextBlock Text="{Binding Limitation}" TextWrapping="Wrap" FontStyle="Italic" />
-    </StackPanel>
+          Padding="16">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel MaxWidth="820" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+        <TextBlock Text="{Binding Heading}" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,0,0,12" />
+        <Border BorderBrush="{DynamicResource {x:Static colors:EnvironmentColors.ToolWindowBorderBrushKey}}"
+                BorderThickness="1" Padding="10" Margin="0,0,0,12">
+          <TextBlock Text="{Binding GovernanceBoundary}" TextWrapping="Wrap" />
+        </Border>
+
+        <TextBlock Text="Workspace folder" FontWeight="SemiBold" />
+        <TextBox Text="{Binding WorkspacePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,8"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="RefreshProductButton" Content="Refresh Product"
+                Command="{Binding RefreshProductCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
+        <TextBlock Text="Portable design metadata" FontWeight="SemiBold" />
+        <Button x:Name="ListDesignImportsButton" Content="List design imports"
+                Command="{Binding ListDesignImportsCommand}" MinHeight="28" Margin="0,4,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <TextBlock Text="Exact bundle UUID" />
+        <TextBox Text="{Binding BundleId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="ReadDesignImportButton" Content="Read design import"
+                Command="{Binding ReadDesignImportCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
+        <TextBlock Text="Local portable-design bundle folder" />
+        <TextBox Text="{Binding BundlePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="ImportDesignBundleButton" Content="Import local bundle as pending review"
+                Command="{Binding ImportDesignBundleCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
+        <TextBlock Text="{Binding Status}" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TextBox Text="{Binding Output}" IsReadOnly="True" AcceptsReturn="True"
+                 TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MinHeight="260"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+      </StackPanel>
+    </ScrollViewer>
   </Border>
+  <DataTemplate.Triggers>
+    <DataTrigger Binding="{Binding Busy}" Value="True">
+      <Setter TargetName="RefreshProductButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ListDesignImportsButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ReadDesignImportButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ImportDesignBundleButton" Property="IsEnabled" Value="False" />
+    </DataTrigger>
+  </DataTemplate.Triggers>
 </DataTemplate>

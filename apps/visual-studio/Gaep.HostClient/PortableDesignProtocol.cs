@@ -108,6 +108,31 @@ internal static partial class PortableDesignProtocol
         return summary;
     }
 
+    internal static ProductBinding ParseProductBindingResponse(JsonElement envelope)
+    {
+        var result = ReadResult(envelope);
+        var properties = result.EnumerateObject().Select(property => property.Name).ToArray();
+        if (properties.Distinct(StringComparer.Ordinal).Count() != properties.Length ||
+            !result.TryGetProperty("id", out var idElement) || idElement.ValueKind != JsonValueKind.String ||
+            !Guid.TryParseExact(idElement.GetString(), "D", out var id) || id == Guid.Empty ||
+            !result.TryGetProperty("name", out var nameElement) || nameElement.ValueKind != JsonValueKind.String)
+        {
+            throw InvalidResponse();
+        }
+        var name = nameElement.GetString();
+        var revision = 1L;
+        if (result.TryGetProperty("revision", out var revisionElement) && !revisionElement.TryGetInt64(out revision))
+        {
+            throw InvalidResponse();
+        }
+        if (name is null || name.Length is < 1 or > 240 || name != name.Trim() || name.Any(char.IsControl) ||
+            revision is < 1 or > MaxSafeProductRevision)
+        {
+            throw InvalidResponse();
+        }
+        return new ProductBinding(id, name, revision);
+    }
+
     internal static PortableDesignSnapshotPage ParsePageResponse(JsonElement envelope, int expectedOffset, int expectedLimit)
     {
         var result = ReadResult(envelope);
@@ -151,6 +176,11 @@ internal static partial class PortableDesignProtocol
         -32_603,
         "HOST_RESPONSE_INVALID",
         "The GAEP engine returned a portable design response that could not be verified.");
+
+    internal static EngineHostException ProductContextChanged() => new(
+        -32_031,
+        "PORTABLE_DESIGN_PRODUCT_CONTEXT_CHANGED",
+        "The portable design request no longer matches the exact Product revision.");
 
     private static JsonElement ReadResult(JsonElement envelope)
     {

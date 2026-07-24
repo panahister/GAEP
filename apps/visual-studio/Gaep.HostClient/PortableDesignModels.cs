@@ -22,6 +22,11 @@ public enum PortableDesignExportMethod
     PluginExport,
 }
 
+public sealed record ProductBinding(
+    Guid Id,
+    string Name,
+    long Revision);
+
 public sealed record PortableDesignGovernanceMetadata(
     string State,
     bool HumanReviewRequired,
