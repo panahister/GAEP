@@ -62,14 +62,11 @@ fun main(arguments: Array<String>) {
             return@forEach
         }
         when (method) {
-            "readProduct" -> writeResult(
+            "readProduct" -> writeResult(id, productRecord())
+            "dashboard.framework" -> handlePhaseDashboard(
                 id,
-                JsonObject().apply {
-                    addProperty("id", productId.toString())
-                    addProperty("name", "Founder Product")
-                    addProperty("revision", 7)
-                    addProperty("lifecycleState", "active")
-                },
+                request.getAsJsonObject("params"),
+                workspacePath,
             )
             "probeAgents" -> writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
             "readAgentSelection" -> {
@@ -145,6 +142,91 @@ fun main(arguments: Array<String>) {
             else -> writeError(id, -32_601, "METHOD_NOT_FOUND", "PRIVATE UNKNOWN METHOD")
         }
     }
+}
+
+private fun productRecord(): JsonObject = JsonObject().apply {
+    addProperty("id", productId.toString())
+    addProperty("name", "Founder Product")
+    addProperty("revision", 7)
+    addProperty("lifecycleState", "active")
+}
+
+private fun handlePhaseDashboard(id: Long, params: JsonObject, workspacePath: String) {
+    val productDigest = canonicalDigest(productRecord())
+    if (params.keySet() != setOf("phase", "expectedProductId", "expectedProductRevision", "expectedProductDigest") ||
+        params.get("phase").asString != "phase-0-1a-foundation" ||
+        params.get("expectedProductId").asString != productId.toString() ||
+        params.get("expectedProductRevision").asLong != 7L ||
+        params.get("expectedProductDigest").asString != productDigest
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DASHBOARD PARAMS")
+        return
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "phase-dashboard-framework")
+        addProperty("catalogVersion", "gaep-phase-dashboards-v1")
+        add("product", JsonObject().apply {
+            addProperty("recordType", "product")
+            addProperty("recordId", productId.toString())
+            addProperty("revision", 7)
+            addProperty("digest", productDigest)
+        })
+        add("phase", JsonObject().apply {
+            addProperty("id", "phase-0-1a-foundation")
+            addProperty("label", "Phase 0 / 1A — Four-IDE Platform Foundation")
+        })
+        add("panels", JsonArray().apply {
+            add(phaseDashboardPanel("foundation-summary", "phase", "Foundation summary and readiness", "unknown", "not-evaluated", "attention-required"))
+            add(phaseDashboardPanel("change-impact", "change-impact", "Change and impact", "applicable", "phase-contract", "active"))
+            add(phaseDashboardPanel("agent-model", "agent-model", "Agent and model", "applicable", "phase-contract", "active"))
+        })
+        addProperty("observedAt", "2026-07-24T12:00:00.000Z")
+        addProperty("sourceBoundary", "governed-repository-and-engine-only")
+        add("limitations", JsonArray().apply {
+            add("The selected phase scopes presentation only; it does not prove phase entry, completion, acceptance, or release readiness.")
+            add("The phase dashboard remains attention-required until a governed applicability decision is bound.")
+        })
+        addProperty("authorityBoundary", "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence")
+    }
+    if (workspacePath.endsWith("bad-dashboard-binding")) {
+        content.getAsJsonObject("product").addProperty("digest", "sha256:${"0".repeat(64)}")
+    }
+    if (workspacePath.endsWith("bad-dashboard-applicability")) {
+        content.getAsJsonArray("panels")[0].asJsonObject.apply {
+            add("applicability", JsonObject().apply {
+                addProperty("status", "applicable")
+                addProperty("basis", "not-evaluated")
+            })
+            addProperty("state", "active")
+        }
+    }
+    val value = content.deepCopy().apply { addProperty("compositionDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-dashboard-digest")) {
+        value.getAsJsonArray("panels")[0].asJsonObject.addProperty("title", "Forged dashboard title")
+    }
+    if (workspacePath.endsWith("bad-dashboard-private")) {
+        value.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+    }
+    writeResult(id, value)
+}
+
+private fun phaseDashboardPanel(
+    id: String,
+    role: String,
+    title: String,
+    status: String,
+    basis: String,
+    state: String,
+): JsonObject = JsonObject().apply {
+    addProperty("id", id)
+    addProperty("role", role)
+    addProperty("title", title)
+    add("applicability", JsonObject().apply {
+        addProperty("status", status)
+        addProperty("basis", basis)
+    })
+    addProperty("state", state)
 }
 
 private fun handleManagedReadOnlyPreview(id: Long, params: JsonObject, workspacePath: String) {

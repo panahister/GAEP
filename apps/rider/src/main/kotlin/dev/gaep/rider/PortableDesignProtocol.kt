@@ -39,6 +39,49 @@ data class ProductBinding(
     val id: UUID,
     val name: String,
     val revision: Long,
+    val digest: String,
+)
+
+enum class DeliveryPhaseId(val wireValue: String) {
+    PHASE_0_1A_FOUNDATION("phase-0-1a-foundation"),
+    PHASE_1B_PRODUCT("phase-1b-product"),
+    PHASE_1C_ACCEPTANCE("phase-1c-acceptance"),
+    PHASE_2_DESIGN("phase-2-design"),
+    PHASE_3A_READINESS("phase-3a-readiness"),
+    PHASE_3B_IMPLEMENTATION("phase-3b-implementation"),
+    PHASE_4_RELEASE_LEARNING("phase-4-release-learning"),
+}
+
+data class PhaseDashboardDecision(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+)
+
+data class PhaseDashboardApplicability(
+    val status: String,
+    val basis: String,
+    val decision: PhaseDashboardDecision?,
+)
+
+data class PhaseDashboardPanel(
+    val id: String,
+    val role: String,
+    val title: String,
+    val applicability: PhaseDashboardApplicability,
+    val state: String,
+)
+
+data class PhaseDashboardFramework(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val phase: DeliveryPhaseId,
+    val phaseLabel: String,
+    val panels: List<PhaseDashboardPanel>,
+    val observedAt: Instant,
+    val limitations: List<String>,
+    val compositionDigest: String,
 )
 
 data class AgentModelReadiness(
@@ -528,6 +571,28 @@ internal object PortableDesignProtocol {
         "managed-review-transition-proves-persisted-state-not-provider-outcome-or-machine-local-cleanup"
     private const val MANAGED_REVIEW_CLEANUP_BOUNDARY =
         "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup."
+    private const val PHASE_DASHBOARD_AUTHORITY_BOUNDARY =
+        "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"
+    private val deliveryPhaseCatalog = mapOf(
+        DeliveryPhaseId.PHASE_0_1A_FOUNDATION to Pair("Phase 0 / 1A — Four-IDE Platform Foundation", "foundation-summary"),
+        DeliveryPhaseId.PHASE_1B_PRODUCT to Pair("Phase 1B — Product P0–P4", "product-architecture"),
+        DeliveryPhaseId.PHASE_1C_ACCEPTANCE to Pair("Phase 1C — Four-IDE Phase 1 Release", "phase-release-readiness"),
+        DeliveryPhaseId.PHASE_2_DESIGN to Pair("Phase 2 — UX and Figma Loop", "ux-figma"),
+        DeliveryPhaseId.PHASE_3A_READINESS to Pair("Phase 3A — Backlog and Implementation Readiness", "backlog-readiness"),
+        DeliveryPhaseId.PHASE_3B_IMPLEMENTATION to Pair("Phase 3B — Controlled Implementation and QA", "implementation-qa"),
+        DeliveryPhaseId.PHASE_4_RELEASE_LEARNING to Pair("Phase 4 — Release, Publish, and Learning", "release-learning"),
+    )
+    private val phaseDashboardPanelCatalog = mapOf(
+        "foundation-summary" to Pair("phase", "Foundation summary and readiness"),
+        "product-architecture" to Pair("phase", "Product and architecture"),
+        "phase-release-readiness" to Pair("phase", "Phase release readiness"),
+        "ux-figma" to Pair("phase", "UX and Figma"),
+        "backlog-readiness" to Pair("phase", "Backlog and implementation readiness"),
+        "implementation-qa" to Pair("phase", "Controlled implementation and QA"),
+        "release-learning" to Pair("phase", "Release and learning"),
+        "change-impact" to Pair("change-impact", "Change and impact"),
+        "agent-model" to Pair("agent-model", "Agent and model"),
+    )
     private val actorIdPattern = Regex("^[A-Za-z0-9][A-Za-z0-9._:@+-]*$")
     private val toolPattern = Regex("^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
     private val digestPattern = Regex("^sha256:[0-9a-f]{64}$")
@@ -807,7 +872,73 @@ internal object PortableDesignProtocol {
         ) {
             throw invalidResponse()
         }
-        return ProductBinding(id, name, revision)
+        return ProductBinding(id, name, revision, canonicalDigest(product))
+    }
+
+    fun parsePhaseDashboardEnvelope(
+        envelope: JsonObject,
+        expectedPhase: DeliveryPhaseId,
+        expectedProduct: ProductBinding,
+    ): PhaseDashboardFramework {
+        val framework = readResult(envelope).requireObject()
+        framework.requireExactKeys(
+            "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt",
+            "sourceBoundary", "limitations", "authorityBoundary", "compositionDigest",
+        )
+        if (framework.requireInt("schemaVersion") != 1 ||
+            framework.requireString("kind") != "phase-dashboard-framework" ||
+            framework.requireString("catalogVersion") != "gaep-phase-dashboards-v1" ||
+            framework.requireString("sourceBoundary") != "governed-repository-and-engine-only" ||
+            framework.requireString("authorityBoundary") != PHASE_DASHBOARD_AUTHORITY_BOUNDARY
+        ) {
+            throw invalidResponse()
+        }
+        val product = framework.get("product").requireObject()
+        product.requireExactKeys("recordType", "recordId", "revision", "digest")
+        val productId = parseUuid(product.requireString("recordId"))
+        val productRevision = product.requireLong("revision")
+        val productDigest = product.requireDigest("digest")
+        if (product.requireString("recordType") != "product" || productId != expectedProduct.id ||
+            productRevision != expectedProduct.revision || productDigest != expectedProduct.digest
+        ) {
+            throw invalidResponse()
+        }
+        val phase = framework.get("phase").requireObject()
+        phase.requireExactKeys("id", "label")
+        val phaseId = DeliveryPhaseId.entries.singleOrNull { it.wireValue == phase.requireString("id") }
+            ?: throw invalidResponse()
+        val phaseDefinition = deliveryPhaseCatalog.getValue(phaseId)
+        if (phaseId != expectedPhase || phase.requireString("label") != phaseDefinition.first) throw invalidResponse()
+        val panelsElement = framework.get("panels")
+        if (panelsElement == null || !panelsElement.isJsonArray || panelsElement.asJsonArray.size() != 3) {
+            throw invalidResponse()
+        }
+        val expectedPanels = listOf(phaseDefinition.second, "change-impact", "agent-model")
+        val panels = panelsElement.asJsonArray.mapIndexed { index, value ->
+            parsePhaseDashboardPanel(value.requireObject(), expectedPanels[index])
+        }
+        val limitationsElement = framework.get("limitations")
+        if (limitationsElement == null || !limitationsElement.isJsonArray || limitationsElement.asJsonArray.size() !in 1..8) {
+            throw invalidResponse()
+        }
+        val limitations = limitationsElement.asJsonArray.map { value ->
+            portableText(value.requireString(), minimum = 4).also { if (it.length > 1_000) throw invalidResponse() }
+        }
+        val observedAt = parseInstant(framework.get("observedAt"))
+        val compositionDigest = framework.requireDigest("compositionDigest")
+        val digestBody = framework.deepCopy().apply { remove("compositionDigest") }
+        if (compositionDigest != canonicalDigest(digestBody)) throw invalidResponse()
+        return PhaseDashboardFramework(
+            productId = productId,
+            productRevision = productRevision,
+            productDigest = productDigest,
+            phase = phaseId,
+            phaseLabel = phaseDefinition.first,
+            panels = panels,
+            observedAt = observedAt,
+            limitations = limitations,
+            compositionDigest = compositionDigest,
+        )
     }
 
     fun parseAgentReadinessEnvelope(envelope: JsonObject): List<AgentReadinessSnapshot> {
@@ -2511,6 +2642,55 @@ internal object PortableDesignProtocol {
             add("gates", gates)
             addProperty("authorityBoundary", MANAGED_PREVIEW_BOUNDARY)
         }
+    }
+
+    private fun parsePhaseDashboardPanel(panel: JsonObject, expectedId: String): PhaseDashboardPanel {
+        panel.requireExactKeys("id", "role", "title", "applicability", "state")
+        val definition = phaseDashboardPanelCatalog[expectedId] ?: throw invalidResponse()
+        if (panel.requireString("id") != expectedId || panel.requireString("role") != definition.first ||
+            panel.requireString("title") != definition.second
+        ) {
+            throw invalidResponse()
+        }
+        val applicability = panel.get("applicability").requireObject()
+        applicability.requireKeys(setOf("status", "basis"), setOf("decision"))
+        val status = applicability.requireString("status")
+        val basis = applicability.requireString("basis")
+        if (status !in setOf("applicable", "not-applicable", "unknown") ||
+            basis !in setOf("phase-contract", "governed-decision", "not-evaluated")
+        ) {
+            throw invalidResponse()
+        }
+        val decision = applicability.get("decision")?.let { parsePhaseDashboardDecision(it.requireObject()) }
+        if ((basis == "phase-contract" && (status != "applicable" || decision != null)) ||
+            (basis == "not-evaluated" && (status != "unknown" || decision != null)) ||
+            (basis == "governed-decision" && (status == "unknown" || decision == null))
+        ) {
+            throw invalidResponse()
+        }
+        val state = panel.requireString("state")
+        val expectedState = when (status) {
+            "applicable" -> "active"
+            "not-applicable" -> "not-applicable"
+            else -> "attention-required"
+        }
+        if (state != expectedState) throw invalidResponse()
+        return PhaseDashboardPanel(
+            id = expectedId,
+            role = definition.first,
+            title = definition.second,
+            applicability = PhaseDashboardApplicability(status, basis, decision),
+            state = state,
+        )
+    }
+
+    private fun parsePhaseDashboardDecision(decision: JsonObject): PhaseDashboardDecision {
+        decision.requireExactKeys("recordType", "recordId", "revision", "digest")
+        if (decision.requireString("recordType") != "decision") throw invalidResponse()
+        val recordId = parseUuid(decision.requireString("recordId"))
+        val revision = decision.requireLong("revision")
+        if (recordId == UUID(0, 0) || revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        return PhaseDashboardDecision(recordId, revision, decision.requireDigest("digest"))
     }
 
     private fun canonicalDigest(value: JsonElement): String {

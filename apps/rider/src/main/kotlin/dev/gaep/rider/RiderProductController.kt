@@ -18,6 +18,11 @@ internal data class AgentHandoffContext(
 internal class RiderProductController(private val client: GaepEngineClient) {
     fun readProduct(): String = renderProduct(client.readProductBinding())
 
+    fun readPhaseDashboard(): String {
+        val product = client.readProductBinding()
+        return renderPhaseDashboard(client.readPhaseDashboard(product))
+    }
+
     fun readAgentReadiness(): String = buildString {
         appendLine("GAEP Codex and Claude readiness")
         appendLine()
@@ -360,6 +365,33 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Product: ${product.name}")
         appendLine("Product ID: ${product.id}")
         append("Revision: ${product.revision}")
+    }
+
+    private fun renderPhaseDashboard(dashboard: PhaseDashboardFramework): String = buildString {
+        appendLine("GAEP phase-scoped dashboard framework")
+        appendLine()
+        appendLine("Delivery phase: ${dashboard.phaseLabel}")
+        appendLine("Exact Product revision: ${dashboard.productRevision}")
+        appendLine("Product digest: ${dashboard.productDigest}")
+        appendLine("Composition digest: ${dashboard.compositionDigest}")
+        appendLine("Observed: ${dashboard.observedAt}")
+        appendLine()
+        dashboard.panels.forEach { panel ->
+            appendLine(
+                "${panel.title} · ${panel.role} · applicability=${panel.applicability.status} " +
+                    "(${panel.applicability.basis}) · state=${panel.state}",
+            )
+        }
+        appendLine()
+        dashboard.limitations.forEach { appendLine("Limit: $it") }
+        appendLine()
+        appendLine(
+            "Boundary: this is a read-only governed-state projection. It grants no mutation, applicability, phase-entry, " +
+                "approval, readiness, acceptance, release, Run, Tool, or effect authority.",
+        )
+        append(
+            "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.",
+        )
     }
 
     private fun renderAgentReadiness(snapshot: AgentReadinessSnapshot): String = buildString {

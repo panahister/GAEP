@@ -116,6 +116,10 @@ class PortableDesignClientTest {
         val badManagedTransitionDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-transition-digest"))
         val badManagedTransitionPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-transition-private"))
         val staleManagedReviewRoot = Files.createDirectory(temporaryRoot.resolve("stale-managed-review"))
+        val badDashboardBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-binding"))
+        val badDashboardApplicabilityRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-applicability"))
+        val badDashboardDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-digest"))
+        val badDashboardPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-dashboard-private"))
         val executable = createFakeEngineLauncher(temporaryRoot)
         GaepEngineClient(temporaryRoot, executable.toString()).use { client ->
             val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -161,6 +165,37 @@ class PortableDesignClientTest {
             assertEquals(productId, product.id)
             assertEquals("Founder Product", product.name)
             assertEquals(7, product.revision)
+            assertTrue(Regex("^sha256:[0-9a-f]{64}$").matches(product.digest))
+
+            val dashboard = client.readPhaseDashboard(product)
+            assertEquals(DeliveryPhaseId.PHASE_0_1A_FOUNDATION, dashboard.phase)
+            assertEquals(listOf("foundation-summary", "change-impact", "agent-model"), dashboard.panels.map { it.id })
+            assertEquals(listOf("attention-required", "active", "active"), dashboard.panels.map { it.state })
+            assertEquals(product.digest, dashboard.productDigest)
+            val dashboardView = RiderProductController(client).readPhaseDashboard()
+            assertTrue(dashboardView.contains("GAEP phase-scoped dashboard framework"))
+            assertTrue(dashboardView.contains("applicability=unknown (not-evaluated)"))
+            assertTrue(dashboardView.contains("grants no mutation, applicability, phase-entry"))
+            assertFalse(dashboardView.contains("Founder Product"))
+            assertFalse(dashboardView.contains(privateRoot))
+            assertFalse(dashboardView.contains(privateCredential))
+
+            listOf(
+                badDashboardBindingRoot,
+                badDashboardApplicabilityRoot,
+                badDashboardDigestRoot,
+                badDashboardPrivateRoot,
+            ).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val hostileProduct = hostileClient.readProductBinding()
+                    val invalidDashboard = hostError { hostileClient.readPhaseDashboard(hostileProduct) }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidDashboard.kind)
+                    assertPrivateTextWithheld(invalidDashboard)
+                }
+            }
+            assertFailsWith<IllegalArgumentException> {
+                client.readPhaseDashboard(product.copy(digest = "sha256:not-a-digest"))
+            }
 
             val readiness = client.probeAgentReadiness()
             assertEquals(listOf("claude-code", "codex"), readiness.map { it.agentId })

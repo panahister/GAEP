@@ -75,6 +75,7 @@ class GaepToolWindowFactory : ToolWindowFactory {
         }
 
         addAction("Refresh Product") { controller.readProduct() }
+        addAction("Show phase dashboards") { controller.readPhaseDashboard() }
         addAction("Refresh agent readiness") { controller.readAgentReadiness() }
 
         val selectionButton = JButton("Select agent configuration…").apply {

@@ -78,6 +78,25 @@ class GaepEngineClient(
     ) { envelope -> PortableDesignProtocol.parseProductBindingEnvelope(envelope) }
 
     @Synchronized
+    fun readPhaseDashboard(
+        product: ProductBinding,
+        phase: DeliveryPhaseId = DeliveryPhaseId.PHASE_0_1A_FOUNDATION,
+    ): PhaseDashboardFramework {
+        PortableDesignProtocol.validateProductId(product.id)
+        PortableDesignProtocol.validateProductRevision(product.revision)
+        require(Regex("^sha256:[0-9a-f]{64}$").matches(product.digest)) { "Product digest must be SHA-256" }
+        val params = JsonObject().apply {
+            addProperty("phase", phase.wireValue)
+            addProperty("expectedProductId", product.id.toString())
+            addProperty("expectedProductRevision", product.revision)
+            addProperty("expectedProductDigest", product.digest)
+        }
+        return portableRequest("dashboard.framework", params) { envelope ->
+            PortableDesignProtocol.parsePhaseDashboardEnvelope(envelope, phase, product)
+        }
+    }
+
+    @Synchronized
     fun probeAgentReadiness(): List<AgentReadinessSnapshot> = portableRequest(
         "probeAgents",
         JsonObject(),
