@@ -68,6 +68,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private ManagedReadOnlyPreview? managedReadOnlyPreview;
     private string? managedReadOnlyWorkspace;
     private string managedRunId = string.Empty;
+    private string managedReviewRunId = string.Empty;
+    private ManagedReviewPreview? managedReviewPreview;
+    private string? managedReviewWorkspace;
     private bool busy;
 
     public GaepToolWindowData(VisualStudioExtensibility extensibility)
@@ -83,6 +86,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         ExecuteManagedReadOnlyCommand = new AsyncCommand(ExecuteManagedReadOnlyAsync);
         ListManagedEvidenceCommand = new AsyncCommand(ListManagedEvidenceAsync);
         ReadManagedEvidenceCommand = new AsyncCommand(ReadManagedEvidenceAsync);
+        LoadManagedReviewCommand = new AsyncCommand(LoadManagedReviewAsync);
+        ApplyManagedReviewCommand = new AsyncCommand(ApplyManagedReviewAsync);
+        DiscardManagedReviewCommand = new AsyncCommand(DiscardManagedReviewAsync);
         ListDesignImportsCommand = new AsyncCommand(ListDesignImportsAsync);
         ReadDesignImportCommand = new AsyncCommand(ReadDesignImportAsync);
         ImportDesignBundleCommand = new AsyncCommand(ImportDesignBundleAsync);
@@ -97,7 +103,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
@@ -128,6 +134,15 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ReadManagedEvidenceCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadManagedReviewCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ApplyManagedReviewCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand DiscardManagedReviewCommand { get; }
 
     [DataMember]
     public IAsyncCommand ListDesignImportsCommand { get; }
@@ -251,6 +266,13 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     {
         get => managedRunId;
         set => SetProperty(ref managedRunId, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string ManagedReviewRunId
+    {
+        get => managedReviewRunId;
+        set => SetProperty(ref managedReviewRunId, value ?? string.Empty);
     }
 
     [DataMember]
@@ -457,6 +479,87 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
             (controller, _, token) => controller.ReadManagedEvidenceAsync(ManagedRunId, token),
             cancellationToken);
 
+    private Task LoadManagedReviewAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact staged Managed Run review",
+            async (controller, workspace, token) =>
+            {
+                var preview = await controller.ReadManagedReviewAsync(ManagedReviewRunId, token);
+                managedReviewPreview = preview;
+                managedReviewWorkspace = workspace;
+                return ProductWorkflowController.RenderManagedReviewPreview(preview);
+            },
+            cancellationToken);
+
+    private Task ApplyManagedReviewAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        DecideManagedReviewAsync(apply: true, cancellationToken);
+
+    private Task DiscardManagedReviewAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        DecideManagedReviewAsync(apply: false, cancellationToken);
+
+    private Task DecideManagedReviewAsync(bool apply, CancellationToken cancellationToken)
+    {
+        var preview = managedReviewPreview;
+        if (preview is null)
+        {
+            Status = "Managed staged review is not loaded";
+            Output = "Load and review one exact pending staged Managed Run before choosing apply or discard.";
+            return Task.CompletedTask;
+        }
+        if (apply && !preview.CanApply)
+        {
+            Status = "Exact apply is unavailable";
+            Output = "This verified review state does not expose an exact apply confirmation. Discard or reload current state.";
+            return Task.CompletedTask;
+        }
+        if (!apply && !preview.CanDiscard)
+        {
+            Status = "Exact discard is unavailable";
+            Output = "This verified review state does not expose a discard decision. Reload current state.";
+            return Task.CompletedTask;
+        }
+        var decisionLabel = apply ? "apply" : "discard";
+        var firstConfirmation =
+            $"Choose exact {decisionLabel} for Managed Run {preview.ManagedRunId:D} revision {preview.ManagedRunRevision}?\n\n" +
+            $"Changes: {preview.Staging.ChangeCount}; inventory: {preview.Staging.ChangedInventoryDigest}; " +
+            $"preview: {preview.PreviewDigest}.\n\n" +
+            (apply
+                ? "Apply can change only the exact reviewed workspace-relative inventory and host-owned write envelope. Post-apply Workflow gates will be recorded not assessed, so governed outcome success cannot be claimed."
+                : "Discard persists governed discarded state. Machine-local stage and recovery-journal cleanup remain separate, unproven claims.");
+        var secondConfirmation =
+            $"Final exact {decisionLabel} confirmation for Managed Run {preview.ManagedRunId:D}?\n\n" +
+            $"Bound revision: {preview.ManagedRunRevision}\nPreview: {preview.PreviewDigest}\n" +
+            $"Inventory: {preview.Staging.ChangedInventoryDigest}\n\n" +
+            (apply
+                ? $"Write envelope: {string.Join(", ", preview.ApplyConfirmation?.WriteEnvelope ?? [])}. This can mutate only those exact source-workspace scopes. Workflow gates remain not assessed."
+                : "Persisted discard does not independently prove machine-local stage or recovery-journal cleanup. Cancel keeps the review pending.");
+        return RunRequestAsync(
+            apply ? "Applying exact reviewed inventory" : "Discarding exact staged review",
+            async (controller, workspace, token) =>
+            {
+                if (!StringComparer.Ordinal.Equals(managedReviewWorkspace, workspace))
+                {
+                    throw new ArgumentException(
+                        "The workspace changed after the staged review was loaded. Load and review it again.");
+                }
+                if (!ReferenceEquals(preview, managedReviewPreview))
+                {
+                    throw new ArgumentException(
+                        "The staged review changed before the decision. Load and review it again.");
+                }
+                managedReviewPreview = null;
+                managedReviewWorkspace = null;
+                var actorId = Environment.GetEnvironmentVariable("GAEP_ACTOR_ID") ?? "gaep.visual-studio-local-human";
+                var transition = apply
+                    ? await controller.ApplyManagedReviewAsync(preview, actorId, token)
+                    : await controller.DiscardManagedReviewAsync(preview, actorId, token);
+                return ProductWorkflowController.RenderManagedReviewTransition(transition);
+            },
+            cancellationToken,
+            confirmationMessage: firstConfirmation,
+            secondConfirmationMessage: secondConfirmation);
+    }
+
     private Task ListDesignImportsAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(
             "Listing design imports",
@@ -563,7 +666,8 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         string label,
         Func<ProductWorkflowController, string, CancellationToken, Task<string>> action,
         CancellationToken cancellationToken,
-        string? confirmationMessage = null)
+        string? confirmationMessage = null,
+        string? secondConfirmationMessage = null)
     {
         if (!await requestGate.WaitAsync(0, cancellationToken))
         {
@@ -583,6 +687,18 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
                 if (!confirmed)
                 {
                     Status = "Request cancelled; no state changed";
+                    return;
+                }
+            }
+            if (secondConfirmationMessage is not null)
+            {
+                var confirmed = await extensibility.Shell().ShowPromptAsync(
+                    secondConfirmationMessage,
+                    PromptOptions.OK.WithCancel(cancelReturns: false, cancelIsDefault: true),
+                    cancellationToken);
+                if (!confirmed)
+                {
+                    Status = "Final confirmation cancelled; no state changed";
                     return;
                 }
             }

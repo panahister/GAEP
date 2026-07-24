@@ -289,6 +289,89 @@ public sealed record ManagedEvidenceDetail(
     string AuthorityBoundary,
     string PrivacyBoundary);
 
+public sealed record ManagedChangedFile(
+    string Path,
+    string Kind,
+    string? BeforeDigest,
+    string? AfterDigest,
+    long? BeforeSize,
+    long? AfterSize,
+    int? BeforeMode,
+    int? AfterMode);
+
+public sealed record ManagedReviewResult(
+    Guid ResultId,
+    string ResultDigest,
+    string TerminalState,
+    string ProviderDisposition,
+    string OutcomeStatus,
+    string OutcomeBasis,
+    IReadOnlyList<string> WarningCodes,
+    Guid EvidenceId,
+    string EvidenceDigest);
+
+public sealed record ManagedReviewStaging(
+    Guid EvidenceId,
+    string EvidenceDigest,
+    string BaselineDigest,
+    string FinalDigest,
+    string ApplyState,
+    int ChangeCount,
+    int ChangedInventoryLimit,
+    int OmittedCount,
+    IReadOnlyList<ManagedChangedFile> ChangedInventory,
+    string ChangedInventoryDigest,
+    int ExcludedPathCount,
+    string ExcludedPathSetDigest);
+
+public sealed record ManagedReviewApplyConfirmation(
+    string Decision,
+    Guid ReviewEvidenceId,
+    string ReviewEvidenceDigest,
+    string ChangedInventoryDigest,
+    IReadOnlyList<string> WriteEnvelope,
+    string WriteEnvelopeDigest);
+
+public sealed record ManagedReviewPreview(
+    int SchemaVersion,
+    string Kind,
+    Guid ManagedRunId,
+    long ManagedRunRevision,
+    Guid RunId,
+    Guid ProductId,
+    Guid InitiativeId,
+    string Mode,
+    string State,
+    bool CanApply,
+    bool CanDiscard,
+    bool HasLocalJournal,
+    string BindingsDigest,
+    ManagedReviewResult Result,
+    ManagedReviewStaging Staging,
+    ManagedReviewApplyConfirmation? ApplyConfirmation,
+    string PostApplyGatePolicy,
+    string AuthorityBoundary,
+    string PrivacyBoundary,
+    string CleanupBoundary,
+    string PreviewDigest);
+
+public sealed record ManagedReviewTransition(
+    int SchemaVersion,
+    string Kind,
+    string Decision,
+    string SourcePreviewDigest,
+    long SourceManagedRunRevision,
+    Guid ManagedRunId,
+    long ManagedRunRevision,
+    string State,
+    bool CanApply,
+    bool CanDiscard,
+    bool HasLocalJournal,
+    ManagedEvidenceDetail Detail,
+    string AuthorityBoundary,
+    string CleanupBoundary,
+    string TransitionDigest);
+
 public sealed record AgentReadinessSnapshot(
     int SchemaVersion,
     string AdapterId,

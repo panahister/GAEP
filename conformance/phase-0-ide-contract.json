@@ -168,7 +168,12 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["PreviewManagedReadOnlyAsync(", "ExecuteManagedReadOnlyAsync(", "attest-exact-managed-readonly-preview"] },
           { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseManagedReadOnlyPreviewResponse(", "preview.PreviewDigest != CanonicalDigest(body)", "ParseManagedReadOnlyReceiptResponse("] }
         ] },
-        { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
+        { "capabilityId": "staged-effectful-review", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["LoadManagedReviewCommand", "ApplyManagedReviewCommand", "DiscardManagedReviewCommand", "two cancel-default confirmations"] },
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["private Task LoadManagedReviewAsync(", "private Task ApplyManagedReviewAsync(", "private Task DiscardManagedReviewAsync(", "secondConfirmationMessage: secondConfirmation"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadManagedReviewAsync(", "ApplyManagedReviewAsync(", "DiscardManagedReviewAsync(", "[\"expectedPreviewDigest\"] = preview.PreviewDigest"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseManagedReviewPreviewResponse(", "preview.PreviewDigest != CanonicalDigest(body)", "ParseManagedReviewTransitionResponse(", "ParseWorkspaceRelativePath(change.GetProperty(\"path\"))"] }
+        ] },
         { "capabilityId": "evidence-dashboard", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["List Managed Run evidence", "Read Managed Run evidence", "ListManagedEvidenceCommand", "ReadManagedEvidenceCommand"] },
           { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["ListManagedEvidenceCommand = new AsyncCommand", "ReadManagedEvidenceCommand = new AsyncCommand", "cannot start, resume, cancel, apply, discard, approve"] },

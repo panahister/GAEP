@@ -274,6 +274,64 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseManagedEvidenceDetailResponse(envelope, managedRunId));
     }
 
+    public async Task<ManagedReviewPreview> ReadManagedReviewAsync(
+        Guid managedRunId,
+        CancellationToken cancellationToken = default)
+    {
+        if (managedRunId == Guid.Empty)
+        {
+            throw new ArgumentException("Managed Run ID must be a non-empty UUID.", nameof(managedRunId));
+        }
+        using var response = await RequestPortableDesignAsync(
+            "managed.review.read",
+            new Dictionary<string, object?> { ["managedRunId"] = managedRunId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseManagedReviewPreviewResponse(envelope, managedRunId));
+    }
+
+    public Task<ManagedReviewTransition> ApplyManagedReviewAsync(
+        ManagedReviewPreview preview,
+        string actorId,
+        CancellationToken cancellationToken = default) =>
+        DecideManagedReviewAsync(preview, actorId, "apply-exact-managed-review", cancellationToken);
+
+    public Task<ManagedReviewTransition> DiscardManagedReviewAsync(
+        ManagedReviewPreview preview,
+        string actorId,
+        CancellationToken cancellationToken = default) =>
+        DecideManagedReviewAsync(preview, actorId, "discard-exact-managed-review", cancellationToken);
+
+    private async Task<ManagedReviewTransition> DecideManagedReviewAsync(
+        ManagedReviewPreview preview,
+        string actorId,
+        string decision,
+        CancellationToken cancellationToken)
+    {
+        PortableDesignProtocol.ValidateManagedReviewPreview(preview);
+        if (decision is not ("apply-exact-managed-review" or "discard-exact-managed-review"))
+        {
+            throw new ArgumentException("Managed review decision is invalid.", nameof(decision));
+        }
+        var normalizedActorId = PortableDesignProtocol.ValidateActorId(actorId);
+        var method = decision == "apply-exact-managed-review" ? "managed.review.apply" : "managed.review.discard";
+        using var response = await RequestPortableDesignAsync(
+            method,
+            new Dictionary<string, object?>
+            {
+                ["actorId"] = normalizedActorId,
+                ["managedRunId"] = preview.ManagedRunId,
+                ["expectedManagedRunRevision"] = preview.ManagedRunRevision,
+                ["expectedPreviewDigest"] = preview.PreviewDigest,
+                ["confirmation"] = decision,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseManagedReviewTransitionResponse(envelope, preview, decision));
+    }
+
     public async Task<PortableDesignSnapshotSummary> ImportPortableDesignSnapshotAsync(
         string bundleRoot,
         Guid expectedProductId,

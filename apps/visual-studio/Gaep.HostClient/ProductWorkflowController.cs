@@ -253,6 +253,104 @@ public sealed class ProductWorkflowController(EngineClient client)
             ParseRequiredId(managedRunId, "Managed Run ID"),
             cancellationToken));
 
+    public Task<ManagedReviewPreview> ReadManagedReviewAsync(
+        string managedRunId,
+        CancellationToken cancellationToken = default) =>
+        client.ReadManagedReviewAsync(ParseRequiredId(managedRunId, "Managed Run ID"), cancellationToken);
+
+    public Task<ManagedReviewTransition> ApplyManagedReviewAsync(
+        ManagedReviewPreview preview,
+        string actorId,
+        CancellationToken cancellationToken = default) =>
+        client.ApplyManagedReviewAsync(preview, actorId, cancellationToken);
+
+    public Task<ManagedReviewTransition> DiscardManagedReviewAsync(
+        ManagedReviewPreview preview,
+        string actorId,
+        CancellationToken cancellationToken = default) =>
+        client.DiscardManagedReviewAsync(preview, actorId, cancellationToken);
+
+    public static string RenderManagedReviewPreview(ManagedReviewPreview preview)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP exact staged Managed Run review")
+            .AppendLine()
+            .AppendLine($"Managed Run: {preview.ManagedRunId:D}")
+            .AppendLine($"Governed Run: {preview.RunId:D}")
+            .AppendLine($"Revision / state: {preview.ManagedRunRevision} / {preview.State}")
+            .AppendLine($"Product / Initiative: {preview.ProductId:D} / {preview.InitiativeId:D}")
+            .AppendLine($"Bindings digest: {preview.BindingsDigest}")
+            .AppendLine($"Result: {preview.Result.ResultId:D} ({preview.Result.ResultDigest})")
+            .AppendLine($"Provider disposition: {preview.Result.ProviderDisposition}")
+            .AppendLine($"Governed outcome before decision: {preview.Result.OutcomeStatus} ({preview.Result.OutcomeBasis})")
+            .AppendLine($"Evidence: {preview.Staging.EvidenceId:D} ({preview.Staging.EvidenceDigest})")
+            .AppendLine($"Stage: {preview.Staging.ApplyState}; baseline={preview.Staging.BaselineDigest}; final={preview.Staging.FinalDigest}")
+            .AppendLine(
+                $"Complete bounded inventory: {preview.Staging.ChangeCount}/{preview.Staging.ChangedInventoryLimit}; " +
+                $"omitted={preview.Staging.OmittedCount}; digest={preview.Staging.ChangedInventoryDigest}")
+            .AppendLine(
+                $"Excluded staged paths: {preview.Staging.ExcludedPathCount}; set digest={preview.Staging.ExcludedPathSetDigest}")
+            .AppendLine(
+                $"Apply available: {YesNo(preview.CanApply)}; discard available: {YesNo(preview.CanDiscard)}; " +
+                $"local journal observed: {YesNo(preview.HasLocalJournal)}")
+            .AppendLine(
+                $"Exact write envelope: {(preview.ApplyConfirmation is null ? "not available" : string.Join(", ", preview.ApplyConfirmation.WriteEnvelope))}")
+            .AppendLine($"Preview digest: {preview.PreviewDigest}")
+            .AppendLine($"Warnings: {(preview.Result.WarningCodes.Count == 0 ? "none" : string.Join(", ", preview.Result.WarningCodes))}")
+            .AppendLine()
+            .AppendLine("Exact changed-file inventory")
+            .AppendLine();
+        if (preview.Staging.ChangedInventory.Count == 0) output.AppendLine("No staged workspace file changes were recorded.");
+        for (var index = 0; index < preview.Staging.ChangedInventory.Count; index++)
+        {
+            var change = preview.Staging.ChangedInventory[index];
+            output.AppendLine($"{index + 1}. {change.Kind.ToUpperInvariant()} {change.Path}")
+                .AppendLine(
+                    $"   Before: {change.BeforeDigest ?? "absent"}; {change.BeforeSize ?? 0} byte(s); " +
+                    $"mode {(change.BeforeMode.HasValue ? Convert.ToString(change.BeforeMode.Value, 8) : "absent")}")
+                .AppendLine(
+                    $"   After: {change.AfterDigest ?? "absent"}; {change.AfterSize ?? 0} byte(s); " +
+                    $"mode {(change.AfterMode.HasValue ? Convert.ToString(change.AfterMode.Value, 8) : "absent")}");
+        }
+        return output.AppendLine()
+            .AppendLine(
+                "Boundary: this view authorizes no mutation. Apply or discard requires a separate exact " +
+                "revision-and-preview-digest-bound human decision and a second cancel-default confirmation.")
+            .AppendLine(
+                "Apply is limited to this exact changed inventory and write envelope. The host records post-apply " +
+                "Workflow gates not assessed, so it cannot claim governed outcome satisfaction.")
+            .Append(
+                "Provider output, prompts, context content, staged source bytes, absolute paths, executable paths, " +
+                "process state, workspace paths and credentials are withheld.")
+            .ToString();
+    }
+
+    public static string RenderManagedReviewTransition(ManagedReviewTransition transition)
+    {
+        var detail = transition.Detail;
+        return new StringBuilder()
+            .AppendLine("GAEP managed staged-review transition")
+            .AppendLine()
+            .AppendLine($"Decision: {transition.Decision}")
+            .AppendLine($"Managed Run: {transition.ManagedRunId:D}")
+            .AppendLine($"Revision: {transition.SourceManagedRunRevision} -> {transition.ManagedRunRevision}")
+            .AppendLine($"Persisted state: {transition.State}")
+            .AppendLine($"Source preview: {transition.SourcePreviewDigest}")
+            .AppendLine($"Transition digest: {transition.TransitionDigest}")
+            .AppendLine($"Apply available: {YesNo(transition.CanApply)}; discard available: {YesNo(transition.CanDiscard)}")
+            .AppendLine($"Local journal observed: {YesNo(transition.HasLocalJournal)}")
+            .AppendLine($"Result digest: {detail.Summary.ResultDigest ?? "not bound"}")
+            .AppendLine($"Apply-decision digest: {detail.Summary.ApplyDecisionDigest ?? "not bound"}")
+            .AppendLine($"Provider disposition: {detail.Result?.ProviderDisposition ?? "not available"}")
+            .AppendLine(
+                $"Governed outcome: {(detail.Result is null ? "not available" : $"{detail.Result.OutcomeStatus} ({detail.Result.OutcomeBasis})")}")
+            .AppendLine()
+            .Append(
+                "Boundary: this receipt proves only the verified persisted transition. Provider completion, governed " +
+                "outcome satisfaction, machine-local stage cleanup and recovery-journal cleanup remain separate claims.")
+            .ToString();
+    }
+
     public static string NormalizeHandoffReason(string value) =>
         PortableDesignProtocol.ValidateHandoffText(value, "Handoff reason", 2, 5_000);
 

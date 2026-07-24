@@ -27,6 +27,10 @@ internal static partial class PortableDesignProtocol
     private const string ManagedInventoryBoundary = "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority";
     private const string ManagedEvidenceBoundary = "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority";
     private const string ManagedEvidencePrivacyBoundary = "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.";
+    private const string ManagedReviewBoundary = "managed-review-preview-authorizes-no-mutation-without-an-exact-digest-bound-human-decision";
+    private const string ManagedReviewPrivacyBoundary = "Exact portable identifiers, digests, warning codes, workspace-relative changed paths, file digests, sizes, modes and write scopes only; prompts, provider output, source bytes, absolute paths, executable paths, process state and credentials are omitted.";
+    private const string ManagedReviewTransitionBoundary = "managed-review-transition-proves-persisted-state-not-provider-outcome-or-machine-local-cleanup";
+    private const string ManagedReviewCleanupBoundary = "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup.";
     private static readonly JsonSerializerOptions StrictJson = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -57,6 +61,11 @@ internal static partial class PortableDesignProtocol
             ["MANAGED_EVIDENCE_SNAPSHOT_CHANGED"] = (-32_025, "Managed Run inventory changed during pagination; reload the first page."),
             ["MANAGED_EVIDENCE_INVENTORY_INVALID"] = (-32_026, "GAEP could not verify the bounded Managed Run inventory."),
             ["MANAGED_EVIDENCE_DETAIL_INVALID"] = (-32_027, "GAEP could not verify the exact Managed Run evidence detail."),
+            ["MANAGED_REVIEW_AUDIT_INVALID"] = (-32_028, "Managed Run review is unavailable because the governed audit chain is invalid."),
+            ["MANAGED_REVIEW_CHANGED"] = (-32_029, "The Managed Run review changed before the decision; open and review the current exact inventory."),
+            ["MANAGED_REVIEW_INVALID"] = (-32_036, "GAEP could not verify an exact pending Managed Run review."),
+            ["MANAGED_REVIEW_APPLY_FAILED"] = (-32_037, "The exact Managed Run apply transition could not be verified; reload the review before any retry."),
+            ["MANAGED_REVIEW_DISCARD_FAILED"] = (-32_038, "The exact Managed Run discard transition could not be verified; reload the review before any retry."),
             ["INVALID_PARAMS"] = (-32_602, "The GAEP engine rejected the local request parameters."),
             ["PROTOCOL_UPGRADE_REQUIRED"] = (-32_021, "The GAEP engine requires protocol version 2 for portable design requests."),
             ["UNSUPPORTED_PROTOCOL_VERSION"] = (-32_020, "The GAEP engine does not support the requested portable design protocol version."),
@@ -606,9 +615,13 @@ internal static partial class PortableDesignProtocol
 
     internal static ManagedEvidenceDetail ParseManagedEvidenceDetailResponse(
         JsonElement envelope,
+        Guid expectedManagedRunId) =>
+        ParseManagedEvidenceDetail(ReadResult(envelope), expectedManagedRunId);
+
+    private static ManagedEvidenceDetail ParseManagedEvidenceDetail(
+        JsonElement detail,
         Guid expectedManagedRunId)
     {
-        var detail = ReadResult(envelope);
         if (!HasRequiredAndAllowedProperties(
                 detail,
                 ["schemaVersion", "kind", "summary", "artifactStatus", "authorityBoundary", "privacyBoundary"],
@@ -652,6 +665,330 @@ internal static partial class PortableDesignProtocol
             applyDecision,
             ManagedEvidenceBoundary,
             ManagedEvidencePrivacyBoundary);
+    }
+
+    internal static ManagedReviewPreview ParseManagedReviewPreviewResponse(
+        JsonElement envelope,
+        Guid expectedManagedRunId)
+    {
+        var preview = ReadResult(envelope);
+        if (!HasRequiredAndAllowedProperties(
+                preview,
+                [
+                    "schemaVersion", "kind", "managedRunId", "managedRunRevision", "runId", "productId",
+                    "initiativeId", "mode", "state", "canApply", "canDiscard", "hasLocalJournal", "bindingsDigest",
+                    "result", "staging", "postApplyGatePolicy", "authorityBoundary", "privacyBoundary",
+                    "cleanupBoundary", "previewDigest",
+                ],
+                ["applyConfirmation"]) ||
+            preview.GetProperty("schemaVersion").GetInt32() != 1 ||
+            preview.GetProperty("kind").GetString() != "managed-review-preview" ||
+            preview.GetProperty("mode").GetString() != "codex-staged" ||
+            preview.GetProperty("postApplyGatePolicy").GetString() != "record-not-assessed" ||
+            preview.GetProperty("authorityBoundary").GetString() != ManagedReviewBoundary ||
+            preview.GetProperty("privacyBoundary").GetString() != ManagedReviewPrivacyBoundary ||
+            preview.GetProperty("cleanupBoundary").GetString() != ManagedReviewCleanupBoundary)
+        {
+            throw InvalidResponse();
+        }
+        var managedRunId = ParseRequiredGuid(preview, "managedRunId");
+        var managedRunRevision = ParsePositiveLong(preview, "managedRunRevision");
+        if (expectedManagedRunId == Guid.Empty || managedRunId != expectedManagedRunId) throw InvalidResponse();
+        var state = ParseRequiredEnum(preview, "state", "review-required", "conflict");
+        var canApply = ParseRequiredBoolean(preview, "canApply");
+        var canDiscard = ParseRequiredBoolean(preview, "canDiscard");
+        var hasApplyConfirmation = preview.TryGetProperty("applyConfirmation", out var confirmationElement);
+        if (!canDiscard || canApply != hasApplyConfirmation || (state == "conflict" && canApply))
+        {
+            throw InvalidResponse();
+        }
+        var result = ParseManagedReviewResult(preview.GetProperty("result"), state);
+        var staging = ParseManagedReviewStaging(preview.GetProperty("staging"), state);
+        if (result.EvidenceId != staging.EvidenceId || result.EvidenceDigest != staging.EvidenceDigest)
+        {
+            throw InvalidResponse();
+        }
+        var confirmation = hasApplyConfirmation
+            ? ParseManagedReviewApplyConfirmation(confirmationElement, staging)
+            : null;
+        var parsed = new ManagedReviewPreview(
+            1,
+            "managed-review-preview",
+            managedRunId,
+            managedRunRevision,
+            ParseRequiredGuid(preview, "runId"),
+            ParseRequiredGuid(preview, "productId"),
+            ParseRequiredGuid(preview, "initiativeId"),
+            "codex-staged",
+            state,
+            canApply,
+            true,
+            ParseRequiredBoolean(preview, "hasLocalJournal"),
+            ParseRequiredDigest(preview, "bindingsDigest"),
+            result,
+            staging,
+            confirmation,
+            "record-not-assessed",
+            ManagedReviewBoundary,
+            ManagedReviewPrivacyBoundary,
+            ManagedReviewCleanupBoundary,
+            ParseRequiredDigest(preview, "previewDigest"));
+        ValidateManagedReviewPreview(parsed);
+        return parsed;
+    }
+
+    internal static ManagedReviewTransition ParseManagedReviewTransitionResponse(
+        JsonElement envelope,
+        ManagedReviewPreview preview,
+        string expectedDecision)
+    {
+        if (expectedDecision is not ("apply-exact-managed-review" or "discard-exact-managed-review"))
+        {
+            throw new ArgumentException("Managed review decision is invalid.", nameof(expectedDecision));
+        }
+        ValidateManagedReviewPreview(preview);
+        var transition = ReadResult(envelope);
+        if (!HasRequiredAndAllowedProperties(
+                transition,
+                [
+                    "schemaVersion", "kind", "decision", "sourcePreviewDigest", "sourceManagedRunRevision",
+                    "managedRunId", "managedRunRevision", "state", "canApply", "canDiscard", "hasLocalJournal",
+                    "detail", "authorityBoundary", "cleanupBoundary", "transitionDigest",
+                ],
+                []) ||
+            transition.GetProperty("schemaVersion").GetInt32() != 1 ||
+            transition.GetProperty("kind").GetString() != "managed-review-transition" ||
+            transition.GetProperty("decision").GetString() != expectedDecision ||
+            transition.GetProperty("authorityBoundary").GetString() != ManagedReviewTransitionBoundary ||
+            transition.GetProperty("cleanupBoundary").GetString() != ManagedReviewCleanupBoundary ||
+            ParseRequiredDigest(transition, "sourcePreviewDigest") != preview.PreviewDigest ||
+            ParsePositiveLong(transition, "sourceManagedRunRevision") != preview.ManagedRunRevision)
+        {
+            throw InvalidResponse();
+        }
+        var managedRunId = ParseRequiredGuid(transition, "managedRunId");
+        var managedRunRevision = ParsePositiveLong(transition, "managedRunRevision");
+        if (managedRunId != preview.ManagedRunId || managedRunRevision <= preview.ManagedRunRevision)
+        {
+            throw InvalidResponse();
+        }
+        var state = ParseRequiredEnum(
+            transition,
+            "state",
+            "prepared", "running", "review-required", "applying", "completed", "failed", "cancelled",
+            "timed-out", "unknown", "conflict", "discarded");
+        var canApply = ParseRequiredBoolean(transition, "canApply");
+        var canDiscard = ParseRequiredBoolean(transition, "canDiscard");
+        if (expectedDecision == "discard-exact-managed-review")
+        {
+            if (state != "discarded" || canApply || canDiscard) throw InvalidResponse();
+        }
+        else if (state is not ("completed" or "failed" or "unknown" or "conflict") || canApply ||
+                 canDiscard != (state == "conflict"))
+        {
+            throw InvalidResponse();
+        }
+        var detailElement = transition.GetProperty("detail");
+        var detail = ParseManagedEvidenceDetail(detailElement, managedRunId);
+        if (detail.Summary.State != state || detail.ArtifactStatus != "verified-result-and-evidence" ||
+            (expectedDecision == "apply-exact-managed-review" && detail.ApplyDecision is null))
+        {
+            throw InvalidResponse();
+        }
+        var body = JsonSerializer.SerializeToElement(new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "managed-review-transition",
+            ["decision"] = expectedDecision,
+            ["sourcePreviewDigest"] = preview.PreviewDigest,
+            ["sourceManagedRunRevision"] = preview.ManagedRunRevision,
+            ["managedRunId"] = managedRunId,
+            ["managedRunRevision"] = managedRunRevision,
+            ["state"] = state,
+            ["canApply"] = canApply,
+            ["canDiscard"] = canDiscard,
+            ["hasLocalJournal"] = ParseRequiredBoolean(transition, "hasLocalJournal"),
+            ["detail"] = detailElement.Clone(),
+            ["authorityBoundary"] = ManagedReviewTransitionBoundary,
+            ["cleanupBoundary"] = ManagedReviewCleanupBoundary,
+        });
+        var transitionDigest = ParseRequiredDigest(transition, "transitionDigest");
+        if (transitionDigest != CanonicalDigest(body)) throw InvalidResponse();
+        return new ManagedReviewTransition(
+            1,
+            "managed-review-transition",
+            expectedDecision,
+            preview.PreviewDigest,
+            preview.ManagedRunRevision,
+            managedRunId,
+            managedRunRevision,
+            state,
+            canApply,
+            canDiscard,
+            ParseRequiredBoolean(transition, "hasLocalJournal"),
+            detail,
+            ManagedReviewTransitionBoundary,
+            ManagedReviewCleanupBoundary,
+            transitionDigest);
+    }
+
+    private static ManagedReviewResult ParseManagedReviewResult(JsonElement result, string expectedState)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                result,
+                [
+                    "resultId", "resultDigest", "terminalState", "providerDisposition", "outcomeStatus",
+                    "outcomeBasis", "warningCodes", "evidenceId", "evidenceDigest",
+                ],
+                []) || !result.TryGetProperty("warningCodes", out var warningsElement) ||
+            warningsElement.ValueKind != JsonValueKind.Array || warningsElement.GetArrayLength() > 128)
+        {
+            throw InvalidResponse();
+        }
+        var allowedWarnings = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "provider-warning-redacted", "provider-output-redacted", "coordinator-failure", "runtime-output-truncated",
+            "staging-read-confinement-unattested", "postcondition-evaluator-failed", "local-cleanup-pending",
+            "local-cleanup-failed", "runtime-warning",
+        };
+        var warnings = warningsElement.EnumerateArray().Select(warning =>
+        {
+            if (warning.ValueKind != JsonValueKind.String || warning.GetString() is not { } value ||
+                !allowedWarnings.Contains(value))
+            {
+                throw InvalidResponse();
+            }
+            return value;
+        }).ToArray();
+        return new ManagedReviewResult(
+            ParseRequiredGuid(result, "resultId"),
+            ParseRequiredDigest(result, "resultDigest"),
+            ParseRequiredEnum(result, "terminalState", expectedState),
+            ParseRequiredEnum(
+                result,
+                "providerDisposition",
+                "completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown"),
+            ParseRequiredEnum(result, "outcomeStatus", "satisfied", "failed", "not-assessed", "indeterminate"),
+            ParseRequiredEnum(
+                result,
+                "outcomeBasis",
+                "postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure"),
+            Array.AsReadOnly(warnings),
+            ParseRequiredGuid(result, "evidenceId"),
+            ParseRequiredDigest(result, "evidenceDigest"));
+    }
+
+    private static ManagedReviewStaging ParseManagedReviewStaging(JsonElement staging, string state)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                staging,
+                [
+                    "evidenceId", "evidenceDigest", "baselineDigest", "finalDigest", "applyState", "changeCount",
+                    "changedInventoryLimit", "omittedCount", "changedInventory", "changedInventoryDigest",
+                    "excludedPathCount", "excludedPathSetDigest",
+                ],
+                []) || !staging.TryGetProperty("changedInventory", out var inventoryElement) ||
+            inventoryElement.ValueKind != JsonValueKind.Array || inventoryElement.GetArrayLength() > 512 ||
+            ParseBoundedNonNegativeInt(staging, "changedInventoryLimit", 512) != 512 ||
+            ParseBoundedNonNegativeInt(staging, "omittedCount", 0) != 0)
+        {
+            throw InvalidResponse();
+        }
+        var applyState = ParseRequiredEnum(staging, "applyState", "pending", "conflict");
+        if (applyState != (state == "review-required" ? "pending" : "conflict")) throw InvalidResponse();
+        var inventory = inventoryElement.EnumerateArray().Select(ParseManagedChangedFile).ToArray();
+        if (ParseBoundedNonNegativeInt(staging, "changeCount", 512) != inventory.Length ||
+            inventory.Select(change => change.Path).Distinct(StringComparer.Ordinal).Count() != inventory.Length ||
+            inventory.Zip(inventory.Skip(1), (left, right) => StringComparer.Ordinal.Compare(left.Path, right.Path) >= 0).Any(invalid => invalid))
+        {
+            throw InvalidResponse();
+        }
+        var inventoryDigest = ParseRequiredDigest(staging, "changedInventoryDigest");
+        if (inventoryDigest != CanonicalDigest(inventoryElement)) throw InvalidResponse();
+        return new ManagedReviewStaging(
+            ParseRequiredGuid(staging, "evidenceId"),
+            ParseRequiredDigest(staging, "evidenceDigest"),
+            ParseRequiredDigest(staging, "baselineDigest"),
+            ParseRequiredDigest(staging, "finalDigest"),
+            applyState,
+            inventory.Length,
+            512,
+            0,
+            Array.AsReadOnly(inventory),
+            inventoryDigest,
+            ParseBoundedNonNegativeInt(staging, "excludedPathCount", 20_000),
+            ParseRequiredDigest(staging, "excludedPathSetDigest"));
+    }
+
+    private static ManagedChangedFile ParseManagedChangedFile(JsonElement change)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                change,
+                ["path", "kind"],
+                ["beforeDigest", "afterDigest", "beforeSize", "afterSize", "beforeMode", "afterMode"]))
+        {
+            throw InvalidResponse();
+        }
+        var kind = ParseRequiredEnum(change, "kind", "added", "modified", "deleted");
+        var before = change.TryGetProperty("beforeDigest", out _) || change.TryGetProperty("beforeSize", out _) ||
+                     change.TryGetProperty("beforeMode", out _);
+        var after = change.TryGetProperty("afterDigest", out _) || change.TryGetProperty("afterSize", out _) ||
+                    change.TryGetProperty("afterMode", out _);
+        var completeBefore = change.TryGetProperty("beforeDigest", out _) && change.TryGetProperty("beforeSize", out _) &&
+                             change.TryGetProperty("beforeMode", out _);
+        var completeAfter = change.TryGetProperty("afterDigest", out _) && change.TryGetProperty("afterSize", out _) &&
+                            change.TryGetProperty("afterMode", out _);
+        if (before != completeBefore || after != completeAfter ||
+            (kind == "added" && (before || !after)) || (kind == "deleted" && (!before || after)) ||
+            (kind == "modified" && (!before || !after)))
+        {
+            throw InvalidResponse();
+        }
+        return new ManagedChangedFile(
+            ParseWorkspaceRelativePath(change.GetProperty("path")),
+            kind,
+            completeBefore ? ParseRequiredDigest(change, "beforeDigest") : null,
+            completeAfter ? ParseRequiredDigest(change, "afterDigest") : null,
+            completeBefore ? ParseBoundedNonNegativeLong(change, "beforeSize", MaxSafeProductRevision) : null,
+            completeAfter ? ParseBoundedNonNegativeLong(change, "afterSize", MaxSafeProductRevision) : null,
+            completeBefore ? ParseBoundedNonNegativeInt(change, "beforeMode", 0x1ff) : null,
+            completeAfter ? ParseBoundedNonNegativeInt(change, "afterMode", 0x1ff) : null);
+    }
+
+    private static ManagedReviewApplyConfirmation ParseManagedReviewApplyConfirmation(
+        JsonElement confirmation,
+        ManagedReviewStaging staging)
+    {
+        if (!HasRequiredAndAllowedProperties(
+                confirmation,
+                [
+                    "decision", "reviewEvidenceId", "reviewEvidenceDigest", "changedInventoryDigest", "writeEnvelope",
+                    "writeEnvelopeDigest",
+                ],
+                []) || confirmation.GetProperty("decision").GetString() != "apply-exact-reviewed-inventory" ||
+            ParseRequiredGuid(confirmation, "reviewEvidenceId") != staging.EvidenceId ||
+            ParseRequiredDigest(confirmation, "reviewEvidenceDigest") != staging.EvidenceDigest ||
+            ParseRequiredDigest(confirmation, "changedInventoryDigest") != staging.ChangedInventoryDigest ||
+            !confirmation.TryGetProperty("writeEnvelope", out var envelopeElement) ||
+            envelopeElement.ValueKind != JsonValueKind.Array || envelopeElement.GetArrayLength() > 256)
+        {
+            throw InvalidResponse();
+        }
+        var envelope = envelopeElement.EnumerateArray().Select(ParseWorkspaceRelativeScope).ToArray();
+        if (envelope.Distinct(StringComparer.Ordinal).Count() != envelope.Length ||
+            envelope.Zip(envelope.Skip(1), (left, right) => StringComparer.Ordinal.Compare(left, right) >= 0).Any(invalid => invalid))
+        {
+            throw InvalidResponse();
+        }
+        var envelopeDigest = ParseRequiredDigest(confirmation, "writeEnvelopeDigest");
+        if (envelopeDigest != CanonicalDigest(JsonSerializer.SerializeToElement(envelope))) throw InvalidResponse();
+        return new ManagedReviewApplyConfirmation(
+            "apply-exact-reviewed-inventory",
+            staging.EvidenceId,
+            staging.EvidenceDigest,
+            staging.ChangedInventoryDigest,
+            Array.AsReadOnly(envelope),
+            envelopeDigest);
     }
 
     private static ManagedRunSummary ParseManagedRunSummary(JsonElement summary)
@@ -918,6 +1255,196 @@ internal static partial class PortableDesignProtocol
         {
             throw new ArgumentException("Managed read-only preview digest is invalid.", nameof(preview));
         }
+    }
+
+    internal static void ValidateManagedReviewPreview(ManagedReviewPreview preview)
+    {
+        ArgumentNullException.ThrowIfNull(preview);
+        var body = BuildManagedReviewPreviewBody(preview);
+        if (preview.PreviewDigest != CanonicalDigest(body))
+        {
+            throw new ArgumentException("Managed review preview digest is invalid.", nameof(preview));
+        }
+    }
+
+    private static JsonElement BuildManagedReviewPreviewBody(ManagedReviewPreview preview)
+    {
+        if (preview.SchemaVersion != 1 || preview.Kind != "managed-review-preview" ||
+            preview.ManagedRunId == Guid.Empty || preview.ManagedRunRevision < 1 || preview.RunId == Guid.Empty ||
+            preview.ProductId == Guid.Empty || preview.InitiativeId == Guid.Empty || preview.Mode != "codex-staged" ||
+            preview.State is not ("review-required" or "conflict") || !preview.CanDiscard ||
+            preview.CanApply != (preview.ApplyConfirmation is not null) ||
+            (preview.State == "conflict" && preview.CanApply) || !DigestPattern().IsMatch(preview.BindingsDigest) ||
+            !DigestPattern().IsMatch(preview.PreviewDigest) || preview.PostApplyGatePolicy != "record-not-assessed" ||
+            preview.AuthorityBoundary != ManagedReviewBoundary ||
+            preview.PrivacyBoundary != ManagedReviewPrivacyBoundary ||
+            preview.CleanupBoundary != ManagedReviewCleanupBoundary)
+        {
+            throw new ArgumentException("Managed review preview identity or boundary is invalid.", nameof(preview));
+        }
+        var allowedWarnings = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "provider-warning-redacted", "provider-output-redacted", "coordinator-failure", "runtime-output-truncated",
+            "staging-read-confinement-unattested", "postcondition-evaluator-failed", "local-cleanup-pending",
+            "local-cleanup-failed", "runtime-warning",
+        };
+        var result = preview.Result;
+        if (result.ResultId == Guid.Empty || result.EvidenceId == Guid.Empty ||
+            !DigestPattern().IsMatch(result.ResultDigest) || !DigestPattern().IsMatch(result.EvidenceDigest) ||
+            result.TerminalState != preview.State ||
+            result.ProviderDisposition is not ("completed" or "failed" or "cancelled" or "interrupted" or "crashed" or
+                "protocol-error" or "unknown") ||
+            result.OutcomeStatus is not ("satisfied" or "failed" or "not-assessed" or "indeterminate") ||
+            result.OutcomeBasis is not ("postcondition-evaluator" or "deterministic-offline-runtime" or "not-evaluated" or
+                "provider-failure") || result.WarningCodes.Count > 128 ||
+            result.WarningCodes.Any(warning => !allowedWarnings.Contains(warning)))
+        {
+            throw new ArgumentException("Managed review result is invalid.", nameof(preview));
+        }
+        var staging = preview.Staging;
+        if (staging.EvidenceId != result.EvidenceId || staging.EvidenceDigest != result.EvidenceDigest ||
+            !DigestPattern().IsMatch(staging.BaselineDigest) || !DigestPattern().IsMatch(staging.FinalDigest) ||
+            staging.ApplyState != (preview.State == "review-required" ? "pending" : "conflict") ||
+            staging.ChangeCount != staging.ChangedInventory.Count || staging.ChangedInventoryLimit != 512 ||
+            staging.OmittedCount != 0 || staging.ChangedInventory.Count > 512 ||
+            staging.ChangedInventory.Select(change => change.Path).Distinct(StringComparer.Ordinal).Count() !=
+                staging.ChangedInventory.Count ||
+            staging.ChangedInventory.Zip(
+                    staging.ChangedInventory.Skip(1),
+                    (left, right) => StringComparer.Ordinal.Compare(left.Path, right.Path) >= 0)
+                .Any(invalid => invalid) || staging.ExcludedPathCount is < 0 or > 20_000 ||
+            !DigestPattern().IsMatch(staging.ExcludedPathSetDigest))
+        {
+            throw new ArgumentException("Managed review staging is invalid.", nameof(preview));
+        }
+        var inventory = staging.ChangedInventory.Select(change =>
+        {
+            var path = ParseWorkspaceRelativePath(JsonSerializer.SerializeToElement(change.Path));
+            if (change.Kind is not ("added" or "modified" or "deleted"))
+            {
+                throw new ArgumentException("Managed changed-file identity is invalid.", nameof(preview));
+            }
+            var before = change.BeforeDigest is not null || change.BeforeSize.HasValue || change.BeforeMode.HasValue;
+            var after = change.AfterDigest is not null || change.AfterSize.HasValue || change.AfterMode.HasValue;
+            var completeBefore = change.BeforeDigest is not null && change.BeforeSize.HasValue && change.BeforeMode.HasValue;
+            var completeAfter = change.AfterDigest is not null && change.AfterSize.HasValue && change.AfterMode.HasValue;
+            if (before != completeBefore || after != completeAfter ||
+                (change.Kind == "added" && (before || !after)) ||
+                (change.Kind == "deleted" && (!before || after)) ||
+                (change.Kind == "modified" && (!before || !after)) ||
+                (completeBefore && (!DigestPattern().IsMatch(change.BeforeDigest!) ||
+                    change.BeforeSize is < 0 or > MaxSafeProductRevision || change.BeforeMode is < 0 or > 0x1ff)) ||
+                (completeAfter && (!DigestPattern().IsMatch(change.AfterDigest!) ||
+                    change.AfterSize is < 0 or > MaxSafeProductRevision || change.AfterMode is < 0 or > 0x1ff)))
+            {
+                throw new ArgumentException("Managed changed-file metadata is invalid.", nameof(preview));
+            }
+            var body = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["path"] = path,
+                ["kind"] = change.Kind,
+            };
+            if (completeBefore)
+            {
+                body["beforeDigest"] = change.BeforeDigest;
+                body["beforeSize"] = change.BeforeSize;
+                body["beforeMode"] = change.BeforeMode;
+            }
+            if (completeAfter)
+            {
+                body["afterDigest"] = change.AfterDigest;
+                body["afterSize"] = change.AfterSize;
+                body["afterMode"] = change.AfterMode;
+            }
+            return body;
+        }).ToArray();
+        var inventoryElement = JsonSerializer.SerializeToElement(inventory, StrictJson);
+        if (staging.ChangedInventoryDigest != CanonicalDigest(inventoryElement))
+        {
+            throw new ArgumentException("Managed review changed inventory digest is invalid.", nameof(preview));
+        }
+        Dictionary<string, object?>? confirmationBody = null;
+        if (preview.ApplyConfirmation is { } confirmation)
+        {
+            if (confirmation.Decision != "apply-exact-reviewed-inventory" ||
+                confirmation.ReviewEvidenceId != staging.EvidenceId ||
+                confirmation.ReviewEvidenceDigest != staging.EvidenceDigest ||
+                confirmation.ChangedInventoryDigest != staging.ChangedInventoryDigest ||
+                confirmation.WriteEnvelope.Count > 256 ||
+                confirmation.WriteEnvelope.Distinct(StringComparer.Ordinal).Count() != confirmation.WriteEnvelope.Count ||
+                confirmation.WriteEnvelope.Zip(
+                        confirmation.WriteEnvelope.Skip(1),
+                        (left, right) => StringComparer.Ordinal.Compare(left, right) >= 0)
+                    .Any(invalid => invalid))
+            {
+                throw new ArgumentException("Managed review apply confirmation is invalid.", nameof(preview));
+            }
+            var envelope = confirmation.WriteEnvelope.Select(scope =>
+                ParseWorkspaceRelativeScope(JsonSerializer.SerializeToElement(scope))).ToArray();
+            var envelopeElement = JsonSerializer.SerializeToElement(envelope);
+            if (confirmation.WriteEnvelopeDigest != CanonicalDigest(envelopeElement))
+            {
+                throw new ArgumentException("Managed review write envelope digest is invalid.", nameof(preview));
+            }
+            confirmationBody = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["decision"] = "apply-exact-reviewed-inventory",
+                ["reviewEvidenceId"] = confirmation.ReviewEvidenceId,
+                ["reviewEvidenceDigest"] = confirmation.ReviewEvidenceDigest,
+                ["changedInventoryDigest"] = confirmation.ChangedInventoryDigest,
+                ["writeEnvelope"] = envelope,
+                ["writeEnvelopeDigest"] = confirmation.WriteEnvelopeDigest,
+            };
+        }
+        var body = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "managed-review-preview",
+            ["managedRunId"] = preview.ManagedRunId,
+            ["managedRunRevision"] = preview.ManagedRunRevision,
+            ["runId"] = preview.RunId,
+            ["productId"] = preview.ProductId,
+            ["initiativeId"] = preview.InitiativeId,
+            ["mode"] = "codex-staged",
+            ["state"] = preview.State,
+            ["canApply"] = preview.CanApply,
+            ["canDiscard"] = true,
+            ["hasLocalJournal"] = preview.HasLocalJournal,
+            ["bindingsDigest"] = preview.BindingsDigest,
+            ["result"] = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["resultId"] = result.ResultId,
+                ["resultDigest"] = result.ResultDigest,
+                ["terminalState"] = result.TerminalState,
+                ["providerDisposition"] = result.ProviderDisposition,
+                ["outcomeStatus"] = result.OutcomeStatus,
+                ["outcomeBasis"] = result.OutcomeBasis,
+                ["warningCodes"] = result.WarningCodes,
+                ["evidenceId"] = result.EvidenceId,
+                ["evidenceDigest"] = result.EvidenceDigest,
+            },
+            ["staging"] = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["evidenceId"] = staging.EvidenceId,
+                ["evidenceDigest"] = staging.EvidenceDigest,
+                ["baselineDigest"] = staging.BaselineDigest,
+                ["finalDigest"] = staging.FinalDigest,
+                ["applyState"] = staging.ApplyState,
+                ["changeCount"] = staging.ChangeCount,
+                ["changedInventoryLimit"] = 512,
+                ["omittedCount"] = 0,
+                ["changedInventory"] = inventory,
+                ["changedInventoryDigest"] = staging.ChangedInventoryDigest,
+                ["excludedPathCount"] = staging.ExcludedPathCount,
+                ["excludedPathSetDigest"] = staging.ExcludedPathSetDigest,
+            },
+            ["postApplyGatePolicy"] = "record-not-assessed",
+            ["authorityBoundary"] = ManagedReviewBoundary,
+            ["privacyBoundary"] = ManagedReviewPrivacyBoundary,
+            ["cleanupBoundary"] = ManagedReviewCleanupBoundary,
+        };
+        if (confirmationBody is not null) body["applyConfirmation"] = confirmationBody;
+        return JsonSerializer.SerializeToElement(body, StrictJson);
     }
 
     internal static PortableDesignSnapshotPage ParsePageResponse(JsonElement envelope, int expectedOffset, int expectedLimit)
@@ -1497,6 +2024,11 @@ internal static partial class PortableDesignProtocol
         return path;
     }
 
+    private static string ParseWorkspaceRelativeScope(JsonElement value) =>
+        value.ValueKind == JsonValueKind.String && value.GetString() == "."
+            ? "."
+            : ParseWorkspaceRelativePath(value);
+
     private static Guid ParseRequiredGuid(JsonElement element, string name)
     {
         if (!element.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String ||
@@ -1555,6 +2087,22 @@ internal static partial class PortableDesignProtocol
             throw InvalidResponse();
         }
         return parsed;
+    }
+
+    private static long ParseBoundedNonNegativeLong(JsonElement element, string name, long maximum)
+    {
+        if (!element.TryGetProperty(name, out var value) || !value.TryGetInt64(out var parsed) ||
+            parsed < 0 || parsed > maximum)
+        {
+            throw InvalidResponse();
+        }
+        return parsed;
+    }
+
+    private static long ParsePositiveLong(JsonElement element, string name)
+    {
+        var value = ParseBoundedNonNegativeLong(element, name, MaxSafeProductRevision);
+        return value < 1 ? throw InvalidResponse() : value;
     }
 
     private static bool ParseRequiredBoolean(JsonElement element, string name)

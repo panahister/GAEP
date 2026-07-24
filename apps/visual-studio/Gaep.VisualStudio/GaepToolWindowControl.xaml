@@ -119,6 +119,23 @@
                 Command="{Binding ReadManagedEvidenceCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
+        <TextBlock Text="Exact Staged Managed Run Review" FontWeight="SemiBold" />
+        <TextBlock Text="Load one exact pending codex-staged review, inspect the complete bounded changed-file inventory and write envelope, then choose apply or discard. Each decision requires two cancel-default confirmations. Post-apply Workflow gates remain not assessed and persisted state does not prove cleanup."
+                   TextWrapping="Wrap" Margin="0,4,0,8" />
+        <TextBlock Text="Exact pending Managed Run UUID" />
+        <TextBox Text="{Binding ManagedReviewRunId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="LoadManagedReviewButton" Content="Load exact staged review"
+                Command="{Binding LoadManagedReviewCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="ApplyManagedReviewButton" Content="Apply exact reviewed inventory"
+                Command="{Binding ApplyManagedReviewCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="DiscardManagedReviewButton" Content="Discard exact staged review"
+                Command="{Binding DiscardManagedReviewCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
         <TextBlock Text="Portable design metadata" FontWeight="SemiBold" />
         <Button x:Name="ListDesignImportsButton" Content="List design imports"
                 Command="{Binding ListDesignImportsCommand}" MinHeight="28" Margin="0,4,0,8"
@@ -158,6 +175,9 @@
       <Setter TargetName="ExecuteManagedReadOnlyButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ListManagedEvidenceButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ReadManagedEvidenceButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="LoadManagedReviewButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ApplyManagedReviewButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="DiscardManagedReviewButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ListDesignImportsButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ReadDesignImportButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ImportDesignBundleButton" Property="IsEnabled" Value="False" />

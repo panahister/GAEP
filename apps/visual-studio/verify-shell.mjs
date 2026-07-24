@@ -78,6 +78,10 @@ for (const binding of [
   "ManagedRunId",
   "ListManagedEvidenceCommand",
   "ReadManagedEvidenceCommand",
+  "ManagedReviewRunId",
+  "LoadManagedReviewCommand",
+  "ApplyManagedReviewCommand",
+  "DiscardManagedReviewCommand",
   "ListDesignImportsCommand",
   "ReadDesignImportCommand",
   "ImportDesignBundleCommand",
@@ -98,6 +102,12 @@ requireText(remoteUi, /List Managed Run evidence/u,
   "Visual Studio evidence dashboard does not expose bounded Managed Run inventory")
 requireText(remoteUi, /Read Managed Run evidence/u,
   "Visual Studio evidence dashboard does not expose exact evidence detail")
+requireText(remoteUi, /Apply exact reviewed inventory/u,
+  "Visual Studio staged review does not expose exact apply")
+requireText(remoteUi, /Discard exact staged review/u,
+  "Visual Studio staged review does not expose exact discard")
+requireText(remoteUi, /two cancel-default confirmations/u,
+  "Visual Studio staged review does not communicate its two-confirmation boundary")
 
 if (process.platform === "win32") {
   await regularFile(join(output, "Gaep.VisualStudio.vsix"), 128 * 1024 * 1024)

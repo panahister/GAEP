@@ -26,6 +26,12 @@ internal static class Program
     private static readonly Guid ManagedEvidenceId = Guid.Parse("20202020-2020-4202-8202-202020202020");
     private static readonly Guid ManagedApplyDecisionId = Guid.Parse("21212121-2121-4212-8212-212121212121");
     private static readonly Guid RecordOnlyManagedRunId = Guid.Parse("22222222-2222-4222-8222-222222222223");
+    private static readonly Guid StagedManagedRunId = Guid.Parse("23232323-2323-4323-8323-232323232323");
+    private static readonly Guid StagedResultId = Guid.Parse("24242424-2424-4424-8424-242424242424");
+    private static readonly Guid StagedEvidenceId = Guid.Parse("25252525-2525-4525-8525-252525252525");
+    private static readonly Guid TransitionedResultId = Guid.Parse("26262626-2626-4626-8626-262626262626");
+    private static readonly Guid TransitionedEvidenceId = Guid.Parse("27272727-2727-4727-8727-272727272727");
+    private static readonly Guid ReviewApplyDecisionId = Guid.Parse("28282828-2828-4828-8828-282828282828");
     private const string PrivateRoot = "/Users/private/design-bundle";
     private const string PrivateCredential = "PRIVATE-OAUTH-TOKEN";
     private static int passed;
@@ -79,6 +85,14 @@ internal static class Program
         var badManagedEvidenceDetailRoot = Path.Combine(temporaryRoot, "bad-managed-evidence-detail");
         var badManagedEvidenceBindingRoot = Path.Combine(temporaryRoot, "bad-managed-evidence-binding");
         var badManagedEvidenceApplyBindingRoot = Path.Combine(temporaryRoot, "bad-managed-evidence-apply-binding");
+        var badManagedReviewDigestRoot = Path.Combine(temporaryRoot, "bad-managed-review-digest");
+        var badManagedReviewPrivateRoot = Path.Combine(temporaryRoot, "bad-managed-review-private");
+        var badManagedReviewBindingRoot = Path.Combine(temporaryRoot, "bad-managed-review-binding");
+        var badManagedReviewPathRoot = Path.Combine(temporaryRoot, "bad-managed-review-path");
+        var badManagedReviewMetadataRoot = Path.Combine(temporaryRoot, "bad-managed-review-metadata");
+        var badManagedTransitionDigestRoot = Path.Combine(temporaryRoot, "bad-managed-transition-digest");
+        var badManagedTransitionPrivateRoot = Path.Combine(temporaryRoot, "bad-managed-transition-private");
+        var staleManagedReviewRoot = Path.Combine(temporaryRoot, "stale-managed-review");
         Directory.CreateDirectory(bundleRoot);
         Directory.CreateDirectory(invalidSourceRoot);
         Directory.CreateDirectory(badReadinessRoot);
@@ -97,6 +111,14 @@ internal static class Program
         Directory.CreateDirectory(badManagedEvidenceDetailRoot);
         Directory.CreateDirectory(badManagedEvidenceBindingRoot);
         Directory.CreateDirectory(badManagedEvidenceApplyBindingRoot);
+        Directory.CreateDirectory(badManagedReviewDigestRoot);
+        Directory.CreateDirectory(badManagedReviewPrivateRoot);
+        Directory.CreateDirectory(badManagedReviewBindingRoot);
+        Directory.CreateDirectory(badManagedReviewPathRoot);
+        Directory.CreateDirectory(badManagedReviewMetadataRoot);
+        Directory.CreateDirectory(badManagedTransitionDigestRoot);
+        Directory.CreateDirectory(badManagedTransitionPrivateRoot);
+        Directory.CreateDirectory(staleManagedReviewRoot);
         var executable = Environment.ProcessPath;
         Check(executable is not null && File.Exists(executable), "Test app host executable is available");
 
@@ -380,6 +402,105 @@ internal static class Program
                   !invalidDetail.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
                   !invalidDetail.Message.Contains(PrivateCredential, StringComparison.Ordinal),
                 "Hostile Managed Run detail private fields and evidence/apply binding drift fail closed without reflection");
+        }
+
+        var stagedReview = await controller.ReadManagedReviewAsync(StagedManagedRunId.ToString("D"));
+        Check(stagedReview.ManagedRunId == StagedManagedRunId && stagedReview.ManagedRunRevision == 3 &&
+              stagedReview.State == "review-required" && stagedReview.CanApply && stagedReview.CanDiscard &&
+              stagedReview.PostApplyGatePolicy == "record-not-assessed" && stagedReview.Staging.OmittedCount == 0 &&
+              stagedReview.Staging.ChangeCount == stagedReview.Staging.ChangedInventory.Count &&
+              stagedReview.Staging.ChangedInventory.Select(change => change.Path)
+                  .SequenceEqual(["src/new.cs", "src/review.cs"]) &&
+              stagedReview.ApplyConfirmation?.WriteEnvelope.SequenceEqual(["src"]) == true,
+            "Managed staged review binds exact revision, complete inventory, write envelope, and non-outcome policy");
+        var stagedReviewJson = JsonSerializer.Serialize(stagedReview);
+        Check(!stagedReviewJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !stagedReviewJson.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Typed managed staged review omits private paths, source bytes, and credentials");
+        var stagedReviewOutput = ProductWorkflowController.RenderManagedReviewPreview(stagedReview);
+        Check(stagedReviewOutput.Contains("Exact changed-file inventory", StringComparison.Ordinal) &&
+              stagedReviewOutput.Contains("src/review.cs", StringComparison.Ordinal) &&
+              stagedReviewOutput.Contains("authorizes no mutation", StringComparison.Ordinal) &&
+              stagedReviewOutput.Contains("Workflow gates not assessed", StringComparison.Ordinal),
+            "Managed staged review renders exact metadata and the non-authority boundary");
+
+        var applyTransition = await controller.ApplyManagedReviewAsync(stagedReview, "founder.review");
+        Check(applyTransition.Decision == "apply-exact-managed-review" &&
+              applyTransition.SourcePreviewDigest == stagedReview.PreviewDigest &&
+              applyTransition.ManagedRunRevision == 4 && applyTransition.State == "failed" &&
+              applyTransition.Detail.Result?.OutcomeStatus == "failed" &&
+              applyTransition.Detail.Evidence?.Staging?.ApplyState == "applied" &&
+              applyTransition.Detail.ApplyDecision?.ManagedRunRevision == 3,
+            "Exact apply verifies the advanced persisted transition and explicit not-success outcome");
+        var applyTransitionJson = JsonSerializer.Serialize(applyTransition);
+        Check(!applyTransitionJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !applyTransitionJson.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Typed exact apply transition omits private paths and credentials");
+        var applyTransitionOutput = ProductWorkflowController.RenderManagedReviewTransition(applyTransition);
+        Check(applyTransitionOutput.Contains("Persisted state: failed", StringComparison.Ordinal) &&
+              applyTransitionOutput.Contains("governed outcome satisfaction", StringComparison.Ordinal) &&
+              applyTransitionOutput.Contains("cleanup remain separate claims", StringComparison.Ordinal),
+            "Exact apply transition renders persisted state without outcome or cleanup overclaim");
+
+        var discardTransition = await controller.DiscardManagedReviewAsync(stagedReview, "founder.review");
+        Check(discardTransition.Decision == "discard-exact-managed-review" &&
+              discardTransition.State == "discarded" && !discardTransition.CanApply && !discardTransition.CanDiscard &&
+              discardTransition.Detail.Evidence?.Staging?.ApplyState == "discarded" &&
+              discardTransition.Detail.ApplyDecision is null,
+            "Exact discard verifies discarded state without inventing apply-decision evidence");
+        await ExpectAsync<ArgumentException>(
+            () => client.ApplyManagedReviewAsync(
+                stagedReview with { PreviewDigest = $"sha256:{new string('0', 64)}" },
+                "founder.review"),
+            "A locally forged staged-review digest fails before transport");
+        var reboundChanges = stagedReview.Staging.ChangedInventory.Select((change, index) =>
+            index == 0 ? change with { Path = $"{PrivateRoot}/secret.cs" } : change).ToArray();
+        var reboundReviewError = await CaptureHostErrorAsync(() => client.DiscardManagedReviewAsync(
+            stagedReview with
+            {
+                Staging = stagedReview.Staging with { ChangedInventory = Array.AsReadOnly(reboundChanges) },
+            },
+            "founder.review"));
+        Check(reboundReviewError.Kind == "HOST_RESPONSE_INVALID" &&
+              !reboundReviewError.Message.Contains(PrivateRoot, StringComparison.Ordinal),
+            "A locally rebound absolute review path fails before transport without reflection");
+
+        foreach (var hostileRoot in new[]
+                 {
+                     badManagedReviewDigestRoot,
+                     badManagedReviewPrivateRoot,
+                     badManagedReviewBindingRoot,
+                     badManagedReviewPathRoot,
+                     badManagedReviewMetadataRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalidReview = await CaptureHostErrorAsync(() => hostileClient.ReadManagedReviewAsync(StagedManagedRunId));
+            Check(invalidReview.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidReview.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidReview.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Hostile staged-review private, path, metadata, rebound, and digest responses fail closed without reflection");
+        }
+        foreach (var hostileRoot in new[] { badManagedTransitionDigestRoot, badManagedTransitionPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var hostilePreview = await hostileClient.ReadManagedReviewAsync(StagedManagedRunId);
+            var invalidTransition = await CaptureHostErrorAsync(() =>
+                hostileClient.ApplyManagedReviewAsync(hostilePreview, "founder.review"));
+            Check(invalidTransition.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidTransition.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidTransition.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Hostile managed-review transition private fields and digest drift fail closed without reflection");
+        }
+        await using (var staleClient = new EngineClient(staleManagedReviewRoot, executable))
+        {
+            var stalePreview = await staleClient.ReadManagedReviewAsync(StagedManagedRunId);
+            var staleError = await CaptureHostErrorAsync(() =>
+                staleClient.ApplyManagedReviewAsync(stalePreview, "founder.review"));
+            Check(staleError.Kind == "MANAGED_REVIEW_CHANGED" && staleError.Code == -32_029 &&
+                  !staleError.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !staleError.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Stale staged-review decisions preserve the stable private-safe changed error");
         }
 
         var handoffContext = await controller.ReadAgentHandoffContextAsync();
@@ -692,6 +813,14 @@ internal static class Program
         var badManagedEvidenceDetail = Path.GetFileName(workspace) == "bad-managed-evidence-detail";
         var badManagedEvidenceBinding = Path.GetFileName(workspace) == "bad-managed-evidence-binding";
         var badManagedEvidenceApplyBinding = Path.GetFileName(workspace) == "bad-managed-evidence-apply-binding";
+        var badManagedReviewDigest = Path.GetFileName(workspace) == "bad-managed-review-digest";
+        var badManagedReviewPrivate = Path.GetFileName(workspace) == "bad-managed-review-private";
+        var badManagedReviewBinding = Path.GetFileName(workspace) == "bad-managed-review-binding";
+        var badManagedReviewPath = Path.GetFileName(workspace) == "bad-managed-review-path";
+        var badManagedReviewMetadata = Path.GetFileName(workspace) == "bad-managed-review-metadata";
+        var badManagedTransitionDigest = Path.GetFileName(workspace) == "bad-managed-transition-digest";
+        var badManagedTransitionPrivate = Path.GetFileName(workspace) == "bad-managed-transition-private";
+        var staleManagedReview = Path.GetFileName(workspace) == "stale-managed-review";
         Dictionary<string, object?>? selectedAgent = null;
         while (await Console.In.ReadLineAsync() is { } line)
         {
@@ -798,6 +927,34 @@ internal static class Program
                         badManagedEvidenceDetail,
                         badManagedEvidenceBinding,
                         badManagedEvidenceApplyBinding);
+                    break;
+                case "managed.review.read":
+                    await HandleManagedReviewReadAsync(
+                        id,
+                        parameters,
+                        badManagedReviewDigest,
+                        badManagedReviewPrivate,
+                        badManagedReviewBinding,
+                        badManagedReviewPath,
+                        badManagedReviewMetadata);
+                    break;
+                case "managed.review.apply":
+                    await HandleManagedReviewDecisionAsync(
+                        id,
+                        parameters,
+                        "apply-exact-managed-review",
+                        staleManagedReview,
+                        badManagedTransitionDigest,
+                        badManagedTransitionPrivate);
+                    break;
+                case "managed.review.discard":
+                    await HandleManagedReviewDecisionAsync(
+                        id,
+                        parameters,
+                        "discard-exact-managed-review",
+                        staleManagedReview,
+                        badManagedTransitionDigest,
+                        badManagedTransitionPrivate);
                     break;
                 case "productStudio.portableDesign.import":
                     await HandleImportAsync(id, parameters);
@@ -1069,6 +1226,316 @@ internal static class Program
             ((Dictionary<string, object?>)detail["applyDecision"]!)["receiptDigest"] = $"sha256:{new string('0', 64)}";
         }
         await WriteResultAsync(id, detail);
+    }
+
+    private static async Task HandleManagedReviewReadAsync(
+        long id,
+        JsonElement parameters,
+        bool invalidateDigest,
+        bool includePrivateField,
+        bool mismatchBinding,
+        bool includePrivatePath,
+        bool incompleteMetadata)
+    {
+        if (!HasOnlyProperties(parameters, "managedRunId") ||
+            parameters.GetProperty("managedRunId").GetString() != StagedManagedRunId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED REVIEW READ");
+            return;
+        }
+        var preview = ManagedReviewPreview();
+        if (invalidateDigest) preview["previewDigest"] = $"sha256:{new string('0', 64)}";
+        if (includePrivateField) preview["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        if (mismatchBinding)
+        {
+            ((Dictionary<string, object?>)preview["applyConfirmation"]!)["reviewEvidenceId"] =
+                ManagedEvidenceId.ToString("D");
+            RefreshCanonicalDigest(preview, "previewDigest");
+        }
+        if (includePrivatePath || incompleteMetadata)
+        {
+            var staging = (Dictionary<string, object?>)preview["staging"]!;
+            var inventory = (Dictionary<string, object?>[])staging["changedInventory"]!;
+            if (includePrivatePath) inventory[0]["path"] = $"{PrivateRoot}/secret.cs";
+            if (incompleteMetadata) inventory[0].Remove("afterMode");
+            var inventoryDigest = CanonicalDigest(JsonSerializer.SerializeToElement(inventory));
+            staging["changedInventoryDigest"] = inventoryDigest;
+            ((Dictionary<string, object?>)preview["applyConfirmation"]!)["changedInventoryDigest"] = inventoryDigest;
+            RefreshCanonicalDigest(preview, "previewDigest");
+        }
+        await WriteResultAsync(id, preview);
+    }
+
+    private static async Task HandleManagedReviewDecisionAsync(
+        long id,
+        JsonElement parameters,
+        string decision,
+        bool staleReview,
+        bool invalidateDigest,
+        bool includePrivateField)
+    {
+        var preview = ManagedReviewPreview();
+        if (!HasOnlyProperties(
+                parameters,
+                "actorId", "managedRunId", "expectedManagedRunRevision", "expectedPreviewDigest", "confirmation") ||
+            parameters.GetProperty("actorId").GetString() is not ("founder.review" or "gaep.visual-studio-local-human") ||
+            parameters.GetProperty("managedRunId").GetString() != StagedManagedRunId.ToString("D") ||
+            parameters.GetProperty("expectedManagedRunRevision").GetInt64() != 3 ||
+            parameters.GetProperty("expectedPreviewDigest").GetString() != (string)preview["previewDigest"]! ||
+            parameters.GetProperty("confirmation").GetString() != decision)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED REVIEW DECISION");
+            return;
+        }
+        if (staleReview)
+        {
+            await WriteErrorAsync(
+                id,
+                -32_029,
+                "MANAGED_REVIEW_CHANGED",
+                $"{PrivateRoot}; token={PrivateCredential}");
+            return;
+        }
+        var transition = ManagedReviewTransition(decision);
+        if (invalidateDigest) transition["transitionDigest"] = $"sha256:{new string('0', 64)}";
+        if (includePrivateField) transition["localJournalPath"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, transition);
+    }
+
+    private static Dictionary<string, object?> ManagedReviewPreview()
+    {
+        var inventory = new[]
+        {
+            new Dictionary<string, object?>
+            {
+                ["path"] = "src/new.cs",
+                ["kind"] = "added",
+                ["afterDigest"] = $"sha256:{new string('1', 64)}",
+                ["afterSize"] = 24,
+                ["afterMode"] = 0x1a4,
+            },
+            new Dictionary<string, object?>
+            {
+                ["path"] = "src/review.cs",
+                ["kind"] = "modified",
+                ["beforeDigest"] = $"sha256:{new string('2', 64)}",
+                ["afterDigest"] = $"sha256:{new string('3', 64)}",
+                ["beforeSize"] = 80,
+                ["afterSize"] = 96,
+                ["beforeMode"] = 0x1a4,
+                ["afterMode"] = 0x1a4,
+            },
+        };
+        var inventoryDigest = CanonicalDigest(JsonSerializer.SerializeToElement(inventory));
+        var writeEnvelope = new[] { "src" };
+        var preview = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "managed-review-preview",
+            ["managedRunId"] = StagedManagedRunId.ToString("D"),
+            ["managedRunRevision"] = 3,
+            ["runId"] = GovernedManagedRunId.ToString("D"),
+            ["productId"] = ProductId.ToString("D"),
+            ["initiativeId"] = InitiativeId.ToString("D"),
+            ["mode"] = "codex-staged",
+            ["state"] = "review-required",
+            ["canApply"] = true,
+            ["canDiscard"] = true,
+            ["hasLocalJournal"] = false,
+            ["bindingsDigest"] = $"sha256:{new string('4', 64)}",
+            ["result"] = new Dictionary<string, object?>
+            {
+                ["resultId"] = StagedResultId.ToString("D"),
+                ["resultDigest"] = $"sha256:{new string('5', 64)}",
+                ["terminalState"] = "review-required",
+                ["providerDisposition"] = "completed",
+                ["outcomeStatus"] = "not-assessed",
+                ["outcomeBasis"] = "not-evaluated",
+                ["warningCodes"] = new[] { "provider-output-redacted", "staging-read-confinement-unattested" },
+                ["evidenceId"] = StagedEvidenceId.ToString("D"),
+                ["evidenceDigest"] = $"sha256:{new string('6', 64)}",
+            },
+            ["staging"] = new Dictionary<string, object?>
+            {
+                ["evidenceId"] = StagedEvidenceId.ToString("D"),
+                ["evidenceDigest"] = $"sha256:{new string('6', 64)}",
+                ["baselineDigest"] = $"sha256:{new string('7', 64)}",
+                ["finalDigest"] = $"sha256:{new string('8', 64)}",
+                ["applyState"] = "pending",
+                ["changeCount"] = inventory.Length,
+                ["changedInventoryLimit"] = 512,
+                ["omittedCount"] = 0,
+                ["changedInventory"] = inventory,
+                ["changedInventoryDigest"] = inventoryDigest,
+                ["excludedPathCount"] = 0,
+                ["excludedPathSetDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(Array.Empty<string>())),
+            },
+            ["applyConfirmation"] = new Dictionary<string, object?>
+            {
+                ["decision"] = "apply-exact-reviewed-inventory",
+                ["reviewEvidenceId"] = StagedEvidenceId.ToString("D"),
+                ["reviewEvidenceDigest"] = $"sha256:{new string('6', 64)}",
+                ["changedInventoryDigest"] = inventoryDigest,
+                ["writeEnvelope"] = writeEnvelope,
+                ["writeEnvelopeDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(writeEnvelope)),
+            },
+            ["postApplyGatePolicy"] = "record-not-assessed",
+            ["authorityBoundary"] = "managed-review-preview-authorizes-no-mutation-without-an-exact-digest-bound-human-decision",
+            ["privacyBoundary"] = "Exact portable identifiers, digests, warning codes, workspace-relative changed paths, file digests, sizes, modes and write scopes only; prompts, provider output, source bytes, absolute paths, executable paths, process state and credentials are omitted.",
+            ["cleanupBoundary"] = "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup.",
+        };
+        preview["previewDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(preview));
+        return preview;
+    }
+
+    private static Dictionary<string, object?> ManagedReviewTransition(string decision)
+    {
+        var preview = ManagedReviewPreview();
+        var applied = decision == "apply-exact-managed-review";
+        var state = applied ? "failed" : "discarded";
+        var transition = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "managed-review-transition",
+            ["decision"] = decision,
+            ["sourcePreviewDigest"] = preview["previewDigest"],
+            ["sourceManagedRunRevision"] = 3,
+            ["managedRunId"] = StagedManagedRunId.ToString("D"),
+            ["managedRunRevision"] = 4,
+            ["state"] = state,
+            ["canApply"] = false,
+            ["canDiscard"] = false,
+            ["hasLocalJournal"] = applied,
+            ["detail"] = TransitionedManagedEvidenceDetail(state, applied),
+            ["authorityBoundary"] = "managed-review-transition-proves-persisted-state-not-provider-outcome-or-machine-local-cleanup",
+            ["cleanupBoundary"] = "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup.",
+        };
+        transition["transitionDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(transition));
+        return transition;
+    }
+
+    private static Dictionary<string, object?> TransitionedManagedEvidenceDetail(string state, bool applied)
+    {
+        var resultDigest = $"sha256:{new string('9', 64)}";
+        var evidenceDigest = $"sha256:{new string('a', 64)}";
+        var applyDecisionDigest = $"sha256:{new string('b', 64)}";
+        var preview = ManagedReviewPreview();
+        var summary = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "managed-run-summary",
+            ["managedRunId"] = StagedManagedRunId.ToString("D"),
+            ["runId"] = GovernedManagedRunId.ToString("D"),
+            ["productId"] = ProductId.ToString("D"),
+            ["initiativeId"] = InitiativeId.ToString("D"),
+            ["mode"] = "codex-staged",
+            ["state"] = state,
+            ["adapterId"] = "openai-codex",
+            ["agentId"] = "codex",
+            ["modelId"] = "gpt-5.6-codex",
+            ["attemptNumber"] = 1,
+            ["recoveryStatus"] = "recovered",
+            ["workflowCheckpointCount"] = 0,
+            ["hasResult"] = true,
+            ["hasApplyDecision"] = applied,
+            ["bindingsDigest"] = $"sha256:{new string('4', 64)}",
+            ["resultDigest"] = resultDigest,
+            ["createdAt"] = "2026-07-24T08:29:59.000Z",
+            ["startedAt"] = "2026-07-24T08:30:00.000Z",
+            ["updatedAt"] = "2026-07-24T08:30:02.000Z",
+            ["endedAt"] = "2026-07-24T08:30:02.000Z",
+            ["authorityBoundary"] = "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
+        };
+        if (applied) summary["applyDecisionDigest"] = applyDecisionDigest;
+        var detail = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "managed-evidence-detail",
+            ["summary"] = summary,
+            ["artifactStatus"] = "verified-result-and-evidence",
+            ["result"] = new Dictionary<string, object?>
+            {
+                ["resultId"] = TransitionedResultId.ToString("D"),
+                ["resultDigest"] = resultDigest,
+                ["providerDisposition"] = "completed",
+                ["terminationCause"] = "normal",
+                ["outcomeStatus"] = "failed",
+                ["outcomeBasis"] = "not-evaluated",
+                ["terminalState"] = state,
+                ["evidenceId"] = TransitionedEvidenceId.ToString("D"),
+                ["evidenceDigest"] = evidenceDigest,
+                ["warningCodes"] = applied
+                    ? new[] { "provider-output-redacted" }
+                    : new[] { "provider-output-redacted", "local-cleanup-pending" },
+                ["startedAt"] = "2026-07-24T08:30:00.000Z",
+                ["endedAt"] = "2026-07-24T08:30:02.000Z",
+            },
+            ["evidence"] = new Dictionary<string, object?>
+            {
+                ["evidenceId"] = TransitionedEvidenceId.ToString("D"),
+                ["evidenceDigest"] = evidenceDigest,
+                ["eventCount"] = 2,
+                ["eventTypeCounts"] = new Dictionary<string, object?>
+                {
+                    ["lifecycle"] = 1,
+                    ["output"] = 1,
+                    ["item"] = 0,
+                    ["approval"] = 0,
+                    ["warning"] = 0,
+                    ["error"] = 0,
+                },
+                ["eventsDigest"] = $"sha256:{new string('c', 64)}",
+                ["workflowStrategy"] = "sequential",
+                ["workflowStepCount"] = 1,
+                ["workflowAttemptCount"] = 1,
+                ["completedStepCount"] = 0,
+                ["charterEvidenceStatus"] = "not-assessed",
+                ["charterStopStatus"] = "not-assessed",
+                ["terminalReasonCode"] = applied ? "workflow-output-gate-failed" : "staged-review-discarded",
+                ["staging"] = new Dictionary<string, object?>
+                {
+                    ["changeCount"] = 2,
+                    ["excludedPathCount"] = 0,
+                    ["applyState"] = applied ? "applied" : "discarded",
+                    ["baselineDigest"] = $"sha256:{new string('7', 64)}",
+                    ["finalDigest"] = $"sha256:{new string('8', 64)}",
+                    ["changedInventoryDigest"] = ((Dictionary<string, object?>)preview["staging"]!)["changedInventoryDigest"],
+                    ["excludedPathSetDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(Array.Empty<string>())),
+                },
+                ["actualEffectCounts"] = new Dictionary<string, object?>
+                {
+                    ["not-observed"] = 0,
+                    ["observed-provisional"] = 0,
+                    ["applied"] = applied ? 1 : 0,
+                    ["blocked"] = applied ? 0 : 1,
+                    ["unknown"] = 0,
+                },
+                ["capturedAt"] = "2026-07-24T08:30:02.000Z",
+            },
+            ["authorityBoundary"] = "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority",
+            ["privacyBoundary"] = "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
+        };
+        if (applied)
+        {
+            detail["applyDecision"] = new Dictionary<string, object?>
+            {
+                ["receiptId"] = ReviewApplyDecisionId.ToString("D"),
+                ["receiptDigest"] = applyDecisionDigest,
+                ["managedRunRevision"] = 3,
+                ["changedInventoryCount"] = 2,
+                ["writeEnvelopeCount"] = 1,
+                ["changedInventoryDigest"] = ((Dictionary<string, object?>)preview["staging"]!)["changedInventoryDigest"],
+                ["writeEnvelopeDigest"] = ((Dictionary<string, object?>)preview["applyConfirmation"]!)["writeEnvelopeDigest"],
+                ["decidedAt"] = "2026-07-24T08:30:01.000Z",
+            };
+        }
+        return detail;
+    }
+
+    private static void RefreshCanonicalDigest(Dictionary<string, object?> value, string digestKey)
+    {
+        value.Remove(digestKey);
+        value[digestKey] = CanonicalDigest(JsonSerializer.SerializeToElement(value));
     }
 
     private static Dictionary<string, object?> ManagedRunSummary() => new()
