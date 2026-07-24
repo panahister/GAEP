@@ -1,4 +1,4 @@
-import type { PhaseDashboardFramework } from "@gaep/contracts"
+import type { ChangeImpactDashboard, PhaseDashboardFramework } from "@gaep/contracts"
 
 export const studioProtocolVersion = 1 as const
 
@@ -405,6 +405,7 @@ export interface StudioSnapshot {
   navigation: StudioNavigationItem[]
   surface: StudioSurfaceState
   dashboard?: PhaseDashboardFramework
+  changeImpact?: ChangeImpactDashboard
   page: StudioPageSnapshot
   inspector?: StudioInspectorSnapshot
   footer: StudioFooterSnapshot
@@ -443,6 +444,15 @@ export type StudioAction =
   | { kind: "transition-record"; recordType: "initiative" | "change" | "work-item" | "risk" | "decision"; recordId: string; toState: string; reason: string }
   | { kind: "add-relationship"; sourceRecordId: string }
   | { kind: "analyze-impact"; recordId: string; recordType?: string; revision?: number; digest?: string }
+  | {
+      kind: "show-change-impact"
+      expectedProductId: string
+      expectedProductRevision: number
+      expectedProductDigest: string
+      expectedChangeId: string
+      expectedChangeRevision: number
+      expectedChangeDigest: string
+    }
   | {
       kind: "domain-workflow"
       workflow: StudioDomainWorkflow
@@ -547,7 +557,10 @@ function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0
 }
 
-function isExactDashboardReference(value: unknown, recordType: "product" | "decision"): boolean {
+function isExactDashboardReference(
+  value: unknown,
+  recordType: "product" | "decision" | "work-item" | "risk",
+): boolean {
   return isRecord(value) && hasOnlyKeys(value, ["recordType", "recordId", "revision", "digest"]) &&
     value.recordType === recordType && typeof value.recordId === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value.recordId) &&
@@ -594,6 +607,158 @@ function isPhaseDashboardFramework(value: unknown): value is PhaseDashboardFrame
     value.limitations.length >= 1 && value.limitations.length <= 8 && value.limitations.every((item) => isNonEmptyString(item) && item.length <= 1_000) &&
     value.authorityBoundary === "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence" &&
     typeof value.compositionDigest === "string" && /^sha256:[0-9a-f]{64}$/u.test(value.compositionDigest)
+}
+
+const changeImpactEffects = new Set([
+  "observe", "provisional", "reversible-change", "external-effect", "destructive-or-irreversible",
+])
+const traceRelationships = new Set([
+  "targets", "derives-from", "contributes-to", "depends-on", "implements", "satisfies", "validates",
+  "mitigates", "decides", "affects", "supersedes", "related-to",
+])
+const traceRecordTypes = new Set([
+  "product", "design-revision", "initiative", "change", "work-item", "requirement", "decision", "risk",
+  "architecture", "evidence", "context-pack", "workflow-plan", "tool-definition", "instruction-privilege-grant",
+  "run-tool-selection", "run", "external",
+])
+
+function isPortableChangeImpactLocator(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.kind !== "string") return false
+  if (value.kind === "workspace-relative") {
+    if (!hasOnlyKeys(value, ["kind", "path"]) || typeof value.path !== "string" || value.path.length < 1 || value.path.length > 4_096) return false
+    if (value.path === ".") return true
+    const segments = value.path.split("/")
+    return !value.path.startsWith("/") && !/^[A-Za-z]:/u.test(value.path) && !value.path.startsWith("~") &&
+      !value.path.includes("\\") && !value.path.includes("\0") && !/%2e/iu.test(value.path) &&
+      !segments.some((segment) => segment === "" || segment === "." || segment === "..")
+  }
+  if (value.kind === "logical") {
+    return hasOnlyKeys(value, ["kind", "value"]) && typeof value.value === "string" &&
+      /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u.test(value.value)
+  }
+  if (value.kind !== "external-uri" || !hasOnlyKeys(value, ["kind", "uri"]) || typeof value.uri !== "string" || value.uri.length > 8_192) return false
+  try {
+    const uri = new URL(value.uri)
+    if (!["http:", "https:", "urn:"].includes(uri.protocol) || uri.username || uri.password) return false
+    const sensitive = /(token|password|passwd|secret|signature|credential|api.?key|access.?key|auth)/iu
+    return ![...uri.searchParams.keys()].some((key) => sensitive.test(key)) && !(uri.hash && sensitive.test(uri.hash))
+  } catch {
+    return false
+  }
+}
+
+function isChangeImpactTraceEndpoint(value: unknown): boolean {
+  if (!isRecord(value) || !hasOnlyKeys(value, ["recordType", "recordId", "revision", "digest"]) ||
+      typeof value.recordType !== "string" || !traceRecordTypes.has(value.recordType) ||
+      typeof value.recordId !== "string" || value.recordId.length < 1 || value.recordId.length > 500) return false
+  if (value.recordType === "external") {
+    return value.revision === undefined && value.digest === undefined && !value.recordId.startsWith("/") &&
+      !value.recordId.startsWith("~") && !/^[A-Za-z]:/u.test(value.recordId) && !value.recordId.includes("\\")
+  }
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value.recordId) &&
+    isNonNegativeInteger(value.revision) && value.revision > 0 && typeof value.digest === "string" &&
+    /^sha256:[0-9a-f]{64}$/u.test(value.digest)
+}
+
+function isChangeImpactLimit(value: unknown): value is { shown: number; total: number; omitted: number } {
+  return isRecord(value) && hasOnlyKeys(value, ["shown", "total", "omitted"]) &&
+    isNonNegativeInteger(value.shown) && isNonNegativeInteger(value.total) && isNonNegativeInteger(value.omitted) &&
+    value.shown + value.omitted === value.total
+}
+
+function isChangeImpactDashboard(value: unknown): value is ChangeImpactDashboard {
+  if (!isRecord(value) || !hasOnlyKeys(value, [
+    "schemaVersion", "kind", "product", "change", "workItems", "changedArtifacts", "effectTargets", "affectedUnits",
+    "governance", "freshness", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+  ]) || value.schemaVersion !== 1 || value.kind !== "change-impact-dashboard" ||
+    !isExactDashboardReference(value.product, "product") || !isRecord(value.change) || !hasOnlyKeys(value.change, [
+      "recordType", "recordId", "revision", "digest", "state", "effectEnvelope",
+    ]) || value.change.recordType !== "change" || typeof value.change.recordId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value.change.recordId) ||
+    !isNonNegativeInteger(value.change.revision) || value.change.revision < 1 || typeof value.change.digest !== "string" ||
+    !/^sha256:[0-9a-f]{64}$/u.test(value.change.digest) ||
+    !["proposed", "planned", "active", "blocked", "completed", "cancelled"].includes(String(value.change.state)) ||
+    !Array.isArray(value.change.effectEnvelope) || value.change.effectEnvelope.length < 1 ||
+    value.change.effectEnvelope.length > changeImpactEffects.size ||
+    !value.change.effectEnvelope.every((effect) => typeof effect === "string" && changeImpactEffects.has(effect)) ||
+    new Set(value.change.effectEnvelope).size !== value.change.effectEnvelope.length) return false
+
+  if (!Array.isArray(value.workItems) || value.workItems.length > 256 || !value.workItems.every((entry) =>
+    isRecord(entry) && hasOnlyKeys(entry, ["record", "state"]) && isExactDashboardReference(entry.record, "work-item") &&
+    ["proposed", "planned", "ready", "in-progress", "blocked", "completed", "cancelled"].includes(String(entry.state)))) return false
+  const artifactRow = (entry: unknown): boolean => isRecord(entry) && hasOnlyKeys(entry, ["sourceWorkItem", "locator"]) &&
+    isExactDashboardReference(entry.sourceWorkItem, "work-item") && isPortableChangeImpactLocator(entry.locator)
+  if (!Array.isArray(value.changedArtifacts) || value.changedArtifacts.length > 512 || !value.changedArtifacts.every(artifactRow) ||
+      !Array.isArray(value.effectTargets) || value.effectTargets.length > 512 || !value.effectTargets.every(artifactRow)) return false
+  if (!Array.isArray(value.affectedUnits) || value.affectedUnits.length > 512 || !value.affectedUnits.every((entry) =>
+    isRecord(entry) && hasOnlyKeys(entry, ["direction", "relationship", "endpoint", "trace"]) &&
+    ["upstream", "downstream"].includes(String(entry.direction)) && typeof entry.relationship === "string" &&
+    traceRelationships.has(entry.relationship) && isChangeImpactTraceEndpoint(entry.endpoint) && isRecord(entry.trace) &&
+    hasOnlyKeys(entry.trace, ["recordId", "revision", "assessmentDigest", "assessedState"]) &&
+    typeof entry.trace.recordId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(entry.trace.recordId) &&
+    isNonNegativeInteger(entry.trace.revision) && entry.trace.revision > 0 && typeof entry.trace.assessmentDigest === "string" &&
+    /^sha256:[0-9a-f]{64}$/u.test(entry.trace.assessmentDigest) &&
+    ["valid", "unresolved", "stale", "invalid"].includes(String(entry.trace.assessedState)))) return false
+
+  if (!isRecord(value.governance) || !hasOnlyKeys(value.governance, ["approval", "decisions", "risks", "authorityBoundary"]) ||
+      !isRecord(value.governance.approval) || !hasOnlyKeys(value.governance.approval, ["state", "basis"]) ||
+      value.governance.approval.state !== "not-established" ||
+      value.governance.approval.basis !== "current-contract-has-no-change-approval-record" ||
+      value.governance.authorityBoundary !== "decisions-and-risk-acceptance-do-not-approve-the-change" ||
+      !Array.isArray(value.governance.decisions) || value.governance.decisions.length > 256 ||
+      !value.governance.decisions.every((entry) => isRecord(entry) && hasOnlyKeys(entry, ["record", "state", "outcome"]) &&
+        isExactDashboardReference(entry.record, "decision") && ["open", "decided", "deferred", "superseded"].includes(String(entry.state)) &&
+        ["human-selected", "not-selected"].includes(String(entry.outcome)) &&
+        ((entry.state === "decided") === (entry.outcome === "human-selected"))) ||
+      !Array.isArray(value.governance.risks) || value.governance.risks.length > 256 ||
+      !value.governance.risks.every((entry) => isRecord(entry) && hasOnlyKeys(entry, ["record", "state", "likelihood", "impact", "acceptance"]) &&
+        isExactDashboardReference(entry.record, "risk") && ["open", "treated", "accepted", "closed"].includes(String(entry.state)) &&
+        ["rare", "unlikely", "possible", "likely", "almost-certain", "unknown"].includes(String(entry.likelihood)) &&
+        ["negligible", "minor", "moderate", "major", "critical", "unknown"].includes(String(entry.impact)) &&
+        ["human-accepted", "not-accepted"].includes(String(entry.acceptance)) &&
+        ((entry.state === "accepted") === (entry.acceptance === "human-accepted")))) return false
+
+  if (!isRecord(value.freshness) || !hasOnlyKeys(value.freshness, [
+    "state", "evaluatedAt", "unresolvedTraceLinks", "invalidTraceLinks", "staleTraceLinks", "staleGovernanceReferences",
+    "traceAnalysisTruncated", "coverageBoundary",
+  ]) || !["current", "attention-required"].includes(String(value.freshness.state)) ||
+    typeof value.freshness.evaluatedAt !== "string" || !Number.isFinite(Date.parse(value.freshness.evaluatedAt)) ||
+    !isNonNegativeInteger(value.freshness.unresolvedTraceLinks) || !isNonNegativeInteger(value.freshness.invalidTraceLinks) ||
+    !isNonNegativeInteger(value.freshness.staleTraceLinks) || !isNonNegativeInteger(value.freshness.staleGovernanceReferences) ||
+    typeof value.freshness.traceAnalysisTruncated !== "boolean" ||
+    value.freshness.coverageBoundary !== "absence-of-a-trace-link-does-not-prove-absence-of-impact" ||
+    !isRecord(value.limits) || !hasOnlyKeys(value.limits, [
+      "workItems", "changedArtifacts", "effectTargets", "affectedUnits", "decisions", "risks", "truncated",
+    ]) || typeof value.limits.truncated !== "boolean") return false
+  const categoryLimits = [
+    [value.workItems, value.limits.workItems],
+    [value.changedArtifacts, value.limits.changedArtifacts],
+    [value.effectTargets, value.limits.effectTargets],
+    [value.affectedUnits, value.limits.affectedUnits],
+    [value.governance.decisions, value.limits.decisions],
+    [value.governance.risks, value.limits.risks],
+  ] as const
+  if (categoryLimits.some(([rows, limit]) => !isChangeImpactLimit(limit) || limit.shown !== rows.length)) return false
+  const shouldBeTruncated = value.freshness.traceAnalysisTruncated || categoryLimits.some(([, limit]) =>
+    isChangeImpactLimit(limit) && limit.omitted > 0)
+  const shouldRequireAttention = shouldBeTruncated || value.freshness.unresolvedTraceLinks > 0 ||
+    value.freshness.invalidTraceLinks > 0 || value.freshness.staleTraceLinks > 0 || value.freshness.staleGovernanceReferences > 0
+  if (value.limits.truncated !== shouldBeTruncated ||
+      ((value.freshness.state === "attention-required") !== shouldRequireAttention) ||
+      typeof value.observedAt !== "string" || !Number.isFinite(Date.parse(value.observedAt)) ||
+      Date.parse(value.freshness.evaluatedAt) > Date.parse(value.observedAt) ||
+      value.sourceBoundary !== "current-governed-records-and-bounded-trace-analysis" ||
+      !Array.isArray(value.limitations) || value.limitations.length < 1 || value.limitations.length > 8 ||
+      !value.limitations.every((entry) => isNonEmptyString(entry) && entry.length <= 1_000) ||
+      value.authorityBoundary !== "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects" ||
+      typeof value.snapshotDigest !== "string" || !/^sha256:[0-9a-f]{64}$/u.test(value.snapshotDigest)) return false
+  const unique = (keys: string[]) => new Set(keys).size === keys.length
+  return unique(value.workItems.map((entry) => entry.record.recordId)) &&
+    unique(value.changedArtifacts.map((entry) => `${entry.sourceWorkItem.recordId}:${JSON.stringify(entry.locator)}`)) &&
+    unique(value.effectTargets.map((entry) => `${entry.sourceWorkItem.recordId}:${JSON.stringify(entry.locator)}`)) &&
+    unique(value.affectedUnits.map((entry) => `${entry.direction}:${entry.endpoint.recordType}:${entry.endpoint.recordId}:${entry.trace.recordId}`)) &&
+    unique(value.governance.decisions.map((entry) => entry.record.recordId)) &&
+    unique(value.governance.risks.map((entry) => entry.record.recordId))
 }
 
 function isOpaqueContextGeneration(value: unknown): value is string {
@@ -672,6 +837,17 @@ export function isStudioAction(value: unknown): value is StudioAction {
       return hasOnlyKeys(value, ["kind", "recordId", "recordType", "revision", "digest"]) && isNonEmptyString(value.recordId) &&
         isOptionalString(value.recordType) && (value.revision === undefined || (isNonNegativeInteger(value.revision) && value.revision > 0)) &&
         isOptionalString(value.digest)
+    case "show-change-impact":
+      return hasOnlyKeys(value, [
+        "kind", "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedChangeId",
+        "expectedChangeRevision", "expectedChangeDigest",
+      ]) && typeof value.expectedProductId === "string" && typeof value.expectedChangeId === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value.expectedProductId) &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value.expectedChangeId) &&
+        isNonNegativeInteger(value.expectedProductRevision) && value.expectedProductRevision > 0 &&
+        isNonNegativeInteger(value.expectedChangeRevision) && value.expectedChangeRevision > 0 &&
+        typeof value.expectedProductDigest === "string" && /^sha256:[0-9a-f]{64}$/u.test(value.expectedProductDigest) &&
+        typeof value.expectedChangeDigest === "string" && /^sha256:[0-9a-f]{64}$/u.test(value.expectedChangeDigest)
     case "start-design-draft":
       return hasOnlyKeys(value, ["kind", "expectedProductRevision"]) && isNonNegativeInteger(value.expectedProductRevision) &&
         value.expectedProductRevision > 0
@@ -1011,7 +1187,7 @@ function routeMatchesPage(route: StudioRoute, page: Record<string, unknown>): bo
 
 export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
   if (!isRecord(value) || !hasOnlyKeys(value, [
-    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "page", "inspector", "footer",
+    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "changeImpact", "page", "inspector", "footer",
   ])) return false
   if (value.protocolVersion !== studioProtocolVersion || !isOpaqueContextGeneration(value.contextGeneration) ||
     !isNonNegativeInteger(value.snapshotRevision) || !isStudioRoute(value.route)) {
@@ -1024,6 +1200,7 @@ export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
     !isNonEmptyString(value.workspace.health)) return false
   if (!isStudioSurfaceState(value.surface)) return false
   if (value.dashboard !== undefined && !isPhaseDashboardFramework(value.dashboard)) return false
+  if (value.changeImpact !== undefined && (value.route !== "delivery" || !isChangeImpactDashboard(value.changeImpact))) return false
   if (!Array.isArray(value.navigation) || value.navigation.length !== studioRoutes.length) return false
   const navigationRoutes = value.navigation.flatMap((entry) =>
     isRecord(entry) && hasOnlyKeys(entry, ["route", "state", "gapCount"]) && isStudioRoute(entry.route) &&

@@ -323,6 +323,62 @@ function snapshot(route: StudioRoute, revision: number): StudioSnapshot {
   }
 }
 
+function changeImpactDashboard(): NonNullable<StudioSnapshot["changeImpact"]> {
+  const emptyLimit = { shown: 0, total: 0, omitted: 0 }
+  return {
+    schemaVersion: 1,
+    kind: "change-impact-dashboard",
+    product: {
+      recordType: "product",
+      recordId: "00000000-0000-4000-8000-000000000001",
+      revision: 2,
+      digest: `sha256:${"a".repeat(64)}`,
+    },
+    change: {
+      recordType: "change",
+      recordId: "00000000-0000-4000-8000-000000000002",
+      revision: 3,
+      digest: `sha256:${"b".repeat(64)}`,
+      state: "active",
+      effectEnvelope: ["observe"],
+    },
+    workItems: [],
+    changedArtifacts: [],
+    effectTargets: [],
+    affectedUnits: [],
+    governance: {
+      approval: { state: "not-established", basis: "current-contract-has-no-change-approval-record" },
+      decisions: [],
+      risks: [],
+      authorityBoundary: "decisions-and-risk-acceptance-do-not-approve-the-change",
+    },
+    freshness: {
+      state: "current",
+      evaluatedAt: "2026-07-24T00:00:00.000Z",
+      unresolvedTraceLinks: 0,
+      invalidTraceLinks: 0,
+      staleTraceLinks: 0,
+      staleGovernanceReferences: 0,
+      traceAnalysisTruncated: false,
+      coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact",
+    },
+    limits: {
+      workItems: emptyLimit,
+      changedArtifacts: emptyLimit,
+      effectTargets: emptyLimit,
+      affectedUnits: emptyLimit,
+      decisions: emptyLimit,
+      risks: emptyLimit,
+      truncated: false,
+    },
+    observedAt: "2026-07-24T00:00:01.000Z",
+    sourceBoundary: "current-governed-records-and-bounded-trace-analysis",
+    limitations: ["This projection grants no approval or execution authority."],
+    authorityBoundary: "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects",
+    snapshotDigest: `sha256:${"c".repeat(64)}`,
+  }
+}
+
 function exposeGlobal(name: string, value: unknown): void {
   if (!originalGlobals.has(name)) originalGlobals.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
   Object.defineProperty(globalThis, name, { configurable: true, writable: true, value })
@@ -462,6 +518,24 @@ describe("Product Studio rendered accessibility", () => {
       .find((button) => button.textContent === "Read verified metadata")
     expect(read?.disabled).toBe(false)
     expect(read?.tabIndex).toBeGreaterThanOrEqual(0)
+  })
+
+  it("renders the Change and impact projection as metadata without approval controls", () => {
+    const candidate: StudioSnapshot = {
+      ...snapshot("delivery", 94),
+      changeImpact: changeImpactDashboard(),
+    }
+    expect(isStudioSnapshot(candidate)).toBe(true)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
+    const document = dom.window.document
+    expect(document.querySelector('[aria-label="Exact Change and impact dashboard"]')).not.toBeNull()
+    expect(document.body.textContent).toMatch(/Selected Change and impact/i)
+    expect(document.body.textContent).toMatch(/Approval is not established/i)
+    expect(document.body.textContent).toMatch(/Changed artifacts/i)
+    expect(document.body.textContent).toMatch(/Affected units from persisted trace/i)
+    expect(document.body.textContent).toMatch(/cannot approve the Change, accept risk, or authorize effects/i)
+    const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")
+    expect(labels.some((label) => /approve|accept risk|authorize effect/i.test(label))).toBe(false)
   })
 
   it("keeps names, focus order, and icon semantics explicit", () => {

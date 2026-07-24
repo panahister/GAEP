@@ -452,6 +452,14 @@ export class EngineHost {
         }
       }
       case "dashboard.changeImpact": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_042,
+            "CHANGE_IMPACT_AUDIT_INVALID",
+            "The audit chain is invalid or unavailable; no Change/Impact dashboard was composed",
+          )
+        }
         const product = await this.engine.readProduct()
         if (
           request.params.expectedProductId.toLowerCase() !== product.id.toLowerCase()

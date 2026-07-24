@@ -3,6 +3,8 @@ import type {
   AgentSelection,
   ArchitectureRecord,
   Change,
+  ChangeImpactDashboard,
+  ChangeImpactDashboardRequest,
   ContextPack,
   Decision,
   DesignReadinessReport,
@@ -36,7 +38,7 @@ import type {
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
-import { composePhaseDashboardFramework } from "@gaep/engine"
+import { composeChangeImpactDashboard, composePhaseDashboardFramework } from "@gaep/engine"
 import type {
   ManagedRunListPage,
   ManagedRunListPageInput,
@@ -1037,12 +1039,12 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
       domainControl("Create Work Item", "create-work-item"),
     ],
     initiatives,
-    changes: changesTable(state.changes),
+    changes: changesTable(state.changes, state.product),
     workItems: workItemsTable(state.workItems),
   }
 }
 
-function changesTable(records: Change[]): StudioTableSnapshot {
+function changesTable(records: Change[], product?: Product): StudioTableSnapshot {
   if (records.length === 0) return recordEmpty("changes", "Changes", "Create Change", "create-change")
   return {
     id: "changes",
@@ -1070,6 +1072,15 @@ function changesTable(records: Change[]): StudioTableSnapshot {
       state: record.state,
       actions: [
         control("Inspect", { kind: "open-record", recordId: record.id }),
+        ...(product ? [control("Show impact", {
+          kind: "show-change-impact",
+          expectedProductId: product.id,
+          expectedProductRevision: product.revision ?? 1,
+          expectedProductDigest: canonicalDigest(product),
+          expectedChangeId: record.id,
+          expectedChangeRevision: record.revision,
+          expectedChangeDigest: canonicalDigest(record),
+        })] : []),
         domainControl("Edit", "edit-change", record.id, record.revision),
       ],
     })),
@@ -2277,6 +2288,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
   private searchResults: ProductDomainSearchResult[] = []
   private searchResultTotal = 0
   private impact?: TraceImpact
+  private changeImpactSelection?: ChangeImpactDashboardRequest
   private importPreview?: ProductImportPreview
   private portableDesignInspectorId?: string
 
@@ -2293,10 +2305,24 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       this.searchResults = []
       this.searchResultTotal = 0
       this.impact = undefined
+      this.changeImpactSelection = undefined
       this.importPreview = undefined
       this.portableDesignInspectorId = undefined
     }
     const observed = await this.observe(route)
+    let changeImpact: ChangeImpactDashboard | undefined
+    if (route === "delivery" && this.changeImpactSelection) {
+      try {
+        changeImpact = await this.readChangeImpactDashboard(this.changeImpactSelection)
+      } catch (error) {
+        this.context.logDiagnostic("Product Studio exact Change/Impact dashboard observation failed; private source detail was withheld", error)
+        observed.issues.push(issue(
+          "change-impact-unavailable",
+          "The selected Change/Impact dashboard could not be revalidated against the current Product, audit, records, and trace assessment. Select the current Change again.",
+          "warning",
+        ))
+      }
+    }
     signal?.throwIfAborted()
     if (contextGeneration !== this.context.contextGeneration()) {
       throw new Error("Product Studio context changed while the snapshot was being read")
@@ -2332,6 +2358,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       navigation: sections,
       surface: surfaceFor(route, this.context, observed),
       ...(dashboard ? { dashboard } : {}),
+      ...(changeImpact ? { changeImpact } : {}),
       page: page.page,
       ...(selectedInspector ?? page.inspector ? { inspector: selectedInspector ?? page.inspector } : {}),
       footer: {
@@ -2378,6 +2405,37 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       this.domainPageOffsets.set(action.recordKind, action.offset)
       this.domainPageLimits.set(action.recordKind, action.limit)
       return { status: "accepted", announcement: `Loaded the requested ${action.recordKind.replaceAll("-", " ")} page.` }
+    }
+    if (action.kind === "show-change-impact") {
+      if (!engine || !studio) {
+        return { status: "rejected", announcement: "The Product-domain service is unavailable. No Change/Impact dashboard was opened." }
+      }
+      const selection: ChangeImpactDashboardRequest = {
+        expectedProductId: action.expectedProductId,
+        expectedProductRevision: action.expectedProductRevision,
+        expectedProductDigest: action.expectedProductDigest,
+        expectedChangeId: action.expectedChangeId,
+        expectedChangeRevision: action.expectedChangeRevision,
+        expectedChangeDigest: action.expectedChangeDigest,
+      }
+      try {
+        const dashboard = await this.readChangeImpactDashboard(selection)
+        request.signal?.throwIfAborted()
+        if (request.expectedContextGeneration !== this.context.contextGeneration()) {
+          return { status: "rejected", announcement: "The Product root or trust context changed while impact was assessed. No dashboard was opened." }
+        }
+        this.changeImpactSelection = selection
+        return {
+          status: "accepted",
+          announcement: `Opened the exact Change/Impact dashboard at Change revision ${dashboard.change.revision}. Approval remains not established.`,
+        }
+      } catch (error) {
+        this.context.logDiagnostic("Product Studio rejected an exact Change/Impact dashboard request; private source detail was withheld", error)
+        return {
+          status: "rejected",
+          announcement: "The Product, Change, audit, or impact evidence changed or could not be verified. Refresh Delivery and select the current Change again.",
+        }
+      }
     }
     if (action.kind === "read-portable-design-snapshot") {
       if (!studio) return { status: "rejected", announcement: "The Product design snapshot service is unavailable. No metadata was opened." }
@@ -2523,6 +2581,41 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       if (result && typeof result === "object") this.importPreview = result as ProductImportPreview
     }
     return { status: "accepted", announcement: mapped.announcement }
+  }
+
+  private async readChangeImpactDashboard(selection: ChangeImpactDashboardRequest): Promise<ChangeImpactDashboard> {
+    const engine = this.context.engine()
+    const studio = engine?.productStudio
+    if (!engine || !studio) throw new Error("The Product-domain service is unavailable")
+    const audit = await engine.repository.verifyAudit()
+    if (!audit.valid) throw new Error("The audit chain is invalid or unavailable")
+    const product = await engine.readProduct()
+    if (
+      selection.expectedProductId.toLowerCase() !== product.id.toLowerCase()
+      || selection.expectedProductRevision !== (product.revision ?? 1)
+      || selection.expectedProductDigest !== canonicalDigest(product)
+    ) throw new Error("The Product changed before Change/Impact composition")
+    const change = await studio.readChange(selection.expectedChangeId)
+    const changeDigest = canonicalDigest(change)
+    if (
+      selection.expectedChangeRevision !== change.revision
+      || selection.expectedChangeDigest !== changeDigest
+    ) throw new Error("The Change changed before Change/Impact composition")
+    const [workItems, traceImpact, decisions, risks] = await Promise.all([
+      studio.listWorkItems(),
+      studio.impactAnalysis({
+        recordType: "change",
+        recordId: change.id,
+        revision: change.revision,
+        digest: changeDigest,
+      }),
+      studio.listDecisions(),
+      studio.listRisks(),
+    ])
+    return composeChangeImpactDashboard(
+      { product, change, workItems, traceImpact, decisions, risks },
+      selection,
+    )
   }
 
   private async observe(route: StudioRoute): Promise<ObservedStudioState> {

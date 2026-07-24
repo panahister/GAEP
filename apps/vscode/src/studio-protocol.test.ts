@@ -157,6 +157,65 @@ function snapshot(route: StudioRoute): StudioSnapshot {
   }
 }
 
+function changeImpactDashboard(): NonNullable<StudioSnapshot["changeImpact"]> {
+  const emptyLimit = { shown: 0, total: 0, omitted: 0 }
+  return {
+    schemaVersion: 1,
+    kind: "change-impact-dashboard",
+    product: {
+      recordType: "product",
+      recordId: "00000000-0000-4000-8000-000000000001",
+      revision: 2,
+      digest: `sha256:${"a".repeat(64)}`,
+    },
+    change: {
+      recordType: "change",
+      recordId: "00000000-0000-4000-8000-000000000002",
+      revision: 3,
+      digest: `sha256:${"b".repeat(64)}`,
+      state: "active",
+      effectEnvelope: ["observe"],
+    },
+    workItems: [],
+    changedArtifacts: [],
+    effectTargets: [],
+    affectedUnits: [],
+    governance: {
+      approval: {
+        state: "not-established",
+        basis: "current-contract-has-no-change-approval-record",
+      },
+      decisions: [],
+      risks: [],
+      authorityBoundary: "decisions-and-risk-acceptance-do-not-approve-the-change",
+    },
+    freshness: {
+      state: "current",
+      evaluatedAt: "2026-07-24T00:00:00.000Z",
+      unresolvedTraceLinks: 0,
+      invalidTraceLinks: 0,
+      staleTraceLinks: 0,
+      staleGovernanceReferences: 0,
+      traceAnalysisTruncated: false,
+      coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact",
+    },
+    limits: {
+      workItems: emptyLimit,
+      changedArtifacts: emptyLimit,
+      effectTargets: emptyLimit,
+      affectedUnits: emptyLimit,
+      decisions: emptyLimit,
+      risks: emptyLimit,
+      truncated: false,
+    },
+    observedAt: "2026-07-24T00:00:01.000Z",
+    sourceBoundary: "current-governed-records-and-bounded-trace-analysis",
+    limitations: ["This projection grants no approval or execution authority."],
+    authorityBoundary: "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects",
+    snapshotDigest: `sha256:${"c".repeat(64)}`,
+  }
+}
+
 describe("Product Studio protocol", () => {
   it("defines the approved twelve-route order and eight run stages", () => {
     expect(studioRoutes).toEqual([
@@ -195,6 +254,33 @@ describe("Product Studio protocol", () => {
     forgedDashboard.dashboard.panels[0]!.applicability = { status: "applicable", basis: "not-evaluated" }
     forgedDashboard.dashboard.panels[0]!.state = "active"
     expect(isStudioSnapshot(forgedDashboard)).toBe(false)
+  })
+
+  it("accepts only an internally consistent Change and impact projection on Delivery", () => {
+    const delivery = { ...snapshot("delivery"), changeImpact: changeImpactDashboard() }
+    expect(isStudioSnapshot(delivery)).toBe(true)
+    expect(isStudioSnapshot({
+      ...delivery,
+      changeImpact: { ...delivery.changeImpact, approved: true },
+    })).toBe(false)
+    expect(isStudioSnapshot({
+      ...delivery,
+      changeImpact: {
+        ...delivery.changeImpact,
+        freshness: { ...delivery.changeImpact.freshness, state: "attention-required" },
+      },
+    })).toBe(false)
+    expect(isStudioSnapshot({
+      ...delivery,
+      changeImpact: {
+        ...delivery.changeImpact,
+        limits: {
+          ...delivery.changeImpact.limits,
+          workItems: { shown: 0, total: 1, omitted: 0 },
+        },
+      },
+    })).toBe(false)
+    expect(isStudioSnapshot({ ...snapshot("trace"), changeImpact: changeImpactDashboard() })).toBe(false)
   })
 
   it("requires bounded Managed Run evidence, handoff history, and normalized event fields", () => {
@@ -301,6 +387,25 @@ describe("Product Studio protocol", () => {
       revision: 2,
       digest: `sha256:${"a".repeat(64)}`,
     })).toBe(true)
+    expect(isStudioAction({
+      kind: "show-change-impact",
+      expectedProductId: "00000000-0000-4000-8000-000000000001",
+      expectedProductRevision: 2,
+      expectedProductDigest: `sha256:${"a".repeat(64)}`,
+      expectedChangeId: "00000000-0000-4000-8000-000000000002",
+      expectedChangeRevision: 3,
+      expectedChangeDigest: `sha256:${"b".repeat(64)}`,
+    })).toBe(true)
+    expect(isStudioAction({
+      kind: "show-change-impact",
+      expectedProductId: "00000000-0000-4000-8000-000000000001",
+      expectedProductRevision: 2,
+      expectedProductDigest: `sha256:${"a".repeat(64)}`,
+      expectedChangeId: "00000000-0000-4000-8000-000000000002",
+      expectedChangeRevision: 3,
+      expectedChangeDigest: `sha256:${"b".repeat(64)}`,
+      command: "workbench.action.terminal.new",
+    })).toBe(false)
   })
 
   it("accepts explicit table truncation metadata and rejects silent or inconsistent totals", () => {

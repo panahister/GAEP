@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 
-import type { PhaseDashboardFramework } from "@gaep/contracts"
+import type { ChangeImpactDashboard, PhaseDashboardFramework } from "@gaep/contracts"
 
 import {
   isStudioAction,
@@ -202,6 +202,7 @@ class StudioShell {
     if (snapshot.surface.kind === "ready") {
       main.append(this.renderPage(snapshot))
       if (snapshot.dashboard) main.append(this.renderPhaseDashboard(snapshot.dashboard))
+      if (snapshot.changeImpact) main.append(this.renderChangeImpactDashboard(snapshot.changeImpact))
     }
     else main.append(this.renderSurfaceState(snapshot.surface))
     workspace.append(main)
@@ -913,6 +914,160 @@ class StudioShell {
       })),
       actions: [],
     }))
+    section.append(this.renderStringList("Projection limits", dashboard.limitations))
+    return section
+  }
+
+  private renderChangeImpactDashboard(dashboard: ChangeImpactDashboard): HTMLElement {
+    const section = element("section", "section change-impact-dashboard")
+    section.setAttribute("aria-label", "Exact Change and impact dashboard")
+    const freshness = dashboard.freshness.state === "current" ? "Current" : "Attention required"
+    section.append(
+      element("h3", undefined, "Selected Change and impact"),
+      element(
+        "p",
+        "prose",
+        `Change revision ${dashboard.change.revision} · ${freshness}. Approval is not established.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        `Observed ${dashboard.observedAt}; trace evaluated ${dashboard.freshness.evaluatedAt}. This read-only projection cannot approve the Change, accept risk, or authorize effects.`,
+      ),
+      this.renderDefinitionGroup("Exact snapshot binding", [
+        { term: "Change ID", value: dashboard.change.recordId },
+        { term: "Change digest", value: dashboard.change.digest },
+        { term: "Product revision", value: String(dashboard.product.revision) },
+        { term: "Product digest", value: dashboard.product.digest },
+        { term: "Snapshot digest", value: dashboard.snapshotDigest },
+        { term: "Effect envelope", value: dashboard.change.effectEnvelope.join(", ") },
+      ]),
+    )
+    section.append(this.renderTable({
+      id: "change-impact-work-items",
+      title: "Change Work Items",
+      columns: [
+        { key: "id", label: "Work Item", identifier: true },
+        { key: "revision", label: "Revision" },
+        { key: "state", label: "State" },
+      ],
+      rows: dashboard.workItems.map((entry) => ({
+        id: entry.record.recordId,
+        cells: { id: entry.record.recordId, revision: String(entry.record.revision), state: entry.state },
+        state: entry.state,
+        actions: [],
+      })),
+      actions: [],
+    }))
+    const locatorLabel = (locator: ChangeImpactDashboard["changedArtifacts"][number]["locator"]): string => {
+      if (locator.kind === "workspace-relative") return locator.path
+      if (locator.kind === "logical") return locator.value
+      return locator.uri
+    }
+    const artifactTable = (
+      id: string,
+      title: string,
+      rows: ChangeImpactDashboard["changedArtifacts"],
+    ): StudioTableSnapshot => ({
+      id,
+      title,
+      columns: [
+        { key: "target", label: "Portable target", identifier: true },
+        { key: "kind", label: "Kind" },
+        { key: "workItem", label: "Source Work Item" },
+      ],
+      rows: rows.map((entry, index) => ({
+        id: `${id}-${index}`,
+        cells: {
+          target: locatorLabel(entry.locator),
+          kind: entry.locator.kind,
+          workItem: `${entry.sourceWorkItem.recordId}@${entry.sourceWorkItem.revision}`,
+        },
+        actions: [],
+      })),
+      actions: [],
+    })
+    section.append(
+      this.renderTable(artifactTable("change-impact-artifacts", "Changed artifacts", dashboard.changedArtifacts)),
+      this.renderTable(artifactTable("change-impact-effect-targets", "Effect targets", dashboard.effectTargets)),
+      this.renderTable({
+        id: "change-impact-affected-units",
+        title: "Affected units from persisted trace",
+        columns: [
+          { key: "unit", label: "Affected unit", identifier: true },
+          { key: "direction", label: "Direction" },
+          { key: "relationship", label: "Relationship" },
+          { key: "state", label: "Trace assessment" },
+        ],
+        rows: dashboard.affectedUnits.map((entry, index) => ({
+          id: `change-impact-unit-${index}`,
+          cells: {
+            unit: `${entry.endpoint.recordType}:${entry.endpoint.recordId}`,
+            direction: entry.direction,
+            relationship: entry.relationship,
+            state: entry.trace.assessedState,
+          },
+          state: entry.trace.assessedState,
+          actions: [],
+        })),
+        actions: [],
+      }),
+      this.renderTable({
+        id: "change-impact-decisions",
+        title: "Related Decisions",
+        columns: [
+          { key: "id", label: "Decision", identifier: true },
+          { key: "revision", label: "Revision" },
+          { key: "state", label: "State" },
+          { key: "outcome", label: "Outcome" },
+        ],
+        rows: dashboard.governance.decisions.map((entry) => ({
+          id: entry.record.recordId,
+          cells: {
+            id: entry.record.recordId,
+            revision: String(entry.record.revision),
+            state: entry.state,
+            outcome: entry.outcome,
+          },
+          state: entry.state,
+          actions: [],
+        })),
+        actions: [],
+      }),
+      this.renderTable({
+        id: "change-impact-risks",
+        title: "Related Risks",
+        columns: [
+          { key: "id", label: "Risk", identifier: true },
+          { key: "state", label: "State" },
+          { key: "likelihood", label: "Likelihood" },
+          { key: "impact", label: "Impact" },
+          { key: "acceptance", label: "Risk acceptance" },
+        ],
+        rows: dashboard.governance.risks.map((entry) => ({
+          id: entry.record.recordId,
+          cells: {
+            id: entry.record.recordId,
+            state: entry.state,
+            likelihood: entry.likelihood,
+            impact: entry.impact,
+            acceptance: entry.acceptance,
+          },
+          state: entry.state,
+          actions: [],
+        })),
+        actions: [],
+      }),
+    )
+    section.append(this.renderDefinitionGroup("Freshness and coverage", [
+      { term: "Approval", value: "Not established — the current contract has no general Change approval record." },
+      { term: "Unresolved trace links", value: String(dashboard.freshness.unresolvedTraceLinks) },
+      { term: "Invalid trace links", value: String(dashboard.freshness.invalidTraceLinks) },
+      { term: "Stale trace links", value: String(dashboard.freshness.staleTraceLinks) },
+      { term: "Stale governance references", value: String(dashboard.freshness.staleGovernanceReferences) },
+      { term: "Coverage", value: "Absence of a trace link does not prove absence of impact." },
+      { term: "Omission", value: dashboard.limits.truncated ? "One or more bounded categories are truncated." : "No rows are omitted from the bounded categories." },
+    ]))
     section.append(this.renderStringList("Projection limits", dashboard.limitations))
     return section
   }

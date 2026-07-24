@@ -740,16 +740,30 @@ describe("engine host protocol", () => {
     expect(JSON.stringify(result)).not.toContain(product.name)
     expect(JSON.stringify(result)).not.toContain(change.title)
 
+    const verifyAudit = vi.spyOn(host.engine.repository, "verifyAudit").mockResolvedValueOnce({
+      valid: false,
+      events: 0,
+      error: "hostile audit detail must not cross the boundary",
+    })
     await expect(host.dispatch({
       jsonrpc: "2.0",
       id: 7,
+      protocolVersion: 2,
+      method: "dashboard.changeImpact",
+      params,
+    })).rejects.toMatchObject({ kind: "CHANGE_IMPACT_AUDIT_INVALID" })
+    verifyAudit.mockRestore()
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 8,
       protocolVersion: 2,
       method: "dashboard.changeImpact",
       params: { ...params, expectedChangeDigest: `sha256:${"0".repeat(64)}` },
     })).rejects.toMatchObject({ kind: "CHANGE_IMPACT_CHANGE_CONTEXT_CHANGED" })
     await expect(host.dispatch({
       jsonrpc: "2.0",
-      id: 8,
+      id: 9,
       protocolVersion: 2,
       method: "dashboard.changeImpact",
       params: { ...params, approved: true },

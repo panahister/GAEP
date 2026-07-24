@@ -7,6 +7,8 @@ import {
   productStudioSectionIds,
   type AdapterCapabilities,
   type AgentSelection,
+  type Change,
+  type Decision,
   type Handoff,
   type Initiative,
   type ManagedApplyDecisionReceipt,
@@ -15,7 +17,11 @@ import {
   type ManagedRunResult,
   type Product,
   type ProductDesignDraft,
+  type Risk,
   type Run,
+  type TraceImpact,
+  type TraceLink,
+  type WorkItem,
 } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import type { ProductStudioService } from "@gaep/engine"
@@ -781,6 +787,161 @@ describe("current-engine Product Studio data source", () => {
     expect(agents.surface.knownEffects).toEqual(expect.arrayContaining([
       expect.stringMatching(/invokes configured agent executables/i),
     ]))
+  })
+
+  it("opens an exact audit-gated Change/Impact dashboard from a current Change row", async () => {
+    const change: Change = {
+      schemaVersion: 1,
+      kind: "change",
+      id: "24242424-2424-4424-8424-242424242424",
+      productId: product.id,
+      revision: 2,
+      initiativeId: initiative.id,
+      title: "Expose exact impact",
+      summary: "Bind the selected Change to current portable impact metadata.",
+      baseline: { kind: "genesis", declaration: "No exact dashboard existed.", rationale: "First VS Code view." },
+      state: "planned",
+      effectEnvelope: ["reversible-change"],
+      createdAt: "2026-07-24T00:00:00.000Z",
+      updatedAt: "2026-07-24T00:01:00.000Z",
+    }
+    const workItem: WorkItem = {
+      schemaVersion: 1,
+      kind: "work-item",
+      id: "25252525-2525-4525-8525-252525252525",
+      productId: product.id,
+      revision: 1,
+      changeId: change.id,
+      title: "Render impact",
+      objective: "Render only exact bounded impact metadata.",
+      state: "planned",
+      dependsOn: [],
+      completionCriteria: ["The browser protocol validates"],
+      evidenceCriteria: ["Accessibility tests pass"],
+      scope: {
+        read: [{ kind: "workspace-relative", path: "." }],
+        write: [{ kind: "workspace-relative", path: "apps/vscode/src/studio-client.ts" }],
+        effects: [],
+      },
+      owner: { kind: "agent", id: "codex" },
+      createdAt: "2026-07-24T00:02:00.000Z",
+      updatedAt: "2026-07-24T00:02:00.000Z",
+    }
+    const decision: Decision = {
+      schemaVersion: 1,
+      kind: "decision",
+      id: "26262626-2626-4626-8626-262626262626",
+      productId: product.id,
+      revision: 1,
+      question: "Should this projection remain observational?",
+      options: [
+        { id: "27272727-2727-4727-8727-272727272727", label: "Read only", description: "No authority.", tradeoffs: [] },
+        { id: "28282828-2828-4828-8828-282828282828", label: "Mutating", description: "Wider authority.", tradeoffs: [] },
+      ],
+      dissentAndUncertainty: [],
+      affectedRecords: [{ recordType: "change", recordId: change.id, revision: change.revision, digest: canonicalDigest(change) }],
+      state: "open",
+      createdAt: "2026-07-24T00:03:00.000Z",
+      updatedAt: "2026-07-24T00:03:00.000Z",
+    }
+    const risk: Risk = {
+      schemaVersion: 1,
+      kind: "risk",
+      id: "29292929-2929-4929-8929-292929292929",
+      productId: product.id,
+      revision: 1,
+      title: "Missing trace",
+      cause: "A relationship is absent.",
+      condition: "Trace coverage is incomplete.",
+      consequence: "Impact may be understated.",
+      likelihood: "possible",
+      impact: "major",
+      uncertainty: "Coverage is bounded.",
+      treatment: "Expose the coverage boundary.",
+      owner: { kind: "human", id: "founder" },
+      reviewTriggers: ["Change review begins"],
+      residualRisk: "Missing links remain possible.",
+      evidence: [],
+      state: "open",
+      createdAt: "2026-07-24T00:04:00.000Z",
+      updatedAt: "2026-07-24T00:04:00.000Z",
+    }
+    const link: TraceLink = {
+      schemaVersion: 1,
+      kind: "trace-link",
+      id: "30303030-3030-4030-8030-303030303030",
+      productId: product.id,
+      revision: 1,
+      source: { recordType: "risk", recordId: risk.id, revision: risk.revision, digest: canonicalDigest(risk) },
+      relationship: "affects",
+      target: { recordType: "change", recordId: change.id, revision: change.revision, digest: canonicalDigest(change) },
+      state: "valid",
+      provenance: { kind: "human", actorId: "founder", rationale: "The risk affects this Change." },
+      createdAt: "2026-07-24T00:05:00.000Z",
+      updatedAt: "2026-07-24T00:05:00.000Z",
+    }
+    const impact: TraceImpact = {
+      subject: { recordType: "change", recordId: change.id, revision: change.revision, digest: canonicalDigest(change) },
+      upstream: [link],
+      downstream: [],
+      validatingEvidence: [],
+      decisionsAndRisks: [link],
+      unresolved: [],
+      invalid: [],
+      stale: [],
+      invalidatedByProposedRevision: [],
+      coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact",
+      truncated: false,
+      evaluatedAt: "2026-07-24T00:06:00.000Z",
+    }
+    const base = productStudioStub()
+    const service = {
+      ...base,
+      listDomainPage: async (kind: string, input: { offset?: number; limit?: number } = {}) => {
+        const items = kind === "change" ? [change] : kind === "work-item" ? [workItem] : []
+        return { items, offset: input.offset ?? 0, limit: input.limit ?? 50, total: items.length, hasMore: false }
+      },
+      readChange: async () => change,
+      listWorkItems: async () => [workItem],
+      impactAnalysis: async () => impact,
+      listDecisions: async () => [decision],
+      listRisks: async () => [risk],
+    } as unknown as ProductStudioService
+    const { source } = harness({ productStudio: service })
+    const delivery = await source.readSnapshot("delivery")
+    if (delivery.page.kind !== "delivery") throw new Error("Expected Delivery page")
+    const action = delivery.page.changes.rows[0]?.actions.find((entry) => entry.label === "Show impact")?.action
+    if (!action || action.kind !== "show-change-impact") throw new Error("Expected exact Change impact action")
+    expect(await source.execute(action, {
+      requestId: "show-change-impact",
+      expectedContextGeneration: delivery.contextGeneration,
+      expectedSnapshotRevision: delivery.snapshotRevision,
+    })).toMatchObject({ status: "accepted", announcement: expect.stringMatching(/approval remains not established/i) })
+    const refreshed = await source.readSnapshot("delivery")
+    expect(isStudioSnapshot(refreshed)).toBe(true)
+    expect(refreshed.changeImpact).toMatchObject({
+      change: { recordId: change.id, revision: change.revision },
+      changedArtifacts: [{ locator: { kind: "workspace-relative", path: "apps/vscode/src/studio-client.ts" } }],
+      governance: {
+        approval: { state: "not-established" },
+        decisions: [{ state: "open", outcome: "not-selected" }],
+        risks: [{ state: "open", impact: "major", acceptance: "not-accepted" }],
+      },
+      freshness: { state: "current" },
+    })
+    const dashboard = refreshed.changeImpact
+    if (!dashboard) throw new Error("Expected exact Change/Impact dashboard")
+    const { snapshotDigest, ...content } = dashboard
+    expect(snapshotDigest).toBe(canonicalDigest(content))
+    expect(JSON.stringify(dashboard)).not.toContain(change.title)
+    expect(JSON.stringify(dashboard)).not.toContain(risk.title)
+
+    const hostile = { ...action, expectedChangeDigest: `sha256:${"0".repeat(64)}` }
+    expect(await source.execute(hostile, {
+      requestId: "show-change-impact-stale",
+      expectedContextGeneration: refreshed.contextGeneration,
+      expectedSnapshotRevision: refreshed.snapshotRevision,
+    })).toMatchObject({ status: "rejected" })
   })
 
   it("keeps executable paths out of portable tables and limits them to the machine-local inspector", async () => {
