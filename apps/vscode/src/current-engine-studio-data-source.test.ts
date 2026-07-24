@@ -787,6 +787,34 @@ describe("current-engine Product Studio data source", () => {
     expect(agents.surface.knownEffects).toEqual(expect.arrayContaining([
       expect.stringMatching(/invokes configured agent executables/i),
     ]))
+    expect(agents.agentModel).toMatchObject({
+      kind: "agent-model-dashboard",
+      product: { recordId: product.id, revision: product.revision },
+      selection: { status: "selected", capabilityState: "stale", settings: { secretSetting: "[redacted]" } },
+      limits: { runs: { shown: 1, total: 1, omitted: 0 }, handoffs: { shown: 0, total: 0, omitted: 0 } },
+      providerMetrics: { usage: { state: "unavailable" }, cost: { state: "unavailable" } },
+    })
+    const agentModel = agents.agentModel
+    if (!agentModel) throw new Error("Expected exact Agent/Model dashboard")
+    const { snapshotDigest, ...agentModelContent } = agentModel
+    expect(snapshotDigest).toBe(canonicalDigest(agentModelContent))
+    expect(JSON.stringify(agentModel)).not.toContain("must-redact")
+  })
+
+  it("withholds the Agent/Model projection when exact history sources are incomplete", async () => {
+    const handoffFailure = await harness({ handoffObservationError: new Error("private handoff failure") }).source.readSnapshot("agents-tools")
+    expect(handoffFailure.agentModel).toBeUndefined()
+    expect(handoffFailure.surface.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "agent-model-unavailable" }),
+    ]))
+    expect(JSON.stringify(handoffFailure)).not.toContain("private handoff failure")
+
+    const managedFailure = await harness({ managedObservationError: new Error("private Managed Run failure") }).source.readSnapshot("agents-tools")
+    expect(managedFailure.agentModel).toBeUndefined()
+    expect(managedFailure.surface.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "agent-model-unavailable" }),
+    ]))
+    expect(JSON.stringify(managedFailure)).not.toContain("private Managed Run failure")
   })
 
   it("opens an exact audit-gated Change/Impact dashboard from a current Change row", async () => {
@@ -956,6 +984,8 @@ describe("current-engine Product Studio data source", () => {
     expect(JSON.stringify(snapshot.inspector)).toContain("/opt/local/bin/codex")
     expect(JSON.stringify(snapshot.page.selection)).not.toContain("must-redact")
     expect(JSON.stringify(snapshot.page.selection)).toContain("[redacted]")
+    expect(JSON.stringify(snapshot.agentModel)).not.toContain("must-redact")
+    expect(JSON.stringify(snapshot.agentModel)).toContain("[redacted]")
   })
 
   it("blocks run preparation when a machine-local binding is missing or legacy", async () => {

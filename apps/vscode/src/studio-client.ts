@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 
-import type { ChangeImpactDashboard, PhaseDashboardFramework } from "@gaep/contracts"
+import type { AgentModelDashboard, ChangeImpactDashboard, PhaseDashboardFramework } from "@gaep/contracts"
 
 import {
   isStudioAction,
@@ -203,6 +203,7 @@ class StudioShell {
       main.append(this.renderPage(snapshot))
       if (snapshot.dashboard) main.append(this.renderPhaseDashboard(snapshot.dashboard))
       if (snapshot.changeImpact) main.append(this.renderChangeImpactDashboard(snapshot.changeImpact))
+      if (snapshot.agentModel) main.append(this.renderAgentModelDashboard(snapshot.agentModel))
     }
     else main.append(this.renderSurfaceState(snapshot.surface))
     workspace.append(main)
@@ -1067,6 +1068,152 @@ class StudioShell {
       { term: "Stale governance references", value: String(dashboard.freshness.staleGovernanceReferences) },
       { term: "Coverage", value: "Absence of a trace link does not prove absence of impact." },
       { term: "Omission", value: dashboard.limits.truncated ? "One or more bounded categories are truncated." : "No rows are omitted from the bounded categories." },
+    ]))
+    section.append(this.renderStringList("Projection limits", dashboard.limitations))
+    return section
+  }
+
+  private renderAgentModelDashboard(dashboard: AgentModelDashboard): HTMLElement {
+    const section = element("section", "section agent-model-dashboard")
+    section.setAttribute("aria-label", "Exact Agent and Model dashboard")
+    const freshness = dashboard.freshness.state === "current" ? "Current" : "Attention required"
+    section.append(
+      element("h3", undefined, "Agent and model evidence"),
+      element("p", "prose", `${freshness} · exact Product revision ${dashboard.product.revision}.`),
+      element(
+        "p",
+        "prose muted",
+        `Observed ${dashboard.observedAt}. This read-only projection cannot select or switch an agent, hand off work, launch a Run, or authorize effects.`,
+      ),
+      this.renderDefinitionGroup("Exact snapshot binding", [
+        { term: "Product ID", value: dashboard.product.recordId },
+        { term: "Product digest", value: dashboard.product.digest },
+        { term: "Snapshot digest", value: dashboard.snapshotDigest },
+      ]),
+    )
+    section.append(this.renderTable({
+      id: "agent-model-capabilities",
+      title: "Observed agent capabilities",
+      columns: [
+        { key: "agent", label: "Agent", identifier: true },
+        { key: "adapter", label: "Adapter" },
+        { key: "runtime", label: "Runtime" },
+        { key: "interface", label: "Execution interface" },
+        { key: "support", label: "Governed support" },
+        { key: "selected", label: "Selected" },
+      ],
+      rows: dashboard.capabilities.map((entry) => ({
+        id: `${entry.adapterId}:${entry.agentId}`,
+        cells: {
+          agent: entry.agentLabel,
+          adapter: `${entry.adapterId}@${entry.adapterVersion}`,
+          runtime: entry.runtimeVersion ?? "Unavailable",
+          interface: `${entry.executionInterface} · ${entry.interfaceMaturity}`,
+          support: [
+            entry.support.resume ? "resume" : undefined,
+            entry.support.cancel ? "cancel" : undefined,
+            entry.support.checkpoints ? "checkpoints" : undefined,
+            entry.support.modelDiscovery ? "model discovery" : undefined,
+            entry.support.toolSelection ? "tool selection" : undefined,
+          ].filter((value): value is string => Boolean(value)).join(", ") || "None reported",
+          selected: entry.selected ? "Yes" : "No",
+        },
+        state: entry.detected ? "detected" : "unavailable",
+        actions: [],
+      })),
+      actions: [],
+      truncation: {
+        shown: dashboard.limits.capabilities.shown,
+        total: dashboard.limits.capabilities.total,
+        message: dashboard.limits.capabilities.omitted > 0 ? "Older capability rows are omitted." : "All capability rows are shown.",
+      },
+    }))
+    const selectionEntries: StudioDefinitionEntry[] = [{ term: "Status", value: dashboard.selection.status }]
+    if (dashboard.selection.status === "selected" || dashboard.selection.status === "migration-required") {
+      selectionEntries.push(
+        { term: "Adapter and agent", value: `${dashboard.selection.adapterId} · ${dashboard.selection.agentId}` },
+        { term: "Model", value: dashboard.selection.modelId },
+        { term: "Model truth", value: `${dashboard.selection.modelTruthClass}${dashboard.selection.modelAlias ? " · alias" : ""}` },
+        { term: "Capability state", value: dashboard.selection.capabilityState },
+        { term: "Capability digest", value: dashboard.selection.capabilityDigest },
+        { term: "Selection digest", value: dashboard.selection.selectionDigest },
+        ...Object.entries(dashboard.selection.settings).map(([term, setting]) => ({
+          term: `Setting: ${term}`,
+          value: Array.isArray(setting) ? setting.join(", ") : String(setting),
+        })),
+      )
+    }
+    section.append(this.renderDefinitionGroup("Current portable selection", selectionEntries))
+    section.append(this.renderTable({
+      id: "agent-model-runs",
+      title: "Runs and latest Managed Run evidence",
+      columns: [
+        { key: "run", label: "Run", identifier: true },
+        { key: "agent", label: "Agent and model" },
+        { key: "state", label: "Run state" },
+        { key: "managed", label: "Managed evidence" },
+        { key: "result", label: "Bound result" },
+      ],
+      rows: dashboard.runs.map((entry) => ({
+        id: entry.record.recordId,
+        cells: {
+          run: `${entry.record.recordId}@${entry.record.revision}`,
+          agent: `${entry.agent.adapterId}/${entry.agent.agentId} · ${entry.agent.modelId}`,
+          state: entry.state,
+          managed: entry.managed.status === "observed"
+            ? `${entry.managed.state} · attempt ${entry.managed.attemptNumber}`
+            : "Not observed in bounded window",
+          result: entry.managed.status === "observed" && entry.managed.result.status === "bound"
+            ? `${entry.managed.result.providerDisposition} · outcome ${entry.managed.result.outcomeStatus} · ${entry.managed.result.evidence.eventCount} events`
+            : "Not bound",
+        },
+        state: entry.state,
+        actions: [],
+      })),
+      actions: [],
+      truncation: {
+        shown: dashboard.limits.runs.shown,
+        total: dashboard.limits.runs.total,
+        message: dashboard.limits.runs.omitted > 0 ? "Older Runs are omitted." : "All Runs are shown.",
+      },
+    }))
+    section.append(this.renderTable({
+      id: "agent-model-handoffs",
+      title: "Agent and model switch history",
+      columns: [
+        { key: "handoff", label: "Handoff", identifier: true },
+        { key: "from", label: "From Run" },
+        { key: "to", label: "To agent and model" },
+        { key: "state", label: "Acknowledgement" },
+        { key: "created", label: "Created" },
+      ],
+      rows: dashboard.handoffs.map((entry) => ({
+        id: entry.record.recordId,
+        cells: {
+          handoff: entry.record.recordId,
+          from: `${entry.fromRun.recordId}@${entry.fromRun.revision}`,
+          to: `${entry.toSelection.adapterId}/${entry.toSelection.agentId} · ${entry.toSelection.modelId}`,
+          state: entry.state,
+          created: entry.createdAt,
+        },
+        state: entry.state,
+        actions: [],
+      })),
+      actions: [],
+      truncation: {
+        shown: dashboard.limits.handoffs.shown,
+        total: dashboard.limits.handoffs.total,
+        message: dashboard.limits.handoffs.omitted > 0 ? "Older handoffs are omitted." : "All handoffs are shown.",
+      },
+    }))
+    section.append(this.renderDefinitionGroup("Provider metrics and freshness", [
+      { term: "Provider usage", value: "Unavailable — current Managed Run records have no provider usage contract." },
+      { term: "Provider cost", value: "Unavailable — current Managed Run records have no provider cost contract." },
+      { term: "Selection capability state", value: dashboard.freshness.selectionCapabilityState },
+      { term: "Capability observation range", value: `${dashboard.freshness.oldestCapabilityObservedAt} to ${dashboard.freshness.newestCapabilityObservedAt}` },
+      { term: "Managed Run coverage", value: `${dashboard.limits.managedRuns.shown} of ${dashboard.limits.managedRuns.total} observations inspected` },
+      { term: "Bounded omissions", value: dashboard.limits.truncated ? "One or more categories omit records." : "No records are omitted from the reported categories." },
+      { term: "Coverage boundary", value: "Bounded current records do not prove provider-account or native-host readiness." },
     ]))
     section.append(this.renderStringList("Projection limits", dashboard.limitations))
     return section

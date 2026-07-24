@@ -57,6 +57,7 @@ export interface AgentModelDashboardSources {
   selection: AgentSelectionState
   runs: Run[]
   handoffs: Handoff[]
+  handoffTotal: number
   managedRuns: AgentModelManagedObservation[]
   managedRunTotal: number
 }
@@ -114,6 +115,13 @@ function runReference(run: Run) {
 function projectSelection(state: AgentSelectionState, capabilities: AdapterCapabilities[]) {
   if (state.status === "unselected" || state.status === "invalid") return { status: state.status }
   const selection = selectionValue(state)!
+  const selectedCapability = capabilities.find((entry) =>
+    entry.adapterId === selection.adapterId && entry.agentId === selection.agentId)
+  const sensitiveSettings = new Set(selectedCapability?.settings.filter((entry) => entry.sensitive).map((entry) => entry.key) ?? [])
+  const settings = Object.fromEntries(Object.entries(selection.settings).map(([key, value]) => [
+    key,
+    sensitiveSettings.has(key) ? "[redacted]" : value,
+  ]))
   if (state.status === "migration-required") {
     return {
       status: "migration-required" as const,
@@ -123,14 +131,13 @@ function projectSelection(state: AgentSelectionState, capabilities: AdapterCapab
       modelId: selection.modelId,
       modelTruthClass: selection.modelTruthClass,
       modelAlias: selection.modelAlias,
-      settings: selection.settings,
+      settings,
       selectedAt: selection.selectedAt,
       capabilityDigest: selection.capabilityDigest,
       capabilityState: "migration-required" as const,
     }
   }
-  const capability = capabilities.find((entry) =>
-    entry.adapterId === selection.adapterId && entry.agentId === selection.agentId)
+  const capability = selectedCapability
   return {
     status: "selected" as const,
     selectionDigest: canonicalDigest(selection),
@@ -139,7 +146,7 @@ function projectSelection(state: AgentSelectionState, capabilities: AdapterCapab
     modelId: selection.modelId,
     modelTruthClass: selection.modelTruthClass,
     modelAlias: selection.modelAlias,
-    settings: selection.settings,
+    settings,
     selectedAt: selection.selectedAt,
     capabilityDigest: selection.capabilityDigest,
     capabilityState: capability && capabilityDigest(capability) === selection.capabilityDigest
@@ -259,6 +266,9 @@ export function composeAgentModelDashboard(
       handoffs.some((entry) => entry.productId.toLowerCase() !== product.id.toLowerCase())) {
     throw new AgentModelProductBindingError()
   }
+  if (!Number.isSafeInteger(sourceValues.handoffTotal) || sourceValues.handoffTotal < handoffs.length) {
+    throw new Error("Handoff observation total is invalid")
+  }
   if (!Number.isSafeInteger(sourceValues.managedRunTotal) || sourceValues.managedRunTotal < sourceValues.managedRuns.length) {
     throw new Error("Managed Run observation total is invalid")
   }
@@ -353,7 +363,15 @@ export function composeAgentModelDashboard(
     `${right.createdAt}:${right.record.recordId}`,
     `${left.createdAt}:${left.record.recordId}`,
   ))
-  const boundedHandoffs = bounded(handoffRows, LIMITS.handoffs)
+  const boundedHandoffValues = handoffRows.slice(0, LIMITS.handoffs)
+  const boundedHandoffs = {
+    values: boundedHandoffValues,
+    limit: {
+      shown: boundedHandoffValues.length,
+      total: sourceValues.handoffTotal,
+      omitted: sourceValues.handoffTotal - boundedHandoffValues.length,
+    },
+  }
   const managedRunLimit = {
     shown: managedRuns.length,
     total: sourceValues.managedRunTotal,

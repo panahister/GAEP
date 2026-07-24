@@ -595,6 +595,7 @@ export class EngineHost {
             selection,
             runs,
             handoffs,
+            handoffTotal: handoffs.length,
             managedRuns,
             managedRunTotal: managedPage.total,
           }, request.params)

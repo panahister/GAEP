@@ -3,6 +3,7 @@
 import axe from "axe-core"
 import { JSDOM } from "jsdom"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { canonicalDigest } from "@gaep/agent-sdk"
 
 import { installStudioClient } from "./studio-client.js"
 import { createStudioDocument } from "./studio-document.js"
@@ -379,6 +380,42 @@ function changeImpactDashboard(): NonNullable<StudioSnapshot["changeImpact"]> {
   }
 }
 
+function agentModelDashboard(): NonNullable<StudioSnapshot["agentModel"]> {
+  const observedAt = "2026-07-24T00:00:01.000Z"
+  const content = {
+    schemaVersion: 1 as const,
+    kind: "agent-model-dashboard" as const,
+    product: { recordType: "product" as const, recordId: "00000000-0000-4000-8000-000000000001", revision: 2, digest: `sha256:${"a".repeat(64)}` },
+    capabilities: [{
+      adapterId: "gaep.manual", adapterVersion: "1.0.0", agentId: "manual", agentLabel: "Manual",
+      runtimeVersion: "1.0.0", capabilityDigest: `sha256:${"b".repeat(64)}`, detected: true,
+      executionInterface: "managed-in-process" as const, interfaceMaturity: "stable" as const,
+      support: { resume: true, cancel: true, checkpoints: true, modelDiscovery: true, toolSelection: false },
+      modelCount: 1, limitations: { values: ["Offline fixture only."], shown: 1, total: 1, omitted: 0 },
+      observedAt, selected: false,
+    }],
+    selection: { status: "unselected" as const }, runs: [], handoffs: [],
+    providerMetrics: {
+      usage: { state: "unavailable" as const, basis: "current-managed-records-have-no-provider-usage-or-cost-contract" as const },
+      cost: { state: "unavailable" as const, basis: "current-managed-records-have-no-provider-usage-or-cost-contract" as const },
+    },
+    freshness: {
+      state: "current" as const, selectionCapabilityState: "unselected" as const,
+      oldestCapabilityObservedAt: observedAt, newestCapabilityObservedAt: observedAt, truncated: false,
+      coverageBoundary: "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness" as const,
+    },
+    limits: {
+      capabilities: { shown: 1, total: 1, omitted: 0 }, runs: { shown: 0, total: 0, omitted: 0 },
+      handoffs: { shown: 0, total: 0, omitted: 0 }, managedRuns: { shown: 0, total: 0, omitted: 0 }, truncated: false,
+    },
+    observedAt,
+    sourceBoundary: "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" as const,
+    limitations: ["This projection grants no selection, handoff, launch, or effect authority."],
+    authorityBoundary: "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects" as const,
+  }
+  return { ...content, snapshotDigest: canonicalDigest(content) }
+}
+
 function exposeGlobal(name: string, value: unknown): void {
   if (!originalGlobals.has(name)) originalGlobals.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
   Object.defineProperty(globalThis, name, { configurable: true, writable: true, value })
@@ -536,6 +573,23 @@ describe("Product Studio rendered accessibility", () => {
     expect(document.body.textContent).toMatch(/cannot approve the Change, accept risk, or authorize effects/i)
     const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")
     expect(labels.some((label) => /approve|accept risk|authorize effect/i.test(label))).toBe(false)
+  })
+
+  it("renders exact Agent and Model evidence without selection or launch controls", () => {
+    const candidate: StudioSnapshot = {
+      ...snapshot("agents-tools", 95),
+      agentModel: agentModelDashboard(),
+    }
+    expect(isStudioSnapshot(candidate)).toBe(true)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
+    const document = dom.window.document
+    expect(document.querySelector('[aria-label="Exact Agent and Model dashboard"]')).not.toBeNull()
+    expect(document.body.textContent).toMatch(/Agent and model evidence/i)
+    expect(document.body.textContent).toMatch(/Observed agent capabilities/i)
+    expect(document.body.textContent).toMatch(/Provider usage.*Unavailable/i)
+    expect(document.body.textContent).toMatch(/cannot select or switch an agent, hand off work, launch a Run, or authorize effects/i)
+    const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")
+    expect(labels.some((label) => /select agent|switch agent|launch run|authorize effect/i.test(label))).toBe(false)
   })
 
   it("keeps names, focus order, and icon semantics explicit", () => {

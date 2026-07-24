@@ -264,6 +264,7 @@ function sources(capabilities = [manualCapabilities, claudeCapabilities]): Agent
     selection: { status: "selected", selection },
     runs: [run],
     handoffs: [handoff],
+    handoffTotal: 1,
     managedRuns: [{ record: managedRecord, result, evidence }],
     managedRunTotal: 1,
   }
@@ -314,6 +315,17 @@ describe("Agent/Model dashboard composition", () => {
     expect(dashboard.selection).toMatchObject({ status: "selected", capabilityState: "stale" })
     expect(dashboard.freshness).toMatchObject({ state: "attention-required", selectionCapabilityState: "stale" })
     expect(dashboard.providerMetrics.cost.state).toBe("unavailable")
+  })
+
+  it("preserves bounded handoff omissions supplied by a host reader", () => {
+    const dashboard = composeAgentModelDashboard(
+      { ...sources(), handoffTotal: 3 },
+      requestFor(),
+      observedAt,
+    )
+    expect(dashboard.limits.handoffs).toEqual({ shown: 1, total: 3, omitted: 2 })
+    expect(dashboard.limits.truncated).toBe(true)
+    expect(dashboard.freshness).toMatchObject({ state: "attention-required", truncated: true })
   })
 
   it("keeps unselected state current while migration and invalid state require attention", () => {

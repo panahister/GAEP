@@ -1,4 +1,6 @@
-import type { ChangeImpactDashboard, PhaseDashboardFramework } from "@gaep/contracts"
+import type { AgentModelDashboard, ChangeImpactDashboard, PhaseDashboardFramework } from "@gaep/contracts"
+
+import { canonicalStudioDigest } from "./studio-digest.js"
 
 export const studioProtocolVersion = 1 as const
 
@@ -406,6 +408,7 @@ export interface StudioSnapshot {
   surface: StudioSurfaceState
   dashboard?: PhaseDashboardFramework
   changeImpact?: ChangeImpactDashboard
+  agentModel?: AgentModelDashboard
   page: StudioPageSnapshot
   inspector?: StudioInspectorSnapshot
   footer: StudioFooterSnapshot
@@ -759,6 +762,177 @@ function isChangeImpactDashboard(value: unknown): value is ChangeImpactDashboard
     unique(value.affectedUnits.map((entry) => `${entry.direction}:${entry.endpoint.recordType}:${entry.endpoint.recordId}:${entry.trace.recordId}`)) &&
     unique(value.governance.decisions.map((entry) => entry.record.recordId)) &&
     unique(value.governance.risks.map((entry) => entry.record.recordId))
+}
+
+const digestPattern = /^sha256:[0-9a-f]{64}$/u
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
+
+function isAgentModelReference(value: unknown, recordType: "product" | "run" | "managed-run" | "handoff"): boolean {
+  return isRecord(value) && hasOnlyKeys(value, ["recordType", "recordId", "revision", "digest"]) &&
+    value.recordType === recordType && typeof value.recordId === "string" && uuidPattern.test(value.recordId) &&
+    isNonNegativeInteger(value.revision) && value.revision > 0 && typeof value.digest === "string" && digestPattern.test(value.digest)
+}
+
+function isAgentModelPortableSetting(value: unknown): boolean {
+  const portableString = (candidate: unknown): candidate is string => typeof candidate === "string" && candidate.length <= 10_000 &&
+    !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u.test(candidate) &&
+    !/^(?:\/|[A-Za-z]:[\\/]|\\\\|file:\/\/|~[\\/])/u.test(candidate) &&
+    !/\bBearer\s+\S+/iu.test(candidate) && !/\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b/u.test(candidate) &&
+    !/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/u.test(candidate) &&
+    !/\bAKIA[A-Z0-9]{16}\b/u.test(candidate) && !/-----BEGIN [A-Z ]*PRIVATE KEY-----/u.test(candidate) &&
+    !/\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+/iu.test(candidate) &&
+    !/^\$\{?[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\}?$/iu.test(candidate)
+  return portableString(value) || (typeof value === "number" && Number.isFinite(value)) || typeof value === "boolean" ||
+    (Array.isArray(value) && value.length <= 256 && value.every(portableString))
+}
+
+function isAgentModelSettings(value: unknown): boolean {
+  if (!isRecord(value) || Object.keys(value).length > 128) return false
+  return Object.entries(value).every(([key, setting]) => /^[a-z][a-zA-Z0-9]{0,127}$/u.test(key) &&
+    !/(?:apiKey|accessToken|refreshToken|authToken|bearerToken|password|passwd|clientSecret|privateKey|credential)/iu.test(key) &&
+    !/^(?:secret|token)$/iu.test(key) && isAgentModelPortableSetting(setting))
+}
+
+function isAgentModelLimit(value: unknown): value is { shown: number; total: number; omitted: number } {
+  return isRecord(value) && hasOnlyKeys(value, ["shown", "total", "omitted"]) &&
+    isNonNegativeInteger(value.shown) && isNonNegativeInteger(value.total) && isNonNegativeInteger(value.omitted) &&
+    value.shown + value.omitted === value.total
+}
+
+function isAgentModelSelection(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.status !== "string") return false
+  if (value.status === "unselected" || value.status === "invalid") return hasOnlyKeys(value, ["status"])
+  if (!hasOnlyKeys(value, [
+    "status", "selectionDigest", "adapterId", "agentId", "modelId", "modelTruthClass", "modelAlias", "settings",
+    "selectedAt", "capabilityDigest", "capabilityState",
+  ]) || !["selected", "migration-required"].includes(value.status) || typeof value.selectionDigest !== "string" ||
+    !digestPattern.test(value.selectionDigest) || !isNonEmptyString(value.adapterId) || !isNonEmptyString(value.agentId) ||
+    !isNonEmptyString(value.modelId) || !["observed", "provider-declared", "configured", "inferred", "unknown"].includes(String(value.modelTruthClass)) ||
+    !(value.modelAlias === null || typeof value.modelAlias === "boolean") || !isAgentModelSettings(value.settings) ||
+    typeof value.selectedAt !== "string" || !Number.isFinite(Date.parse(value.selectedAt)) ||
+    typeof value.capabilityDigest !== "string" || !digestPattern.test(value.capabilityDigest)) return false
+  return value.status === "selected"
+    ? ["current", "stale"].includes(String(value.capabilityState))
+    : value.capabilityState === "migration-required"
+}
+
+function isAgentModelManaged(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.status !== "string") return false
+  if (value.status === "not-observed-in-bounded-window") return hasOnlyKeys(value, ["status"])
+  if (value.status !== "observed" || !hasOnlyKeys(value, [
+    "status", "record", "mode", "state", "attemptNumber", "bindingsDigest", "provider", "result",
+  ]) || !isAgentModelReference(value.record, "managed-run") ||
+    !["codex-staged", "manual-offline", "claude-context-only"].includes(String(value.mode)) ||
+    !["prepared", "running", "review-required", "applying", "completed", "failed", "cancelled", "timed-out", "unknown", "conflict", "discarded"].includes(String(value.state)) ||
+    !isNonNegativeInteger(value.attemptNumber) || value.attemptNumber < 1 || value.attemptNumber > 1_000_000 ||
+    typeof value.bindingsDigest !== "string" || !digestPattern.test(value.bindingsDigest) || !isRecord(value.provider) ||
+    !hasOnlyKeys(value.provider, ["adapterId", "agentId", "modelId", "capabilityDigest"]) ||
+    !isNonEmptyString(value.provider.adapterId) || !isNonEmptyString(value.provider.agentId) || !isNonEmptyString(value.provider.modelId) ||
+    typeof value.provider.capabilityDigest !== "string" || !digestPattern.test(value.provider.capabilityDigest) || !isRecord(value.result)) return false
+  if (value.result.status === "not-bound") return hasOnlyKeys(value.result, ["status"])
+  if (value.result.status !== "bound" || !hasOnlyKeys(value.result, [
+    "status", "recordId", "digest", "providerDisposition", "outcomeStatus", "evidence",
+  ]) || typeof value.result.recordId !== "string" || !uuidPattern.test(value.result.recordId) ||
+    typeof value.result.digest !== "string" || !digestPattern.test(value.result.digest) ||
+    !["completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown"].includes(String(value.result.providerDisposition)) ||
+    !["satisfied", "failed", "not-assessed", "indeterminate"].includes(String(value.result.outcomeStatus)) ||
+    !isRecord(value.result.evidence) || !hasOnlyKeys(value.result.evidence, [
+      "recordId", "digest", "eventCount", "eventsDigest", "actualEffectCount", "capturedAt",
+    ])) return false
+  const evidence = value.result.evidence
+  return typeof evidence.recordId === "string" && uuidPattern.test(evidence.recordId) &&
+    typeof evidence.digest === "string" && digestPattern.test(evidence.digest) &&
+    isNonNegativeInteger(evidence.eventCount) && evidence.eventCount <= 4_096 &&
+    typeof evidence.eventsDigest === "string" && digestPattern.test(evidence.eventsDigest) &&
+    isNonNegativeInteger(evidence.actualEffectCount) && evidence.actualEffectCount <= 32 &&
+    typeof evidence.capturedAt === "string" && Number.isFinite(Date.parse(evidence.capturedAt))
+}
+
+function isAgentModelDashboard(value: unknown): value is AgentModelDashboard {
+  if (!isRecord(value) || !hasOnlyKeys(value, [
+    "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs", "providerMetrics",
+    "freshness", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+  ]) || value.schemaVersion !== 1 || value.kind !== "agent-model-dashboard" ||
+    !isAgentModelReference(value.product, "product") || !Array.isArray(value.capabilities) || value.capabilities.length > 16 ||
+    !isAgentModelSelection(value.selection) || !Array.isArray(value.runs) || value.runs.length > 256 ||
+    !Array.isArray(value.handoffs) || value.handoffs.length > 256) return false
+  if (!value.capabilities.every((entry) => isRecord(entry) && hasOnlyKeys(entry, [
+    "adapterId", "adapterVersion", "agentId", "agentLabel", "runtimeVersion", "capabilityDigest", "detected",
+    "executionInterface", "interfaceMaturity", "support", "modelCount", "limitations", "observedAt", "selected",
+  ]) && isNonEmptyString(entry.adapterId) && isNonEmptyString(entry.adapterVersion) && isNonEmptyString(entry.agentId) &&
+    isNonEmptyString(entry.agentLabel) && (entry.runtimeVersion === null || isNonEmptyString(entry.runtimeVersion)) &&
+    typeof entry.capabilityDigest === "string" && digestPattern.test(entry.capabilityDigest) && typeof entry.detected === "boolean" &&
+    ["cli-jsonl", "cli-stream-json", "stdio-rpc", "managed-in-process", "unavailable"].includes(String(entry.executionInterface)) &&
+    ["stable", "beta", "experimental", "unknown"].includes(String(entry.interfaceMaturity)) && isRecord(entry.support) &&
+    hasOnlyKeys(entry.support, ["resume", "cancel", "checkpoints", "modelDiscovery", "toolSelection"]) &&
+    Object.values(entry.support).every((flag) => typeof flag === "boolean") && isNonNegativeInteger(entry.modelCount) && entry.modelCount <= 512 &&
+    isRecord(entry.limitations) && hasOnlyKeys(entry.limitations, ["values", "shown", "total", "omitted"]) &&
+    Array.isArray(entry.limitations.values) && entry.limitations.values.length <= 64 && entry.limitations.values.every(isNonEmptyString) &&
+    isNonNegativeInteger(entry.limitations.shown) && isNonNegativeInteger(entry.limitations.total) && isNonNegativeInteger(entry.limitations.omitted) &&
+    entry.limitations.values.length === entry.limitations.shown && entry.limitations.shown + entry.limitations.omitted === entry.limitations.total &&
+    typeof entry.observedAt === "string" && Number.isFinite(Date.parse(entry.observedAt)) && typeof entry.selected === "boolean")) return false
+  if (!value.runs.every((entry) => isRecord(entry) && hasOnlyKeys(entry, ["record", "initiativeId", "state", "agent", "startedAt", "endedAt", "managed"]) &&
+    isAgentModelReference(entry.record, "run") && typeof entry.initiativeId === "string" && uuidPattern.test(entry.initiativeId) &&
+    ["prepared", "running", "paused", "completed", "failed", "cancelled", "unknown"].includes(String(entry.state)) &&
+    isRecord(entry.agent) && hasOnlyKeys(entry.agent, ["adapterId", "agentId", "modelId", "selectionDigest"]) &&
+    isNonEmptyString(entry.agent.adapterId) && isNonEmptyString(entry.agent.agentId) && isNonEmptyString(entry.agent.modelId) &&
+    typeof entry.agent.selectionDigest === "string" && digestPattern.test(entry.agent.selectionDigest) &&
+    (entry.startedAt === null || (typeof entry.startedAt === "string" && Number.isFinite(Date.parse(entry.startedAt)))) &&
+    (entry.endedAt === null || (typeof entry.endedAt === "string" && Number.isFinite(Date.parse(entry.endedAt)))) && isAgentModelManaged(entry.managed))) return false
+  if (!value.handoffs.every((entry) => isRecord(entry) && hasOnlyKeys(entry, [
+    "record", "fromRun", "toSelection", "state", "createdAt", "acknowledgedAt",
+  ]) && isAgentModelReference(entry.record, "handoff") && isRecord(entry.record) && entry.record.revision === 1 &&
+    isAgentModelReference(entry.fromRun, "run") && isRecord(entry.toSelection) &&
+    hasOnlyKeys(entry.toSelection, ["adapterId", "agentId", "modelId", "selectionDigest"]) &&
+    isNonEmptyString(entry.toSelection.adapterId) && isNonEmptyString(entry.toSelection.agentId) && isNonEmptyString(entry.toSelection.modelId) &&
+    typeof entry.toSelection.selectionDigest === "string" && digestPattern.test(entry.toSelection.selectionDigest) &&
+    ["pending-acknowledgement", "acknowledged"].includes(String(entry.state)) && typeof entry.createdAt === "string" &&
+    Number.isFinite(Date.parse(entry.createdAt)) && (entry.acknowledgedAt === null ||
+      (typeof entry.acknowledgedAt === "string" && Number.isFinite(Date.parse(entry.acknowledgedAt)))))) return false
+  const unavailableMetric = (metric: unknown): boolean => isRecord(metric) && hasOnlyKeys(metric, ["state", "basis"]) &&
+    metric.state === "unavailable" && metric.basis === "current-managed-records-have-no-provider-usage-or-cost-contract"
+  if (!isRecord(value.providerMetrics) || !hasOnlyKeys(value.providerMetrics, ["usage", "cost"]) ||
+    !unavailableMetric(value.providerMetrics.usage) || !unavailableMetric(value.providerMetrics.cost) ||
+    !isRecord(value.freshness) || !hasOnlyKeys(value.freshness, [
+      "state", "selectionCapabilityState", "oldestCapabilityObservedAt", "newestCapabilityObservedAt", "truncated", "coverageBoundary",
+    ]) || !["current", "attention-required"].includes(String(value.freshness.state)) ||
+    !["current", "unselected", "stale", "migration-required", "invalid"].includes(String(value.freshness.selectionCapabilityState)) ||
+    typeof value.freshness.oldestCapabilityObservedAt !== "string" || !Number.isFinite(Date.parse(value.freshness.oldestCapabilityObservedAt)) ||
+    typeof value.freshness.newestCapabilityObservedAt !== "string" || !Number.isFinite(Date.parse(value.freshness.newestCapabilityObservedAt)) ||
+    typeof value.freshness.truncated !== "boolean" ||
+    value.freshness.coverageBoundary !== "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness" ||
+    !isRecord(value.limits) || !hasOnlyKeys(value.limits, ["capabilities", "runs", "handoffs", "managedRuns", "truncated"]) ||
+    !isAgentModelLimit(value.limits.capabilities) || !isAgentModelLimit(value.limits.runs) ||
+    !isAgentModelLimit(value.limits.handoffs) || !isAgentModelLimit(value.limits.managedRuns) || typeof value.limits.truncated !== "boolean") return false
+  const categories = [[value.capabilities, value.limits.capabilities], [value.runs, value.limits.runs], [value.handoffs, value.limits.handoffs]] as const
+  if (categories.some(([rows, limit]) => limit.shown !== rows.length)) return false
+  const truncated = categories.some(([, limit]) => limit.omitted > 0) || value.limits.managedRuns.omitted > 0
+  const selection = value.selection as Record<string, unknown>
+  const selectionState = selection.status === "selected" ? selection.capabilityState : selection.status
+  const selectedCapabilities = value.capabilities.filter((entry) => isRecord(entry) && entry.selected)
+  if (value.freshness.selectionCapabilityState !== selectionState || value.limits.truncated !== truncated || value.freshness.truncated !== truncated ||
+    ((value.freshness.state === "attention-required") !== (truncated || ["stale", "migration-required", "invalid"].includes(String(selectionState))))) return false
+  if (selection.status === "selected") {
+    if (selectedCapabilities.length !== 1 || selectedCapabilities[0]?.adapterId !== selection.adapterId ||
+      selectedCapabilities[0]?.agentId !== selection.agentId ||
+      ((selectedCapabilities[0]?.capabilityDigest === selection.capabilityDigest) !== (selection.capabilityState === "current"))) return false
+  } else if (selectedCapabilities.length !== 0) return false
+  const unique = (keys: string[]) => new Set(keys).size === keys.length
+  const runIds = new Set(value.runs.map((entry) => (entry as { record: { recordId: string } }).record.recordId))
+  if (!unique(value.capabilities.map((entry) => `${entry.adapterId}:${entry.agentId}`)) ||
+    !unique(value.runs.map((entry) => entry.record.recordId)) || !unique(value.handoffs.map((entry) => entry.record.recordId)) ||
+    !unique(value.runs.flatMap((entry) => entry.managed.status === "observed" ? [entry.managed.record.recordId] : [])) ||
+    (value.limits.runs.omitted === 0 && value.handoffs.some((entry) => !runIds.has(entry.fromRun.recordId)))) return false
+  if (typeof value.observedAt !== "string" || !Number.isFinite(Date.parse(value.observedAt)) ||
+    Date.parse(value.freshness.oldestCapabilityObservedAt) > Date.parse(value.freshness.newestCapabilityObservedAt) ||
+    Date.parse(value.freshness.newestCapabilityObservedAt) > Date.parse(value.observedAt) ||
+    value.sourceBoundary !== "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" ||
+    !Array.isArray(value.limitations) || value.limitations.length < 1 || value.limitations.length > 8 ||
+    !value.limitations.every((entry) => isNonEmptyString(entry) && entry.length <= 1_000) ||
+    value.authorityBoundary !== "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects" ||
+    typeof value.snapshotDigest !== "string" || !digestPattern.test(value.snapshotDigest)) return false
+  const { snapshotDigest, ...content } = value
+  return snapshotDigest === canonicalStudioDigest(content)
 }
 
 function isOpaqueContextGeneration(value: unknown): value is string {
@@ -1187,7 +1361,7 @@ function routeMatchesPage(route: StudioRoute, page: Record<string, unknown>): bo
 
 export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
   if (!isRecord(value) || !hasOnlyKeys(value, [
-    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "changeImpact", "page", "inspector", "footer",
+    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "changeImpact", "agentModel", "page", "inspector", "footer",
   ])) return false
   if (value.protocolVersion !== studioProtocolVersion || !isOpaqueContextGeneration(value.contextGeneration) ||
     !isNonNegativeInteger(value.snapshotRevision) || !isStudioRoute(value.route)) {
@@ -1201,6 +1375,7 @@ export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
   if (!isStudioSurfaceState(value.surface)) return false
   if (value.dashboard !== undefined && !isPhaseDashboardFramework(value.dashboard)) return false
   if (value.changeImpact !== undefined && (value.route !== "delivery" || !isChangeImpactDashboard(value.changeImpact))) return false
+  if (value.agentModel !== undefined && (value.route !== "agents-tools" || !isAgentModelDashboard(value.agentModel))) return false
   if (!Array.isArray(value.navigation) || value.navigation.length !== studioRoutes.length) return false
   const navigationRoutes = value.navigation.flatMap((entry) =>
     isRecord(entry) && hasOnlyKeys(entry, ["route", "state", "gapCount"]) && isStudioRoute(entry.route) &&

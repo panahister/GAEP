@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { canonicalDigest } from "@gaep/agent-sdk"
 
 import {
   isStudioAction,
@@ -216,6 +217,63 @@ function changeImpactDashboard(): NonNullable<StudioSnapshot["changeImpact"]> {
   }
 }
 
+function agentModelDashboard(): NonNullable<StudioSnapshot["agentModel"]> {
+  const observedAt = "2026-07-24T00:00:01.000Z"
+  const content = {
+    schemaVersion: 1 as const,
+    kind: "agent-model-dashboard" as const,
+    product: {
+      recordType: "product" as const,
+      recordId: "00000000-0000-4000-8000-000000000001",
+      revision: 2,
+      digest: `sha256:${"a".repeat(64)}`,
+    },
+    capabilities: [{
+      adapterId: "gaep.manual",
+      adapterVersion: "1.0.0",
+      agentId: "manual",
+      agentLabel: "Manual",
+      runtimeVersion: "1.0.0",
+      capabilityDigest: `sha256:${"b".repeat(64)}`,
+      detected: true,
+      executionInterface: "managed-in-process" as const,
+      interfaceMaturity: "stable" as const,
+      support: { resume: true, cancel: true, checkpoints: true, modelDiscovery: true, toolSelection: false },
+      modelCount: 1,
+      limitations: { values: ["Offline fixture only."], shown: 1, total: 1, omitted: 0 },
+      observedAt,
+      selected: false,
+    }],
+    selection: { status: "unselected" as const },
+    runs: [],
+    handoffs: [],
+    providerMetrics: {
+      usage: { state: "unavailable" as const, basis: "current-managed-records-have-no-provider-usage-or-cost-contract" as const },
+      cost: { state: "unavailable" as const, basis: "current-managed-records-have-no-provider-usage-or-cost-contract" as const },
+    },
+    freshness: {
+      state: "current" as const,
+      selectionCapabilityState: "unselected" as const,
+      oldestCapabilityObservedAt: observedAt,
+      newestCapabilityObservedAt: observedAt,
+      truncated: false,
+      coverageBoundary: "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness" as const,
+    },
+    limits: {
+      capabilities: { shown: 1, total: 1, omitted: 0 },
+      runs: { shown: 0, total: 0, omitted: 0 },
+      handoffs: { shown: 0, total: 0, omitted: 0 },
+      managedRuns: { shown: 0, total: 0, omitted: 0 },
+      truncated: false,
+    },
+    observedAt,
+    sourceBoundary: "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" as const,
+    limitations: ["This projection grants no selection, handoff, launch, or effect authority."],
+    authorityBoundary: "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects" as const,
+  }
+  return { ...content, snapshotDigest: canonicalDigest(content) }
+}
+
 describe("Product Studio protocol", () => {
   it("defines the approved twelve-route order and eight run stages", () => {
     expect(studioRoutes).toEqual([
@@ -281,6 +339,34 @@ describe("Product Studio protocol", () => {
       },
     })).toBe(false)
     expect(isStudioSnapshot({ ...snapshot("trace"), changeImpact: changeImpactDashboard() })).toBe(false)
+  })
+
+  it("accepts only an exact, digest-bound Agent and Model projection on Agents and Tools", () => {
+    const agents = { ...snapshot("agents-tools"), agentModel: agentModelDashboard() }
+    expect(isStudioSnapshot(agents)).toBe(true)
+    expect(isStudioSnapshot({
+      ...agents,
+      agentModel: { ...agents.agentModel, providerToken: "private" },
+    })).toBe(false)
+    expect(isStudioSnapshot({
+      ...agents,
+      agentModel: {
+        ...agents.agentModel,
+        providerMetrics: { ...agents.agentModel.providerMetrics, cost: { state: "available", amount: 0 } },
+      },
+    })).toBe(false)
+    expect(isStudioSnapshot({
+      ...agents,
+      agentModel: {
+        ...agents.agentModel,
+        freshness: { ...agents.agentModel.freshness, state: "attention-required" },
+      },
+    })).toBe(false)
+    expect(isStudioSnapshot({
+      ...agents,
+      agentModel: { ...agents.agentModel, snapshotDigest: `sha256:${"f".repeat(64)}` },
+    })).toBe(false)
+    expect(isStudioSnapshot({ ...snapshot("runs-evidence"), agentModel: agentModelDashboard() })).toBe(false)
   })
 
   it("requires bounded Managed Run evidence, handoff history, and normalized event fields", () => {

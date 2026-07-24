@@ -1,6 +1,9 @@
 import type {
   AdapterCapabilities,
+  AgentModelDashboard,
+  AgentModelDashboardRequest,
   AgentSelection,
+  AgentSelectionState,
   ArchitectureRecord,
   Change,
   ChangeImpactDashboard,
@@ -37,8 +40,8 @@ import type {
   PhaseDashboardFramework,
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
-import { canonicalDigest } from "@gaep/agent-sdk"
-import { composeChangeImpactDashboard, composePhaseDashboardFramework } from "@gaep/engine"
+import { canonicalDigest, capabilityDigest } from "@gaep/agent-sdk"
+import { composeAgentModelDashboard, composeChangeImpactDashboard, composePhaseDashboardFramework } from "@gaep/engine"
 import type {
   ManagedRunListPage,
   ManagedRunListPageInput,
@@ -93,6 +96,7 @@ import {
 export interface CurrentStudioEngineReader {
   readProduct(): Promise<Product>
   readSelection(): Promise<AgentSelection>
+  readSelectionState?(): Promise<AgentSelectionState>
   listRuns(): Promise<Run[]>
   listManagedRuns?(): Promise<ManagedRunRecord[]>
   listManagedRunsPage?(input?: ManagedRunListPageInput): Promise<ManagedRunListPage>
@@ -140,16 +144,20 @@ interface ObservedStudioState {
   product?: Product
   initiatives: Initiative[]
   runs: Run[]
+  runsObserved: boolean
   managedRuns: ManagedRunObservation[]
   managedRunTotal: number
+  managedRunsObserved: boolean
   handoffs: Handoff[]
   handoffTotal: number
+  handoffsObserved: boolean
   handoffSelectedFileCount: number
   handoffOmittedOutsideWindow: number
   handoffOmittedForResourceSafety: number
   handoffPlatformAttestationUnavailable: boolean
   selectedRecordId?: string
   selection?: AgentSelection
+  selectionState?: AgentSelectionState
   agents: AdapterCapabilities[]
   audit?: { valid: boolean; events: number; error?: string; warning?: string }
   runtimeBinding?: RuntimeBindingResolution
@@ -2311,6 +2319,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     }
     const observed = await this.observe(route)
     let changeImpact: ChangeImpactDashboard | undefined
+    let agentModel: AgentModelDashboard | undefined
     if (route === "delivery" && this.changeImpactSelection) {
       try {
         changeImpact = await this.readChangeImpactDashboard(this.changeImpactSelection)
@@ -2319,6 +2328,18 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         observed.issues.push(issue(
           "change-impact-unavailable",
           "The selected Change/Impact dashboard could not be revalidated against the current Product, audit, records, and trace assessment. Select the current Change again.",
+          "warning",
+        ))
+      }
+    }
+    if (route === "agents-tools") {
+      try {
+        agentModel = this.composeAgentModelDashboard(observed)
+      } catch (error) {
+        this.context.logDiagnostic("Product Studio exact Agent/Model dashboard observation failed; private source detail was withheld", error)
+        observed.issues.push(issue(
+          "agent-model-unavailable",
+          "The Agent/Model dashboard could not be revalidated against the current Product, audit, capability, selection, Run, handoff, and Managed Run evidence snapshots.",
           "warning",
         ))
       }
@@ -2359,6 +2380,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       surface: surfaceFor(route, this.context, observed),
       ...(dashboard ? { dashboard } : {}),
       ...(changeImpact ? { changeImpact } : {}),
+      ...(agentModel ? { agentModel } : {}),
       page: page.page,
       ...(selectedInspector ?? page.inspector ? { inspector: selectedInspector ?? page.inspector } : {}),
       footer: {
@@ -2618,9 +2640,47 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     )
   }
 
+  private composeAgentModelDashboard(observed: ObservedStudioState): AgentModelDashboard {
+    if (!observed.product || observed.audit?.valid !== true || !observed.selectionState ||
+        observed.agents.length === 0 || !observed.runsObserved || !observed.handoffsObserved ||
+        !observed.managedRunsObserved) {
+      throw new Error("The exact Agent/Model dashboard source set is incomplete")
+    }
+    const expectedSelection: AgentModelDashboardRequest["expectedSelection"] = observed.selectionState.status === "selected"
+      ? { status: "selected", selectionDigest: canonicalDigest(observed.selectionState.selection) }
+      : observed.selectionState.status === "migration-required"
+        ? { status: "migration-required", selectionDigest: canonicalDigest(observed.selectionState.portableCandidate) }
+        : { status: observed.selectionState.status }
+    const managedRuns = observed.managedRuns.map(({ record, result, evidence, issue: observationIssue }) => {
+      if (observationIssue) throw new Error("A Managed Run evidence observation is incomplete")
+      return { record, ...(result ? { result } : {}), ...(evidence ? { evidence } : {}) }
+    })
+    return composeAgentModelDashboard({
+      product: observed.product,
+      capabilities: observed.agents,
+      selection: observed.selectionState,
+      runs: observed.runs,
+      handoffs: observed.handoffs,
+      handoffTotal: observed.handoffTotal,
+      managedRuns,
+      managedRunTotal: observed.managedRunTotal,
+    }, {
+      expectedProductId: observed.product.id,
+      expectedProductRevision: observed.product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(observed.product),
+      expectedSelection,
+      expectedCapabilities: observed.agents.map((entry) => ({
+        adapterId: entry.adapterId,
+        agentId: entry.agentId,
+        capabilityDigest: capabilityDigest(entry),
+      })),
+    })
+  }
+
   private async observe(route: StudioRoute): Promise<ObservedStudioState> {
     const empty: ObservedStudioState = {
-      initiatives: [], runs: [], managedRuns: [], managedRunTotal: 0, handoffs: [], handoffTotal: 0,
+      initiatives: [], runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
+      handoffs: [], handoffTotal: 0, handoffsObserved: false,
       handoffSelectedFileCount: 0, handoffOmittedOutsideWindow: 0, handoffOmittedForResourceSafety: 0,
       handoffPlatformAttestationUnavailable: false,
       agents: [], issues: [], productState: "absent",
@@ -2648,22 +2708,47 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     const outcomes = await Promise.allSettled([
       this.context.listInitiatives(),
       engine.listRuns(),
-      engine.readSelection(),
+      engine.readSelectionState
+        ? engine.readSelectionState()
+        : engine.readSelection().then((current): AgentSelectionState => ({ status: "selected", selection: current })),
       engine.repository.verifyAudit(),
       route === "agents-tools" ? this.context.probeAgents() : Promise.resolve([]),
     ] as const)
     const [initiatives, runs, selection, audit, agents] = outcomes
     if (initiatives.status === "fulfilled") empty.initiatives = initiatives.value
     else this.recordObservationFailure(empty, "initiatives", initiatives.reason)
-    if (runs.status === "fulfilled") empty.runs = runs.value
+    if (runs.status === "fulfilled") {
+      empty.runs = runs.value
+      empty.runsObserved = true
+    }
     else this.recordObservationFailure(empty, "runs", runs.reason)
     if (selection.status === "fulfilled") {
-      empty.selection = selection.value
-      empty.runtimeBinding = resolveRuntimeBinding(
-        this.context.runtimeBindings(),
-        this.context.workspace()!.path,
-        selection.value.adapterId,
-      )
+      empty.selectionState = selection.value
+      const selected = selection.value.status === "selected"
+        ? selection.value.selection
+        : selection.value.status === "migration-required"
+          ? selection.value.portableCandidate
+          : undefined
+      if (selected) {
+        empty.selection = selected
+        empty.runtimeBinding = resolveRuntimeBinding(
+          this.context.runtimeBindings(),
+          this.context.workspace()!.path,
+          selected.adapterId,
+        )
+      }
+      if (selection.value.status !== "selected") {
+        empty.selectionMigrationRequired = selection.value.status === "migration-required"
+        empty.issues.push(issue(
+          "agent-selection-missing",
+          selection.value.status === "migration-required"
+            ? "A legacy path-bearing selection is blocked. Reconfirm the same agent through the explicit migration workflow before preparing a run."
+            : selection.value.status === "invalid"
+              ? "The portable Agent Selection is invalid and remains blocked rather than being trusted or overwritten."
+              : "No portable Agent Selection exists. Select an observed agent and model before preparing a run.",
+          "blocker",
+        ))
+      }
     } else {
       this.context.logDiagnostic("Product Studio portable agent selection observation failed", selection.reason)
       empty.selectionMigrationRequired = selection.reason instanceof Error && /legacy|migrat/iu.test(selection.reason.message)
@@ -2755,10 +2840,17 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         const observation = value as PortableHandoffObservation
         empty.handoffs = observation.records
         empty.handoffTotal = observation.total
+        empty.handoffsObserved = true
         empty.handoffSelectedFileCount = observation.selectedFileCount
         empty.handoffOmittedOutsideWindow = observation.omittedOutsideWindow
         empty.handoffOmittedForResourceSafety = observation.omittedForResourceSafety
         empty.handoffPlatformAttestationUnavailable = observation.platformAttestationUnavailable
+      })
+      if (auditSemanticsVerified) add("managed-runs", () => this.readManagedRunObservations(engine, true), (value) => {
+        const managed = value as { observations: ManagedRunObservation[]; total: number }
+        empty.managedRuns = managed.observations
+        empty.managedRunTotal = managed.total
+        empty.managedRunsObserved = true
       })
     }
     if (route === "runs-evidence") {
@@ -2767,6 +2859,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         const managed = value as { observations: ManagedRunObservation[]; total: number }
         empty.managedRuns = managed.observations
         empty.managedRunTotal = managed.total
+        empty.managedRunsObserved = true
       })
       if (auditSemanticsVerified && this.context.listHandoffs) add("handoffs", async () => {
         if (empty.audit?.valid !== true) {
@@ -2777,6 +2870,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         const observation = value as PortableHandoffObservation
         empty.handoffs = observation.records
         empty.handoffTotal = observation.total
+        empty.handoffsObserved = true
         empty.handoffSelectedFileCount = observation.selectedFileCount
         empty.handoffOmittedOutsideWindow = observation.omittedOutsideWindow
         empty.handoffOmittedForResourceSafety = observation.omittedForResourceSafety
