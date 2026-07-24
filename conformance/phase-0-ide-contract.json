@@ -99,19 +99,17 @@
       "packageId": "dev.gaep.productstudio@0.1.0",
       "packagePlatforms": ["darwin", "linux", "win32"],
       "runtimeEvidence": {
-        "source": "json-evidence",
-        "level": "native-startup-plugin-load-only",
-        "reportPath": "evidence/ide-smokes/2026-07-24T081813Z-rider-startup.json",
-        "expectedKind": "gaep-native-ide-startup-smoke-v1",
-        "assertions": [
-          { "path": ["result"], "equals": "pass" },
-          { "path": ["plugin", "id"], "equals": "dev.gaep.productstudio" },
-          { "path": ["plugin", "version"], "equals": "0.1.0" }
-        ],
-        "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window automation", "real-provider managed read-only workflow acceptance", "interactive cancellation and resume", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
+        "source": "package-report",
+        "level": "native-startup-and-packaged-engine-client-workflow-local",
+        "requiredVerificationFragments": ["clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-native-startup-and-client-packaged-engine-empty-evidence-workflow"],
+        "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window packaged-engine automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
-        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["GaepEngineClient(Path.of(workspace))"] }] },
+        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["RiderEngineClientFactory.create(Path.of(workspace))"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderPackagedEngine.kt", "contains": ["engine/gaep-engine.mjs", "PackagedEngineBuild.SHA256", "GAEP_ENGINE_RUNTIME_EXECUTABLE", "PATH fallback is disabled"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["resolveAndVerifyPackagedEngine", "The packaged GAEP engine changed while the host process was starting", "safeRiderEngineEnvironment"] }
+        ] },
         { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.readProductBinding()"] }] },
         { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.listPortableDesignSnapshots"] }] },
         { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.readPortableDesignSnapshot(normalized)"] }] },

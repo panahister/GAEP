@@ -14,6 +14,7 @@ const runtimeLevels = new Set([
   "compatible-host-activation-only",
   "compatible-host-packaged-engine-workflow-local",
   "native-startup-plugin-load-only",
+  "native-startup-and-packaged-engine-client-workflow-local",
   "cross-platform-compile-and-controller-only",
 ])
 
