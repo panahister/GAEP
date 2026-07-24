@@ -146,7 +146,7 @@
       "runtimeEvidence": {
         "source": "package-report",
         "level": "cross-platform-compile-and-controller-only",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-124-protocol-controller-checks-windows-container-install-pending"],
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-150-protocol-controller-checks-windows-container-install-pending"],
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "interactive later-page Managed Run evidence navigation", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
