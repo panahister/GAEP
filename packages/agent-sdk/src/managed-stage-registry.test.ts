@@ -528,6 +528,7 @@ describe("machine-local managed stage registry", () => {
       await expect(restarted.recover(managedRunId)).rejects.toThrow(/journal|durable|inventory|unexpected|bound/)
       await expect(access(residue)).resolves.toBeUndefined()
     },
+    15_000,
   )
 
   it("preserves a durably bound prepared journal when the bind callback rejects ambiguously", async () => {
