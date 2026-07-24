@@ -441,6 +441,13 @@ describe("GAEP local engine", () => {
   it("keeps legacy runtime records readable for audit and requires explicit transactional migration", async () => {
     await initialize()
     const { capabilityName } = await persistLegacyAgentRuntime()
+    const legacyState = await engine.readSelectionState()
+    expect(legacyState).toMatchObject({
+      status: "migration-required",
+      portableCandidate: { schemaVersion: 2, adapterId: "gaep.fake", modelId: "fake-model" },
+    })
+    expect(JSON.stringify(legacyState)).not.toContain("runtimeExecutable")
+    expect(JSON.stringify(legacyState)).not.toContain("/opt/legacy")
     expect((await engine.repository.verifyAudit()).valid).toBe(true)
     const legacyHealth = await engine.workspaceHealth()
     expect(legacyHealth.status).toBe("degraded")
@@ -469,6 +476,7 @@ describe("GAEP local engine", () => {
       confirmation: "reconfirm-portable-agent-selection",
     }, "founder")
     expect(migrated.schemaVersion).toBe(2)
+    expect(await engine.readSelectionState()).toMatchObject({ status: "selected", selection: migrated })
     expect((await engine.repository.verifyAudit()).valid).toBe(true)
     expect((await engine.workspaceHealth()).status).toBe("healthy")
     const selectionText = await readFile(join(workspace, ".gaep", "runtime", "selection.json"), "utf8")

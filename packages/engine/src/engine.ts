@@ -4,6 +4,7 @@ import { promisify } from "node:util"
 
 import {
   agentSelectionSchema,
+  agentSelectionStateSchema,
   adapterCapabilitiesSchema,
   executionWorkspaceScopeSchema,
   executionCharterSchema,
@@ -12,11 +13,13 @@ import {
   initiativeSchema,
   productSchema,
   productRevisionSchema,
+  portableSelectionSettingsSchema,
   repositoryManifestSchema,
   runSchema,
   workspaceHealthSchema,
   type AdapterCapabilities,
   type AgentSelection,
+  type AgentSelectionState,
   type ExecutionCharter,
   type ExecutionManagedIntent,
   type Handoff,
@@ -71,6 +74,13 @@ export const runTransitions = {
   cancelled: [],
   unknown: ["running", "failed", "cancelled"],
 } as const satisfies Record<Run["state"], readonly Run["state"][]>
+
+export type GovernedAgentSelectionResult =
+  | { status: "selected"; selection: AgentSelection }
+  | {
+      status: "blocked"
+      reason: "active-run" | "capabilities-changed" | "handoff-required" | "migration-required" | "invalid-selection"
+    }
 
 function requireUuid(value: string, label: string): string {
   const result = productSchema.shape.id.safeParse(value)
@@ -370,54 +380,77 @@ export class GaepEngine {
     return this.repository.withLock(async () => {
       await this.assertAuditIntegrity()
       await this.readProduct()
+      return this.commitAgentSelection(adapter, suppliedCapabilities, modelId, settings, actorId)
+    })
+  }
+
+  async selectAgentGoverned(
+    capabilities: AdapterCapabilities,
+    modelId: string,
+    settings: Record<string, unknown>,
+    actorId: string,
+  ): Promise<GovernedAgentSelectionResult> {
+    const suppliedCapabilities = adapterCapabilitiesSchema.parse(capabilities)
+    const portableSettings = portableSelectionSettingsSchema.parse(settings)
+    const adapter = this.adapters.get(suppliedCapabilities.adapterId)
+    if (!adapter) throw new Error(`Adapter ${suppliedCapabilities.adapterId} is not registered`)
+    return this.repository.withLock(async () => {
+      await this.assertAuditIntegrity()
+      await this.readProduct()
+      const selectionState = await this.readSelectionState()
+      const runs = await this.listRuns()
+      if (runs.some((run) => !["completed", "failed", "cancelled"].includes(run.state))) {
+        return { status: "blocked", reason: "active-run" }
+      }
+      if (selectionState.status === "migration-required") {
+        return { status: "blocked", reason: "migration-required" }
+      }
+      if (selectionState.status === "invalid") {
+        return { status: "blocked", reason: "invalid-selection" }
+      }
+      if (selectionState.status === "selected") {
+        const changed = selectionState.selection.adapterId !== suppliedCapabilities.adapterId ||
+          selectionState.selection.modelId !== modelId ||
+          canonicalDigest(selectionState.selection.settings) !== canonicalDigest(portableSettings)
+        if (changed && runs.length > 0) return { status: "blocked", reason: "handoff-required" }
+      }
       const { capabilities: observedCapabilities } = await this.probeAdapter(adapter, { refreshModels: true })
       if (capabilityDigest(observedCapabilities) !== capabilityDigest(suppliedCapabilities)) {
-        throw new Error("Agent capabilities changed or were not produced by the registered adapter; probe again")
+        return { status: "blocked", reason: "capabilities-changed" }
       }
-      const model = observedCapabilities.models.find((candidate) => candidate.id === modelId)
-      const selection = agentSelectionSchema.parse({
-        schemaVersion: 2,
-        adapterId: observedCapabilities.adapterId,
-        agentId: observedCapabilities.agentId,
-        modelId,
-        modelTruthClass: model?.truthClass ?? "configured",
-        modelAlias: model?.alias ?? null,
-        settings,
-        selectedAt: new Date().toISOString(),
-        capabilityDigest: capabilityDigest(observedCapabilities),
-      })
-      const errors = adapter.validateSelection(selection, observedCapabilities)
-      if (errors.length > 0) throw new Error(errors.join("; "))
-      const capabilitiesPath = this.capabilitiesPath(observedCapabilities)
-      await this.repository.commitMutation({
-        writes: [
-          {
-            path: this.repository.resolve("runtime", "selection.json"),
-            value: selection,
-            schema: agentSelectionSchema,
-            governed: true,
-          },
-          {
-            path: capabilitiesPath,
-            value: observedCapabilities,
-            schema: adapterCapabilitiesSchema,
-            governed: true,
-          },
-        ],
-        audit: {
-          eventType: "agent.selected",
-          actor: { kind: "human", id: actorId },
-          subjectId: selection.agentId,
-          payload: {
-            modelId,
-            adapterId: selection.adapterId,
-            capabilityDigest: selection.capabilityDigest,
-            selectionDigest: canonicalDigest(selection),
-          },
-        },
-      })
-      return selection
+      return {
+        status: "selected",
+        selection: await this.persistAgentSelection(
+          adapter,
+          observedCapabilities,
+          modelId,
+          portableSettings,
+          actorId,
+        ),
+      }
     })
+  }
+
+  async readSelectionState(): Promise<AgentSelectionState> {
+    let compatibility
+    try {
+      compatibility = await this.repository.readAgentSelectionCompatibility()
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+        return agentSelectionStateSchema.parse({ status: "unselected" })
+      }
+      throw error
+    }
+    if (compatibility.status === "current") {
+      return agentSelectionStateSchema.parse({ status: "selected", selection: compatibility.selection })
+    }
+    if (compatibility.status === "migration-required") {
+      return agentSelectionStateSchema.parse({
+        status: "migration-required",
+        portableCandidate: compatibility.portableCandidate,
+      })
+    }
+    return agentSelectionStateSchema.parse({ status: "invalid" })
   }
 
   async readSelection(): Promise<AgentSelection> {
@@ -427,6 +460,72 @@ export class GaepEngine {
       throw new Error("The persisted Agent Selection is legacy and requires explicit re-probe and reconfirmation")
     }
     throw new Error(`The persisted Agent Selection is invalid: ${compatibility.issues.join("; ")}`)
+  }
+
+  private async commitAgentSelection(
+    adapter: AgentAdapter,
+    suppliedCapabilities: AdapterCapabilities,
+    modelId: string,
+    settings: Record<string, unknown>,
+    actorId: string,
+  ): Promise<AgentSelection> {
+    const { capabilities: observedCapabilities } = await this.probeAdapter(adapter, { refreshModels: true })
+    if (capabilityDigest(observedCapabilities) !== capabilityDigest(suppliedCapabilities)) {
+      throw new Error("Agent capabilities changed or were not produced by the registered adapter; probe again")
+    }
+    return this.persistAgentSelection(adapter, observedCapabilities, modelId, settings, actorId)
+  }
+
+  private async persistAgentSelection(
+    adapter: AgentAdapter,
+    observedCapabilities: AdapterCapabilities,
+    modelId: string,
+    settings: Record<string, unknown>,
+    actorId: string,
+  ): Promise<AgentSelection> {
+    const model = observedCapabilities.models.find((candidate) => candidate.id === modelId)
+    const selection = agentSelectionSchema.parse({
+      schemaVersion: 2,
+      adapterId: observedCapabilities.adapterId,
+      agentId: observedCapabilities.agentId,
+      modelId,
+      modelTruthClass: model?.truthClass ?? "configured",
+      modelAlias: model?.alias ?? null,
+      settings,
+      selectedAt: new Date().toISOString(),
+      capabilityDigest: capabilityDigest(observedCapabilities),
+    })
+    const errors = adapter.validateSelection(selection, observedCapabilities)
+    if (errors.length > 0) throw new Error(errors.join("; "))
+    const capabilitiesPath = this.capabilitiesPath(observedCapabilities)
+    await this.repository.commitMutation({
+      writes: [
+        {
+          path: this.repository.resolve("runtime", "selection.json"),
+          value: selection,
+          schema: agentSelectionSchema,
+          governed: true,
+        },
+        {
+          path: capabilitiesPath,
+          value: observedCapabilities,
+          schema: adapterCapabilitiesSchema,
+          governed: true,
+        },
+      ],
+      audit: {
+        eventType: "agent.selected",
+        actor: { kind: "human", id: actorId },
+        subjectId: selection.agentId,
+        payload: {
+          modelId,
+          adapterId: selection.adapterId,
+          capabilityDigest: selection.capabilityDigest,
+          selectionDigest: canonicalDigest(selection),
+        },
+      },
+    })
+    return selection
   }
 
   async migrateLegacyAgentSelection(

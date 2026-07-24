@@ -233,6 +233,12 @@ describe("engine host protocol", () => {
         confirmation: "reconfirm-portable-agent-selection",
       },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 6,
+      method: "readAgentSelection",
+      params: {},
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
   })
 
   it("rejects unknown methods, malformed params, caller capability injection, and oversized direct requests", async () => {
@@ -292,6 +298,122 @@ describe("engine host protocol", () => {
     expect(serialized).not.toContain("executablePath")
     expect(serialized).not.toContain("executableFingerprint")
     expect(serialized).not.toMatch(/sha256:[0-9a-f]{64}/u)
+  })
+
+  it("observes portable selection state without exposing runtime authority", async () => {
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 1,
+      protocolVersion: 2,
+      method: "readAgentSelection",
+      params: {},
+    })).resolves.toEqual({ status: "unselected" })
+
+    await mockCodex()
+    await createProductAndInitiative()
+    await host.dispatch({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "selectAgent",
+      params: {
+        adapterId: "gaep.codex-cli",
+        modelId: "gpt-test",
+        settings: { sandbox: "read-only", approvalPolicy: "fail-closed-noninteractive" },
+      },
+    })
+    const state = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 3,
+      protocolVersion: 2,
+      method: "readAgentSelection",
+      params: {},
+    })
+    expect(state).toMatchObject({
+      status: "selected",
+      selection: {
+        schemaVersion: 2,
+        adapterId: "gaep.codex-cli",
+        agentId: "codex-cli",
+        modelId: "gpt-test",
+      },
+    })
+    const serialized = JSON.stringify(state)
+    expect(serialized).not.toContain(process.execPath)
+    expect(serialized).not.toContain("runtimeExecutable")
+    expect(serialized).not.toContain("executablePath")
+  })
+
+  it("blocks selection during active Runs and requires versioned handoff after prior work", async () => {
+    await mockCodex()
+    const { initiativeId } = await createProductAndInitiative()
+    const charterId = await selectAndConfirmCharter(initiativeId)
+    const prepared = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 6,
+      method: "prepareRun",
+      params: { charterId },
+    }) as { run: { id: string } }
+    const changedSettings = {
+      sandbox: "read-only",
+      approvalPolicy: "fail-closed-noninteractive",
+      reasoningEffort: "high",
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 7,
+      method: "selectAgent",
+      params: { adapterId: "gaep.codex-cli", modelId: "gpt-test", settings: changedSettings },
+    })).rejects.toMatchObject({ code: -32_015, kind: "AGENT_SELECTION_ACTIVE_RUN" })
+
+    await host.engine.markRunState(prepared.run.id, "running", { kind: "system", id: "host-test" })
+    await host.engine.markRunState(prepared.run.id, "completed", { kind: "system", id: "host-test" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 8,
+      method: "selectAgent",
+      params: { adapterId: "gaep.codex-cli", modelId: "gpt-test", settings: changedSettings },
+    })).rejects.toMatchObject({ code: -32_017, kind: "AGENT_SELECTION_HANDOFF_REQUIRED" })
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 9,
+      method: "selectAgent",
+      params: {
+        adapterId: "gaep.codex-cli",
+        modelId: "gpt-test",
+        settings: { sandbox: "read-only", approvalPolicy: "fail-closed-noninteractive" },
+      },
+    })).resolves.toMatchObject({ adapterId: "gaep.codex-cli", modelId: "gpt-test" })
+  })
+
+  it("fails closed when capabilities change between host observation and governed selection", async () => {
+    const initial = await probeResult()
+    const changed = {
+      ...initial,
+      capabilities: { ...initial.capabilities, runtimeVersion: "0.136.0" },
+    } satisfies AdapterProbeResult
+    const adapter = host.engine.adapters.get("gaep.codex-cli")
+    if (!adapter) throw new Error("Codex adapter is not registered")
+    vi.spyOn(adapter, "probe").mockResolvedValueOnce(initial).mockResolvedValueOnce(changed)
+    await createProductAndInitiative()
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 3,
+      method: "selectAgent",
+      params: {
+        adapterId: "gaep.codex-cli",
+        modelId: "gpt-test",
+        settings: { sandbox: "read-only", approvalPolicy: "fail-closed-noninteractive" },
+      },
+    })).rejects.toMatchObject({ code: -32_012, kind: "CAPABILITIES_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 4,
+      protocolVersion: 2,
+      method: "readAgentSelection",
+      params: {},
+    })).resolves.toEqual({ status: "unselected" })
   })
 
   it("does not leak absolute paths from adapter failures through direct host dispatch", async () => {

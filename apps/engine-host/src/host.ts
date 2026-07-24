@@ -37,6 +37,7 @@ type EngineHostMethod = EngineHostRequest["method"]
 
 const v2OnlyMethods = new Set<EngineHostMethod>([
   "workspaceHealth",
+  "readAgentSelection",
   "migrateLegacySelection",
   "productStudio.designReadiness",
   "productStudio.search",
@@ -161,6 +162,8 @@ export class EngineHost {
         }
       case "probeAgents":
         return this.refreshCapabilitySnapshots()
+      case "readAgentSelection":
+        return this.engine.readSelectionState()
       case "workspaceHealth":
         return this.engine.workspaceHealth()
       case "readProduct":
@@ -171,14 +174,25 @@ export class EngineHost {
         return this.engine.createInitiative(request.params.initiative, actorId(request.params.actorId))
       case "selectAgent": {
         const snapshot = await this.observeAdapter(request.params.adapterId)
-        const selection = await this.engine.selectAgent(
+        const result = await this.engine.selectAgentGoverned(
           structuredClone(snapshot.capabilities),
           request.params.modelId,
           request.params.settings,
           actorId(request.params.actorId),
         )
+        if (result.status === "blocked") {
+          const blocked = {
+            "active-run": [-32_015, "AGENT_SELECTION_ACTIVE_RUN", "Agent selection cannot change while a Run is non-terminal"],
+            "capabilities-changed": [-32_012, "CAPABILITIES_CHANGED", "Agent capabilities changed during selection; probe again"],
+            "migration-required": [-32_016, "AGENT_SELECTION_MIGRATION_REQUIRED", "The legacy Agent Selection requires explicit re-probe and reconfirmation"],
+            "handoff-required": [-32_017, "AGENT_SELECTION_HANDOFF_REQUIRED", "A versioned handoff is required before changing agent, model, or settings after a Run"],
+            "invalid-selection": [-32_018, "AGENT_SELECTION_INVALID", "The persisted Agent Selection is invalid and cannot be replaced implicitly"],
+          } as const
+          const [code, kind, message] = blocked[result.reason]
+          throw new HostRpcError(code, kind, message)
+        }
         this.selectedRuntimeBindings.set(request.params.adapterId, structuredClone(snapshot.runtimeBinding))
-        return selection
+        return result.selection
       }
       case "migrateLegacySelection": {
         const snapshot = await this.observeAdapter(request.params.adapterId)
@@ -223,7 +237,7 @@ export class EngineHost {
         return this.engine.listRuns()
       case "createHandoff": {
         const snapshot = await this.observeAdapter(request.params.handoff.toAdapterId)
-        return this.engine.createHandoff({
+        const handoff = await this.engine.createHandoff({
           fromRunId: request.params.handoff.fromRunId,
           toCapabilities: structuredClone(snapshot.capabilities),
           toModelId: request.params.handoff.toModelId,
@@ -234,6 +248,8 @@ export class EngineHost {
           decisions: request.params.handoff.decisions,
           evidence: request.params.handoff.evidence,
         }, actorId(request.params.actorId))
+        this.selectedRuntimeBindings.set(request.params.handoff.toAdapterId, structuredClone(snapshot.runtimeBinding))
+        return handoff
       }
       case "verifyAudit":
         return this.engine.repository.verifyAudit()

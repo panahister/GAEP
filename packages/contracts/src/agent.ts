@@ -178,6 +178,13 @@ export const agentSelectionSchema = z.object({
   ...portableAgentSelectionFields,
 }).strict()
 
+export const agentSelectionStateSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("unselected") }).strict(),
+  z.object({ status: z.literal("selected"), selection: agentSelectionSchema }).strict(),
+  z.object({ status: z.literal("migration-required"), portableCandidate: agentSelectionSchema }).strict(),
+  z.object({ status: z.literal("invalid") }).strict(),
+])
+
 /**
  * Read-only compatibility shape for selections written before the portable/local split.
  * It is never embedded in current Charter, Run, or Handoff contracts.
@@ -196,4 +203,5 @@ export type AdapterCapabilitiesSnapshot = z.infer<typeof adapterCapabilitiesSnap
 export type AdapterCapabilities = AdapterCapabilitiesSnapshot
 export type LegacyAdapterCapabilitiesV1 = z.infer<typeof legacyAdapterCapabilitiesV1Schema>
 export type AgentSelection = z.infer<typeof agentSelectionSchema>
+export type AgentSelectionState = z.infer<typeof agentSelectionStateSchema>
 export type LegacyAgentSelectionV1 = z.infer<typeof legacyAgentSelectionV1Schema>
