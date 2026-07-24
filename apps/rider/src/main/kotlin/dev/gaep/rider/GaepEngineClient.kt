@@ -21,16 +21,37 @@ import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 
+data class PackagedEngineModule(
+    val path: Path,
+    val expectedSha256: String,
+)
+
+private val safeEngineEnvironmentNames = listOf(
+    "PATH", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR", "TMP", "TEMP",
+    "SYSTEMROOT", "WINDIR", "PATHEXT", "COMSPEC",
+)
+
+internal fun safeRiderEngineEnvironment(source: Map<String, String>): Map<String, String> = buildMap {
+    safeEngineEnvironmentNames.forEach { requested ->
+        source.entries.firstOrNull { it.key.equals(requested, ignoreCase = true) }?.let { put(requested, it.value) }
+    }
+    put("GAEP_HOST_SURFACE", "rider-product-studio")
+}
+
 class GaepEngineClient(
     private val workspace: Path,
-    private val requestedEngineExecutable: String = System.getenv("GAEP_ENGINE_EXECUTABLE") ?: "gaep-engine",
+    private val requestedEngineExecutable: String,
     expectedEngineSha256: String? = System.getenv("GAEP_ENGINE_SHA256"),
+    private val packagedEngineModule: PackagedEngineModule? = null,
+    sourceEnvironment: Map<String, String> = System.getenv(),
 ) : Closeable, Disposable {
     private data class EngineIdentity(val path: Path, val digest: String)
 
     private val log = Logger.getInstance(GaepEngineClient::class.java)
     private val ids = AtomicLong(0)
     private val configuredEngineDigest = normalizeDigest(expectedEngineSha256)
+    private val configuredPackagedEngineDigest = normalizeDigest(packagedEngineModule?.expectedSha256)
+    private val childEnvironment = safeRiderEngineEnvironment(sourceEnvironment)
     private val pendingResponse = ByteArrayOutputStream()
     private val responseBuffer = ByteArray(8192)
     private var process: Process? = null
@@ -38,6 +59,14 @@ class GaepEngineClient(
     private var writer: BufferedWriter? = null
     private var boundEnginePath: Path? = null
     private var boundEngineDigest: String? = null
+    private var boundPackagedEnginePath: Path? = null
+    private var boundPackagedEngineDigest: String? = null
+
+    init {
+        require(packagedEngineModule == null || configuredPackagedEngineDigest != null) {
+            "Expected packaged engine SHA-256 must contain exactly 64 hexadecimal characters"
+        }
+    }
 
     private data class HostResponse(val raw: String, val envelope: JsonObject)
 
@@ -387,9 +416,19 @@ class GaepEngineClient(
         if (process?.isAlive == true) return
         stopProcess()
         val identity = resolveAndVerifyEngine()
-        val started = ProcessBuilder(identity.path.toString(), "--workspace", workspace.toAbsolutePath().normalize().toString())
-            .redirectError(ProcessBuilder.Redirect.PIPE)
-            .start()
+        val packagedIdentity = resolveAndVerifyPackagedEngine()
+        val command = buildList {
+            add(identity.path.toString())
+            packagedIdentity?.let { add(it.path.toString()) }
+            add("--workspace")
+            add(workspace.toAbsolutePath().normalize().toString())
+        }
+        val builder = ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.PIPE)
+        builder.environment().apply {
+            clear()
+            putAll(childEnvironment)
+        }
+        val started = builder.start()
         try {
             Thread({
                 started.errorStream.use { input -> input.transferTo(OutputStream.nullOutputStream()) }
@@ -399,6 +438,9 @@ class GaepEngineClient(
             }
             check(digest(identity.path) == identity.digest) {
                 "The GAEP engine executable changed while the host process was starting"
+            }
+            check(packagedIdentity == null || digest(packagedIdentity.path) == packagedIdentity.digest) {
+                "The packaged GAEP engine changed while the host process was starting"
             }
             process = started
             responseInput = started.inputStream
@@ -432,17 +474,36 @@ class GaepEngineClient(
         return EngineIdentity(path, digest)
     }
 
+    private fun resolveAndVerifyPackagedEngine(): EngineIdentity? {
+        val requested = packagedEngineModule ?: return null
+        val path = resolveAbsoluteRegularFile(requested.path)
+        val digest = digest(path)
+        check(configuredPackagedEngineDigest == digest) {
+            "The packaged GAEP engine does not match its embedded SHA-256 digest"
+        }
+        check(boundPackagedEnginePath == null || samePath(boundPackagedEnginePath!!, path)) {
+            "The resolved packaged GAEP engine changed after this client was bound"
+        }
+        check(boundPackagedEngineDigest == null || boundPackagedEngineDigest == digest) {
+            "The bound packaged GAEP engine changed after this client was created"
+        }
+        if (boundPackagedEnginePath == null) boundPackagedEnginePath = path
+        if (boundPackagedEngineDigest == null) boundPackagedEngineDigest = digest
+        return EngineIdentity(path, digest)
+    }
+
     private fun resolveExecutable(requested: String): Path {
         val raw = Path.of(requested)
         val candidates = if (raw.isAbsolute || raw.parent != null) {
             listOf(raw.toAbsolutePath().normalize())
         } else {
             val extensions = if (isWindows()) {
-                (System.getenv("PATHEXT") ?: ".EXE;.CMD;.BAT").split(';').filter(String::isNotBlank)
+                (environmentValue(childEnvironment, "PATHEXT") ?: ".EXE;.CMD;.BAT")
+                    .split(';').filter(String::isNotBlank)
             } else {
                 listOf("")
             }
-            (System.getenv("PATH") ?: "").split(java.io.File.pathSeparatorChar)
+            (environmentValue(childEnvironment, "PATH") ?: "").split(java.io.File.pathSeparatorChar)
                 .filter(String::isNotBlank)
                 .flatMap { directory ->
                     extensions.map { extension ->
@@ -456,6 +517,19 @@ class GaepEngineClient(
         val canonical = selected.toRealPath()
         check(Files.isRegularFile(canonical, LinkOption.NOFOLLOW_LINKS)) {
             "The resolved GAEP engine executable is not a regular file"
+        }
+        return canonical
+    }
+
+    private fun resolveAbsoluteRegularFile(requested: Path): Path {
+        require(requested.isAbsolute) { "The packaged GAEP engine path must be absolute" }
+        val normalized = requested.normalize()
+        check(Files.isRegularFile(normalized, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(normalized)) {
+            "The packaged GAEP engine could not be resolved to an existing file"
+        }
+        val canonical = normalized.toRealPath()
+        check(Files.isRegularFile(canonical, LinkOption.NOFOLLOW_LINKS)) {
+            "The resolved packaged GAEP engine is not a regular file"
         }
         return canonical
     }
@@ -548,6 +622,9 @@ class GaepEngineClient(
     }
 
     private fun isWindows(): Boolean = System.getProperty("os.name").lowercase(Locale.ROOT).contains("win")
+
+    private fun environmentValue(source: Map<String, String>, requested: String): String? =
+        source.entries.firstOrNull { it.key.equals(requested, ignoreCase = true) }?.value
 
     private fun List<String>.toJsonArray(): JsonArray = JsonArray().also { array -> forEach(array::add) }
 }

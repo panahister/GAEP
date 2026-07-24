@@ -44,7 +44,16 @@ class GaepToolWindowFactory : ToolWindowFactory {
             Messages.showErrorDialog(project, "Open a project before using GAEP.", "GAEP")
             return
         }
-        val client = GaepEngineClient(Path.of(workspace))
+        val client = try {
+            RiderEngineClientFactory.create(Path.of(workspace))
+        } catch (_: Exception) {
+            Messages.showErrorDialog(
+                project,
+                "GAEP could not verify its engine boundary. Configure an absolute package-runtime path or an explicit external engine; no PATH fallback was attempted.",
+                "GAEP Engine Unavailable",
+            )
+            return
+        }
         val controller = RiderProductController(client)
         val status = JBLabel("GAEP engine has not been contacted")
         val output = JTextArea().apply {

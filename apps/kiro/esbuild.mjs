@@ -5,12 +5,13 @@ import { resolve } from "node:path"
 import { build } from "esbuild"
 
 const root = resolve(import.meta.dirname)
+const repositoryRoot = resolve(root, "../..")
 const packagedEnginePath = resolve(root, "dist/gaep-engine.mjs")
 
 await rm(resolve(root, "dist"), { recursive: true, force: true })
 await build({
-  absWorkingDir: root,
-  entryPoints: [resolve(root, "../engine-host/src/main.ts")],
+  absWorkingDir: repositoryRoot,
+  entryPoints: ["apps/engine-host/src/main.ts"],
   outfile: packagedEnginePath,
   bundle: true,
   platform: "node",

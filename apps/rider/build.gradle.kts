@@ -11,6 +11,7 @@ import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.Exec
 import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
 import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
 
@@ -27,6 +28,10 @@ abstract class VerifyInstalledSandboxTask : DefaultTask() {
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sandboxPluginDirectory: DirectoryProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val engineBundleFile: RegularFileProperty
 
     @get:Input
     abstract val expectedPluginId: Property<String>
@@ -45,16 +50,23 @@ abstract class VerifyInstalledSandboxTask : DefaultTask() {
         val archive = archiveFile.get().asFile
         val sandboxPlugin = sandboxPluginDirectory.get().asFile
         val sandboxJar = sandboxPlugin.resolve("lib/$pluginJarName")
+        val sandboxEngine = sandboxPlugin.resolve("engine/gaep-engine.mjs")
+        val generatedEngine = engineBundleFile.get().asFile
         require(archive.isFile && archive.length() in 1..(64L * 1024 * 1024)) {
             "The Rider plugin archive is missing or outside its 64 MiB bound: ${archive.path}"
         }
         require(sandboxPlugin.isDirectory && sandboxJar.isFile && sandboxJar.length() in 1..(64L * 1024 * 1024)) {
             "The exact Rider plugin JAR is missing from the prepared sandbox: ${sandboxJar.path}"
         }
+        require(sandboxEngine.isFile && sandboxEngine.length() in 1..(8L * 1024 * 1024) && generatedEngine.isFile) {
+            "The package-local Rider engine is missing or outside its 8 MiB bound"
+        }
 
-        val packagedJarBytes = ZipFile(archive).use { zip ->
+        val (packagedJarBytes, packagedEngineBytes) = ZipFile(archive).use { zip ->
             val entries = zip.entries().asSequence().toList()
-            require(entries.size == 3) { "The Rider plugin archive must contain exactly two directories and one JAR" }
+            require(entries.size == 5) {
+                "The Rider plugin archive must contain exactly three directories, one JAR and one package-local engine"
+            }
             require(entries.all { entry ->
                 val segments = entry.name.split('/')
                 !entry.name.startsWith('/') && !entry.name.contains('\\') && ".." !in segments
@@ -65,13 +77,27 @@ abstract class VerifyInstalledSandboxTask : DefaultTask() {
             require(!jarEntry.isDirectory && jarEntry.size in 1..(64L * 1024 * 1024)) {
                 "The packaged Rider plugin JAR is outside its 64 MiB bound"
             }
-            zip.getInputStream(jarEntry).use { it.readBytes() }
+            val engineEntry = zip.getEntry("$pluginDirectoryName/engine/gaep-engine.mjs")
+                ?: error("The Rider plugin archive does not contain the package-local engine")
+            require(!engineEntry.isDirectory && engineEntry.size in 1..(8L * 1024 * 1024)) {
+                "The packaged Rider engine is outside its 8 MiB bound"
+            }
+            Pair(
+                zip.getInputStream(jarEntry).use { it.readBytes() },
+                zip.getInputStream(engineEntry).use { it.readBytes() },
+            )
         }
         val sandboxJarBytes = sandboxJar.readBytes()
+        val sandboxEngineBytes = sandboxEngine.readBytes()
+        val generatedEngineBytes = generatedEngine.readBytes()
         val packagedDigest = MessageDigest.getInstance("SHA-256").digest(packagedJarBytes)
         val sandboxDigest = MessageDigest.getInstance("SHA-256").digest(sandboxJarBytes)
         require(packagedDigest.contentEquals(sandboxDigest)) {
             "The packaged Rider plugin JAR does not match the prepared sandbox installation"
+        }
+        require(packagedEngineBytes.contentEquals(sandboxEngineBytes) &&
+            packagedEngineBytes.contentEquals(generatedEngineBytes)) {
+            "The package-local engine differs between the generated bundle, archive and prepared sandbox"
         }
 
         JarFile(sandboxJar).use { jar ->
@@ -152,6 +178,50 @@ tasks.test {
 val riderPluginVersion = version.toString()
 val riderPluginId = "dev.gaep.productstudio"
 val riderPluginDirectory = "gaep-rider"
+val packagedEngineBundle = layout.buildDirectory.file("generated/packaged-engine/gaep-engine.mjs")
+val packagedEngineKotlin = layout.buildDirectory.file(
+    "generated/packaged-engine/kotlin/dev/gaep/rider/PackagedEngineBuild.kt",
+)
+
+val buildPackagedEngine by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Builds the deterministic package-local GAEP engine and its embedded Rider digest constant."
+    val repositoryRoot = rootProject.projectDir.resolve("../..").canonicalFile
+    inputs.dir(repositoryRoot.resolve("apps/engine-host/src"))
+    inputs.dir(repositoryRoot.resolve("packages"))
+    inputs.file(repositoryRoot.resolve("scripts/build_engine_bundle.mjs"))
+    outputs.file(packagedEngineBundle)
+    outputs.file(packagedEngineKotlin)
+    workingDir(repositoryRoot)
+    commandLine(
+        "node",
+        "scripts/build_engine_bundle.mjs",
+        "--output",
+        "apps/rider/build/generated/packaged-engine/gaep-engine.mjs",
+        "--kotlin-output",
+        "apps/rider/build/generated/packaged-engine/kotlin/dev/gaep/rider/PackagedEngineBuild.kt",
+    )
+}
+
+tasks.test {
+    dependsOn(buildPackagedEngine)
+    systemProperty("gaep.test.packagedEngine", packagedEngineBundle.get().asFile.absolutePath)
+}
+
+kotlin.sourceSets.named("main") {
+    kotlin.srcDir(layout.buildDirectory.dir("generated/packaged-engine/kotlin"))
+}
+
+tasks.named("compileKotlin") {
+    dependsOn(buildPackagedEngine)
+}
+
+tasks.named<PrepareSandboxTask>("prepareSandbox") {
+    dependsOn(buildPackagedEngine)
+    from(packagedEngineBundle) {
+        into("$riderPluginDirectory/engine")
+    }
+}
 
 tasks.register<VerifyInstalledSandboxTask>("verifyInstalledSandbox") {
     group = "verification"
@@ -162,6 +232,7 @@ tasks.register<VerifyInstalledSandboxTask>("verifyInstalledSandbox") {
     val prepareSandbox = tasks.named<PrepareSandboxTask>("prepareSandbox")
     archiveFile.set(buildPlugin.flatMap { it.archiveFile })
     sandboxPluginDirectory.set(prepareSandbox.flatMap { it.pluginDirectory })
+    engineBundleFile.set(packagedEngineBundle)
     expectedPluginId.set(riderPluginId)
     expectedPluginVersion.set(riderPluginVersion)
     expectedPluginDirectory.set(riderPluginDirectory)

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission
+import java.security.MessageDigest
 import java.math.BigDecimal
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -17,6 +18,75 @@ import kotlin.test.assertTrue
 class PortableDesignClientTest {
     @TempDir
     lateinit var temporaryRoot: Path
+
+    @Test
+    fun `engine environment strips inherited provider authority`() {
+        val environment = safeRiderEngineEnvironment(
+            mapOf(
+                "Path" to "/safe/bin",
+                "pathext" to ".EXE;.CMD",
+                "OPENAI_API_KEY" to "private-openai-key",
+                "AWS_SECRET_ACCESS_KEY" to "private-aws-secret",
+                "HOME" to "/private/home",
+            ),
+        )
+        assertEquals("/safe/bin", environment["PATH"])
+        assertEquals(".EXE;.CMD", environment["PATHEXT"])
+        assertEquals("rider-product-studio", environment["GAEP_HOST_SURFACE"])
+        assertFalse(environment.containsKey("OPENAI_API_KEY"))
+        assertFalse(environment.containsKey("AWS_SECRET_ACCESS_KEY"))
+        assertFalse(environment.containsKey("HOME"))
+    }
+
+    @Test
+    fun `package-local engine binds the installed module and executes empty evidence`() {
+        val generatedEngine = Path.of(
+            System.getProperty("gaep.test.packagedEngine")
+                ?: error("The package-local engine test path was not configured"),
+        ).toRealPath()
+        val pluginRoot = Files.createDirectories(temporaryRoot.resolve("installed-plugin"))
+        val pluginJar = Files.createFile(Files.createDirectories(pluginRoot.resolve("lib")).resolve("gaep-rider-0.1.0.jar"))
+        val installedEngine = Files.createDirectories(pluginRoot.resolve("engine")).resolve("gaep-engine.mjs")
+        Files.copy(generatedEngine, installedEngine)
+        val workspace = Files.createDirectory(temporaryRoot.resolve("packaged-workspace"))
+        val node = findNodeExecutable()
+        val environment = mapOf(
+            "PATH" to (System.getenv("PATH") ?: ""),
+            "GAEP_ENGINE_RUNTIME_EXECUTABLE" to node.toString(),
+            "GAEP_ENGINE_RUNTIME_SHA256" to sha256(node),
+            "OPENAI_API_KEY" to "private-openai-key",
+        )
+        assertFailsWith<IllegalArgumentException> {
+            RiderEngineClientFactory.create(
+                workspace,
+                mapOf("PATH" to (System.getenv("PATH") ?: "")),
+                pluginJar,
+            )
+        }
+
+        RiderEngineClientFactory.create(workspace, environment, pluginJar).use { client ->
+            val page = client.listManagedEvidence(offset = 0, limit = 100)
+            assertEquals(0, page.offset)
+            assertEquals(100, page.limit)
+            assertEquals(0, page.total)
+            assertTrue(page.items.isEmpty())
+            assertFalse(page.hasMore)
+        }
+        assertFalse(Files.exists(workspace.resolve(".gaep")))
+
+        val mismatched = PackagedEngineModule(installedEngine, "0".repeat(64))
+        GaepEngineClient(
+            workspace,
+            node.toString(),
+            expectedEngineSha256 = sha256(node),
+            packagedEngineModule = mismatched,
+            sourceEnvironment = environment,
+        ).use { client ->
+            val error = hostError { client.listManagedEvidence(offset = 0, limit = 100) }
+            assertEquals("HOST_UNAVAILABLE", error.kind)
+            assertPrivateTextWithheld(error)
+        }
+    }
 
     @Test
     fun `portable design client is bounded private and non-authoritative`() {
@@ -652,6 +722,33 @@ class PortableDesignClientTest {
             ),
         )
         return launcher
+    }
+
+    private fun findNodeExecutable(): Path {
+        val names = if (System.getProperty("os.name").contains("win", ignoreCase = true)) {
+            listOf("node.exe", "node.cmd", "node")
+        } else {
+            listOf("node")
+        }
+        return (System.getenv("PATH") ?: "")
+            .split(java.io.File.pathSeparatorChar)
+            .filter(String::isNotBlank)
+            .asSequence()
+            .flatMap { directory -> names.asSequence().map { name -> Path.of(directory, name) } }
+            .firstOrNull { Files.isRegularFile(it) && Files.isExecutable(it) }
+            ?.toRealPath()
+            ?: error("Node is required to verify the package-local Rider engine")
+    }
+
+    private fun sha256(path: Path): String = Files.newInputStream(path).use { input ->
+        val hash = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(8192)
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            if (count > 0) hash.update(buffer, 0, count)
+        }
+        hash.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
     }
 
     private fun shellQuote(value: String): String = "'${value.replace("'", "'\"'\"'")}'"
