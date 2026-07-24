@@ -569,11 +569,69 @@ async function showManagedEvidenceDashboard(pool: EngineClientPool): Promise<Man
   requireTrustedWorkspace()
   const folder = await selectWorkspaceFolder()
   const client = await pool.get(folder.uri.fsPath)
-  const page = await client.listManagedEvidence(0, 100)
+  const firstPage = await client.listManagedEvidence(0, 100)
+  const pages = [firstPage]
+  while (true) {
+    const page = pages.at(-1)!
+    await showManagedEvidencePage(page)
+    if (page.items.length === 0) {
+      await vscode.window.showInformationMessage("No Managed Runs exist in the verified bounded inventory.")
+      return page
+    }
+    const choices: Array<vscode.QuickPickItem & {
+      readonly action: "read" | "next" | "previous"
+      readonly managedRunId?: string
+    }> = page.items.map((item) => ({
+      label: `${item.state} · ${item.mode}`,
+      description: item.managedRunId,
+      detail: `${item.agentId} / ${item.modelId} · updated ${item.updatedAt} · ${item.hasResult ? "bound result" : "record only"}`,
+      managedRunId: item.managedRunId,
+      action: "read" as const,
+    }))
+    if (pages.length > 1) {
+      choices.unshift({
+        label: "$(arrow-left) Previous verified page",
+        description: `Return to offset ${pages.at(-2)!.offset}`,
+        action: "previous",
+      })
+    }
+    if (page.hasMore) {
+      choices.push({
+        label: "$(arrow-right) Next verified page",
+        description: `Continue at offset ${page.offset + page.items.length} under the same snapshot`,
+        action: "next",
+      })
+    }
+    const selected = await vscode.window.showQuickPick(choices, {
+      title: `Managed Run evidence (${page.offset + 1}-${page.offset + page.items.length} of ${page.total}; ${page.omittedCount} outside this page)`,
+      placeHolder: "Read one exact Run, navigate the verified snapshot, or dismiss to keep this observation-only",
+      ignoreFocusOut: true,
+    })
+    if (!selected) return page
+    if (selected.action === "previous") {
+      pages.pop()
+      continue
+    }
+    if (selected.action === "next") {
+      pages.push(await client.listManagedEvidence(
+        page.offset + page.items.length,
+        page.limit,
+        firstPage.snapshotDigest,
+        firstPage.total,
+      ))
+      continue
+    }
+    await showManagedEvidenceDetail(await client.readManagedEvidence(selected.managedRunId!))
+    return page
+  }
+}
+
+async function showManagedEvidencePage(page: ManagedRunSummaryPage): Promise<void> {
   const lines = [
     "GAEP bounded Managed Run evidence",
     "",
     `Snapshot: ${page.snapshotDigest}`,
+    `Offset / limit: ${page.offset} / ${page.limit}`,
     `Displayed: ${page.items.length} of ${page.total}`,
     `Omitted from this page: ${page.omittedCount}`,
     `More pages available: ${page.hasMore ? "yes" : "no"}`,
@@ -589,25 +647,6 @@ async function showManagedEvidenceDashboard(pool: EngineClientPool): Promise<Man
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })
-  if (page.items.length === 0) {
-    await vscode.window.showInformationMessage("No Managed Runs exist in the verified bounded inventory.")
-    return page
-  }
-  const selected = await vscode.window.showQuickPick(
-    page.items.map((item) => ({
-      label: `${item.state} · ${item.mode}`,
-      description: item.managedRunId,
-      detail: `${item.agentId} / ${item.modelId} · updated ${item.updatedAt} · ${item.hasResult ? "bound result" : "record only"}`,
-      managedRunId: item.managedRunId,
-    })),
-    {
-      title: `Managed Run evidence (${page.items.length} of ${page.total}; ${page.omittedCount} omitted from this page)`,
-      placeHolder: "Select one exact Managed Run for verified result/evidence detail; dismiss to keep this read-only page",
-      ignoreFocusOut: true,
-    },
-  )
-  if (selected) await showManagedEvidenceDetail(await client.readManagedEvidence(selected.managedRunId))
-  return page
 }
 
 async function showManagedEvidenceDetail(detail: ManagedEvidenceDetail): Promise<void> {

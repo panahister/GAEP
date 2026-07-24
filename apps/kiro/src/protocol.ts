@@ -1002,7 +1002,12 @@ export function parseManagedReadOnlyReceipt(result: unknown, preview: ManagedRea
 
 export function parseManagedRunSummaryPage(
   result: unknown,
-  expected: { readonly offset: number; readonly limit: number; readonly snapshotDigest?: string },
+  expected: {
+    readonly offset: number
+    readonly limit: number
+    readonly snapshotDigest?: string
+    readonly total?: number
+  },
 ): ManagedRunSummaryPage {
   const page = requireRecord(result)
   requireExactKeys(page, [
@@ -1016,7 +1021,8 @@ export function parseManagedRunSummaryPage(
   const limit = nonNegativeInteger(page, "limit", 200)
   const total = nonNegativeInteger(page, "total", 2_000)
   const omittedCount = nonNegativeInteger(page, "omittedCount", 2_000)
-  if (limit < 1 || offset !== expected.offset || limit !== expected.limit || !Array.isArray(page.items) ||
+  if (limit < 1 || offset !== expected.offset || limit !== expected.limit ||
+    (expected.total !== undefined && total !== expected.total) || !Array.isArray(page.items) ||
     page.items.length > limit || offset + page.items.length > total || omittedCount !== total - page.items.length) {
     throw invalidHostResponse()
   }
@@ -1025,7 +1031,7 @@ export function parseManagedRunSummaryPage(
   const snapshotDigest = requireDigest(page, "snapshotDigest")
   if (expected.snapshotDigest && snapshotDigest !== expected.snapshotDigest) throw invalidHostResponse()
   const hasMore = requireBoolean(page, "hasMore")
-  if (hasMore !== (offset + items.length < total)) throw invalidHostResponse()
+  if (hasMore !== (offset + items.length < total) || (hasMore && items.length === 0)) throw invalidHostResponse()
   return Object.freeze({
     schemaVersion: 1,
     kind: "managed-run-summary-page",

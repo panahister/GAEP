@@ -52,6 +52,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badManagedEvidencePageRoot = join(root, "bad-managed-evidence-page")
   const badManagedEvidenceCountRoot = join(root, "bad-managed-evidence-count")
   const badManagedEvidenceSnapshotRoot = join(root, "bad-managed-evidence-snapshot")
+  const badManagedEvidenceTotalRoot = join(root, "bad-managed-evidence-total")
   const badManagedEvidenceDetailRoot = join(root, "bad-managed-evidence-detail")
   const badManagedEvidenceBindingRoot = join(root, "bad-managed-evidence-binding")
   const discardManagedReviewRoot = join(root, "discard-managed-review")
@@ -66,6 +67,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot, badRunsRoot, badHandoffRoot,
     badHandoffBindingRoot, badManagedPreviewRoot, badManagedCriterionRoot, badManagedDigestRoot, badManagedReceiptRoot,
     badManagedBindingRoot, badManagedEvidencePageRoot, badManagedEvidenceCountRoot, badManagedEvidenceSnapshotRoot,
+    badManagedEvidenceTotalRoot,
     badManagedEvidenceDetailRoot, badManagedEvidenceBindingRoot, discardManagedReviewRoot, badManagedReviewDigestRoot,
     badManagedReviewPrivateRoot, badManagedReviewBindingRoot, badManagedReviewPathRoot, badManagedTransitionDigestRoot,
     badManagedTransitionPrivateRoot, staleManagedReviewRoot,
@@ -195,6 +197,12 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.equal(JSON.stringify(managedPage).includes(privateRoot), false)
     assert.equal(JSON.stringify(managedPage).includes(privateCredential), false)
     assert.equal((await client.listManagedEvidence(0, 100, managedPage.snapshotDigest)).snapshotDigest, managedPage.snapshotDigest)
+    const managedNextPage = await client.listManagedEvidence(1, 100, managedPage.snapshotDigest, managedPage.total)
+    assert.equal(managedNextPage.offset, 1)
+    assert.equal(managedNextPage.items.length, 2)
+    assert.equal(managedNextPage.total, managedPage.total)
+    assert.equal(managedNextPage.omittedCount, 1)
+    assert.equal(managedNextPage.hasMore, false)
     const managedDetail = await client.readManagedEvidence(managedRunId)
     assert.equal(managedDetail.summary.managedRunId, managedRunId)
     assert.equal(managedDetail.artifactStatus, "verified-result-and-evidence")
@@ -371,6 +379,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
       [badManagedEvidencePageRoot, "list"],
       [badManagedEvidenceCountRoot, "list"],
       [badManagedEvidenceSnapshotRoot, "list-with-snapshot"],
+      [badManagedEvidenceTotalRoot, "list-next-total"],
       [badManagedEvidenceDetailRoot, "read"],
       [badManagedEvidenceBindingRoot, "read"],
     ] as const) {
@@ -383,7 +392,9 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
         await assert.rejects(
           () => operation === "read"
             ? hostileClient.readManagedEvidence(managedRunId)
-            : hostileClient.listManagedEvidence(0, 100, operation === "list-with-snapshot" ? managedPage.snapshotDigest : undefined),
+            : operation === "list-next-total"
+              ? hostileClient.listManagedEvidence(1, 100, managedPage.snapshotDigest, managedPage.total)
+              : hostileClient.listManagedEvidence(0, 100, operation === "list-with-snapshot" ? managedPage.snapshotDigest : undefined),
           (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
         )
       } finally {
@@ -394,6 +405,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     await assert.rejects(() => client.listManagedEvidence(-1, 100), RangeError)
     await assert.rejects(() => client.listManagedEvidence(0, 201), RangeError)
     await assert.rejects(() => client.listManagedEvidence(0, 100, "sha256:not-a-digest"), TypeError)
+    await assert.rejects(() => client.listManagedEvidence(0, 100, undefined, 2_001), RangeError)
     await assert.rejects(() => client.readManagedEvidence("00000000-0000-0000-0000-000000000000"), TypeError)
 
     const badRunsClient = await GaepEngineClient.create({

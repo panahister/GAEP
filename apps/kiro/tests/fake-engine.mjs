@@ -301,14 +301,20 @@ function managedReadOnlyReceipt() {
 
 function listManagedEvidence(id, params) {
   if (!exactKeys(params, params.snapshotDigest === undefined ? ["offset", "limit"] : ["offset", "limit", "snapshotDigest"]) ||
-    params.offset !== 0 || params.limit !== 100 ||
+    ![0, 1].includes(params.offset) || params.limit !== 100 ||
+    (params.offset > 0 && params.snapshotDigest === undefined) ||
     (params.snapshotDigest !== undefined && params.snapshotDigest !== `sha256:${"6".repeat(64)}`)) {
     return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MANAGED EVIDENCE LIST PARAMS")
   }
-  const value = managedRunPage()
+  const value = managedRunPage(params.offset)
   if (workspacePath.endsWith("bad-managed-evidence-page")) value.items[0].localStagePath = `${privateRoot}/${privateCredential}`
   if (workspacePath.endsWith("bad-managed-evidence-count")) value.omittedCount = 0
   if (workspacePath.endsWith("bad-managed-evidence-snapshot")) value.snapshotDigest = `sha256:${"7".repeat(64)}`
+  if (workspacePath.endsWith("bad-managed-evidence-total") && params.offset === 1) {
+    value.total = 4
+    value.omittedCount = value.total - value.items.length
+    value.hasMore = true
+  }
   return writeResult(id, value)
 }
 
@@ -350,17 +356,23 @@ function managedRunSummary() {
   }
 }
 
-function managedRunPage() {
+function managedRunPage(offset = 0) {
+  const items = offset === 0
+    ? [managedRunSummary()]
+    : [
+        { ...managedRunSummary(), managedRunId: "17171717-1717-4717-8717-171717171717", runId: "18181818-1818-4818-8818-181818181818" },
+        { ...managedRunSummary(), managedRunId: "19191919-1919-4919-8919-191919191919", runId: "20202020-2020-4020-8020-202020202020" },
+      ]
   return {
     schemaVersion: 1,
     kind: "managed-run-summary-page",
-    items: [managedRunSummary()],
-    offset: 0,
+    items,
+    offset,
     limit: 100,
     total: 3,
-    omittedCount: 2,
+    omittedCount: 3 - items.length,
     snapshotDigest: `sha256:${"6".repeat(64)}`,
-    hasMore: true,
+    hasMore: offset + items.length < 3,
     authorityBoundary: "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
     privacyBoundary: "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
   }

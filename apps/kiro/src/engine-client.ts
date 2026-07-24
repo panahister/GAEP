@@ -243,6 +243,7 @@ export class GaepEngineClient {
     offset = 0,
     limit = 100,
     snapshotDigest?: string,
+    expectedTotal?: number,
   ): Promise<ManagedRunSummaryPage> {
     return this.enqueue(async () => {
       if (!Number.isSafeInteger(offset) || offset < 0 || offset > 2_000) {
@@ -255,13 +256,21 @@ export class GaepEngineClient {
       if (snapshotDigest !== undefined && !/^sha256:[0-9a-f]{64}$/u.test(normalizedSnapshot ?? "")) {
         throw new TypeError("Managed Run snapshot digest must be SHA-256")
       }
-      const expected = {
+      if (expectedTotal !== undefined &&
+        (!Number.isSafeInteger(expectedTotal) || expectedTotal < 0 || expectedTotal > 2_000)) {
+        throw new RangeError("Managed Run expected total must be between 0 and 2,000")
+      }
+      const requestParams = {
         offset,
         limit,
         ...(normalizedSnapshot ? { snapshotDigest: normalizedSnapshot } : {}),
       }
+      const expected = {
+        ...requestParams,
+        ...(expectedTotal !== undefined ? { total: expectedTotal } : {}),
+      }
       return parseManagedRunSummaryPage(
-        await this.request("managed.evidence.list", expected),
+        await this.request("managed.evidence.list", requestParams),
         expected,
       )
     })

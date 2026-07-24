@@ -58,7 +58,7 @@
         "source": "package-report",
         "level": "compatible-host-activation-only",
         "requiredVerificationFragments": ["exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-and-activation"],
-        "remainingRequirements": ["native Kiro installation and activation", "real-provider managed read-only workflow acceptance", "interactive cancellation and resume", "interactive evidence pagination beyond the first bounded page", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
+        "remainingRequirements": ["native Kiro installation and activation", "real-provider managed read-only workflow acceptance", "interactive cancellation and resume", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["const client = await GaepEngineClient.create"] }] },
@@ -84,9 +84,9 @@
           { "path": "apps/kiro/src/protocol.ts", "contains": ["parseManagedReviewPreview", "previewDigest !== canonicalDigest(body)", "parseManagedReviewTransition", "workspaceRelativePath(change.path)"] }
         ] },
         { "capabilityId": "evidence-dashboard", "state": "implemented", "probes": [
-          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showManagedEvidenceDashboard", "client.listManagedEvidence(0, 100)", "showManagedEvidenceDetail(await client.readManagedEvidence"] },
-          { "path": "apps/kiro/src/engine-client.ts", "contains": ["listManagedEvidence(", "readManagedEvidence(", "managed.evidence.list", "managed.evidence.read"] },
-          { "path": "apps/kiro/src/protocol.ts", "contains": ["parseManagedRunSummaryPage", "parseManagedEvidenceDetail", "evidenceId !== result.evidenceId || evidenceDigest !== result.evidenceDigest"] }
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showManagedEvidenceDashboard", "Previous verified page", "Next verified page", "firstPage.snapshotDigest", "firstPage.total", "showManagedEvidenceDetail(await client.readManagedEvidence"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["listManagedEvidence(", "expectedTotal?: number", "await this.request(\"managed.evidence.list\", requestParams)", "readManagedEvidence("] },
+          { "path": "apps/kiro/src/protocol.ts", "contains": ["parseManagedRunSummaryPage", "expected.total !== undefined && total !== expected.total", "hasMore && items.length === 0", "parseManagedEvidenceDetail", "evidenceId !== result.evidenceId || evidenceDigest !== result.evidenceDigest"] }
         ] }
       ]
     },
