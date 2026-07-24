@@ -83,13 +83,13 @@ This table must be recounted and updated after every status change.
 
 | Registry | Total | ✅ Done | 🟡 In Progress | 🧪 Ready for Test | 🔎 In Review | ⛔ Blocked | ⏸ Deferred | ❌ Backlog |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Cross-platform capabilities | 35 | 3 | 22 | 0 | 0 | 0 | 0 | 10 |
+| Cross-platform capabilities | 35 | 3 | 24 | 0 | 0 | 0 | 0 | 8 |
 | Phase 1 — Product P0–P4 | 36 | 1 | 21 | 0 | 0 | 0 | 0 | 14 |
 | Phase 2 — UX and Figma | 26 | 0 | 8 | 0 | 0 | 0 | 0 | 18 |
 | Phase 3A — Backlog and Readiness | 24 | 0 | 8 | 0 | 0 | 0 | 0 | 16 |
 | Phase 3B — Implementation and QA | 30 | 0 | 15 | 0 | 0 | 0 | 0 | 15 |
 | Phase 4 — Release and Learning | 17 | 0 | 8 | 0 | 0 | 0 | 0 | 9 |
-| **All tracked features** | **168** | **4** | **82** | **0** | **0** | **0** | **0** | **82** |
+| **All tracked features** | **168** | **4** | **84** | **0** | **0** | **0** | **0** | **80** |
 
 ## 6. Cross-Platform Capability Registry
 
@@ -99,8 +99,8 @@ These capabilities are cross-cutting. The target milestone is the first phase in
 |---|---|---|---|---|---|
 | PLT-01 | Shared GAEP Engine | Phase 0 / 1A | One shared engine with no behavioral forks between hosts | `🟡 In Progress` | Core and shared packages exist; the four-host conformance boundary is incomplete |
 | PLT-02 | Portable `.gaep` Workspace | Phase 0 / 1A | Portable, version-controlled state and artifacts | `✅ Done` | A portable workspace exists in the current codebase; regression testing is required in every phase |
-| PLT-03 | VS Code Installable VSIX | Phase 0 / 1A | Real VSIX build, installation, upgrade, and smoke testing | `🟡 In Progress` | The package and a substantial host implementation exist; acceptance is incomplete |
-| PLT-04 | Visual Studio Native VSIX | Phase 0 / 1A | Native Visual Studio extension installable on Windows | `❌ Backlog` | Only a shared scaffold/client exists; the native VSIX and Windows tests are missing |
+| PLT-03 | VS Code Installable VSIX | Phase 0 / 1A | Real VSIX build, installation, upgrade, and smoke testing | `🟡 In Progress` | `7e46bad` packages, installs, inventories and activates the exact VSIX through an independent isolated harness; upgrade/rollback and supported-OS acceptance remain |
+| PLT-04 | Visual Studio Native VSIX | Phase 0 / 1A | Native Visual Studio extension installable on Windows | `🟡 In Progress` | `27a5149` adds a compiled out-of-process command and Remote UI shell with generated amd64/arm64 contributions; Windows container creation, install tests and complete workflow wiring remain |
 | PLT-05 | Four-IDE Behavioral Parity | Phase 0 / 1A | Equivalent behavior in VS Code, Visual Studio, Rider, and Kiro | `❌ Backlog` | A complete conformance contract and matrix do not exist |
 | PLT-06 | Codex Detection | Phase 0 / 1A | Discover executable, version, authentication readiness, and capabilities | `✅ Done` | Basic detection exists; four-host regression coverage is still required |
 | PLT-07 | Claude Code Detection | Phase 0 / 1A | Discover Claude Code, version, authentication readiness, and capabilities | `🟡 In Progress` | Partial detection exists; host paths and readiness checks are incomplete |
@@ -116,7 +116,7 @@ These capabilities are cross-cutting. The target milestone is the first phase in
 | PLT-17 | Manual/Fake Provider Adapter | Phase 0 / 1A | Deterministic adapter for offline tests and fixtures | `✅ Done` | A test adapter exists and must remain part of the conformance suite |
 | PLT-18 | Context and Run Envelope | Phase 0 / 1A | Record scope, authority, inputs, model, limits, and effects | `🟡 In Progress` | Exact multi-step Workflow checkpoints bind completed dependency batches, gates, events and observation-only effects; parallel concurrency is capped at four and all tool/write/effect authority fails closed, while complete host/provider coverage remains incomplete |
 | PLT-19 | Normalized Evidence and Run Records | Phase 0 / 1A | Provider- and host-independent evidence | `🟡 In Progress` | Immutable portable checkpoint evidence survives sequential and parallel restart/export/import validation; Managed Run inventory now has exact count, kind, byte, concurrency, 200-row page and stale-snapshot bounds. Every provider and host is not yet conformant |
-| PLT-20 | Install, Upgrade, and Rollback | Phase 0 / 1A | Testable lifecycle for all four plugins | `🟡 In Progress` | VS Code is partial; Visual Studio, Rider, and Kiro are incomplete |
+| PLT-20 | Install, Upgrade, and Rollback | Phase 0 / 1A | Testable lifecycle for all four plugins | `🟡 In Progress` | Exact isolated VS Code and Kiro-compatible install/activation pass and Rider produces a verified ZIP; Visual Studio Windows installation plus upgrade/rollback coverage for every host remain |
 | PLT-21 | Dashboard Shell | Phase 0 / 1A | Shared dashboard shell in all four hosts | `🟡 In Progress` | VS Code recovery/evidence observation now consumes the bounded Managed Run page contract with exact totals and conservative omission semantics; parity and four-host installation remain incomplete |
 | PLT-22 | Phase-Scoped Dashboard Framework | Phase 0 / 1A | Compose dashboards according to phase and applicability | `❌ Backlog` | A complete framework and contract do not exist |
 | PLT-23 | Change and Impact Dashboard | Phase 0 / 1A | Changed artifacts, affected units, approvals, and risks | `🟡 In Progress` | A partial view exists; completeness and freshness are incomplete |
@@ -127,11 +127,11 @@ These capabilities are cross-cutting. The target milestone is the first phase in
 | PLT-28 | Realistic Example Runner | Phase 0 / 1A | Repeatable realistic example with inspectable outputs | `❌ Backlog` | The runner and canonical example path do not exist |
 | PLT-29 | Per-Phase Package and Acceptance Report | Phase 0 / 1A | Package, checksum, test report, and known gaps for every phase | `❌ Backlog` | A phase-oriented delivery pipeline does not exist |
 | PLT-30 | Governed Figma MCP Adapter | Phase 2 | Governed Figma read, import, write, and synchronization | `❌ Backlog` | A complete adapter and contract do not exist |
-| PLT-31 | Rider Native Plugin | Phase 0 / 1A | Native JetBrains/Rider plugin with sandbox and installation tests | `🟡 In Progress` | A Kotlin scaffold exists; workflow and packaging are incomplete |
-| PLT-32 | Kiro Installable Package | Phase 0 / 1A | Independent Kiro installation and compatibility validation | `🟡 In Progress` | `7541940` provides an independent six-file VSIX; root typecheck, hostile stdio tests, packaging and exact isolated VSIX install/list pass. Native Kiro installation remains unverified because no Kiro binary is available |
-| PLT-33 | Kiro Compatibility and Smoke Tests | Phase 0 / 1A | Installation, workflow, provider, model, and dashboard smoke tests in Kiro | `🟡 In Progress` | A Code OSS-compatible isolated extension-host smoke activates four bounded commands, machine-only configuration and static Product Studio without workspace mutation. Native Kiro, provider/model switching and complete dashboard parity remain |
+| PLT-31 | Rider Native Plugin | Phase 0 / 1A | Native JetBrains/Rider plugin with sandbox and installation tests | `🟡 In Progress` | `b3101a4` produces a clean instrumented plugin ZIP with warning-free archive validation; native sandbox installation and complete Product workflow parity remain |
+| PLT-32 | Kiro Installable Package | Phase 0 / 1A | Independent Kiro installation and compatibility validation | `🟡 In Progress` | `7e46bad` packages, installs, inventories and activates the exact independent VSIX through a separate compatible-host harness. Native Kiro installation remains unverified because no Kiro binary is available |
+| PLT-33 | Kiro Compatibility and Smoke Tests | Phase 0 / 1A | Installation, workflow, provider, model, and dashboard smoke tests in Kiro | `🟡 In Progress` | The exact installed compatible package activates four bounded commands, machine-only configuration and static Product Studio without workspace mutation. Native Kiro, provider/model switching and complete dashboard parity remain |
 | PLT-34 | Visual Studio Windows Installation Tests | Phase 0 / 1A | CI or manual evidence for VSIX installation on Windows | `❌ Backlog` | A Windows test environment and report do not exist |
-| PLT-35 | Rider Sandbox and Installation Tests | Phase 0 / 1A | `runIde`, installable artifact, and workflow smoke testing | `❌ Backlog` | Sandbox and installation acceptance do not exist |
+| PLT-35 | Rider Sandbox and Installation Tests | Phase 0 / 1A | `runIde`, installable artifact, and workflow smoke testing | `🟡 In Progress` | A verified installable ZIP now exists and protocol tests pass; `runIde`, isolated installation and interactive workflow evidence remain |
 
 ## 7. Phase 1 Feature Registry — Product P0 to P4
 
@@ -302,7 +302,7 @@ This matrix must be completed at the end of **every phase** for that phase's pac
 | VS Code | `.vsix` | Supported desktop OS matrix | Required | Required | Required | Required | Required | Required | `🟡 In Progress` |
 | Visual Studio | Native `.vsix` | Supported Windows + Visual Studio matrix | Required | Required | Required | Required | Required | Required | `❌ Backlog` |
 | Rider | JetBrains plugin artifact | Supported OS + Rider sandbox matrix | Required | Required | Required | Required | Required | Required | `🟡 In Progress` |
-| Kiro | Independently installable compatible package | Supported Kiro desktop matrix | Required | Required | Required | Required | Required | Required | `❌ Backlog` |
+| Kiro | Independently installable compatible package | Supported Kiro desktop matrix | Required | Required | Required | Required | Required | Required | `🟡 In Progress` |
 
 ## 13. Phase Dashboard Contract
 
@@ -428,6 +428,7 @@ Every status change must add a new row. Previous rows must not be deleted or rew
 | 2026-07-24 | Codex | Phase 0 / 1A foundation audit | None | No feature status changes | `ruby scripts/validate_next_docs.rb --mode structural` and `--mode candidate`: PASS; baseline and implementation-readiness modes: BLOCKED only by their declared human/governance prerequisites | Product Owner approved continuous local implementation, not feature completion or baseline/release acceptance | Added Roadmap 054/055 migration dispositions, rebound deterministic documentation digests, and corrected stale documentation-only descriptions; no Feature ID implementation was changed |
 | 2026-07-24 | Codex | Phase 0 / 1A foundation | PLT-32, PLT-33 | `❌ Backlog` -> `🟡 In Progress` | Kiro-compatible source and package checkpoint `7541940`; root `npm run verify`, exact isolated VSIX install/list, compatible extension-host smoke and zero-vulnerability dependency audit pass | Product Owner approved continuous local implementation, not native-Kiro or feature completion acceptance | Native Kiro, native Windows, provider/model switching and complete dashboard parity remain unverified; no feature advanced to Ready for Test or Done |
 | 2026-07-24 | Codex | Wave 4 durable local recovery | None | No feature status changes | Managed Stage storage checkpoint `2ab4f1e`; 60 focused tests with 1 platform-conditional skip, root typecheck/build, 43 aggregate test files with 471 passed plus 1 conditional skip, and structural/candidate documentation validation pass | Product Owner approved continuous local implementation, not feature completion or release/readiness acceptance | Added bounded global stage inventory and explicit registered-orphan scavenging. Live and unknown roots remain protected; no feature advanced to Ready for Test or Done |
+| 2026-07-24 | Codex | Phase 0 / 1A local packaging | PLT-03, PLT-04, PLT-20, PLT-31 to PLT-35 | PLT-04 and PLT-35: `❌ Backlog` -> `🟡 In Progress`; no other status changes | Checkpoints `b3101a4`, `7e46bad`, and `27a5149`; exact installed VS Code/Kiro-compatible VSIX activation, clean Rider ZIP/structure verification, compiled Visual Studio out-of-process shell/generated contributions, 35 host-client checks, and the 471-test aggregate gate pass | Product Owner approved continuous local implementation, not native-host, feature completion, or release acceptance | Windows Visual Studio container/install, native Rider/Kiro runtime, complete workflows, upgrade/rollback, signing and supported-OS matrices remain |
 
 ## 19. Integrity Checks for This File
 
