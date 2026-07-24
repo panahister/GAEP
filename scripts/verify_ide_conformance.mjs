@@ -6,7 +6,7 @@ import { buildIdeConformanceReport } from "./lib/ide_conformance.mjs"
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const options = {
   contractPath: resolve(repositoryRoot, "conformance/phase-0-ide-contract.json"),
-  packageReportPath: resolve(repositoryRoot, "evidence/local-packages/2026-07-24T123302Z-phase-0-local-managed-readonly-visual-studio.json"),
+  packageReportPath: resolve(repositoryRoot, "evidence/local-packages/2026-07-24T125103Z-phase-0-local-evidence-dashboard-kiro.json"),
   recordedAt: undefined,
   outputPath: undefined,
 }
