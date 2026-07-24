@@ -31,6 +31,39 @@ internal static partial class PortableDesignProtocol
     private const string ManagedReviewPrivacyBoundary = "Exact portable identifiers, digests, warning codes, workspace-relative changed paths, file digests, sizes, modes and write scopes only; prompts, provider output, source bytes, absolute paths, executable paths, process state and credentials are omitted.";
     private const string ManagedReviewTransitionBoundary = "managed-review-transition-proves-persisted-state-not-provider-outcome-or-machine-local-cleanup";
     private const string ManagedReviewCleanupBoundary = "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup.";
+    private const string PhaseDashboardAuthorityBoundary =
+        "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence";
+    private static readonly IReadOnlyDictionary<DeliveryPhaseId, (string WireValue, string Label, string PanelId)>
+        DeliveryPhaseCatalog = new Dictionary<DeliveryPhaseId, (string WireValue, string Label, string PanelId)>
+        {
+            [DeliveryPhaseId.Phase0Foundation] =
+                ("phase-0-1a-foundation", "Phase 0 / 1A — Four-IDE Platform Foundation", "foundation-summary"),
+            [DeliveryPhaseId.Phase1Product] =
+                ("phase-1b-product", "Phase 1B — Product P0–P4", "product-architecture"),
+            [DeliveryPhaseId.Phase1Acceptance] =
+                ("phase-1c-acceptance", "Phase 1C — Four-IDE Phase 1 Release", "phase-release-readiness"),
+            [DeliveryPhaseId.Phase2Design] =
+                ("phase-2-design", "Phase 2 — UX and Figma Loop", "ux-figma"),
+            [DeliveryPhaseId.Phase3Readiness] =
+                ("phase-3a-readiness", "Phase 3A — Backlog and Implementation Readiness", "backlog-readiness"),
+            [DeliveryPhaseId.Phase3Implementation] =
+                ("phase-3b-implementation", "Phase 3B — Controlled Implementation and QA", "implementation-qa"),
+            [DeliveryPhaseId.Phase4ReleaseLearning] =
+                ("phase-4-release-learning", "Phase 4 — Release, Publish, and Learning", "release-learning"),
+        };
+    private static readonly IReadOnlyDictionary<string, (string Role, string Title)> PhaseDashboardPanelCatalog =
+        new Dictionary<string, (string Role, string Title)>(StringComparer.Ordinal)
+        {
+            ["foundation-summary"] = ("phase", "Foundation summary and readiness"),
+            ["product-architecture"] = ("phase", "Product and architecture"),
+            ["phase-release-readiness"] = ("phase", "Phase release readiness"),
+            ["ux-figma"] = ("phase", "UX and Figma"),
+            ["backlog-readiness"] = ("phase", "Backlog and implementation readiness"),
+            ["implementation-qa"] = ("phase", "Controlled implementation and QA"),
+            ["release-learning"] = ("phase", "Release and learning"),
+            ["change-impact"] = ("change-impact", "Change and impact"),
+            ["agent-model"] = ("agent-model", "Agent and model"),
+        };
     private static readonly JsonSerializerOptions StrictJson = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -97,6 +130,21 @@ internal static partial class PortableDesignProtocol
             throw new ArgumentOutOfRangeException(nameof(revision), "Product revision must be a positive protocol-safe integer.");
         }
     }
+
+    internal static string ValidateProductDigest(string digest)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(digest);
+        if (!DigestPattern().IsMatch(digest))
+        {
+            throw new ArgumentException("Product digest must be a canonical SHA-256 digest.", nameof(digest));
+        }
+        return digest;
+    }
+
+    internal static string SerializeDeliveryPhase(DeliveryPhaseId phase) =>
+        DeliveryPhaseCatalog.TryGetValue(phase, out var definition)
+            ? definition.WireValue
+            : throw new ArgumentOutOfRangeException(nameof(phase), "Delivery phase is outside the canonical catalog.");
 
     internal static string ValidateActorId(string actorId)
     {
@@ -249,7 +297,158 @@ internal static partial class PortableDesignProtocol
         {
             throw InvalidResponse();
         }
-        return new ProductBinding(id, name, revision);
+        return new ProductBinding(id, name, revision, CanonicalDigest(result));
+    }
+
+    internal static PhaseDashboardFramework ParsePhaseDashboardResponse(
+        JsonElement envelope,
+        DeliveryPhaseId expectedPhase,
+        ProductBinding expectedProduct)
+    {
+        if (!DeliveryPhaseCatalog.TryGetValue(expectedPhase, out var phaseDefinition)) throw InvalidResponse();
+        var result = ReadResult(envelope);
+        if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                result,
+                "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt",
+                "sourceBoundary", "limitations", "authorityBoundary", "compositionDigest") ||
+            !result.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var schema) ||
+            schema != 1 || ParseRequiredEnum(result, "kind", "phase-dashboard-framework") != "phase-dashboard-framework" ||
+            ParseRequiredEnum(result, "catalogVersion", "gaep-phase-dashboards-v1") != "gaep-phase-dashboards-v1" ||
+            ParseRequiredEnum(result, "sourceBoundary", "governed-repository-and-engine-only") !=
+                "governed-repository-and-engine-only" ||
+            ParseRequiredEnum(result, "authorityBoundary", PhaseDashboardAuthorityBoundary) !=
+                PhaseDashboardAuthorityBoundary)
+        {
+            throw InvalidResponse();
+        }
+
+        var product = result.GetProperty("product");
+        if (product.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(product, "recordType", "recordId", "revision", "digest") ||
+            ParseRequiredEnum(product, "recordType", "product") != "product")
+        {
+            throw InvalidResponse();
+        }
+        var productId = ParseRequiredGuid(product, "recordId");
+        var productRevision = ParsePositiveLong(product, "revision");
+        var productDigest = ParseRequiredDigest(product, "digest");
+        if (productId != expectedProduct.Id || productRevision != expectedProduct.Revision ||
+            productDigest != expectedProduct.Digest)
+        {
+            throw InvalidResponse();
+        }
+
+        var phase = result.GetProperty("phase");
+        if (phase.ValueKind != JsonValueKind.Object || !HasOnlyProperties(phase, "id", "label") ||
+            ParseRequiredPortableText(phase, "id") != phaseDefinition.WireValue ||
+            ParseRequiredPortableText(phase, "label") != phaseDefinition.Label)
+        {
+            throw InvalidResponse();
+        }
+
+        var panelsElement = result.GetProperty("panels");
+        if (panelsElement.ValueKind != JsonValueKind.Array || panelsElement.GetArrayLength() != 3)
+        {
+            throw InvalidResponse();
+        }
+        var expectedPanelIds = new[] { phaseDefinition.PanelId, "change-impact", "agent-model" };
+        var panels = panelsElement.EnumerateArray()
+            .Select((panel, index) => ParsePhaseDashboardPanel(panel, expectedPanelIds[index]))
+            .ToArray();
+
+        var limitationsElement = result.GetProperty("limitations");
+        if (limitationsElement.ValueKind != JsonValueKind.Array || limitationsElement.GetArrayLength() is < 1 or > 8)
+        {
+            throw InvalidResponse();
+        }
+        var limitations = new List<string>();
+        foreach (var limitation in limitationsElement.EnumerateArray())
+        {
+            if (limitation.ValueKind != JsonValueKind.String ||
+                !ValidPortableText(limitation.GetString(), minimum: 4, maximum: 1_000))
+            {
+                throw InvalidResponse();
+            }
+            limitations.Add(limitation.GetString()!);
+        }
+
+        var observedAt = ParseRequiredTimestamp(result, "observedAt");
+        var compositionDigest = ParseRequiredDigest(result, "compositionDigest");
+        var compositionBody = JsonSerializer.SerializeToElement(
+            result.EnumerateObject()
+                .Where(property => property.Name != "compositionDigest")
+                .ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal));
+        if (compositionDigest != CanonicalDigest(compositionBody)) throw InvalidResponse();
+
+        return new PhaseDashboardFramework(
+            productId,
+            productRevision,
+            productDigest,
+            expectedPhase,
+            phaseDefinition.Label,
+            Array.AsReadOnly(panels),
+            observedAt,
+            Array.AsReadOnly(limitations.ToArray()),
+            compositionDigest);
+    }
+
+    private static PhaseDashboardPanel ParsePhaseDashboardPanel(JsonElement panel, string expectedId)
+    {
+        if (!PhaseDashboardPanelCatalog.TryGetValue(expectedId, out var definition) ||
+            panel.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(panel, "id", "role", "title", "applicability", "state") ||
+            ParseRequiredPortableText(panel, "id") != expectedId ||
+            ParseRequiredPortableText(panel, "role") != definition.Role ||
+            ParseRequiredPortableText(panel, "title") != definition.Title)
+        {
+            throw InvalidResponse();
+        }
+
+        var applicability = panel.GetProperty("applicability");
+        if (!HasRequiredAndAllowedProperties(applicability, ["status", "basis"], ["decision"]))
+        {
+            throw InvalidResponse();
+        }
+        var status = ParseRequiredEnum(applicability, "status", "applicable", "not-applicable", "unknown");
+        var basis = ParseRequiredEnum(applicability, "basis", "phase-contract", "governed-decision", "not-evaluated");
+        var decision = applicability.TryGetProperty("decision", out var decisionElement)
+            ? ParsePhaseDashboardDecision(decisionElement)
+            : null;
+        if ((basis == "phase-contract" && (status != "applicable" || decision is not null)) ||
+            (basis == "not-evaluated" && (status != "unknown" || decision is not null)) ||
+            (basis == "governed-decision" && (status == "unknown" || decision is null)))
+        {
+            throw InvalidResponse();
+        }
+
+        var state = ParseRequiredEnum(panel, "state", "active", "not-applicable", "attention-required");
+        var expectedState = status switch
+        {
+            "applicable" => "active",
+            "not-applicable" => "not-applicable",
+            _ => "attention-required",
+        };
+        if (state != expectedState) throw InvalidResponse();
+        return new PhaseDashboardPanel(
+            expectedId,
+            definition.Role,
+            definition.Title,
+            new PhaseDashboardApplicability(status, basis, decision),
+            state);
+    }
+
+    private static PhaseDashboardDecision ParsePhaseDashboardDecision(JsonElement decision)
+    {
+        if (decision.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(decision, "recordType", "recordId", "revision", "digest") ||
+            ParseRequiredEnum(decision, "recordType", "decision") != "decision")
+        {
+            throw InvalidResponse();
+        }
+        return new PhaseDashboardDecision(
+            ParseRequiredGuid(decision, "recordId"),
+            ParsePositiveLong(decision, "revision"),
+            ParseRequiredDigest(decision, "digest"));
     }
 
     internal static IReadOnlyList<AgentReadinessSnapshot> ParseAgentReadinessResponse(JsonElement envelope)

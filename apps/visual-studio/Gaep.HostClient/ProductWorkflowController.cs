@@ -17,6 +17,15 @@ public sealed class ProductWorkflowController(EngineClient client)
     public async Task<string> ReadProductAsync(CancellationToken cancellationToken = default) =>
         RenderProduct(await client.ReadProductBindingAsync(cancellationToken));
 
+    public async Task<string> ReadPhaseDashboardAsync(CancellationToken cancellationToken = default)
+    {
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        return RenderPhaseDashboard(await client.ReadPhaseDashboardAsync(
+            product,
+            DeliveryPhaseId.Phase0Foundation,
+            cancellationToken));
+    }
+
     public async Task<string> ReadAgentReadinessAsync(CancellationToken cancellationToken = default)
     {
         var snapshots = await client.ProbeAgentReadinessAsync(cancellationToken);
@@ -493,6 +502,40 @@ public sealed class ProductWorkflowController(EngineClient client)
         .AppendLine($"Product ID: {product.Id:D}")
         .Append($"Revision: {product.Revision}")
         .ToString();
+
+    private static string RenderPhaseDashboard(PhaseDashboardFramework dashboard)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP phase-scoped dashboard framework")
+            .AppendLine()
+            .AppendLine($"Delivery phase: {dashboard.PhaseLabel}")
+            .AppendLine($"Exact Product revision: {dashboard.ProductRevision}")
+            .AppendLine($"Product digest: {dashboard.ProductDigest}")
+            .AppendLine($"Composition digest: {dashboard.CompositionDigest}")
+            .AppendLine($"Observed: {dashboard.ObservedAt:O}")
+            .AppendLine();
+        foreach (var panel in dashboard.Panels)
+        {
+            output.AppendLine(
+                $"{panel.Title} · {panel.Role} · applicability={panel.Applicability.Status} " +
+                $"({panel.Applicability.Basis}) · state={panel.State}");
+            if (panel.Applicability.Decision is { } decision)
+            {
+                output.AppendLine(
+                    $"  Decision: {decision.RecordId:D} revision {decision.Revision}; digest={decision.Digest}");
+            }
+        }
+        output.AppendLine();
+        foreach (var limitation in dashboard.Limitations) output.AppendLine($"Limit: {limitation}");
+        return output
+            .AppendLine()
+            .AppendLine(
+                "Boundary: this is a read-only governed-state projection. It grants no mutation, applicability, " +
+                "phase-entry, approval, readiness, acceptance, release, Run, Tool, or effect authority.")
+            .Append(
+                "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.")
+            .ToString();
+    }
 
     private static string RenderAgentReadiness(AgentReadinessSnapshot snapshot)
     {

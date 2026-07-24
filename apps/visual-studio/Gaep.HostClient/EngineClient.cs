@@ -63,6 +63,30 @@ public sealed class EngineClient : IAsyncDisposable
             PortableDesignProtocol.ParseProductBindingResponse);
     }
 
+    public async Task<PhaseDashboardFramework> ReadPhaseDashboardAsync(
+        ProductBinding product,
+        DeliveryPhaseId phase = DeliveryPhaseId.Phase0Foundation,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        if (product.Id == Guid.Empty) throw new ArgumentException("Product identity must not be empty.", nameof(product));
+        PortableDesignProtocol.ValidateProductRevision(product.Revision);
+        PortableDesignProtocol.ValidateProductDigest(product.Digest);
+        using var response = await RequestPortableDesignAsync(
+            "dashboard.framework",
+            new Dictionary<string, object?>
+            {
+                ["phase"] = PortableDesignProtocol.SerializeDeliveryPhase(phase),
+                ["expectedProductId"] = product.Id,
+                ["expectedProductRevision"] = product.Revision,
+                ["expectedProductDigest"] = product.Digest,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParsePhaseDashboardResponse(envelope, phase, product));
+    }
+
     public async Task<IReadOnlyList<AgentReadinessSnapshot>> ProbeAgentReadinessAsync(
         CancellationToken cancellationToken = default)
     {

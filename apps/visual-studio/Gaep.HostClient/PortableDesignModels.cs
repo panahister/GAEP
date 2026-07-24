@@ -25,7 +25,47 @@ public enum PortableDesignExportMethod
 public sealed record ProductBinding(
     Guid Id,
     string Name,
-    long Revision);
+    long Revision,
+    string Digest);
+
+public enum DeliveryPhaseId
+{
+    Phase0Foundation,
+    Phase1Product,
+    Phase1Acceptance,
+    Phase2Design,
+    Phase3Readiness,
+    Phase3Implementation,
+    Phase4ReleaseLearning,
+}
+
+public sealed record PhaseDashboardDecision(
+    Guid RecordId,
+    long Revision,
+    string Digest);
+
+public sealed record PhaseDashboardApplicability(
+    string Status,
+    string Basis,
+    PhaseDashboardDecision? Decision);
+
+public sealed record PhaseDashboardPanel(
+    string Id,
+    string Role,
+    string Title,
+    PhaseDashboardApplicability Applicability,
+    string State);
+
+public sealed record PhaseDashboardFramework(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    DeliveryPhaseId Phase,
+    string PhaseLabel,
+    IReadOnlyList<PhaseDashboardPanel> Panels,
+    DateTimeOffset ObservedAt,
+    IReadOnlyList<string> Limitations,
+    string CompositionDigest);
 
 public sealed record AgentModelReadiness(
     string Id,

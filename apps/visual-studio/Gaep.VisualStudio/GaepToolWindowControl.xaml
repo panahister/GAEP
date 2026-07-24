@@ -19,7 +19,10 @@
                  MinHeight="26" Margin="0,4,0,8"
                  Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
         <Button x:Name="RefreshProductButton" Content="Refresh Product"
-                Command="{Binding RefreshProductCommand}" MinHeight="28" Margin="0,0,0,12"
+                Command="{Binding RefreshProductCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="ShowPhaseDashboardButton" Content="Show Phase 0/1A dashboards"
+                Command="{Binding ShowPhaseDashboardCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
         <Button x:Name="RefreshAgentReadinessButton" Content="Refresh Codex and Claude readiness"
                 Command="{Binding RefreshAgentReadinessCommand}" MinHeight="28" Margin="0,0,0,12"
@@ -172,6 +175,7 @@
   <DataTemplate.Triggers>
     <DataTrigger Binding="{Binding Busy}" Value="True">
       <Setter TargetName="RefreshProductButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ShowPhaseDashboardButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="RefreshAgentReadinessButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadAgentSelectionButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="SelectAgentButton" Property="IsEnabled" Value="False" />

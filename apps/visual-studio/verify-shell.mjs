@@ -56,6 +56,7 @@ for (const binding of [
   "BundleId",
   "BundlePath",
   "RefreshProductCommand",
+  "ShowPhaseDashboardCommand",
   "RefreshAgentReadinessCommand",
   "LoadAgentSelectionCommand",
   "SelectAgentCommand",
@@ -96,6 +97,8 @@ for (const binding of [
 }
 requireText(remoteUi, /Import local bundle as pending review/u,
   "Visual Studio import action does not communicate its pending-review boundary")
+requireText(remoteUi, /Show Phase 0\/1A dashboards/u,
+  "Visual Studio Product Studio does not expose the explicit phase-dashboard projection")
 requireText(remoteUi, /Confirm guarded selection/u,
   "Visual Studio selection action does not communicate its guarded confirmation boundary")
 requireText(remoteUi, /Create versioned handoff/u,

@@ -79,6 +79,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     {
         this.extensibility = extensibility ?? throw new ArgumentNullException(nameof(extensibility));
         RefreshProductCommand = new AsyncCommand(RefreshProductAsync);
+        ShowPhaseDashboardCommand = new AsyncCommand(ShowPhaseDashboardAsync);
         RefreshAgentReadinessCommand = new AsyncCommand(RefreshAgentReadinessAsync);
         LoadAgentSelectionCommand = new AsyncCommand(LoadAgentSelectionAsync);
         SelectAgentCommand = new AsyncCommand(SelectAgentAsync);
@@ -107,10 +108,13 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ShowPhaseDashboardCommand { get; }
 
     [DataMember]
     public IAsyncCommand RefreshAgentReadinessCommand { get; }
@@ -310,6 +314,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Refreshing Product",
             (controller, _, token) => controller.ReadProductAsync(token),
+            cancellationToken);
+
+    private Task ShowPhaseDashboardAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading Phase 0/1A dashboards",
+            (controller, _, token) => controller.ReadPhaseDashboardAsync(token),
             cancellationToken);
 
     private Task RefreshAgentReadinessAsync(object? commandParameter, CancellationToken cancellationToken) =>

@@ -82,6 +82,10 @@ internal static class Program
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
+        var badDashboardBindingRoot = Path.Combine(temporaryRoot, "bad-dashboard-binding");
+        var badDashboardApplicabilityRoot = Path.Combine(temporaryRoot, "bad-dashboard-applicability");
+        var badDashboardDigestRoot = Path.Combine(temporaryRoot, "bad-dashboard-digest");
+        var badDashboardPrivateRoot = Path.Combine(temporaryRoot, "bad-dashboard-private");
         var badManagedPreviewRoot = Path.Combine(temporaryRoot, "bad-managed-preview");
         var badManagedCriterionRoot = Path.Combine(temporaryRoot, "bad-managed-criterion");
         var badManagedDigestRoot = Path.Combine(temporaryRoot, "bad-managed-digest");
@@ -109,6 +113,10 @@ internal static class Program
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
+        Directory.CreateDirectory(badDashboardBindingRoot);
+        Directory.CreateDirectory(badDashboardApplicabilityRoot);
+        Directory.CreateDirectory(badDashboardDigestRoot);
+        Directory.CreateDirectory(badDashboardPrivateRoot);
         Directory.CreateDirectory(badManagedPreviewRoot);
         Directory.CreateDirectory(badManagedCriterionRoot);
         Directory.CreateDirectory(badManagedDigestRoot);
@@ -208,10 +216,50 @@ internal static class Program
 
         await using var client = new EngineClient(temporaryRoot, executable);
         var product = await client.ReadProductBindingAsync();
-        Check(product == new ProductBinding(ProductId, "Founder Product", 7),
-            "Typed Product binding returns exact identity and revision while ignoring unrelated Product fields");
+        var expectedProductDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        Check(product == new ProductBinding(ProductId, "Founder Product", 7, expectedProductDigest),
+            "Typed Product binding returns exact identity, revision, and canonical digest while omitting unrelated fields");
         Check(!JsonSerializer.Serialize(product).Contains(PrivateRoot, StringComparison.Ordinal),
             "Typed Product binding does not expose unrelated private Product fields");
+
+        var dashboard = await client.ReadPhaseDashboardAsync(product);
+        Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
+              dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
+                  "foundation-summary", "change-impact", "agent-model",
+              ]),
+            "Typed phase dashboard preserves the explicit phase and canonical three-panel order");
+        Check(dashboard.Panels.Select(panel => panel.State).SequenceEqual([
+                  "attention-required", "active", "active",
+              ]) && dashboard.ProductDigest == product.Digest,
+            "Typed phase dashboard preserves conservative applicability state and exact Product binding");
+        var dashboardOutput = await new ProductWorkflowController(client).ReadPhaseDashboardAsync();
+        Check(dashboardOutput.Contains("GAEP phase-scoped dashboard framework", StringComparison.Ordinal) &&
+              dashboardOutput.Contains("applicability=unknown (not-evaluated)", StringComparison.Ordinal) &&
+              dashboardOutput.Contains("grants no mutation, applicability, phase-entry", StringComparison.Ordinal) &&
+              !dashboardOutput.Contains("Founder Product", StringComparison.Ordinal) &&
+              !dashboardOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !dashboardOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Phase-dashboard workflow renders only bounded metadata and an explicit no-authority boundary");
+        foreach (var hostileRoot in new[]
+                 {
+                     badDashboardBindingRoot,
+                     badDashboardApplicabilityRoot,
+                     badDashboardDigestRoot,
+                     badDashboardPrivateRoot,
+                 })
+        {
+            await using var hostileDashboardClient = new EngineClient(hostileRoot, executable);
+            var hostileProduct = await hostileDashboardClient.ReadProductBindingAsync();
+            var invalidDashboard = await CaptureHostErrorAsync(
+                () => hostileDashboardClient.ReadPhaseDashboardAsync(hostileProduct));
+            Check(invalidDashboard.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidDashboard.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidDashboard.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Phase dashboard rejects hostile binding, applicability, digest, and private-field drift");
+        }
+        await ExpectAsync<ArgumentException>(
+            () => client.ReadPhaseDashboardAsync(product with { Digest = "sha256:not-a-digest" }),
+            "Invalid Product dashboard digests fail before transport");
 
         var readiness = await client.ProbeAgentReadinessAsync();
         Check(readiness.Select(snapshot => snapshot.AgentId).SequenceEqual(["claude-code", "codex"]),
@@ -986,6 +1034,10 @@ internal static class Program
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
+        var badDashboardBinding = Path.GetFileName(workspace) == "bad-dashboard-binding";
+        var badDashboardApplicability = Path.GetFileName(workspace) == "bad-dashboard-applicability";
+        var badDashboardDigest = Path.GetFileName(workspace) == "bad-dashboard-digest";
+        var badDashboardPrivate = Path.GetFileName(workspace) == "bad-dashboard-private";
         var badManagedPreview = Path.GetFileName(workspace) == "bad-managed-preview";
         var badManagedCriterion = Path.GetFileName(workspace) == "bad-managed-criterion";
         var badManagedDigest = Path.GetFileName(workspace) == "bad-managed-digest";
@@ -1035,6 +1087,15 @@ internal static class Program
                     break;
                 case "probeAgents":
                     await HandleProbeAgentsAsync(id, parameters, badReadiness);
+                    break;
+                case "dashboard.framework":
+                    await HandlePhaseDashboardAsync(
+                        id,
+                        parameters,
+                        badDashboardBinding,
+                        badDashboardApplicability,
+                        badDashboardDigest,
+                        badDashboardPrivate);
                     break;
                 case "readAgentSelection":
                     if (!HasOnlyProperties(parameters))
@@ -2004,15 +2065,105 @@ internal static class Program
             await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PRODUCT READ");
             return;
         }
-        await WriteResultAsync(id, new Dictionary<string, object?>
-        {
-            ["id"] = ProductId.ToString("D"),
-            ["name"] = "Founder Product",
-            ["revision"] = revision,
-            ["lifecycleState"] = "candidate",
-            ["privateWorkspace"] = PrivateRoot,
-        });
+        await WriteResultAsync(id, ProductRecord(revision));
     }
+
+    private static Dictionary<string, object?> ProductRecord(long revision) => new()
+    {
+        ["id"] = ProductId.ToString("D"),
+        ["name"] = "Founder Product",
+        ["revision"] = revision,
+        ["lifecycleState"] = "candidate",
+        ["privateWorkspace"] = PrivateRoot,
+    };
+
+    private static async Task HandlePhaseDashboardAsync(
+        long id,
+        JsonElement parameters,
+        bool mismatchBinding,
+        bool invalidateApplicability,
+        bool invalidateDigest,
+        bool includePrivateField)
+    {
+        var productDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        if (!HasOnlyProperties(
+                parameters,
+                "phase", "expectedProductId", "expectedProductRevision", "expectedProductDigest") ||
+            parameters.GetProperty("phase").GetString() != "phase-0-1a-foundation" ||
+            parameters.GetProperty("expectedProductId").GetString() != ProductId.ToString("D") ||
+            parameters.GetProperty("expectedProductRevision").GetInt64() != 7 ||
+            parameters.GetProperty("expectedProductDigest").GetString() != productDigest)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DASHBOARD REQUEST");
+            return;
+        }
+        var dashboard = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "phase-dashboard-framework",
+            ["catalogVersion"] = "gaep-phase-dashboards-v1",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["recordType"] = "product",
+                ["recordId"] = ProductId.ToString("D"),
+                ["revision"] = 7,
+                ["digest"] = mismatchBinding ? $"sha256:{new string('0', 64)}" : productDigest,
+            },
+            ["phase"] = new Dictionary<string, object?>
+            {
+                ["id"] = "phase-0-1a-foundation",
+                ["label"] = "Phase 0 / 1A — Four-IDE Platform Foundation",
+            },
+            ["panels"] = new[]
+            {
+                PhaseDashboardPanel(
+                    "foundation-summary",
+                    "phase",
+                    "Foundation summary and readiness",
+                    invalidateApplicability ? "applicable" : "unknown",
+                    "not-evaluated",
+                    invalidateApplicability ? "active" : "attention-required"),
+                PhaseDashboardPanel("change-impact", "change-impact", "Change and impact", "applicable", "phase-contract", "active"),
+                PhaseDashboardPanel("agent-model", "agent-model", "Agent and model", "applicable", "phase-contract", "active"),
+            },
+            ["observedAt"] = "2026-07-24T12:00:00.000Z",
+            ["sourceBoundary"] = "governed-repository-and-engine-only",
+            ["limitations"] = new[]
+            {
+                "The selected phase scopes presentation only; it does not prove phase entry, completion, acceptance, or release readiness.",
+                "The phase dashboard remains attention-required until a governed applicability decision is bound.",
+            },
+            ["authorityBoundary"] =
+                "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
+        };
+        RefreshCanonicalDigest(dashboard, "compositionDigest");
+        if (invalidateDigest)
+        {
+            ((Dictionary<string, object?>[])dashboard["panels"]!)[0]["title"] = "Forged dashboard title";
+        }
+        if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, dashboard);
+    }
+
+    private static Dictionary<string, object?> PhaseDashboardPanel(
+        string id,
+        string role,
+        string title,
+        string status,
+        string basis,
+        string state) =>
+        new()
+        {
+            ["id"] = id,
+            ["role"] = role,
+            ["title"] = title,
+            ["applicability"] = new Dictionary<string, object?>
+            {
+                ["status"] = status,
+                ["basis"] = basis,
+            },
+            ["state"] = state,
+        };
 
     private static async Task HandleProbeAgentsAsync(long id, JsonElement parameters, bool includePrivatePath)
     {
