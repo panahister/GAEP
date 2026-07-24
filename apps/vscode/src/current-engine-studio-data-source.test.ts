@@ -598,6 +598,7 @@ interface HarnessOptions {
   initiatives?: Initiative[]
   runs?: Run[]
   managedRuns?: ManagedRunRecord[]
+  managedRunTotal?: number
   managedObservationError?: Error
   managedResults?: Record<string, ManagedRunResult>
   managedEvidence?: Record<string, ManagedRunEvidence>
@@ -622,6 +623,7 @@ function harness(options: HarnessOptions = {}) {
   const hasProduct = options.withProduct ?? true
   let contextGeneration = "context_generation_1234567890"
   let contextRotatedDuringObservation = false
+  const managedPageRequests: Array<{ offset?: number; limit?: number; snapshotDigest?: string }> = []
   const selectedAgent = options.selection === undefined ? selection : options.selection
   const engine = {
     readProduct: async () => {
@@ -637,6 +639,26 @@ function harness(options: HarnessOptions = {}) {
     listManagedRuns: async () => {
       if (options.managedObservationError) throw options.managedObservationError
       return options.managedRuns ?? []
+    },
+    listManagedRunsPage: async (input: { offset?: number; limit?: number; snapshotDigest?: `sha256:${string}` } = {}) => {
+      if (options.managedObservationError) throw options.managedObservationError
+      managedPageRequests.push(input)
+      const offset = input.offset ?? 0
+      const limit = input.limit ?? 200
+      const records = [...(options.managedRuns ?? [])].sort((left, right) =>
+        right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))
+      const total = options.managedRunTotal ?? records.length
+      const items = records.slice(offset, offset + limit)
+      return {
+        items,
+        offset,
+        limit,
+        total,
+        snapshotDigest: canonicalDigest(
+          records.map((record) => ({ id: record.id, digest: canonicalDigest(record) })),
+        ) as `sha256:${string}`,
+        hasMore: offset + items.length < total,
+      }
     },
     readManagedRunResult: async (id: string) => {
       const result = options.managedResults?.[id]
@@ -723,6 +745,7 @@ function harness(options: HarnessOptions = {}) {
     source: new CurrentEngineStudioDataSource(context),
     commands,
     diagnostics,
+    managedPageRequests,
     setContextGeneration: (value: string) => { contextGeneration = value },
   }
 }
@@ -2000,7 +2023,7 @@ describe("current-engine Product Studio data source", () => {
       run,
       "2026-07-20T00:00:00.000Z",
     )
-    const { source } = harness({ managedRuns: [...newerRecords, omittedSelectedRecord] })
+    const { source, managedPageRequests } = harness({ managedRuns: [...newerRecords, omittedSelectedRecord] })
     const snapshot = await source.readSnapshot("runs-evidence")
     if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
     expect(snapshot.page.managedEvidence.truncation).toMatchObject({ shown: 200, total: 201 })
@@ -2012,6 +2035,7 @@ describe("current-engine Product Studio data source", () => {
       managed: "not present in newest bounded window",
       attempts: "0 shown; older unknown",
     })
+    expect(managedPageRequests).toEqual([{ offset: 0, limit: 200 }])
   })
 
   it("does not invent an omitted binding for a Run merely because the global Managed window is truncated", async () => {

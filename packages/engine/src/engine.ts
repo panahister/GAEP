@@ -47,6 +47,8 @@ import {
   type ManagedExecutionReview,
   type ManagedExecutionStartInput,
   type ManagedPendingReviewStatus,
+  type ManagedRunListPage,
+  type ManagedRunListPageInput,
 } from "./managed-execution.js"
 import { ProductStudioService } from "./product-studio.js"
 
@@ -786,6 +788,10 @@ export class GaepEngine {
 
   async listManagedRuns(): Promise<ManagedRunRecord[]> {
     return this.managedExecution.list()
+  }
+
+  async listManagedRunsPage(input: ManagedRunListPageInput = {}): Promise<ManagedRunListPage> {
+    return this.managedExecution.listPage(input)
   }
 
   async readManagedRun(id: string): Promise<ManagedRunRecord> {

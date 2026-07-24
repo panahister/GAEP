@@ -88,8 +88,10 @@ describe("Managed Run recovery presentation", () => {
       message: expect.stringMatching(/remains non-terminal.*Recovery is deferred.*no apply, cleanup, or outcome success/i),
     })
     const bounded = managedRecoveryPassPresentation(
-      Array.from({ length: 201 }, () => record("completed")),
+      Array.from({ length: 200 }, () => record("completed")),
       true,
+      200,
+      201,
     )
     expect(bounded).toMatchObject({
       level: "warning",

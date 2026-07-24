@@ -178,6 +178,7 @@ export function managedRecoveryPassPresentation(
   records: readonly ManagedRunRecord[],
   auditValid: boolean,
   limit = 200,
+  total = records.length,
 ): ManagedRecoveryPassPresentation {
   if (!auditValid) {
     return {
@@ -189,10 +190,10 @@ export function managedRecoveryPassPresentation(
   const deferred = observed.filter((record) => ["prepared", "running", "applying"].includes(record.state))
   const attention = observed.filter((record) => ["review-required", "conflict", "unknown"].includes(record.state) ||
     record.recovery.status !== "not-required")
-  if (records.length > observed.length) {
+  if (total > observed.length) {
     return {
       level: "warning",
-      message: `The recovery pass returned and the audit is valid, but the host summary is bounded to the newest ${observed.length} of ${records.length} Managed Runs. No complete recovery or cleanup claim is made; review Runs & Evidence.`,
+      message: `The recovery pass returned and the audit is valid, but the host summary is bounded to the newest ${observed.length} of ${total} Managed Runs. No complete recovery or cleanup claim is made; review Runs & Evidence.`,
     }
   }
   if (deferred.length > 0) {

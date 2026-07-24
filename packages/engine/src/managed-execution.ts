@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { realpath } from "node:fs/promises"
+import { lstat, realpath } from "node:fs/promises"
 
 import {
   adapterCapabilitiesSchema,
@@ -86,6 +86,25 @@ export interface ManagedExecutionStartInput {
   previousManagedRunId?: string
   evaluateWorkflowGate?: ManagedWorkflowGateEvaluator
 }
+
+export interface ManagedRunListPageInput {
+  offset?: number
+  limit?: number
+  snapshotDigest?: `sha256:${string}`
+}
+
+export interface ManagedRunListPage {
+  items: ManagedRunRecord[]
+  offset: number
+  limit: number
+  total: number
+  snapshotDigest: `sha256:${string}`
+  hasMore: boolean
+}
+
+export const managedRunInventoryLimit = 2_000
+export const managedRunPageLimit = 200
+export const managedRunRecordByteLimit = 1024 * 1024
 
 export interface ManagedWorkflowGateEvaluationRequest {
   readonly managedRunId: string
@@ -626,10 +645,54 @@ export class ManagedExecutionService {
       if (error instanceof Error && "code" in error && error.code === "ENOENT") return []
       throw error
     }
-    const records = await Promise.all(names.map((name) =>
-      this.repository.readJson(this.repository.resolve("sessions", name), managedRunRecordSchema),
-    ))
-    return records.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    if (names.length > managedRunInventoryLimit) {
+      throw new Error(`Managed Run inventory exceeds the hard limit of ${managedRunInventoryLimit}; recovery and observation fail closed`)
+    }
+    const records: ManagedRunRecord[] = []
+    const readConcurrency = 64
+    for (let index = 0; index < names.length; index += readConcurrency) {
+      records.push(...await Promise.all(names.slice(index, index + readConcurrency).map(async (name) => {
+        const path = this.repository.resolve("sessions", name)
+        const metadata = await lstat(path)
+        if (!metadata.isFile() || metadata.size > managedRunRecordByteLimit) {
+          throw new Error(`Managed Run record violates the regular-file or ${managedRunRecordByteLimit}-byte inventory bound`)
+        }
+        return this.repository.readJson(path, managedRunRecordSchema)
+      })))
+    }
+    return records.sort((left, right) =>
+      right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))
+  }
+
+  async listPage(input: ManagedRunListPageInput = {}): Promise<ManagedRunListPage> {
+    const offset = input.offset ?? 0
+    const limit = input.limit ?? managedRunPageLimit
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > managedRunInventoryLimit) {
+      throw new Error(`Managed Run page offset must be between 0 and ${managedRunInventoryLimit}`)
+    }
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > managedRunPageLimit) {
+      throw new Error(`Managed Run page limit must be between 1 and ${managedRunPageLimit}`)
+    }
+    if (input.snapshotDigest !== undefined && !/^sha256:[a-f0-9]{64}$/u.test(input.snapshotDigest)) {
+      throw new Error("Managed Run page snapshot digest is invalid")
+    }
+    const records = await this.list()
+    const snapshotDigest = canonicalDigest(records.map((record) => ({
+      id: record.id,
+      digest: canonicalDigest(record),
+    }))) as `sha256:${string}`
+    if (input.snapshotDigest && input.snapshotDigest !== snapshotDigest) {
+      throw new Error("Managed Run inventory changed during pagination; restart from the first page")
+    }
+    const items = records.slice(offset, offset + limit)
+    return {
+      items,
+      offset,
+      limit,
+      total: records.length,
+      snapshotDigest,
+      hasMore: offset + items.length < records.length,
+    }
   }
 
   async read(id: string): Promise<ManagedRunRecord> {

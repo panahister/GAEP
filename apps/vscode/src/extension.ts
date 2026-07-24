@@ -1683,11 +1683,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return
       }
       let audit: Awaited<ReturnType<GaepEngine["repository"]["verifyAudit"]>>
-      let records: Awaited<ReturnType<GaepEngine["listManagedRuns"]>>
+      let page: Awaited<ReturnType<GaepEngine["listManagedRunsPage"]>>
       try {
-        [audit, records] = await Promise.all([
+        [audit, page] = await Promise.all([
           engine.repository.verifyAudit(),
-          engine.listManagedRuns(),
+          engine.listManagedRunsPage({ offset: 0, limit: 200 }),
         ])
       } catch (error) {
         recordRecoveryFailure("Recovery inventory revalidation is deferred", error)
@@ -1700,7 +1700,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         })
         return
       }
-      const presentation = managedRecoveryPassPresentation(records, audit.valid)
+      const presentation = managedRecoveryPassPresentation(page.items, audit.valid, page.limit, page.total)
       if (presentation.level === "warning") await vscode.window.showWarningMessage(presentation.message)
       else await vscode.window.showInformationMessage(presentation.message)
     })),

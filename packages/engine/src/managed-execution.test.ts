@@ -40,6 +40,7 @@ import {
   compileManagedCodexPolicy,
   compileManagedWorkflowBatches,
   compileManagedWorkflowOrder,
+  managedRunRecordByteLimit,
   workspacePathWithinEnvelope,
 } from "./managed-execution.js"
 import type { ManagedWorkflowGateEvaluator } from "./managed-execution.js"
@@ -341,6 +342,63 @@ describe("managed execution engine", () => {
     expect((await engine.repository.verifyAudit()).valid).toBe(true)
     await expect(engine.markRunState(run.id, "completed", { kind: "human", id: "founder" }))
       .rejects.toThrow(/derived from durable managed evidence/)
+  })
+
+  it("returns bounded stable Managed Run pages and rejects pagination across an inventory change", async () => {
+    const { run, plan } = await readyRun("success")
+    const completed = (await drain(await engine.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      evaluateWorkflowGate: satisfyWorkflowGate,
+    }, "founder"))).review.record
+    const records = [completed]
+    for (let index = 1; index < 5; index += 1) {
+      const id = randomUUID()
+      const updatedAt = new Date(Date.parse(completed.updatedAt) + index * 1_000).toISOString()
+      const record = managedRunRecordSchema.parse({
+        ...completed,
+        id,
+        rootManagedRunId: id,
+        attemptNumber: 1,
+        previousManagedRunId: undefined,
+        updatedAt,
+        endedAt: updatedAt,
+      })
+      records.push(record)
+      await writeFile(
+        engine.repository.resolve("sessions", `managed-run-${record.id}.json`),
+        `${JSON.stringify(record, null, 2)}\n`,
+      )
+    }
+    const first = await engine.listManagedRunsPage({ offset: 0, limit: 2 })
+    expect(first).toMatchObject({ offset: 0, limit: 2, total: 5, hasMore: true })
+    expect(first.items.map((record) => record.id)).toEqual(records.slice(1).reverse().slice(0, 2).map((record) => record.id))
+    const second = await engine.listManagedRunsPage({ offset: 2, limit: 2, snapshotDigest: first.snapshotDigest })
+    expect(second.items.map((record) => record.id)).toEqual(records.slice(1).reverse().slice(2, 4).map((record) => record.id))
+    expect(second.snapshotDigest).toBe(first.snapshotDigest)
+    await expect(engine.listManagedRunsPage({ limit: 201 })).rejects.toThrow(/between 1 and 200/)
+    await expect(engine.listManagedRunsPage({ snapshotDigest: `sha256:${"0".repeat(64)}` }))
+      .rejects.toThrow(/changed during pagination/)
+
+    const changed = managedRunRecordSchema.parse({
+      ...records[1]!,
+      revision: records[1]!.revision + 1,
+      updatedAt: new Date(Date.parse(records[1]!.updatedAt) + 10_000).toISOString(),
+      endedAt: new Date(Date.parse(records[1]!.endedAt!) + 10_000).toISOString(),
+    })
+    await writeFile(
+      engine.repository.resolve("sessions", `managed-run-${changed.id}.json`),
+      `${JSON.stringify(changed, null, 2)}\n`,
+    )
+    await expect(engine.listManagedRunsPage({ offset: 2, limit: 2, snapshotDigest: first.snapshotDigest }))
+      .rejects.toThrow(/changed during pagination/)
+
+    const oversizedId = randomUUID()
+    await writeFile(
+      engine.repository.resolve("sessions", `managed-run-${oversizedId}.json`),
+      Buffer.alloc(managedRunRecordByteLimit + 1, 0x20),
+    )
+    await expect(engine.listManagedRunsPage()).rejects.toThrow(/regular-file.*inventory bound/)
   })
 
   it("rejects Workflow Plan substitution after the managed Charter is confirmed", async () => {

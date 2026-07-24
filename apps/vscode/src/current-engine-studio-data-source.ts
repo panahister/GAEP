@@ -33,7 +33,13 @@ import type {
   WorkspaceHealthIssue,
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
-import type { ProductStudioPage, ProductStudioRecordMap, ProductStudioService } from "@gaep/engine"
+import type {
+  ManagedRunListPage,
+  ManagedRunListPageInput,
+  ProductStudioPage,
+  ProductStudioRecordMap,
+  ProductStudioService,
+} from "@gaep/engine"
 
 import type { PortableHandoffObservation } from "./handoff-observation.js"
 import { managedRecoveryPresentation } from "./managed-recovery-presentation.js"
@@ -83,6 +89,7 @@ export interface CurrentStudioEngineReader {
   readSelection(): Promise<AgentSelection>
   listRuns(): Promise<Run[]>
   listManagedRuns?(): Promise<ManagedRunRecord[]>
+  listManagedRunsPage?(input?: ManagedRunListPageInput): Promise<ManagedRunListPage>
   readManagedRunResult?(id: string): Promise<ManagedRunResult>
   readManagedRunEvidence?(id: string): Promise<ManagedRunEvidence>
   readManagedApplyDecision?(id: string): Promise<ManagedApplyDecisionReceipt>
@@ -2718,12 +2725,28 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     if (!auditVerified) {
       throw new Error("The audit chain is invalid or unavailable; Managed Run semantic artifacts are withheld")
     }
-    if (!engine.listManagedRuns || !engine.readManagedRunResult || !engine.readManagedRunEvidence || !engine.readManagedApplyDecision) {
+    if ((!engine.listManagedRunsPage && !engine.listManagedRuns) || !engine.readManagedRunResult ||
+        !engine.readManagedRunEvidence || !engine.readManagedApplyDecision) {
       throw new Error("This engine build does not expose the durable Managed Run evidence readers")
     }
-    const records = (await engine.listManagedRuns())
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    const selected = records.slice(0, managedObservationLimit)
+    let selected: ManagedRunRecord[]
+    let total: number
+    if (engine.listManagedRunsPage) {
+      const page = await engine.listManagedRunsPage({ offset: 0, limit: managedObservationLimit })
+      if (page.offset !== 0 || page.limit !== managedObservationLimit || page.items.length > managedObservationLimit ||
+          !Number.isSafeInteger(page.total) || page.total < page.items.length ||
+          !/^sha256:[a-f0-9]{64}$/u.test(page.snapshotDigest) || page.hasMore !== (page.items.length < page.total)) {
+        throw new Error("Managed Run page response violates the bounded inventory contract")
+      }
+      selected = [...page.items].sort((left, right) =>
+        right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))
+      total = page.total
+    } else {
+      const records = (await engine.listManagedRuns!())
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))
+      selected = records.slice(0, managedObservationLimit)
+      total = records.length
+    }
     const observations = await Promise.all(selected.map(async (record): Promise<ManagedRunObservation> => {
       try {
         const artifacts = await readVerifiedManagedArtifacts(record, {
@@ -2742,7 +2765,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         }
       }
     }))
-    return { observations, total: records.length }
+    return { observations, total }
   }
 
   private recordObservationFailure(state: ObservedStudioState, area: string, error: unknown): void {
