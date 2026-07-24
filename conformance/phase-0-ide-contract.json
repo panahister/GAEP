@@ -101,7 +101,7 @@
           { "path": ["plugin", "id"], "equals": "dev.gaep.productstudio" },
           { "path": ["plugin", "version"], "equals": "0.1.0" }
         ],
-        "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window automation", "real-provider managed read-only workflow acceptance", "interactive cancellation and resume", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
+        "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window automation", "interactive later-page Managed Run evidence navigation", "real-provider managed read-only workflow acceptance", "interactive cancellation and resume", "packaged-engine workflow", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["GaepEngineClient(Path.of(workspace))"] }] },
@@ -122,7 +122,12 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parseManagedReadOnlyPreviewEnvelope(", "preview.previewDigest == canonicalDigest(body)", "parseManagedReadOnlyReceiptEnvelope("] }
         ] },
         { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
-        { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "The native surface renders bounded managed preview and receipt documents but has no complete Run and evidence dashboard." }
+        { "capabilityId": "evidence-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["List Managed Run evidence", "Read Managed Run evidence"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["fun listManagedEvidence()", "fun readManagedEvidence(managedRunId: String)", "this audit-gated observation cannot start, resume, cancel, apply, discard, approve"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun listManagedEvidence(", "fun readManagedEvidence(managedRunId: UUID)", "managed.evidence.list", "managed.evidence.read"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parseManagedRunSummaryPageEnvelope(", "parseManagedEvidenceDetailEnvelope(", "hasResult != hasEvidence"] }
+        ] }
       ]
     },
     {
