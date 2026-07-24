@@ -13,15 +13,15 @@
 
 | Field | Current value |
 |---|---|
-| Overall progress | `56%` |
-| Wave | `Wave 4 critical path; Waves 5–7 partial completion — durable recovery, Product Studio evidence, and governed design snapshot workflows across VS Code and engine-host` |
+| Overall progress | `57%` |
+| Wave | `Wave 4 critical path; Waves 5–7 partial completion — durable recovery, Product Studio evidence, and governed portable-design workflows across VS Code, engine-host, and the Visual Studio client` |
 | State | `IN_PROGRESS` |
 | Working branch | `codex/gaep-hardwork-completion` |
 | Starting commit | `eab8374cc5974eea25bcad4659f46e1b0da92108` |
-| Last stable checkpoint | `0e9ef5a` — audit-gated VS Code restart/recovery truth with exact discard verification and privacy-safe diagnostics |
-| Active work | Wave 4 crash/concurrency/recovery remediation remains the critical path; the verified Wave 5 recovery UX and Wave 6 engine, VS Code, and engine-host workflow slices are checkpointed while multi-step recovery and other-host parity remain |
+| Last stable checkpoint | `72305c3` — strict protocol-v2 Visual Studio portable-design client with metadata-only DTOs and a 35-check fake-engine harness |
+| Active work | Wave 4 crash/concurrency/recovery remediation remains the critical path; Rider portable-design parity is active after the verified Visual Studio client checkpoint; multi-step recovery and native-host parity remain |
 | Blockers | Formal baseline/readiness remain human-governance blocked. Wave 4 is locally acceptance-blocked until the independent-review findings in Section 9 are fixed and revalidated |
-| Next exact action | Close and independently re-review every Wave 4 write-ahead, lost-update, recovery-owner, disposal and effect-truth defect; run cross-workspace validation; then continue design-import persistence and the remaining Product Studio recovery UX |
+| Next exact action | Close and independently re-review every Wave 4 write-ahead, confinement, lost-update, recovery-owner, disposal and effect-truth defect while completing Rider portable-design parity; then run frozen cross-workspace and security-diff validation |
 
 Progress is earned only when an exit condition has current validation evidence. Starting work does not advance the percentage.
 
@@ -115,6 +115,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | Wave 6 VS Code portable-design workflow | PASS WITH NATIVE-HARNESS LIMIT | Checkpoint `972faa8`; 18 files and 107 VS Code tests pass, workspace typecheck and extension build pass, and extension-host open/multi-root smokes pass. The workflow is local-folder-only, trust/revision bound, audit gated, accessible and privacy safe. The harness cannot automate a truly untrusted workspace or the native OS folder picker |
 | 2026-07-24 | Wave 6/7 engine-host portable-design RPC | PASS WITH CONCURRENT CROSS-WORKSPACE RERUN PENDING | Checkpoint `27a028b`; the complete engine-host suite passes 18 tests, the focused real-bundle workflow passes 4 tests, package typecheck/build and diff check pass, and root independently reran the 18 tests and diff check. A later root typecheck/build rerun was blocked only by an unused import in the concurrently edited Wave 4 engine test, so aggregate validation remains pending until that lane freezes |
 | 2026-07-24 | Wave 5 VS Code managed-recovery truth UX | PASS WITH INVENTORY-PAGINATION LIMIT | Checkpoint `0e9ef5a`; root independently reran 19 files and 116 tests plus the consolidated linked typecheck, production build, 12 DOM/accessibility tests, Extension Development Host activation/commands/four views/Product Studio, and multi-root no-mutation verification. Recovery rows are bounded to the newest 200 after read, but the current public `engine.listManagedRuns()` inventory read remains unpaginated and is not end-to-end resource bounded; the Electron harness also disables workspace-trust automation |
+| 2026-07-24 | Wave 7 Visual Studio portable-design client | PASS WITH NATIVE-HOST LIMIT | Checkpoint `72305c3`; root independently reran the two-project Release build with zero warnings, the self-hosted stdio harness with 35 checks, formatting verification for both projects, and diff validation. Protocol-v2 import/list/read, exact metadata/governance/error parsing and privacy boundaries pass. Native Visual Studio/VSIX execution, Windows path/process behavior and real Windows engine integration remain untested |
 
 ## 8. Change Ledger
 
@@ -140,6 +141,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | 6 | Added the VS Code local portable-design import, bounded audit-gated review table and exact privacy-safe inspector | PARTIAL_COMPLETE | `972faa8`; 107 tests, typecheck, build and extension-host smokes pass; imported sourceReview remains an upstream claim and cannot promote approval, baseline, implementation or release readiness |
 | 2026-07-24 | 6–7 | Exposed governed portable-design import, bounded list, and exact read through engine-host protocol v2 using metadata-only non-escalating DTOs and stable private errors | PARTIAL_COMPLETE | `27a028b`; strict envelopes reject archive, `.fig`, OAuth, network, workspace override and live-account fields; 18 host tests plus package typecheck/build pass; Rider, Visual Studio and Kiro client parity remain |
 | 2026-07-24 | 5 | Added an audit-gated restart/recovery table, conservative persisted-state explanations, privacy-safe diagnostics, and an exact revision-bound discard-only bridge to the native Managed Run review | PARTIAL_COMPLETE | `0e9ef5a`; 116 tests and the full VS Code verification pipeline pass. Recovery/apply/cleanup/provider success is never inferred, post-commit discard ambiguity is reread against persisted state and audit, and the unpaginated Managed Run inventory read remains an explicit engine limit |
+| 2026-07-24 | 7 | Added a typed Visual Studio protocol-v2 portable-design client with bounded local import, list/read DTOs, exact non-escalating governance, privacy-safe stable errors, and a dependency-free fake-engine harness | PARTIAL_COMPLETE | `72305c3`; Release build passes with zero warnings, 35 harness checks pass, both projects are format-clean, and diff validation passes. Rider parity is active; native Visual Studio/Windows host integration remains |
 
 ## 9. Wave 4 Durable Review Boundary — Acceptance Remediation
 
@@ -178,6 +180,6 @@ If work stops at this checkpoint, resume by:
 1. checking out `codex/gaep-hardwork-completion`;
 2. verifying that it descends from `eab8374cc5974eea25bcad4659f46e1b0da92108`;
 3. reading this document and `054_GAEP_FEATURE_DELIVERY_TRACKER.md`;
-4. preserving the uncommitted ownership split: `packages/agent-sdk` and `packages/engine/src/managed-execution*` plus the narrow managed-run recovery fix in `packages/engine/src/engine.ts` belong to Wave 4 remediation; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, and this ledger belongs to root integration;
+4. preserving the uncommitted ownership split: `packages/agent-sdk` and `packages/engine/src/managed-execution*` plus the narrow managed-run recovery fix in `packages/engine/src/engine.ts` belong to Wave 4 remediation; `apps/rider/**` belongs to active Rider parity; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, and this ledger belongs to root integration;
 5. closing and independently reviewing every acceptance defect listed in Section 9, then rerunning focused and aggregate validation; and
 6. checkpointing Wave 4 and Wave 5 separately before continuing multi-step restart/resume, design-import persistence and the remaining Product Studio UX.
