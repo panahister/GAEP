@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { CodexAppServerSupervisor, type CodexAppServerOptions } from "./codex-app-server.js"
+import { canonicalDigest } from "./digest.js"
 import {
   BoundedAsyncQueue,
   type ManagedPostconditionStatus,
@@ -8,10 +9,16 @@ import {
   type ManagedRuntimeResultEnvelope,
   type ManagedTerminalDisposition,
 } from "./managed-runtime.js"
-import { ManagedStageRegistry } from "./managed-stage-registry.js"
+import {
+  assertAuthenticManagedStageReviewClaim,
+  ManagedStageRegistry,
+  type ManagedStageReviewClaim,
+  type ManagedStageReviewManifest,
+} from "./managed-stage-registry.js"
 import {
   WorkspaceStagingService,
   WorkspaceApplyError,
+  WorkspaceJournalPreparedError,
   type WorkspaceApplyOptions,
   type WorkspaceApplyResult,
   type WorkspaceStage,
@@ -37,6 +44,9 @@ export interface ManagedCodexStagedRunRequest {
   policy: ManagedCodexStagePolicy
   /** Portable Managed Run identity used only as a key in the machine-local stage registry. */
   managedRunId?: string
+  /** Exact portable governed-bindings digest; persisted only in machine-local recovery metadata. */
+  bindingsDigest?: `sha256:${string}`
+  managedProvider?: { adapterId: string; agentId: string }
   stageRegistry?: ManagedStageRegistry
   stagingService?: WorkspaceStagingService
   appServerOptions?: Omit<
@@ -56,20 +66,24 @@ export interface ManagedCodexPostconditionContext {
   sourceWorkspacePath: string
   inspection: WorkspaceStageInspection
   applyResult?: WorkspaceApplyResult
+  /** Aborted when the bounded postcondition assessment deadline expires. */
+  signal: AbortSignal
 }
 
 export type ManagedCodexPostconditionEvaluator = (
   context: ManagedCodexPostconditionContext,
 ) => Promise<ManagedPostconditionStatus>
 
-export interface ManagedCodexApplyRequest extends WorkspaceApplyOptions {
+export interface ManagedCodexApplyRequest extends Omit<WorkspaceApplyOptions, "expectedInspectionDigest"> {
   evaluatePostconditions?: ManagedCodexPostconditionEvaluator
+  postconditionTimeoutMs?: number
 }
 
 export interface ManagedCodexStageReview {
   readonly result: ManagedRuntimeResultEnvelope
   readonly inspection: WorkspaceStageInspection
   readonly state: "review-required" | "conflict" | "applied" | "discarded"
+  verifyExactInspection(): Promise<void>
   apply(request: ManagedCodexApplyRequest): Promise<ManagedRuntimeResultEnvelope>
   discard(): Promise<ManagedRuntimeResultEnvelope>
 }
@@ -80,9 +94,22 @@ export interface ManagedCodexStagedRunHandle {
   cancel(reason?: string): Promise<void>
 }
 
+export class ManagedCodexPreJournalApplyError extends Error {
+  readonly reviewRestored = true
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options)
+    this.name = "ManagedCodexPreJournalApplyError"
+  }
+}
+
 const defaultRunTimeoutMs = 30 * 60 * 1_000
+const defaultPostconditionTimeoutMs = 30_000
 
 function requireBoundedText(value: string, label: string, maximum: number): string {
+  if (typeof value !== "string" || Buffer.byteLength(value) > maximum) {
+    throw new Error(`${label} exceeds its configured bound`)
+  }
   const trimmed = value.trim()
   if (!trimmed) throw new Error(`${label} is required`)
   if (Buffer.byteLength(trimmed) > maximum) throw new Error(`${label} exceeds its configured bound`)
@@ -149,18 +176,23 @@ class CodexStageReview implements ManagedCodexStageReview {
   private disposition: ManagedCodexStageReview["state"] = "review-required"
   private finalResult: ManagedRuntimeResultEnvelope
   private operation: Promise<ManagedRuntimeResultEnvelope> | undefined
+  private readonly reviewedInspection: WorkspaceStageInspection
+  private readonly reviewedInspectionDigest: `sha256:${string}`
 
   constructor(
     initialResult: ManagedRuntimeResultEnvelope,
-    readonly inspection: WorkspaceStageInspection,
+    inspection: WorkspaceStageInspection,
     private readonly terminalDisposition: ManagedTerminalDisposition,
     private readonly sourceWorkspacePath: string,
     private readonly stage: WorkspaceStage,
     private readonly stagingService: WorkspaceStagingService,
     private readonly managedRunId?: string,
     private readonly stageRegistry?: ManagedStageRegistry,
+    private readonly reviewLeaseToken?: string,
   ) {
     this.finalResult = initialResult
+    this.reviewedInspection = structuredClone(inspection)
+    this.reviewedInspectionDigest = canonicalDigest(this.reviewedInspection) as `sha256:${string}`
   }
 
   get result(): ManagedRuntimeResultEnvelope {
@@ -169,6 +201,14 @@ class CodexStageReview implements ManagedCodexStageReview {
 
   get state(): ManagedCodexStageReview["state"] {
     return this.disposition
+  }
+
+  get inspection(): WorkspaceStageInspection {
+    return structuredClone(this.reviewedInspection)
+  }
+
+  async verifyExactInspection(): Promise<void> {
+    await this.stagingService.assertExactInspection(this.stage, this.reviewedInspectionDigest)
   }
 
   async apply(request: ManagedCodexApplyRequest): Promise<ManagedRuntimeResultEnvelope> {
@@ -181,6 +221,12 @@ class CodexStageReview implements ManagedCodexStageReview {
         `Staged changes cannot be applied after provider disposition ${this.terminalDisposition}; inspect and discard them`,
       )
     }
+    if (request.postconditionTimeoutMs !== undefined) {
+      if (!request.evaluatePostconditions) {
+        throw new Error("A postcondition timeout requires a postcondition evaluator")
+      }
+      assertTimeout(request.postconditionTimeoutMs)
+    }
     this.operation = this.applyOnce(request)
     try {
       return await this.operation
@@ -190,21 +236,93 @@ class CodexStageReview implements ManagedCodexStageReview {
   }
 
   private async applyOnce(request: ManagedCodexApplyRequest): Promise<ManagedRuntimeResultEnvelope> {
-    if (this.managedRunId && this.stageRegistry) await this.stageRegistry.markApplying(this.managedRunId)
+    const authorizationId = requireBoundedText(request.authorizationId, "Apply authorization ID", 1_024)
+    try {
+      await this.stagingService.preflightApply(this.stage, {
+        authorizationId,
+        approvedPaths: request.approvedPaths,
+        expectedInspectionDigest: this.reviewedInspectionDigest,
+      })
+    } catch (error) {
+      throw new ManagedCodexPreJournalApplyError(
+        error instanceof Error ? error.message : String(error),
+        { cause: error },
+      )
+    }
+    if (this.managedRunId && this.stageRegistry) {
+      try {
+        await this.stageRegistry.markApplying(this.managedRunId, this.reviewLeaseToken)
+      } catch (error) {
+        try {
+          await this.stageRegistry.restoreReviewAfterPreJournalFailure(
+            this.managedRunId,
+            this.reviewLeaseToken,
+          )
+        } catch (restoreError) {
+          throw new AggregateError(
+            [error, restoreError],
+            "Managed Codex apply mark failed and its no-journal review state could not be durably restored",
+          )
+        }
+        throw new ManagedCodexPreJournalApplyError(
+          error instanceof Error ? error.message : String(error),
+          { cause: error },
+        )
+      }
+    }
     let applyResult: WorkspaceApplyResult
     try {
       applyResult = await this.stagingService.apply(this.stage, {
-        authorizationId: requireBoundedText(request.authorizationId, "Apply authorization ID", 1_024),
+        authorizationId,
         approvedPaths: request.approvedPaths,
+        expectedInspectionDigest: this.reviewedInspectionDigest,
+        onJournalPrepared: this.managedRunId && this.stageRegistry
+          ? (journalPath, journalDigest, journalId) => this.stageRegistry!.bindApplyingJournal(
+              this.managedRunId!,
+              journalPath,
+              journalDigest,
+              journalId,
+              this.reviewLeaseToken,
+            )
+          : undefined,
       })
     } catch (error) {
       if (error instanceof WorkspaceApplyError && this.managedRunId && this.stageRegistry) {
-        await this.stageRegistry.retainJournal(this.managedRunId, error.journalPath, error.journalDigest)
+        await this.stageRegistry.retainJournal(
+          this.managedRunId,
+          error.journalPath,
+          error.journalDigest,
+          this.reviewLeaseToken,
+        )
+      } else if (this.managedRunId && this.stageRegistry) {
+        try {
+          await this.stageRegistry.restoreReviewAfterPreJournalFailure(
+            this.managedRunId,
+            this.reviewLeaseToken,
+          )
+          if (error instanceof WorkspaceJournalPreparedError) {
+            await this.stagingService.disposeJournal(error.journalPath, error.journalDigest)
+          }
+        } catch (restoreError) {
+          throw new AggregateError(
+            [error, restoreError],
+            "Managed Codex apply failed and its no-journal review state could not be durably restored",
+          )
+        }
+        throw new ManagedCodexPreJournalApplyError(
+          error instanceof Error ? error.message : String(error),
+          { cause: error },
+        )
       }
       throw error
     }
     if (this.managedRunId && this.stageRegistry) {
-      await this.stageRegistry.retainJournal(this.managedRunId, applyResult.journalPath, applyResult.journalDigest)
+      await this.stageRegistry.retainJournal(
+        this.managedRunId,
+        applyResult.journalPath,
+        applyResult.journalDigest,
+        this.reviewLeaseToken,
+      )
     }
     if (applyResult.status === "conflict") {
       this.disposition = "conflict"
@@ -213,18 +331,35 @@ class CodexStageReview implements ManagedCodexStageReview {
     }
     let postconditionStatus: ManagedPostconditionStatus = "not-assessed"
     if (request.evaluatePostconditions) {
+      const timeoutMs = assertTimeout(request.postconditionTimeoutMs ?? defaultPostconditionTimeoutMs)
+      const controller = new AbortController()
+      let timer: NodeJS.Timeout | undefined
       try {
-        postconditionStatus = await request.evaluatePostconditions({
-          sourceWorkspacePath: this.sourceWorkspacePath,
-          inspection: this.inspection,
-          applyResult,
-        })
+        postconditionStatus = await Promise.race([
+          request.evaluatePostconditions({
+            sourceWorkspacePath: this.sourceWorkspacePath,
+            inspection: structuredClone(this.reviewedInspection),
+            applyResult,
+            signal: controller.signal,
+          }),
+          new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => {
+              reject(new Error("Managed Codex postcondition assessment timed out"))
+              controller.abort(new Error("Managed Codex postcondition assessment timed out"))
+            }, timeoutMs)
+            timer.unref()
+          }),
+        ])
       } catch {
         postconditionStatus = "indeterminate"
         this.finalResult = withWarning(
           this.finalResult,
-          "The postcondition evaluator failed after apply; outcome verification is indeterminate.",
+          controller.signal.aborted
+            ? "The postcondition evaluator timed out after apply; it was aborted and outcome verification is indeterminate."
+            : "The postcondition evaluator failed after apply; outcome verification is indeterminate.",
         )
+      } finally {
+        if (timer) clearTimeout(timer)
       }
       if (!["satisfied", "failed", "not-assessed", "indeterminate"].includes(postconditionStatus)) {
         postconditionStatus = "indeterminate"
@@ -251,10 +386,10 @@ class CodexStageReview implements ManagedCodexStageReview {
     if (this.operation) throw new Error("A staged-run review operation is already in progress")
     if (this.disposition === "discarded" || this.disposition === "applied") return this.result
     this.operation = (async () => {
-      await this.stagingService.cleanup(this.stage)
       if (this.managedRunId && this.stageRegistry && !this.finalResult.portable.staging?.applyJournalDigest) {
-        await this.stageRegistry.complete(this.managedRunId)
+        await this.stageRegistry.discardReview(this.managedRunId, this.reviewLeaseToken)
       }
+      await this.stagingService.cleanup(this.stage)
       this.disposition = "discarded"
       return this.result
     })()
@@ -284,8 +419,13 @@ export async function startManagedCodexStagedRun(
   }
   const runtimeVersion = optionalPortableRuntimeVersion(request.runtimeVersion)
   const capabilityDigest = optionalCapabilityDigest(request.capabilityDigest)
+  const bindingsDigest = optionalCapabilityDigest(request.bindingsDigest)
+  if (request.managedRunId && (!capabilityDigest || !bindingsDigest || !request.managedProvider)) {
+    throw new Error("Managed Codex durable review requires exact capability and governed-bindings digests")
+  }
   const stagingService = request.stagingService ?? new WorkspaceStagingService()
   const stage = await stagingService.create(request.sourceWorkspacePath)
+  const stageManifest = stagingService.exportManifest(stage)
   const stageRegistry = request.managedRunId
     ? request.stageRegistry ?? new ManagedStageRegistry()
     : undefined
@@ -442,7 +582,27 @@ export async function startManagedCodexStagedRun(
       initialResult.portable.events.push({ ...coordinatorFailure, sequence: maximumSequence + 1 })
       initialResult.portable.warnings.push("Managed Codex coordination ended before a normal terminal result.")
     }
-    if (request.managedRunId && stageRegistry) await stageRegistry.markReview(request.managedRunId)
+    const reviewManifest: ManagedStageReviewManifest | undefined = request.managedRunId && capabilityDigest && bindingsDigest &&
+      request.managedProvider
+      ? {
+          schemaVersion: 1,
+          kind: "gaep-managed-stage-review-manifest-v1",
+          managedRunId: request.managedRunId,
+          bindingsDigest,
+          provider: {
+            adapterId: request.managedProvider.adapterId,
+            agentId: request.managedProvider.agentId,
+            modelId: model,
+            capabilityDigest,
+          },
+          stage: stageManifest,
+          inspection,
+          terminalDisposition,
+        }
+      : undefined
+    const reviewLeaseToken = request.managedRunId && stageRegistry
+      ? await stageRegistry.markReview(request.managedRunId, reviewManifest)
+      : undefined
     return new CodexStageReview(
       initialResult,
       inspection,
@@ -452,6 +612,7 @@ export async function startManagedCodexStagedRun(
       stagingService,
       request.managedRunId,
       stageRegistry,
+      reviewLeaseToken,
     )
   })().catch(async (error: unknown) => {
     events.fail(error instanceof Error ? error : new Error(String(error)))
@@ -462,4 +623,40 @@ export async function startManagedCodexStagedRun(
   })
 
   return { events, completion, cancel }
+}
+
+export interface RehydrateManagedCodexStageReviewRequest {
+  readonly claim: ManagedStageReviewClaim
+  readonly initialResult: ManagedRuntimeResultEnvelope
+  readonly stageRegistry: ManagedStageRegistry
+  readonly stagingService?: WorkspaceStagingService
+}
+
+export async function rehydrateManagedCodexStageReview(
+  request: RehydrateManagedCodexStageReviewRequest,
+): Promise<{ review: ManagedCodexStageReview; stagingService: WorkspaceStagingService }> {
+  assertAuthenticManagedStageReviewClaim(request.claim)
+  const manifest = request.claim.manifest
+  if (request.initialResult.portable.terminalDisposition !== manifest.terminalDisposition) {
+    throw new Error("Managed Codex rehydration result does not match the durable provider disposition")
+  }
+  const stagingService = request.stagingService ?? new WorkspaceStagingService()
+  const stage = await stagingService.rehydrate(manifest.stage, manifest.inspection, {
+    expectedTempRootIdentity: request.claim.stageTempRootIdentity,
+    expectedRootIdentity: request.claim.stageRootIdentity,
+  })
+  return {
+    review: new CodexStageReview(
+      request.initialResult,
+      manifest.inspection,
+      manifest.terminalDisposition,
+      manifest.stage.stage.sourceRoot,
+      stage,
+      stagingService,
+      manifest.managedRunId,
+      request.stageRegistry,
+      request.claim.leaseToken,
+    ),
+    stagingService,
+  }
 }

@@ -5,8 +5,14 @@ import { fileURLToPath } from "node:url"
 
 import { afterEach, describe, expect, it } from "vitest"
 
-import { startManagedCodexStagedRun, type ManagedCodexStagedRunHandle } from "./managed-codex-run.js"
+import {
+  ManagedCodexPreJournalApplyError,
+  rehydrateManagedCodexStageReview,
+  startManagedCodexStagedRun,
+  type ManagedCodexStagedRunHandle,
+} from "./managed-codex-run.js"
 import type { ManagedRuntimeEvent } from "./managed-runtime.js"
+import { ManagedStageRegistry } from "./managed-stage-registry.js"
 import { WorkspaceStagingService } from "./workspace-staging.js"
 
 const fakeServer = fileURLToPath(new URL("../test/fixtures/fake-codex-app-server.mjs", import.meta.url))
@@ -42,6 +48,8 @@ describe("managed Codex staged-run coordinator", () => {
       allowCommands?: boolean
       allowFileChanges?: boolean
       stagingService?: WorkspaceStagingService
+      stageRegistry?: ManagedStageRegistry
+      managedRunId?: string
     } = {},
   ): Promise<ManagedCodexStagedRunHandle> {
     return startManagedCodexStagedRun({
@@ -55,6 +63,15 @@ describe("managed Codex staged-run coordinator", () => {
         allowFileChanges: options.allowFileChanges ?? false,
       },
       stagingService: options.stagingService,
+      stageRegistry: options.stageRegistry,
+      managedRunId: options.managedRunId,
+      ...(options.managedRunId
+        ? {
+            bindingsDigest: `sha256:${"1".repeat(64)}` as const,
+            capabilityDigest: `sha256:${"2".repeat(64)}` as const,
+            managedProvider: { adapterId: "gaep.codex-cli", agentId: "codex-cli" },
+          }
+        : {}),
       appServerOptions: {
         args: [fakeServer],
         requestTimeoutMs: 1_000,
@@ -125,6 +142,145 @@ describe("managed Codex staged-run coordinator", () => {
     expect(review.state).toBe("review-required")
     expect(await readFile(join(source, "source.txt"), "utf8")).toBe("baseline")
     await review.discard()
+  })
+
+  it("keeps zero-mutation preflight failures review-required and restart-claimable for a corrected apply", async () => {
+    const source = await sourceWorkspace()
+    const managedRunId = "00000000-0000-4000-8000-000000000555"
+    const registryParent = await mkdtemp(join(tmpdir(), "gaep-managed-codex-registry-"))
+    roots.push(registryParent)
+    const registry = new ManagedStageRegistry(registryParent)
+    const staging = new WorkspaceStagingService({ tempParent: registryParent })
+    const { review } = await collect(await start(source, "write-stage", {
+      allowFileChanges: true,
+      managedRunId,
+      stageRegistry: registry,
+      stagingService: staging,
+    }))
+
+    await expect(review.apply({ authorizationId: "test-authority", approvedPaths: [] }))
+      .rejects.toThrow("exactly match")
+    await expect(review.apply({ authorizationId: "   ", approvedPaths: ["source.txt"] }))
+      .rejects.toThrow(/required/)
+    expect(review.state).toBe("review-required")
+    expect(await readFile(join(source, "source.txt"), "utf8")).toBe("baseline")
+    const registryRecord = JSON.parse(await readFile(join(registry.root, `${managedRunId}.json`), "utf8"))
+    expect(registryRecord).toMatchObject({ state: "review-required" })
+    expect(registryRecord).not.toHaveProperty("journalPath")
+
+    const restarted = new ManagedStageRegistry(registryParent, { isProcessAlive: () => false })
+    const claim = await restarted.claimReview(managedRunId)
+    expect(() => {
+      (claim.stageRootIdentity as { inode: string }).inode = "0"
+    }).toThrow()
+    expect(() => {
+      (claim.manifest.stage.stage as { root: string }).root = source
+    }).toThrow()
+    await expect(rehydrateManagedCodexStageReview({
+      claim: structuredClone(claim),
+      initialResult: review.result,
+      stageRegistry: restarted,
+      stagingService: new WorkspaceStagingService({ tempParent: registryParent }),
+    })).rejects.toThrow(/not minted by the registry/)
+    const rehydrated = await rehydrateManagedCodexStageReview({
+      claim,
+      initialResult: review.result,
+      stageRegistry: restarted,
+      stagingService: new WorkspaceStagingService({ tempParent: registryParent }),
+    })
+    const applied = await rehydrated.review.apply({
+      authorizationId: "corrected-authority",
+      approvedPaths: ["source.txt"],
+    })
+    expect(applied.portable.staging).toMatchObject({ applied: true })
+    expect(await readFile(join(source, "source.txt"), "utf8")).toBe("managed update")
+    await restarted.disposeRetainedJournal(managedRunId, applied.portable.staging!.applyJournalDigest!)
+  })
+
+  it("restores a durable review when initial WAL persistence fails after mark-applying", async () => {
+    const source = await sourceWorkspace()
+    const managedRunId = "00000000-0000-4000-8000-000000000556"
+    const registryParent = await mkdtemp(join(tmpdir(), "gaep-managed-codex-registry-"))
+    roots.push(registryParent)
+    let failInitialJournal = true
+    const staging = new WorkspaceStagingService({
+      tempParent: registryParent,
+      beforeJournalWrite: (state) => {
+        if (failInitialJournal && state === "prepared") {
+          failInitialJournal = false
+          throw new Error("injected initial WAL failure")
+        }
+      },
+    })
+    const registry = new ManagedStageRegistry(registryParent)
+    const { review } = await collect(await start(source, "write-stage", {
+      allowFileChanges: true,
+      managedRunId,
+      stageRegistry: registry,
+      stagingService: staging,
+    }))
+
+    await expect(review.apply({ authorizationId: "first-authority", approvedPaths: ["source.txt"] }))
+      .rejects.toBeInstanceOf(ManagedCodexPreJournalApplyError)
+    expect(review.state).toBe("review-required")
+    expect(await readFile(join(source, "source.txt"), "utf8")).toBe("baseline")
+    const registryRecord = JSON.parse(await readFile(join(registry.root, `${managedRunId}.json`), "utf8"))
+    expect(registryRecord).toMatchObject({ state: "review-required" })
+    expect(registryRecord).not.toHaveProperty("journalPath")
+
+    const restarted = new ManagedStageRegistry(registryParent, { isProcessAlive: () => false })
+    const claim = await restarted.claimReview(managedRunId)
+    const rehydrated = await rehydrateManagedCodexStageReview({
+      claim,
+      initialResult: review.result,
+      stageRegistry: restarted,
+      stagingService: new WorkspaceStagingService({ tempParent: registryParent }),
+    })
+    const applied = await rehydrated.review.apply({
+      authorizationId: "corrected-authority",
+      approvedPaths: ["source.txt"],
+    })
+    expect(applied.portable.staging).toMatchObject({ applied: true })
+    expect(await readFile(join(source, "source.txt"), "utf8")).toBe("managed update")
+    await restarted.disposeRetainedJournal(managedRunId, applied.portable.staging!.applyJournalDigest!)
+  })
+
+  it("validates postcondition deadlines before mutation and bounds a non-returning evaluator with abort", async () => {
+    const source = await sourceWorkspace()
+    const service = new WorkspaceStagingService()
+    const { review } = await collect(await start(source, "write-stage", {
+      stagingService: service,
+      allowFileChanges: true,
+    }))
+
+    await expect(review.apply({
+      authorizationId: "test-authority",
+      approvedPaths: ["source.txt"],
+      evaluatePostconditions: async () => "satisfied",
+      postconditionTimeoutMs: 0,
+    })).rejects.toThrow(/between 1 ms and 24 hours/)
+    expect(review.state).toBe("review-required")
+    expect(await readFile(join(source, "source.txt"), "utf8")).toBe("baseline")
+
+    let aborted = false
+    const result = await review.apply({
+      authorizationId: "test-authority",
+      approvedPaths: ["source.txt"],
+      postconditionTimeoutMs: 5,
+      evaluatePostconditions: ({ signal }) => new Promise((resolve) => {
+        signal.addEventListener("abort", () => {
+          aborted = true
+          resolve("satisfied")
+        }, { once: true })
+      }),
+    })
+    expect(aborted).toBe(true)
+    expect(result.portable.postconditionStatus).toBe("indeterminate")
+    expect(result.portable.warnings).toContain(
+      "The postcondition evaluator timed out after apply; it was aborted and outcome verification is indeterminate.",
+    )
+    expect(await readFile(join(source, "source.txt"), "utf8")).toBe("managed update")
+    await service.disposeJournal(result.local.applyJournalPath!, result.portable.staging!.applyJournalDigest!)
   })
 
   it("fails closed on source-workspace races without overwriting concurrent changes", async () => {

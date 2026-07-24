@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { access, chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -18,6 +18,7 @@ import type {
 import { adapterCapabilitiesSnapshotSchema, managedRunRecordSchema, runSchema } from "@gaep/contracts"
 import {
   DeterministicManualAdapter,
+  ManagedStageRecoveryError,
   ManagedStageRegistry,
   canonicalDigest,
   capabilityDigest,
@@ -609,41 +610,100 @@ describe("managed execution engine", () => {
       expect(review.record.state).toBe("review-required")
       expect(review.canApply).toBe(true)
       expect((await engine.readPendingManagedReviewStatus(review.record.id)).canApply).toBe(true)
+      const sameSessionConfirmation = review.applyConfirmation!
+      const productPath = engine.repository.resolve("product.json")
+      const exactProductBytes = await readFile(productPath)
+      const driftedProduct = JSON.parse(exactProductBytes.toString("utf8")) as Record<string, unknown>
+      driftedProduct.summary = `${String(driftedProduct.summary)} drifted after review`
+      await writeFile(productPath, `${JSON.stringify(driftedProduct, null, 2)}\n`)
+      try {
+        await expect(review.apply({
+          confirmation: sameSessionConfirmation,
+          evaluatePostconditions: async () => "satisfied",
+          postconditionEvaluator: systemGateEvaluator,
+          evaluateWorkflowGate: satisfyWorkflowGate,
+        }, "founder")).rejects.toThrow(/governed record changed|changed before staged apply/i)
+      } finally {
+        await writeFile(productPath, exactProductBytes)
+      }
+      expect(await readFile(join(workspace, "source.txt"), "utf8")).toBe("baseline")
+      expect((await engine.readManagedRun(review.record.id)).state).toBe("review-required")
+      expect((await engine.readManagedRun(review.record.id)).applyDecisionId).toBeUndefined()
+      await expect(review.apply({
+        confirmation: sameSessionConfirmation,
+        evaluatePostconditions: async () => "satisfied",
+        postconditionEvaluator: systemGateEvaluator,
+        postconditionTimeoutMs: 0,
+        evaluateWorkflowGate: satisfyWorkflowGate,
+      }, "founder")).rejects.toThrow(/bounded postcondition timeout/)
+      expect(await readFile(join(workspace, "source.txt"), "utf8")).toBe("baseline")
+      expect((await engine.readManagedRun(review.record.id)).state).toBe("review-required")
+      expect((await engine.readManagedRun(review.record.id)).applyDecisionId).toBeUndefined()
+      const restartedRegistry = new ManagedStageRegistry(tmpdir(), { isProcessAlive: () => false })
       const restartedObserver = new GaepEngine(
         workspace,
         [codex],
         {},
-        new ManagedStageRegistry(tmpdir(), { isProcessAlive: () => false }),
+        restartedRegistry,
       )
       await expect(restartedObserver.recoverInterruptedRuns("gaep.managed-test.restart"))
         .resolves.toEqual([])
       expect((await restartedObserver.readManagedRun(review.record.id)).state).toBe("review-required")
       expect((await restartedObserver.listRuns()).find((candidate) => candidate.id === run.id)?.state).toBe("running")
-      expect(await restartedObserver.listPendingManagedReviewStatuses()).toEqual([
+      const restartedStatuses = await restartedObserver.listPendingManagedReviewStatuses()
+      expect(restartedStatuses).toEqual([
         {
           managedRunId: review.record.id,
           state: "review-required",
-          canApply: false,
+          canApply: true,
           canDiscard: true,
           hasLocalJournal: false,
-          applyConfirmation: undefined,
+          applyConfirmation: expect.objectContaining({ decision: "apply-exact-reviewed-inventory" }),
         },
       ])
-      const confirmation = review.applyConfirmation!
+      const confirmation = restartedStatuses[0]!.applyConfirmation!
       const reviewResultId = review.result.id
-      await expect(review.apply({
+      await expect(restartedObserver.applyPendingManagedReview(review.record.id, {
         confirmation: { ...confirmation, changedInventoryDigest: `sha256:${"0".repeat(64)}` },
         evaluatePostconditions: async () => "satisfied",
         postconditionEvaluator: systemGateEvaluator,
+        evaluateWorkflowGate: satisfyWorkflowGate,
       }, "intruder")).rejects.toThrow(/does not match the exact reviewed evidence/)
-      expect(review.record.state).toBe("review-required")
-      expect(review.record.applyDecisionId).toBeUndefined()
-      const applying = review.apply({
+      expect((await restartedObserver.readManagedRun(review.record.id)).state).toBe("review-required")
+      expect((await restartedObserver.readManagedRun(review.record.id)).applyDecisionId).toBeUndefined()
+      const sourceBeforeRestartedApply = await readFile(join(workspace, "source.txt"), "utf8")
+      await expect(restartedObserver.applyPendingManagedReview(review.record.id, {
         confirmation,
         evaluatePostconditions: async () => "satisfied",
         postconditionEvaluator: systemGateEvaluator,
+      }, "founder")).rejects.toThrow(/requires an explicit Workflow gate evaluator/)
+      expect(await readFile(join(workspace, "source.txt"), "utf8")).toBe(sourceBeforeRestartedApply)
+      expect((await restartedObserver.readManagedRun(review.record.id)).state).toBe("review-required")
+      expect((await restartedObserver.readManagedRun(review.record.id)).applyDecisionId).toBeUndefined()
+      const restartedReview = restartedObserver.managedExecution.getPendingReview(review.record.id)!
+      const restartedRegistryRecord = JSON.parse(
+        await readFile(join(restartedRegistry.root, `${review.record.id}.json`), "utf8"),
+      ) as { stageTempRoot: string }
+      const restartedStagedSource = join(restartedRegistryRecord.stageTempRoot, "workspace", "source.txt")
+      await writeFile(restartedStagedSource, "different bytes after exact review")
+      await expect(restartedReview.apply({
+        confirmation,
+        evaluatePostconditions: async () => "satisfied",
+        postconditionEvaluator: systemGateEvaluator,
+        evaluateWorkflowGate: satisfyWorkflowGate,
+      }, "founder")).rejects.toThrow(/no longer matches the exact reviewed inspection/)
+      expect(await readFile(join(workspace, "source.txt"), "utf8")).toBe(sourceBeforeRestartedApply)
+      expect((await restartedObserver.readManagedRun(review.record.id)).state).toBe("review-required")
+      expect((await restartedObserver.readManagedRun(review.record.id)).applyDecisionId).toBeUndefined()
+      await writeFile(restartedStagedSource, "managed update")
+      const applying = restartedReview.apply({
+        confirmation,
+        evaluatePostconditions: async () => "satisfied",
+        postconditionEvaluator: systemGateEvaluator,
+        evaluateWorkflowGate: satisfyWorkflowGate,
       }, "founder")
-      await expect(review.discard("intruder")).rejects.toThrow(/already in progress/)
+      await expect(restartedReview.discard("intruder"))
+        .rejects.toThrow(/already in progress/)
       const applied = await applying
       expect(applied.record.state).toBe("completed")
       expect(applied.record.applyDecisionId).toBeDefined()
@@ -666,8 +726,218 @@ describe("managed execution engine", () => {
       await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({ status: "compatible" })
       expect(await engine.listPendingManagedReviewStatuses()).toEqual([])
       expect(applied.hasLocalJournal).toBe(true)
-      await applied.disposeLocalJournal()
+      const cleanupAfterRestart = new GaepEngine(workspace, [codex])
+      await cleanupAfterRestart.managedExecution.disposeJournal(applied.record.id)
       expect(await readFile(join(workspace, "source.txt"), "utf8")).toBe("managed update")
+
+      const createAdditionalStagedReview = async (objective: string) => {
+        const additionalCharter = await engine.createCharter({
+          initiativeId: initiative.id,
+          objective,
+          permissions: [
+            { capability: "run-local-commands", mode: "allow", scope: ["."] },
+            { capability: "modify-workspace", mode: "allow", scope: ["."] },
+          ],
+          expectedEffects: ["reversible-change"],
+          forbiddenActions: ["Do not access network or external systems"],
+          stopConditions: ["Stop after the exact Workflow Step"],
+          requiredEvidence: ["Exact post-apply effect and Workflow gate evidence"],
+          managedIntent: {
+            workflowPlan: { recordType: "workflow-plan", recordId: plan.id, revision: plan.revision, digest: canonicalDigest(plan) },
+            contextPacks: [packRef],
+            toolDefinitions: toolRefs,
+            requestedEffects: ["reversible-change"],
+            requestedScopes: [workspaceRoot],
+          },
+        }, "founder")
+        await engine.confirmCharter(additionalCharter.id, "founder")
+        const additionalRun = await engine.prepareManagedRun(additionalCharter.id, "founder")
+        const additionalSelection = await engine.productStudio.createRunToolSelection({
+          runId: additionalRun.id,
+          tools: toolRefs,
+          requestedEffects: ["reversible-change"],
+          requestedScopes: [workspaceRoot],
+          confirmedToolIds: [shell.id, write.id],
+          workspaceTrusted: true,
+        }, product.revision ?? 1, "founder")
+        return (await drain(await engine.startManagedRun({
+          runId: additionalRun.id,
+          workflowPlanId: plan.id,
+          runToolSelectionId: additionalSelection.id,
+          evaluateWorkflowGate: satisfyWorkflowGate,
+        }, "founder"))).review
+      }
+
+      await writeFile(join(workspace, "source.txt"), "pre-journal recovery baseline")
+      const preJournalRecoveryReview = await createAdditionalStagedReview(
+        "Recover an exact no-journal applying review without disturbing its live owner.",
+      )
+      const preJournalRegistry = new ManagedStageRegistry(tmpdir())
+      const preJournalRegistryPath = join(preJournalRegistry.root, `${preJournalRecoveryReview.record.id}.json`)
+      const preJournalLocal = JSON.parse(await readFile(preJournalRegistryPath, "utf8")) as {
+        ownerLease: { token: string }
+      }
+      await preJournalRegistry.markApplying(preJournalRecoveryReview.record.id, preJournalLocal.ownerLease.token)
+      const simulatedApplying = managedRunRecordSchema.parse({
+        ...preJournalRecoveryReview.record,
+        revision: preJournalRecoveryReview.record.revision + 1,
+        state: "applying",
+        updatedAt: new Date().toISOString(),
+      })
+      await engine.repository.withLock(() => engine.repository.commitMutation({
+        writes: [{
+          path: engine.repository.resolve("sessions", `managed-run-${simulatedApplying.id}.json`),
+          value: simulatedApplying,
+          schema: managedRunRecordSchema,
+          governed: true,
+        }],
+        audit: {
+          eventType: "test.managed-run.pre-journal-applying",
+          actor: { kind: "system", id: "gaep.managed-test" },
+          subjectId: simulatedApplying.id,
+          payload: { simulated: true },
+        },
+      }))
+
+      const liveApplyingObserver = new GaepEngine(workspace, [codex], {}, preJournalRegistry)
+      await expect(liveApplyingObserver.recoverInterruptedRuns("gaep.managed-test.live-owner")).resolves.toEqual([])
+      expect((await liveApplyingObserver.readManagedRun(simulatedApplying.id)).state).toBe("applying")
+      expect((await liveApplyingObserver.listRuns()).find((candidate) => candidate.id === simulatedApplying.runId)?.state)
+        .toBe("running")
+
+      const deadPreJournalRegistry = new ManagedStageRegistry(tmpdir(), { isProcessAlive: () => false })
+      const preJournalRestart = new GaepEngine(workspace, [codex], {}, deadPreJournalRegistry)
+      await expect(preJournalRestart.recoverInterruptedRuns("gaep.managed-test.pre-journal-restart"))
+        .resolves.toEqual([expect.objectContaining({ id: simulatedApplying.runId, state: "running" })])
+      expect((await preJournalRestart.listRuns()).find((candidate) => candidate.id === simulatedApplying.runId)?.state)
+        .toBe("running")
+      const recoveredPreJournalStatus = await preJournalRestart.readPendingManagedReviewStatus(simulatedApplying.id)
+      expect(recoveredPreJournalStatus).toMatchObject({ state: "review-required", canApply: true, hasLocalJournal: false })
+      const recoveredPreJournalApplied = await preJournalRestart.applyPendingManagedReview(simulatedApplying.id, {
+        confirmation: recoveredPreJournalStatus.applyConfirmation!,
+        evaluatePostconditions: async () => "satisfied",
+        postconditionEvaluator: systemGateEvaluator,
+        evaluateWorkflowGate: satisfyWorkflowGate,
+      }, "founder")
+      expect(recoveredPreJournalApplied.record.state).toBe("completed")
+      await recoveredPreJournalApplied.disposeLocalJournal()
+
+      await writeFile(join(workspace, "source.txt"), "post-apply persistence baseline")
+      const persistenceCrashReview = await createAdditionalStagedReview(
+        "Recover exact journal and effect truth after portable result persistence fails post-apply.",
+      )
+      const originalCommitMutation = engine.repository.commitMutation.bind(engine.repository)
+      engine.repository.commitMutation = async (mutation) => {
+        if (mutation.audit.subjectId === persistenceCrashReview.record.id &&
+            ["managed-run.completed", "managed-run.unknown"].includes(mutation.audit.eventType)) {
+          throw new Error("injected post-apply persistence failure")
+        }
+        return originalCommitMutation(mutation)
+      }
+      try {
+        await expect(persistenceCrashReview.apply({
+          confirmation: persistenceCrashReview.applyConfirmation!,
+          evaluatePostconditions: async () => "satisfied",
+          postconditionEvaluator: systemGateEvaluator,
+          evaluateWorkflowGate: satisfyWorkflowGate,
+        }, "founder")).rejects.toThrow("injected post-apply persistence failure")
+      } finally {
+        engine.repository.commitMutation = originalCommitMutation
+      }
+      expect((await engine.readManagedRun(persistenceCrashReview.record.id)).state).toBe("applying")
+      expect(await readFile(join(workspace, "source.txt"), "utf8")).toBe("managed update")
+      const persistenceRecovery = new GaepEngine(
+        workspace,
+        [codex],
+        {},
+        new ManagedStageRegistry(tmpdir(), { isProcessAlive: () => false }),
+      )
+      await expect(persistenceRecovery.recoverInterruptedRuns("gaep.managed-test.persistence-restart"))
+        .resolves.toEqual([expect.objectContaining({ id: persistenceCrashReview.record.runId, state: "unknown" })])
+      const recoveredPersistence = await persistenceRecovery.managedExecution.readCurrentArtifacts(
+        persistenceCrashReview.record.id,
+      )
+      expect(recoveredPersistence.record.recovery).toMatchObject({ reasonCode: "local-apply-journal-quarantined" })
+      expect(recoveredPersistence.evidence.staging).toMatchObject({ applyState: "conflict", applyJournalDigest: expect.any(String) })
+      expect(recoveredPersistence.evidence.actualEffects).toContainEqual(
+        expect.objectContaining({ effect: "reversible-change", status: "unknown" }),
+      )
+      expect(persistenceRecovery.managedExecution.hasJournal(persistenceCrashReview.record.id)).toBe(true)
+      await persistenceRecovery.managedExecution.disposeJournal(persistenceCrashReview.record.id)
+
+      await writeFile(join(workspace, "source.txt"), "portable-first discard baseline")
+      const portableFirstDiscardReview = await createAdditionalStagedReview(
+        "Commit governed discard authority before machine-local cleanup.",
+      )
+      const discardRegistry = (engine.managedExecution as unknown as {
+        stageRegistry: ManagedStageRegistry
+      }).stageRegistry
+      const originalDiscardReview = discardRegistry.discardReview.bind(discardRegistry)
+      discardRegistry.discardReview = async () => {
+        throw new Error("injected local discard finalizer failure")
+      }
+      let portableFirstDiscarded
+      try {
+        portableFirstDiscarded = await portableFirstDiscardReview.discard("founder")
+      } finally {
+        discardRegistry.discardReview = originalDiscardReview
+      }
+      expect(portableFirstDiscarded.record.state).toBe("discarded")
+      expect(portableFirstDiscarded.result.warnings).toContain("local-cleanup-pending")
+      expect(JSON.parse(await readFile(join(discardRegistry.root, `${portableFirstDiscardReview.record.id}.json`), "utf8")))
+        .toMatchObject({ state: "review-required" })
+      const discardFinalizerRestart = new GaepEngine(
+        workspace,
+        [codex],
+        {},
+        new ManagedStageRegistry(tmpdir(), { isProcessAlive: () => false }),
+      )
+      await expect(discardFinalizerRestart.recoverInterruptedRuns("gaep.managed-test.discard-finalizer"))
+        .resolves.toEqual([])
+      await expect(access(join(discardRegistry.root, `${portableFirstDiscardReview.record.id}.json`)))
+        .rejects.toMatchObject({ code: "ENOENT" })
+      expect((await discardFinalizerRestart.readManagedRun(portableFirstDiscardReview.record.id)).state).toBe("discarded")
+
+      await writeFile(join(workspace, "source.txt"), "gate rejection baseline")
+      const gateRejectedReview = await createAdditionalStagedReview("Preserve applied effect truth when a Workflow gate rejects completion.")
+      const rejectWorkflowGate: ManagedWorkflowGateEvaluator = async (request) => ({
+        ...(await satisfyWorkflowGate(request)),
+        status: "failed",
+      })
+      const gateRejected = await gateRejectedReview.apply({
+        confirmation: gateRejectedReview.applyConfirmation!,
+        evaluatePostconditions: async () => "satisfied",
+        postconditionEvaluator: systemGateEvaluator,
+        evaluateWorkflowGate: rejectWorkflowGate,
+      }, "founder")
+      expect(gateRejected.record.state).toBe("failed")
+      expect(gateRejected.evidence.staging?.applyState).toBe("applied")
+      expect(gateRejected.evidence.actualEffects).toContainEqual(
+        expect.objectContaining({ effect: "reversible-change", status: "applied" }),
+      )
+      await gateRejected.disposeLocalJournal()
+
+      await writeFile(join(workspace, "source.txt"), "verification failure baseline")
+      const verificationFailureReview = await createAdditionalStagedReview(
+        "Preserve post-apply runtime and journal truth when Workflow verification fails unexpectedly.",
+      )
+      const verificationFailure = await verificationFailureReview.apply({
+        confirmation: verificationFailureReview.applyConfirmation!,
+        evaluatePostconditions: async () => "satisfied",
+        postconditionEvaluator: systemGateEvaluator,
+        evaluateWorkflowGate: async () => {
+          throw new Error("injected post-apply Workflow evaluator failure")
+        },
+      }, "founder")
+      expect(verificationFailure.record.state).toBe("unknown")
+      expect(verificationFailure.result.terminationCause).toBe("normal")
+      expect(verificationFailure.evidence.workflow.terminalReasonCode).toBe("post-apply-verification-failed")
+      expect(verificationFailure.evidence.staging?.applyState).toBe("applied")
+      expect(verificationFailure.evidence.actualEffects).toContainEqual(
+        expect.objectContaining({ effect: "reversible-change", status: "applied" }),
+      )
+      expect(verificationFailure.hasLocalJournal).toBe(true)
+      await verificationFailure.disposeLocalJournal()
 
       await writeFile(join(workspace, "source.txt"), "second baseline")
       const conflictingCharter = await engine.createCharter({
@@ -735,6 +1005,7 @@ describe("managed execution engine", () => {
       const conflictResultId = conflict.result.id
       const discarded = await conflict.discard("founder")
       expect(discarded.record.state).toBe("discarded")
+      expect(discarded.result.warnings).toContain("local-cleanup-pending")
       expect(discarded.canDiscard).toBe(false)
       expect(discarded.result.previousResultId).toBe(conflictResultId)
       expect(discarded.evidence.staging?.applyDecision).toEqual({
@@ -792,22 +1063,23 @@ describe("managed execution engine", () => {
       expect(restartReview.record.state).toBe("review-required")
       expect(await readFile(join(workspace, "source.txt"), "utf8")).toBe("restart baseline")
 
-      const restarted = new GaepEngine(
-        workspace,
-        [codex],
-        {},
-        new ManagedStageRegistry(tmpdir(), { isProcessAlive: () => false }),
-      )
+      const restartRegistry = new ManagedStageRegistry(tmpdir(), { isProcessAlive: () => false })
+      const restarted = new GaepEngine(workspace, [codex], {}, restartRegistry)
       await expect(restarted.recoverInterruptedRuns("gaep.managed-test.restart"))
         .resolves.toEqual([])
       expect((await restarted.listRuns()).find((candidate) => candidate.id === restartRun.id)?.state).toBe("running")
+      const restartRegistryRecord = JSON.parse(
+        await readFile(join(restartRegistry.root, `${restartReview.record.id}.json`), "utf8"),
+      ) as { stageTempRoot: string }
+      await writeFile(join(restartRegistryRecord.stageTempRoot, "workspace", "source.txt"), "tampered after review")
+      await expect(restarted.readPendingManagedReviewStatus(restartReview.record.id))
+        .rejects.toThrow(/no longer matches its exact persisted review inspection/)
       expect(await restarted.readPendingManagedReviewStatus(restartReview.record.id)).toEqual({
         managedRunId: restartReview.record.id,
         state: "review-required",
         canApply: false,
         canDiscard: true,
         hasLocalJournal: false,
-        applyConfirmation: undefined,
       })
       const restartDiscarded = await restarted.discardPendingManagedReview(restartReview.record.id, "founder")
       expect(restartDiscarded.record.state).toBe("discarded")
@@ -826,7 +1098,7 @@ describe("managed execution engine", () => {
     } finally {
       await rm(executableRoot, { recursive: true, force: true })
     }
-  }, 20_000)
+  }, 60_000)
 
   it("fails closed when natural-language Workflow gates have no explicit evaluator", async () => {
     const { run, plan } = await readyRun()
@@ -1013,6 +1285,23 @@ describe("managed execution engine", () => {
         payload: { simulated: true },
       },
     }))
+
+    const liveOwnerRegistry = new ManagedStageRegistry(tmpdir())
+    liveOwnerRegistry.recover = async () => {
+      throw new ManagedStageRecoveryError("stage-active", "injected live stage owner")
+    }
+    const deferred = new GaepEngine(workspace, [adapter], {}, liveOwnerRegistry)
+    await expect(deferred.recoverInterruptedRuns("gaep.managed-test.restart")).resolves.toEqual([])
+    expect((await deferred.readManagedRun(interrupted.id)).state).toBe("prepared")
+
+    const malformedRegistry = new ManagedStageRegistry(tmpdir())
+    malformedRegistry.recover = async () => {
+      throw new Error("injected malformed local recovery journal")
+    }
+    const malformed = new GaepEngine(workspace, [adapter], {}, malformedRegistry)
+    await expect(malformed.recoverInterruptedRuns("gaep.managed-test.restart"))
+      .rejects.toThrow("injected malformed local recovery journal")
+    expect((await malformed.readManagedRun(interrupted.id)).state).toBe("prepared")
 
     const restarted = new GaepEngine(workspace, [adapter])
     await restarted.recoverInterruptedRuns("gaep.managed-test.restart")

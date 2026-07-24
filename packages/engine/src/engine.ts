@@ -539,11 +539,9 @@ export class GaepEngine {
     const recoveredManagedRuns = await Promise.all(managedRecovered.map((managed) =>
       this.repository.readJson(this.repository.resolve("sessions", `run-${managed.runId}.json`), runSchema),
     ))
-    const durableReviews = new Set((await this.managedExecution.list())
-      .filter((managed) => managed.state === "review-required" || managed.state === "conflict")
-      .map((managed) => managed.runId))
+    const durableManagedRuns = new Set((await this.managedExecution.list()).map((managed) => managed.runId))
     const interrupted = (await this.listRuns()).filter((run) =>
-      run.state === "running" && !durableReviews.has(run.id))
+      run.state === "running" && !durableManagedRuns.has(run.id))
     const recovered: Run[] = [...recoveredManagedRuns]
     for (const run of interrupted) {
       recovered.push(await this.markRunState(

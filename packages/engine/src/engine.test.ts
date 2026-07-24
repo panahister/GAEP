@@ -4,16 +4,21 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import {
+  executionCharterSchema,
   handoffSchema,
   legacyAdapterCapabilitiesV1Schema,
   legacyAgentSelectionV1Schema,
+  managedRunRecordSchema,
   type AdapterCapabilities,
   type AgentSelection,
   type ExecutionCharter,
 } from "@gaep/contracts"
 import {
   capabilityDigest,
+  canonicalDigest,
+  ManagedStageRegistry,
   requireExecutableRuntimeBinding,
+  WorkspaceStagingService,
   type AdapterProbeResult,
   type AdapterRuntimeBinding,
   type AgentAdapter,
@@ -559,6 +564,146 @@ describe("GAEP local engine", () => {
     const recovered = await restarted.recoverInterruptedRuns("test.restart")
     expect(recovered).toHaveLength(1)
     expect((await restarted.listRuns())[0]?.state).toBe("unknown")
+  })
+
+  it("keeps a live durable managed applying Run out of generic interrupted recovery", async () => {
+    const { product, initiative } = await initialize()
+    await engine.updateInitiativeState(initiative.id, "active", "Begin governed work", "founder")
+    const activeInitiative = await engine.readInitiative(initiative.id)
+    const selection = await engine.readSelection()
+    const stepId = randomUUID()
+    const draftPlan = await engine.productStudio.createWorkflowPlan({
+      title: "Managed recovery exclusion",
+      objective: "Bind a live applying Managed Run for public recovery testing.",
+      subject: { recordType: "product", recordId: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+      actor: { kind: "human", id: "founder" },
+      strategy: "sequential",
+      contextPacks: [],
+      toolDefinitions: [],
+      steps: [{
+        id: stepId,
+        title: "Observe managed recovery",
+        objective: "Remain live while public interrupted recovery runs.",
+        responsibility: { kind: "agent", id: "fake-agent" },
+        contextPacks: [],
+        toolDefinitions: [],
+        dependsOn: [],
+        preconditions: ["The managed record is durable"],
+        outputs: ["A recovery exclusion observation"],
+        evidenceCriteria: ["The portable Run remains running"],
+        retry: { maxAttempts: 1, backoffMs: 0, retryOn: [] },
+        stopConditions: ["Stop after recovery inspection"],
+        scope: { read: [{ kind: "workspace-relative", path: "." }], write: [], effects: [] },
+        effectEnvelope: ["observe"],
+      }],
+    }, product.revision ?? 1, "founder")
+    const plan = await engine.productStudio.reviseWorkflowPlan(
+      draftPlan.id,
+      draftPlan.revision,
+      { state: "resolved" },
+      "founder",
+      "The bounded recovery fixture is resolved",
+    )
+    const charter = await engine.createCharter({
+      initiativeId: activeInitiative.id,
+      objective: "Verify public recovery preserves live Managed Run truth.",
+      permissions: [{ capability: "read-workspace", mode: "allow", scope: ["."] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not mutate"],
+      stopConditions: ["Stop after recovery inspection"],
+      requiredEvidence: ["The Run remains running"],
+      managedIntent: {
+        workflowPlan: { recordType: "workflow-plan", recordId: plan.id, revision: plan.revision, digest: canonicalDigest(plan) },
+        contextPacks: [],
+        toolDefinitions: [],
+        requestedEffects: ["observe"],
+        requestedScopes: [],
+      },
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    const confirmedCharter = await engine.repository.readJson(
+      engine.repository.resolve("sessions", `charter-${charter.id}.json`),
+      executionCharterSchema,
+    )
+    const preparedRun = await engine.prepareManagedRun(charter.id, "founder")
+    const runningRun = await engine.markRunState(preparedRun.id, "running", { kind: "system", id: "test" })
+    const managedRunId = randomUUID()
+    const revisionOf = (value: { revision?: number }) => value.revision ?? 1
+    const binding = (recordType: "product" | "initiative" | "execution-charter" | "run", value: { id: string; revision?: number }) => ({
+      recordType,
+      recordId: value.id,
+      revision: revisionOf(value),
+      digest: canonicalDigest(value),
+    })
+    const bindings = {
+      product: binding("product", product),
+      initiative: binding("initiative", activeInitiative),
+      charter: binding("execution-charter", confirmedCharter),
+      run: binding("run", runningRun),
+      agentSelectionDigest: canonicalDigest(selection),
+      contextPacks: [],
+      workflowPlan: { recordType: "workflow-plan" as const, recordId: plan.id, revision: plan.revision, digest: canonicalDigest(plan) },
+      tools: [],
+    }
+    const now = new Date().toISOString()
+    const managedRecord = managedRunRecordSchema.parse({
+      schemaVersion: 2,
+      kind: "managed-run",
+      id: managedRunId,
+      revision: 1,
+      runId: runningRun.id,
+      productId: product.id,
+      initiativeId: activeInitiative.id,
+      mode: "codex-staged",
+      state: "applying",
+      bindings,
+      bindingsDigest: canonicalDigest(bindings),
+      bindingSnapshots: { initiative: activeInitiative, run: runningRun },
+      provider: {
+        adapterId: selection.adapterId,
+        agentId: selection.agentId,
+        modelId: selection.modelId,
+        capabilityDigest: selection.capabilityDigest,
+        runtimeVersion: capabilities.runtimeVersion,
+      },
+      rootManagedRunId: managedRunId,
+      attemptNumber: 1,
+      recovery: { status: "not-required" },
+      createdAt: now,
+      startedAt: now,
+      updatedAt: now,
+    })
+    await engine.repository.withLock(async () => engine.repository.commitMutation({
+      writes: [{
+        path: engine.repository.resolve("sessions", `managed-run-${managedRunId}.json`),
+        value: managedRecord,
+        schema: managedRunRecordSchema,
+        governed: true,
+      }],
+      audit: {
+        eventType: "test.managed-run.applying",
+        actor: { kind: "system", id: "test.fixture" },
+        subjectId: managedRunId,
+        payload: { fixture: true },
+      },
+    }))
+
+    const localTemp = await mkdtemp(join(tmpdir(), "gaep-engine-managed-recovery-"))
+    try {
+      const staging = new WorkspaceStagingService({ tempParent: localTemp })
+      const stageRegistry = new ManagedStageRegistry(localTemp)
+      const stage = await staging.create(workspace)
+      await stageRegistry.register(managedRunId, stage)
+      await stageRegistry.markReview(managedRunId)
+      await stageRegistry.markApplying(managedRunId)
+
+      const restarted = new GaepEngine(workspace, [new FakeAdapter()], {}, stageRegistry)
+      await expect(restarted.recoverInterruptedRuns("test.managed-restart")).resolves.toEqual([])
+      expect((await restarted.readManagedRun(managedRunId)).state).toBe("applying")
+      expect((await restarted.listRuns()).find((run) => run.id === runningRun.id)?.state).toBe("running")
+    } finally {
+      await rm(localTemp, { recursive: true, force: true })
+    }
   })
 
   it("binds a Charter to exact Product, Initiative, and agent-selection state", async () => {

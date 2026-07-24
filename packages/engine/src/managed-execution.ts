@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { realpath } from "node:fs/promises"
 
 import {
   adapterCapabilitiesSchema,
@@ -40,10 +41,13 @@ import {
 import {
   BoundedAsyncQueue,
   DeterministicManualAdapter,
+  ManagedStageRecoveryError,
   ManagedStageRegistry,
+  ManagedCodexPreJournalApplyError,
   WorkspaceStagingService,
   canonicalDigest,
   capabilityDigest,
+  rehydrateManagedCodexStageReview,
   startManagedClaudeContextRun,
   startManagedCodexStagedRun,
   type AdapterProbeResult,
@@ -64,7 +68,7 @@ export const managedRunTransitions = {
   prepared: ["running", "failed", "cancelled", "unknown"],
   running: ["review-required", "completed", "failed", "cancelled", "timed-out", "unknown"],
   "review-required": ["applying", "discarded", "unknown"],
-  applying: ["completed", "failed", "unknown", "conflict"],
+  applying: ["review-required", "completed", "failed", "unknown", "conflict"],
   completed: [],
   failed: [],
   cancelled: [],
@@ -130,6 +134,9 @@ export interface ManagedExecutionApplyInput {
   confirmation: ManagedExecutionApplyConfirmation
   evaluatePostconditions?: ManagedCodexPostconditionEvaluator
   postconditionEvaluator?: ManagedEvaluatorIdentity
+  postconditionTimeoutMs?: number
+  /** Required after restart when post-apply Workflow gates must be reassessed. */
+  evaluateWorkflowGate?: ManagedWorkflowGateEvaluator
 }
 
 export interface ManagedExecutionReview {
@@ -245,6 +252,8 @@ interface StepRuntimeCompletion {
 interface RuntimeCompletion extends StepRuntimeCompletion {
   workflow: ManagedWorkflowExecution
   gateEvaluator: ManagedWorkflowGateEvaluator
+  persistedEventsDigest?: `sha256:${string}`
+  requiresWorkflowGateEvaluator?: boolean
 }
 
 interface RuntimeHandle {
@@ -272,8 +281,6 @@ interface ResumeSource {
 }
 
 interface JournalBinding {
-  stagingService: WorkspaceStagingService
-  path: string
   digest: `sha256:${string}`
   disposed: boolean
 }
@@ -548,6 +555,8 @@ function uniqueWarnings(
 export class ManagedExecutionService {
   private readonly active = new Map<string, RuntimeHandle>()
   private readonly pendingReviews = new Map<string, ManagedExecutionReview>()
+  private readonly rehydratingReviews = new Map<string, Promise<ManagedExecutionReview | undefined>>()
+  private readonly failedReviewClaims = new Map<string, string>()
   private readonly resumeSources = new Map<string, ResumeSource>()
   private readonly journals = new Map<string, JournalBinding>()
 
@@ -610,13 +619,31 @@ export class ManagedExecutionService {
 
   async pendingReviewStatus(managedRunId: string): Promise<ManagedPendingReviewStatus> {
     const record = await this.read(managedRunId)
-    const review = this.pendingReviews.get(record.id)
+    const retainedJournalDigest = await this.stageRegistry.retainedJournalDigest(record.id)
+    if (retainedJournalDigest) {
+      this.journals.set(record.id, { digest: retainedJournalDigest, disposed: false })
+    }
+    let review = this.pendingReviews.get(record.id)
+    if (review && (review.record.revision !== record.revision || review.record.state !== record.state)) {
+      this.pendingReviews.delete(record.id)
+      review = undefined
+    }
+    if (!review && this.failedReviewClaims.has(record.id)) {
+      return {
+        managedRunId: record.id,
+        state: record.state,
+        canApply: false,
+        canDiscard: record.state === "review-required",
+        hasLocalJournal: retainedJournalDigest !== undefined,
+      }
+    }
+    review ??= await this.ensurePendingReview(record.id)
     return {
       managedRunId: record.id,
       state: record.state,
       canApply: review?.canApply ?? false,
       canDiscard: review?.canDiscard ?? ["review-required", "conflict"].includes(record.state),
-      hasLocalJournal: review?.hasLocalJournal ?? false,
+      hasLocalJournal: review?.hasLocalJournal ?? retainedJournalDigest !== undefined,
       applyConfirmation: review?.applyConfirmation,
     }
   }
@@ -626,7 +653,8 @@ export class ManagedExecutionService {
       .filter((record) => ["review-required", "conflict"].includes(record.state))
       .map((record) => record.id)
     const ids = [...new Set([...this.pendingReviews.keys(), ...durable])].sort()
-    return Promise.all(ids.map((id) => this.pendingReviewStatus(id)))
+    return (await Promise.all(ids.map((id) => this.pendingReviewStatus(id))))
+      .filter((status) => ["review-required", "conflict"].includes(status.state))
   }
 
   async applyPendingReview(
@@ -634,19 +662,215 @@ export class ManagedExecutionService {
     input: ManagedExecutionApplyInput,
     actorId: string,
   ): Promise<ManagedExecutionReview> {
-    const review = this.pendingReviews.get(managedRunId)
-    if (!review) throw new Error("Managed Run has no in-process pending staged review")
+    if (this.failedReviewClaims.has(managedRunId)) {
+      throw new Error("Managed Run durable review failed exact revalidation and can only be discarded")
+    }
+    let review = this.pendingReviews.get(managedRunId)
+    if (review) {
+      const durable = await this.read(managedRunId)
+      if (review.record.revision !== durable.revision || review.record.state !== durable.state) {
+        this.pendingReviews.delete(managedRunId)
+        review = undefined
+      }
+    }
+    review ??= await this.ensurePendingReview(managedRunId)
+    if (!review) throw new Error("Managed Run has no recoverable pending staged review")
     const next = await review.apply(input, actorId)
     if (!next.canApply && !next.canDiscard) this.pendingReviews.delete(managedRunId)
     return next
   }
 
   async discardPendingReview(managedRunId: string, actorId: string): Promise<ManagedExecutionReview> {
-    const review = this.pendingReviews.get(managedRunId)
+    if (this.failedReviewClaims.has(managedRunId)) return this.discardDurableReview(managedRunId, actorId)
+    let review = this.pendingReviews.get(managedRunId)
+    if (review) {
+      const durable = await this.read(managedRunId)
+      if (review.record.revision !== durable.revision || review.record.state !== durable.state) {
+        this.pendingReviews.delete(managedRunId)
+        review = undefined
+      }
+    }
+    try {
+      review ??= await this.ensurePendingReview(managedRunId)
+    } catch (error) {
+      try {
+        return await this.discardDurableReview(managedRunId, actorId)
+      } catch {
+        throw error
+      }
+    }
     if (!review) return this.discardDurableReview(managedRunId, actorId)
     const next = await review.discard(actorId)
     this.pendingReviews.delete(managedRunId)
     return next
+  }
+
+  private async ensurePendingReview(managedRunId: string): Promise<ManagedExecutionReview | undefined> {
+    const existing = this.pendingReviews.get(managedRunId)
+    if (existing) return existing
+    const inFlight = this.rehydratingReviews.get(managedRunId)
+    if (inFlight) return inFlight
+    const rehydrating = this.rehydratePendingReview(managedRunId)
+      .finally(() => this.rehydratingReviews.delete(managedRunId))
+    this.rehydratingReviews.set(managedRunId, rehydrating)
+    return rehydrating
+  }
+
+  private async rehydratePendingReview(managedRunId: string): Promise<ManagedExecutionReview | undefined> {
+    const current = await this.readCurrentArtifacts(managedRunId)
+    if (current.record.state !== "review-required") return undefined
+    if (current.record.mode !== "codex-staged" || !current.evidence.staging ||
+        current.evidence.staging.applyState !== "pending") {
+      throw new Error("Managed Run durable review is not an exact pending Codex staged review")
+    }
+    const claim = await this.stageRegistry.claimReview(managedRunId)
+    try {
+      const manifest = claim.manifest
+      const canonicalWorkspacePath = await realpath(this.workspacePath)
+      if (manifest.managedRunId !== current.record.id || manifest.bindingsDigest !== current.record.bindingsDigest ||
+          current.evidence.bindingsDigest !== current.record.bindingsDigest ||
+          manifest.stage.stage.sourceRoot !== canonicalWorkspacePath ||
+          manifest.provider.adapterId !== current.record.provider.adapterId ||
+          manifest.provider.agentId !== current.record.provider.agentId ||
+          manifest.provider.modelId !== current.record.provider.modelId ||
+          manifest.provider.capabilityDigest !== current.record.provider.capabilityDigest ||
+          manifest.terminalDisposition !== current.result.providerDisposition ||
+          manifest.inspection.baselineDigest !== current.evidence.staging.baselineDigest ||
+          manifest.inspection.finalDigest !== current.evidence.staging.finalDigest ||
+          canonicalDigest(manifest.inspection.changes) !== canonicalDigest(current.evidence.staging.changes) ||
+          manifest.inspection.excludedPaths.length !== current.evidence.staging.excludedPathCount ||
+          canonicalDigest([...manifest.inspection.excludedPaths].sort()) !== current.evidence.staging.excludedPathSetDigest) {
+        throw new Error("Managed stage review manifest does not match the exact governed Run and persisted review evidence")
+      }
+      const resolved = await this.resolveDurableReview(current)
+      const initialResult: ManagedRuntimeResultEnvelope = {
+        portable: {
+          schemaVersion: 1,
+          provider: {
+            adapterId: manifest.provider.adapterId,
+            agentId: manifest.provider.agentId,
+            runtimeVersion: current.record.provider.runtimeVersion,
+            capabilityDigest: manifest.provider.capabilityDigest,
+          },
+          events: [],
+          staging: {
+            baselineDigest: manifest.inspection.baselineDigest,
+            finalDigest: manifest.inspection.finalDigest,
+            changes: structuredClone(manifest.inspection.changes),
+            excludedPaths: [...manifest.inspection.excludedPaths],
+            applied: false,
+          },
+          terminalDisposition: manifest.terminalDisposition,
+          warnings: [],
+          postconditionStatus: current.result.outcome.status,
+        },
+        local: {},
+      }
+      const rehydrated = await rehydrateManagedCodexStageReview({
+        claim,
+        initialResult,
+        stageRegistry: this.stageRegistry,
+      })
+      const unavailableGateEvaluator: ManagedWorkflowGateEvaluator = async () => {
+        throw new Error("Restarted staged apply requires an explicit Workflow gate evaluator")
+      }
+      const completion: RuntimeCompletion = {
+        runtime: initialResult,
+        codexReview: rehydrated.review,
+        stagingService: rehydrated.stagingService,
+        terminationCause: current.result.terminationCause,
+        workflow: structuredClone(current.evidence.workflow),
+        gateEvaluator: unavailableGateEvaluator,
+        persistedEventsDigest: current.evidence.eventsDigest as `sha256:${string}`,
+        requiresWorkflowGateEvaluator: true,
+      }
+      const review = new ManagedExecutionReviewHandle(this, current, resolved, completion)
+      this.syncPendingReview(review)
+      return review
+    } catch (error) {
+      this.failedReviewClaims.set(managedRunId, claim.leaseToken)
+      throw error
+    }
+  }
+
+  private async resolveDurableReview(current: PersistedArtifacts): Promise<ResolvedExecution> {
+    const { record } = current
+    if (canonicalDigest(record.bindings) !== record.bindingsDigest) {
+      throw new Error("Managed Run durable bindings digest is invalid")
+    }
+    const run = runSchema.parse(record.bindingSnapshots.run)
+    const initiativeSnapshot = initiativeSchema.parse(record.bindingSnapshots.initiative)
+    this.assertExactReference(record.bindings.run, run, "Managed Run snapshot")
+    this.assertExactReference(record.bindings.initiative, initiativeSnapshot, "Managed Initiative snapshot")
+    const [product, initiative, charter, workflowPlan, persistedRun, persistedSelection] = await Promise.all([
+      this.repository.readJson(this.repository.resolve("product.json"), productSchema),
+      this.repository.readJson(this.repository.resolve("initiatives", `${record.initiativeId}.json`), initiativeSchema),
+      this.repository.readJson(
+        this.repository.resolve("sessions", `charter-${record.bindings.charter.recordId}.json`),
+        executionCharterSchema,
+      ),
+      this.productStudio.readWorkflowPlan(record.bindings.workflowPlan!.recordId),
+      this.repository.readJson(this.runPath(record.runId), runSchema),
+      this.repository.readJson(this.repository.resolve("runtime", "selection.json"), agentSelectionSchema),
+    ])
+    this.assertExactReference(record.bindings.product, product, "Managed Product")
+    this.assertExactReference(record.bindings.initiative, initiative, "Managed Initiative")
+    this.assertExactReference(record.bindings.charter, charter, "Managed Charter")
+    this.assertExactReference(record.bindings.workflowPlan!, workflowPlan, "Managed Workflow Plan")
+    if (canonicalDigest(initiativeSnapshot) !== canonicalDigest(initiative) || persistedRun.id !== run.id ||
+        persistedRun.state !== "running" || persistedRun.productId !== run.productId ||
+        persistedRun.initiativeId !== run.initiativeId || persistedRun.charterId !== run.charterId ||
+        canonicalDigest(persistedRun.agent) !== canonicalDigest(run.agent) ||
+        canonicalDigest(persistedSelection) !== record.bindings.agentSelectionDigest ||
+        canonicalDigest(run.agent) !== record.bindings.agentSelectionDigest) {
+      throw new Error("Managed Run durable review lineage or Agent Selection changed after staging")
+    }
+    const contextPacks = await Promise.all(record.bindings.contextPacks.map(async (binding) => {
+      const pack = await this.productStudio.readContextPack(binding.recordId)
+      this.assertExactReference(binding, pack, "Managed Context Pack")
+      return pack
+    }))
+    const tools = await Promise.all(record.bindings.tools.map(async (binding) => {
+      const tool = await this.productStudio.readToolDefinition(binding.recordId)
+      this.assertExactReference(binding, tool, "Managed Tool Definition")
+      return tool
+    }))
+    const toolSelection = record.bindings.runToolSelection
+      ? await this.productStudio.readRunToolSelection(record.bindings.runToolSelection.recordId)
+      : undefined
+    if (toolSelection && record.bindings.runToolSelection) {
+      this.assertExactReference(record.bindings.runToolSelection, toolSelection, "Managed Run Tool Selection")
+    }
+    const adapter = this.adapters.get(run.agent.adapterId)
+    if (!adapter) throw new Error("Managed durable review Adapter is unavailable")
+    const probe = await adapter.probe({ refreshModels: true })
+    const capabilities = adapterCapabilitiesSchema.parse(probe.capabilities)
+    if (capabilities.adapterId !== run.agent.adapterId || capabilities.agentId !== run.agent.agentId ||
+        capabilityDigest(capabilities) !== run.agent.capabilityDigest) {
+      throw new Error("Managed durable review Agent capabilities changed after staging")
+    }
+    this.assertRuntimeBinding(probe.runtimeBinding, run)
+    const mode = this.modeFor(adapter, probe.runtimeBinding)
+    if (mode !== "codex-staged" || record.mode !== mode) throw new Error("Managed durable review execution mode changed")
+    this.assertModeEnvelope(mode, charter, contextPacks, tools)
+    const orderedSteps = this.assertWorkflowExecutable(workflowPlan, run, charter, contextPacks, tools, mode)
+    const writeEnvelope = this.compileWriteEnvelope(workflowPlan, charter)
+    compileManagedCodexPolicy(charter, tools, writeEnvelope)
+    return {
+      run,
+      initiative,
+      charter,
+      workflowPlan,
+      contextPacks,
+      toolSelection,
+      tools,
+      bindings: record.bindings,
+      mode,
+      adapter,
+      probe,
+      orderedSteps,
+      writeEnvelope,
+    }
   }
 
   private async discardDurableReview(managedRunId: string, actorId: string): Promise<ManagedExecutionReview> {
@@ -654,10 +878,7 @@ export class ManagedExecutionService {
     if (!["review-required", "conflict"].includes(current.record.state) || !current.evidence.staging) {
       throw new Error("Managed Run has no durable staged review to discard")
     }
-    const localRecovery = await this.stageRegistry.recover(current.record.id)
-    if (localRecovery.status === "absent") {
-      throw new Error("Managed Run durable staged review has no recoverable machine-local stage")
-    }
+    const failedClaimLease = this.failedReviewClaims.get(current.record.id)
     const now = new Date().toISOString()
     const evidence = managedRunEvidenceSchema.parse({
       ...current.evidence,
@@ -666,7 +887,7 @@ export class ManagedExecutionService {
       staging: { ...current.evidence.staging, applyState: "discarded" },
       actualEffects: current.evidence.actualEffects.map((effect) => ({
         ...effect,
-        status: "blocked" as const,
+        status: current.record.state === "review-required" ? "blocked" as const : "unknown" as const,
         evidenceDigest: canonicalDigest({
           priorEvidenceDigest: canonicalDigest(current.evidence),
           effect: effect.effect,
@@ -684,12 +905,28 @@ export class ManagedExecutionService {
       previousResultDigest: canonicalDigest(current.result),
       outcome: { status: "not-assessed", basis: "not-evaluated" },
       terminalState: "discarded",
-      warnings: localRecovery.status === "quarantined"
-        ? [...new Set([...current.result.warnings, "local-cleanup-pending" as const])]
-        : current.result.warnings,
+      // Portable terminal authority is committed before best-effort machine-local
+      // finalization, so the durable result remains conservative even when a
+      // cleanup/probe fault happens after this commit.
+      warnings: [...new Set([...current.result.warnings, "local-cleanup-pending" as const])],
       endedAt: now,
     })
     const persisted = await this.commitArtifacts(current.record, result, evidence, actorId)
+    if (current.record.state === "review-required") {
+      await this.stageRegistry.discardReview(
+        current.record.id,
+        failedClaimLease,
+        { terminalAuthorized: true },
+      ).catch(() => undefined)
+      this.failedReviewClaims.delete(current.record.id)
+      await this.stageRegistry.completeDiscard(current.record.id).catch(() => undefined)
+    } else {
+      await this.stageRegistry.recover(current.record.id).catch(() => undefined)
+    }
+    const retainedJournalDigest = await this.stageRegistry.retainedJournalDigest(current.record.id).catch(() => undefined)
+    if (retainedJournalDigest) {
+      this.journals.set(current.record.id, { digest: retainedJournalDigest, disposed: false })
+    }
     return new FinalManagedExecutionReview(this, persisted)
   }
 
@@ -821,7 +1058,25 @@ export class ManagedExecutionService {
   }
 
   async recoverInterrupted(actorId: string): Promise<ManagedRunRecord[]> {
-    const interrupted = (await this.list()).filter((record) =>
+    const records = await this.list()
+    let firstRecoveryFailure: unknown
+    for (const record of records.filter((candidate) => candidate.state === "discarded")) {
+      try {
+        const current = await this.readCurrentArtifacts(record.id)
+        if (current.evidence.staging?.applyJournalDigest) {
+          const localRecovery = await this.stageRegistry.recover(record.id)
+          if (localRecovery.status === "quarantined" && localRecovery.journalDigest) {
+            this.journals.set(record.id, { digest: localRecovery.journalDigest, disposed: false })
+          }
+        } else {
+          await this.stageRegistry.discardReview(record.id, undefined, { terminalAuthorized: true })
+          await this.stageRegistry.completeDiscard(record.id)
+        }
+      } catch (error) {
+        firstRecoveryFailure ??= error
+      }
+    }
+    const interrupted = records.filter((record) =>
       ["prepared", "running", "applying"].includes(record.state) &&
         !this.active.has(record.id) && !this.pendingReviews.has(record.id),
     )
@@ -855,17 +1110,65 @@ export class ManagedExecutionService {
         capabilityBoundary: "natural-language-gates-require-explicit-human-or-system-assessment",
       })
       let localRecoveryWarning: ManagedRunResult["warnings"][number] | undefined
-      let localRecoveryStatus: "cleaned" | "quarantined" | "failed" = "cleaned"
+      let localRecoveryStatus: "cleaned" | "quarantined" = "cleaned"
+      let localJournalDigest: `sha256:${string}` | undefined
       try {
-        const localRecovery = await this.stageRegistry.recover(record.id)
+        const localRecovery = await this.stageRegistry.recover(record.id, {
+          preserveReview: record.state === "applying",
+        })
+        if (localRecovery.status === "review-restored") {
+          if (record.state !== "applying") {
+            throw new Error("Managed stage review restoration is inconsistent with portable execution state")
+          }
+          await this.restorePortableReviewAfterPreJournalFailure(record, actorId)
+          recovered.push(await this.read(record.id))
+          continue
+        }
         if (localRecovery.status === "quarantined") {
           localRecoveryStatus = "quarantined"
           localRecoveryWarning = "local-cleanup-pending"
+          localJournalDigest = localRecovery.journalDigest
+          if (localJournalDigest) {
+            this.journals.set(record.id, { digest: localJournalDigest, disposed: false })
+          }
         }
-      } catch {
-        localRecoveryStatus = "failed"
-        localRecoveryWarning = "local-cleanup-failed"
+      } catch (error) {
+        // A live owner, lock contention, or cleanup fault is retryable. Do not
+        // terminalize portable truth while machine-local recovery is incomplete.
+        if (!(error instanceof ManagedStageRecoveryError &&
+            ["stage-active", "lock-timeout"].includes(error.reasonCode))) {
+          firstRecoveryFailure ??= error
+        }
+        continue
       }
+      let recoveryStaging: ManagedRunEvidence["staging"]
+      if (record.state === "applying" && localRecoveryStatus === "quarantined" && localJournalDigest &&
+          record.applyDecisionId && record.applyDecisionDigest) {
+        const prior = await this.readCurrentArtifacts(record.id)
+        const receipt = await this.readApplyDecision(record.applyDecisionId)
+        if (canonicalDigest(receipt) !== record.applyDecisionDigest) {
+          throw new Error("Interrupted Managed Run apply-decision binding is invalid")
+        }
+        if (prior.evidence.staging) {
+          recoveryStaging = {
+            ...prior.evidence.staging,
+            applyState: "conflict",
+            applyJournalDigest: localJournalDigest,
+            applyDecision: { receiptId: receipt.id, receiptDigest: canonicalDigest(receipt) },
+          }
+        }
+      }
+      const recoveryEffectsSeed = canonicalDigest({
+        managedRunId: record.id,
+        priorState: record.state,
+        localRecoveryStatus,
+        localJournalDigest,
+      })
+      const actualEffects = [...new Set(boundCharter.expectedEffects)].map((effect) => ({
+        effect,
+        status: record.state === "prepared" ? "blocked" as const : "unknown" as const,
+        evidenceDigest: canonicalDigest({ recoveryEffectsSeed, effect }),
+      }))
       const evidence = managedRunEvidenceSchema.parse({
         schemaVersion: 2,
         kind: "managed-run-evidence",
@@ -877,7 +1180,8 @@ export class ManagedExecutionService {
         events: [],
         eventsDigest: canonicalDigest([]),
         workflow: recoveryWorkflow,
-        actualEffects: [],
+        staging: recoveryStaging,
+        actualEffects,
         capturedAt: now,
         authorityBoundary: "evidence-does-not-self-assert-outcome-or-authorization",
       })
@@ -913,9 +1217,7 @@ export class ManagedExecutionService {
           status: "resume-unavailable",
           reasonCode: localRecoveryStatus === "quarantined"
             ? "local-apply-journal-quarantined"
-            : localRecoveryStatus === "failed"
-              ? "local-stage-recovery-failed"
-              : "machine-local-runtime-lost",
+            : "machine-local-runtime-lost",
         },
         updatedAt: now,
         endedAt: now,
@@ -957,6 +1259,7 @@ export class ManagedExecutionService {
       })
       recovered.push(next)
     }
+    if (firstRecoveryFailure) throw firstRecoveryFailure
     return recovered
   }
 
@@ -1803,6 +2106,32 @@ export class ManagedExecutionService {
     })
   }
 
+  private postApplyVerificationFailureWorkflow(
+    workflow: ManagedWorkflowExecution,
+    runtime: ManagedRuntimeResultEnvelope,
+  ): ManagedWorkflowExecution {
+    const lastAttempt = workflow.attempts.at(-1)
+    return managedWorkflowExecutionSchema.parse({
+      ...workflow,
+      attempts: lastAttempt
+        ? workflow.attempts.map((attempt) => attempt.id === lastAttempt.id
+            ? {
+                ...attempt,
+                revision: attempt.revision + 1,
+                previousSnapshotDigest: canonicalDigest(attempt),
+                state: "unknown" as const,
+                providerDisposition: runtime.portable.terminalDisposition,
+                terminationCause: "normal" as const,
+                postconditionStatus: "indeterminate" as const,
+                retryReasonCode: "post-apply-verification-failed",
+                endedAt: new Date().toISOString(),
+              }
+            : attempt)
+        : workflow.attempts,
+      terminalReasonCode: "post-apply-verification-failed",
+    })
+  }
+
   private async finalizeAppliedWorkflow(
     completion: RuntimeCompletion,
     resolved: ResolvedExecution,
@@ -1836,7 +2165,7 @@ export class ManagedExecutionService {
         terminalReasonCode: "source-workspace-conflict",
       })
     }
-    const eventsDigest = canonicalDigest(runtime.portable.events) as `sha256:${string}`
+    const eventsDigest = completion.persistedEventsDigest ?? canonicalDigest(runtime.portable.events) as `sha256:${string}`
     const gateControl = new AbortController()
     const gateBase = {
       evaluator: completion.gateEvaluator,
@@ -2122,6 +2451,11 @@ export class ManagedExecutionService {
         resumeThreadId: resume?.providerThreadId,
         runtimeVersion: resolved.probe.capabilities.runtimeVersion,
         capabilityDigest: resolved.run.agent.capabilityDigest as `sha256:${string}`,
+        bindingsDigest: canonicalDigest(resolved.bindings) as `sha256:${string}`,
+        managedProvider: {
+          adapterId: resolved.run.agent.adapterId,
+          agentId: resolved.run.agent.agentId,
+        },
         timeoutMs,
         policy,
         stagingService,
@@ -2180,8 +2514,10 @@ export class ManagedExecutionService {
     actorId: string,
     applyDecision?: ManagedApplyDecisionReceipt,
     outcomeEvaluator?: ManagedEvaluatorIdentity,
+    priorEvidence?: ManagedRunEvidence,
+    priorWarnings?: ManagedRunResult["warnings"],
   ): Promise<PersistedArtifacts> {
-    const events = normalizeManagedRuntimeEvents(runtime.portable.events)
+    const events = priorEvidence ? structuredClone(priorEvidence.events) : normalizeManagedRuntimeEvents(runtime.portable.events)
     const now = new Date().toISOString()
     const staging = runtime.portable.staging && stagingState
       ? managedStagingEvidence(runtime.portable.staging, stagingState, applyDecision)
@@ -2231,7 +2567,7 @@ export class ManagedExecutionService {
       evidenceDigest: canonicalDigest(evidence),
       previousResultId: current.resultId,
       previousResultDigest: current.resultDigest,
-      warnings: uniqueWarnings(runtime, events, current.mode),
+      warnings: [...new Set([...(priorWarnings ?? []), ...uniqueWarnings(runtime, events, current.mode)])],
       startedAt: current.startedAt ?? current.updatedAt,
       endedAt: now,
       authorityBoundary: "provider-completion-does-not-equal-outcome-completion",
@@ -2337,6 +2673,7 @@ export class ManagedExecutionService {
       authorityBoundary: "apply-decision-is-exact-run-evidence-inventory-actor-and-scope",
     })
     return this.repository.withLock(async () => {
+      await this.assertBindingsCurrent(resolved, true)
       const persisted = await this.repository.readJson(this.managedRunPath(current.record.id), managedRunRecordSchema)
       if (persisted.revision !== current.record.revision || persisted.state !== "review-required") {
         throw new Error("Managed Run is no longer awaiting apply review")
@@ -2375,6 +2712,43 @@ export class ManagedExecutionService {
     })
   }
 
+  private async restorePortableReviewAfterPreJournalFailure(
+    applying: ManagedRunRecord,
+    actorId: string,
+  ): Promise<void> {
+    await this.repository.withLock(async () => {
+      const current = await this.repository.readJson(this.managedRunPath(applying.id), managedRunRecordSchema)
+      if (current.revision !== applying.revision || current.state !== "applying" ||
+          current.applyDecisionId !== applying.applyDecisionId || current.applyDecisionDigest !== applying.applyDecisionDigest) {
+        throw new Error("Managed Run changed before its pre-journal apply state could be restored")
+      }
+      assertTransition(current.state, "review-required")
+      const next = managedRunRecordSchema.parse({
+        ...current,
+        revision: current.revision + 1,
+        state: "review-required",
+        applyDecisionId: undefined,
+        applyDecisionDigest: undefined,
+        updatedAt: new Date().toISOString(),
+      })
+      await this.repository.commitMutation({
+        writes: [{ path: this.managedRunPath(next.id), value: next, schema: managedRunRecordSchema, governed: true }],
+        audit: {
+          eventType: "managed-run.apply-preflight-restored",
+          actor: { kind: "system", id: actorId },
+          subjectId: next.id,
+          payload: {
+            from: "applying",
+            to: "review-required",
+            failedApplyDecisionId: current.applyDecisionId,
+            sourceMutationAttempted: false,
+            applyJournalBound: false,
+          },
+        },
+      })
+    })
+  }
+
   private async performDiscard(
     current: PersistedArtifacts,
     resolved: ResolvedExecution,
@@ -2387,14 +2761,13 @@ export class ManagedExecutionService {
     if (durable.revision !== current.record.revision || durable.state !== current.record.state) {
       throw new Error("Managed Run changed before staged discard")
     }
-    const runtime = await completion.codexReview.discard()
-    const events = normalizeManagedRuntimeEvents(runtime.portable.events)
+    const runtime = completion.runtime
+    const events = completion.persistedEventsDigest
+      ? structuredClone(current.evidence.events)
+      : normalizeManagedRuntimeEvents(runtime.portable.events)
     const now = new Date().toISOString()
-    const applyDecision = current.record.applyDecisionId
-      ? await this.readApplyDecision(current.record.applyDecisionId)
-      : undefined
-    const staging = runtime.portable.staging
-      ? managedStagingEvidence(runtime.portable.staging, "discarded", applyDecision)
+    const staging = current.evidence.staging
+      ? { ...current.evidence.staging, applyState: "discarded" as const }
       : undefined
     const evidence = managedRunEvidenceSchema.parse({
       schemaVersion: 2,
@@ -2410,7 +2783,7 @@ export class ManagedExecutionService {
       staging,
       actualEffects: [...new Set(resolved.charter.expectedEffects)].map((effect) => ({
         effect,
-        status: "blocked" as const,
+        status: current.record.state === "review-required" ? "blocked" as const : "unknown" as const,
         evidenceDigest: canonicalDigest({ effect, disposition: "discarded", eventsDigest: canonicalDigest(events) }),
       })),
       capturedAt: now,
@@ -2425,9 +2798,24 @@ export class ManagedExecutionService {
       previousResultDigest: canonicalDigest(current.result),
       outcome: { status: "not-assessed", basis: "not-evaluated" },
       terminalState: "discarded",
+      // Portable discard commits before machine-local review/stage/journal
+      // finalization. Preserve that cleanup uncertainty even when the local
+      // finalizer succeeds immediately; restart reconciliation clears state,
+      // not already-committed historical warnings.
+      warnings: [...new Set([...current.result.warnings, "local-cleanup-pending" as const])],
       endedAt: now,
     })
-    return this.commitArtifacts(current.record, result, evidence, actorId)
+    const persisted = await this.commitArtifacts(current.record, result, evidence, actorId)
+    await completion.codexReview.discard().catch(() => undefined)
+    if (current.record.state === "review-required") {
+      await this.stageRegistry.discardReview(
+        current.record.id,
+        undefined,
+        { terminalAuthorized: true },
+      ).catch(() => undefined)
+      await this.stageRegistry.completeDiscard(current.record.id).catch(() => undefined)
+    }
+    return persisted
   }
 
   private async persistLaunchFailure(current: ManagedRunRecord, resolved: ResolvedExecution, actorId: string): Promise<void> {
@@ -2469,12 +2857,13 @@ export class ManagedExecutionService {
     )
   }
 
-  private async assertBindingsCurrent(resolved: ResolvedExecution): Promise<void> {
+  private async assertBindingsCurrent(resolved: ResolvedExecution, allowManagedRunningRun = false): Promise<void> {
+    const currentRun = await this.repository.readJson(this.runPath(resolved.run.id), runSchema)
     const records = [
       [await this.repository.readJson(this.repository.resolve("product.json"), productSchema), resolved.bindings.product],
       [await this.repository.readJson(this.repository.resolve("initiatives", `${resolved.run.initiativeId}.json`), initiativeSchema), resolved.bindings.initiative],
       [await this.repository.readJson(this.repository.resolve("sessions", `charter-${resolved.charter.id}.json`), executionCharterSchema), resolved.bindings.charter],
-      [await this.repository.readJson(this.runPath(resolved.run.id), runSchema), resolved.bindings.run],
+      ...(!allowManagedRunningRun ? [[currentRun, resolved.bindings.run] as const] : []),
       [await this.productStudio.readWorkflowPlan(resolved.workflowPlan.id), resolved.bindings.workflowPlan!],
       ...await Promise.all(resolved.contextPacks.map(async (pack) => [
         await this.productStudio.readContextPack(pack.id),
@@ -2489,6 +2878,11 @@ export class ManagedExecutionService {
       if (!binding || canonicalDigest(record) !== binding.digest || revisionOf(record as unknown as { revision?: number }) !== binding.revision) {
         throw new Error("A governed record changed before Managed Run persistence")
       }
+    }
+    if (allowManagedRunningRun && (currentRun.state !== "running" || currentRun.id !== resolved.run.id ||
+        currentRun.productId !== resolved.run.productId || currentRun.initiativeId !== resolved.run.initiativeId ||
+        currentRun.charterId !== resolved.run.charterId || canonicalDigest(currentRun.agent) !== resolved.bindings.agentSelectionDigest)) {
+      throw new Error("Managed Run lineage or Agent Selection changed before staged apply")
     }
     if (resolved.toolSelection && resolved.bindings.runToolSelection) {
       const selection = await this.productStudio.readRunToolSelection(resolved.toolSelection.id)
@@ -2698,12 +3092,14 @@ export class ManagedExecutionService {
     state: ManagedRunState,
     staging: ManagedRunEvidence["staging"],
   ): ManagedRunEvidence["actualEffects"][number]["status"] {
-    if (["failed", "cancelled", "timed-out", "discarded"].includes(state)) return "blocked"
-    if (["unknown", "conflict"].includes(state)) return "unknown"
     if (effect === "reversible-change") {
       if (staging?.applyState === "applied") return "applied"
+      if (["unknown", "conflict"].includes(state) || staging?.applyState === "conflict") return "unknown"
+      if (["failed", "cancelled", "timed-out", "discarded"].includes(state)) return "blocked"
       return staging?.changes.length ? "observed-provisional" : "not-observed"
     }
+    if (["failed", "cancelled", "timed-out", "discarded"].includes(state)) return "blocked"
+    if (["unknown", "conflict"].includes(state)) return "unknown"
     if (effect === "provisional") return staging?.changes.length ? "observed-provisional" : "not-observed"
     if (effect === "observe") return "observed-provisional"
     return "blocked"
@@ -2740,6 +3136,14 @@ export class ManagedExecutionService {
     if ((input.evaluatePostconditions === undefined) !== (input.postconditionEvaluator === undefined)) {
       throw new Error("A postcondition evaluator callback and its exact identity must be supplied together")
     }
+    if (input.postconditionTimeoutMs !== undefined && (!input.evaluatePostconditions ||
+        !Number.isSafeInteger(input.postconditionTimeoutMs) || input.postconditionTimeoutMs < 1 ||
+        input.postconditionTimeoutMs > 24 * 60 * 60 * 1_000)) {
+      throw new Error("A bounded postcondition timeout requires an evaluator and must be between 1 ms and 24 hours")
+    }
+    if (completion.requiresWorkflowGateEvaluator && !input.evaluateWorkflowGate) {
+      throw new Error("Restarted staged apply requires an explicit Workflow gate evaluator")
+    }
     if (input.postconditionEvaluator) assertEvaluatorIdentity(input.postconditionEvaluator, "Postcondition evaluator")
     const stagedEvidence = current.evidence.staging
     if (!stagedEvidence || stagedEvidence.applyState !== "pending") {
@@ -2753,19 +3157,36 @@ export class ManagedExecutionService {
     ) {
       throw new Error("Machine-local staged inspection no longer matches the exact persisted review evidence")
     }
+    await completion.codexReview.verifyExactInspection()
     const { record: applying, receipt } = await this.transitionForApply(current, resolved, input.confirmation, actorId)
+    let appliedRuntime: ManagedRuntimeResultEnvelope | undefined
+    let appliedState: NonNullable<ManagedRunEvidence["staging"]>["applyState"] | undefined
     try {
       const runtime = await completion.codexReview.apply({
         authorizationId: canonicalDigest(receipt),
         approvedPaths: receipt.changedInventory.map((change) => change.path),
         evaluatePostconditions: input.evaluatePostconditions,
+        postconditionTimeoutMs: input.postconditionTimeoutMs,
       })
+      appliedRuntime = runtime
       const applyState = runtime.portable.staging?.applied
         ? "applied"
         : runtime.portable.staging?.applyJournalDigest
           ? "conflict"
           : "not-applied"
-      const workflow = await this.finalizeAppliedWorkflow(completion, resolved, runtime, applying.id, actorId)
+      appliedState = applyState
+      const journalPath = runtime.local.applyJournalPath
+      const journalDigest = runtime.portable.staging?.applyJournalDigest
+      if (journalPath && journalDigest) {
+        this.journals.set(current.record.id, {
+          digest: journalDigest,
+          disposed: false,
+        })
+      }
+      const applyCompletion = input.evaluateWorkflowGate
+        ? { ...completion, gateEvaluator: input.evaluateWorkflowGate }
+        : completion
+      const workflow = await this.finalizeAppliedWorkflow(applyCompletion, resolved, runtime, applying.id, actorId)
       const governedRuntime = workflow.terminalReasonCode === "workflow-completed"
         ? runtime
         : {
@@ -2799,22 +3220,43 @@ export class ManagedExecutionService {
         actorId,
         receipt,
         input.postconditionEvaluator,
+        current.evidence,
+        current.result.warnings,
       )
-      const journalPath = runtime.local.applyJournalPath
-      const journalDigest = runtime.portable.staging?.applyJournalDigest
-      if (journalPath && journalDigest) {
-        this.journals.set(current.record.id, {
-          stagingService: completion.stagingService,
-          path: journalPath,
-          digest: journalDigest,
-          disposed: false,
-        })
-      }
       return persisted
     } catch (error) {
       const latest = await this.read(applying.id).catch(() => applying)
-      if (latest.state === "applying") {
-        await this.persistSyntheticFailure(latest, resolved, "process-loss", actorId).catch(() => undefined)
+      if (error instanceof ManagedCodexPreJournalApplyError && latest.state === "applying") {
+        await this.restorePortableReviewAfterPreJournalFailure(latest, actorId)
+        throw error
+      }
+      if (latest.state !== "applying") {
+        return this.readCurrentArtifacts(latest.id)
+      }
+      if (appliedRuntime && appliedState) {
+        const verificationRuntime: ManagedRuntimeResultEnvelope = {
+          ...appliedRuntime,
+          portable: {
+            ...appliedRuntime.portable,
+            postconditionStatus: "indeterminate",
+          },
+        }
+        const fallback = await this.persistRuntimeResult(
+          latest,
+          resolved,
+          verificationRuntime,
+          this.postApplyVerificationFailureWorkflow(completion.workflow, verificationRuntime),
+          appliedState === "conflict" ? "conflict" : "unknown",
+          "normal",
+          appliedState,
+          input.evaluatePostconditions ? "postcondition-evaluator" : "not-evaluated",
+          actorId,
+          receipt,
+          input.postconditionEvaluator,
+          current.evidence,
+          current.result.warnings,
+        ).catch(() => undefined)
+        if (fallback) return fallback
       }
       throw error
     }
@@ -2831,18 +3273,17 @@ export class ManagedExecutionService {
 
   async disposeJournal(managedRunId: string): Promise<void> {
     const binding = this.journals.get(managedRunId)
-    if (!binding) throw new Error("Managed Run has no retained local apply journal")
-    if (binding.disposed) return
+    if (binding?.disposed) return
     const record = await this.read(managedRunId)
     if (!record.resultId) throw new Error("Apply journal cannot be disposed before result evidence is committed")
     const result = await this.readResult(record.resultId)
     const evidence = await this.readEvidence(result.evidenceId)
-    if (evidence.staging?.applyJournalDigest !== binding.digest) {
+    const journalDigest = evidence.staging?.applyJournalDigest
+    if (!journalDigest || (binding && journalDigest !== binding.digest)) {
       throw new Error("Committed evidence does not match the retained local apply journal")
     }
-    await binding.stagingService.disposeJournal(binding.path, binding.digest)
-    await this.stageRegistry.complete(managedRunId)
-    binding.disposed = true
+    await this.stageRegistry.disposeRetainedJournal(managedRunId, journalDigest as `sha256:${string}`)
+    if (binding) binding.disposed = true
   }
 
   hasJournal(managedRunId: string): boolean {
@@ -2911,6 +3352,15 @@ class ManagedExecutionReviewHandle implements ManagedExecutionReview {
       this.runtimeCompletion.workflow = this.persisted.evidence.workflow
       this.service.syncPendingReview(this)
       return this
+    } catch (error) {
+      const durable = await this.service.readCurrentArtifacts(this.persisted.record.id).catch(() => undefined)
+      if (durable?.record.state === "discarded") {
+        this.persisted = durable
+        this.runtimeCompletion.workflow = durable.evidence.workflow
+        this.service.syncPendingReview(this)
+        return this
+      }
+      throw error
     } finally {
       this.operationInProgress = false
     }
