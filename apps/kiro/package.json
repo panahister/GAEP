@@ -39,6 +39,7 @@
     "onCommand:gaepKiro.runs.managedReadOnly",
     "onCommand:gaepKiro.runs.evidence",
     "onCommand:gaepKiro.runs.stagedReview",
+    "onCommand:gaepKiro.dashboard.phase",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -84,6 +85,10 @@
       {
         "command": "gaepKiro.runs.stagedReview",
         "title": "GAEP for Kiro: Review Pending Staged Managed Run"
+      },
+      {
+        "command": "gaepKiro.dashboard.phase",
+        "title": "GAEP for Kiro: Show Phase Dashboard Framework"
       },
       {
         "command": "gaepKiro.portableDesign.import",

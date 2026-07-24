@@ -9,6 +9,40 @@ export const maximumPageSize = 200
 export const defaultPageSize = 100
 export const maximumSafeProductRevision = Number.MAX_SAFE_INTEGER
 
+export const deliveryPhaseIds = [
+  "phase-0-1a-foundation",
+  "phase-1b-product",
+  "phase-1c-acceptance",
+  "phase-2-design",
+  "phase-3a-readiness",
+  "phase-3b-implementation",
+  "phase-4-release-learning",
+] as const
+
+export type DeliveryPhaseId = typeof deliveryPhaseIds[number]
+
+const deliveryPhaseCatalog = {
+  "phase-0-1a-foundation": ["Phase 0 / 1A — Four-IDE Platform Foundation", "foundation-summary"],
+  "phase-1b-product": ["Phase 1B — Product P0–P4", "product-architecture"],
+  "phase-1c-acceptance": ["Phase 1C — Four-IDE Phase 1 Release", "phase-release-readiness"],
+  "phase-2-design": ["Phase 2 — UX and Figma Loop", "ux-figma"],
+  "phase-3a-readiness": ["Phase 3A — Backlog and Implementation Readiness", "backlog-readiness"],
+  "phase-3b-implementation": ["Phase 3B — Controlled Implementation and QA", "implementation-qa"],
+  "phase-4-release-learning": ["Phase 4 — Release, Publish, and Learning", "release-learning"],
+} as const satisfies Record<DeliveryPhaseId, readonly [string, string]>
+
+const phaseDashboardPanelCatalog = {
+  "foundation-summary": ["phase", "Foundation summary and readiness"],
+  "product-architecture": ["phase", "Product and architecture"],
+  "phase-release-readiness": ["phase", "Phase release readiness"],
+  "ux-figma": ["phase", "UX and Figma"],
+  "backlog-readiness": ["phase", "Backlog and implementation readiness"],
+  "implementation-qa": ["phase", "Controlled implementation and QA"],
+  "release-learning": ["phase", "Release and learning"],
+  "change-impact": ["change-impact", "Change and impact"],
+  "agent-model": ["agent-model", "Agent and model"],
+} as const
+
 const maximumJsonDepth = 64
 const maximumJsonCollectionEntries = 512
 const summaryKind = "portable-design-snapshot-summary"
@@ -106,6 +140,33 @@ export interface ProductBinding {
   readonly id: string
   readonly name: string
   readonly revision: number
+  readonly digest: string
+}
+
+export interface PhaseDashboardPanel {
+  readonly id: keyof typeof phaseDashboardPanelCatalog
+  readonly role: "phase" | "change-impact" | "agent-model"
+  readonly title: string
+  readonly applicability: {
+    readonly status: "applicable" | "not-applicable" | "unknown"
+    readonly basis: "phase-contract" | "governed-decision" | "not-evaluated"
+    readonly decision?: { readonly recordType: "decision"; readonly recordId: string; readonly revision: number; readonly digest: string }
+  }
+  readonly state: "active" | "not-applicable" | "attention-required"
+}
+
+export interface PhaseDashboardFramework {
+  readonly schemaVersion: 1
+  readonly kind: "phase-dashboard-framework"
+  readonly catalogVersion: "gaep-phase-dashboards-v1"
+  readonly product: { readonly recordType: "product"; readonly recordId: string; readonly revision: number; readonly digest: string }
+  readonly phase: { readonly id: DeliveryPhaseId; readonly label: string }
+  readonly panels: readonly PhaseDashboardPanel[]
+  readonly observedAt: string
+  readonly sourceBoundary: "governed-repository-and-engine-only"
+  readonly limitations: readonly string[]
+  readonly authorityBoundary: "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"
+  readonly compositionDigest: string
 }
 
 export type AgentTruthClass = "observed" | "provider-declared" | "configured" | "inferred" | "unknown"
@@ -728,7 +789,72 @@ export function parseProductBinding(result: unknown): ProductBinding {
   if (!name.trim() || name !== name.trim() || name.length > 240 || containsControl(name)) throw invalidHostResponse()
   const revision = Object.hasOwn(product, "revision") ? requireSafeInteger(product, "revision") : 1
   validateProductRevision(revision)
-  return Object.freeze({ id, name, revision })
+  return Object.freeze({ id, name, revision, digest: canonicalDigest(product) })
+}
+
+export function normalizeDeliveryPhaseId(value: unknown): DeliveryPhaseId {
+  if (typeof value !== "string" || !deliveryPhaseIds.includes(value as DeliveryPhaseId)) {
+    throw new TypeError("Delivery phase is not supported by this GAEP client")
+  }
+  return value as DeliveryPhaseId
+}
+
+export function parsePhaseDashboardFramework(
+  result: unknown,
+  expected: { readonly phase: DeliveryPhaseId; readonly product: ProductBinding },
+): PhaseDashboardFramework {
+  const framework = requireRecord(result)
+  requireExactKeys(framework, [
+    "schemaVersion", "kind", "catalogVersion", "product", "phase", "panels", "observedAt", "sourceBoundary",
+    "limitations", "authorityBoundary", "compositionDigest",
+  ])
+  if (requireSafeInteger(framework, "schemaVersion") !== 1 ||
+      requireString(framework, "kind") !== "phase-dashboard-framework" ||
+      requireString(framework, "catalogVersion") !== "gaep-phase-dashboards-v1" ||
+      requireString(framework, "sourceBoundary") !== "governed-repository-and-engine-only" ||
+      requireString(framework, "authorityBoundary") !== "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence") {
+    throw invalidHostResponse()
+  }
+  const product = requireRecord(framework.product)
+  requireExactKeys(product, ["recordType", "recordId", "revision", "digest"])
+  const productBinding = Object.freeze({
+    recordType: "product" as const,
+    recordId: normalizeUuid(requireString(product, "recordId"), "Dashboard Product ID"),
+    revision: validateProductRevision(requireSafeInteger(product, "revision")),
+    digest: requireDigest(product, "digest"),
+  })
+  if (requireString(product, "recordType") !== "product" || productBinding.recordId !== expected.product.id ||
+      productBinding.revision !== expected.product.revision || productBinding.digest !== expected.product.digest) {
+    throw invalidHostResponse()
+  }
+  const phase = requireRecord(framework.phase)
+  requireExactKeys(phase, ["id", "label"])
+  const phaseId = requireEnum(phase, "id", deliveryPhaseIds)
+  const definition = deliveryPhaseCatalog[phaseId]
+  if (phaseId !== expected.phase || requireString(phase, "label") !== definition[0]) throw invalidHostResponse()
+  if (!Array.isArray(framework.panels) || framework.panels.length !== 3) throw invalidHostResponse()
+  const expectedPanelIds = [definition[1], "change-impact", "agent-model"] as const
+  const panels = Object.freeze(framework.panels.map((value, index) =>
+    parsePhaseDashboardPanel(value, expectedPanelIds[index]!)))
+  if (!Array.isArray(framework.limitations) || framework.limitations.length < 1 || framework.limitations.length > 8) {
+    throw invalidHostResponse()
+  }
+  const limitations = Object.freeze(framework.limitations.map((value) => portableText(value, 4, 1_000)))
+  const content = Object.freeze({
+    schemaVersion: 1 as const,
+    kind: "phase-dashboard-framework" as const,
+    catalogVersion: "gaep-phase-dashboards-v1" as const,
+    product: productBinding,
+    phase: Object.freeze({ id: phaseId, label: definition[0] }),
+    panels,
+    observedAt: requireTimestamp(framework, "observedAt"),
+    sourceBoundary: "governed-repository-and-engine-only" as const,
+    limitations,
+    authorityBoundary: "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence" as const,
+  })
+  const compositionDigest = requireDigest(framework, "compositionDigest")
+  if (compositionDigest !== canonicalDigest(content)) throw invalidHostResponse()
+  return Object.freeze({ ...content, compositionDigest })
 }
 
 export function parseAgentReadiness(result: unknown): readonly AgentReadinessSnapshot[] {
@@ -1563,6 +1689,46 @@ function parseManagedReadOnlyGate(value: unknown, stepIds: ReadonlySet<string>):
     phase,
     criteria,
     criteriaDigest,
+  })
+}
+
+function parsePhaseDashboardPanel(value: unknown, expectedId: keyof typeof phaseDashboardPanelCatalog): PhaseDashboardPanel {
+  const panel = requireRecord(value)
+  requireExactKeys(panel, ["id", "role", "title", "applicability", "state"])
+  const definition = phaseDashboardPanelCatalog[expectedId]
+  if (requireString(panel, "id") !== expectedId || requireString(panel, "role") !== definition[0] ||
+      requireString(panel, "title") !== definition[1]) throw invalidHostResponse()
+  const applicability = requireRecord(panel.applicability)
+  requireKeys(applicability, ["status", "basis"], ["decision"])
+  const status = requireEnum(applicability, "status", ["applicable", "not-applicable", "unknown"] as const)
+  const basis = requireEnum(applicability, "basis", ["phase-contract", "governed-decision", "not-evaluated"] as const)
+  const decision = Object.hasOwn(applicability, "decision")
+    ? parsePhaseDashboardDecision(applicability.decision)
+    : undefined
+  if ((basis === "phase-contract" && (status !== "applicable" || decision)) ||
+      (basis === "not-evaluated" && (status !== "unknown" || decision)) ||
+      (basis === "governed-decision" && (status === "unknown" || !decision))) throw invalidHostResponse()
+  const state = requireEnum(panel, "state", ["active", "not-applicable", "attention-required"] as const)
+  const expectedState = status === "applicable" ? "active" : status === "not-applicable" ? "not-applicable" : "attention-required"
+  if (state !== expectedState) throw invalidHostResponse()
+  return Object.freeze({
+    id: expectedId,
+    role: definition[0],
+    title: definition[1],
+    applicability: Object.freeze({ status, basis, ...(decision ? { decision } : {}) }),
+    state,
+  })
+}
+
+function parsePhaseDashboardDecision(value: unknown): NonNullable<PhaseDashboardPanel["applicability"]["decision"]> {
+  const decision = requireRecord(value)
+  requireExactKeys(decision, ["recordType", "recordId", "revision", "digest"])
+  if (requireString(decision, "recordType") !== "decision") throw invalidHostResponse()
+  return Object.freeze({
+    recordType: "decision",
+    recordId: normalizeUuid(requireString(decision, "recordId"), "Dashboard applicability decision ID"),
+    revision: validateProductRevision(requireSafeInteger(decision, "revision")),
+    digest: requireDigest(decision, "digest"),
   })
 }
 

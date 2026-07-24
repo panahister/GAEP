@@ -14,6 +14,7 @@ import {
   invalidUtf8,
   maximumFrameBytes,
   normalizeActorId,
+  normalizeDeliveryPhaseId,
   normalizeExistingLocalFolder,
   normalizeUuid,
   parseAgentReadiness,
@@ -28,6 +29,7 @@ import {
   parseAgentSelection,
   parseAgentSelectionState,
   parseHostResult,
+  parsePhaseDashboardFramework,
   parsePageResult,
   parsePortableSelectionSettings,
   parseProductBinding,
@@ -51,6 +53,8 @@ import {
   type ManagedReviewPreview,
   type ManagedReviewTransition,
   type PortableAgentSettingValue,
+  type DeliveryPhaseId,
+  type PhaseDashboardFramework,
 } from "./protocol.js"
 
 export interface EngineClientOptions {
@@ -132,6 +136,23 @@ export class GaepEngineClient {
 
   readProduct(): Promise<ProductBinding> {
     return this.enqueue(async () => parseProductBinding(await this.request("readProduct", {})))
+  }
+
+  readPhaseDashboard(product: ProductBinding, phaseValue: DeliveryPhaseId): Promise<PhaseDashboardFramework> {
+    return this.enqueue(async () => {
+      const phase = normalizeDeliveryPhaseId(phaseValue)
+      const productId = normalizeUuid(product.id, "Product ID")
+      const productRevision = validateProductRevision(product.revision)
+      const productDigest = product.digest.trim().toLowerCase()
+      if (!/^sha256:[0-9a-f]{64}$/u.test(productDigest)) throw new TypeError("Product digest must be SHA-256")
+      const expected = { phase, product: { ...product, id: productId, revision: productRevision, digest: productDigest } }
+      return parsePhaseDashboardFramework(await this.request("dashboard.framework", {
+        phase,
+        expectedProductId: productId,
+        expectedProductRevision: productRevision,
+        expectedProductDigest: productDigest,
+      }), expected)
+    })
   }
 
   probeAgentReadiness(): Promise<readonly AgentReadinessSnapshot[]> {

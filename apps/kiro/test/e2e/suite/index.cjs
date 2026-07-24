@@ -14,6 +14,7 @@ const commands = [
   "gaepKiro.runs.managedReadOnly",
   "gaepKiro.runs.evidence",
   "gaepKiro.runs.stagedReview",
+  "gaepKiro.dashboard.phase",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",
@@ -69,7 +70,7 @@ async function run() {
   await vscode.commands.executeCommand("notifications.clearAll")
   await evidenceRequest
   await assert.rejects(access(path.join(workspace, ".gaep")), (error) => error?.code === "ENOENT")
-  process.stdout.write(`PASS activation: ten bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, empty audit-gated evidence workflow, and no workspace mutation\n`)
+  process.stdout.write(`PASS activation: eleven bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, empty audit-gated evidence workflow, and no workspace mutation\n`)
 }
 
 function productStudioTab() {

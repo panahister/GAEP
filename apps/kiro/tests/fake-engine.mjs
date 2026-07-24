@@ -40,12 +40,9 @@ input.on("line", (line) => {
   switch (request.method) {
     case "readProduct":
       if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
-      return writeResult(id, {
-        id: productId,
-        name: "Example Product",
-        revision: 7,
-        providerState: privateCredential,
-      })
+      return writeResult(id, productRecord())
+    case "dashboard.framework":
+      return readPhaseDashboard(id, request.params)
     case "probeAgents":
       if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
       return writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
@@ -89,6 +86,70 @@ input.on("line", (line) => {
       return writeError(id, -32_601, "METHOD_NOT_FOUND", "PRIVATE METHOD")
   }
 })
+
+function productRecord() {
+  return {
+    id: productId,
+    name: "Example Product",
+    revision: 7,
+    providerState: privateCredential,
+  }
+}
+
+function readPhaseDashboard(id, params) {
+  const productDigest = canonicalDigest(productRecord())
+  if (!exactKeys(params, ["phase", "expectedProductId", "expectedProductRevision", "expectedProductDigest"]) ||
+      params.phase !== "phase-0-1a-foundation" || params.expectedProductId !== productId ||
+      params.expectedProductRevision !== 7 || params.expectedProductDigest !== productDigest) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DASHBOARD PARAMS")
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "phase-dashboard-framework",
+    catalogVersion: "gaep-phase-dashboards-v1",
+    product: { recordType: "product", recordId: productId, revision: 7, digest: productDigest },
+    phase: { id: "phase-0-1a-foundation", label: "Phase 0 / 1A — Four-IDE Platform Foundation" },
+    panels: [
+      {
+        id: "foundation-summary",
+        role: "phase",
+        title: "Foundation summary and readiness",
+        applicability: { status: "unknown", basis: "not-evaluated" },
+        state: "attention-required",
+      },
+      {
+        id: "change-impact",
+        role: "change-impact",
+        title: "Change and impact",
+        applicability: { status: "applicable", basis: "phase-contract" },
+        state: "active",
+      },
+      {
+        id: "agent-model",
+        role: "agent-model",
+        title: "Agent and model",
+        applicability: { status: "applicable", basis: "phase-contract" },
+        state: "active",
+      },
+    ],
+    observedAt: "2026-07-24T12:00:00.000Z",
+    sourceBoundary: "governed-repository-and-engine-only",
+    limitations: [
+      "The selected phase scopes presentation only; it does not prove phase entry, completion, acceptance, or release readiness.",
+      "The phase dashboard remains attention-required until a governed applicability decision is bound.",
+    ],
+    authorityBoundary: "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
+  }
+  if (workspacePath.endsWith("bad-dashboard-binding")) content.product.digest = `sha256:${"0".repeat(64)}`
+  if (workspacePath.endsWith("bad-dashboard-applicability")) {
+    content.panels[0].applicability = { status: "applicable", basis: "not-evaluated" }
+    content.panels[0].state = "active"
+  }
+  const value = { ...content, compositionDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-dashboard-digest")) value.panels[0].title = "Forged dashboard title"
+  if (workspacePath.endsWith("bad-dashboard-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
 
 function selectAgent(id, params) {
   if (!exactKeys(params, ["adapterId", "modelId", "settings", "actorId"]) ||

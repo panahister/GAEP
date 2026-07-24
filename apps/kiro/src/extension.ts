@@ -24,6 +24,7 @@ import {
   type PortableAgentSettingValue,
   type PortableDesignSnapshotPage,
   type PortableDesignSnapshotSummary,
+  type PhaseDashboardFramework,
   type ProductBinding,
 } from "./protocol.js"
 
@@ -38,6 +39,7 @@ const commandIds = {
   managedReadOnly: "gaepKiro.runs.managedReadOnly",
   evidence: "gaepKiro.runs.evidence",
   stagedReview: "gaepKiro.runs.stagedReview",
+  dashboard: "gaepKiro.dashboard.phase",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -120,6 +122,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.managedReadOnly, () => runUserCommand(() => runManagedReadOnly(pool))),
     vscode.commands.registerCommand(commandIds.evidence, () => runUserCommand(() => showManagedEvidenceDashboard(pool))),
     vscode.commands.registerCommand(commandIds.stagedReview, () => runUserCommand(() => reviewManagedStagedChanges(pool))),
+    vscode.commands.registerCommand(commandIds.dashboard, () => runUserCommand(() => showPhaseDashboard(pool))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -192,6 +195,7 @@ function productStudioHtml(): string {
     <p>Use the Kiro Command Palette to observe verified local readiness, record one guarded portable Agent Selection, or create a versioned switch handoff from the latest terminal Run.</p>
     <p>Selection and handoff records are configuration and history only. The separate managed read-only command can run one exact, already-confirmed Charter and Workflow Plan after a digest-bound human attestation. It denies every Tool, write, and non-observation effect, uses a bounded timeout, and withholds success if staged changes appear.</p>
     <p>The Managed Run evidence command shows an audit-gated, snapshot-bound page of at most 100 runs and one exact verified detail. It displays portable states, counts, digests and timestamps only; it cannot apply, discard, resume, approve, or infer success.</p>
+    <p>The phase-dashboard command shows the exact Phase 0/1A slice plus required Change/Impact and Agent/Model views. Phase applicability remains attention-required until a governed decision exists; the projection cannot approve or complete a phase.</p>
     <p>The separate staged-review command can inspect one exact pending Codex inventory of at most 512 workspace-relative changed paths and then, only after a cancel-default digest-bound human decision, ask the engine to apply that inventory or persist discard. It receives no source bytes or general filesystem-write authority. Post-apply Workflow gates are recorded not assessed, so this surface cannot claim governed outcome satisfaction.</p>
   </section>
   <section>
@@ -646,6 +650,34 @@ async function showManagedEvidenceDashboard(pool: EngineClientPool): Promise<Man
     await showManagedEvidenceDetail(await client.readManagedEvidence(selected.managedRunId!))
     return page
   }
+}
+
+async function showPhaseDashboard(pool: EngineClientPool): Promise<PhaseDashboardFramework> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const product = await client.readProduct()
+  const dashboard = await client.readPhaseDashboard(product, "phase-0-1a-foundation")
+  const lines = [
+    "GAEP phase-scoped dashboard framework",
+    "",
+    `Delivery phase: ${dashboard.phase.label}`,
+    `Exact Product revision: ${dashboard.product.revision}`,
+    `Product digest: ${dashboard.product.digest}`,
+    `Composition digest: ${dashboard.compositionDigest}`,
+    `Observed: ${dashboard.observedAt}`,
+    "",
+    ...dashboard.panels.map((panel) =>
+      `${panel.title} · ${panel.role} · applicability=${panel.applicability.status} (${panel.applicability.basis}) · state=${panel.state}`),
+    "",
+    ...dashboard.limitations.map((limitation) => `Limit: ${limitation}`),
+    "",
+    "Boundary: this is a read-only governed-state projection. It grants no mutation, applicability, phase-entry, approval, readiness, acceptance, release, Run, Tool, or effect authority.",
+    "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return dashboard
 }
 
 async function showManagedEvidencePage(page: ManagedRunSummaryPage): Promise<void> {

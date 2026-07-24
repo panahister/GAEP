@@ -57,7 +57,13 @@ test("package-local engine mode binds the exact module digest and launches throu
     },
   })
   try {
-    assert.deepEqual(await client.readProduct(), { id: productId, name: "Example Product", revision: 7 })
+    const product = await client.readProduct()
+    assert.deepEqual({ id: product.id, name: product.name, revision: product.revision }, {
+      id: productId,
+      name: "Example Product",
+      revision: 7,
+    })
+    assert.match(product.digest, /^sha256:[0-9a-f]{64}$/u)
   } finally {
     await client.dispose()
     await rm(root, { recursive: true, force: true })
@@ -122,6 +128,10 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badManagedTransitionDigestRoot = join(root, "bad-managed-transition-digest")
   const badManagedTransitionPrivateRoot = join(root, "bad-managed-transition-private")
   const staleManagedReviewRoot = join(root, "stale-managed-review")
+  const badDashboardBindingRoot = join(root, "bad-dashboard-binding")
+  const badDashboardApplicabilityRoot = join(root, "bad-dashboard-applicability")
+  const badDashboardDigestRoot = join(root, "bad-dashboard-digest")
+  const badDashboardPrivateRoot = join(root, "bad-dashboard-private")
   await Promise.all([
     workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot, badRunsRoot, badHandoffRoot,
     badHandoffBindingRoot, badManagedPreviewRoot, badManagedCriterionRoot, badManagedDigestRoot, badManagedReceiptRoot,
@@ -129,7 +139,8 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     badManagedEvidenceTotalRoot,
     badManagedEvidenceDetailRoot, badManagedEvidenceBindingRoot, discardManagedReviewRoot, badManagedReviewDigestRoot,
     badManagedReviewPrivateRoot, badManagedReviewBindingRoot, badManagedReviewPathRoot, badManagedTransitionDigestRoot,
-    badManagedTransitionPrivateRoot, staleManagedReviewRoot,
+    badManagedTransitionPrivateRoot, staleManagedReviewRoot, badDashboardBindingRoot, badDashboardApplicabilityRoot,
+    badDashboardDigestRoot, badDashboardPrivateRoot,
   ].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
@@ -143,8 +154,45 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   })
   try {
     const product = await client.readProduct()
-    assert.deepEqual(product, { id: productId, name: "Example Product", revision: 7 })
+    assert.deepEqual({ id: product.id, name: product.name, revision: product.revision }, {
+      id: productId,
+      name: "Example Product",
+      revision: 7,
+    })
+    assert.match(product.digest, /^sha256:[0-9a-f]{64}$/u)
     assert.equal(JSON.stringify(product).includes(privateCredential), false)
+
+    const dashboard = await client.readPhaseDashboard(product, "phase-0-1a-foundation")
+    assert.equal(dashboard.phase.id, "phase-0-1a-foundation")
+    assert.deepEqual(dashboard.panels.map((panel) => panel.id), ["foundation-summary", "change-impact", "agent-model"])
+    assert.deepEqual(dashboard.panels.map((panel) => panel.state), ["attention-required", "active", "active"])
+    assert.equal(dashboard.product.digest, product.digest)
+    assert.equal(JSON.stringify(dashboard).includes("Example Product"), false)
+    assert.equal(JSON.stringify(dashboard).includes(privateRoot), false)
+    assert.equal(JSON.stringify(dashboard).includes(privateCredential), false)
+
+    for (const workspacePath of [
+      badDashboardBindingRoot, badDashboardApplicabilityRoot, badDashboardDigestRoot, badDashboardPrivateRoot,
+    ]) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        const hostileProduct = await hostileClient.readProduct()
+        await assert.rejects(
+          () => hostileClient.readPhaseDashboard(hostileProduct, "phase-0-1a-foundation"),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
+    await assert.rejects(
+      () => client.readPhaseDashboard({ ...product, digest: "sha256:not-a-digest" }, "phase-0-1a-foundation"),
+      TypeError,
+    )
 
     const readiness = await client.probeAgentReadiness()
     assert.deepEqual(readiness.map((agent) => agent.agentId), ["claude-code", "codex"])
