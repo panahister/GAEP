@@ -57,6 +57,13 @@ for (const binding of [
   "BundlePath",
   "RefreshProductCommand",
   "RefreshAgentReadinessCommand",
+  "LoadAgentSelectionCommand",
+  "SelectAgentCommand",
+  "AvailableAgentChoices",
+  "SelectedAgentChoice",
+  "AvailableModelIds",
+  "SelectedModelId",
+  "AgentSettingInputs",
   "ListDesignImportsCommand",
   "ReadDesignImportCommand",
   "ImportDesignBundleCommand",
@@ -69,6 +76,8 @@ for (const binding of [
 }
 requireText(remoteUi, /Import local bundle as pending review/u,
   "Visual Studio import action does not communicate its pending-review boundary")
+requireText(remoteUi, /Confirm guarded selection/u,
+  "Visual Studio selection action does not communicate its guarded confirmation boundary")
 
 if (process.platform === "win32") {
   await regularFile(join(output, "Gaep.VisualStudio.vsix"), 128 * 1024 * 1024)

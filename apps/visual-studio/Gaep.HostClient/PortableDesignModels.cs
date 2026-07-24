@@ -33,6 +33,58 @@ public sealed record AgentModelReadiness(
     string TruthClass,
     bool Alias);
 
+public abstract record PortableAgentSettingValue;
+
+public sealed record PortableAgentText(string Value) : PortableAgentSettingValue;
+
+public sealed record PortableAgentNumber(double Value) : PortableAgentSettingValue;
+
+public sealed record PortableAgentBoolean(bool Value) : PortableAgentSettingValue;
+
+public sealed record PortableAgentTextList(IReadOnlyList<string> Value) : PortableAgentSettingValue;
+
+public sealed record AgentSettingOption(
+    string Value,
+    string Label,
+    string? Description);
+
+public sealed record AgentSelectionSetting(
+    string Key,
+    string Label,
+    string Description,
+    string Kind,
+    bool Required,
+    bool Sensitive,
+    PortableAgentSettingValue? DefaultValue,
+    IReadOnlyList<AgentSettingOption>? Options,
+    double? Minimum,
+    double? Maximum,
+    string TruthClass);
+
+public sealed record AgentSelection(
+    int SchemaVersion,
+    string AdapterId,
+    string AgentId,
+    string ModelId,
+    string ModelTruthClass,
+    bool? ModelAlias,
+    IReadOnlyDictionary<string, PortableAgentSettingValue> Settings,
+    DateTimeOffset SelectedAt,
+    string CapabilityDigest);
+
+public enum AgentSelectionStatus
+{
+    Unselected,
+    Selected,
+    MigrationRequired,
+    Invalid,
+}
+
+public sealed record AgentSelectionState(
+    AgentSelectionStatus Status,
+    AgentSelection? Selection,
+    AgentSelection? PortableCandidate);
+
 public sealed record AgentReadinessSnapshot(
     int SchemaVersion,
     string AdapterId,
@@ -49,6 +101,7 @@ public sealed record AgentReadinessSnapshot(
     bool SupportsModelDiscovery,
     bool SupportsToolSelection,
     int SettingsCount,
+    IReadOnlyList<AgentSelectionSetting> Settings,
     IReadOnlyList<AgentModelReadiness> Models,
     IReadOnlyList<string> Limitations,
     DateTimeOffset ObservedAt);

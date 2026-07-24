@@ -25,6 +25,38 @@
                 Command="{Binding RefreshAgentReadinessCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
+        <TextBlock Text="Guarded Agent Selection" FontWeight="SemiBold" />
+        <TextBlock Text="Load verified local choices, review only non-sensitive portable settings, then confirm. Selection does not start a provider or grant Run, tool, or effect authority."
+                   TextWrapping="Wrap" Margin="0,4,0,8" />
+        <Button x:Name="LoadAgentSelectionButton" Content="Load guarded selection options"
+                Command="{Binding LoadAgentSelectionCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <TextBlock Text="Verified agent adapter" />
+        <ComboBox ItemsSource="{Binding AvailableAgentChoices}"
+                  SelectedItem="{Binding SelectedAgentChoice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Model ID" />
+        <ComboBox ItemsSource="{Binding AvailableModelIds}"
+                  Text="{Binding SelectedModelId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  IsEditable="True" MinHeight="26" Margin="0,4,0,6" />
+        <ItemsControl ItemsSource="{Binding AgentSettingInputs}" Margin="0,0,0,6">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="0,4,0,4">
+                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding InputHint}" TextWrapping="Wrap" FontStyle="Italic" />
+                <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         MinHeight="26" Margin="0,4,0,0"
+                         Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button x:Name="SelectAgentButton" Content="Confirm guarded selection"
+                Command="{Binding SelectAgentCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
         <TextBlock Text="Portable design metadata" FontWeight="SemiBold" />
         <Button x:Name="ListDesignImportsButton" Content="List design imports"
                 Command="{Binding ListDesignImportsCommand}" MinHeight="28" Margin="0,4,0,8"
@@ -56,6 +88,8 @@
     <DataTrigger Binding="{Binding Busy}" Value="True">
       <Setter TargetName="RefreshProductButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="RefreshAgentReadinessButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="LoadAgentSelectionButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="SelectAgentButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ListDesignImportsButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ReadDesignImportButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ImportDesignBundleButton" Property="IsEnabled" Value="False" />

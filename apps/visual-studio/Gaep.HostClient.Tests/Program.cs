@@ -50,9 +50,11 @@ internal static class Program
         var bundleRoot = Path.Combine(temporaryRoot, "portable-bundle");
         var invalidSourceRoot = Path.Combine(temporaryRoot, "source-error");
         var badReadinessRoot = Path.Combine(temporaryRoot, "bad-readiness");
+        var badSelectionRoot = Path.Combine(temporaryRoot, "bad-selection");
         Directory.CreateDirectory(bundleRoot);
         Directory.CreateDirectory(invalidSourceRoot);
         Directory.CreateDirectory(badReadinessRoot);
+        Directory.CreateDirectory(badSelectionRoot);
         var executable = Environment.ProcessPath;
         Check(executable is not null && File.Exists(executable), "Test app host executable is available");
 
@@ -67,8 +69,9 @@ internal static class Program
         Check(readiness.Select(snapshot => snapshot.AgentId).SequenceEqual(["claude-code", "codex"]),
             "Typed readiness returns deterministic Codex and Claude observations");
         Check(!readiness[0].Detected && readiness[1].Models.Single().Id == "gpt-5.6-codex" &&
-              readiness[1].SettingsCount == 1,
-            "Typed readiness projects observed availability, models, and a settings count");
+              readiness[1].SettingsCount == 1 && readiness[1].Settings.Single().Key == "reasoningEffort" &&
+              readiness[1].Settings.Single().Kind == "select" && !readiness[1].Settings.Single().Sensitive,
+            "Typed readiness projects observed availability, models, and portable setting descriptors");
         var readinessProperties = typeof(AgentReadinessSnapshot).GetProperties().Select(property => property.Name).ToHashSet();
         Check(!readinessProperties.Overlaps(["Executable", "ExecutablePath", "Path", "Token", "Credentials", "DefaultValue"]),
             "Public readiness type excludes executable paths, credentials, tokens, and setting defaults");
@@ -77,6 +80,58 @@ internal static class Program
               !readinessJson.Contains(PrivateCredential, StringComparison.Ordinal),
             "Typed readiness omits private paths and credentials");
 
+        var initialSelection = await client.ReadAgentSelectionAsync();
+        Check(initialSelection.Status == AgentSelectionStatus.Unselected && initialSelection.Selection is null,
+            "Typed selection state starts explicitly unselected");
+        var controller = new ProductWorkflowController(client);
+        var selectionContext = await controller.ReadAgentSelectionContextAsync();
+        Check(selectionContext.Available.Select(snapshot => snapshot.AgentId).SequenceEqual(["codex"]),
+            "Selection context exposes detected executable adapters only");
+        var selectionSettings = ProductWorkflowController.BuildAgentSelectionSettings(
+            selectionContext.Available.Single(),
+            new Dictionary<string, string> { ["reasoningEffort"] = "high" });
+        var selectionOutput = await controller.SelectAgentAsync(
+            "openai-codex",
+            "gpt-5.6-codex",
+            selectionSettings,
+            "founder.review");
+        Check(selectionOutput.Contains("GAEP guarded Agent Selection", StringComparison.Ordinal) &&
+              selectionOutput.Contains("codex", StringComparison.Ordinal) &&
+              selectionOutput.Contains("gpt-5.6-codex", StringComparison.Ordinal) &&
+              selectionOutput.Contains("does not start a provider", StringComparison.Ordinal) &&
+              !selectionOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !selectionOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Selection workflow renders path-free non-executing portable state");
+        var selectedState = await client.ReadAgentSelectionAsync();
+        Check(selectedState.Status == AgentSelectionStatus.Selected &&
+              selectedState.Selection?.AdapterId == "openai-codex" &&
+              selectedState.Selection.Settings["reasoningEffort"] == new PortableAgentText("high"),
+            "Typed selection read returns the exact persisted portable state");
+        var selectionJson = JsonSerializer.Serialize(selectedState);
+        Check(!selectionJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !selectionJson.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Typed Agent Selection excludes private paths and credentials");
+        var selectionProperties = typeof(AgentSelection).GetProperties().Select(property => property.Name).ToHashSet();
+        Check(!selectionProperties.Overlaps(["Executable", "ExecutablePath", "Path", "Token", "Credentials"]),
+            "Public Agent Selection has no machine-local runtime or credential fields");
+        await ExpectAsync<ArgumentException>(
+            () => client.SelectAgentAsync(
+                "openai-codex",
+                "gpt-5.6-codex",
+                new Dictionary<string, PortableAgentSettingValue> { ["apiKey"] = new PortableAgentText("private") },
+                "founder.review"),
+            "Secret-bearing setting keys fail before transport");
+        await ExpectAsync<ArgumentException>(
+            () => client.SelectAgentAsync(
+                "openai-codex",
+                "gpt-5.6-codex",
+                new Dictionary<string, PortableAgentSettingValue>
+                {
+                    ["reasoningEffort"] = new PortableAgentText("/Users/private/config"),
+                },
+                "founder.review"),
+            "Path-bearing setting values fail before transport");
+
         await using (var badReadinessClient = new EngineClient(badReadinessRoot, executable))
         {
             var invalidReadiness = await CaptureHostErrorAsync(() => badReadinessClient.ProbeAgentReadinessAsync());
@@ -84,6 +139,15 @@ internal static class Program
                   !invalidReadiness.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
                   !invalidReadiness.Message.Contains(PrivateCredential, StringComparison.Ordinal),
                 "Readiness rejects an unexpected private executable path without reflecting it");
+        }
+
+        await using (var badSelectionClient = new EngineClient(badSelectionRoot, executable))
+        {
+            var invalidSelection = await CaptureHostErrorAsync(() => badSelectionClient.ReadAgentSelectionAsync());
+            Check(invalidSelection.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidSelection.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidSelection.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Selection state rejects an unexpected private executable path without reflecting it");
         }
         var imported = await client.ImportPortableDesignSnapshotAsync(
             bundleRoot,
@@ -130,7 +194,6 @@ internal static class Program
         var read = await client.ReadPortableDesignSnapshotAsync(BundleId);
         Check(read == imported, "Exact read returns the requested bundle metadata");
 
-        var controller = new ProductWorkflowController(client);
         var productOutput = await controller.ReadProductAsync();
         Check(productOutput.Contains("Product: Founder Product", StringComparison.Ordinal) &&
               productOutput.Contains($"Product ID: {ProductId:D}", StringComparison.Ordinal) &&
@@ -278,6 +341,8 @@ internal static class Program
         var productReadCount = 0;
         var changeProductContext = Path.GetFileName(workspace) == "product-change";
         var badReadiness = Path.GetFileName(workspace) == "bad-readiness";
+        var badSelection = Path.GetFileName(workspace) == "bad-selection";
+        Dictionary<string, object?>? selectedAgent = null;
         while (await Console.In.ReadLineAsync() is { } line)
         {
             using var request = JsonDocument.Parse(line);
@@ -307,6 +372,35 @@ internal static class Program
                 case "probeAgents":
                     await HandleProbeAgentsAsync(id, parameters, badReadiness);
                     break;
+                case "readAgentSelection":
+                    if (!HasOnlyProperties(parameters))
+                    {
+                        await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID SELECTION READ");
+                    }
+                    else if (badSelection)
+                    {
+                        var hostile = AgentSelection();
+                        hostile["runtimeExecutable"] = $"{PrivateRoot}/{PrivateCredential}";
+                        await WriteResultAsync(id, new Dictionary<string, object?>
+                        {
+                            ["status"] = "selected",
+                            ["selection"] = hostile,
+                        });
+                    }
+                    else
+                    {
+                        await WriteResultAsync(id, selectedAgent is null
+                            ? new Dictionary<string, object?> { ["status"] = "unselected" }
+                            : new Dictionary<string, object?>
+                            {
+                                ["status"] = "selected",
+                                ["selection"] = selectedAgent,
+                            });
+                    }
+                    break;
+                case "selectAgent":
+                    selectedAgent = await HandleSelectAgentAsync(id, parameters);
+                    break;
                 case "productStudio.portableDesign.import":
                     await HandleImportAsync(id, parameters);
                     break;
@@ -322,6 +416,36 @@ internal static class Program
             }
         }
     }
+
+    private static async Task<Dictionary<string, object?>?> HandleSelectAgentAsync(long id, JsonElement parameters)
+    {
+        if (!HasOnlyProperties(parameters, "adapterId", "modelId", "settings", "actorId") ||
+            parameters.GetProperty("adapterId").GetString() != "openai-codex" ||
+            parameters.GetProperty("modelId").GetString() != "gpt-5.6-codex" ||
+            parameters.GetProperty("actorId").GetString() is not ("founder.review" or "gaep.visual-studio-local-human") ||
+            !HasOnlyProperties(parameters.GetProperty("settings"), "reasoningEffort") ||
+            parameters.GetProperty("settings").GetProperty("reasoningEffort").GetString() != "high")
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID SELECTION");
+            return null;
+        }
+        var selection = AgentSelection(new Dictionary<string, object?> { ["reasoningEffort"] = "high" });
+        await WriteResultAsync(id, selection);
+        return selection;
+    }
+
+    private static Dictionary<string, object?> AgentSelection(Dictionary<string, object?>? settings = null) => new()
+    {
+        ["schemaVersion"] = 2,
+        ["adapterId"] = "openai-codex",
+        ["agentId"] = "codex",
+        ["modelId"] = "gpt-5.6-codex",
+        ["modelTruthClass"] = "observed",
+        ["modelAlias"] = false,
+        ["settings"] = settings ?? new Dictionary<string, object?> { ["reasoningEffort"] = "high" },
+        ["selectedAt"] = "2026-07-24T08:05:00.000Z",
+        ["capabilityDigest"] = $"sha256:{new string('e', 64)}",
+    };
 
     private static async Task HandleReadProductAsync(long id, JsonElement parameters, long revision)
     {

@@ -59,6 +59,43 @@ public sealed class EngineClient : IAsyncDisposable
             PortableDesignProtocol.ParseAgentReadinessResponse);
     }
 
+    public async Task<AgentSelectionState> ReadAgentSelectionAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await RequestPortableDesignAsync(
+            "readAgentSelection",
+            new Dictionary<string, object?>(),
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            PortableDesignProtocol.ParseAgentSelectionStateResponse);
+    }
+
+    public async Task<AgentSelection> SelectAgentAsync(
+        string adapterId,
+        string modelId,
+        IReadOnlyDictionary<string, PortableAgentSettingValue> settings,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedAdapterId = PortableDesignProtocol.ValidateSelectionIdentifier(adapterId, "Adapter ID");
+        var normalizedModelId = PortableDesignProtocol.ValidateSelectionIdentifier(modelId, "Model ID");
+        var normalizedSettings = PortableDesignProtocol.SerializePortableAgentSettings(settings);
+        var normalizedActorId = PortableDesignProtocol.ValidateActorId(actorId);
+        using var response = await RequestPortableDesignAsync(
+            "selectAgent",
+            new Dictionary<string, object?>
+            {
+                ["adapterId"] = normalizedAdapterId,
+                ["modelId"] = normalizedModelId,
+                ["settings"] = normalizedSettings,
+                ["actorId"] = normalizedActorId,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            PortableDesignProtocol.ParseAgentSelectionResponse);
+    }
+
     public async Task<PortableDesignSnapshotSummary> ImportPortableDesignSnapshotAsync(
         string bundleRoot,
         Guid expectedProductId,

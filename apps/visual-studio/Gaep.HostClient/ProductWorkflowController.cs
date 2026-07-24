@@ -3,6 +3,10 @@ using System.Text;
 
 namespace Gaep.HostClient;
 
+public sealed record AgentSelectionContext(
+    AgentSelectionState Current,
+    IReadOnlyList<AgentReadinessSnapshot> Available);
+
 public sealed class ProductWorkflowController(EngineClient client)
 {
     public async Task<string> ReadProductAsync(CancellationToken cancellationToken = default) =>
@@ -21,6 +25,81 @@ public sealed class ProductWorkflowController(EngineClient client)
             output.AppendLine().Append(RenderAgentReadiness(snapshot));
         }
         return output.ToString();
+    }
+
+    public async Task<AgentSelectionContext> ReadAgentSelectionContextAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var current = await client.ReadAgentSelectionAsync(cancellationToken);
+        if (current.Status == AgentSelectionStatus.MigrationRequired)
+        {
+            throw new ArgumentException(
+                "The existing legacy Agent Selection requires explicit migration review. Visual Studio will not overwrite it implicitly.");
+        }
+        if (current.Status == AgentSelectionStatus.Invalid)
+        {
+            throw new ArgumentException(
+                "The existing Agent Selection is invalid. Repair or review the governed record before selecting another agent.");
+        }
+        var available = (await client.ProbeAgentReadinessAsync(cancellationToken))
+            .Where(snapshot => snapshot.Detected && snapshot.ExecutionInterface != "unavailable")
+            .ToArray();
+        if (available.Length == 0)
+        {
+            throw new ArgumentException("No verified local Codex or Claude adapter is currently available for selection.");
+        }
+        return new AgentSelectionContext(current, Array.AsReadOnly(available));
+    }
+
+    public async Task<string> SelectAgentAsync(
+        string adapterId,
+        string modelId,
+        IReadOnlyDictionary<string, PortableAgentSettingValue> settings,
+        string actorId,
+        CancellationToken cancellationToken = default) =>
+        RenderAgentSelection(await client.SelectAgentAsync(
+            adapterId,
+            modelId,
+            settings,
+            actorId,
+            cancellationToken));
+
+    public static IReadOnlyDictionary<string, PortableAgentSettingValue> BuildAgentSelectionSettings(
+        AgentReadinessSnapshot snapshot,
+        IReadOnlyDictionary<string, string> inputs)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(inputs);
+        var declarations = snapshot.Settings.ToDictionary(setting => setting.Key, StringComparer.Ordinal);
+        if (inputs.Keys.Any(key => !declarations.ContainsKey(key)))
+        {
+            throw new ArgumentException("Agent settings include an undeclared key.", nameof(inputs));
+        }
+        var values = new Dictionary<string, PortableAgentSettingValue>(StringComparer.Ordinal);
+        foreach (var setting in snapshot.Settings)
+        {
+            if (setting.Sensitive)
+            {
+                throw new ArgumentException(
+                    $"{setting.Label} requires a machine-local credential binding, which this portable Visual Studio selection flow does not collect or store.");
+            }
+            var raw = inputs.TryGetValue(setting.Key, out var supplied) ? supplied : string.Empty;
+            if (string.IsNullOrWhiteSpace(raw) && (!setting.Required || setting.DefaultValue is not null)) continue;
+            if (string.IsNullOrWhiteSpace(raw)) throw new ArgumentException($"{setting.Label} is required.");
+            values[setting.Key] = setting.Kind switch
+            {
+                "select" => ParseSelectSetting(setting, raw),
+                "boolean" => bool.TryParse(raw, out var boolean)
+                    ? new PortableAgentBoolean(boolean)
+                    : throw new ArgumentException($"{setting.Label} must be true or false."),
+                "number" => ParseNumberSetting(setting, raw),
+                "string" => new PortableAgentText(
+                    PortableDesignProtocol.ValidatePortableSettingInput(raw, setting.Label, minimum: 1)),
+                "string-list" => ParseStringListSetting(setting, raw),
+                _ => throw new ArgumentException($"{setting.Label} has an unsupported portable setting kind."),
+            };
+        }
+        return new System.Collections.ObjectModel.ReadOnlyDictionary<string, PortableAgentSettingValue>(values);
     }
 
     public async Task<string> ListPortableDesignSnapshotsAsync(CancellationToken cancellationToken = default)
@@ -137,6 +216,69 @@ public sealed class ProductWorkflowController(EngineClient client)
         }
         return output.Append($"  Observed at: {snapshot.ObservedAt.ToString("O", CultureInfo.InvariantCulture)}").ToString();
     }
+
+    private static string RenderAgentSelection(AgentSelection selection)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP guarded Agent Selection")
+            .AppendLine()
+            .AppendLine($"Agent: {selection.AgentId}")
+            .AppendLine($"Adapter: {selection.AdapterId}")
+            .AppendLine($"Model: {selection.ModelId}")
+            .AppendLine($"Model evidence: {selection.ModelTruthClass}{(selection.ModelAlias == true ? " (alias)" : "")}")
+            .AppendLine($"Selected at: {selection.SelectedAt.ToString("O", CultureInfo.InvariantCulture)}")
+            .AppendLine($"Portable settings: {selection.Settings.Count}");
+        foreach (var (key, value) in selection.Settings) output.AppendLine($"  - {key}: {RenderSettingValue(value)}");
+        return output.AppendLine()
+            .AppendLine("Boundary: this record does not start a provider, create or resume a Run, approve tools or effects, or grant execution authority.")
+            .Append("Machine-local executable paths, credentials, and raw provider output are not included.")
+            .ToString();
+    }
+
+    private static PortableAgentSettingValue ParseSelectSetting(AgentSelectionSetting setting, string raw)
+    {
+        var option = setting.Options?.FirstOrDefault(option => option.Value == raw)
+            ?? throw new ArgumentException($"Select one verified value for {setting.Label}.");
+        return new PortableAgentText(option.Value);
+    }
+
+    private static PortableAgentSettingValue ParseNumberSetting(AgentSelectionSetting setting, string raw)
+    {
+        if (!double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) || !double.IsFinite(number))
+        {
+            throw new ArgumentException($"{setting.Label} must be a finite number.");
+        }
+        if (setting.Minimum.HasValue && number < setting.Minimum.Value)
+        {
+            throw new ArgumentException($"{setting.Label} must be at least {setting.Minimum.Value.ToString(CultureInfo.InvariantCulture)}.");
+        }
+        if (setting.Maximum.HasValue && number > setting.Maximum.Value)
+        {
+            throw new ArgumentException($"{setting.Label} must be at most {setting.Maximum.Value.ToString(CultureInfo.InvariantCulture)}.");
+        }
+        return new PortableAgentNumber(number);
+    }
+
+    private static PortableAgentSettingValue ParseStringListSetting(AgentSelectionSetting setting, string raw)
+    {
+        var items = raw.Split(',', StringSplitOptions.TrimEntries);
+        if (items.Length == 0 || items.Any(string.IsNullOrEmpty))
+        {
+            throw new ArgumentException($"{setting.Label} must be a comma-separated list of non-empty values.");
+        }
+        return new PortableAgentTextList(Array.AsReadOnly(items
+            .Select(item => PortableDesignProtocol.ValidatePortableSettingInput(item, setting.Label, minimum: 1))
+            .ToArray()));
+    }
+
+    private static string RenderSettingValue(PortableAgentSettingValue value) => value switch
+    {
+        PortableAgentText text => text.Value,
+        PortableAgentNumber number => number.Value.ToString(CultureInfo.InvariantCulture),
+        PortableAgentBoolean boolean => boolean.Value.ToString().ToLowerInvariant(),
+        PortableAgentTextList list => string.Join(", ", list.Value),
+        _ => "unsupported",
+    };
 
     private static string YesNo(bool value) => value ? "yes" : "no";
 

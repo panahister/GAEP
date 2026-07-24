@@ -38,6 +38,11 @@ internal static partial class PortableDesignProtocol
             ["CAPABILITIES_NOT_AVAILABLE"] = (-32_011, "The GAEP engine could not observe agent capabilities."),
             ["EXECUTABLE_UNAVAILABLE"] = (-32_013, "The configured agent executable is unavailable."),
             ["EXECUTABLE_CHANGED"] = (-32_014, "The configured agent executable changed during capability discovery."),
+            ["CAPABILITIES_CHANGED"] = (-32_012, "Agent capabilities changed during selection; probe again."),
+            ["AGENT_SELECTION_ACTIVE_RUN"] = (-32_015, "Agent selection cannot change while a Run is non-terminal."),
+            ["AGENT_SELECTION_MIGRATION_REQUIRED"] = (-32_016, "The legacy Agent Selection requires explicit re-probe and reconfirmation."),
+            ["AGENT_SELECTION_HANDOFF_REQUIRED"] = (-32_017, "A versioned handoff is required before changing agent, model, or settings after a Run."),
+            ["AGENT_SELECTION_INVALID"] = (-32_018, "The persisted Agent Selection is invalid and cannot be replaced implicitly."),
             ["INVALID_PARAMS"] = (-32_602, "The GAEP engine rejected the local request parameters."),
             ["PROTOCOL_UPGRADE_REQUIRED"] = (-32_021, "The GAEP engine requires protocol version 2 for portable design requests."),
             ["UNSUPPORTED_PROTOCOL_VERSION"] = (-32_020, "The GAEP engine does not support the requested portable design protocol version."),
@@ -79,6 +84,43 @@ internal static partial class PortableDesignProtocol
             throw new ArgumentException("Actor ID must be a portable human principal.", nameof(actorId));
         }
         return normalized;
+    }
+
+    internal static string ValidateSelectionIdentifier(string value, string label)
+    {
+        if (!ValidPortableText(value, minimum: 1))
+        {
+            throw new ArgumentException($"{label} must be verified portable capability text.", nameof(value));
+        }
+        return value;
+    }
+
+    internal static string ValidatePortableSettingInput(string value, string label, int minimum = 0)
+    {
+        if (!ValidPortableSettingText(value, minimum))
+        {
+            throw new ArgumentException(
+                $"{label} must be portable text without paths, controls, or secret-shaped values.",
+                nameof(value));
+        }
+        return value;
+    }
+
+    internal static IReadOnlyDictionary<string, object?> SerializePortableAgentSettings(
+        IReadOnlyDictionary<string, PortableAgentSettingValue> settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        if (settings.Count > 128) throw new ArgumentException("Agent settings may contain at most 128 portable values.", nameof(settings));
+        var serialized = new Dictionary<string, object?>(StringComparer.Ordinal);
+        foreach (var (key, value) in settings)
+        {
+            if (!ValidPortableSettingKey(key))
+            {
+                throw new ArgumentException("Agent settings must use portable non-secret keys.", nameof(settings));
+            }
+            serialized[key] = SerializePortableAgentSettingValue(value);
+        }
+        return serialized;
     }
 
     internal static void ValidatePage(int offset, int limit)
@@ -159,6 +201,36 @@ internal static partial class PortableDesignProtocol
         }
         return Array.AsReadOnly(snapshots);
     }
+
+    internal static AgentSelectionState ParseAgentSelectionStateResponse(JsonElement envelope)
+    {
+        var result = ReadResult(envelope);
+        if (result.ValueKind != JsonValueKind.Object ||
+            !result.TryGetProperty("status", out var statusElement) || statusElement.ValueKind != JsonValueKind.String)
+        {
+            throw InvalidResponse();
+        }
+        return statusElement.GetString() switch
+        {
+            "unselected" when HasOnlyProperties(result, "status") =>
+                new AgentSelectionState(AgentSelectionStatus.Unselected, null, null),
+            "selected" when HasOnlyProperties(result, "status", "selection") =>
+                new AgentSelectionState(
+                    AgentSelectionStatus.Selected,
+                    ParseAgentSelection(result.GetProperty("selection")),
+                    null),
+            "migration-required" when HasOnlyProperties(result, "status", "portableCandidate") =>
+                new AgentSelectionState(
+                    AgentSelectionStatus.MigrationRequired,
+                    null,
+                    ParseAgentSelection(result.GetProperty("portableCandidate"))),
+            "invalid" when HasOnlyProperties(result, "status") =>
+                new AgentSelectionState(AgentSelectionStatus.Invalid, null, null),
+            _ => throw InvalidResponse(),
+        };
+    }
+
+    internal static AgentSelection ParseAgentSelectionResponse(JsonElement envelope) => ParseAgentSelection(ReadResult(envelope));
 
     internal static PortableDesignSnapshotPage ParsePageResponse(JsonElement envelope, int expectedOffset, int expectedLimit)
     {
@@ -321,9 +393,10 @@ internal static partial class PortableDesignProtocol
         {
             throw InvalidResponse();
         }
-        foreach (var setting in wire.Settings) ValidateAgentSetting(setting);
+        var settings = wire.Settings.Select(ParseAgentSetting).ToArray();
         var models = wire.Models.Select(ParseAgentModel).ToArray();
-        if (models.Select(model => model.Id).Distinct(StringComparer.Ordinal).Count() != models.Length ||
+        if (settings.Select(setting => setting.Key).Distinct(StringComparer.Ordinal).Count() != settings.Length ||
+            models.Select(model => model.Id).Distinct(StringComparer.Ordinal).Count() != models.Length ||
             wire.Limitations.Any(limitation => !ValidPortableText(limitation)))
         {
             throw InvalidResponse();
@@ -344,6 +417,7 @@ internal static partial class PortableDesignProtocol
             wire.SupportsModelDiscovery,
             wire.SupportsToolSelection,
             wire.Settings.Count,
+            Array.AsReadOnly(settings),
             Array.AsReadOnly(models),
             Array.AsReadOnly(wire.Limitations.ToArray()!),
             observedAt);
@@ -363,7 +437,7 @@ internal static partial class PortableDesignProtocol
         return new AgentModelReadiness(wire.Id!, wire.Label!, wire.TruthClass!, wire.Alias);
     }
 
-    private static void ValidateAgentSetting(AgentSettingWire wire)
+    private static AgentSelectionSetting ParseAgentSetting(AgentSettingWire wire)
     {
         if (wire.Key is null || !SettingKeyPattern().IsMatch(wire.Key) || !ValidPortableText(wire.Label, minimum: 1) ||
             !ValidPortableText(wire.Description, minimum: 1) ||
@@ -378,15 +452,101 @@ internal static partial class PortableDesignProtocol
         {
             throw InvalidResponse();
         }
+        var defaultValue = wire.DefaultValue.ValueKind == JsonValueKind.Undefined
+            ? null
+            : ParsePortableSettingValue(wire.DefaultValue);
+        var options = wire.Options?.Select(option => new AgentSettingOption(
+            option.Value!,
+            option.Label!,
+            option.Description)).ToArray();
+        double? minimum = wire.Minimum.ValueKind == JsonValueKind.Undefined ? null : wire.Minimum.GetDouble();
+        double? maximum = wire.Maximum.ValueKind == JsonValueKind.Undefined ? null : wire.Maximum.GetDouble();
+        if ((minimum.HasValue && !double.IsFinite(minimum.Value)) ||
+            (maximum.HasValue && !double.IsFinite(maximum.Value)) ||
+            (minimum.HasValue && maximum.HasValue && minimum.Value > maximum.Value))
+        {
+            throw InvalidResponse();
+        }
+        return new AgentSelectionSetting(
+            wire.Key,
+            wire.Label!,
+            wire.Description!,
+            wire.Kind!,
+            wire.Required,
+            wire.Sensitive,
+            defaultValue,
+            options is null ? null : Array.AsReadOnly(options),
+            minimum,
+            maximum,
+            wire.TruthClass!);
     }
 
     private static bool ValidPortableSettingValue(JsonElement value)
     {
-        if (value.ValueKind == JsonValueKind.String) return ValidPortableText(value.GetString(), maximum: 10_000);
-        if (value.ValueKind is JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False) return true;
+        if (value.ValueKind == JsonValueKind.String) return ValidPortableSettingText(value.GetString());
+        if (value.ValueKind == JsonValueKind.Number) return value.TryGetDouble(out var number) && double.IsFinite(number);
+        if (value.ValueKind is JsonValueKind.True or JsonValueKind.False) return true;
         return value.ValueKind == JsonValueKind.Array && value.GetArrayLength() <= 256 &&
             value.EnumerateArray().All(item => item.ValueKind == JsonValueKind.String &&
-                ValidPortableText(item.GetString(), maximum: 10_000));
+                ValidPortableSettingText(item.GetString()));
+    }
+
+    private static PortableAgentSettingValue ParsePortableSettingValue(JsonElement value)
+    {
+        if (!ValidPortableSettingValue(value)) throw InvalidResponse();
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => new PortableAgentText(value.GetString()!),
+            JsonValueKind.Number => new PortableAgentNumber(value.GetDouble()),
+            JsonValueKind.True => new PortableAgentBoolean(true),
+            JsonValueKind.False => new PortableAgentBoolean(false),
+            JsonValueKind.Array => new PortableAgentTextList(
+                Array.AsReadOnly(value.EnumerateArray().Select(item => item.GetString()!).ToArray())),
+            _ => throw InvalidResponse(),
+        };
+    }
+
+    private static AgentSelection ParseAgentSelection(JsonElement selection)
+    {
+        if (selection.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                selection,
+                "schemaVersion", "adapterId", "agentId", "modelId", "modelTruthClass", "modelAlias", "settings",
+                "selectedAt", "capabilityDigest") ||
+            !selection.TryGetProperty("schemaVersion", out var schemaVersion) || schemaVersion.GetInt32() != 2 ||
+            !TryGetPortableText(selection, "adapterId", out var adapterId) ||
+            !TryGetPortableText(selection, "agentId", out var agentId) ||
+            !TryGetPortableText(selection, "modelId", out var modelId) ||
+            !selection.TryGetProperty("modelTruthClass", out var truthElement) || truthElement.ValueKind != JsonValueKind.String ||
+            !ValidTruthClass(truthElement.GetString()) ||
+            !selection.TryGetProperty("modelAlias", out var aliasElement) ||
+            aliasElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False or JsonValueKind.Null) ||
+            !selection.TryGetProperty("settings", out var settingsElement) || settingsElement.ValueKind != JsonValueKind.Object ||
+            settingsElement.EnumerateObject().Take(129).Count() > 128 ||
+            !selection.TryGetProperty("selectedAt", out var selectedElement) || selectedElement.ValueKind != JsonValueKind.String ||
+            !TryParseTimestamp(selectedElement.GetString(), out var selectedAt) ||
+            !selection.TryGetProperty("capabilityDigest", out var digestElement) || digestElement.ValueKind != JsonValueKind.String ||
+            !DigestPattern().IsMatch(digestElement.GetString() ?? string.Empty))
+        {
+            throw InvalidResponse();
+        }
+        var settings = new Dictionary<string, PortableAgentSettingValue>(StringComparer.Ordinal);
+        foreach (var property in settingsElement.EnumerateObject())
+        {
+            if (!ValidPortableSettingKey(property.Name) || !settings.TryAdd(property.Name, ParsePortableSettingValue(property.Value)))
+            {
+                throw InvalidResponse();
+            }
+        }
+        return new AgentSelection(
+            2,
+            adapterId!,
+            agentId!,
+            modelId!,
+            truthElement.GetString()!,
+            aliasElement.ValueKind == JsonValueKind.Null ? null : aliasElement.GetBoolean(),
+            new System.Collections.ObjectModel.ReadOnlyDictionary<string, PortableAgentSettingValue>(settings),
+            selectedAt,
+            digestElement.GetString()!);
     }
 
     private static bool ValidTruthClass(string? value) =>
@@ -395,6 +555,35 @@ internal static partial class PortableDesignProtocol
     private static bool ValidPortableText(string? value, int minimum = 0, int maximum = 20_000) =>
         value is not null && value.Length >= minimum && value.Length <= maximum && !value.Any(char.IsControl) &&
         !AbsolutePathPattern().IsMatch(value.Trim()) && !PrivatePathPattern().IsMatch(value) && !SecretPattern().IsMatch(value);
+
+    private static bool ValidPortableSettingText(string? value, int minimum = 0) =>
+        value is not null && value.Length >= minimum && value.Length <= 10_000 && !value.Any(char.IsControl) &&
+        !PortableSettingPathPattern().IsMatch(value) && !SecretPattern().IsMatch(value) &&
+        !SecretEnvironmentSettingPattern().IsMatch(value);
+
+    private static bool ValidPortableSettingKey(string key) =>
+        SettingKeyPattern().IsMatch(key) && !SecretSettingKeyPattern().IsMatch(key) &&
+        !key.Equals("secret", StringComparison.OrdinalIgnoreCase) && !key.Equals("token", StringComparison.OrdinalIgnoreCase);
+
+    private static bool TryGetPortableText(JsonElement element, string propertyName, out string? value)
+    {
+        value = null;
+        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.String) return false;
+        value = property.GetString();
+        return ValidPortableText(value, minimum: 1);
+    }
+
+    private static object SerializePortableAgentSettingValue(PortableAgentSettingValue value) => value switch
+    {
+        PortableAgentText text when ValidPortableSettingText(text.Value) => text.Value,
+        PortableAgentNumber number when double.IsFinite(number.Value) => number.Value,
+        PortableAgentBoolean boolean => boolean.Value,
+        PortableAgentTextList list when list.Value.Count <= 256 && list.Value.All(item => ValidPortableSettingText(item)) =>
+            list.Value.ToArray(),
+        _ => throw new ArgumentException(
+            "Agent settings must contain only verified portable, non-secret values.",
+            nameof(value)),
+    };
 
     private static void ValidateAgentSnapshotShape(JsonElement snapshot)
     {
@@ -522,11 +711,20 @@ internal static partial class PortableDesignProtocol
     [GeneratedRegex(@"^(?:/[^\s]*|[A-Za-z]:[\\/][^\s]*|\\\\[^\s]*|file://[^\s]*)$", RegexOptions.CultureInvariant)]
     private static partial Regex AbsolutePathPattern();
 
+    [GeneratedRegex(@"^(?:/|[A-Za-z]:[\\/]|\\\\|file://|~[\\/])", RegexOptions.CultureInvariant)]
+    private static partial Regex PortableSettingPathPattern();
+
     [GeneratedRegex(@"(?:^|[\s(=""'])(?:/(?:Users|home|tmp|private|Volumes)/[^\s""'<>)]*|[A-Za-z]:\\[^\s""'<>)]*|\\\\[^\s""'<>)]*)", RegexOptions.CultureInvariant)]
     private static partial Regex PrivatePathPattern();
 
-    [GeneratedRegex(@"\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bBearer\s+\S+|\b(?:sk|sk-ant)-[A-Za-z0-9_-]{8,}\b|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|\bAKIA[A-Z0-9]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*\S+", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex SecretPattern();
+
+    [GeneratedRegex("(?:apiKey|accessToken|refreshToken|authToken|bearerToken|password|passwd|clientSecret|privateKey|credential)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex SecretSettingKeyPattern();
+
+    [GeneratedRegex(@"^\$\{?[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\}?$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex SecretEnvironmentSettingPattern();
 
     private sealed class SnapshotWire
     {

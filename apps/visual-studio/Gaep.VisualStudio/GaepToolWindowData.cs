@@ -7,6 +7,39 @@ using Microsoft.VisualStudio.Extensibility.UI;
 namespace Gaep.VisualStudio;
 
 [DataContract]
+internal sealed class AgentSettingEditorData : NotifyPropertyChangedObject
+{
+    private string value = string.Empty;
+
+    public AgentSettingEditorData(string key, string label, string description, string inputHint)
+    {
+        Key = key;
+        Label = label;
+        Description = description;
+        InputHint = inputHint;
+    }
+
+    [DataMember]
+    public string Key { get; }
+
+    [DataMember]
+    public string Label { get; }
+
+    [DataMember]
+    public string Description { get; }
+
+    [DataMember]
+    public string InputHint { get; }
+
+    [DataMember]
+    public string Value
+    {
+        get => value;
+        set => SetProperty(ref this.value, value ?? string.Empty);
+    }
+}
+
+[DataContract]
 internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 {
     private readonly VisualStudioExtensibility extensibility;
@@ -16,6 +49,13 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private string bundleId = string.Empty;
     private string status = "GAEP engine has not been contacted";
     private string output = "Set one absolute local workspace folder, then refresh the Product.";
+    private string[] availableAgentChoices = [];
+    private string selectedAgentChoice = string.Empty;
+    private string[] availableModelIds = [];
+    private string selectedModelId = string.Empty;
+    private AgentSettingEditorData[] agentSettingInputs = [];
+    private AgentSelectionContext? agentSelectionContext;
+    private string? agentSelectionWorkspace;
     private bool busy;
 
     public GaepToolWindowData(VisualStudioExtensibility extensibility)
@@ -23,6 +63,8 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         this.extensibility = extensibility ?? throw new ArgumentNullException(nameof(extensibility));
         RefreshProductCommand = new AsyncCommand(RefreshProductAsync);
         RefreshAgentReadinessCommand = new AsyncCommand(RefreshAgentReadinessAsync);
+        LoadAgentSelectionCommand = new AsyncCommand(LoadAgentSelectionAsync);
+        SelectAgentCommand = new AsyncCommand(SelectAgentAsync);
         ListDesignImportsCommand = new AsyncCommand(ListDesignImportsAsync);
         ReadDesignImportCommand = new AsyncCommand(ReadDesignImportAsync);
         ImportDesignBundleCommand = new AsyncCommand(ImportDesignBundleAsync);
@@ -37,13 +79,19 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Codex and Claude readiness is observation-only and cannot select or execute an agent. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Codex and Claude readiness is observation-only. Guarded selection records portable configuration only; it cannot start a provider, create or resume a Run, approve tools or effects, or grant execution authority. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
 
     [DataMember]
     public IAsyncCommand RefreshAgentReadinessCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadAgentSelectionCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand SelectAgentCommand { get; }
 
     [DataMember]
     public IAsyncCommand ListDesignImportsCommand { get; }
@@ -76,6 +124,44 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     }
 
     [DataMember]
+    public string[] AvailableAgentChoices
+    {
+        get => availableAgentChoices;
+        private set => SetProperty(ref availableAgentChoices, value);
+    }
+
+    [DataMember]
+    public string SelectedAgentChoice
+    {
+        get => selectedAgentChoice;
+        set
+        {
+            if (SetProperty(ref selectedAgentChoice, value ?? string.Empty)) RebuildAgentSelectionEditors();
+        }
+    }
+
+    [DataMember]
+    public string[] AvailableModelIds
+    {
+        get => availableModelIds;
+        private set => SetProperty(ref availableModelIds, value);
+    }
+
+    [DataMember]
+    public string SelectedModelId
+    {
+        get => selectedModelId;
+        set => SetProperty(ref selectedModelId, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public AgentSettingEditorData[] AgentSettingInputs
+    {
+        get => agentSettingInputs;
+        private set => SetProperty(ref agentSettingInputs, value);
+    }
+
+    [DataMember]
     public string Status
     {
         get => status;
@@ -99,25 +185,59 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private Task RefreshProductAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(
             "Refreshing Product",
-            (controller, token) => controller.ReadProductAsync(token),
+            (controller, _, token) => controller.ReadProductAsync(token),
             cancellationToken);
 
     private Task RefreshAgentReadinessAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(
             "Refreshing agent readiness",
-            (controller, token) => controller.ReadAgentReadinessAsync(token),
+            (controller, _, token) => controller.ReadAgentReadinessAsync(token),
             cancellationToken);
+
+    private Task LoadAgentSelectionAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading guarded Agent Selection",
+            async (controller, workspace, token) =>
+            {
+                var context = await controller.ReadAgentSelectionContextAsync(token);
+                agentSelectionContext = context;
+                agentSelectionWorkspace = workspace;
+                ConfigureAgentSelection(context);
+                return "Verified local adapter, model, and non-sensitive portable-setting choices are ready. Review them below, then use Confirm guarded selection. No provider has been started and no state has changed.";
+            },
+            cancellationToken);
+
+    private Task SelectAgentAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Recording guarded Agent Selection",
+            (controller, workspace, token) =>
+            {
+                var context = agentSelectionContext
+                    ?? throw new ArgumentException("Load the current guarded Agent Selection options before confirming.");
+                if (!StringComparer.Ordinal.Equals(agentSelectionWorkspace, workspace))
+                {
+                    throw new ArgumentException("The workspace changed after Agent Selection options were loaded. Load them again.");
+                }
+                var snapshot = ResolveSelectedAgent(context);
+                var inputs = AgentSettingInputs.ToDictionary(input => input.Key, input => input.Value, StringComparer.Ordinal);
+                var settings = ProductWorkflowController.BuildAgentSelectionSettings(snapshot, inputs);
+                var actorId = Environment.GetEnvironmentVariable("GAEP_ACTOR_ID") ?? "gaep.visual-studio-local-human";
+                return controller.SelectAgentAsync(snapshot.AdapterId, SelectedModelId, settings, actorId, token);
+            },
+            cancellationToken,
+            confirmationMessage:
+                "Record the selected verified adapter, model, and explicit non-sensitive portable settings? This does not start a provider, create or resume a Run, approve tools or effects, or grant execution authority. The engine will reject active-Run, capability-drift, legacy, invalid, and post-Run changes that require a handoff.");
 
     private Task ListDesignImportsAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(
             "Listing design imports",
-            (controller, token) => controller.ListPortableDesignSnapshotsAsync(token),
+            (controller, _, token) => controller.ListPortableDesignSnapshotsAsync(token),
             cancellationToken);
 
     private Task ReadDesignImportAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(
             "Reading design import",
-            (controller, token) => controller.ReadPortableDesignSnapshotAsync(BundleId, token),
+            (controller, _, token) => controller.ReadPortableDesignSnapshotAsync(BundleId, token),
             cancellationToken);
 
     private Task ImportDesignBundleAsync(object? commandParameter, CancellationToken cancellationToken)
@@ -125,16 +245,96 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         var actorId = Environment.GetEnvironmentVariable("GAEP_ACTOR_ID") ?? "gaep.visual-studio-local-human";
         return RunRequestAsync(
             "Importing local bundle",
-            (controller, token) => controller.ImportPortableDesignSnapshotAsync(BundlePath, actorId, token),
+            (controller, _, token) => controller.ImportPortableDesignSnapshotAsync(BundlePath, actorId, token),
             cancellationToken,
-            confirmImport: true);
+            confirmationMessage:
+                "Import one local folder as metadata and digests only? The result remains pending human review even when upstream sourceReview says approved.");
     }
+
+    private void ConfigureAgentSelection(AgentSelectionContext context)
+    {
+        AvailableAgentChoices = context.Available.Select(AgentChoice).ToArray();
+        var current = context.Current.Selection;
+        var preferred = current is null
+            ? AvailableAgentChoices.First()
+            : context.Available.Where(snapshot => snapshot.AdapterId == current.AdapterId)
+                .Select(AgentChoice)
+                .FirstOrDefault() ?? AvailableAgentChoices.First();
+        SelectedAgentChoice = preferred;
+        if (current is not null && ResolveSelectedAgent(context).AdapterId == current.AdapterId)
+        {
+            SelectedModelId = current.ModelId;
+            foreach (var editor in AgentSettingInputs)
+            {
+                if (current.Settings.TryGetValue(editor.Key, out var value)) editor.Value = RenderSettingValue(value);
+            }
+        }
+    }
+
+    private void RebuildAgentSelectionEditors()
+    {
+        var context = agentSelectionContext;
+        if (context is null || string.IsNullOrEmpty(SelectedAgentChoice))
+        {
+            AvailableModelIds = [];
+            SelectedModelId = string.Empty;
+            AgentSettingInputs = [];
+            return;
+        }
+        var snapshot = ResolveSelectedAgent(context);
+        AvailableModelIds = snapshot.Models.Select(model => model.Id).ToArray();
+        SelectedModelId = AvailableModelIds.FirstOrDefault() ?? string.Empty;
+        AgentSettingInputs = snapshot.Settings
+            .Where(setting => !setting.Sensitive)
+            .Select(setting => new AgentSettingEditorData(
+                setting.Key,
+                setting.Label,
+                setting.Description,
+                SettingInputHint(setting)))
+            .ToArray();
+    }
+
+    private AgentReadinessSnapshot ResolveSelectedAgent(AgentSelectionContext context) =>
+        context.Available.SingleOrDefault(snapshot => AgentChoice(snapshot) == SelectedAgentChoice)
+        ?? throw new ArgumentException("Select one verified adapter from the loaded capability snapshot.");
+
+    private static string AgentChoice(AgentReadinessSnapshot snapshot) =>
+        $"{snapshot.AgentLabel} — {snapshot.AdapterId} ({snapshot.ExecutionInterface}, {snapshot.InterfaceMaturity})";
+
+    private static string SettingInputHint(AgentSelectionSetting setting)
+    {
+        var defaultText = setting.DefaultValue is null ? "no explicit override" : RenderSettingValue(setting.DefaultValue);
+        return setting.Kind switch
+        {
+            "select" => $"Allowed: {string.Join(", ", setting.Options?.Select(option => option.Value) ?? [])}. Leave blank for {defaultText}.",
+            "boolean" => $"Enter true or false. Leave blank for {defaultText}.",
+            "number" => $"Enter a finite number{NumberBounds(setting)}. Leave blank for {defaultText}.",
+            "string-list" => $"Enter comma-separated non-empty values. Leave blank for {defaultText}.",
+            _ => $"Enter portable text without paths or secrets. Leave blank for {defaultText}.",
+        };
+    }
+
+    private static string NumberBounds(AgentSelectionSetting setting)
+    {
+        if (setting.Minimum.HasValue && setting.Maximum.HasValue) return $" from {setting.Minimum} to {setting.Maximum}";
+        if (setting.Minimum.HasValue) return $" of at least {setting.Minimum}";
+        return setting.Maximum.HasValue ? $" of at most {setting.Maximum}" : string.Empty;
+    }
+
+    private static string RenderSettingValue(PortableAgentSettingValue value) => value switch
+    {
+        PortableAgentText text => text.Value,
+        PortableAgentNumber number => number.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        PortableAgentBoolean boolean => boolean.Value.ToString().ToLowerInvariant(),
+        PortableAgentTextList list => string.Join(", ", list.Value),
+        _ => string.Empty,
+    };
 
     private async Task RunRequestAsync(
         string label,
-        Func<ProductWorkflowController, CancellationToken, Task<string>> action,
+        Func<ProductWorkflowController, string, CancellationToken, Task<string>> action,
         CancellationToken cancellationToken,
-        bool confirmImport = false)
+        string? confirmationMessage = null)
     {
         if (!await requestGate.WaitAsync(0, cancellationToken))
         {
@@ -145,22 +345,22 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         Status = $"{label}…";
         try
         {
-            if (confirmImport)
+            if (confirmationMessage is not null)
             {
                 var confirmed = await extensibility.Shell().ShowPromptAsync(
-                    "Import one local folder as metadata and digests only? The result remains pending human review even when upstream sourceReview says approved.",
+                    confirmationMessage,
                     PromptOptions.OK.WithCancel(cancelReturns: false, cancelIsDefault: true),
                     cancellationToken);
                 if (!confirmed)
                 {
-                    Status = "Import cancelled";
+                    Status = "Request cancelled; no state changed";
                     return;
                 }
             }
             var workspace = ProductWorkflowController.NormalizeWorkspacePath(WorkspacePath);
             await using var client = new EngineClient(workspace);
             var controller = new ProductWorkflowController(client);
-            Output = await action(controller, cancellationToken);
+            Output = await action(controller, workspace, cancellationToken);
             Status = "GAEP engine ready";
         }
         catch (Exception error)
