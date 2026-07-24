@@ -41,6 +41,13 @@ class GaepEngineClient(
     private data class HostResponse(val raw: String, val envelope: JsonObject)
 
     @Synchronized
+    fun readProductBinding(): ProductBinding = portableRequest(
+        "readProduct",
+        JsonObject(),
+        protocolVersion = null,
+    ) { envelope -> PortableDesignProtocol.parseProductBindingEnvelope(envelope) }
+
+    @Synchronized
     fun importPortableDesignSnapshot(
         bundleRoot: Path,
         expectedProductId: UUID,
@@ -131,9 +138,14 @@ class GaepEngineClient(
         }
     }
 
-    private fun <T> portableRequest(method: String, params: JsonObject, parse: (JsonObject) -> T): T {
+    private fun <T> portableRequest(
+        method: String,
+        params: JsonObject,
+        protocolVersion: Int? = PortableDesignProtocol.PROTOCOL_VERSION,
+        parse: (JsonObject) -> T,
+    ): T {
         val response = try {
-            requestInternal(method, params, PortableDesignProtocol.PROTOCOL_VERSION)
+            requestInternal(method, params, protocolVersion)
         } catch (error: GaepHostException) {
             throw error
         } catch (_: Exception) {

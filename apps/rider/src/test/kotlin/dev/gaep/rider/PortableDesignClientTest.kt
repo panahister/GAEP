@@ -61,6 +61,33 @@ class PortableDesignClientTest {
             assertTrue(page.governanceBoundary.contains("pending human review"))
             assertEquals(imported, client.readPortableDesignSnapshot(bundleId))
 
+            val product = client.readProductBinding()
+            assertEquals(productId, product.id)
+            assertEquals("Founder Product", product.name)
+            assertEquals(7, product.revision)
+
+            val controller = RiderProductController(client)
+            val productView = controller.readProduct()
+            assertTrue(productView.contains("Founder Product"))
+            assertTrue(productView.contains("Revision: 7"))
+            val listView = controller.listPortableDesignSnapshots()
+            assertTrue(listView.contains(bundleId.toString()))
+            assertTrue(listView.contains("pending human review"))
+            val readView = controller.readPortableDesignSnapshot(bundleId.toString())
+            assertTrue(readView.contains("pending-human-review"))
+            assertTrue(readView.contains("GAEP approval=false"))
+            val importView = controller.importPortableDesignSnapshot(bundleRoot, "founder.review")
+            assertTrue(importView.contains("exact Product revision 7"))
+            assertTrue(importView.contains("not approval or a baseline"))
+            listOf(productView, listView, readView, importView).forEach { rendered ->
+                assertFalse(rendered.contains(bundleRoot.toString()))
+                assertFalse(rendered.contains(privateRoot))
+                assertFalse(rendered.contains(privateCredential))
+            }
+            assertFailsWith<IllegalArgumentException> {
+                controller.readPortableDesignSnapshot("not-a-bundle-id")
+            }
+
             assertFailsWith<IllegalArgumentException> {
                 client.importPortableDesignSnapshot(Path.of("relative/bundle"), productId, 7, "founder.review")
             }

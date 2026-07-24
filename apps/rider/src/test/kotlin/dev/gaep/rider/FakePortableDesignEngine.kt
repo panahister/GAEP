@@ -26,13 +26,28 @@ fun main() {
     generateSequence(::readLine).forEach { line ->
         val request = JsonParser.parseString(line).asJsonObject
         val id = request.get("id").asLong
-        if (request.keySet() != setOf("jsonrpc", "id", "method", "params", "protocolVersion") ||
-            request.get("jsonrpc").asString != "2.0" || request.get("protocolVersion").asInt != 2
+        val method = request.get("method").asString
+        val expectedKeys = if (method == "readProduct") {
+            setOf("jsonrpc", "id", "method", "params")
+        } else {
+            setOf("jsonrpc", "id", "method", "params", "protocolVersion")
+        }
+        if (request.keySet() != expectedKeys || request.get("jsonrpc").asString != "2.0" ||
+            (method != "readProduct" && request.get("protocolVersion").asInt != 2)
         ) {
             writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID ENVELOPE")
             return@forEach
         }
-        when (request.get("method").asString) {
+        when (method) {
+            "readProduct" -> writeResult(
+                id,
+                JsonObject().apply {
+                    addProperty("id", productId.toString())
+                    addProperty("name", "Founder Product")
+                    addProperty("revision", 7)
+                    addProperty("lifecycleState", "active")
+                },
+            )
             "productStudio.portableDesign.import" -> handleImport(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.list" -> handleList(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.read" -> handleRead(id, request.getAsJsonObject("params"))

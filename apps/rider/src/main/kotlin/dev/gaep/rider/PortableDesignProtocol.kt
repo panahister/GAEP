@@ -34,6 +34,12 @@ enum class PortableDesignExportMethod {
     PLUGIN_EXPORT,
 }
 
+data class ProductBinding(
+    val id: UUID,
+    val name: String,
+    val revision: Long,
+)
+
 data class PortableDesignGovernanceMetadata(
     val state: String,
     val humanReviewRequired: Boolean,
@@ -239,6 +245,19 @@ internal object PortableDesignProtocol {
         return summary
     }
 
+    fun parseProductBindingEnvelope(envelope: JsonObject): ProductBinding {
+        val product = readResult(envelope).requireObject()
+        val id = parseUuid(product.requireString("id"))
+        val name = product.requireString("name")
+        val revision = product.get("revision")?.let { product.requireLong("revision") } ?: 1L
+        if (id == UUID(0, 0) || name.length !in 1..240 || name != name.trim() ||
+            name.any(Char::isISOControl) || revision !in 1..MAX_SAFE_PRODUCT_REVISION
+        ) {
+            throw invalidResponse()
+        }
+        return ProductBinding(id, name, revision)
+    }
+
     fun parsePageEnvelope(envelope: JsonObject, expectedOffset: Int, expectedLimit: Int): PortableDesignSnapshotPage {
         val page = readResult(envelope).requireObject()
         page.requireExactKeys("items", "offset", "limit", "total", "hasMore", "governanceBoundary", "privacyBoundary")
@@ -281,6 +300,12 @@ internal object PortableDesignProtocol {
         -32_603,
         "HOST_UNAVAILABLE",
         "The GAEP engine host could not complete the portable design request.",
+    )
+
+    fun productContextChanged(): GaepHostException = GaepHostException(
+        -32_031,
+        "PORTABLE_DESIGN_PRODUCT_CONTEXT_CHANGED",
+        "The portable design request no longer matches the exact Product revision.",
     )
 
     private fun readResult(envelope: JsonObject): JsonElement {
@@ -475,6 +500,16 @@ internal object PortableDesignProtocol {
         if (value == null || !value.isJsonPrimitive || !value.asJsonPrimitive.isNumber) throw invalidResponse()
         return try {
             value.asBigDecimal.toBigIntegerExact().intValueExact()
+        } catch (_: ArithmeticException) {
+            throw invalidResponse()
+        }
+    }
+
+    private fun JsonObject.requireLong(name: String): Long {
+        val value = get(name)
+        if (value == null || !value.isJsonPrimitive || !value.asJsonPrimitive.isNumber) throw invalidResponse()
+        return try {
+            value.asBigDecimal.toBigIntegerExact().longValueExact()
         } catch (_: ArithmeticException) {
             throw invalidResponse()
         }
