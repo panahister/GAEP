@@ -2,7 +2,7 @@
 
 **Governed AI Engineering Platform (GAEP)**  
 **Document ID:** GAEP-RDM-054  
-**Version:** 1.0.3  
+**Version:** 1.0.4  
 **Status:** Active Delivery Control  
 **Last Updated:** 2026-07-24  
 **Authority:** Feature delivery status and phase acceptance  
@@ -115,9 +115,9 @@ These capabilities are cross-cutting. The target milestone is the first phase in
 | PLT-16 | Versioned Provider/Model Handoff | Phase 0 / 1A | Transfer context, Run Envelope, and evidence between agents and models | `🟡 In Progress` | A handoff foundation exists; the contract and acceptance are incomplete |
 | PLT-17 | Manual/Fake Provider Adapter | Phase 0 / 1A | Deterministic adapter for offline tests and fixtures | `✅ Done` | A test adapter exists and must remain part of the conformance suite |
 | PLT-18 | Context and Run Envelope | Phase 0 / 1A | Record scope, authority, inputs, model, limits, and effects | `🟡 In Progress` | Exact multi-step Workflow checkpoints bind completed dependency batches, gates, events and observation-only effects; parallel concurrency is capped at four and all tool/write/effect authority fails closed, while complete host/provider coverage remains incomplete |
-| PLT-19 | Normalized Evidence and Run Records | Phase 0 / 1A | Provider- and host-independent evidence | `🟡 In Progress` | Immutable portable checkpoint evidence survives sequential and parallel restart/export/import validation with exact lineage, deterministic final ordering, partial-completion truth and tamper rejection; every provider and host is not yet conformant |
+| PLT-19 | Normalized Evidence and Run Records | Phase 0 / 1A | Provider- and host-independent evidence | `🟡 In Progress` | Immutable portable checkpoint evidence survives sequential and parallel restart/export/import validation; Managed Run inventory now has exact count, kind, byte, concurrency, 200-row page and stale-snapshot bounds. Every provider and host is not yet conformant |
 | PLT-20 | Install, Upgrade, and Rollback | Phase 0 / 1A | Testable lifecycle for all four plugins | `🟡 In Progress` | VS Code is partial; Visual Studio, Rider, and Kiro are incomplete |
-| PLT-21 | Dashboard Shell | Phase 0 / 1A | Shared dashboard shell in all four hosts | `🟡 In Progress` | A basic dashboard exists; parity and four-host installation are incomplete |
+| PLT-21 | Dashboard Shell | Phase 0 / 1A | Shared dashboard shell in all four hosts | `🟡 In Progress` | VS Code recovery/evidence observation now consumes the bounded Managed Run page contract with exact totals and conservative omission semantics; parity and four-host installation remain incomplete |
 | PLT-22 | Phase-Scoped Dashboard Framework | Phase 0 / 1A | Compose dashboards according to phase and applicability | `❌ Backlog` | A complete framework and contract do not exist |
 | PLT-23 | Change and Impact Dashboard | Phase 0 / 1A | Changed artifacts, affected units, approvals, and risks | `🟡 In Progress` | A partial view exists; completeness and freshness are incomplete |
 | PLT-24 | Agent and Model Dashboard | Phase 0 / 1A | Provider, model, run status, cost/usage, and handoff evidence | `🟡 In Progress` | The foundation is partial; execution truth and four-host coverage are incomplete |
@@ -262,7 +262,7 @@ Phase 1 must execute the initial Product lifecycle through architecture and read
 | P3B-20 | Security Testing | QA | SAST, dependency, and threat-control validation | `🟡 In Progress` | A security foundation exists; the release gate is incomplete |
 | P3B-21 | Accessibility Testing | QA | Automated and manual accessibility evidence | `🟡 In Progress` | Checks are partial; four-host dashboard conformance is incomplete |
 | P3B-22 | Visual Regression Testing | QA | Figma-to-implementation visual comparison | `❌ Backlog` | No harness exists |
-| P3B-23 | Performance and Reliability Testing | QA | Budgets and load, failure, and recovery scenarios | `🟡 In Progress` | Deterministic concurrency-ceiling, sibling-cancellation, partial-failure and restart scenarios now execute in the managed-engine harness; formal budgets, sustained load, native-platform and power-loss methodology remain incomplete |
+| P3B-23 | Performance and Reliability Testing | QA | Budgets and load, failure, and recovery scenarios | `🟡 In Progress` | Deterministic concurrency, cancellation, partial-failure and restart scenarios plus Managed Run count/file-size/read-concurrency/page bounds now execute in the harness; sustained load, native-platform and power-loss methodology remain incomplete |
 | P3B-24 | Multi-Dimensional QA Scorecard | QA | Functional, security, accessibility, visual, and performance quality | `❌ Backlog` | No executable scorecard exists |
 | P3B-25 | UAT and Human Validation | Acceptance | User scenarios and signed acceptance | `❌ Backlog` | No workflow or evidence template exists |
 | P3B-26 | Requirement/Design/Code Drift Detection | Assurance | Detect drift across baselines | `🟡 In Progress` | Concepts are partial; end-to-end automation is incomplete |

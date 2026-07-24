@@ -13,15 +13,15 @@
 
 | Field | Current value |
 |---|---|
-| Overall progress | `68%` |
+| Overall progress | `69%` |
 | Wave | `Wave 4 now includes durable sequential and bounded parallel-readonly restart/resume for observation-only multi-step runs in addition to the accepted single-step staged-review boundary; Waves 5–7 remain partially complete across VS Code, engine-host, Visual Studio, Rider, and Kiro` |
 | State | `IN_PROGRESS` |
 | Working branch | `codex/gaep-hardwork-completion` |
 | Starting commit | `eab8374cc5974eea25bcad4659f46e1b0da92108` |
-| Last stable checkpoint | `af995e7` — bounded parallel-readonly Workflow orchestration after sequential recovery checkpoint `cc72c6c`, aggregate checkpoint `6a3829b`, accepted single-step Wave 4 checkpoint `338b7c8`, and Kiro checkpoint `7541940` |
-| Active work | Resource-bound managed-run inventory/recovery surfaces and the remaining local assurance/readiness gaps without weakening the accepted execution boundaries |
+| Last stable checkpoint | `973267d` — bounded Managed Run inventory and recovery pages after parallel-readonly checkpoint `af995e7`, sequential recovery checkpoint `cc72c6c`, and aggregate checkpoint `6a3829b` |
+| Active work | Aggregate machine-local orphan-storage controls and the remaining local assurance/readiness gaps without weakening the accepted execution boundaries |
 | Blockers | Formal baseline/readiness remain human-governance blocked. Codex Security scan `49188fb1-8d29-4bd8-a0f4-f2c684a0d9af` was explicitly skipped by the Product Owner after Codex scan limits prevented continuation; no final security result exists. Native Kiro, native Windows, power-loss and hostile same-UID guarantees remain unverified |
-| Next exact action | Bound and paginate Managed Run inventory reads used by recovery UX, then continue aggregate orphan-storage controls and local packaging/readiness evidence |
+| Next exact action | Add globally bounded orphan-stage discovery/scavenging controls, then continue local packaging and readiness evidence |
 
 Progress is earned only when an exit condition has current validation evidence. Starting work does not advance the percentage.
 
@@ -122,6 +122,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | Aggregate cross-workspace integration | PASS | Checkpoint `0bc4563`; root typecheck and all-workspace build pass; root Vitest passes 43 files with 457 tests and 1 platform-conditional skip; structural and candidate documentation validation pass. Root discovery now excludes Kiro's independently owned Node-test suite. A random UUID path-parser defect found by the aggregate run was replaced with exact envelope-derived Record History path equality and a deterministic positive/negative regression |
 | 2026-07-24 | Wave 4 observation-only multi-step recovery | PASS FOR DECLARED PORTABLE SLICE | Checkpoint `cc72c6c`; 40 focused contract/engine tests pass. A three-step run retains consecutive immutable checkpoint receipts; simulated process loss preserves the completed prefix, resumes only unfinished steps, can safely restart from step one before the first checkpoint, rejects tampered receipts, and revalidates the portable export. Root typecheck/build pass; aggregate Vitest passes 43 files with 461 tests and 1 platform-conditional skip using four workers. Codex-staged multi-step and parallel execution remain fail-closed |
 | 2026-07-24 | Wave 4 bounded parallel-readonly orchestration | PASS FOR DECLARED PORTABLE SLICE | Checkpoint `af995e7`; independent observation-only steps execute in deterministic dependency-layer batches with a hard concurrency ceiling of four, live sibling cancellation, deterministic final evidence, honest non-prefix partial completion, batch-boundary checkpoint/restart, exact tamper validation and export/import compatibility. Root typecheck/build pass; aggregate Vitest passes 43 files with 465 tests and 1 platform-conditional skip. Tools, writes, effect scopes, effectful envelopes, effectful parallelism and multi-step Codex staging remain fail-closed |
+| 2026-07-24 | Wave 5 bounded Managed Run inventory | PASS | Checkpoint `973267d`; the engine fails closed above 2,000 Managed Run records, rejects non-regular or larger-than-1-MiB records before parsing, reads with concurrency 64, exposes stable 200-row pages and rejects stale snapshot digests. Product Studio and retry-recovery use page 1 with exact totals and conservative omission language. Root typecheck/build pass; aggregate Vitest passes 43 files with 466 tests and 1 platform-conditional skip |
 
 ## 8. Change Ledger
 
@@ -153,6 +154,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | 8 | Integrated the independent Kiro Node-test boundary into root validation and replaced ambiguous Record History filename parsing with exact validated-envelope path equality | COMPLETE | `0bc4563`; deterministic all-letter hexadecimal UUID acceptance and mismatched-revision rejection pass, the original managed apply/export regression passes, and the aggregate root gate is 43 files with 457 passed plus 1 conditional skip |
 | 2026-07-24 | 4 | Added immutable portable checkpoints and exact restart/resume for sequential observation-only multi-step Workflows | PARTIAL_COMPLETE | `cc72c6c`; completed dependency prefixes, normalized events, exact gate receipts and effect truth survive restart; zero-progress runs restart safely; tamper, stale binding, branching and effectful multi-step paths fail closed. Forty focused tests and the 461-test aggregate suite pass with 1 conditional skip. Bounded parallel-readonly remains active Wave 4 work |
 | 2026-07-24 | 4 | Added bounded parallel-readonly scheduling with dependency batches, deterministic evidence merge, cancellation and restart | PARTIAL_COMPLETE | `af995e7`; concurrency is fixed at four, only tool-free deny-only observation steps are executable, completed batches are durably checkpointed, incomplete peers remain truthfully represented, and effectful claims fail closed. The aggregate suite passes 465 tests with 1 conditional skip; native-platform and effectful multi-step limits remain |
+| 2026-07-24 | 5 | Replaced unpaginated recovery observation with a hard-bounded, snapshot-stable Managed Run page contract | PARTIAL_COMPLETE | `973267d`; inventory count, file kind, record size, read concurrency and page size are bounded; exact total and stale-page detection are preserved; the aggregate suite passes 466 tests with 1 conditional skip. Domain-specific filtering/indexing and very-large-history archival remain future work |
 
 ## 9. Wave 4 Durable Review Boundary — Accepted Local POSIX Slice
 
@@ -194,7 +196,7 @@ If work stops at this checkpoint, resume by:
 1. checking out `codex/gaep-hardwork-completion`;
 2. verifying that it descends from `eab8374cc5974eea25bcad4659f46e1b0da92108`;
 3. reading this document and `054_GAEP_FEATURE_DELIVERY_TRACKER.md`;
-4. treating bounded parallel-readonly orchestration as clean at `af995e7`, sequential observation-only multi-step recovery as clean at `cc72c6c`, aggregate integration as clean at `6a3829b`, Wave 4 single-step durability as clean at `338b7c8` and Kiro-compatible packaging as clean at `7541940`; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, and the Rider client is clean at `b305fec`;
+4. treating bounded Managed Run inventory as clean at `973267d`, bounded parallel-readonly orchestration as clean at `af995e7`, sequential observation-only multi-step recovery as clean at `cc72c6c`, aggregate integration as clean at `6a3829b`, Wave 4 single-step durability as clean at `338b7c8` and Kiro-compatible packaging as clean at `7541940`; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, and the Rider client is clean at `b305fec`;
 5. preserving the Product Owner decision to skip the limited Codex Security scan; do not claim a completed security review or resume it without a new explicit request;
 6. retaining the aggregate root evidence recorded for `cc72c6c`, or rerunning it if implementation changes source; and
-7. continuing with bounded Managed Run inventory/recovery surfaces and aggregate orphan-storage controls without weakening checkpoint, evidence or staged-review boundaries.
+7. continuing with aggregate orphan-storage controls and local readiness evidence without weakening checkpoint, evidence or staged-review boundaries.
