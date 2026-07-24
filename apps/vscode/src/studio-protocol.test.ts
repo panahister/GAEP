@@ -80,6 +80,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         runs: table("runs"),
         selectedRun: [],
         events: [],
+        recovery: table("managed-recovery"),
         managedEvidence: table("managed-evidence"),
         evidence: table("evidence"),
         handoffs: table("handoffs"),
@@ -228,6 +229,21 @@ describe("Product Studio protocol", () => {
     expect(isStudioAction({ kind: "domain-page", recordKind: "portable-design-snapshot", offset: 50, limit: 50 })).toBe(true)
     expect(isStudioAction({ kind: "read-portable-design-snapshot", bundleId: "22222222-2222-4222-8222-222222222222" })).toBe(true)
     expect(isStudioAction({ kind: "read-portable-design-snapshot", bundleId: "/tmp/private" })).toBe(false)
+    expect(isStudioAction({
+      kind: "open-managed-discard",
+      managedRunId: "66666666-6666-4666-8666-666666666666",
+      expectedRevision: 2,
+    })).toBe(true)
+    expect(isStudioAction({
+      kind: "open-managed-discard",
+      managedRunId: "/tmp/private",
+      expectedRevision: 2,
+    })).toBe(false)
+    expect(isStudioAction({
+      kind: "open-managed-discard",
+      managedRunId: "66666666-6666-4666-8666-666666666666",
+      expectedRevision: 0,
+    })).toBe(false)
     expect(isStudioAction({ kind: "save-draft", route: "direction", values: { problem: "x".repeat(50_001) } })).toBe(false)
     expect(isStudioAction({
       kind: "analyze-impact",

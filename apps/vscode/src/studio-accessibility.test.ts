@@ -184,6 +184,29 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         },
         selectedRun: [{ term: "Run", value: "Prepared" }],
         events: [{ id: "event-1", time: "2026-07-21T00:00:00.000Z", kind: "prepared", summary: "Awaiting confirmation" }],
+        recovery: {
+          id: "managed-recovery",
+          title: "Restart and recovery state",
+          columns: [
+            { key: "managedRun", label: "Managed Run", identifier: true },
+            { key: "attention", label: "Recovery attention" },
+            { key: "boundary", label: "Non-authoritative meaning" },
+          ],
+          rows: [{
+            id: "recovery-managed-run-1",
+            cells: {
+              managedRun: "managed-run-1",
+              attention: "Unknown outcome with local cleanup pending",
+              boundary: "No recovery, apply, cleanup, resume, or provider outcome success is claimed.",
+            },
+            state: "local-cleanup-pending",
+            actions: [
+              { label: "Select underlying Run", enabled: true, action: { kind: "select-record", recordId: "run-1" } },
+              { label: "Show diagnostics", enabled: true, action: { kind: "show-diagnostics" } },
+            ],
+          }],
+          actions: [],
+        },
         managedEvidence: table("managed-evidence"),
         evidence: table("evidence"),
         handoffs: table("handoffs"),
@@ -368,8 +391,26 @@ describe("Product Studio rendered accessibility", () => {
     expect(dom.window.document.body.textContent).toMatch(/No durable normalized Managed Run events.*Legacy lifecycle state does not imply evidence/i)
   })
 
+  it("renders recovery attention as a keyboard-operable non-authoritative status", () => {
+    const candidate = snapshot("runs-evidence", 92)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
+    const document = dom.window.document
+    expect(document.body.textContent).toMatch(/Restart and recovery state/i)
+    expect(document.body.textContent).toMatch(/Unknown outcome with local cleanup pending/i)
+    expect(document.body.textContent).toMatch(/No recovery, apply, cleanup, resume, or provider outcome success is claimed/i)
+    const diagnostics = Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent === "Show diagnostics")
+    expect(diagnostics?.disabled).toBe(false)
+    expect(diagnostics?.tabIndex).toBeGreaterThanOrEqual(0)
+    diagnostics?.click()
+    expect(captured.messages.at(-1)).toMatchObject({
+      type: "studio.action",
+      action: { kind: "show-diagnostics" },
+    })
+  })
+
   it("renders the portable design import stop-line and keyboard-operable metadata action", () => {
-    const candidate = snapshot("readiness", 92)
+    const candidate = snapshot("readiness", 93)
     send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
     expect(dom.window.document.body.textContent).toMatch(/pending-human-review/i)
     expect(dom.window.document.body.textContent).toMatch(/approved upstream claim; not GAEP approval/i)

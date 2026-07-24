@@ -32,6 +32,12 @@ import { ActiveRunRegistry } from "./run-registry.js"
 import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-source.js"
 import { observePortableHandoffs } from "./handoff-observation.js"
 import { resolveLocalActorPrincipal } from "./local-actor.js"
+import { readVerifiedManagedArtifacts } from "./managed-evidence-verifier.js"
+import {
+  managedRecoveryPassPresentation,
+  privacySafeRecoveryDiagnostic,
+  revalidateManagedDiscardAfterError,
+} from "./managed-recovery-presentation.js"
 import { ManagedRunSession } from "./managed-run-session.js"
 import { runPortableDesignImportWorkflow } from "./portable-design-workflow.js"
 import { manualModelEntryCopy } from "./provider-truth.js"
@@ -315,6 +321,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     diagnostics.error(detail)
   }
 
+  const recordRecoveryFailure = (message: string, error: unknown): void => {
+    const safe = privacySafeRecoveryDiagnostic(error)
+    recoveryDiagnostic = safe.message
+    diagnostics.error(`${message}: ${safe.diagnostic}`)
+  }
+
   const viewContext = (): GaepViewContext => ({
     workspacePath: selectedFolder?.uri.fsPath,
     workspaceName: selectedFolder?.name,
@@ -472,14 +484,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ])
     configureWatcher(folder)
     await context.workspaceState.update(selectedWorkspaceKey, folder.uri.toString())
-    diagnostics.info(`Selected Product root: ${folder.uri.fsPath}`)
+    diagnostics.info(`Selected Product root: ${folder.name} (machine path withheld)`)
     if (recover && vscode.workspace.isTrusted) {
       try {
         const recovered = await engine.recoverInterruptedRuns("gaep.vscode.restart")
-        if (recovered.length > 0) diagnostics.warn(`Recovered ${recovered.length} interrupted run(s) as unknown.`)
+        if (recovered.length > 0) {
+          diagnostics.warn(
+            `Recovery pass returned ${recovered.length} Managed Run record(s) for persisted-state review; recovery, cleanup, apply, and outcome completion are not inferred.`,
+          )
+        }
       } catch (error) {
-        recoveryDiagnostic = error instanceof Error ? error.message : "Unknown recovery failure"
-        logDiagnostic("Interrupted-run recovery failed; GAEP remains in diagnostic mode", error)
+        recordRecoveryFailure("Interrupted-run recovery is deferred; GAEP remains in diagnostic mode", error)
       }
     }
     refresh()
@@ -541,9 +556,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return outcomes.filter((outcome): outcome is AdapterProbeResult => outcome !== undefined)
   }
 
-  const safely = (operation: () => Promise<void>): (() => Promise<void>) => async () => {
+  const safely = <TArgs extends unknown[]>(
+    operation: (...args: TArgs) => Promise<void>,
+  ): ((...args: TArgs) => Promise<void>) => async (...args: TArgs) => {
     try {
-      await operation()
+      await operation(...args)
     } catch (error) {
       if (error instanceof WorkflowCancelled) return
       const message = error instanceof Error ? error.message : "Unknown GAEP failure"
@@ -1642,7 +1659,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("gaep.refresh", refresh),
     vscode.commands.registerCommand("gaep.showDiagnostics", () => {
       diagnostics.info(`Workspace trusted: ${vscode.workspace.isTrusted}`)
-      diagnostics.info(`Selected Product root: ${selectedFolder?.uri.fsPath ?? "none"}`)
+      diagnostics.info(`Selected Product root: ${selectedFolder?.name ?? "none"} (machine path withheld)`)
       diagnostics.info(`Recovery diagnostic: ${recoveryDiagnostic ?? "none"}`)
       diagnostics.info(`Managed active runs: ${activeAgentRuns.list().map((run) => run.runId).join(", ") || "none"}`)
       diagnostics.info(`Local actor: ${localActor.id} (machine-local attribution only; not an approval authority)`)
@@ -1656,7 +1673,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!selectedFolder) throw new Error("Select a GAEP Product root before retrying recovery")
       if (activeAgentRuns.size > 0) throw new Error("Stop the active provider process before retrying interrupted-run recovery")
       await configureRoot(selectedFolder, true)
-      if (!recoveryDiagnostic) await vscode.window.showInformationMessage("GAEP recovery completed")
+      if (recoveryDiagnostic || !engine) {
+        await vscode.window.showWarningMessage(
+          recoveryDiagnostic ?? "Recovery remains deferred because persisted state could not be reread.",
+          "Show Diagnostics",
+        ).then((selected) => {
+          if (selected === "Show Diagnostics") diagnostics.show(true)
+        })
+        return
+      }
+      let audit: Awaited<ReturnType<GaepEngine["repository"]["verifyAudit"]>>
+      let records: Awaited<ReturnType<GaepEngine["listManagedRuns"]>>
+      try {
+        [audit, records] = await Promise.all([
+          engine.repository.verifyAudit(),
+          engine.listManagedRuns(),
+        ])
+      } catch (error) {
+        recordRecoveryFailure("Recovery inventory revalidation is deferred", error)
+        refresh()
+        await vscode.window.showWarningMessage(
+          "GAEP could not revalidate the persisted recovery inventory. No recovery, cleanup, apply, or outcome success is claimed.",
+          "Show Diagnostics",
+        ).then((selected) => {
+          if (selected === "Show Diagnostics") diagnostics.show(true)
+        })
+        return
+      }
+      const presentation = managedRecoveryPassPresentation(records, audit.valid)
+      if (presentation.level === "warning") await vscode.window.showWarningMessage(presentation.message)
+      else await vscode.window.showInformationMessage(presentation.message)
     })),
   )
 
@@ -1969,11 +2015,45 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (action !== "Dispose Local Recovery Journal") return
       try {
         await review.disposeLocalJournal()
-        diagnostics.info(`Disposed machine-local recovery journal for Managed Run ${review.record.id}`)
+        diagnostics.info(
+          `Local journal disposal request returned for Managed Run ${review.record.id}; persisted cleanup success is not independently verified or claimed.`,
+        )
       } catch (error) {
-        logDiagnostic(`Could not dispose recovery journal for Managed Run ${review.record.id}`, error)
+        const safe = privacySafeRecoveryDiagnostic(error)
+        diagnostics.error(`Local recovery journal disposal could not be verified: ${safe.diagnostic}`)
       }
     })
+  }
+
+  const managedRecoveryBoundaryFailure = (contextMessage: string, error: unknown): Error => {
+    const safe = privacySafeRecoveryDiagnostic(error)
+    diagnostics.error(`${contextMessage}: ${safe.diagnostic}`)
+    return new Error(
+      "GAEP could not verify the persisted Managed Run recovery boundary. No apply, discard, cleanup, recovery, or outcome success is claimed.",
+    )
+  }
+
+  const verifyPersistedManagedReview = async (
+    runtime: ManagedRuntimeContext,
+    review: ManagedExecutionReview,
+    previousRevision?: number,
+  ): Promise<ManagedExecutionReview["record"]> => {
+    try {
+      const [persisted, audit] = await Promise.all([
+        runtime.engine.readManagedRun(review.record.id),
+        runtime.engine.repository.verifyAudit(),
+      ])
+      if (!audit.valid || persisted.id !== review.record.id || persisted.revision !== review.record.revision ||
+          persisted.state !== review.record.state ||
+          (previousRevision !== undefined && persisted.revision <= previousRevision)) {
+        throw new Error("persisted Managed Run review binding did not revalidate")
+      }
+      return persisted
+    } catch (error) {
+      const safe = privacySafeRecoveryDiagnostic(error)
+      diagnostics.error(`Managed Run review persistence could not be verified: ${safe.diagnostic}`)
+      throw new Error("GAEP could not verify persisted Managed Run state after the review action. No apply, discard, cleanup, or outcome success is claimed.")
+    }
   }
 
   const reviewManagedRun = async (
@@ -1998,7 +2078,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         ...actions,
       )
       if (action === "Open Exact Inventory") {
-        await openManagedReview(review)
+        try {
+          await openManagedReview(review)
+        } catch (error) {
+          throw managedRecoveryBoundaryFailure("Managed Run exact inventory could not be opened", error)
+        }
         continue
       }
       if (action === "Apply Exact Reviewed Inventory") {
@@ -2007,14 +2091,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
         const confirmation = review.applyConfirmation
         if (!confirmation) throw new Error("The engine did not expose an exact apply confirmation for this review")
-        review = await review.apply({ confirmation }, actorId)
+        const previousRevision = review.record.revision
+        try {
+          review = await review.apply({ confirmation }, actorId)
+        } catch (error) {
+          throw managedRecoveryBoundaryFailure("Managed Run apply transition could not be verified", error)
+        }
+        await verifyPersistedManagedReview(runtime, review, previousRevision)
         diagnostics.info(`Managed Run ${review.record.id} apply decision ended in ${review.record.state}`)
         scheduleRefresh()
         continue
       }
       if (action === "Discard Staged Changes") {
-        review = await review.discard(actorId)
-        diagnostics.info(`Discarded staged changes for Managed Run ${review.record.id}`)
+        const previousRevision = review.record.revision
+        try {
+          review = await review.discard(actorId)
+        } catch (error) {
+          throw managedRecoveryBoundaryFailure("Managed Run discard transition could not be verified", error)
+        }
+        await verifyPersistedManagedReview(runtime, review, previousRevision)
+        diagnostics.info(
+          `Managed Run ${review.record.id} persisted state ${review.record.state}; machine-local cleanup and provider outcome remain separate claims.`,
+        )
         scheduleRefresh()
         continue
       }
@@ -2023,8 +2121,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       )
       return "done"
     }
+    const persisted = await verifyPersistedManagedReview(runtime, review)
     void vscode.window.showInformationMessage(
-      `Managed Run ${review.record.id} ended ${review.record.state}; provider ${review.result.providerDisposition}; outcome ${review.result.outcome.status}.`,
+      `Managed Run ${persisted.id} has persisted state ${persisted.state}. This does not independently attest provider outcome or machine-local cleanup.`,
     )
     maybeOfferManagedJournalDisposal(review)
     if (allowResume && review.record.state === "unknown") {
@@ -2122,33 +2221,87 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     refresh()
   }
 
-  const resolvePendingManagedReview = async (runtime: ManagedRuntimeContext): Promise<boolean> => {
-    const statuses = await runtime.engine.listPendingManagedReviewStatuses()
-    if (statuses.length === 0) return false
-    const choices = await Promise.all(statuses.map(async (status) => {
-      const record = await runtime.engine.readManagedRun(status.managedRunId)
-      return {
-        label: `Managed Run ${record.id}`,
-        description: record.state,
-        detail: status.canApply
-          ? "In-session exact apply or discard is available"
-          : "Durable apply is unavailable; exact inspection and discard remain available",
-        status,
-        record,
+  const resolvePendingManagedReview = async (
+    runtime: ManagedRuntimeContext,
+    requestedManagedRunId?: string,
+    mode: "full" | "discard-only" = "full",
+    expectedRevision?: number,
+  ): Promise<boolean> => {
+    let allStatuses: Awaited<ReturnType<GaepEngine["listPendingManagedReviewStatuses"]>>
+    try {
+      allStatuses = await runtime.engine.listPendingManagedReviewStatuses()
+    } catch (error) {
+      throw managedRecoveryBoundaryFailure("Pending Managed Run status lookup failed", error)
+    }
+    const statuses = requestedManagedRunId
+      ? allStatuses.filter((status) => status.managedRunId === requestedManagedRunId)
+      : allStatuses
+    if (statuses.length === 0) {
+      if (requestedManagedRunId) {
+        throw new Error("The selected Managed Run is no longer awaiting a supported discard review. Refresh Runs & Evidence.")
       }
-    }))
+      return false
+    }
+    let choices: Array<{
+      label: string
+      description: string
+      detail: string
+      status: (typeof statuses)[number]
+      record: Awaited<ReturnType<GaepEngine["readManagedRun"]>>
+    }>
+    try {
+      choices = await Promise.all(statuses.map(async (status) => {
+        const record = await runtime.engine.readManagedRun(status.managedRunId)
+        return {
+          label: `Managed Run ${record.id}`,
+          description: record.state,
+          detail: mode === "discard-only"
+            ? "Recovery view permits exact inspection or discard only; it does not offer apply"
+            : status.canApply
+              ? "In-session exact apply or discard is available"
+              : "Durable apply is unavailable; exact inspection and discard remain available",
+          status,
+          record,
+        }
+      }))
+    } catch (error) {
+      throw managedRecoveryBoundaryFailure("Pending Managed Run records could not be revalidated", error)
+    }
     const picked = choices.length === 1 ? choices[0] : await vscode.window.showQuickPick(choices, {
       title: "Resolve a pending Managed Run review",
       ignoreFocusOut: true,
     })
     if (!picked) throw new WorkflowCancelled()
     const record = picked.record
-    if (!record.resultId) throw new Error("Pending Managed Run has no exact result binding")
-    const result = await runtime.engine.readManagedRunResult(record.resultId)
-    const evidence = await runtime.engine.readManagedRunEvidence(result.evidenceId)
+    if (expectedRevision !== undefined && record.revision !== expectedRevision) {
+      throw new Error("The selected Managed Run changed after this recovery action was offered. Refresh Runs & Evidence.")
+    }
+    let result: Awaited<ReturnType<GaepEngine["readManagedRunResult"]>>
+    let evidence: Awaited<ReturnType<GaepEngine["readManagedRunEvidence"]>>
+    try {
+      const artifacts = await readVerifiedManagedArtifacts(record, {
+        readResult: (id) => runtime.engine.readManagedRunResult(id),
+        readEvidence: (id) => runtime.engine.readManagedRunEvidence(id),
+        readApplyDecision: (id) => runtime.engine.readManagedApplyDecision(id),
+      })
+      const [audit, revalidatedRecord] = await Promise.all([
+        runtime.engine.repository.verifyAudit(),
+        runtime.engine.readManagedRun(record.id),
+      ])
+      if (!audit.valid || canonicalDigest(revalidatedRecord) !== canonicalDigest(record) ||
+          !artifacts.result || !artifacts.evidence) {
+        throw new Error("pending Managed Run review binding did not revalidate")
+      }
+      result = artifacts.result
+      evidence = artifacts.evidence
+    } catch (error) {
+      throw managedRecoveryBoundaryFailure("Pending Managed Run evidence could not be revalidated", error)
+    }
     while (true) {
       const actions = ["Open Exact Inventory"]
-      if (picked.status.canApply && picked.status.applyConfirmation) actions.push("Apply Exact Reviewed Inventory")
+      if (mode === "full" && picked.status.canApply && picked.status.applyConfirmation) {
+        actions.push("Apply Exact Reviewed Inventory")
+      }
       if (picked.status.canDiscard) actions.push("Discard Staged Changes")
       actions.push("Keep Pending")
       const action = await vscode.window.showWarningMessage(
@@ -2157,24 +2310,59 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         ...actions,
       )
       if (action === "Open Exact Inventory") {
-        await openManagedReview({ record, result, evidence })
+        try {
+          await openManagedReview({ record, result, evidence })
+        } catch (error) {
+          throw managedRecoveryBoundaryFailure("Managed Run exact inventory could not be opened", error)
+        }
         continue
       }
       if (action === "Apply Exact Reviewed Inventory" && picked.status.applyConfirmation) {
         if (!vscode.workspace.isTrusted || engine !== runtime.engine || selectedFolder?.uri.fsPath !== runtime.path) {
           throw new Error("Workspace trust or Product root changed before apply; the staged review remains pending")
         }
-        const review = await runtime.engine.applyPendingManagedReview(
-          record.id,
-          { confirmation: picked.status.applyConfirmation },
-          actorId,
-        )
+        let review: ManagedExecutionReview
+        try {
+          review = await runtime.engine.applyPendingManagedReview(
+            record.id,
+            { confirmation: picked.status.applyConfirmation },
+            actorId,
+          )
+        } catch (error) {
+          throw managedRecoveryBoundaryFailure("Pending Managed Run apply transition could not be verified", error)
+        }
+        await verifyPersistedManagedReview(runtime, review, record.revision)
         await reviewManagedRun(review, runtime, false)
         return true
       }
       if (action === "Discard Staged Changes") {
-        const review = await runtime.engine.discardPendingManagedReview(record.id, actorId)
-        void vscode.window.showInformationMessage(`Managed Run ${review.record.id} is now ${review.record.state}.`)
+        let review: ManagedExecutionReview
+        try {
+          review = await runtime.engine.discardPendingManagedReview(record.id, actorId)
+          await verifyPersistedManagedReview(runtime, review, record.revision)
+        } catch (error) {
+          const safe = privacySafeRecoveryDiagnostic(error)
+          diagnostics.error(`Managed Run discard could not be verified: ${safe.diagnostic}`)
+          const revalidation = await revalidateManagedDiscardAfterError(record, {
+            readManagedRun: (id) => runtime.engine.readManagedRun(id),
+            verifyAudit: () => runtime.engine.repository.verifyAudit(),
+          })
+          scheduleRefresh()
+          if (revalidation.status === "persisted-discarded") {
+            await vscode.window.showInformationMessage(revalidation.message)
+          } else {
+            await vscode.window.showWarningMessage(
+              revalidation.message,
+              "Show Diagnostics",
+            ).then((selected) => {
+              if (selected === "Show Diagnostics") diagnostics.show(true)
+            })
+          }
+          return true
+        }
+        void vscode.window.showInformationMessage(
+          `Managed Run ${review.record.id} has persisted state discarded. Machine-local cleanup is not claimed; review recovery state separately.`,
+        )
         scheduleRefresh()
         return true
       }
@@ -2191,9 +2379,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await stopActiveRuns("Cancelling active Managed Run(s).", true)
       refresh()
     })),
-    vscode.commands.registerCommand("gaep.reviewManagedRun", safely(async () => {
+    vscode.commands.registerCommand("gaep.reviewManagedRun", safely(async (
+      requestedManagedRunId?: unknown,
+      requestedMode?: unknown,
+      requestedRevision?: unknown,
+    ) => {
+      if (requestedManagedRunId !== undefined && (
+        typeof requestedManagedRunId !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(requestedManagedRunId)
+      )) {
+        throw new Error("The requested Managed Run identity is invalid")
+      }
+      const mode = requestedMode === undefined || requestedMode === "full"
+        ? "full"
+        : requestedMode === "discard-only"
+          ? "discard-only"
+          : undefined
+      if (!mode) throw new Error("The requested Managed Run review mode is unsupported")
+      if (requestedRevision !== undefined && (
+        typeof requestedRevision !== "number" || !Number.isInteger(requestedRevision) || requestedRevision < 1
+      )) {
+        throw new Error("The requested Managed Run revision is invalid")
+      }
       const runtime = await requireRuntime()
-      if (!await resolvePendingManagedReview(runtime)) {
+      if (!await resolvePendingManagedReview(
+        runtime,
+        requestedManagedRunId,
+        mode,
+        requestedRevision,
+      )) {
         await vscode.window.showInformationMessage("No Managed Run is awaiting staged review.")
       }
     })),
@@ -2381,8 +2595,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         try {
           await stopActiveRuns("The selected Product root was removed from the workspace.", false)
         } catch (error) {
-          recoveryDiagnostic = error instanceof Error ? error.message : "Unable to stop the provider process for the removed Product root"
-          logDiagnostic("Selected Product root removal is blocked by an active provider process", error)
+          recordRecoveryFailure("Selected Product root removal is blocked by an active provider process", error)
           refresh()
           return
         }

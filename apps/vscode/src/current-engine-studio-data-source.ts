@@ -36,6 +36,7 @@ import { containsSecretShapedValue } from "@gaep/contracts"
 import type { ProductStudioPage, ProductStudioRecordMap, ProductStudioService } from "@gaep/engine"
 
 import type { PortableHandoffObservation } from "./handoff-observation.js"
+import { managedRecoveryPresentation } from "./managed-recovery-presentation.js"
 import { readVerifiedManagedArtifacts } from "./managed-evidence-verifier.js"
 import type { PortableDesignSnapshot } from "./portable-design-workflow.js"
 import { agentStatus } from "./provider-truth.js"
@@ -102,6 +103,7 @@ export type ExistingStudioCommand =
   | "gaep.showDiagnostics"
   | "gaep.manageWorkspaceTrust"
   | "gaep.retryRecovery"
+  | "gaep.reviewManagedRun"
   | "gaep.productStudio.domainWorkflow"
 
 export interface CurrentEngineStudioContext {
@@ -676,6 +678,83 @@ function managedEvidenceTable(state: ObservedStudioState): StudioTableSnapshot {
         shown: rows.length,
         total: state.managedRunTotal,
         message: `Showing the ${rows.length} newest Managed Runs. Older durable records remain in the governed repository.`,
+      },
+    } : {}),
+  }
+}
+
+function managedRecoveryTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = state.managedRuns.map(({ record, result, issue: observationIssue }) => {
+    const recovery = managedRecoveryPresentation(record, observationIssue ? undefined : result)
+    const actions: StudioActionControl[] = [control("Select underlying Run", {
+      kind: "select-record",
+      recordId: record.runId,
+    })]
+    if (recovery?.canOpenDiscardReview && !observationIssue) {
+      actions.push(control(
+        "Open exact discard review",
+        { kind: "open-managed-discard", managedRunId: record.id, expectedRevision: record.revision },
+        true,
+        "danger",
+      ))
+    }
+    if (recovery?.canRetryRecovery && !observationIssue) {
+      actions.push(control("Retry Recovery", { kind: "retry-recovery" }))
+    }
+    if (observationIssue || recovery?.kind === "unknown" || recovery?.kind === "quarantined" ||
+        recovery?.kind === "local-cleanup-pending") {
+      actions.push(control("Show diagnostics", { kind: "show-diagnostics" }))
+    }
+    return {
+      id: `recovery:${record.id}`,
+      cells: {
+        managedRun: record.id,
+        run: record.runId,
+        persistedState: record.state,
+        attention: observationIssue
+          ? "Bound recovery evidence withheld"
+          : recovery?.status ?? "No recovery attention state exposed",
+        recovery: recovery?.recovery ?? `Persisted recovery status: ${record.recovery.status}`,
+        localCleanup: recovery?.localCleanup ?? "No verified local-cleanup statement is exposed",
+        boundary: observationIssue
+          ? "Bound Result or Evidence could not be verified. No recovery, apply, cleanup, or outcome claim is made."
+          : recovery?.meaning ?? "No recovery action is inferred. Process ownership and machine-local cleanup are outside this persisted row.",
+      },
+      state: observationIssue ? "verification-withheld" : recovery?.kind ?? "no-attention",
+      actions,
+    }
+  })
+  return {
+    id: "managed-recovery",
+    title: "Restart and recovery state",
+    columns: [
+      { key: "managedRun", label: "Managed Run", identifier: true },
+      { key: "run", label: "Run" },
+      { key: "persistedState", label: "Persisted state" },
+      { key: "attention", label: "Recovery attention" },
+      { key: "recovery", label: "Persisted recovery" },
+      { key: "localCleanup", label: "Local cleanup boundary" },
+      { key: "boundary", label: "Non-authoritative meaning" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: managedObservationUnavailable(state)
+        ? emptySurface(
+            "Recovery observation unavailable",
+            "Managed Run recovery state is withheld because the audit or durable reader boundary could not be verified. No absence or success claim is made.",
+            [control("Show diagnostics", { kind: "show-diagnostics" })],
+          )
+        : emptySurface(
+            "No durable Managed Run recovery rows",
+            "No durable Managed Run is present in the bounded observation. This does not attest provider process state or machine-local cleanup.",
+          ),
+    } : {}),
+    ...(state.managedRunTotal > rows.length ? {
+      truncation: {
+        shown: rows.length,
+        total: state.managedRunTotal,
+        message: `Recovery projection is limited to the newest ${rows.length} Managed Runs. Older persisted recovery states are not interpreted in this view.`,
       },
     } : {}),
   }
@@ -1544,6 +1623,8 @@ function runPage(state: ObservedStudioState): RunPageSnapshot {
   const unknownRuns = state.runs.filter((run) => run.state === "unknown")
   const eligibility = prepareRunEligibility(state)
   const selectedRun = state.runs.find((run) => run.id === state.selectedRecordId) ?? newestRun(state.runs)
+  const recovery = managedRecoveryTable(state)
+  const recoveryRows = recovery.rows.filter((row) => row.state !== "no-attention")
   return {
     ...base("runs-evidence", state.product),
     ...(designPanel("runs-evidence", state) ? { design: designPanel("runs-evidence", state) } : {}),
@@ -1593,10 +1674,13 @@ function runPage(state: ObservedStudioState): RunPageSnapshot {
     },
     selectedRun: selectedRunEvidenceEntries(state, selectedRun),
     events: managedTimeline(state, selectedRun),
+    recovery,
     managedEvidence: managedEvidenceTable(state),
     evidence: evidenceTable(state.evidence),
     handoffs: handoffTable(state),
-    recoveryActions: unknownRuns.length > 0 ? [control("Show diagnostics", { kind: "show-diagnostics" })] : [],
+    recoveryActions: recoveryRows.length > 0 || unknownRuns.length > 0
+      ? [control("Show diagnostics", { kind: "show-diagnostics" })]
+      : [],
   }
 }
 
@@ -1880,6 +1964,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
     case "runs-evidence": return {
       ...page,
       runs: capTable(page.runs),
+      recovery: capTable(page.recovery),
       managedEvidence: capTable(page.managedEvidence),
       evidence: capTable(page.evidence),
       handoffs: capTable(page.handoffs),
@@ -2135,6 +2220,11 @@ function commandFor(action: StudioAction): { command: ExistingStudioCommand; arg
     case "show-diagnostics": return { command: "gaep.showDiagnostics", args: [], announcement: "Opened GAEP diagnostics." }
     case "manage-workspace-trust": return { command: "gaep.manageWorkspaceTrust", args: [], announcement: "Opened Workspace Trust management." }
     case "retry-recovery": return { command: "gaep.retryRecovery", args: [], announcement: "Opened the native recovery workflow." }
+    case "open-managed-discard": return {
+      command: "gaep.reviewManagedRun",
+      args: [action.managedRunId, "discard-only", action.expectedRevision],
+      announcement: "Opened the native exact discard review. No discard or cleanup result is claimed until persisted state is reread.",
+    }
     case "select-agent":
     case "retry-provider":
     case "begin-handoff": return { command: "gaep.selectAgent", args: [], announcement: "Opened the native agent and model workflow." }
@@ -2642,8 +2732,10 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
           readApplyDecision: (id) => engine.readManagedApplyDecision!(id),
         })
         return { record, ...artifacts }
-      } catch (error) {
-        this.context.logDiagnostic(`Product Studio Managed Run ${record.id} evidence observation failed`, error)
+      } catch {
+        this.context.logDiagnostic(
+          `Product Studio Managed Run ${record.id} evidence observation failed; raw local paths, credentials, and upstream error text were withheld`,
+        )
         return {
           record,
           issue: "One or more bound durable artifacts could not be verified. No unverified result, evidence, or apply-decision detail is displayed.",
@@ -2654,7 +2746,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
   }
 
   private recordObservationFailure(state: ObservedStudioState, area: string, error: unknown): void {
-    if (area.startsWith("portable-design-snapshot")) {
+    if (area.startsWith("portable-design-snapshot") || area === "managed-runs") {
       this.context.logDiagnostic(`Product Studio ${area} observation failed; local source details were withheld`)
     } else {
       this.context.logDiagnostic(`Product Studio ${area} observation failed`, error)

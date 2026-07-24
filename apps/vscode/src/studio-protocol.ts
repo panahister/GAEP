@@ -348,6 +348,7 @@ export interface RunPageSnapshot extends StudioPageBase {
   composer?: RunComposerSnapshot
   selectedRun: StudioDefinitionEntry[]
   events: Array<{ id: string; time: string; kind: string; summary: string }>
+  recovery: StudioTableSnapshot
   managedEvidence: StudioTableSnapshot
   evidence: StudioTableSnapshot
   handoffs: StudioTableSnapshot
@@ -454,6 +455,7 @@ export type StudioAction =
   | { kind: "start-governed-run"; preparedRunId: string }
   | { kind: "cancel-prepared-run"; preparedRunId: string }
   | { kind: "recover-run"; runId: string; strategy: "inspect" | "mark-unknown" | "resume" | "cancel" }
+  | { kind: "open-managed-discard"; managedRunId: string; expectedRevision: number }
   | { kind: "retry-provider"; adapterId: string }
   | { kind: "export-product"; sourceRevision?: number }
   | { kind: "import-product-preview" }
@@ -659,6 +661,11 @@ export function isStudioAction(value: unknown): value is StudioAction {
     case "recover-run":
       return hasOnlyKeys(value, ["kind", "runId", "strategy"]) && isNonEmptyString(value.runId) &&
         ["inspect", "mark-unknown", "resume", "cancel"].includes(String(value.strategy))
+    case "open-managed-discard":
+      return hasOnlyKeys(value, ["kind", "managedRunId", "expectedRevision"]) &&
+        typeof value.managedRunId === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value.managedRunId) &&
+        isNonNegativeInteger(value.expectedRevision) && value.expectedRevision > 0
     case "retry-provider":
       return hasOnlyKeys(value, ["kind", "adapterId"]) && isNonEmptyString(value.adapterId)
     case "export-product":
@@ -884,13 +891,13 @@ function isRunComposer(value: unknown): value is RunComposerSnapshot {
 
 function isRunPage(page: Record<string, unknown>): boolean {
   return hasOnlyKeys(page, [
-    "kind", "route", "title", "purpose", "source", "actions", "design", "runs", "composer", "selectedRun", "events", "managedEvidence", "evidence", "handoffs", "recoveryActions",
+    "kind", "route", "title", "purpose", "source", "actions", "design", "runs", "composer", "selectedRun", "events", "recovery", "managedEvidence", "evidence", "handoffs", "recoveryActions",
   ]) && isPageBase(page, "runs-evidence") && page.kind === "runs-evidence" && isTableSnapshot(page.runs) &&
     (page.composer === undefined || isRunComposer(page.composer)) && Array.isArray(page.selectedRun) &&
     page.selectedRun.every(isDefinitionEntry) && Array.isArray(page.events) && page.events.length <= 10_000 &&
     page.events.every((event) => isRecord(event) && hasOnlyKeys(event, ["id", "time", "kind", "summary"]) &&
       isNonEmptyString(event.id) && isNonEmptyString(event.time) && isNonEmptyString(event.kind) && isBoundedString(event.summary)) &&
-    isTableSnapshot(page.managedEvidence) && isTableSnapshot(page.evidence) && isTableSnapshot(page.handoffs) &&
+    isTableSnapshot(page.recovery) && isTableSnapshot(page.managedEvidence) && isTableSnapshot(page.evidence) && isTableSnapshot(page.handoffs) &&
     Array.isArray(page.recoveryActions) && page.recoveryActions.length <= 100 &&
     page.recoveryActions.every(isStudioActionControl)
 }

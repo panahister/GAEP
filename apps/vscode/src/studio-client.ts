@@ -695,6 +695,7 @@ class StudioShell {
       container.append(composer)
     }
     if (page.selectedRun.length > 0) container.append(this.renderDefinitionGroup("Selected run", page.selectedRun))
+    container.append(this.renderTable(page.recovery))
     if (page.events.length > 0) {
       const events = element("section", "section")
       events.append(element("h3", undefined, "Normalized events"))

@@ -1432,6 +1432,57 @@ describe("current-engine Product Studio data source", () => {
     ]))
   })
 
+  it("presents pending review as provisional and opens only the existing exact discard workflow", async () => {
+    const pendingInput = structuredClone(managedRun)
+    delete pendingInput.endedAt
+    delete pendingInput.applyDecisionId
+    delete pendingInput.applyDecisionDigest
+    const pendingRun = managedRunRecordSchema.parse({
+      ...pendingInput,
+      revision: 2,
+      state: "review-required",
+      resultId: reviewResult.id,
+      resultDigest: canonicalDigest(reviewResult),
+      updatedAt: "2026-07-21T00:01:01.000Z",
+    })
+    const { source, commands } = harness({
+      managedRuns: [pendingRun],
+      managedResults: { [reviewResultId]: reviewResult },
+      managedEvidence: { [reviewEvidenceId]: reviewEvidence },
+    })
+    const snapshot = await source.readSnapshot("runs-evidence")
+    if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
+    const row = snapshot.page.recovery.rows[0]
+    expect(row).toMatchObject({
+      state: "pending-review",
+      cells: {
+        persistedState: "review-required",
+        attention: "Pending human review",
+        boundary: expect.stringMatching(/not approval, apply success, or Product outcome completion/i),
+      },
+    })
+    const discard = row?.actions.find((action) => action.action.kind === "open-managed-discard")
+    expect(discard).toMatchObject({
+      label: "Open exact discard review",
+      enabled: true,
+      emphasis: "danger",
+      action: { managedRunId, expectedRevision: 2 },
+    })
+    if (!discard) throw new Error("Expected exact discard review action")
+    expect(await source.execute(discard.action, {
+      requestId: "open-managed-discard",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })).toMatchObject({
+      status: "accepted",
+      announcement: expect.stringMatching(/No discard or cleanup result is claimed/i),
+    })
+    expect(commands).toContainEqual({
+      command: "gaep.reviewManagedRun",
+      args: [managedRunId, "discard-only", 2],
+    })
+  })
+
   it("accepts the applying transition only when the exact current review Result and receipt are bound", async () => {
     const applyingInput = structuredClone(managedRun)
     delete applyingInput.endedAt
@@ -1456,6 +1507,17 @@ describe("current-engine Product Studio data source", () => {
       outcome: "not-assessed · not-evaluated",
       observation: "bound graph verified",
     })
+    expect(snapshot.page.recovery.rows[0]).toMatchObject({
+      state: "recovery-deferred",
+      cells: {
+        persistedState: "applying",
+        attention: "Apply or restart recovery is deferred",
+        boundary: expect.stringMatching(/non-terminal.*not inferred/i),
+      },
+    })
+    expect(snapshot.page.recovery.rows[0]?.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: { kind: "retry-recovery" } }),
+    ]))
     expect(snapshot.page.events.map((event) => event.kind)).toContain("apply decision")
   })
 
@@ -1697,6 +1759,11 @@ describe("current-engine Product Studio data source", () => {
     if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
     expect(snapshot.page.managedEvidence.rows).toEqual([])
     expect(snapshot.page.managedEvidence.emptyState?.title).toBe("Managed execution evidence unavailable")
+    expect(snapshot.page.recovery.rows).toEqual([])
+    expect(snapshot.page.recovery.emptyState).toMatchObject({
+      title: "Recovery observation unavailable",
+      detail: expect.stringMatching(/audit.*could not be verified.*No absence or success claim/i),
+    })
     expect(snapshot.page.handoffs.rows).toEqual([])
     expect(snapshot.page.handoffs.emptyState).toMatchObject({
       title: "Portable handoff history unavailable",
@@ -1895,6 +1962,10 @@ describe("current-engine Product Studio data source", () => {
     expect(snapshot.page.selectedRun.find((entry) => entry.term === "Managed evidence")?.value)
       .toMatch(/observation is unavailable.*no absence claim/i)
     expect(snapshot.page.runs.rows[0]?.cells).toMatchObject({ managed: "observation unavailable", attempts: "unavailable" })
+    expect(snapshot.page.recovery.emptyState).toMatchObject({
+      title: "Recovery observation unavailable",
+      detail: expect.stringMatching(/No absence or success claim/i),
+    })
     expect(JSON.stringify(snapshot)).not.toContain("private reader failure must not render")
   })
 
@@ -1933,6 +2004,8 @@ describe("current-engine Product Studio data source", () => {
     const snapshot = await source.readSnapshot("runs-evidence")
     if (snapshot.page.kind !== "runs-evidence") throw new Error("Expected Runs & Evidence page")
     expect(snapshot.page.managedEvidence.truncation).toMatchObject({ shown: 200, total: 201 })
+    expect(snapshot.page.recovery.truncation).toMatchObject({ shown: 200, total: 201 })
+    expect(snapshot.page.recovery.truncation?.message).toMatch(/newest 200.*Older persisted recovery states are not interpreted/i)
     expect(snapshot.page.selectedRun.find((entry) => entry.term === "Managed evidence")?.value)
       .toMatch(/No Managed Run.*is present in the newest 200 of 201.*may or may not contain one/i)
     expect(snapshot.page.runs.rows[0]?.cells).toMatchObject({
