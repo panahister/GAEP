@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 
 import { runTests } from "@vscode/test-electron"
+import { createVsixLifecycleFixture } from "../../../../scripts/create_vsix_lifecycle_fixture.mjs"
 
 const extensionDevelopmentPath = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const extensionTestsPath = join(extensionDevelopmentPath, "test/e2e/suite/index.cjs")
@@ -88,6 +89,12 @@ async function installPackagedVsix(profile, extensions) {
   const packageId = "gaep.gaep-vscode"
   const exactPackage = `${packageId}@0.1.0`
   const packagePath = join(extensionDevelopmentPath, "dist/gaep-vscode.vsix")
+  const previousPackage = await createVsixLifecycleFixture({
+    temporaryRoot,
+    packageName: "gaep-vscode",
+    displayName: "GAEP for VS Code",
+    engineRange: "^1.103.0",
+  })
   const cliEnvironment = {
     ...process.env,
     ELECTRON_RUN_AS_NODE: "1",
@@ -111,23 +118,27 @@ async function installPackagedVsix(profile, extensions) {
   }
   const assertInventory = async (expected) => {
     const matches = (await inventory()).filter((line) => line.startsWith(`${packageId}@`))
-    if (expected && (matches.length !== 1 || matches[0] !== exactPackage)) {
-      throw new Error(`Expected exactly ${exactPackage} in the isolated extension inventory; received ${matches.join(", ") || "none"}`)
+    if (expected && (matches.length !== 1 || matches[0] !== expected)) {
+      throw new Error(`Expected exactly ${expected} in the isolated extension inventory; received ${matches.join(", ") || "none"}`)
     }
     if (!expected && matches.length !== 0) {
       throw new Error(`Expected ${packageId} to be absent from the isolated extension inventory; received ${matches.join(", ")}`)
     }
   }
 
+  await executeCli(["--install-extension", previousPackage.path, "--force"])
+  await assertInventory(previousPackage.exactPackage)
   await executeCli(["--install-extension", packagePath, "--force"])
-  await assertInventory(true)
+  await assertInventory(exactPackage)
   await executeCli(["--install-extension", packagePath, "--force"])
-  await assertInventory(true)
+  await assertInventory(exactPackage)
+  await executeCli(["--install-extension", previousPackage.path, "--force"])
+  await assertInventory(previousPackage.exactPackage)
   await executeCli(["--uninstall-extension", packageId])
-  await assertInventory(false)
+  await assertInventory(undefined)
   await executeCli(["--install-extension", packagePath, "--force"])
-  await assertInventory(true)
-  process.stdout.write(`PASS isolated VSIX install/reinstall/uninstall/absence/reinstall: ${exactPackage}\n`)
+  await assertInventory(exactPackage)
+  process.stdout.write(`PASS isolated VSIX previous-version install/upgrade/reinstall/rollback/uninstall/absence/final install: ${previousPackage.exactPackage} -> ${exactPackage}\n`)
   return true
 }
 

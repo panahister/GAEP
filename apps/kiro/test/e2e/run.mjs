@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 
 import { runTests } from "@vscode/test-electron"
+import { createVsixLifecycleFixture } from "../../../../scripts/create_vsix_lifecycle_fixture.mjs"
 
 const extensionDevelopmentPath = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const testHarnessPath = join(extensionDevelopmentPath, "test/e2e/harness")
@@ -41,6 +42,12 @@ try {
     `--extensions-dir=${extensions}`,
     "--disable-telemetry",
   ]
+  const previousPackage = await createVsixLifecycleFixture({
+    temporaryRoot,
+    packageName: "gaep-kiro",
+    displayName: "GAEP for Kiro",
+    engineRange: "^1.95.0",
+  })
   const executeCli = (arguments_) => runCli(executable, [
     ...commonCliArguments,
     ...arguments_,
@@ -51,8 +58,8 @@ try {
   }
   const assertInventory = async (expected) => {
     const matches = (await inventory()).filter((line) => line.startsWith(`${packageId}@`))
-    if (expected && (matches.length !== 1 || matches[0] !== exactPackage)) {
-      throw new Error(`Expected exactly ${exactPackage} in the isolated compatible-host inventory; received ${matches.join(", ") || "none"}`)
+    if (expected && (matches.length !== 1 || matches[0] !== expected)) {
+      throw new Error(`Expected exactly ${expected} in the isolated compatible-host inventory; received ${matches.join(", ") || "none"}`)
     }
     if (!expected && matches.length !== 0) {
       throw new Error(`Expected ${packageId} to be absent from the isolated compatible-host inventory; received ${matches.join(", ")}`)
@@ -60,15 +67,19 @@ try {
   }
 
   const packagePath = join(extensionDevelopmentPath, "dist/gaep-kiro.vsix")
+  await executeCli(["--install-extension", previousPackage.path, "--force"])
+  await assertInventory(previousPackage.exactPackage)
   await executeCli(["--install-extension", packagePath, "--force"])
-  await assertInventory(true)
+  await assertInventory(exactPackage)
   await executeCli(["--install-extension", packagePath, "--force"])
-  await assertInventory(true)
+  await assertInventory(exactPackage)
+  await executeCli(["--install-extension", previousPackage.path, "--force"])
+  await assertInventory(previousPackage.exactPackage)
   await executeCli(["--uninstall-extension", packageId])
-  await assertInventory(false)
+  await assertInventory(undefined)
   await executeCli(["--install-extension", packagePath, "--force"])
-  await assertInventory(true)
-  process.stdout.write(`PASS isolated compatible-host VSIX install/reinstall/uninstall/absence/reinstall: ${exactPackage}\n`)
+  await assertInventory(exactPackage)
+  process.stdout.write(`PASS isolated compatible-host VSIX previous-version install/upgrade/reinstall/rollback/uninstall/absence/final install: ${previousPackage.exactPackage} -> ${exactPackage}\n`)
   await runTests({
     vscodeExecutablePath: executable,
     extensionDevelopmentPath: testHarnessPath,
