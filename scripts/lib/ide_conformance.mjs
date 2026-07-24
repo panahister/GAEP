@@ -16,6 +16,7 @@ const runtimeLevels = new Set([
   "native-startup-plugin-load-only",
   "native-startup-and-packaged-engine-client-workflow-local",
   "cross-platform-compile-and-controller-only",
+  "cross-platform-packaged-engine-client-workflow-local",
 ])
 
 function requireCondition(condition, message) {

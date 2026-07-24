@@ -146,12 +146,17 @@
       "packagePlatforms": ["win32"],
       "runtimeEvidence": {
         "source": "package-report",
-        "level": "cross-platform-compile-and-controller-only",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-155-protocol-controller-checks-windows-container-install-pending"],
-        "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
+        "level": "cross-platform-packaged-engine-client-workflow-local",
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-163-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending"],
+        "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
-        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["await using var client = new EngineClient(workspace)"] }] },
+        { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["VisualStudioEngineClientFactory.Create(workspace)"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/PackagedEngine.cs", "contains": ["PackagedEngineBuild.ResourceName", "GAEP_ENGINE_RUNTIME_EXECUTABLE", "PATH fallback is disabled", "SafeEngineEnvironment"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ResolveAndVerifyPackagedEngine", "The packaged GAEP engine changed while the host process was starting", "start.Environment.Clear()"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/Gaep.HostClient.csproj", "contains": ["BuildGaepPackagedEngine", "EmbeddedResource", "Gaep.HostClient.PackagedEngine.gaep-engine.mjs"] }
+        ] },
         { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ReadProductBindingAsync"] }] },
         { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ListPortableDesignSnapshotsAsync"] }] },
         { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ReadPortableDesignSnapshotAsync"] }] },
