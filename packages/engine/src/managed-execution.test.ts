@@ -313,6 +313,124 @@ describe("managed execution engine", () => {
     return { product, initiative, run, plan, pack, step, steps, charter }
   }
 
+  async function readyCodexReadOnly() {
+    const executable = join(workspace, "fake-codex")
+    await writeFile(executable, `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(fakeCodexServer)} "$@"\n`)
+    await chmod(executable, 0o700)
+    const codex = new FakeManagedCodexAdapter(executable)
+    engine = new GaepEngine(workspace, [codex])
+    const product = await engine.createProduct({
+      name: "Managed Codex Observation",
+      summary: "Exercise a zero-change staged Codex observation.",
+      problem: "A clean isolated stage must not be confused with produced workspace changes.",
+      affectedUsers: "Founders",
+      desiredOutcome: "A clean read-only Codex stage closes without workspace mutation.",
+      successSignals: ["Exact zero-change evidence is committed"],
+      firstWorkflow: "Run one read-only observation.",
+      exclusions: ["Workspace writes", "External effects"],
+      profile: "software",
+    }, "founder")
+    const initiative = await engine.createInitiative({
+      title: "Observe through managed Codex",
+      outcome: "One bounded provider observation produces portable evidence.",
+      scope: ["Read-only managed execution"],
+      exclusions: ["Workspace mutation"],
+    }, "founder")
+    await engine.updateInitiativeState(initiative.id, "active", "Begin read-only observation", "founder")
+    const probe = await codex.probe()
+    await engine.selectAgent(probe.capabilities, "fake-model", {}, "founder")
+    const content = "Exact bounded Context for a read-only managed Codex observation."
+    const pack = await engine.productStudio.createContextPack({
+      objective: "Provide exact Context for one observation-only provider turn.",
+      recipient: { kind: "agent", id: "codex-cli" },
+      items: [{
+        id: randomUUID(),
+        source: { kind: "logical", value: "managed-codex-readonly-fixture" },
+        sourceDigest: canonicalDigest(content),
+        selectionReason: "Required exact managed read-only fixture",
+        required: true,
+        content,
+        contentDigest: canonicalDigest(content),
+        trust: trust("codex-cli"),
+        transformations: [],
+      }],
+      omissions: [],
+      warnings: [],
+      conflicts: [],
+      classificationCombinationRisk: "One internal fixture adds no material combination risk.",
+      sufficiencyCriteria: ["The exact read-only fixture Context is present"],
+      sufficiencyEvaluator: { kind: "system", id: "gaep.managed-test" },
+      sufficiencyAssumptions: [],
+    }, product.revision ?? 1, "founder")
+    const packRef = {
+      recordType: "context-pack" as const,
+      recordId: pack.id,
+      revision: pack.revision,
+      digest: canonicalDigest(pack),
+    }
+    const step: WorkflowStep = {
+      id: randomUUID(),
+      title: "Observe exact managed context",
+      objective: "Return one bounded observation without requesting Tool or write authority.",
+      responsibility: { kind: "agent", id: "codex-cli" },
+      contextPacks: [packRef],
+      toolDefinitions: [],
+      dependsOn: [],
+      preconditions: ["The exact Context Pack is current"],
+      outputs: ["One normalized observation"],
+      evidenceCriteria: ["Portable event evidence is committed"],
+      retry: { maxAttempts: 1, backoffMs: 0, retryOn: [] },
+      stopConditions: ["Stop before any Tool or write request"],
+      scope: { read: [workspaceRoot], write: [], effects: [] },
+      effectEnvelope: ["observe"],
+    }
+    const draftPlan = await engine.productStudio.createWorkflowPlan({
+      title: "Managed Codex read-only workflow",
+      objective: "Run one exact provider observation without mutation authority.",
+      subject: {
+        recordType: "product",
+        recordId: product.id,
+        revision: product.revision ?? 1,
+        digest: canonicalDigest(product),
+      },
+      actor: { kind: "human", id: "founder" },
+      strategy: "sequential",
+      contextPacks: [packRef],
+      toolDefinitions: [],
+      steps: [step],
+    }, product.revision ?? 1, "founder")
+    const plan = await engine.productStudio.reviseWorkflowPlan(
+      draftPlan.id,
+      draftPlan.revision,
+      { state: "resolved" },
+      "founder",
+      "Exact read-only bindings are resolved",
+    )
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Run one exact managed Codex observation without Tool or write authority.",
+      permissions: [{ capability: "all-tools", mode: "deny", scope: [] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: ["Do not use Tools, write files, access network, or perform external effects"],
+      stopConditions: ["Stop before any Tool, write, or non-observation effect"],
+      requiredEvidence: ["Exact event and workflow evidence"],
+      managedIntent: {
+        workflowPlan: {
+          recordType: "workflow-plan",
+          recordId: plan.id,
+          revision: plan.revision,
+          digest: canonicalDigest(plan),
+        },
+        contextPacks: [packRef],
+        toolDefinitions: [],
+        requestedEffects: ["observe"],
+        requestedScopes: [],
+      },
+    }, "founder")
+    await engine.confirmCharter(charter.id, "founder")
+    return { charter, plan, executable }
+  }
+
   async function drain(handle: Awaited<ReturnType<GaepEngine["startManagedRun"]>>) {
     const events: ManagedEvidenceEvent[] = []
     const eventDrain = (async () => {
@@ -342,6 +460,86 @@ describe("managed execution engine", () => {
     expect((await engine.repository.verifyAudit()).valid).toBe(true)
     await expect(engine.markRunState(run.id, "completed", { kind: "human", id: "founder" }))
       .rejects.toThrow(/derived from durable managed evidence/)
+  })
+
+  it("executes an exact digest-attested managed read-only preview without tool, write, or effect authority", async () => {
+    const { charter, plan } = await readyRun("success")
+    const preview = await engine.previewManagedReadOnlyExecution(charter.id, plan.id)
+    expect(preview).toMatchObject({
+      schemaVersion: 1,
+      kind: "managed-readonly-preview",
+      charterId: charter.id,
+      workflowPlanId: plan.id,
+      strategy: "sequential",
+      stepIds: [plan.steps[0]!.id],
+      contextPackCount: 1,
+      authorityBoundary: "managed-readonly-preview-does-not-grant-execution-or-effect-authority",
+    })
+    expect(preview.gates).toHaveLength(6)
+    expect(preview.gates.every((gate) => gate.criteriaDigest === canonicalDigest(gate.criteria))).toBe(true)
+    await expect(engine.executeManagedReadOnly({
+      charterId: charter.id,
+      workflowPlanId: plan.id,
+      expectedPreviewDigest: `sha256:${"0".repeat(64)}`,
+      timeoutMs: 30_000,
+    }, "founder")).rejects.toThrow(/preview changed/)
+
+    const receipt = await engine.executeManagedReadOnly({
+      charterId: charter.id,
+      workflowPlanId: plan.id,
+      expectedPreviewDigest: preview.previewDigest,
+      timeoutMs: 30_000,
+    }, "founder")
+    expect(receipt).toMatchObject({
+      schemaVersion: 1,
+      kind: "managed-readonly-receipt",
+      previewDigest: preview.previewDigest,
+      productId: preview.productId,
+      initiativeId: preview.initiativeId,
+      adapterId: preview.adapterId,
+      agentId: preview.agentId,
+      modelId: preview.modelId,
+      mode: "manual-offline",
+      state: "completed",
+      providerDisposition: "completed",
+      outcomeStatus: "satisfied",
+      completedStepCount: 1,
+      totalStepCount: 1,
+      authorityBoundary: "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+    })
+    expect(receipt.eventCount).toBeGreaterThan(0)
+    const record = await engine.readManagedRun(receipt.managedRunId)
+    expect(record.resultDigest).toBe(receipt.resultDigest)
+    expect(JSON.stringify(receipt)).not.toContain(workspace)
+    expect(JSON.stringify(receipt)).not.toContain("deterministic output")
+  })
+
+  it("auto-closes an exact zero-change Codex stage without granting write authority", async () => {
+    const { charter, plan, executable } = await readyCodexReadOnly()
+    const executableBefore = await readFile(executable)
+    const preview = await engine.previewManagedReadOnlyExecution(charter.id, plan.id)
+    const receipt = await engine.executeManagedReadOnly({
+      charterId: charter.id,
+      workflowPlanId: plan.id,
+      expectedPreviewDigest: preview.previewDigest,
+      timeoutMs: 30_000,
+    }, "founder")
+    expect(receipt).toMatchObject({
+      mode: "codex-staged",
+      state: "completed",
+      providerDisposition: "completed",
+      outcomeStatus: "satisfied",
+      completedStepCount: 1,
+      totalStepCount: 1,
+    })
+    const evidence = await engine.readManagedRunEvidence(
+      (await engine.readManagedRunResult((await engine.readManagedRun(receipt.managedRunId)).resultId!)).evidenceId,
+    )
+    expect(evidence.staging).toMatchObject({ changes: [], applyState: "applied" })
+    expect(evidence.actualEffects).toEqual([
+      expect.objectContaining({ effect: "observe", status: "observed-provisional" }),
+    ])
+    expect(await readFile(executable)).toEqual(executableBefore)
   })
 
   it("returns bounded stable Managed Run pages and rejects pagination across an inventory change", async () => {

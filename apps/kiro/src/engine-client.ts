@@ -18,6 +18,8 @@ import {
   normalizeUuid,
   parseAgentReadiness,
   parseAgentHandoff,
+  parseManagedReadOnlyPreview,
+  parseManagedReadOnlyReceipt,
   parseAgentRuns,
   parseAgentSelection,
   parseAgentSelectionState,
@@ -38,6 +40,8 @@ import {
   type AgentRun,
   type AgentSelection,
   type AgentSelectionState,
+  type ManagedReadOnlyPreview,
+  type ManagedReadOnlyReceipt,
   type PortableAgentSettingValue,
 } from "./protocol.js"
 
@@ -185,6 +189,45 @@ export class GaepEngineClient {
         decisions,
         evidence,
       })
+    })
+  }
+
+  previewManagedReadOnly(charterId: string, workflowPlanId: string): Promise<ManagedReadOnlyPreview> {
+    return this.enqueue(async () => {
+      const expected = {
+        charterId: normalizeUuid(charterId, "Charter ID"),
+        workflowPlanId: normalizeUuid(workflowPlanId, "Workflow Plan ID"),
+      }
+      return parseManagedReadOnlyPreview(
+        await this.request("managed.readonly.preview", expected),
+        expected,
+      )
+    })
+  }
+
+  executeManagedReadOnly(input: {
+    readonly preview: ManagedReadOnlyPreview
+    readonly timeoutMs: number
+    readonly actorId: string
+  }): Promise<ManagedReadOnlyReceipt> {
+    return this.enqueue(async () => {
+      const actorId = normalizeActorId(input.actorId)
+      if (!Number.isSafeInteger(input.timeoutMs) || input.timeoutMs < 1_000 || input.timeoutMs > 300_000) {
+        throw new RangeError("Managed read-only timeout must be between 1,000 and 300,000 milliseconds")
+      }
+      const preview = parseManagedReadOnlyPreview(input.preview, {
+        charterId: input.preview.charterId,
+        workflowPlanId: input.preview.workflowPlanId,
+      })
+      const result = await this.request("managed.readonly.execute", {
+        actorId,
+        charterId: preview.charterId,
+        workflowPlanId: preview.workflowPlanId,
+        expectedPreviewDigest: preview.previewDigest,
+        timeoutMs: input.timeoutMs,
+        confirmation: "attest-exact-managed-readonly-preview",
+      })
+      return parseManagedReadOnlyReceipt(result, preview)
     })
   }
 

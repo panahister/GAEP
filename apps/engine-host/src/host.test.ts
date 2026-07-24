@@ -288,6 +288,39 @@ describe("engine host protocol", () => {
       method: "readProduct",
       params: { padding: "x".repeat(1024 * 1024) },
     })).rejects.toMatchObject({ code: -32_001, kind: "FRAME_TOO_LARGE" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 7,
+      protocolVersion: 2,
+      method: "managed.readonly.preview",
+      params: {
+        charterId: "11111111-1111-4111-8111-111111111111",
+        workflowPlanId: "22222222-2222-4222-8222-222222222222",
+        toolSelection: [],
+      },
+    })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 8,
+      protocolVersion: 2,
+      method: "managed.readonly.execute",
+      params: {
+        charterId: "11111111-1111-4111-8111-111111111111",
+        workflowPlanId: "22222222-2222-4222-8222-222222222222",
+        expectedPreviewDigest: `sha256:${"0".repeat(64)}`,
+        timeoutMs: 30_000,
+        confirmation: "approve-tools-and-effects",
+      },
+    })).rejects.toMatchObject({ code: -32_602, kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 9,
+      method: "managed.readonly.preview",
+      params: {
+        charterId: "11111111-1111-4111-8111-111111111111",
+        workflowPlanId: "22222222-2222-4222-8222-222222222222",
+      },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
   })
 
   it("returns only path-free capability snapshots and ignores all caller runtime authority", async () => {

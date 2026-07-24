@@ -10,6 +10,8 @@ import { GaepHostError } from "../src/protocol.js"
 
 const productId = "11111111-1111-4111-8111-111111111111"
 const bundleId = "22222222-2222-4222-8222-222222222222"
+const charterId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+const workflowPlanId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
 const fakeEngine = resolve(dirname(fileURLToPath(import.meta.url)), "../tests/fake-engine.mjs")
@@ -40,9 +42,15 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badRunsRoot = join(root, "bad-runs")
   const badHandoffRoot = join(root, "bad-handoff")
   const badHandoffBindingRoot = join(root, "bad-handoff-binding")
+  const badManagedPreviewRoot = join(root, "bad-managed-preview")
+  const badManagedCriterionRoot = join(root, "bad-managed-criterion")
+  const badManagedDigestRoot = join(root, "bad-managed-digest")
+  const badManagedReceiptRoot = join(root, "bad-managed-receipt")
+  const badManagedBindingRoot = join(root, "bad-managed-binding")
   await Promise.all([
     workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot, badRunsRoot, badHandoffRoot,
-    badHandoffBindingRoot,
+    badHandoffBindingRoot, badManagedPreviewRoot, badManagedCriterionRoot, badManagedDigestRoot, badManagedReceiptRoot,
+    badManagedBindingRoot,
   ].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
@@ -139,6 +147,85 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.equal(JSON.stringify(handoff).includes(privateRoot), false)
     assert.equal(JSON.stringify(handoff).includes(privateCredential), false)
     assert.equal((await client.readAgentSelection()).status, "selected")
+
+    const managedPreview = await client.previewManagedReadOnly(charterId, workflowPlanId)
+    assert.equal(managedPreview.charterId, charterId)
+    assert.equal(managedPreview.workflowPlanId, workflowPlanId)
+    assert.equal(managedPreview.gates.length, 6)
+    assert.deepEqual(managedPreview.stepIds, ["13131313-1313-4313-8313-131313131313"])
+    assert.equal(JSON.stringify(managedPreview).includes(privateRoot), false)
+    assert.equal(JSON.stringify(managedPreview).includes(privateCredential), false)
+    const managedReceipt = await client.executeManagedReadOnly({
+      preview: managedPreview,
+      timeoutMs: 30_000,
+      actorId: "founder.kiro-review",
+    })
+    assert.equal(managedReceipt.previewDigest, managedPreview.previewDigest)
+    assert.equal(managedReceipt.state, "completed")
+    assert.equal(managedReceipt.providerDisposition, "completed")
+    assert.equal(managedReceipt.outcomeStatus, "satisfied")
+    assert.equal(managedReceipt.completedStepCount, managedReceipt.totalStepCount)
+    assert.equal(JSON.stringify(managedReceipt).includes(privateRoot), false)
+    assert.equal(JSON.stringify(managedReceipt).includes(privateCredential), false)
+
+    await assert.rejects(
+      () => client.executeManagedReadOnly({
+        preview: Object.assign({}, managedPreview, { tools: [] }),
+        timeoutMs: 30_000,
+        actorId: "founder.kiro-review",
+      }),
+      (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+    )
+    await assert.rejects(
+      () => client.executeManagedReadOnly({
+        preview: {
+          ...managedPreview,
+          gates: managedPreview.gates.map((gate, index) => index === 0
+            ? { ...gate, criteria: [`Inspect ${privateRoot}/${privateCredential}`] }
+            : gate),
+        },
+        timeoutMs: 30_000,
+        actorId: "founder.kiro-review",
+      }),
+      (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+    )
+    await assert.rejects(
+      () => client.executeManagedReadOnly({ preview: managedPreview, timeoutMs: 999, actorId: "founder.kiro-review" }),
+      RangeError,
+    )
+
+    for (const [workspacePath, operation] of [
+      [badManagedPreviewRoot, "preview"],
+      [badManagedCriterionRoot, "preview"],
+      [badManagedDigestRoot, "preview"],
+      [badManagedReceiptRoot, "execute"],
+      [badManagedBindingRoot, "execute"],
+    ] as const) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        if (operation === "preview") {
+          await assert.rejects(
+            () => hostileClient.previewManagedReadOnly(charterId, workflowPlanId),
+            (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+          )
+        } else {
+          await assert.rejects(
+            () => hostileClient.executeManagedReadOnly({
+              preview: managedPreview,
+              timeoutMs: 30_000,
+              actorId: "founder.kiro-review",
+            }),
+            (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+          )
+        }
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
 
     const badRunsClient = await GaepEngineClient.create({
       workspacePath: badRunsRoot,

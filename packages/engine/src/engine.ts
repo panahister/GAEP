@@ -31,6 +31,7 @@ import {
   type Product,
   type Run,
   type ToolPermission,
+  type WorkflowPlan,
 } from "@gaep/contracts"
 import {
   canonicalDigest,
@@ -52,6 +53,7 @@ import {
   type ManagedPendingReviewStatus,
   type ManagedRunListPage,
   type ManagedRunListPageInput,
+  type ManagedWorkflowGateEvaluator,
 } from "./managed-execution.js"
 import { ProductStudioService } from "./product-studio.js"
 
@@ -82,10 +84,79 @@ export type GovernedAgentSelectionResult =
       reason: "active-run" | "capabilities-changed" | "handoff-required" | "migration-required" | "invalid-selection"
     }
 
+export type ManagedReadOnlyGatePhase =
+  | "preconditions"
+  | "outputs"
+  | "evidence"
+  | "stop-conditions"
+  | "charter-evidence"
+  | "charter-stop-conditions"
+
+export interface ManagedReadOnlyGatePreview {
+  key: string
+  stepId?: string
+  phase: ManagedReadOnlyGatePhase
+  criteria: string[]
+  criteriaDigest: `sha256:${string}`
+}
+
+export interface ManagedReadOnlyExecutionPreview {
+  schemaVersion: 1
+  kind: "managed-readonly-preview"
+  productId: string
+  initiativeId: string
+  charterId: string
+  charterDigest: `sha256:${string}`
+  workflowPlanId: string
+  workflowPlanDigest: `sha256:${string}`
+  adapterId: string
+  agentId: string
+  modelId: string
+  selectionDigest: `sha256:${string}`
+  strategy: WorkflowPlan["strategy"]
+  stepIds: string[]
+  contextPackCount: number
+  readScopeCount: number
+  gates: ManagedReadOnlyGatePreview[]
+  authorityBoundary: "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
+  previewDigest: `sha256:${string}`
+}
+
+export interface ManagedReadOnlyExecutionReceipt {
+  schemaVersion: 1
+  kind: "managed-readonly-receipt"
+  previewDigest: `sha256:${string}`
+  runId: string
+  managedRunId: string
+  productId: string
+  initiativeId: string
+  adapterId: string
+  agentId: string
+  modelId: string
+  mode: ManagedRunRecord["mode"]
+  state: ManagedRunRecord["state"]
+  providerDisposition: ManagedRunResult["providerDisposition"]
+  outcomeStatus: ManagedRunResult["outcome"]["status"]
+  outcomeBasis: ManagedRunResult["outcome"]["basis"]
+  eventCount: number
+  completedStepCount: number
+  totalStepCount: number
+  resultDigest: `sha256:${string}`
+  evidenceDigest: `sha256:${string}`
+  warnings: ManagedRunResult["warnings"]
+  startedAt: string
+  endedAt: string
+  authorityBoundary: "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority"
+}
+
 function requireUuid(value: string, label: string): string {
   const result = productSchema.shape.id.safeParse(value)
   if (!result.success) throw new Error(`${label} must be a UUID`)
   return result.data
+}
+
+function sha256Digest(value: unknown): `sha256:${string}` {
+  return canonicalDigest(value) as `sha256:${string}`
 }
 
 function revisionOf(value: { revision?: number }): number {
@@ -881,6 +952,190 @@ export class GaepEngine {
     })
   }
 
+  async previewManagedReadOnlyExecution(
+    charterId: string,
+    workflowPlanId: string,
+  ): Promise<ManagedReadOnlyExecutionPreview> {
+    const validatedCharterId = requireUuid(charterId, "Charter ID")
+    const validatedWorkflowPlanId = requireUuid(workflowPlanId, "Workflow Plan ID")
+    return this.repository.withLock(async () => {
+      await this.assertAuditIntegrity()
+      const charter = await this.repository.readJson(
+        this.repository.resolve("sessions", `charter-${validatedCharterId}.json`),
+        executionCharterSchema,
+      )
+      if (!charter.confirmedAt) throw new Error("Confirm the Execution Charter before managed read-only preview")
+      if (!charter.managedIntent) throw new Error("Managed read-only preview requires an exact managed intent")
+      await this.assertCharterBindings(charter)
+      const initiative = await this.readInitiative(charter.initiativeId)
+      if (initiative.state !== "active") {
+        throw new Error(`Initiative must be active before managed read-only execution; current state is ${initiative.state}`)
+      }
+      if (charter.managedIntent.workflowPlan.recordId !== validatedWorkflowPlanId) {
+        throw new Error("Managed read-only preview Workflow Plan differs from the confirmed Charter")
+      }
+      const plan = await this.productStudio.readWorkflowPlan(validatedWorkflowPlanId)
+      this.assertManagedReadOnlyEnvelope(charter, plan)
+      const gates: ManagedReadOnlyGatePreview[] = [
+        {
+          key: "charter:required-evidence",
+          phase: "charter-evidence",
+          criteria: [...charter.requiredEvidence],
+          criteriaDigest: sha256Digest(charter.requiredEvidence),
+        },
+        {
+          key: "charter:stop-conditions",
+          phase: "charter-stop-conditions",
+          criteria: [...charter.stopConditions],
+          criteriaDigest: sha256Digest(charter.stopConditions),
+        },
+        ...plan.steps.flatMap((step): ManagedReadOnlyGatePreview[] => [
+          this.managedReadOnlyGate(step.id, "preconditions", step.preconditions),
+          this.managedReadOnlyGate(step.id, "outputs", step.outputs),
+          this.managedReadOnlyGate(step.id, "evidence", step.evidenceCriteria),
+          this.managedReadOnlyGate(step.id, "stop-conditions", step.stopConditions),
+        ]),
+      ]
+      const body = {
+        schemaVersion: 1 as const,
+        kind: "managed-readonly-preview" as const,
+        productId: charter.productId,
+        initiativeId: charter.initiativeId,
+        charterId: charter.id,
+        charterDigest: sha256Digest(charter),
+        workflowPlanId: plan.id,
+        workflowPlanDigest: sha256Digest(plan),
+        adapterId: charter.agent.adapterId,
+        agentId: charter.agent.agentId,
+        modelId: charter.agent.modelId,
+        selectionDigest: sha256Digest(charter.agent),
+        strategy: plan.strategy,
+        stepIds: plan.steps.map((step) => step.id),
+        contextPackCount: plan.contextPacks.length,
+        readScopeCount: plan.steps.reduce((count, step) => count + step.scope.read.length, 0),
+        gates,
+        authorityBoundary: "managed-readonly-preview-does-not-grant-execution-or-effect-authority" as const,
+      }
+      return { ...body, previewDigest: sha256Digest(body) }
+    })
+  }
+
+  async executeManagedReadOnly(
+    input: {
+      charterId: string
+      workflowPlanId: string
+      expectedPreviewDigest: `sha256:${string}`
+      timeoutMs: number
+    },
+    actorId: string,
+  ): Promise<ManagedReadOnlyExecutionReceipt> {
+    if (!Number.isSafeInteger(input.timeoutMs) || input.timeoutMs < 1_000 || input.timeoutMs > 300_000) {
+      throw new Error("Managed read-only timeout must be between 1,000 and 300,000 milliseconds")
+    }
+    const preview = await this.previewManagedReadOnlyExecution(input.charterId, input.workflowPlanId)
+    if (preview.previewDigest !== input.expectedPreviewDigest) {
+      throw new Error("Managed read-only preview changed before execution; review and attest the current preview")
+    }
+    const evaluatorIdentity = {
+      kind: "human" as const,
+      id: actorId,
+      version: "1",
+      digest: sha256Digest({ kind: "human", id: actorId, version: "1" }),
+    }
+    const evaluateWorkflowGate: ManagedWorkflowGateEvaluator = async (request) => {
+      const gate = preview.gates.find((candidate) =>
+        candidate.phase === request.phase &&
+        (candidate.stepId === undefined || candidate.stepId === request.stepId))
+      if (!gate || gate.criteriaDigest !== request.criteriaDigest ||
+          sha256Digest(request.criteria) !== gate.criteriaDigest) {
+        throw new Error("Managed read-only Workflow gate differs from the attested preview")
+      }
+      return {
+        status: "satisfied" as const,
+        basis: "human-attestation" as const,
+        evidenceDigest: sha256Digest({
+          previewDigest: preview.previewDigest,
+          gateKey: gate.key,
+          criteriaDigest: gate.criteriaDigest,
+          actorId,
+        }),
+        evaluator: evaluatorIdentity,
+      }
+    }
+    const run = await this.prepareManagedRun(preview.charterId, actorId)
+    try {
+      const handle = await this.startManagedRun({
+        runId: run.id,
+        workflowPlanId: preview.workflowPlanId,
+        timeoutMs: input.timeoutMs,
+        evaluateWorkflowGate,
+      }, actorId)
+      let streamedEventCount = 0
+      const drain = (async (): Promise<void> => {
+        for await (const _event of handle.events) streamedEventCount += 1
+      })()
+      let review = await handle.completion
+      await drain
+      const staged = review.evidence.staging
+      if (review.record.state === "review-required" && review.canApply && review.canDiscard && review.applyConfirmation &&
+          staged && staged.changes.length === 0 && staged.baselineDigest === staged.finalDigest &&
+          review.applyConfirmation.writeEnvelope.length === 0) {
+        review = await review.apply({
+          confirmation: review.applyConfirmation,
+          evaluatePostconditions: async () => "satisfied",
+          postconditionEvaluator: evaluatorIdentity,
+          postconditionTimeoutMs: Math.min(input.timeoutMs, 30_000),
+          evaluateWorkflowGate,
+        }, actorId)
+        if (review.hasLocalJournal) await review.disposeLocalJournal()
+      }
+      const producedStage = review.canApply || review.canDiscard || (review.evidence.staging?.changes.length ?? 0) > 0 ||
+        review.record.state === "review-required" || review.record.state === "conflict"
+      if (producedStage) {
+        if (review.canDiscard) await review.discard(actorId)
+        throw new Error("Managed read-only execution produced staged changes; GAEP discarded them and withheld a success receipt")
+      }
+      if (review.evidence.actualEffects.some((effect) =>
+        effect.effect !== "observe" || !["not-observed", "observed-provisional"].includes(effect.status))) {
+        throw new Error("Managed read-only execution reported an effect outside the observation-only envelope")
+      }
+      const evidenceDigest = sha256Digest(review.evidence)
+      if (review.result.evidenceId !== review.evidence.id || review.result.evidenceDigest !== evidenceDigest ||
+          review.evidence.events.length !== streamedEventCount) {
+        throw new Error("Managed read-only terminal evidence is incomplete or inconsistent")
+      }
+      return {
+        schemaVersion: 1,
+        kind: "managed-readonly-receipt",
+        previewDigest: preview.previewDigest,
+        runId: run.id,
+        managedRunId: review.record.id,
+        productId: run.productId,
+        initiativeId: run.initiativeId,
+        adapterId: review.result.provider.adapterId,
+        agentId: review.result.provider.agentId,
+        modelId: review.result.provider.modelId,
+        mode: review.record.mode,
+        state: review.record.state,
+        providerDisposition: review.result.providerDisposition,
+        outcomeStatus: review.result.outcome.status,
+        outcomeBasis: review.result.outcome.basis,
+        eventCount: review.evidence.events.length,
+        completedStepCount: review.evidence.workflow.completedStepIds.length,
+        totalStepCount: preview.stepIds.length,
+        resultDigest: sha256Digest(review.result),
+        evidenceDigest,
+        warnings: [...review.result.warnings],
+        startedAt: review.result.startedAt,
+        endedAt: review.result.endedAt,
+        authorityBoundary: "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+      }
+    } catch (error) {
+      await this.markRunState(run.id, "cancelled", { kind: "human", id: actorId }).catch(() => undefined)
+      throw error
+    }
+  }
+
   async startManagedRun(input: ManagedExecutionStartInput, actorId: string): Promise<ManagedExecutionHandle> {
     return this.managedExecution.start(input, actorId)
   }
@@ -1133,6 +1388,40 @@ export class GaepEngine {
         agentId: capabilities.agentId,
       }).slice("sha256:".length)}.json`,
     )
+  }
+
+  private managedReadOnlyGate(
+    stepId: string,
+    phase: Exclude<ManagedReadOnlyGatePhase, "charter-evidence" | "charter-stop-conditions">,
+    criteria: readonly string[],
+  ): ManagedReadOnlyGatePreview {
+    return {
+      key: `${stepId}:${phase}`,
+      stepId,
+      phase,
+      criteria: [...criteria],
+      criteriaDigest: sha256Digest(criteria),
+    }
+  }
+
+  private assertManagedReadOnlyEnvelope(charter: ExecutionCharter, plan: WorkflowPlan): void {
+    const intent = charter.managedIntent
+    if (!intent || charter.expectedEffects.length !== 1 || charter.expectedEffects[0] !== "observe" ||
+        intent.requestedEffects.length !== 1 || intent.requestedEffects[0] !== "observe") {
+      throw new Error("Managed read-only execution requires an exact observation-only effect envelope")
+    }
+    if (charter.permissions.some((permission) => permission.mode !== "deny")) {
+      throw new Error("Managed read-only execution requires every Tool permission to be denied")
+    }
+    if (intent.toolDefinitions.length > 0 || intent.requestedScopes.length > 0 || plan.toolDefinitions.length > 0) {
+      throw new Error("Managed read-only execution permits no Tool Definition or requested effect scope")
+    }
+    for (const step of plan.steps) {
+      if (step.toolDefinitions.length > 0 || step.scope.write.length > 0 || step.scope.effects.length > 0 ||
+          step.effectEnvelope.length !== 1 || step.effectEnvelope[0] !== "observe") {
+        throw new Error(`Managed read-only Workflow Step ${step.id} requests Tool, write, or non-observation authority`)
+      }
+    }
   }
 
   private async assertCharterBindings(charter: ExecutionCharter): Promise<void> {

@@ -1,6 +1,7 @@
 import { CodexAdapter } from "@gaep/adapter-codex"
 import { ClaudeAdapter } from "@gaep/adapter-claude"
 import {
+  canonicalDigest,
   capabilityDigest,
   fingerprintExecutable,
   type AdapterProbeResult,
@@ -39,6 +40,8 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "workspaceHealth",
   "readAgentSelection",
   "migrateLegacySelection",
+  "managed.readonly.preview",
+  "managed.readonly.execute",
   "productStudio.designReadiness",
   "productStudio.search",
   "productStudio.exportBuild",
@@ -250,6 +253,42 @@ export class EngineHost {
         }, actorId(request.params.actorId))
         this.selectedRuntimeBindings.set(request.params.handoff.toAdapterId, structuredClone(snapshot.runtimeBinding))
         return handoff
+      }
+      case "managed.readonly.preview":
+        return this.engine.previewManagedReadOnlyExecution(
+          request.params.charterId,
+          request.params.workflowPlanId,
+        )
+      case "managed.readonly.execute": {
+        const preview = await this.engine.previewManagedReadOnlyExecution(
+          request.params.charterId,
+          request.params.workflowPlanId,
+        )
+        if (preview.previewDigest !== request.params.expectedPreviewDigest) {
+          throw new HostRpcError(
+            -32_022,
+            "MANAGED_READ_ONLY_PREVIEW_CHANGED",
+            "Managed read-only preview changed before execution; review the current preview",
+          )
+        }
+        const receipt = await this.engine.executeManagedReadOnly({
+          charterId: request.params.charterId,
+          workflowPlanId: request.params.workflowPlanId,
+          expectedPreviewDigest: request.params.expectedPreviewDigest,
+          timeoutMs: request.params.timeoutMs,
+        }, actorId(request.params.actorId))
+        const record = await this.engine.readManagedRun(receipt.managedRunId)
+        const result = record.resultId ? await this.engine.readManagedRunResult(record.resultId) : undefined
+        const evidence = result ? await this.engine.readManagedRunEvidence(result.evidenceId) : undefined
+        if (receipt.previewDigest !== preview.previewDigest || !result || !evidence ||
+            receipt.resultDigest !== canonicalDigest(result) || receipt.evidenceDigest !== canonicalDigest(evidence)) {
+          throw new HostRpcError(
+            -32_023,
+            "MANAGED_READ_ONLY_RECEIPT_INVALID",
+            "Managed read-only terminal evidence could not be verified",
+          )
+        }
+        return receipt
       }
       case "verifyAudit":
         return this.engine.repository.verifyAudit()

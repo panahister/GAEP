@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { stat } from "node:fs/promises"
 import { isAbsolute, resolve } from "node:path"
 
@@ -193,6 +194,71 @@ export interface AgentHandoff {
   readonly acknowledgedAt?: string
 }
 
+export type ManagedReadOnlyGatePhase =
+  | "preconditions"
+  | "outputs"
+  | "evidence"
+  | "stop-conditions"
+  | "charter-evidence"
+  | "charter-stop-conditions"
+
+export interface ManagedReadOnlyGatePreview {
+  readonly key: string
+  readonly stepId?: string
+  readonly phase: ManagedReadOnlyGatePhase
+  readonly criteria: readonly string[]
+  readonly criteriaDigest: string
+}
+
+export interface ManagedReadOnlyPreview {
+  readonly schemaVersion: 1
+  readonly kind: "managed-readonly-preview"
+  readonly productId: string
+  readonly initiativeId: string
+  readonly charterId: string
+  readonly charterDigest: string
+  readonly workflowPlanId: string
+  readonly workflowPlanDigest: string
+  readonly adapterId: string
+  readonly agentId: string
+  readonly modelId: string
+  readonly selectionDigest: string
+  readonly strategy: "sequential" | "parallel-readonly"
+  readonly stepIds: readonly string[]
+  readonly contextPackCount: number
+  readonly readScopeCount: number
+  readonly gates: readonly ManagedReadOnlyGatePreview[]
+  readonly authorityBoundary: "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
+  readonly previewDigest: string
+}
+
+export interface ManagedReadOnlyReceipt {
+  readonly schemaVersion: 1
+  readonly kind: "managed-readonly-receipt"
+  readonly previewDigest: string
+  readonly runId: string
+  readonly managedRunId: string
+  readonly productId: string
+  readonly initiativeId: string
+  readonly adapterId: string
+  readonly agentId: string
+  readonly modelId: string
+  readonly mode: "codex-staged" | "manual-offline" | "claude-context-only"
+  readonly state: "review-required" | "completed" | "failed" | "cancelled" | "timed-out" | "unknown" | "conflict" | "discarded"
+  readonly providerDisposition: "completed" | "failed" | "cancelled" | "interrupted" | "crashed" | "protocol-error" | "unknown"
+  readonly outcomeStatus: "satisfied" | "failed" | "not-assessed" | "indeterminate"
+  readonly outcomeBasis: "postcondition-evaluator" | "deterministic-offline-runtime" | "not-evaluated" | "provider-failure"
+  readonly eventCount: number
+  readonly completedStepCount: number
+  readonly totalStepCount: number
+  readonly resultDigest: string
+  readonly evidenceDigest: string
+  readonly warnings: readonly string[]
+  readonly startedAt: string
+  readonly endedAt: string
+  readonly authorityBoundary: "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority"
+}
+
 export interface AgentReadinessSnapshot {
   readonly schemaVersion: 1
   readonly adapterId: string
@@ -292,6 +358,14 @@ const stableHostErrors = new Map<string, StableHostError>([
   ["CAPABILITIES_CHANGED", {
     code: -32_012,
     message: "Agent capabilities changed during selection; probe again.",
+  }],
+  ["MANAGED_READ_ONLY_PREVIEW_CHANGED", {
+    code: -32_022,
+    message: "The managed read-only preview changed before execution; review the current preview.",
+  }],
+  ["MANAGED_READ_ONLY_RECEIPT_INVALID", {
+    code: -32_023,
+    message: "GAEP could not verify the managed read-only terminal evidence.",
   }],
   ["INVALID_PARAMS", {
     code: -32_602,
@@ -558,6 +632,199 @@ export function parseAgentHandoff(
     ...(acknowledgedAt !== undefined ? { acknowledgedAt } : {}),
   }
   return Object.freeze(parsed)
+}
+
+export function parseManagedReadOnlyPreview(result: unknown, expected: {
+  readonly charterId: string
+  readonly workflowPlanId: string
+}): ManagedReadOnlyPreview {
+  const preview = requireRecord(result)
+  requireExactKeys(preview, [
+    "schemaVersion", "kind", "productId", "initiativeId", "charterId", "charterDigest", "workflowPlanId",
+    "workflowPlanDigest", "adapterId", "agentId", "modelId", "selectionDigest", "strategy", "stepIds",
+    "contextPackCount", "readScopeCount", "gates", "authorityBoundary", "previewDigest",
+  ])
+  if (requireSafeInteger(preview, "schemaVersion") !== 1 || requireString(preview, "kind") !== "managed-readonly-preview" ||
+    requireString(preview, "authorityBoundary") !== "managed-readonly-preview-does-not-grant-execution-or-effect-authority") {
+    throw invalidHostResponse()
+  }
+  const charterId = normalizeUuid(requireString(preview, "charterId"), "Charter ID")
+  const workflowPlanId = normalizeUuid(requireString(preview, "workflowPlanId"), "Workflow Plan ID")
+  if (charterId !== normalizeUuid(expected.charterId, "Charter ID") ||
+    workflowPlanId !== normalizeUuid(expected.workflowPlanId, "Workflow Plan ID")) throw invalidHostResponse()
+  const strategy = requireString(preview, "strategy")
+  if (!(strategy === "sequential" || strategy === "parallel-readonly")) throw invalidHostResponse()
+  if (!Array.isArray(preview.stepIds) || preview.stepIds.length < 1 || preview.stepIds.length > 512 ||
+    !Array.isArray(preview.gates) || preview.gates.length < 2 || preview.gates.length > 2_050) throw invalidHostResponse()
+  const stepIds = Object.freeze(preview.stepIds.map((value) => normalizeUuidValue(value, "Workflow Step ID")))
+  if (new Set(stepIds).size !== stepIds.length) throw invalidHostResponse()
+  const gates = Object.freeze(preview.gates.map((value) => parseManagedReadOnlyGate(value, new Set(stepIds))))
+  if (new Set(gates.map((gate) => gate.key)).size !== gates.length) throw invalidHostResponse()
+  const contextPackCount = requireSafeInteger(preview, "contextPackCount")
+  const readScopeCount = requireSafeInteger(preview, "readScopeCount")
+  if (contextPackCount < 0 || contextPackCount > 512 || readScopeCount < 0 || readScopeCount > 100_000) {
+    throw invalidHostResponse()
+  }
+  const body = {
+    schemaVersion: 1,
+    kind: "managed-readonly-preview",
+    productId: normalizeUuid(requireString(preview, "productId"), "Product ID"),
+    initiativeId: normalizeUuid(requireString(preview, "initiativeId"), "Initiative ID"),
+    charterId,
+    charterDigest: requireDigest(preview, "charterDigest"),
+    workflowPlanId,
+    workflowPlanDigest: requireDigest(preview, "workflowPlanDigest"),
+    adapterId: requirePortableText(preview, "adapterId", 1),
+    agentId: requirePortableText(preview, "agentId", 1),
+    modelId: requirePortableText(preview, "modelId", 1),
+    selectionDigest: requireDigest(preview, "selectionDigest"),
+    strategy,
+    stepIds,
+    contextPackCount,
+    readScopeCount,
+    gates,
+    authorityBoundary: "managed-readonly-preview-does-not-grant-execution-or-effect-authority",
+  } as const
+  const previewDigest = requireDigest(preview, "previewDigest")
+  if (previewDigest !== canonicalDigest(body)) throw invalidHostResponse()
+  return Object.freeze({ ...body, previewDigest })
+}
+
+export function parseManagedReadOnlyReceipt(result: unknown, preview: ManagedReadOnlyPreview): ManagedReadOnlyReceipt {
+  const receipt = requireRecord(result)
+  requireExactKeys(receipt, [
+    "schemaVersion", "kind", "previewDigest", "runId", "managedRunId", "productId", "initiativeId", "adapterId",
+    "agentId", "modelId", "mode", "state", "providerDisposition", "outcomeStatus", "outcomeBasis", "eventCount",
+    "completedStepCount", "totalStepCount", "resultDigest", "evidenceDigest", "warnings", "startedAt", "endedAt",
+    "authorityBoundary",
+  ])
+  if (requireSafeInteger(receipt, "schemaVersion") !== 1 || requireString(receipt, "kind") !== "managed-readonly-receipt" ||
+    requireString(receipt, "authorityBoundary") !== "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority") {
+    throw invalidHostResponse()
+  }
+  const previewDigest = requireDigest(receipt, "previewDigest")
+  const productId = normalizeUuid(requireString(receipt, "productId"), "Product ID")
+  const initiativeId = normalizeUuid(requireString(receipt, "initiativeId"), "Initiative ID")
+  const adapterId = requirePortableText(receipt, "adapterId", 1)
+  const agentId = requirePortableText(receipt, "agentId", 1)
+  const modelId = requirePortableText(receipt, "modelId", 1)
+  if (previewDigest !== preview.previewDigest || productId !== preview.productId || initiativeId !== preview.initiativeId ||
+    adapterId !== preview.adapterId || agentId !== preview.agentId || modelId !== preview.modelId) throw invalidHostResponse()
+  const mode = requireEnum(receipt, "mode", ["codex-staged", "manual-offline", "claude-context-only"] as const)
+  const state = requireEnum(receipt, "state", [
+    "review-required", "completed", "failed", "cancelled", "timed-out", "unknown", "conflict", "discarded",
+  ] as const)
+  const providerDisposition = requireEnum(receipt, "providerDisposition", [
+    "completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown",
+  ] as const)
+  const outcomeStatus = requireEnum(receipt, "outcomeStatus", ["satisfied", "failed", "not-assessed", "indeterminate"] as const)
+  const outcomeBasis = requireEnum(receipt, "outcomeBasis", [
+    "postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure",
+  ] as const)
+  const eventCount = nonNegativeInteger(receipt, "eventCount", 4_096)
+  const completedStepCount = nonNegativeInteger(receipt, "completedStepCount", 512)
+  const totalStepCount = nonNegativeInteger(receipt, "totalStepCount", 512)
+  if (totalStepCount !== preview.stepIds.length || completedStepCount > totalStepCount ||
+    (state === "completed" && (providerDisposition !== "completed" || outcomeStatus !== "satisfied"))) {
+    throw invalidHostResponse()
+  }
+  if (!Array.isArray(receipt.warnings) || receipt.warnings.length > 128) throw invalidHostResponse()
+  const warningValues = [
+    "provider-warning-redacted", "provider-output-redacted", "coordinator-failure", "runtime-output-truncated",
+    "staging-read-confinement-unattested", "postcondition-evaluator-failed", "local-cleanup-pending",
+    "local-cleanup-failed", "runtime-warning",
+  ] as const
+  const warnings = Object.freeze(receipt.warnings.map((warning) => {
+    if (typeof warning !== "string" || !(warningValues as readonly string[]).includes(warning)) throw invalidHostResponse()
+    return warning
+  }))
+  const startedAt = requireTimestamp(receipt, "startedAt")
+  const endedAt = requireTimestamp(receipt, "endedAt")
+  if (Date.parse(endedAt) < Date.parse(startedAt)) throw invalidHostResponse()
+  return Object.freeze({
+    schemaVersion: 1,
+    kind: "managed-readonly-receipt",
+    previewDigest,
+    runId: normalizeUuid(requireString(receipt, "runId"), "Run ID"),
+    managedRunId: normalizeUuid(requireString(receipt, "managedRunId"), "Managed Run ID"),
+    productId,
+    initiativeId,
+    adapterId,
+    agentId,
+    modelId,
+    mode,
+    state,
+    providerDisposition,
+    outcomeStatus,
+    outcomeBasis,
+    eventCount,
+    completedStepCount,
+    totalStepCount,
+    resultDigest: requireDigest(receipt, "resultDigest"),
+    evidenceDigest: requireDigest(receipt, "evidenceDigest"),
+    warnings,
+    startedAt,
+    endedAt,
+    authorityBoundary: "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+  })
+}
+
+function parseManagedReadOnlyGate(value: unknown, stepIds: ReadonlySet<string>): ManagedReadOnlyGatePreview {
+  const gate = requireRecord(value)
+  requireKeys(gate, ["key", "phase", "criteria", "criteriaDigest"], ["stepId"])
+  const phase = requireEnum(gate, "phase", [
+    "preconditions", "outputs", "evidence", "stop-conditions", "charter-evidence", "charter-stop-conditions",
+  ] as const)
+  const stepId = Object.hasOwn(gate, "stepId") ? normalizeUuidValue(gate.stepId, "Workflow Step ID") : undefined
+  const charterGate = phase === "charter-evidence" || phase === "charter-stop-conditions"
+  if (charterGate === (stepId !== undefined) || (stepId !== undefined && !stepIds.has(stepId))) throw invalidHostResponse()
+  if (!Array.isArray(gate.criteria) || gate.criteria.length > 256) throw invalidHostResponse()
+  const criteria = Object.freeze(gate.criteria.map((criterion) => portableHandoffText(criterion, 1, 2_000)))
+  const criteriaDigest = requireDigest(gate, "criteriaDigest")
+  if (criteriaDigest !== canonicalDigest(criteria)) throw invalidHostResponse()
+  return Object.freeze({
+    key: portableHandoffText(requireString(gate, "key"), 1, 500),
+    ...(stepId !== undefined ? { stepId } : {}),
+    phase,
+    criteria,
+    criteriaDigest,
+  })
+}
+
+function canonicalDigest(value: unknown): string {
+  const normalize = (entry: unknown): unknown => {
+    if (Array.isArray(entry)) return entry.map(normalize)
+    if (entry !== null && typeof entry === "object") {
+      return Object.fromEntries(
+        Object.entries(entry as Record<string, unknown>)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([key, child]) => [key, normalize(child)]),
+      )
+    }
+    return entry
+  }
+  return `sha256:${createHash("sha256").update(JSON.stringify(normalize(value))).digest("hex")}`
+}
+
+function normalizeUuidValue(value: unknown, label: string): string {
+  if (typeof value !== "string") throw invalidHostResponse()
+  try {
+    return normalizeUuid(value, label)
+  } catch {
+    throw invalidHostResponse()
+  }
+}
+
+function nonNegativeInteger(record: JsonRecord, name: string, maximum: number): number {
+  const value = requireSafeInteger(record, name)
+  if (value < 0 || value > maximum) throw invalidHostResponse()
+  return value
+}
+
+function requireEnum<const Values extends readonly string[]>(record: JsonRecord, name: string, values: Values): Values[number] {
+  const value = requireString(record, name)
+  if (!(values as readonly string[]).includes(value)) throw invalidHostResponse()
+  return value as Values[number]
 }
 
 function sortedPortableSettings(

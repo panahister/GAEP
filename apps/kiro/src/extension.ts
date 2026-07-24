@@ -14,6 +14,8 @@ import {
   type AgentRun,
   type AgentSelection,
   type AgentSelectionSetting,
+  type ManagedReadOnlyPreview,
+  type ManagedReadOnlyReceipt,
   type PortableAgentSettingValue,
   type PortableDesignSnapshotPage,
   type PortableDesignSnapshotSummary,
@@ -26,6 +28,7 @@ const commandIds = {
   readiness: "gaepKiro.agents.readiness",
   selectAgent: "gaepKiro.agents.select",
   handoffAgent: "gaepKiro.agents.handoff",
+  managedReadOnly: "gaepKiro.runs.managedReadOnly",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -86,6 +89,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.readiness, () => runUserCommand(() => showAgentReadiness(pool))),
     vscode.commands.registerCommand(commandIds.selectAgent, () => runUserCommand(() => selectAgent(pool))),
     vscode.commands.registerCommand(commandIds.handoffAgent, () => runUserCommand(() => handoffAgent(pool))),
+    vscode.commands.registerCommand(commandIds.managedReadOnly, () => runUserCommand(() => runManagedReadOnly(pool))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -156,7 +160,7 @@ function productStudioHtml(): string {
   <section>
     <h2>Codex and Claude</h2>
     <p>Use the Kiro Command Palette to observe verified local readiness, record one guarded portable Agent Selection, or create a versioned switch handoff from the latest terminal Run.</p>
-    <p>Selection and handoff records are configuration and history only. They do not start a provider, resume work, approve tools or effects, create a Run, or grant execution authority. Active Runs, capability drift, legacy state, invalid state, and unbound source Runs fail closed.</p>
+    <p>Selection and handoff records are configuration and history only. The separate managed read-only command can run one exact, already-confirmed Charter and Workflow Plan after a digest-bound human attestation. It denies every Tool, write, and non-observation effect, uses a bounded timeout, and withholds success if staged changes appear.</p>
   </section>
   <section>
     <h2>Governance boundary</h2>
@@ -448,6 +452,107 @@ async function handoffAgent(pool: EngineClientPool): Promise<AgentHandoff> {
     `Recorded versioned handoff ${handoff.id} and switched portable Agent Selection to ${handoff.toAgent.agentId} / ${handoff.toAgent.modelId}. No provider was started and no Run authority was granted.`,
   )
   return handoff
+}
+
+async function runManagedReadOnly(pool: EngineClientPool): Promise<ManagedReadOnlyReceipt> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const charterId = await collectUuid("Enter the exact confirmed Execution Charter UUID", "Charter ID")
+  const workflowPlanId = await collectUuid("Enter the Workflow Plan UUID bound by that Charter", "Workflow Plan ID")
+  const preview = await client.previewManagedReadOnly(charterId, workflowPlanId)
+  await showManagedReadOnlyPreview(preview)
+
+  const confirmation = await vscode.window.showWarningMessage(
+    [
+      `Attest and execute exact preview ${preview.previewDigest}?`,
+      `Provider binding: ${preview.agentId} / ${preview.modelId}; strategy: ${preview.strategy}; steps: ${preview.stepIds.length}; gates: ${preview.gates.length}.`,
+      `Read-only envelope: ${preview.readScopeCount} declared read scope${preview.readScopeCount === 1 ? "" : "s"}; every Tool permission is denied; write scopes and non-observation effects are forbidden.`,
+      "This is one bounded local request with a 120-second timeout. Kiro cannot interactively cancel or resume it over this stdio surface. If any staged change appears, GAEP attempts to discard it and withholds a success receipt.",
+      "Provider completion and governed outcome satisfaction are separate receipt fields. Neither grants approval, implementation readiness, release readiness, or future Run authority.",
+    ].join("\n\n"),
+    { modal: true },
+    "Attest Exact Preview and Run",
+  )
+  if (confirmation !== "Attest Exact Preview and Run") throw new WorkflowCancelled()
+  requireTrustedWorkspace()
+  const actorId = normalizeActorId(machineSetting("actorId", undefined, "gaep.kiro-local-human"))
+  const receipt = await client.executeManagedReadOnly({ preview, timeoutMs: 120_000, actorId })
+  await showManagedReadOnlyReceipt(receipt)
+  await vscode.window.showInformationMessage(
+    `Managed read-only Run ${receipt.managedRunId} ended ${receipt.state}; provider=${receipt.providerDisposition}; outcome=${receipt.outcomeStatus}. No Tool, write, or non-observation effect authority was granted.`,
+  )
+  return receipt
+}
+
+async function collectUuid(prompt: string, label: string): Promise<string> {
+  const value = await vscode.window.showInputBox({
+    prompt,
+    ignoreFocusOut: true,
+    validateInput: (candidate) => {
+      try {
+        normalizeUuid(candidate, label)
+        return undefined
+      } catch {
+        return `${label} must be a non-empty UUID`
+      }
+    },
+  })
+  if (value === undefined) throw new WorkflowCancelled()
+  return normalizeUuid(value, label)
+}
+
+async function showManagedReadOnlyPreview(preview: ManagedReadOnlyPreview): Promise<void> {
+  const lines = [
+    "GAEP managed read-only execution preview",
+    "",
+    `Preview digest: ${preview.previewDigest}`,
+    `Charter: ${preview.charterId} (${preview.charterDigest})`,
+    `Workflow Plan: ${preview.workflowPlanId} (${preview.workflowPlanDigest})`,
+    `Provider: ${preview.adapterId} / ${preview.agentId} / ${preview.modelId}`,
+    `Strategy: ${preview.strategy}`,
+    `Workflow steps: ${preview.stepIds.length}`,
+    `Context packs: ${preview.contextPackCount}`,
+    `Declared read scopes: ${preview.readScopeCount}`,
+    "",
+    "Exact attestation gates:",
+    ...preview.gates.flatMap((gate) => [
+      `- ${gate.key} [${gate.phase}]${gate.stepId ? ` step=${gate.stepId}` : ""} digest=${gate.criteriaDigest}`,
+      ...gate.criteria.map((criterion) => `    - ${criterion}`),
+    ]),
+    "",
+    "Authority boundary: this preview grants no execution, Tool, write, effect, outcome, approval, or release authority.",
+    "Dismiss the next modal to cancel by default.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+}
+
+async function showManagedReadOnlyReceipt(receipt: ManagedReadOnlyReceipt): Promise<void> {
+  const lines = [
+    "GAEP managed read-only execution receipt",
+    "",
+    `Managed Run: ${receipt.managedRunId}`,
+    `Governed Run: ${receipt.runId}`,
+    `Attested preview: ${receipt.previewDigest}`,
+    `Provider: ${receipt.adapterId} / ${receipt.agentId} / ${receipt.modelId}`,
+    `Mode: ${receipt.mode}`,
+    `Terminal state: ${receipt.state}`,
+    `Provider disposition: ${receipt.providerDisposition}`,
+    `Governed outcome: ${receipt.outcomeStatus} (${receipt.outcomeBasis})`,
+    `Workflow completion: ${receipt.completedStepCount}/${receipt.totalStepCount}`,
+    `Evidence events: ${receipt.eventCount}`,
+    `Result digest: ${receipt.resultDigest}`,
+    `Evidence digest: ${receipt.evidenceDigest}`,
+    `Started: ${receipt.startedAt}`,
+    `Ended: ${receipt.endedAt}`,
+    `Warnings: ${receipt.warnings.length === 0 ? "none" : receipt.warnings.join(", ")}`,
+    "",
+    "Boundary: provider completion does not equal governed outcome satisfaction. This receipt grants no Tool, write, effect, approval, implementation-readiness, release-readiness, or future Run authority.",
+    "Raw provider output, prompts, context content, executable paths, process state, workspace paths, and credentials are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
 }
 
 function isTerminalRun(run: AgentRun): boolean {

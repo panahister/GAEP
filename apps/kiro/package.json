@@ -1,7 +1,7 @@
 {
   "name": "gaep-kiro",
   "displayName": "GAEP for Kiro",
-  "description": "Governed local Product Studio, agent-readiness, guarded agent-selection, and portable-design metadata workflows for Kiro.",
+  "description": "Governed local Product Studio, agent-readiness, selection, versioned handoff, managed read-only execution, and portable-design workflows for Kiro.",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -35,6 +35,7 @@
     "onCommand:gaepKiro.agents.readiness",
     "onCommand:gaepKiro.agents.select",
     "onCommand:gaepKiro.agents.handoff",
+    "onCommand:gaepKiro.runs.managedReadOnly",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -43,7 +44,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "GAEP for Kiro can show its static Product Studio boundary, but it does not inspect Product state, start the local engine, or import/read/list portable design metadata until the workspace is trusted.",
+      "description": "GAEP for Kiro can show its static Product Studio boundary, but it does not inspect Product state, start the local engine, run managed read-only work, or import/read/list portable design metadata until the workspace is trusted.",
       "restrictedConfigurations": [
         "gaepKiro.engineExecutable",
         "gaepKiro.engineSha256",
@@ -68,6 +69,10 @@
       {
         "command": "gaepKiro.agents.handoff",
         "title": "GAEP for Kiro: Create Versioned Agent Handoff"
+      },
+      {
+        "command": "gaepKiro.runs.managedReadOnly",
+        "title": "GAEP for Kiro: Attest and Run Managed Read-Only Work"
       },
       {
         "command": "gaepKiro.portableDesign.import",

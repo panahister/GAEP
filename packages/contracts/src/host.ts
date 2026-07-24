@@ -73,6 +73,20 @@ export const hostCreateHandoffParamsSchema = z.object({
   }).strict(),
 }).strict()
 
+export const hostManagedReadOnlyPreviewParamsSchema = z.object({
+  charterId: z.string().uuid(),
+  workflowPlanId: z.string().uuid(),
+}).strict()
+
+export const hostManagedReadOnlyExecuteParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  charterId: z.string().uuid(),
+  workflowPlanId: z.string().uuid(),
+  expectedPreviewDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+  timeoutMs: z.number().int().min(1_000).max(300_000),
+  confirmation: z.literal("attest-exact-managed-readonly-preview"),
+}).strict()
+
 export const hostSearchProductStudioParamsSchema = z.object({
   query: z.string().trim().min(2).max(500),
   kinds: z.array(productDomainRecordKindSchema).max(productDomainRecordKindSchema.options.length).optional(),
@@ -97,6 +111,8 @@ export const hostMethodSchema = z.enum([
   "prepareRun",
   "listRuns",
   "createHandoff",
+  "managed.readonly.preview",
+  "managed.readonly.execute",
   "verifyAudit",
   "productStudio.designReadiness",
   "productStudio.search",
@@ -134,6 +150,8 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("prepareRun", z.object({ actorId: hostActorIdSchema, charterId: z.string().uuid() }).strict()),
   requestVariant("listRuns", hostNoParamsSchema.default({})),
   requestVariant("createHandoff", hostCreateHandoffParamsSchema),
+  requestVariant("managed.readonly.preview", hostManagedReadOnlyPreviewParamsSchema),
+  requestVariant("managed.readonly.execute", hostManagedReadOnlyExecuteParamsSchema),
   requestVariant("verifyAudit", hostNoParamsSchema.default({})),
   requestVariant("productStudio.designReadiness", z.object({ productId: z.string().uuid() }).strict()),
   requestVariant("productStudio.search", hostSearchProductStudioParamsSchema),

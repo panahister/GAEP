@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { createInterface } from "node:readline"
 
 const productId = "11111111-1111-4111-8111-111111111111"
@@ -5,6 +6,11 @@ const bundleId = "22222222-2222-4222-8222-222222222222"
 const runId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 const charterId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 const handoffId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+const workflowPlanId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+const managedRunId = "ffffffff-ffff-4fff-8fff-ffffffffffff"
+const managedGovernedRunId = "12121212-1212-4212-8212-121212121212"
+const workflowStepId = "13131313-1313-4313-8313-131313131313"
+const previewDigest = managedReadOnlyPreview().previewDigest
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
 const workspacePath = process.argv[process.argv.indexOf("--workspace") + 1] ?? ""
@@ -51,6 +57,10 @@ input.on("line", (line) => {
       return writeResult(id, [agentRun(workspacePath.endsWith("bad-runs"))])
     case "createHandoff":
       return createHandoff(id, request.params)
+    case "managed.readonly.preview":
+      return previewManagedReadOnly(id, request.params)
+    case "managed.readonly.execute":
+      return executeManagedReadOnly(id, request.params)
     case "productStudio.portableDesign.import":
       return importSnapshot(id, request.params)
     case "productStudio.portableDesign.list":
@@ -161,6 +171,127 @@ function agentHandoff() {
     capabilityDifferences: ["Model changes from gpt-5.6-codex to gpt-5.6-codex-next."],
     createdAt: "2026-07-24T08:10:00.000Z",
   }
+}
+
+function previewManagedReadOnly(id, params) {
+  if (!exactKeys(params, ["charterId", "workflowPlanId"]) || params.charterId !== charterId ||
+    params.workflowPlanId !== workflowPlanId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MANAGED PREVIEW PARAMS")
+  }
+  const value = managedReadOnlyPreview()
+  if (workspacePath.endsWith("bad-managed-preview")) value.runtimeExecutable = `${privateRoot}/${privateCredential}`
+  if (workspacePath.endsWith("bad-managed-criterion")) value.gates[2].criteria[0] = `Inspect ${privateRoot}/${privateCredential}`
+  if (workspacePath.endsWith("bad-managed-digest")) value.previewDigest = `sha256:${"0".repeat(64)}`
+  return writeResult(id, value)
+}
+
+function executeManagedReadOnly(id, params) {
+  if (!exactKeys(params, [
+    "actorId", "charterId", "workflowPlanId", "expectedPreviewDigest", "timeoutMs", "confirmation",
+  ]) || params.actorId !== "founder.kiro-review" || params.charterId !== charterId ||
+    params.workflowPlanId !== workflowPlanId || params.expectedPreviewDigest !== previewDigest ||
+    params.timeoutMs !== 30_000 || params.confirmation !== "attest-exact-managed-readonly-preview") {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MANAGED EXECUTE PARAMS")
+  }
+  const value = managedReadOnlyReceipt()
+  if (workspacePath.endsWith("bad-managed-receipt")) value.rawProviderOutput = `${privateRoot}/${privateCredential}`
+  if (workspacePath.endsWith("bad-managed-binding")) value.previewDigest = `sha256:${"b".repeat(64)}`
+  return writeResult(id, value)
+}
+
+function managedReadOnlyPreview() {
+  const stepGate = (phase, criterion) => {
+    const criteria = [criterion]
+    return {
+      key: `step:${workflowStepId}:${phase}`,
+      stepId: workflowStepId,
+      phase,
+      criteria,
+      criteriaDigest: canonicalDigest(criteria),
+    }
+  }
+  const requiredEvidence = ["Record one observation receipt"]
+  const stopConditions = ["Stop if governed scope changes"]
+  const body = {
+    schemaVersion: 1,
+    kind: "managed-readonly-preview",
+    productId,
+    initiativeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    charterId,
+    charterDigest: `sha256:${"3".repeat(64)}`,
+    workflowPlanId,
+    workflowPlanDigest: `sha256:${"4".repeat(64)}`,
+    adapterId: "openai-codex",
+    agentId: "codex",
+    modelId: "gpt-5.6-codex",
+    selectionDigest: `sha256:${"5".repeat(64)}`,
+    strategy: "sequential",
+    stepIds: [workflowStepId],
+    contextPackCount: 1,
+    readScopeCount: 2,
+    gates: [
+      {
+        key: "charter:required-evidence",
+        phase: "charter-evidence",
+        criteria: requiredEvidence,
+        criteriaDigest: canonicalDigest(requiredEvidence),
+      },
+      {
+        key: "charter:stop-conditions",
+        phase: "charter-stop-conditions",
+        criteria: stopConditions,
+        criteriaDigest: canonicalDigest(stopConditions),
+      },
+      stepGate("preconditions", "Confirmed Product context is available"),
+      stepGate("outputs", "Return metadata-only observations"),
+      stepGate("evidence", "Record bounded event evidence"),
+      stepGate("stop-conditions", "Stop before any write or Tool request"),
+    ],
+    authorityBoundary: "managed-readonly-preview-does-not-grant-execution-or-effect-authority",
+  }
+  return { ...body, previewDigest: canonicalDigest(body) }
+}
+
+function managedReadOnlyReceipt() {
+  return {
+    schemaVersion: 1,
+    kind: "managed-readonly-receipt",
+    previewDigest,
+    runId: managedGovernedRunId,
+    managedRunId,
+    productId,
+    initiativeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    adapterId: "openai-codex",
+    agentId: "codex",
+    modelId: "gpt-5.6-codex",
+    mode: "manual-offline",
+    state: "completed",
+    providerDisposition: "completed",
+    outcomeStatus: "satisfied",
+    outcomeBasis: "deterministic-offline-runtime",
+    eventCount: 4,
+    completedStepCount: 1,
+    totalStepCount: 1,
+    resultDigest: `sha256:${"e".repeat(64)}`,
+    evidenceDigest: `sha256:${"f".repeat(64)}`,
+    warnings: [],
+    startedAt: "2026-07-24T08:20:00.000Z",
+    endedAt: "2026-07-24T08:20:01.000Z",
+    authorityBoundary: "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+  }
+}
+
+function canonicalDigest(value) {
+  const normalize = (entry) => {
+    if (Array.isArray(entry)) return entry.map(normalize)
+    if (entry !== null && typeof entry === "object") {
+      return Object.fromEntries(
+        Object.entries(entry).sort(([left], [right]) => left.localeCompare(right)).map(([key, child]) => [key, normalize(child)]),
+      )
+    }
+    return entry
+  }
+  return `sha256:${createHash("sha256").update(JSON.stringify(normalize(value))).digest("hex")}`
 }
 
 function importSnapshot(id, params) {
