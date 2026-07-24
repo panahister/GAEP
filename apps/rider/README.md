@@ -7,3 +7,5 @@ The development client resolves `gaep-engine` from `PATH` or `GAEP_ENGINE_EXECUT
 Release packaging will bundle signed platform-specific engine binaries and supply their approved digests before launch.
 
 Build requirements follow the official IntelliJ Platform Gradle Plugin 2.x baseline: Gradle 9 or newer and Java 17 or newer. The configured toolchain is Java 21.
+
+From the repository root, `npm run test:rider:package` performs a clean test, mandatory IntelliJ bytecode instrumentation, plugin assembly, and archive-structure verification without parallel instrumentation. The installable output is `apps/rider/build/distributions/gaep-rider-0.1.0.zip`, with stable plugin ID `dev.gaep.productstudio`. This local package gate does not claim native interactive Rider execution or Marketplace signing.

@@ -113,6 +113,16 @@ async function runOpenPhase() {
   process.stdout.write("PASS open: activation, all contributed commands, four native views, and Product Studio open\n")
 }
 
+async function runInstalledPhase() {
+  await assertWorkspace(1)
+  const extension = await activateExtension()
+  await assertCommandsAndViews(extension)
+  await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
+  await openStudio()
+  await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
+  process.stdout.write("PASS installed: exact VSIX activation, commands, views, Product Studio, and no workspace mutation\n")
+}
+
 async function runMultiRootPhase() {
   await assertWorkspace(2)
   const extension = await activateExtension()
@@ -127,6 +137,7 @@ async function runMultiRootPhase() {
 async function run() {
   const phase = process.env.GAEP_E2E_PHASE
   if (phase === "open") return runOpenPhase()
+  if (phase === "installed") return runInstalledPhase()
   if (phase === "multi-root") return runMultiRootPhase()
   throw new Error(`Unknown GAEP_E2E_PHASE: ${String(phase)}`)
 }

@@ -1,0 +1,14 @@
+{
+  "name": "gaep-vscode-package-smoke-harness",
+  "displayName": "GAEP VS Code Package Smoke Harness",
+  "version": "0.0.0",
+  "private": true,
+  "publisher": "gaep-tests",
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "main": "extension.cjs",
+  "activationEvents": [
+    "*"
+  ]
+}

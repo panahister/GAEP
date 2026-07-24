@@ -1,0 +1,14 @@
+{
+  "name": "gaep-kiro-package-smoke-harness",
+  "displayName": "GAEP Kiro Package Smoke Harness",
+  "version": "0.0.0",
+  "private": true,
+  "publisher": "gaep-tests",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "main": "extension.cjs",
+  "activationEvents": [
+    "*"
+  ]
+}

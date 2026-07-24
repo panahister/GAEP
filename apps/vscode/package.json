@@ -346,7 +346,7 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "package": "npm run build && vsce package --no-dependencies --allow-missing-repository -o dist/gaep-vscode.vsix",
     "test:dom": "vitest run --root ../.. apps/vscode/src/studio-document.test.ts apps/vscode/src/studio-accessibility.test.ts",
-    "test:extension-host": "npm run build && node test/e2e/run.mjs",
+    "test:extension-host": "npm run package && node test/e2e/run.mjs",
     "typecheck": "tsc -b --pretty false",
     "verify": "npm run typecheck && npm run build && npm run test:dom && npm run test:extension-host"
   },

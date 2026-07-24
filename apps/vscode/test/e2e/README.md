@@ -1,6 +1,6 @@
 # VS Code Extension-Host Verification
 
-`npm run test:extension-host -w gaep-vscode` builds the extension and launches isolated VS Code Extension Development Hosts with temporary workspaces, user-data directories, and extension directories.
+`npm run test:extension-host -w gaep-vscode` packages the exact VSIX and launches isolated VS Code hosts with temporary workspaces, user-data directories, and extension directories.
 
 The deterministic phases verify:
 
@@ -8,8 +8,9 @@ The deterministic phases verify:
 2. Product Studio opening in a single-root workspace without implicit Product-state mutation;
 3. the `onWebviewPanel` activation contribution required for Product Studio restoration;
 4. a clean two-root workspace that opens Product Studio without silently initializing or mutating either root.
+5. exact `gaep.gaep-vscode@0.1.0` VSIX installation, inventory, activation, command/view registration, Product Studio opening, and absence of implicit Product-state mutation.
 
-The harness removes its `mkdtemp` root after success or failure. Set `GAEP_VSCODE_EXECUTABLE` to an explicit Electron executable when the normal platform location is unavailable; otherwise the runner downloads the extension's VS Code 1.103.0 baseline.
+The installed-package phase loads only a minimal test harness from the source checkout; GAEP itself is resolved from the isolated installed VSIX. The harness removes its `mkdtemp` root after success or failure. Set `GAEP_VSCODE_EXECUTABLE` and `GAEP_VSCODE_CLI_ENTRY` together when the normal platform location is unavailable. Without a local installation, the runner downloads the extension's VS Code 1.103.0 baseline for development-host phases and explicitly reports the installed-package phase as unverified.
 
 ## Explicit limitations
 

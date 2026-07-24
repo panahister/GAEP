@@ -9,6 +9,7 @@ import { promisify } from "node:util"
 import { runTests } from "@vscode/test-electron"
 
 const extensionDevelopmentPath = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
+const testHarnessPath = join(extensionDevelopmentPath, "test/e2e/harness")
 const extensionTestsPath = join(extensionDevelopmentPath, "test/e2e/suite/index.cjs")
 const installation = installedCompatibleInstallation()
 if (!installation) throw new Error("No installed Kiro or VS Code-compatible extension host is available")
@@ -55,11 +56,10 @@ try {
   process.stdout.write("PASS isolated VSIX install/list: gaep.gaep-kiro@0.1.0\n")
   await runTests({
     vscodeExecutablePath: executable,
-    extensionDevelopmentPath,
+    extensionDevelopmentPath: testHarnessPath,
     extensionTestsPath,
     launchArgs: [
       workspace,
-      "--disable-extensions",
       "--disable-telemetry",
       "--disable-crash-reporter",
       "--disable-workspace-trust",
@@ -71,7 +71,7 @@ try {
       GAEP_KIRO_E2E_WORKSPACE: workspace,
     },
   })
-  process.stdout.write("GAEP for Kiro VS Code-compatible isolated extension-host smoke: PASS\n")
+  process.stdout.write("GAEP for Kiro exact installed VSIX activation smoke: PASS\n")
   process.stdout.write("Kiro-native runtime: UNVERIFIED because no local Kiro IDE binary is installed.\n")
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true })
