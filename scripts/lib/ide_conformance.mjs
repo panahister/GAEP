@@ -4,6 +4,7 @@ import { lstat, readFile, realpath } from "node:fs/promises"
 import { isAbsolute, relative, resolve, sep } from "node:path"
 
 import { verifyHostBehaviorEvidence } from "./host_behavior_evidence.mjs"
+import { verifyProviderBehaviorEvidence } from "./provider_behavior_evidence.mjs"
 
 const maximumControlBytes = 1024 * 1024
 const maximumSourceBytes = 8 * 1024 * 1024
@@ -146,7 +147,25 @@ function validateContract(contract) {
       }
     }
   }
+  requireCondition(contract.providerEvidence?.format === "gaep-provider-behavior-v1" &&
+    typeof contract.providerEvidence.reportPath === "string" &&
+    contract.providerEvidence.expectedKind === "gaep-phase-0-provider-behavior-evidence-v1",
+  "IDE provider behavior evidence contract is invalid")
+  assertStringList(contract.providerEvidence.remainingRequirements, "IDE provider behavior remaining requirements")
   return capabilityIds
+}
+
+async function verifyProviderEvidence(repositoryRoot, contract) {
+  const { resolved } = await verifyRepositoryFile(
+    repositoryRoot,
+    contract.providerEvidence.reportPath,
+    maximumControlBytes,
+    "provider behavior evidence",
+  )
+  const evidence = await readJson(resolved, "provider behavior evidence")
+  requireCondition(evidence.kind === contract.providerEvidence.expectedKind,
+    "Provider behavior evidence identity is invalid")
+  return verifyProviderBehaviorEvidence({ repositoryRoot, receipt: evidence })
 }
 
 async function verifyPackage(repositoryRoot, packageReport, host) {
@@ -288,6 +307,7 @@ export async function buildIdeConformanceReport({
   }
   const totals = Object.fromEntries([...assessmentStates].map((state) => [state,
     hosts.reduce((count, host) => count + host.capabilityCounts[state], 0)]))
+  const providerEvidence = await verifyProviderEvidence(normalizedRoot, contract)
   return {
     schemaVersion: 1,
     kind: "gaep-phase-0-ide-conformance-report-v1",
@@ -304,8 +324,15 @@ export async function buildIdeConformanceReport({
       ...totals,
       producedPackages: hosts.filter((host) => host.package.status === "produced").length,
       acceptedHosts: 0,
+      providers: providerEvidence.providers,
+      acceptedProviders: providerEvidence.liveAcceptedProviders,
     },
     hosts,
+    providerEvidence: {
+      ...providerEvidence,
+      source: contract.providerEvidence.reportPath,
+      remainingRequirements: contract.providerEvidence.remainingRequirements,
+    },
     claimBoundary: contract.claimBoundary,
   }
 }
