@@ -13,15 +13,15 @@
 
 | Field | Current value |
 |---|---|
-| Overall progress | `64%` |
-| Wave | `Wave 4 single-step durability accepted for the declared local POSIX scope; Waves 5–7 partial completion now include a packageable Kiro-compatible host alongside VS Code, engine-host, Visual Studio, and Rider` |
+| Overall progress | `66%` |
+| Wave | `Wave 4 now includes durable sequential restart/resume for observation-only multi-step runs in addition to the accepted single-step staged-review boundary; Waves 5–7 remain partially complete across VS Code, engine-host, Visual Studio, Rider, and Kiro` |
 | State | `IN_PROGRESS` |
 | Working branch | `codex/gaep-hardwork-completion` |
 | Starting commit | `eab8374cc5974eea25bcad4659f46e1b0da92108` |
-| Last stable checkpoint | `0bc4563` — aggregate test-runner integration and exact portable Record History path binding after independently reviewed Wave 4 checkpoint `338b7c8` and Kiro checkpoint `7541940` |
-| Active work | Exact Codex Security review of `7541940..338b7c8` and the next Wave 4 slice for durable multi-step restart/resume and bounded parallel-readonly orchestration |
-| Blockers | Formal baseline/readiness remain human-governance blocked. Codex Security workspace `5f837098-1741-42a0-8682-d203f98354b8` is waiting for the required human Start action. Native Kiro, native Windows, power-loss and hostile same-UID guarantees remain unverified |
-| Next exact action | Complete the frozen security-diff workflow, then implement durable multi-step restart/resume without weakening the accepted single-step WAL and recovery boundary |
+| Last stable checkpoint | `cc72c6c` — durable observation-only multi-step Workflow checkpoint/recovery after aggregate checkpoint `6a3829b`, accepted single-step Wave 4 checkpoint `338b7c8`, and Kiro checkpoint `7541940` |
+| Active work | Wave 4 bounded parallel-readonly orchestration and recovery without weakening sequential checkpoint or staged-review guarantees |
+| Blockers | Formal baseline/readiness remain human-governance blocked. Codex Security scan `49188fb1-8d29-4bd8-a0f4-f2c684a0d9af` was explicitly skipped by the Product Owner after Codex scan limits prevented continuation; no final security result exists. Native Kiro, native Windows, power-loss and hostile same-UID guarantees remain unverified |
+| Next exact action | Implement bounded parallel-readonly scheduling, evidence ordering, cancellation and restart behavior while keeping effectful parallel and multi-step Codex staging fail-closed |
 
 Progress is earned only when an exit condition has current validation evidence. Starting work does not advance the percentage.
 
@@ -120,6 +120,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | Wave 7 Kiro-compatible portable-design package | PASS WITH NATIVE-KIRO LIMIT | Checkpoint `7541940`; root reran typecheck, 2 hostile stdio unit tests, build and six-file VSIX packaging; the exact VSIX installed and listed as `gaep.gaep-kiro@0.1.0` in isolated profile/extension roots; compatible-host activation registered four commands and created no `.gaep`; dependency audit found zero vulnerabilities. No Kiro binary was available, so native Kiro, native Windows and packaged real-engine execution remain unverified |
 | 2026-07-24 | Wave 4 durable managed execution | PASS FOR DECLARED LOCAL POSIX SLICE | Checkpoint `338b7c8`; root serially reran five files with 157 passed and 1 platform-conditional skip, both affected package typechecks and diff validation pass, and an independent frozen review found no remaining correctness, truth, confinement, rollback or per-operation-bound blocker. Native Windows, sudden power loss, hostile same-UID resistance, PID reuse and aggregate orphan quota remain explicit limits |
 | 2026-07-24 | Aggregate cross-workspace integration | PASS | Checkpoint `0bc4563`; root typecheck and all-workspace build pass; root Vitest passes 43 files with 457 tests and 1 platform-conditional skip; structural and candidate documentation validation pass. Root discovery now excludes Kiro's independently owned Node-test suite. A random UUID path-parser defect found by the aggregate run was replaced with exact envelope-derived Record History path equality and a deterministic positive/negative regression |
+| 2026-07-24 | Wave 4 observation-only multi-step recovery | PASS FOR DECLARED PORTABLE SLICE | Checkpoint `cc72c6c`; 40 focused contract/engine tests pass. A three-step run retains consecutive immutable checkpoint receipts; simulated process loss preserves the completed prefix, resumes only unfinished steps, can safely restart from step one before the first checkpoint, rejects tampered receipts, and revalidates the portable export. Root typecheck/build pass; aggregate Vitest passes 43 files with 461 tests and 1 platform-conditional skip using four workers. Codex-staged multi-step and parallel execution remain fail-closed |
 
 ## 8. Change Ledger
 
@@ -149,6 +150,7 @@ On continuation, read this document first, verify the recorded Git state, revali
 | 2026-07-24 | 7 | Added a typed Rider protocol-v2 portable-design client with duplicate-aware strict JSON, exact metadata/governance/error parsing, bounded local import/list/read, and hostile fake-engine stdio coverage | PARTIAL_COMPLETE | `b305fec`; root forced the complete Gradle test/build graph to execute successfully and diff validation passes. Kiro parity is active; interactive Rider sandbox, native Windows and packaged engine integration remain |
 | 2026-07-24 | 7 | Added an independent Code OSS/Open VSX-compatible Kiro VSIX with a static Product Studio boundary and governed local portable-design import/list/read commands | PARTIAL_COMPLETE | `7541940`; root verify, exact isolated VSIX install/list, compatible extension-host activation and zero-vulnerability dependency audit pass. Native Kiro, native Windows and real packaged-engine execution remain unverified |
 | 2026-07-24 | 8 | Integrated the independent Kiro Node-test boundary into root validation and replaced ambiguous Record History filename parsing with exact validated-envelope path equality | COMPLETE | `0bc4563`; deterministic all-letter hexadecimal UUID acceptance and mismatched-revision rejection pass, the original managed apply/export regression passes, and the aggregate root gate is 43 files with 457 passed plus 1 conditional skip |
+| 2026-07-24 | 4 | Added immutable portable checkpoints and exact restart/resume for sequential observation-only multi-step Workflows | PARTIAL_COMPLETE | `cc72c6c`; completed dependency prefixes, normalized events, exact gate receipts and effect truth survive restart; zero-progress runs restart safely; tamper, stale binding, branching and effectful multi-step paths fail closed. Forty focused tests and the 461-test aggregate suite pass with 1 conditional skip. Bounded parallel-readonly remains active Wave 4 work |
 
 ## 9. Wave 4 Durable Review Boundary — Accepted Local POSIX Slice
 
@@ -175,7 +177,7 @@ Accepted closure evidence:
 
 Remaining limits:
 
-1. this closes single-step Codex staged-review restart only; multi-step restart/resume and bounded parallel workflow recovery remain Wave 4 work;
+1. single-step Codex staged-review restart and sequential observation-only multi-step restart/resume are implemented; effectful Codex multi-step staging and bounded parallel-readonly workflow recovery remain Wave 4 work;
 2. recovery is intentionally machine-local and requires the private temporary stage to remain available;
 3. final path-based rename, unlink and recursive removal retain an irreducible same-UID race without descriptor-relative native primitives;
 4. native Windows DACL/ownership, directory durability and crash behavior, plus sudden power-loss/filesystem-specific semantics, remain untested;
@@ -190,7 +192,7 @@ If work stops at this checkpoint, resume by:
 1. checking out `codex/gaep-hardwork-completion`;
 2. verifying that it descends from `eab8374cc5974eea25bcad4659f46e1b0da92108`;
 3. reading this document and `054_GAEP_FEATURE_DELIVERY_TRACKER.md`;
-4. treating aggregate integration as clean at `0bc4563`, Wave 4 single-step durability as clean at `338b7c8` and Kiro-compatible packaging as clean at `7541940`; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, and the Rider client is clean at `b305fec`;
-5. reopening or completing Codex Security workspace `5f837098-1741-42a0-8682-d203f98354b8` for exact diff `7541940..338b7c8`, which is currently waiting for the required human Start action;
-6. retaining the aggregate root evidence at `0bc4563`, or rerunning it if security remediation changes source; and
-7. continuing with durable multi-step restart/resume and bounded parallel-readonly orchestration without weakening the accepted single-step boundary.
+4. treating observation-only multi-step recovery as clean at `cc72c6c`, aggregate integration as clean at `6a3829b`, Wave 4 single-step durability as clean at `338b7c8` and Kiro-compatible packaging as clean at `7541940`; Wave 5 recovery UX is clean at `0e9ef5a`; Wave 6 governed persistence is clean at `fa7e0a8`, its VS Code workflow is clean at `972faa8`, the engine-host RPC is clean at `27a028b`, the Visual Studio client is clean at `72305c3`, and the Rider client is clean at `b305fec`;
+5. preserving the Product Owner decision to skip the limited Codex Security scan; do not claim a completed security review or resume it without a new explicit request;
+6. retaining the aggregate root evidence recorded for `cc72c6c`, or rerunning it if implementation changes source; and
+7. continuing with bounded parallel-readonly orchestration without weakening sequential checkpoint, evidence or staged-review boundaries.

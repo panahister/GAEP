@@ -2,7 +2,7 @@
 
 **Governed AI Engineering Platform (GAEP)**  
 **Document ID:** GAEP-RDM-054  
-**Version:** 1.0.1  
+**Version:** 1.0.2  
 **Status:** Active Delivery Control  
 **Last Updated:** 2026-07-24  
 **Authority:** Feature delivery status and phase acceptance  
@@ -83,13 +83,13 @@ This table must be recounted and updated after every status change.
 
 | Registry | Total | ✅ Done | 🟡 In Progress | 🧪 Ready for Test | 🔎 In Review | ⛔ Blocked | ⏸ Deferred | ❌ Backlog |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Cross-platform capabilities | 35 | 3 | 21 | 0 | 0 | 0 | 0 | 11 |
+| Cross-platform capabilities | 35 | 3 | 22 | 0 | 0 | 0 | 0 | 10 |
 | Phase 1 — Product P0–P4 | 36 | 1 | 21 | 0 | 0 | 0 | 0 | 14 |
 | Phase 2 — UX and Figma | 26 | 0 | 8 | 0 | 0 | 0 | 0 | 18 |
 | Phase 3A — Backlog and Readiness | 24 | 0 | 8 | 0 | 0 | 0 | 0 | 16 |
 | Phase 3B — Implementation and QA | 30 | 0 | 14 | 0 | 0 | 0 | 0 | 16 |
 | Phase 4 — Release and Learning | 17 | 0 | 8 | 0 | 0 | 0 | 0 | 9 |
-| **All tracked features** | **168** | **4** | **80** | **0** | **0** | **0** | **0** | **84** |
+| **All tracked features** | **168** | **4** | **81** | **0** | **0** | **0** | **0** | **83** |
 
 ## 6. Cross-Platform Capability Registry
 
@@ -107,15 +107,15 @@ These capabilities are cross-cutting. The target milestone is the first phase in
 | PLT-08 | Codex Model Discovery and Selection | Phase 0 / 1A | Display and select the Codex models available to the user | `🟡 In Progress` | Discovery and selection are partial and lack four-IDE conformance |
 | PLT-09 | Claude Model Discovery and Selection | Phase 0 / 1A | Display and select the Claude Code models available to the user | `🟡 In Progress` | Sonnet and Opus aliases are visible; execution-backed verification is incomplete |
 | PLT-10 | Safe Codex Analysis Execution | Phase 0 / 1A | Read-only analysis with a run envelope and evidence | `🟡 In Progress` | The managed Codex path is advanced, but four-host acceptance is incomplete |
-| PLT-11 | Safe Claude Analysis Execution | Phase 0 / 1A | Read-only Claude analysis with a run envelope and evidence | `❌ Backlog` | Real invocation remains stopped or incomplete |
+| PLT-11 | Safe Claude Analysis Execution | Phase 0 / 1A | Read-only Claude analysis with a run envelope and evidence | `🟡 In Progress` | The context-only executable path now shares durable sequential multi-step checkpoint/restart controls with the deterministic adapter, but live Claude invocation, packaged-host and four-IDE acceptance evidence remain incomplete |
 | PLT-12 | Staged Codex Effectful Execution | Phase 0 / 1A | Preview, approval, apply, and recovery for Codex changes | `🟡 In Progress` | Partial staging exists; end-to-end acceptance is incomplete |
 | PLT-13 | Staged Claude Effectful Execution | Phase 0 / 1A | Preview, approval, apply, and recovery for Claude changes | `❌ Backlog` | Real managed effectful execution does not exist |
 | PLT-14 | Provider Switching | Phase 0 / 1A | Switch Codex and Claude Code within one Initiative without losing state | `🟡 In Progress` | The UI and abstraction are partial; a real bidirectional workflow is incomplete |
 | PLT-15 | Model Switching | Phase 0 / 1A | Change models within each provider while recording provenance | `🟡 In Progress` | Selection is partial; provenance and four-host support are incomplete |
 | PLT-16 | Versioned Provider/Model Handoff | Phase 0 / 1A | Transfer context, Run Envelope, and evidence between agents and models | `🟡 In Progress` | A handoff foundation exists; the contract and acceptance are incomplete |
 | PLT-17 | Manual/Fake Provider Adapter | Phase 0 / 1A | Deterministic adapter for offline tests and fixtures | `✅ Done` | A test adapter exists and must remain part of the conformance suite |
-| PLT-18 | Context and Run Envelope | Phase 0 / 1A | Record scope, authority, inputs, model, limits, and effects | `🟡 In Progress` | A foundation exists; it does not cover every host and provider |
-| PLT-19 | Normalized Evidence and Run Records | Phase 0 / 1A | Provider- and host-independent evidence | `🟡 In Progress` | Normalization is partial; schema and conformance are not final |
+| PLT-18 | Context and Run Envelope | Phase 0 / 1A | Record scope, authority, inputs, model, limits, and effects | `🟡 In Progress` | Exact multi-step Workflow checkpoints now bind completed dependency prefixes, gates, events and observation-only effects; host/provider coverage and parallel envelopes remain incomplete |
+| PLT-19 | Normalized Evidence and Run Records | Phase 0 / 1A | Provider- and host-independent evidence | `🟡 In Progress` | Immutable portable checkpoint evidence survives restart and export/import validation with exact lineage and tamper rejection; schema conformance across every provider, host and parallel path is not final |
 | PLT-20 | Install, Upgrade, and Rollback | Phase 0 / 1A | Testable lifecycle for all four plugins | `🟡 In Progress` | VS Code is partial; Visual Studio, Rider, and Kiro are incomplete |
 | PLT-21 | Dashboard Shell | Phase 0 / 1A | Shared dashboard shell in all four hosts | `🟡 In Progress` | A basic dashboard exists; parity and four-host installation are incomplete |
 | PLT-22 | Phase-Scoped Dashboard Framework | Phase 0 / 1A | Compose dashboards according to phase and applicability | `❌ Backlog` | A complete framework and contract do not exist |
@@ -254,7 +254,7 @@ Phase 1 must execute the initial Product lifecycle through architecture and read
 | P3B-12 | Backlog-to-Code Traceability | Trace | Link changes, commits, and tests to backlog items | `🟡 In Progress` | A trace foundation exists; completeness is inadequate |
 | P3B-13 | Apply/Discard Foundation | Execution | Safely apply or discard staged changes | `🟡 In Progress` | A foundation exists; acceptance is incomplete |
 | P3B-14 | Scoped Apply | Execution | Apply only approved targets | `🟡 In Progress` | Scope controls are partial; parity is incomplete |
-| P3B-15 | Rollback and Recovery | Recovery | Versioned rollback and recovery evidence | `🟡 In Progress` | A recovery foundation exists; complete scenarios have not been tested |
+| P3B-15 | Rollback and Recovery | Recovery | Versioned rollback and recovery evidence | `🟡 In Progress` | Sequential observation-only multi-step process loss now preserves completed-step receipts, resumes unfinished work, safely restarts before checkpoint zero, and rejects tampering; effectful multi-step, bounded parallel, native-platform and power-loss scenarios remain |
 | P3B-16 | Change Conflict Detection | Change | Detect conflicts with user edits, baselines, and provider handoffs | `❌ Backlog` | No conflict engine exists |
 | P3B-17 | Test Generation | QA | Generate tests from acceptance, risk, and design contracts | `🟡 In Progress` | Some test mechanisms exist; governed generation is incomplete |
 | P3B-18 | Unit and Integration Testing | QA | Repeatable suite for changed units | `🟡 In Progress` | Tests exist; the phase gate and coverage contract are incomplete |
