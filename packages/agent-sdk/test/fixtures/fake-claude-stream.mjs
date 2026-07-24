@@ -1,10 +1,12 @@
+import { writeFile } from "node:fs/promises"
+
 const modelIndex = process.argv.indexOf("--model")
 const mode = modelIndex >= 0 ? process.argv[modelIndex + 1] : "success"
 
 let input = ""
 process.stdin.setEncoding("utf8")
 process.stdin.on("data", (chunk) => { input += chunk })
-process.stdin.on("end", () => {
+process.stdin.on("end", async () => {
   if (mode === "malformed") {
     process.stdout.write("{not-json}\n")
     return
@@ -19,6 +21,7 @@ process.stdin.on("end", () => {
     return
   }
   const sessionId = `session-${mode}`
+  if (mode === "stage-edit") await writeFile("generated.txt", "generated only inside the isolated stage\n")
   process.stdout.write(`${JSON.stringify({ type: "system", subtype: "init", session_id: sessionId })}\n`)
   process.stdout.write(`${JSON.stringify({
     type: "assistant",

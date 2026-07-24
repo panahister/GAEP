@@ -1,6 +1,16 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
 
-import { createManagedClaudeAnalysisInvocation, type ManagedClaudeAnalysisRequest } from "./managed-claude.js"
+import {
+  createManagedClaudeAnalysisInvocation,
+  createManagedClaudeStagedInvocation,
+  type ManagedClaudeAnalysisInvocation,
+  type ManagedClaudeAnalysisRequest,
+} from "./managed-claude.js"
+import { createManagedStageReview, type ManagedStageReview } from "./managed-codex-run.js"
+import {
+  ManagedStageRegistry,
+  type ManagedStageReviewManifest,
+} from "./managed-stage-registry.js"
 import {
   BoundedAsyncQueue,
   type ManagedRuntimeEvent,
@@ -9,6 +19,7 @@ import {
   type UnsequencedManagedRuntimeEvent,
 } from "./managed-runtime.js"
 import type { ExecutableFingerprint } from "./process.js"
+import { WorkspaceStagingService } from "./workspace-staging.js"
 
 export interface ManagedClaudeContextRunRequest extends ManagedClaudeAnalysisRequest {
   runtimeVersion?: string
@@ -17,6 +28,34 @@ export interface ManagedClaudeContextRunRequest extends ManagedClaudeAnalysisReq
   timeoutMs?: number
   maxOutputBytes?: number
   maxLineBytes?: number
+}
+
+interface ManagedClaudeRuntimeRequest {
+  executable: string
+  runtimeVersion?: string
+  capabilityDigest?: `sha256:${string}`
+  executableFingerprint?: ExecutableFingerprint
+  timeoutMs?: number
+  maxOutputBytes?: number
+  maxLineBytes?: number
+}
+
+export interface ManagedClaudeStagedRunRequest extends ManagedClaudeRuntimeRequest {
+  /** Local test/wrapper prefix placed before Claude CLI arguments; never persisted. */
+  executableArguments?: string[]
+  sourceWorkspacePath: string
+  model: string
+  prompt: string
+  effort?: "low" | "medium" | "high" | "xhigh" | "max"
+  maxBudgetUsd?: number
+  maxTurns?: number
+  /** Portable Managed Run identity used only as a key in machine-local recovery metadata. */
+  managedRunId?: string
+  /** Exact portable governed-bindings digest used only in machine-local recovery metadata. */
+  bindingsDigest?: `sha256:${string}`
+  managedProvider?: { adapterId: string; agentId: string }
+  stageRegistry?: ManagedStageRegistry
+  stagingService?: WorkspaceStagingService
 }
 
 export interface ManagedClaudeContextRunCompletion {
@@ -30,7 +69,19 @@ export interface ManagedClaudeContextRunHandle {
   cancel(reason?: string): Promise<void>
 }
 
+export interface ManagedClaudeStagedRunHandle {
+  readonly events: AsyncIterable<ManagedRuntimeEvent>
+  readonly completion: Promise<ManagedStageReview>
+  cancel(reason?: string): Promise<void>
+}
+
 const defaultTimeoutMs = 30 * 60 * 1_000
+
+interface ManagedClaudeRuntimeBounds {
+  timeoutMs: number
+  maxOutputBytes: number
+  maxLineBytes: number
+}
 
 function positiveBound(value: number, label: string, maximum: number): number {
   if (!Number.isSafeInteger(value) || value < 1 || value > maximum) {
@@ -39,13 +90,46 @@ function positiveBound(value: number, label: string, maximum: number): number {
   return value
 }
 
+function runtimeBounds(request: ManagedClaudeRuntimeRequest): ManagedClaudeRuntimeBounds {
+  return {
+    timeoutMs: positiveBound(request.timeoutMs ?? defaultTimeoutMs, "Managed Claude timeout", 24 * 60 * 60 * 1_000),
+    maxOutputBytes: positiveBound(request.maxOutputBytes ?? 16 * 1024 * 1024, "Managed Claude output bound", 64 * 1024 * 1024),
+    maxLineBytes: positiveBound(request.maxLineBytes ?? 1024 * 1024, "Managed Claude line bound", 4 * 1024 * 1024),
+  }
+}
+
 function portableRuntimeVersion(value: string | undefined): string | undefined {
   if (value === undefined) return undefined
   const version = value.trim()
-  if (!version || Buffer.byteLength(version) > 1_024 || /[/\\][\w.-]+[/\\]/u.test(version)) {
-    throw new Error("Managed Claude runtime version must be bounded and path-free")
+  if (!version || Buffer.byteLength(version) > 1_024 || /[/\\][\w.-]+[/\\]/u.test(version) ||
+      /\b(?:token|secret|password|api[_-]?key)\s*[:=]/iu.test(version)) {
+    throw new Error("Managed Claude runtime version must be bounded, path-free, and free of secret-shaped values")
   }
   return version
+}
+
+function portableDigest(
+  value: `sha256:${string}` | undefined,
+  label: string,
+): `sha256:${string}` | undefined {
+  if (value === undefined) return undefined
+  if (!/^sha256:[0-9a-f]{64}$/u.test(value)) throw new Error(`${label} must be a lowercase SHA-256 digest`)
+  return value
+}
+
+function boundedProviderIdentity(value: string, label: string): string {
+  if (typeof value !== "string" || !value.trim() || Buffer.byteLength(value) > 1_024) {
+    throw new Error(`${label} must be a non-empty bounded string`)
+  }
+  return value
+}
+
+function normalizedRuntimeRequest<T extends ManagedClaudeRuntimeRequest>(request: T): T {
+  return {
+    ...request,
+    runtimeVersion: portableRuntimeVersion(request.runtimeVersion),
+    capabilityDigest: portableDigest(request.capabilityDigest, "Managed Claude capability digest"),
+  }
 }
 
 function textParts(value: unknown): string[] {
@@ -76,13 +160,13 @@ function signalProcessTree(child: ChildProcessWithoutNullStreams, signal: NodeJS
   }
 }
 
-export async function startManagedClaudeContextRun(
-  request: ManagedClaudeContextRunRequest,
+async function startManagedClaudeInvocationRun(
+  request: ManagedClaudeRuntimeRequest,
+  invocation: ManagedClaudeAnalysisInvocation,
+  bounds: ManagedClaudeRuntimeBounds,
+  portableWarning: string,
 ): Promise<ManagedClaudeContextRunHandle> {
-  const timeoutMs = positiveBound(request.timeoutMs ?? defaultTimeoutMs, "Managed Claude timeout", 24 * 60 * 60 * 1_000)
-  const maxOutputBytes = positiveBound(request.maxOutputBytes ?? 16 * 1024 * 1024, "Managed Claude output bound", 64 * 1024 * 1024)
-  const maxLineBytes = positiveBound(request.maxLineBytes ?? 1024 * 1024, "Managed Claude line bound", 4 * 1024 * 1024)
-  const invocation = await createManagedClaudeAnalysisInvocation(request)
+  const { timeoutMs, maxOutputBytes, maxLineBytes } = bounds
   const events = new BoundedAsyncQueue<ManagedRuntimeEvent>(4_096, 32 * 1024 * 1024)
   const collected: ManagedRuntimeEvent[] = []
   let sequence = 0
@@ -270,7 +354,7 @@ export async function startManagedClaudeContextRun(
           providerTurnId,
           events: collected,
           terminalDisposition,
-          warnings: ["Managed Claude execution was tool-free and context-only."],
+          warnings: [...(invocation.invocation.warnings ?? []), portableWarning],
           postconditionStatus: "not-assessed",
         },
         local: {
@@ -293,5 +377,129 @@ export async function startManagedClaudeContextRun(
       cancelRequested = true
       await stop()
     },
+  }
+}
+
+export async function startManagedClaudeContextRun(
+  request: ManagedClaudeContextRunRequest,
+): Promise<ManagedClaudeContextRunHandle> {
+  const normalizedRequest = normalizedRuntimeRequest(request)
+  const bounds = runtimeBounds(normalizedRequest)
+  const invocation = await createManagedClaudeAnalysisInvocation(request)
+  return startManagedClaudeInvocationRun(
+    normalizedRequest,
+    invocation,
+    bounds,
+    "Managed Claude execution was tool-free and context-only.",
+  )
+}
+
+export async function startManagedClaudeStagedRun(
+  request: ManagedClaudeStagedRunRequest,
+): Promise<ManagedClaudeStagedRunHandle> {
+  const normalizedRequest = normalizedRuntimeRequest(request)
+  const bounds = runtimeBounds(normalizedRequest)
+  const bindingsDigest = portableDigest(request.bindingsDigest, "Managed Claude governed-bindings digest")
+  const managedRunId = request.managedRunId
+  if (managedRunId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(managedRunId)) {
+    throw new Error("Managed Claude Run identity must be a canonical UUID")
+  }
+  const managedProvider = request.managedProvider
+    ? {
+        adapterId: boundedProviderIdentity(request.managedProvider.adapterId, "Managed Claude adapter identity"),
+        agentId: boundedProviderIdentity(request.managedProvider.agentId, "Managed Claude agent identity"),
+      }
+    : undefined
+  if (managedRunId && (!normalizedRequest.capabilityDigest || !bindingsDigest || !managedProvider)) {
+    throw new Error("Managed Claude durable review requires exact capability and governed-bindings digests")
+  }
+  if (!managedRunId && (bindingsDigest || managedProvider)) {
+    throw new Error("Managed Claude durable review metadata requires a Managed Run identity")
+  }
+  const stagingService = request.stagingService ?? new WorkspaceStagingService()
+  const stage = await stagingService.create(request.sourceWorkspacePath)
+  const stageRegistry = managedRunId
+    ? request.stageRegistry ?? new ManagedStageRegistry()
+    : undefined
+  try {
+    if (managedRunId && stageRegistry) await stageRegistry.register(managedRunId, stage)
+    const invocation = await createManagedClaudeStagedInvocation({
+      executable: request.executable,
+      executableArguments: request.executableArguments,
+      model: request.model,
+      prompt: request.prompt,
+      stagingWorkspacePath: stage.root,
+      effort: request.effort,
+      maxBudgetUsd: request.maxBudgetUsd,
+      maxTurns: request.maxTurns,
+    })
+    const runtime = await startManagedClaudeInvocationRun(
+      normalizedRequest,
+      invocation,
+      bounds,
+      "Managed Claude was launched with a GAEP-owned isolated stage as its working directory; source apply remains separately governed.",
+    )
+    const completion = (async (): Promise<ManagedStageReview> => {
+      const completed = await runtime.completion
+      const inspection = await stagingService.inspect(stage)
+      const initialResult: ManagedRuntimeResultEnvelope = {
+        portable: {
+          ...structuredClone(completed.result.portable),
+          staging: {
+            baselineDigest: inspection.baselineDigest,
+            finalDigest: inspection.finalDigest,
+            changes: structuredClone(inspection.changes),
+            excludedPaths: [...inspection.excludedPaths],
+            applied: false,
+          },
+        },
+        local: {
+          ...structuredClone(completed.result.local),
+          sourceWorkspacePath: stage.sourceRoot,
+          stagingWorkspacePath: stage.root,
+        },
+      }
+      const manifest: ManagedStageReviewManifest | undefined = managedRunId && normalizedRequest.capabilityDigest &&
+        bindingsDigest && managedProvider
+        ? {
+            schemaVersion: 1,
+            kind: "gaep-managed-stage-review-manifest-v1",
+            managedRunId,
+            bindingsDigest,
+            provider: {
+              adapterId: managedProvider.adapterId,
+              agentId: managedProvider.agentId,
+              modelId: request.model,
+              capabilityDigest: normalizedRequest.capabilityDigest,
+            },
+            stage: stagingService.exportManifest(stage),
+            inspection,
+            terminalDisposition: initialResult.portable.terminalDisposition,
+          }
+        : undefined
+      const reviewLeaseToken = managedRunId && stageRegistry
+        ? await stageRegistry.markReview(managedRunId, manifest)
+        : undefined
+      return createManagedStageReview({
+        initialResult,
+        inspection,
+        terminalDisposition: initialResult.portable.terminalDisposition,
+        sourceWorkspacePath: stage.sourceRoot,
+        stage,
+        stagingService,
+        managedRunId,
+        stageRegistry,
+        reviewLeaseToken,
+      })
+    })().catch(async (error: unknown) => {
+      await stagingService.cleanup(stage).catch(() => undefined)
+      if (managedRunId && stageRegistry) await stageRegistry.complete(managedRunId).catch(() => undefined)
+      throw error
+    })
+    return { events: runtime.events, completion, cancel: (reason) => runtime.cancel(reason) }
+  } catch (error) {
+    await stagingService.cleanup(stage).catch(() => undefined)
+    if (managedRunId && stageRegistry) await stageRegistry.complete(managedRunId).catch(() => undefined)
+    throw error
   }
 }

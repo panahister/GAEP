@@ -94,6 +94,25 @@ export interface ManagedCodexStagedRunHandle {
   cancel(reason?: string): Promise<void>
 }
 
+/**
+ * Provider-neutral aliases for the isolated staged-workspace review contract.
+ * The original Codex names remain exported for compatibility.
+ */
+export type ManagedStageApplyRequest = ManagedCodexApplyRequest
+export type ManagedStageReview = ManagedCodexStageReview
+
+export interface CreateManagedStageReviewRequest {
+  initialResult: ManagedRuntimeResultEnvelope
+  inspection: WorkspaceStageInspection
+  terminalDisposition: ManagedTerminalDisposition
+  sourceWorkspacePath: string
+  stage: WorkspaceStage
+  stagingService: WorkspaceStagingService
+  managedRunId?: string
+  stageRegistry?: ManagedStageRegistry
+  reviewLeaseToken?: string
+}
+
 export class ManagedCodexPreJournalApplyError extends Error {
   readonly reviewRestored = true
 
@@ -172,7 +191,7 @@ function resultWithApply(
   }
 }
 
-class CodexStageReview implements ManagedCodexStageReview {
+class ManagedStageReviewImpl implements ManagedCodexStageReview {
   private disposition: ManagedCodexStageReview["state"] = "review-required"
   private finalResult: ManagedRuntimeResultEnvelope
   private operation: Promise<ManagedRuntimeResultEnvelope> | undefined
@@ -261,7 +280,7 @@ class CodexStageReview implements ManagedCodexStageReview {
         } catch (restoreError) {
           throw new AggregateError(
             [error, restoreError],
-            "Managed Codex apply mark failed and its no-journal review state could not be durably restored",
+            "Managed staged apply mark failed and its no-journal review state could not be durably restored",
           )
         }
         throw new ManagedCodexPreJournalApplyError(
@@ -306,7 +325,7 @@ class CodexStageReview implements ManagedCodexStageReview {
         } catch (restoreError) {
           throw new AggregateError(
             [error, restoreError],
-            "Managed Codex apply failed and its no-journal review state could not be durably restored",
+            "Managed staged apply failed and its no-journal review state could not be durably restored",
           )
         }
         throw new ManagedCodexPreJournalApplyError(
@@ -344,8 +363,8 @@ class CodexStageReview implements ManagedCodexStageReview {
           }),
           new Promise<never>((_resolve, reject) => {
             timer = setTimeout(() => {
-              reject(new Error("Managed Codex postcondition assessment timed out"))
-              controller.abort(new Error("Managed Codex postcondition assessment timed out"))
+              reject(new Error("Managed staged postcondition assessment timed out"))
+              controller.abort(new Error("Managed staged postcondition assessment timed out"))
             }, timeoutMs)
             timer.unref()
           }),
@@ -399,6 +418,20 @@ class CodexStageReview implements ManagedCodexStageReview {
       this.operation = undefined
     }
   }
+}
+
+export function createManagedStageReview(request: CreateManagedStageReviewRequest): ManagedStageReview {
+  return new ManagedStageReviewImpl(
+    request.initialResult,
+    request.inspection,
+    request.terminalDisposition,
+    request.sourceWorkspacePath,
+    request.stage,
+    request.stagingService,
+    request.managedRunId,
+    request.stageRegistry,
+    request.reviewLeaseToken,
+  )
 }
 
 export async function startManagedCodexStagedRun(
@@ -603,17 +636,17 @@ export async function startManagedCodexStagedRun(
     const reviewLeaseToken = request.managedRunId && stageRegistry
       ? await stageRegistry.markReview(request.managedRunId, reviewManifest)
       : undefined
-    return new CodexStageReview(
+    return createManagedStageReview({
       initialResult,
       inspection,
       terminalDisposition,
-      stage.sourceRoot,
+      sourceWorkspacePath: stage.sourceRoot,
       stage,
       stagingService,
-      request.managedRunId,
+      managedRunId: request.managedRunId,
       stageRegistry,
       reviewLeaseToken,
-    )
+    })
   })().catch(async (error: unknown) => {
     events.fail(error instanceof Error ? error : new Error(String(error)))
     await supervisor.stop().catch(() => undefined)
@@ -625,20 +658,22 @@ export async function startManagedCodexStagedRun(
   return { events, completion, cancel }
 }
 
-export interface RehydrateManagedCodexStageReviewRequest {
+export interface RehydrateManagedStageReviewRequest {
   readonly claim: ManagedStageReviewClaim
   readonly initialResult: ManagedRuntimeResultEnvelope
   readonly stageRegistry: ManagedStageRegistry
   readonly stagingService?: WorkspaceStagingService
 }
 
-export async function rehydrateManagedCodexStageReview(
-  request: RehydrateManagedCodexStageReviewRequest,
-): Promise<{ review: ManagedCodexStageReview; stagingService: WorkspaceStagingService }> {
+export type RehydrateManagedCodexStageReviewRequest = RehydrateManagedStageReviewRequest
+
+export async function rehydrateManagedStageReview(
+  request: RehydrateManagedStageReviewRequest,
+): Promise<{ review: ManagedStageReview; stagingService: WorkspaceStagingService }> {
   assertAuthenticManagedStageReviewClaim(request.claim)
   const manifest = request.claim.manifest
   if (request.initialResult.portable.terminalDisposition !== manifest.terminalDisposition) {
-    throw new Error("Managed Codex rehydration result does not match the durable provider disposition")
+    throw new Error("Managed staged rehydration result does not match the durable provider disposition")
   }
   const stagingService = request.stagingService ?? new WorkspaceStagingService()
   const stage = await stagingService.rehydrate(manifest.stage, manifest.inspection, {
@@ -646,17 +681,23 @@ export async function rehydrateManagedCodexStageReview(
     expectedRootIdentity: request.claim.stageRootIdentity,
   })
   return {
-    review: new CodexStageReview(
-      request.initialResult,
-      manifest.inspection,
-      manifest.terminalDisposition,
-      manifest.stage.stage.sourceRoot,
+    review: createManagedStageReview({
+      initialResult: request.initialResult,
+      inspection: manifest.inspection,
+      terminalDisposition: manifest.terminalDisposition,
+      sourceWorkspacePath: manifest.stage.stage.sourceRoot,
       stage,
       stagingService,
-      manifest.managedRunId,
-      request.stageRegistry,
-      request.claim.leaseToken,
-    ),
+      managedRunId: manifest.managedRunId,
+      stageRegistry: request.stageRegistry,
+      reviewLeaseToken: request.claim.leaseToken,
+    }),
     stagingService,
   }
+}
+
+export async function rehydrateManagedCodexStageReview(
+  request: RehydrateManagedCodexStageReviewRequest,
+): Promise<{ review: ManagedCodexStageReview; stagingService: WorkspaceStagingService }> {
+  return rehydrateManagedStageReview(request)
 }
