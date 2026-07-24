@@ -61,6 +61,7 @@ import {
   type AdapterCapabilitiesCompatibilityResult,
   type AgentSelectionCompatibilityResult,
 } from "@gaep/agent-sdk"
+import { portableDesignImportResultSchema } from "@gaep/design-import"
 import type { ZodType } from "zod"
 
 const directoryNames = [
@@ -838,6 +839,7 @@ export class GaepRepository {
       ["workflow-plans", /^[0-9a-f-]+\.json$/i],
       ["tools", /^[0-9a-f-]+\.json$/i],
       ["tool-selections", /^[0-9a-f-]+\.json$/i],
+      ["candidates", /^portable-design-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/],
       ["sessions", /^(?:(?:charter|run|managed-run|managed-evidence|managed-result|managed-apply-decision)-[0-9a-f-]+)\.json$/i],
       ["handoffs", /^[0-9a-f-]+\.json$/i],
       ["runtime", /^capabilities-[0-9a-f]{64}\.json$/],
@@ -916,6 +918,9 @@ export class GaepRepository {
     if (/^tools\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, toolDefinitionSchema)
     if (/^tool-selections\/[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, runToolSelectionSchema)
+    }
+    if (/^candidates\/portable-design-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/.test(relativePath)) {
+      return this.readJsonUnlocked(path, portableDesignImportResultSchema)
     }
     if (/^sessions\/charter-[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, executionCharterSchema)

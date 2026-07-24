@@ -76,6 +76,12 @@ import {
   type WorkspaceHealthIssue,
 } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
+import {
+  canonicalDigest as portableDesignDigest,
+  importPortableDesignBundle,
+  portableDesignImportResultSchema,
+  type PortableDesignImportResult,
+} from "@gaep/design-import"
 import type { ZodType } from "zod"
 
 import type { GaepRepository, MutationWrite } from "./repository.js"
@@ -311,12 +317,164 @@ export interface ProductExportDisclosureInput {
   reviewedAt?: string
 }
 
+export interface PortableDesignSnapshotImportInput {
+  bundleRoot: string
+  manifestPath?: string
+  expectedProductId: string
+  expectedProductRevision: number
+}
+
+const portableDesignCandidatePattern =
+  /^portable-design-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/
+const portableDesignCandidateCaseFoldedPattern =
+  /^portable-design-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/i
+const portableDesignCandidateLimit = 10_000
+const portableDesignPageLimit = 200
+const portableDesignExpectedChecks = [
+  "manifest-strict-schema",
+  "bundle-exact-inventory",
+  "paths-contained-and-link-free",
+  "sizes-and-digests-exact",
+  "text-secret-scan-clear",
+  "formats-passively-validated",
+] as const
+const portableDesignExpectedLimitations = [
+  "Source ownership, review, and approval claims are preserved but not independently verified.",
+  "Binary assets are signature-checked and digest-bound; they are not decoded or rendered by this importer.",
+  "SVG is accepted only as passive, link-free content and is not rendered by this importer.",
+  "Design-token values are normalized structurally; token semantics and references are not resolved by this importer.",
+  "A successful import remains pending human review and does not establish a Design Baseline.",
+] as const
+
 export class ProductStudioService {
   constructor(
     private readonly repository: GaepRepository,
     private readonly readProduct: ProductReader,
     private readonly readInitiative: InitiativeReader,
   ) {}
+
+  async importPortableDesignSnapshot(
+    input: PortableDesignSnapshotImportInput,
+    actorId: string,
+  ): Promise<PortableDesignImportResult> {
+    this.assertAllowedKeys(
+      input,
+      ["bundleRoot", "manifestPath", "expectedProductId", "expectedProductRevision"],
+      "Portable Design Snapshot import input",
+    )
+    const expectedProductId = this.requireUuid(input.expectedProductId, "Expected Product ID").toLowerCase()
+    await this.assertIntegrity()
+    const preflightProduct = await this.requireProductRevision(input.expectedProductRevision)
+    if (preflightProduct.id.toLowerCase() !== expectedProductId) {
+      throw new Error("Portable Design Snapshot expected Product identity does not match the current Product")
+    }
+
+    // Bundle validation performs bounded source I/O and intentionally runs without the repository lock.
+    // The exact Product revision, Initiative membership, inventory bound, and collision set are rechecked
+    // under the final atomic mutation boundary below.
+    const imported = this.validatePortableDesignSnapshot(await importPortableDesignBundle({
+      bundleRoot: input.bundleRoot,
+      ...(input.manifestPath !== undefined ? { manifestPath: input.manifestPath } : {}),
+    }))
+
+    return this.repository.withLock(async () => {
+      await this.assertIntegrity()
+      const product = await this.requireProductRevision(input.expectedProductRevision)
+      if (product.id.toLowerCase() !== expectedProductId || imported.productId.toLowerCase() !== product.id.toLowerCase()) {
+        throw new Error("Portable Design Snapshot Product identity does not match the exact current Product")
+      }
+      await this.assertPortableDesignSnapshotMembership(imported, product)
+      const names = await this.portableDesignCandidateNames(1)
+      if (names.length >= portableDesignCandidateLimit) {
+        throw new Error(`Portable Design Snapshot inventory reached the ${portableDesignCandidateLimit}-record safety limit`)
+      }
+      const filename = this.portableDesignSnapshotFilename(imported.bundleId)
+      if (names.some((name) => name === filename)) {
+        throw new Error("Portable Design Snapshot bundle identity already exists or collides by filename case")
+      }
+      const recordDigest = canonicalDigest(imported)
+      await this.repository.commitMutation({
+        writes: [this.governed(
+          this.repository.resolve("candidates", filename),
+          imported,
+          portableDesignImportResultSchema,
+        )],
+        audit: {
+          eventType: "product.design.snapshot.imported",
+          actor: { kind: "human", id: actorId },
+          subjectId: imported.bundleId,
+          payload: {
+            productId: product.id,
+            productRevision: product.revision ?? 1,
+            ...(imported.initiativeId ? { initiativeId: imported.initiativeId } : {}),
+            governanceState: imported.governance.state,
+            authorityBoundary: imported.governance.claimBoundary,
+            snapshotDigest: imported.snapshotDigest,
+            evidenceDigest: imported.evidence.evidenceDigest,
+            recordDigest,
+          },
+        },
+      })
+      return imported
+    })
+  }
+
+  async readPortableDesignSnapshot(bundleId: string): Promise<PortableDesignImportResult> {
+    const id = this.requireUuid(bundleId, "Portable Design Snapshot bundle ID").toLowerCase()
+    return this.repository.withLock(async () => {
+      await this.assertIntegrity()
+      const record = this.validatePortableDesignSnapshot(await this.repository.readJson(
+        this.repository.resolve("candidates", this.portableDesignSnapshotFilename(id)),
+        portableDesignImportResultSchema,
+      ))
+      if (record.bundleId.toLowerCase() !== id) {
+        throw new Error("Portable Design Snapshot filename does not bind its exact bundle identity")
+      }
+      const product = await this.readProduct()
+      await this.assertPortableDesignSnapshotMembership(record, product)
+      await this.assertIntegrity()
+      return record
+    })
+  }
+
+  async listPortableDesignSnapshots(
+    input: ProductStudioPageInput = {},
+  ): Promise<ProductStudioPage<PortableDesignImportResult>> {
+    this.assertAllowedKeys(input, ["offset", "limit"], "Portable Design Snapshot list input")
+    const offset = input.offset ?? 0
+    const limit = input.limit ?? 100
+    if (!Number.isInteger(offset) || offset < 0 || offset > portableDesignCandidateLimit) {
+      throw new Error(`Portable Design Snapshot offset must be between 0 and ${portableDesignCandidateLimit}`)
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > portableDesignPageLimit) {
+      throw new Error(`Portable Design Snapshot page limit must be between 1 and ${portableDesignPageLimit}`)
+    }
+    return this.repository.withLock(async () => {
+      await this.assertIntegrity()
+      const names = await this.portableDesignCandidateNames()
+      const selectedNames = names.slice(offset, offset + limit)
+      const items = await Promise.all(selectedNames.map(async (name) => {
+        const record = this.validatePortableDesignSnapshot(await this.repository.readJson(
+          this.repository.resolve("candidates", name),
+          portableDesignImportResultSchema,
+        ))
+        if (this.portableDesignSnapshotFilename(record.bundleId) !== name) {
+          throw new Error("Portable Design Snapshot inventory filename does not bind its exact bundle identity")
+        }
+        return record
+      }))
+      const product = await this.readProduct()
+      for (const record of items) await this.assertPortableDesignSnapshotMembership(record, product)
+      await this.assertIntegrity()
+      return {
+        items,
+        offset,
+        limit,
+        total: names.length,
+        hasMore: offset + items.length < names.length,
+      }
+    })
+  }
 
   async startOrResumeDesignDraft(expectedProductRevision: number): Promise<ProductDesignDraft> {
     return this.repository.withLock(async () => {
@@ -3689,6 +3847,109 @@ export class ProductStudioService {
       new RegExp(`^${escapedType}-${escapedId}-r[1-9][0-9]*\\.json$`, "i"),
       productRecordRevisionSchema,
     ).then((records) => records.sort((left, right) => right.revision - left.revision))
+  }
+
+  private validatePortableDesignSnapshot(value: unknown): PortableDesignImportResult {
+    const record = portableDesignImportResultSchema.parse(value)
+    const { snapshotDigest, evidence, ...snapshotBody } = record
+    if (portableDesignDigest(snapshotBody) !== snapshotDigest) {
+      throw new Error("Portable Design Snapshot canonical snapshot digest is invalid")
+    }
+    const { evidenceDigest, ...evidenceBody } = evidence
+    if (portableDesignDigest({ snapshotDigest, ...evidenceBody }) !== evidenceDigest) {
+      throw new Error("Portable Design Snapshot canonical evidence digest is invalid")
+    }
+    const artifactInventory = record.artifacts.map((artifact) => ({
+      id: artifact.id,
+      path: artifact.path,
+      kind: artifact.kind,
+      format: artifact.format,
+      mediaType: artifact.mediaType,
+      sizeBytes: artifact.sizeBytes,
+      digest: artifact.digest,
+      title: artifact.title,
+      targets: artifact.targets,
+      validation: artifact.validation,
+    }))
+    if (portableDesignDigest(artifactInventory) !== evidence.artifactInventoryDigest) {
+      throw new Error("Portable Design Snapshot artifact inventory digest is invalid")
+    }
+    if (JSON.stringify(evidence.checks) !== JSON.stringify(portableDesignExpectedChecks)) {
+      throw new Error("Portable Design Snapshot validation check inventory is not exact")
+    }
+    if (Date.parse(evidence.importedAt) < Date.parse(record.source.exportedAt)) {
+      throw new Error("Portable Design Snapshot import evidence predates its source export")
+    }
+    if (JSON.stringify(evidence.limitations) !== JSON.stringify(portableDesignExpectedLimitations)) {
+      throw new Error("Portable Design Snapshot limitation inventory is not exact")
+    }
+    const artifactIds = record.artifacts.map((artifact) => artifact.id.toLowerCase())
+    const artifactPaths = record.artifacts.map((artifact) => artifact.path.toLowerCase())
+    if (new Set(artifactIds).size !== artifactIds.length || new Set(artifactPaths).size !== artifactPaths.length) {
+      throw new Error("Portable Design Snapshot artifacts collide by case-insensitive identity or path")
+    }
+    const tokenKeys = new Set<string>()
+    const tokenArtifactIds = new Set(record.artifacts
+      .filter((artifact) => artifact.validation === "tokens-normalized")
+      .map((artifact) => artifact.id.toLowerCase()))
+    for (const token of record.tokens) {
+      const key = `${token.artifactId.toLowerCase()}:${token.path.toLowerCase()}`
+      if (tokenKeys.has(key) || !tokenArtifactIds.has(token.artifactId.toLowerCase()) ||
+          portableDesignDigest(token.value) !== token.valueDigest) {
+        throw new Error("Portable Design Snapshot normalized token metadata is invalid")
+      }
+      tokenKeys.add(key)
+    }
+    return record
+  }
+
+  private async assertPortableDesignSnapshotMembership(
+    record: PortableDesignImportResult,
+    product: Product,
+  ): Promise<void> {
+    if (record.productId.toLowerCase() !== product.id.toLowerCase()) {
+      throw new Error("Portable Design Snapshot targets a different Product")
+    }
+    if (!record.initiativeId) return
+    const initiative = await this.readInitiative(this.requireUuid(
+      record.initiativeId,
+      "Portable Design Snapshot Initiative ID",
+    ))
+    if (initiative.id.toLowerCase() !== record.initiativeId.toLowerCase() ||
+        initiative.productId.toLowerCase() !== product.id.toLowerCase()) {
+      throw new Error("Portable Design Snapshot Initiative does not belong to the exact current Product")
+    }
+  }
+
+  private async portableDesignCandidateNames(reservedEntries = 0): Promise<string[]> {
+    let names: string[]
+    try {
+      const directoryNames = await this.repository.readDirectory(this.repository.resolve("candidates"))
+      if (directoryNames.length + reservedEntries > portableDesignCandidateLimit) {
+        throw new Error(`Candidate directory exceeds the ${portableDesignCandidateLimit}-entry safety limit`)
+      }
+      const portableDesignNames = directoryNames.filter((name) => portableDesignCandidateCaseFoldedPattern.test(name))
+      if (portableDesignNames.some((name) => !portableDesignCandidatePattern.test(name))) {
+        throw new Error("Portable Design Snapshot filenames must use canonical lowercase UUIDs")
+      }
+      names = portableDesignNames
+    } catch (error) {
+      if (this.isMissing(error)) return []
+      throw error
+    }
+    if (names.length > portableDesignCandidateLimit) {
+      throw new Error(`Portable Design Snapshot inventory exceeds the ${portableDesignCandidateLimit}-record safety limit`)
+    }
+    const folded = names.map((name) => name.toLowerCase())
+    if (new Set(folded).size !== folded.length) {
+      throw new Error("Portable Design Snapshot inventory contains a case-insensitive filename collision")
+    }
+    return names.sort((left, right) =>
+      left.toLowerCase().localeCompare(right.toLowerCase()) || left.localeCompare(right))
+  }
+
+  private portableDesignSnapshotFilename(bundleId: string): string {
+    return `portable-design-${this.requireUuid(bundleId, "Portable Design Snapshot bundle ID").toLowerCase()}.json`
   }
 
   private governed<T>(path: string, value: T, schema: ZodType<T>): MutationWrite<T> {

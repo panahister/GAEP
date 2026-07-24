@@ -7,7 +7,8 @@
   },
   "references": [
     { "path": "../contracts" },
-    { "path": "../agent-sdk" }
+    { "path": "../agent-sdk" },
+    { "path": "../design-import" }
   ],
   "include": ["src/**/*.ts"]
 }
