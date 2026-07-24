@@ -10,6 +10,9 @@ repositories {
     mavenCentral()
     intellijPlatform {
         defaultRepositories()
+        // The multi-OS Rider archive resolves the Java compiler used by the
+        // mandatory instrumentation tasks from this dedicated repository.
+        intellijDependencies()
         jetbrainsRuntime()
     }
 }
