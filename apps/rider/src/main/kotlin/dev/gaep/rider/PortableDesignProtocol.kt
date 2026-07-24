@@ -310,6 +310,95 @@ data class ManagedEvidenceDetail(
     val privacyBoundary: String,
 )
 
+data class ManagedChangedFile(
+    val path: String,
+    val kind: String,
+    val beforeDigest: String?,
+    val afterDigest: String?,
+    val beforeSize: Long?,
+    val afterSize: Long?,
+    val beforeMode: Int?,
+    val afterMode: Int?,
+)
+
+data class ManagedReviewResult(
+    val resultId: UUID,
+    val resultDigest: String,
+    val terminalState: String,
+    val providerDisposition: String,
+    val outcomeStatus: String,
+    val outcomeBasis: String,
+    val warningCodes: List<String>,
+    val evidenceId: UUID,
+    val evidenceDigest: String,
+)
+
+data class ManagedReviewStaging(
+    val evidenceId: UUID,
+    val evidenceDigest: String,
+    val baselineDigest: String,
+    val finalDigest: String,
+    val applyState: String,
+    val changeCount: Int,
+    val changedInventoryLimit: Int,
+    val omittedCount: Int,
+    val changedInventory: List<ManagedChangedFile>,
+    val changedInventoryDigest: String,
+    val excludedPathCount: Int,
+    val excludedPathSetDigest: String,
+)
+
+data class ManagedReviewApplyConfirmation(
+    val decision: String,
+    val reviewEvidenceId: UUID,
+    val reviewEvidenceDigest: String,
+    val changedInventoryDigest: String,
+    val writeEnvelope: List<String>,
+    val writeEnvelopeDigest: String,
+)
+
+data class ManagedReviewPreview(
+    val schemaVersion: Int,
+    val kind: String,
+    val managedRunId: UUID,
+    val managedRunRevision: Long,
+    val runId: UUID,
+    val productId: UUID,
+    val initiativeId: UUID,
+    val mode: String,
+    val state: String,
+    val canApply: Boolean,
+    val canDiscard: Boolean,
+    val hasLocalJournal: Boolean,
+    val bindingsDigest: String,
+    val result: ManagedReviewResult,
+    val staging: ManagedReviewStaging,
+    val applyConfirmation: ManagedReviewApplyConfirmation?,
+    val postApplyGatePolicy: String,
+    val authorityBoundary: String,
+    val privacyBoundary: String,
+    val cleanupBoundary: String,
+    val previewDigest: String,
+)
+
+data class ManagedReviewTransition(
+    val schemaVersion: Int,
+    val kind: String,
+    val decision: String,
+    val sourcePreviewDigest: String,
+    val sourceManagedRunRevision: Long,
+    val managedRunId: UUID,
+    val managedRunRevision: Long,
+    val state: String,
+    val canApply: Boolean,
+    val canDiscard: Boolean,
+    val hasLocalJournal: Boolean,
+    val detail: ManagedEvidenceDetail,
+    val authorityBoundary: String,
+    val cleanupBoundary: String,
+    val transitionDigest: String,
+)
+
 data class AgentReadinessSnapshot(
     val schemaVersion: Int,
     val adapterId: String,
@@ -431,6 +520,14 @@ internal object PortableDesignProtocol {
         "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority"
     private const val MANAGED_EVIDENCE_PRIVACY_BOUNDARY =
         "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted."
+    private const val MANAGED_REVIEW_BOUNDARY =
+        "managed-review-preview-authorizes-no-mutation-without-an-exact-digest-bound-human-decision"
+    private const val MANAGED_REVIEW_PRIVACY_BOUNDARY =
+        "Exact portable identifiers, digests, warning codes, workspace-relative changed paths, file digests, sizes, modes and write scopes only; prompts, provider output, source bytes, absolute paths, executable paths, process state and credentials are omitted."
+    private const val MANAGED_REVIEW_TRANSITION_BOUNDARY =
+        "managed-review-transition-proves-persisted-state-not-provider-outcome-or-machine-local-cleanup"
+    private const val MANAGED_REVIEW_CLEANUP_BOUNDARY =
+        "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup."
     private val actorIdPattern = Regex("^[A-Za-z0-9][A-Za-z0-9._:@+-]*$")
     private val toolPattern = Regex("^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
     private val digestPattern = Regex("^sha256:[0-9a-f]{64}$")
@@ -536,6 +633,26 @@ internal object PortableDesignProtocol {
         "MANAGED_EVIDENCE_DETAIL_INVALID" to StableHostError(
             -32_027,
             "GAEP could not verify the exact Managed Run evidence detail.",
+        ),
+        "MANAGED_REVIEW_AUDIT_INVALID" to StableHostError(
+            -32_028,
+            "Managed Run review is unavailable because the governed audit chain is invalid.",
+        ),
+        "MANAGED_REVIEW_CHANGED" to StableHostError(
+            -32_029,
+            "The Managed Run review changed before the decision; open and review the current exact inventory.",
+        ),
+        "MANAGED_REVIEW_INVALID" to StableHostError(
+            -32_036,
+            "GAEP could not verify an exact pending Managed Run review.",
+        ),
+        "MANAGED_REVIEW_APPLY_FAILED" to StableHostError(
+            -32_037,
+            "The exact Managed Run apply transition could not be verified; reload the review before any retry.",
+        ),
+        "MANAGED_REVIEW_DISCARD_FAILED" to StableHostError(
+            -32_038,
+            "The exact Managed Run discard transition could not be verified; reload the review before any retry.",
         ),
         "INVALID_PARAMS" to StableHostError(-32_602, "The GAEP engine rejected the local request parameters."),
         "PROTOCOL_UPGRADE_REQUIRED" to StableHostError(
@@ -1014,8 +1131,168 @@ internal object PortableDesignProtocol {
     fun parseManagedEvidenceDetailEnvelope(
         envelope: JsonObject,
         expectedManagedRunId: UUID,
+    ): ManagedEvidenceDetail = parseManagedEvidenceDetail(readResult(envelope).requireObject(), expectedManagedRunId)
+
+    fun parseManagedReviewPreviewEnvelope(
+        envelope: JsonObject,
+        expectedManagedRunId: UUID,
+    ): ManagedReviewPreview {
+        val preview = readResult(envelope).requireObject()
+        preview.requireKeys(
+            required = setOf(
+                "schemaVersion", "kind", "managedRunId", "managedRunRevision", "runId", "productId",
+                "initiativeId", "mode", "state", "canApply", "canDiscard", "hasLocalJournal", "bindingsDigest",
+                "result", "staging", "postApplyGatePolicy", "authorityBoundary", "privacyBoundary",
+                "cleanupBoundary", "previewDigest",
+            ),
+            optional = setOf("applyConfirmation"),
+        )
+        if (preview.requireInt("schemaVersion") != 1 || preview.requireString("kind") != "managed-review-preview" ||
+            preview.requireString("mode") != "codex-staged" ||
+            preview.requireString("postApplyGatePolicy") != "record-not-assessed" ||
+            preview.requireString("authorityBoundary") != MANAGED_REVIEW_BOUNDARY ||
+            preview.requireString("privacyBoundary") != MANAGED_REVIEW_PRIVACY_BOUNDARY ||
+            preview.requireString("cleanupBoundary") != MANAGED_REVIEW_CLEANUP_BOUNDARY
+        ) {
+            throw invalidResponse()
+        }
+        val managedRunId = preview.requireNonEmptyUuid("managedRunId")
+        val managedRunRevision = preview.requireLong("managedRunRevision")
+        if (managedRunId != expectedManagedRunId || managedRunRevision < 1) throw invalidResponse()
+        val state = preview.requireOneOf("state", setOf("review-required", "conflict"))
+        val canApply = preview.requireBoolean("canApply")
+        val canDiscard = preview.requireBoolean("canDiscard")
+        val hasApplyConfirmation = preview.has("applyConfirmation")
+        if (!canDiscard || canApply != hasApplyConfirmation || (state == "conflict" && canApply)) {
+            throw invalidResponse()
+        }
+        val result = parseManagedReviewResult(preview.get("result").requireObject(), state)
+        val staging = parseManagedReviewStaging(preview.get("staging").requireObject(), state)
+        if (result.evidenceId != staging.evidenceId || result.evidenceDigest != staging.evidenceDigest) {
+            throw invalidResponse()
+        }
+        val applyConfirmation = preview.get("applyConfirmation")?.let {
+            parseManagedReviewApplyConfirmation(it.requireObject(), staging)
+        }
+        return ManagedReviewPreview(
+            schemaVersion = 1,
+            kind = "managed-review-preview",
+            managedRunId = managedRunId,
+            managedRunRevision = managedRunRevision,
+            runId = preview.requireNonEmptyUuid("runId"),
+            productId = preview.requireNonEmptyUuid("productId"),
+            initiativeId = preview.requireNonEmptyUuid("initiativeId"),
+            mode = "codex-staged",
+            state = state,
+            canApply = canApply,
+            canDiscard = true,
+            hasLocalJournal = preview.requireBoolean("hasLocalJournal"),
+            bindingsDigest = preview.requireDigest("bindingsDigest"),
+            result = result,
+            staging = staging,
+            applyConfirmation = applyConfirmation,
+            postApplyGatePolicy = "record-not-assessed",
+            authorityBoundary = MANAGED_REVIEW_BOUNDARY,
+            privacyBoundary = MANAGED_REVIEW_PRIVACY_BOUNDARY,
+            cleanupBoundary = MANAGED_REVIEW_CLEANUP_BOUNDARY,
+            previewDigest = preview.requireDigest("previewDigest"),
+        ).also(::validateManagedReviewPreview)
+    }
+
+    fun parseManagedReviewTransitionEnvelope(
+        envelope: JsonObject,
+        preview: ManagedReviewPreview,
+        expectedDecision: String,
+    ): ManagedReviewTransition {
+        require(expectedDecision in setOf("apply-exact-managed-review", "discard-exact-managed-review")) {
+            "Managed review decision is invalid"
+        }
+        validateManagedReviewPreview(preview)
+        val transition = readResult(envelope).requireObject()
+        transition.requireExactKeys(
+            "schemaVersion", "kind", "decision", "sourcePreviewDigest", "sourceManagedRunRevision",
+            "managedRunId", "managedRunRevision", "state", "canApply", "canDiscard", "hasLocalJournal", "detail",
+            "authorityBoundary", "cleanupBoundary", "transitionDigest",
+        )
+        if (transition.requireInt("schemaVersion") != 1 ||
+            transition.requireString("kind") != "managed-review-transition" ||
+            transition.requireString("decision") != expectedDecision ||
+            transition.requireString("authorityBoundary") != MANAGED_REVIEW_TRANSITION_BOUNDARY ||
+            transition.requireString("cleanupBoundary") != MANAGED_REVIEW_CLEANUP_BOUNDARY ||
+            transition.requireDigest("sourcePreviewDigest") != preview.previewDigest ||
+            transition.requireLong("sourceManagedRunRevision") != preview.managedRunRevision
+        ) {
+            throw invalidResponse()
+        }
+        val managedRunId = transition.requireNonEmptyUuid("managedRunId")
+        val managedRunRevision = transition.requireLong("managedRunRevision")
+        if (managedRunId != preview.managedRunId || managedRunRevision <= preview.managedRunRevision) {
+            throw invalidResponse()
+        }
+        val state = transition.requireOneOf(
+            "state",
+            setOf(
+                "prepared", "running", "review-required", "applying", "completed", "failed", "cancelled",
+                "timed-out", "unknown", "conflict", "discarded",
+            ),
+        )
+        val canApply = transition.requireBoolean("canApply")
+        val canDiscard = transition.requireBoolean("canDiscard")
+        if (expectedDecision == "discard-exact-managed-review") {
+            if (state != "discarded" || canApply || canDiscard) throw invalidResponse()
+        } else if (state !in setOf("completed", "failed", "unknown", "conflict") || canApply ||
+            canDiscard != (state == "conflict")
+        ) {
+            throw invalidResponse()
+        }
+        val detailElement = transition.get("detail").requireObject()
+        val detail = parseManagedEvidenceDetail(detailElement, managedRunId)
+        if (detail.summary.state != state || detail.artifactStatus != "verified-result-and-evidence" ||
+            (expectedDecision == "apply-exact-managed-review" && detail.applyDecision == null)
+        ) {
+            throw invalidResponse()
+        }
+        val body = JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "managed-review-transition")
+            addProperty("decision", expectedDecision)
+            addProperty("sourcePreviewDigest", preview.previewDigest)
+            addProperty("sourceManagedRunRevision", preview.managedRunRevision)
+            addProperty("managedRunId", managedRunId.toString())
+            addProperty("managedRunRevision", managedRunRevision)
+            addProperty("state", state)
+            addProperty("canApply", canApply)
+            addProperty("canDiscard", canDiscard)
+            addProperty("hasLocalJournal", transition.requireBoolean("hasLocalJournal"))
+            add("detail", detailElement.deepCopy())
+            addProperty("authorityBoundary", MANAGED_REVIEW_TRANSITION_BOUNDARY)
+            addProperty("cleanupBoundary", MANAGED_REVIEW_CLEANUP_BOUNDARY)
+        }
+        val transitionDigest = transition.requireDigest("transitionDigest")
+        if (transitionDigest != canonicalDigest(body)) throw invalidResponse()
+        return ManagedReviewTransition(
+            schemaVersion = 1,
+            kind = "managed-review-transition",
+            decision = expectedDecision,
+            sourcePreviewDigest = preview.previewDigest,
+            sourceManagedRunRevision = preview.managedRunRevision,
+            managedRunId = managedRunId,
+            managedRunRevision = managedRunRevision,
+            state = state,
+            canApply = canApply,
+            canDiscard = canDiscard,
+            hasLocalJournal = transition.requireBoolean("hasLocalJournal"),
+            detail = detail,
+            authorityBoundary = MANAGED_REVIEW_TRANSITION_BOUNDARY,
+            cleanupBoundary = MANAGED_REVIEW_CLEANUP_BOUNDARY,
+            transitionDigest = transitionDigest,
+        )
+    }
+
+    private fun parseManagedEvidenceDetail(
+        detail: JsonObject,
+        expectedManagedRunId: UUID,
     ): ManagedEvidenceDetail {
-        val detail = readResult(envelope).requireObject()
         detail.requireKeys(
             required = setOf("schemaVersion", "kind", "summary", "artifactStatus", "authorityBoundary", "privacyBoundary"),
             optional = setOf("result", "evidence", "applyDecision"),
@@ -1057,6 +1334,157 @@ internal object PortableDesignProtocol {
             applyDecision = applyDecision,
             authorityBoundary = MANAGED_EVIDENCE_BOUNDARY,
             privacyBoundary = MANAGED_EVIDENCE_PRIVACY_BOUNDARY,
+        )
+    }
+
+    private fun parseManagedReviewResult(result: JsonObject, expectedState: String): ManagedReviewResult {
+        result.requireExactKeys(
+            "resultId", "resultDigest", "terminalState", "providerDisposition", "outcomeStatus", "outcomeBasis",
+            "warningCodes", "evidenceId", "evidenceDigest",
+        )
+        val rawWarnings = result.get("warningCodes")?.takeIf(JsonElement::isJsonArray)?.asJsonArray
+            ?: throw invalidResponse()
+        if (rawWarnings.size() > 128) throw invalidResponse()
+        val allowedWarnings = setOf(
+            "provider-warning-redacted", "provider-output-redacted", "coordinator-failure", "runtime-output-truncated",
+            "staging-read-confinement-unattested", "postcondition-evaluator-failed", "local-cleanup-pending",
+            "local-cleanup-failed", "runtime-warning",
+        )
+        val warningCodes = rawWarnings.map {
+            it.requireString().takeIf(allowedWarnings::contains) ?: throw invalidResponse()
+        }
+        return ManagedReviewResult(
+            resultId = result.requireNonEmptyUuid("resultId"),
+            resultDigest = result.requireDigest("resultDigest"),
+            terminalState = result.requireOneOf("terminalState", setOf(expectedState)),
+            providerDisposition = result.requireOneOf(
+                "providerDisposition",
+                setOf("completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown"),
+            ),
+            outcomeStatus = result.requireOneOf(
+                "outcomeStatus",
+                setOf("satisfied", "failed", "not-assessed", "indeterminate"),
+            ),
+            outcomeBasis = result.requireOneOf(
+                "outcomeBasis",
+                setOf("postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure"),
+            ),
+            warningCodes = warningCodes,
+            evidenceId = result.requireNonEmptyUuid("evidenceId"),
+            evidenceDigest = result.requireDigest("evidenceDigest"),
+        )
+    }
+
+    private fun parseManagedReviewStaging(staging: JsonObject, state: String): ManagedReviewStaging {
+        staging.requireExactKeys(
+            "evidenceId", "evidenceDigest", "baselineDigest", "finalDigest", "applyState", "changeCount",
+            "changedInventoryLimit", "omittedCount", "changedInventory", "changedInventoryDigest",
+            "excludedPathCount", "excludedPathSetDigest",
+        )
+        val applyState = staging.requireOneOf("applyState", setOf("pending", "conflict"))
+        val rawInventory = staging.get("changedInventory")?.takeIf(JsonElement::isJsonArray)?.asJsonArray
+            ?: throw invalidResponse()
+        if (applyState != (if (state == "review-required") "pending" else "conflict") ||
+            staging.requireInt("changedInventoryLimit") != 512 || staging.requireInt("omittedCount") != 0 ||
+            rawInventory.size() > 512
+        ) {
+            throw invalidResponse()
+        }
+        val changedInventory = rawInventory.map { parseManagedChangedFile(it.requireObject()) }
+        if (staging.requireInt("changeCount") != changedInventory.size ||
+            changedInventory.map { it.path }.distinct().size != changedInventory.size ||
+            changedInventory.zipWithNext().any { (left, right) -> left.path >= right.path }
+        ) {
+            throw invalidResponse()
+        }
+        val changedInventoryDigest = staging.requireDigest("changedInventoryDigest")
+        if (changedInventoryDigest != canonicalDigest(managedChangedInventoryToJson(changedInventory))) {
+            throw invalidResponse()
+        }
+        return ManagedReviewStaging(
+            evidenceId = staging.requireNonEmptyUuid("evidenceId"),
+            evidenceDigest = staging.requireDigest("evidenceDigest"),
+            baselineDigest = staging.requireDigest("baselineDigest"),
+            finalDigest = staging.requireDigest("finalDigest"),
+            applyState = applyState,
+            changeCount = changedInventory.size,
+            changedInventoryLimit = 512,
+            omittedCount = 0,
+            changedInventory = changedInventory,
+            changedInventoryDigest = changedInventoryDigest,
+            excludedPathCount = staging.requireBoundedNonNegativeInt("excludedPathCount", 20_000),
+            excludedPathSetDigest = staging.requireDigest("excludedPathSetDigest"),
+        )
+    }
+
+    private fun parseManagedChangedFile(change: JsonObject): ManagedChangedFile {
+        change.requireKeys(
+            required = setOf("path", "kind"),
+            optional = setOf("beforeDigest", "afterDigest", "beforeSize", "afterSize", "beforeMode", "afterMode"),
+        )
+        val kind = change.requireOneOf("kind", setOf("added", "modified", "deleted"))
+        val before = listOf("beforeDigest", "beforeSize", "beforeMode").any(change::has)
+        val after = listOf("afterDigest", "afterSize", "afterMode").any(change::has)
+        val completeBefore = listOf("beforeDigest", "beforeSize", "beforeMode").all(change::has)
+        val completeAfter = listOf("afterDigest", "afterSize", "afterMode").all(change::has)
+        if (before != completeBefore || after != completeAfter ||
+            (kind == "added" && (before || !after)) ||
+            (kind == "deleted" && (!before || after)) ||
+            (kind == "modified" && (!before || !after))
+        ) {
+            throw invalidResponse()
+        }
+        return ManagedChangedFile(
+            path = workspaceRelativePath(change.requireString("path")),
+            kind = kind,
+            beforeDigest = if (completeBefore) change.requireDigest("beforeDigest") else null,
+            afterDigest = if (completeAfter) change.requireDigest("afterDigest") else null,
+            beforeSize = if (completeBefore) {
+                change.requireBoundedNonNegativeLong("beforeSize", MAX_SAFE_PRODUCT_REVISION)
+            } else null,
+            afterSize = if (completeAfter) {
+                change.requireBoundedNonNegativeLong("afterSize", MAX_SAFE_PRODUCT_REVISION)
+            } else null,
+            beforeMode = if (completeBefore) change.requireBoundedNonNegativeInt("beforeMode", 0x1ff) else null,
+            afterMode = if (completeAfter) change.requireBoundedNonNegativeInt("afterMode", 0x1ff) else null,
+        )
+    }
+
+    private fun parseManagedReviewApplyConfirmation(
+        confirmation: JsonObject,
+        staging: ManagedReviewStaging,
+    ): ManagedReviewApplyConfirmation {
+        confirmation.requireExactKeys(
+            "decision", "reviewEvidenceId", "reviewEvidenceDigest", "changedInventoryDigest", "writeEnvelope",
+            "writeEnvelopeDigest",
+        )
+        val rawEnvelope = confirmation.get("writeEnvelope")?.takeIf(JsonElement::isJsonArray)?.asJsonArray
+            ?: throw invalidResponse()
+        if (confirmation.requireString("decision") != "apply-exact-reviewed-inventory" ||
+            confirmation.requireNonEmptyUuid("reviewEvidenceId") != staging.evidenceId ||
+            confirmation.requireDigest("reviewEvidenceDigest") != staging.evidenceDigest ||
+            confirmation.requireDigest("changedInventoryDigest") != staging.changedInventoryDigest ||
+            rawEnvelope.size() > 256
+        ) {
+            throw invalidResponse()
+        }
+        val writeEnvelope = rawEnvelope.map { workspaceRelativeScope(it.requireString()) }
+        if (writeEnvelope.distinct().size != writeEnvelope.size ||
+            writeEnvelope.zipWithNext().any { (left, right) -> left >= right }
+        ) {
+            throw invalidResponse()
+        }
+        val writeEnvelopeDigest = confirmation.requireDigest("writeEnvelopeDigest")
+        if (writeEnvelopeDigest != canonicalDigest(JsonArray().apply { writeEnvelope.forEach(::add) })) {
+            throw invalidResponse()
+        }
+        return ManagedReviewApplyConfirmation(
+            decision = "apply-exact-reviewed-inventory",
+            reviewEvidenceId = staging.evidenceId,
+            reviewEvidenceDigest = staging.evidenceDigest,
+            changedInventoryDigest = staging.changedInventoryDigest,
+            writeEnvelope = writeEnvelope,
+            writeEnvelopeDigest = writeEnvelopeDigest,
         )
     }
 
@@ -1283,6 +1711,171 @@ internal object PortableDesignProtocol {
         ) { "Managed read-only preview identities must be non-empty UUIDs" }
         val body = managedReadOnlyPreviewBody(preview)
         require(preview.previewDigest == canonicalDigest(body)) { "Managed read-only preview digest is invalid" }
+    }
+
+    fun validateManagedReviewPreview(preview: ManagedReviewPreview) {
+        val body = managedReviewPreviewBody(preview)
+        require(preview.previewDigest == canonicalDigest(body)) { "Managed review preview digest is invalid" }
+    }
+
+    private fun managedReviewPreviewBody(preview: ManagedReviewPreview): JsonObject {
+        require(preview.schemaVersion == 1 && preview.kind == "managed-review-preview" &&
+            preview.mode == "codex-staged" && preview.state in setOf("review-required", "conflict") &&
+            preview.managedRunId != UUID(0, 0) && preview.managedRunRevision >= 1 && preview.runId != UUID(0, 0) &&
+            preview.productId != UUID(0, 0) && preview.initiativeId != UUID(0, 0)
+        ) { "Managed review preview identity is invalid" }
+        require(preview.canDiscard && preview.canApply == (preview.applyConfirmation != null) &&
+            !(preview.state == "conflict" && preview.canApply)
+        ) { "Managed review actions are invalid" }
+        require(digestPattern.matches(preview.bindingsDigest) && digestPattern.matches(preview.previewDigest) &&
+            preview.postApplyGatePolicy == "record-not-assessed" && preview.authorityBoundary == MANAGED_REVIEW_BOUNDARY &&
+            preview.privacyBoundary == MANAGED_REVIEW_PRIVACY_BOUNDARY &&
+            preview.cleanupBoundary == MANAGED_REVIEW_CLEANUP_BOUNDARY
+        ) { "Managed review boundaries are invalid" }
+
+        val result = preview.result
+        require(result.resultId != UUID(0, 0) && result.evidenceId != UUID(0, 0) &&
+            digestPattern.matches(result.resultDigest) && digestPattern.matches(result.evidenceDigest) &&
+            result.terminalState == preview.state &&
+            result.providerDisposition in setOf(
+                "completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown",
+            ) && result.outcomeStatus in setOf("satisfied", "failed", "not-assessed", "indeterminate") &&
+            result.outcomeBasis in setOf(
+                "postcondition-evaluator", "deterministic-offline-runtime", "not-evaluated", "provider-failure",
+            ) && result.warningCodes.size <= 128 && result.warningCodes.all {
+                it in setOf(
+                    "provider-warning-redacted", "provider-output-redacted", "coordinator-failure",
+                    "runtime-output-truncated", "staging-read-confinement-unattested",
+                    "postcondition-evaluator-failed", "local-cleanup-pending", "local-cleanup-failed", "runtime-warning",
+                )
+            }
+        ) { "Managed review result is invalid" }
+
+        val staging = preview.staging
+        require(staging.evidenceId == result.evidenceId && staging.evidenceDigest == result.evidenceDigest &&
+            digestPattern.matches(staging.baselineDigest) && digestPattern.matches(staging.finalDigest) &&
+            staging.applyState == (if (preview.state == "review-required") "pending" else "conflict") &&
+            staging.changeCount == staging.changedInventory.size && staging.changedInventoryLimit == 512 &&
+            staging.omittedCount == 0 && staging.changedInventory.size <= 512 &&
+            staging.changedInventory.map { it.path }.distinct().size == staging.changedInventory.size &&
+            staging.changedInventory.zipWithNext().none { (left, right) -> left.path >= right.path } &&
+            staging.excludedPathCount in 0..20_000 && digestPattern.matches(staging.excludedPathSetDigest)
+        ) { "Managed review staging is invalid" }
+        val inventory = managedChangedInventoryToJson(staging.changedInventory)
+        require(staging.changedInventoryDigest == canonicalDigest(inventory)) {
+            "Managed review changed inventory digest is invalid"
+        }
+
+        val resultJson = JsonObject().apply {
+            addProperty("resultId", result.resultId.toString())
+            addProperty("resultDigest", result.resultDigest)
+            addProperty("terminalState", result.terminalState)
+            addProperty("providerDisposition", result.providerDisposition)
+            addProperty("outcomeStatus", result.outcomeStatus)
+            addProperty("outcomeBasis", result.outcomeBasis)
+            add("warningCodes", JsonArray().apply { result.warningCodes.forEach(::add) })
+            addProperty("evidenceId", result.evidenceId.toString())
+            addProperty("evidenceDigest", result.evidenceDigest)
+        }
+        val stagingJson = JsonObject().apply {
+            addProperty("evidenceId", staging.evidenceId.toString())
+            addProperty("evidenceDigest", staging.evidenceDigest)
+            addProperty("baselineDigest", staging.baselineDigest)
+            addProperty("finalDigest", staging.finalDigest)
+            addProperty("applyState", staging.applyState)
+            addProperty("changeCount", staging.changeCount)
+            addProperty("changedInventoryLimit", 512)
+            addProperty("omittedCount", 0)
+            add("changedInventory", inventory)
+            addProperty("changedInventoryDigest", staging.changedInventoryDigest)
+            addProperty("excludedPathCount", staging.excludedPathCount)
+            addProperty("excludedPathSetDigest", staging.excludedPathSetDigest)
+        }
+        val applyConfirmationJson = preview.applyConfirmation?.let { confirmation ->
+            require(confirmation.decision == "apply-exact-reviewed-inventory" &&
+                confirmation.reviewEvidenceId == staging.evidenceId &&
+                confirmation.reviewEvidenceDigest == staging.evidenceDigest &&
+                confirmation.changedInventoryDigest == staging.changedInventoryDigest &&
+                confirmation.writeEnvelope.size <= 256 &&
+                confirmation.writeEnvelope.distinct().size == confirmation.writeEnvelope.size &&
+                confirmation.writeEnvelope.zipWithNext().none { (left, right) -> left >= right }
+            ) { "Managed review apply confirmation is invalid" }
+            val envelope = JsonArray().apply {
+                confirmation.writeEnvelope.forEach { add(workspaceRelativeScope(it)) }
+            }
+            require(confirmation.writeEnvelopeDigest == canonicalDigest(envelope)) {
+                "Managed review write envelope digest is invalid"
+            }
+            JsonObject().apply {
+                addProperty("decision", "apply-exact-reviewed-inventory")
+                addProperty("reviewEvidenceId", confirmation.reviewEvidenceId.toString())
+                addProperty("reviewEvidenceDigest", confirmation.reviewEvidenceDigest)
+                addProperty("changedInventoryDigest", confirmation.changedInventoryDigest)
+                add("writeEnvelope", envelope)
+                addProperty("writeEnvelopeDigest", confirmation.writeEnvelopeDigest)
+            }
+        }
+        return JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "managed-review-preview")
+            addProperty("managedRunId", preview.managedRunId.toString())
+            addProperty("managedRunRevision", preview.managedRunRevision)
+            addProperty("runId", preview.runId.toString())
+            addProperty("productId", preview.productId.toString())
+            addProperty("initiativeId", preview.initiativeId.toString())
+            addProperty("mode", "codex-staged")
+            addProperty("state", preview.state)
+            addProperty("canApply", preview.canApply)
+            addProperty("canDiscard", true)
+            addProperty("hasLocalJournal", preview.hasLocalJournal)
+            addProperty("bindingsDigest", preview.bindingsDigest)
+            add("result", resultJson)
+            add("staging", stagingJson)
+            applyConfirmationJson?.let { add("applyConfirmation", it) }
+            addProperty("postApplyGatePolicy", "record-not-assessed")
+            addProperty("authorityBoundary", MANAGED_REVIEW_BOUNDARY)
+            addProperty("privacyBoundary", MANAGED_REVIEW_PRIVACY_BOUNDARY)
+            addProperty("cleanupBoundary", MANAGED_REVIEW_CLEANUP_BOUNDARY)
+        }
+    }
+
+    private fun managedChangedInventoryToJson(changes: List<ManagedChangedFile>): JsonArray = JsonArray().apply {
+        changes.forEach { change ->
+            require(change.path == workspaceRelativePath(change.path) && change.kind in setOf("added", "modified", "deleted")) {
+                "Managed changed-file identity is invalid"
+            }
+            val hasBefore = change.beforeDigest != null || change.beforeSize != null || change.beforeMode != null
+            val hasAfter = change.afterDigest != null || change.afterSize != null || change.afterMode != null
+            val completeBefore = change.beforeDigest != null && change.beforeSize != null && change.beforeMode != null
+            val completeAfter = change.afterDigest != null && change.afterSize != null && change.afterMode != null
+            require(hasBefore == completeBefore && hasAfter == completeAfter &&
+                !(change.kind == "added" && (hasBefore || !hasAfter)) &&
+                !(change.kind == "deleted" && (!hasBefore || hasAfter)) &&
+                !(change.kind == "modified" && (!hasBefore || !hasAfter)) &&
+                (!completeBefore || (
+                    digestPattern.matches(change.beforeDigest!!) && change.beforeSize!! in 0..MAX_SAFE_PRODUCT_REVISION &&
+                        change.beforeMode!! in 0..0x1ff
+                    )) &&
+                (!completeAfter || (
+                    digestPattern.matches(change.afterDigest!!) && change.afterSize!! in 0..MAX_SAFE_PRODUCT_REVISION &&
+                        change.afterMode!! in 0..0x1ff
+                    ))
+            ) { "Managed changed-file metadata is invalid" }
+            add(JsonObject().apply {
+                addProperty("path", change.path)
+                addProperty("kind", change.kind)
+                if (completeBefore) {
+                    addProperty("beforeDigest", change.beforeDigest)
+                    addProperty("beforeSize", change.beforeSize)
+                    addProperty("beforeMode", change.beforeMode)
+                }
+                if (completeAfter) {
+                    addProperty("afterDigest", change.afterDigest)
+                    addProperty("afterSize", change.afterSize)
+                    addProperty("afterMode", change.afterMode)
+                }
+            })
+        }
     }
 
     private fun parseManagedReadOnlyGate(gate: JsonObject, stepIds: Set<UUID>): ManagedReadOnlyGatePreview {
@@ -1747,6 +2340,8 @@ internal object PortableDesignProtocol {
         return value
     }
 
+    private fun workspaceRelativeScope(value: String): String = if (value == ".") value else workspaceRelativePath(value)
+
     private fun parsePortableSelectionSettings(settings: JsonObject): Map<String, PortableAgentSettingValue> {
         if (settings.size() > 128 || settings.keySet().any { !validSettingKey(it) }) throw invalidResponse()
         return settings.entrySet().associate { (key, value) -> key to parsePortableSettingValue(value) }
@@ -1990,6 +2585,9 @@ internal object PortableDesignProtocol {
 
     private fun JsonObject.requireBoundedNonNegativeInt(name: String, maximum: Int): Int =
         requireInt(name).takeIf { it in 0..maximum } ?: throw invalidResponse()
+
+    private fun JsonObject.requireBoundedNonNegativeLong(name: String, maximum: Long): Long =
+        requireLong(name).takeIf { it in 0..maximum } ?: throw invalidResponse()
 
     private fun JsonObject.requireOneOf(name: String, values: Set<String>): String =
         requireString(name).takeIf(values::contains) ?: throw invalidResponse()

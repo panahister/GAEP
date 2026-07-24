@@ -16,6 +16,12 @@ internal val managedCharterId: UUID = charterId
 internal val workflowPlanId: UUID = UUID.fromString("15151515-1515-4151-8151-151515151515")
 internal val managedRunId: UUID = UUID.fromString("16161616-1616-4161-8161-161616161616")
 internal val governedManagedRunId: UUID = UUID.fromString("17171717-1717-4171-8171-171717171717")
+internal val stagedManagedRunId: UUID = UUID.fromString("21212121-2121-4121-8121-212121212121")
+private val stagedResultId: UUID = UUID.fromString("23232323-2323-4323-8323-232323232323")
+private val stagedEvidenceId: UUID = UUID.fromString("24242424-2424-4424-8424-242424242424")
+private val transitionedResultId: UUID = UUID.fromString("25252525-2525-4525-8525-252525252525")
+private val transitionedEvidenceId: UUID = UUID.fromString("26262626-2626-4626-8626-262626262626")
+private val applyDecisionId: UUID = UUID.fromString("27272727-2727-4727-8727-272727272727")
 internal val workflowStepId: UUID = UUID.fromString("18181818-1818-4181-8181-181818181818")
 private val managedResultId: UUID = UUID.fromString("19191919-1919-4191-8191-191919191919")
 private val managedEvidenceId: UUID = UUID.fromString("20202020-2020-4202-8202-202020202020")
@@ -115,6 +121,23 @@ fun main(arguments: Array<String>) {
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
+            )
+            "managed.review.read" -> handleManagedReviewRead(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "managed.review.apply" -> handleManagedReviewDecision(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+                "apply-exact-managed-review",
+            )
+            "managed.review.discard" -> handleManagedReviewDecision(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+                "discard-exact-managed-review",
             )
             "productStudio.portableDesign.import" -> handleImport(id, request.getAsJsonObject("params"))
             "productStudio.portableDesign.list" -> handleList(id, request.getAsJsonObject("params"))
@@ -377,6 +400,329 @@ private fun managedEvidenceDetail(): JsonObject = JsonObject().apply {
         "privacyBoundary",
         "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
     )
+}
+
+private fun handleManagedReviewRead(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("managedRunId") ||
+        params.get("managedRunId").asString != stagedManagedRunId.toString()
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED REVIEW READ")
+        return
+    }
+    val preview = managedReviewPreview()
+    when {
+        workspacePath.endsWith("bad-managed-review-digest") -> {
+            preview.addProperty("previewDigest", "sha256:${"0".repeat(64)}")
+        }
+        workspacePath.endsWith("bad-managed-review-private") -> {
+            preview.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+        }
+        workspacePath.endsWith("bad-managed-review-binding") -> {
+            preview.getAsJsonObject("applyConfirmation")
+                .addProperty("reviewEvidenceId", managedEvidenceId.toString())
+            refreshCanonicalDigest(preview, "previewDigest")
+        }
+        workspacePath.endsWith("bad-managed-review-path") -> {
+            val staging = preview.getAsJsonObject("staging")
+            val changedInventory = staging.getAsJsonArray("changedInventory")
+            changedInventory[0].asJsonObject.addProperty("path", "$privateRoot/secret.kt")
+            val inventoryDigest = canonicalDigest(changedInventory)
+            staging.addProperty("changedInventoryDigest", inventoryDigest)
+            preview.getAsJsonObject("applyConfirmation").addProperty("changedInventoryDigest", inventoryDigest)
+            refreshCanonicalDigest(preview, "previewDigest")
+        }
+        workspacePath.endsWith("bad-managed-review-metadata") -> {
+            val staging = preview.getAsJsonObject("staging")
+            val changedInventory = staging.getAsJsonArray("changedInventory")
+            changedInventory[0].asJsonObject.remove("afterMode")
+            val inventoryDigest = canonicalDigest(changedInventory)
+            staging.addProperty("changedInventoryDigest", inventoryDigest)
+            preview.getAsJsonObject("applyConfirmation").addProperty("changedInventoryDigest", inventoryDigest)
+            refreshCanonicalDigest(preview, "previewDigest")
+        }
+    }
+    writeResult(id, preview)
+}
+
+private fun handleManagedReviewDecision(
+    id: Long,
+    params: JsonObject,
+    workspacePath: String,
+    decision: String,
+) {
+    val preview = managedReviewPreview()
+    if (params.keySet() != setOf(
+            "actorId", "managedRunId", "expectedManagedRunRevision", "expectedPreviewDigest", "confirmation",
+        ) || params.get("actorId").asString != "founder.review" ||
+        params.get("managedRunId").asString != stagedManagedRunId.toString() ||
+        params.get("expectedManagedRunRevision").asLong != preview.get("managedRunRevision").asLong ||
+        params.get("expectedPreviewDigest").asString != preview.get("previewDigest").asString ||
+        params.get("confirmation").asString != decision
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANAGED REVIEW DECISION")
+        return
+    }
+    if (workspacePath.endsWith("stale-managed-review")) {
+        writeError(id, -32_029, "MANAGED_REVIEW_CHANGED", "$privateRoot; token=$privateCredential")
+        return
+    }
+    val transition = managedReviewTransition(decision)
+    if (workspacePath.endsWith("bad-managed-transition-digest")) {
+        transition.addProperty("transitionDigest", "sha256:${"0".repeat(64)}")
+    }
+    if (workspacePath.endsWith("bad-managed-transition-private")) {
+        transition.addProperty("localJournalPath", "$privateRoot/$privateCredential")
+    }
+    writeResult(id, transition)
+}
+
+private fun managedReviewPreview(): JsonObject {
+    val changedInventory = JsonArray().apply {
+        add(JsonObject().apply {
+            addProperty("path", "src/new.kt")
+            addProperty("kind", "added")
+            addProperty("afterDigest", "sha256:${"1".repeat(64)}")
+            addProperty("afterSize", 24)
+            addProperty("afterMode", 0x1a4)
+        })
+        add(JsonObject().apply {
+            addProperty("path", "src/review.kt")
+            addProperty("kind", "modified")
+            addProperty("beforeDigest", "sha256:${"2".repeat(64)}")
+            addProperty("afterDigest", "sha256:${"3".repeat(64)}")
+            addProperty("beforeSize", 80)
+            addProperty("afterSize", 96)
+            addProperty("beforeMode", 0x1a4)
+            addProperty("afterMode", 0x1a4)
+        })
+    }
+    val changedInventoryDigest = canonicalDigest(changedInventory)
+    val writeEnvelope = JsonArray().apply { add("src") }
+    val preview = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "managed-review-preview")
+        addProperty("managedRunId", stagedManagedRunId.toString())
+        addProperty("managedRunRevision", 3)
+        addProperty("runId", governedManagedRunId.toString())
+        addProperty("productId", productId.toString())
+        addProperty("initiativeId", initiativeId.toString())
+        addProperty("mode", "codex-staged")
+        addProperty("state", "review-required")
+        addProperty("canApply", true)
+        addProperty("canDiscard", true)
+        addProperty("hasLocalJournal", false)
+        addProperty("bindingsDigest", "sha256:${"4".repeat(64)}")
+        add("result", JsonObject().apply {
+            addProperty("resultId", stagedResultId.toString())
+            addProperty("resultDigest", "sha256:${"5".repeat(64)}")
+            addProperty("terminalState", "review-required")
+            addProperty("providerDisposition", "completed")
+            addProperty("outcomeStatus", "not-assessed")
+            addProperty("outcomeBasis", "not-evaluated")
+            add("warningCodes", JsonArray().apply {
+                add("provider-output-redacted")
+                add("staging-read-confinement-unattested")
+            })
+            addProperty("evidenceId", stagedEvidenceId.toString())
+            addProperty("evidenceDigest", "sha256:${"6".repeat(64)}")
+        })
+        add("staging", JsonObject().apply {
+            addProperty("evidenceId", stagedEvidenceId.toString())
+            addProperty("evidenceDigest", "sha256:${"6".repeat(64)}")
+            addProperty("baselineDigest", "sha256:${"7".repeat(64)}")
+            addProperty("finalDigest", "sha256:${"8".repeat(64)}")
+            addProperty("applyState", "pending")
+            addProperty("changeCount", changedInventory.size())
+            addProperty("changedInventoryLimit", 512)
+            addProperty("omittedCount", 0)
+            add("changedInventory", changedInventory)
+            addProperty("changedInventoryDigest", changedInventoryDigest)
+            addProperty("excludedPathCount", 0)
+            addProperty("excludedPathSetDigest", canonicalDigest(JsonArray()))
+        })
+        add("applyConfirmation", JsonObject().apply {
+            addProperty("decision", "apply-exact-reviewed-inventory")
+            addProperty("reviewEvidenceId", stagedEvidenceId.toString())
+            addProperty("reviewEvidenceDigest", "sha256:${"6".repeat(64)}")
+            addProperty("changedInventoryDigest", changedInventoryDigest)
+            add("writeEnvelope", writeEnvelope)
+            addProperty("writeEnvelopeDigest", canonicalDigest(writeEnvelope))
+        })
+        addProperty("postApplyGatePolicy", "record-not-assessed")
+        addProperty(
+            "authorityBoundary",
+            "managed-review-preview-authorizes-no-mutation-without-an-exact-digest-bound-human-decision",
+        )
+        addProperty(
+            "privacyBoundary",
+            "Exact portable identifiers, digests, warning codes, workspace-relative changed paths, file digests, sizes, modes and write scopes only; prompts, provider output, source bytes, absolute paths, executable paths, process state and credentials are omitted.",
+        )
+        addProperty(
+            "cleanupBoundary",
+            "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup.",
+        )
+    }
+    preview.addProperty("previewDigest", canonicalDigest(preview))
+    return preview
+}
+
+private fun managedReviewTransition(decision: String): JsonObject {
+    val preview = managedReviewPreview()
+    val applied = decision == "apply-exact-managed-review"
+    val state = if (applied) "failed" else "discarded"
+    val transition = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "managed-review-transition")
+        addProperty("decision", decision)
+        addProperty("sourcePreviewDigest", preview.get("previewDigest").asString)
+        addProperty("sourceManagedRunRevision", preview.get("managedRunRevision").asLong)
+        addProperty("managedRunId", stagedManagedRunId.toString())
+        addProperty("managedRunRevision", 4)
+        addProperty("state", state)
+        addProperty("canApply", false)
+        addProperty("canDiscard", false)
+        addProperty("hasLocalJournal", applied)
+        add("detail", transitionedManagedEvidenceDetail(state, applied))
+        addProperty(
+            "authorityBoundary",
+            "managed-review-transition-proves-persisted-state-not-provider-outcome-or-machine-local-cleanup",
+        )
+        addProperty(
+            "cleanupBoundary",
+            "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup.",
+        )
+    }
+    transition.addProperty("transitionDigest", canonicalDigest(transition))
+    return transition
+}
+
+private fun transitionedManagedEvidenceDetail(state: String, applied: Boolean): JsonObject {
+    val resultDigest = "sha256:${"9".repeat(64)}"
+    val evidenceDigest = "sha256:${"a".repeat(64)}"
+    val applyDecisionDigest = "sha256:${"b".repeat(64)}"
+    return JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "managed-evidence-detail")
+        add("summary", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "managed-run-summary")
+            addProperty("managedRunId", stagedManagedRunId.toString())
+            addProperty("runId", governedManagedRunId.toString())
+            addProperty("productId", productId.toString())
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("mode", "codex-staged")
+            addProperty("state", state)
+            addProperty("adapterId", "openai-codex")
+            addProperty("agentId", "codex")
+            addProperty("modelId", "gpt-5.6-codex")
+            addProperty("attemptNumber", 1)
+            addProperty("recoveryStatus", "recovered")
+            addProperty("workflowCheckpointCount", 0)
+            addProperty("hasResult", true)
+            addProperty("hasApplyDecision", applied)
+            addProperty("bindingsDigest", "sha256:${"4".repeat(64)}")
+            addProperty("resultDigest", resultDigest)
+            if (applied) addProperty("applyDecisionDigest", applyDecisionDigest)
+            addProperty("createdAt", "2026-07-24T08:29:59.000Z")
+            addProperty("startedAt", "2026-07-24T08:30:00.000Z")
+            addProperty("updatedAt", "2026-07-24T08:30:02.000Z")
+            addProperty("endedAt", "2026-07-24T08:30:02.000Z")
+            addProperty(
+                "authorityBoundary",
+                "managed-run-inventory-is-read-only-and-does-not-grant-run-effect-apply-approval-or-outcome-authority",
+            )
+        })
+        addProperty("artifactStatus", "verified-result-and-evidence")
+        add("result", JsonObject().apply {
+            addProperty("resultId", transitionedResultId.toString())
+            addProperty("resultDigest", resultDigest)
+            addProperty("providerDisposition", "completed")
+            addProperty("terminationCause", "normal")
+            addProperty("outcomeStatus", "failed")
+            addProperty("outcomeBasis", "not-evaluated")
+            addProperty("terminalState", state)
+            addProperty("evidenceId", transitionedEvidenceId.toString())
+            addProperty("evidenceDigest", evidenceDigest)
+            add("warningCodes", JsonArray().apply {
+                add("provider-output-redacted")
+                if (!applied) add("local-cleanup-pending")
+            })
+            addProperty("startedAt", "2026-07-24T08:30:00.000Z")
+            addProperty("endedAt", "2026-07-24T08:30:02.000Z")
+        })
+        add("evidence", JsonObject().apply {
+            addProperty("evidenceId", transitionedEvidenceId.toString())
+            addProperty("evidenceDigest", evidenceDigest)
+            addProperty("eventCount", 2)
+            add("eventTypeCounts", JsonObject().apply {
+                addProperty("lifecycle", 1)
+                addProperty("output", 1)
+                addProperty("item", 0)
+                addProperty("approval", 0)
+                addProperty("warning", 0)
+                addProperty("error", 0)
+            })
+            addProperty("eventsDigest", "sha256:${"c".repeat(64)}")
+            addProperty("workflowStrategy", "sequential")
+            addProperty("workflowStepCount", 1)
+            addProperty("workflowAttemptCount", 1)
+            addProperty("completedStepCount", 0)
+            addProperty("charterEvidenceStatus", "not-assessed")
+            addProperty("charterStopStatus", "not-assessed")
+            addProperty("terminalReasonCode", if (applied) "workflow-output-gate-failed" else "staged-review-discarded")
+            add("staging", JsonObject().apply {
+                addProperty("changeCount", 2)
+                addProperty("excludedPathCount", 0)
+                addProperty("applyState", if (applied) "applied" else "discarded")
+                addProperty("baselineDigest", "sha256:${"7".repeat(64)}")
+                addProperty("finalDigest", "sha256:${"8".repeat(64)}")
+                addProperty(
+                    "changedInventoryDigest",
+                    managedReviewPreview().getAsJsonObject("staging").get("changedInventoryDigest").asString,
+                )
+                addProperty("excludedPathSetDigest", canonicalDigest(JsonArray()))
+            })
+            add("actualEffectCounts", JsonObject().apply {
+                addProperty("not-observed", 0)
+                addProperty("observed-provisional", 0)
+                addProperty("applied", if (applied) 1 else 0)
+                addProperty("blocked", if (applied) 0 else 1)
+                addProperty("unknown", 0)
+            })
+            addProperty("capturedAt", "2026-07-24T08:30:02.000Z")
+        })
+        if (applied) {
+            add("applyDecision", JsonObject().apply {
+                addProperty("receiptId", applyDecisionId.toString())
+                addProperty("receiptDigest", applyDecisionDigest)
+                addProperty("managedRunRevision", 3)
+                addProperty("changedInventoryCount", 2)
+                addProperty("writeEnvelopeCount", 1)
+                addProperty(
+                    "changedInventoryDigest",
+                    managedReviewPreview().getAsJsonObject("staging").get("changedInventoryDigest").asString,
+                )
+                addProperty(
+                    "writeEnvelopeDigest",
+                    managedReviewPreview().getAsJsonObject("applyConfirmation").get("writeEnvelopeDigest").asString,
+                )
+                addProperty("decidedAt", "2026-07-24T08:30:01.000Z")
+            })
+        }
+        addProperty(
+            "authorityBoundary",
+            "managed-evidence-detail-is-verified-read-only-evidence-and-does-not-grant-apply-approval-or-outcome-authority",
+        )
+        addProperty(
+            "privacyBoundary",
+            "Portable identifiers, states, counts, digests, warning codes and timestamps only; prompts, provider output, source bytes, changed paths, executable paths, process state and credentials are omitted.",
+        )
+    }
+}
+
+private fun refreshCanonicalDigest(value: JsonObject, digestKey: String) {
+    value.remove(digestKey)
+    value.addProperty(digestKey, canonicalDigest(value))
 }
 
 private fun managedGate(

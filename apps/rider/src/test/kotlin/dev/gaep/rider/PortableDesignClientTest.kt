@@ -37,6 +37,14 @@ class PortableDesignClientTest {
         val badManagedEvidenceSnapshotRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-snapshot"))
         val badManagedEvidenceDetailRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-detail"))
         val badManagedEvidenceBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-evidence-binding"))
+        val badManagedReviewDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-review-digest"))
+        val badManagedReviewPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-review-private"))
+        val badManagedReviewBindingRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-review-binding"))
+        val badManagedReviewPathRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-review-path"))
+        val badManagedReviewMetadataRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-review-metadata"))
+        val badManagedTransitionDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-transition-digest"))
+        val badManagedTransitionPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-managed-transition-private"))
+        val staleManagedReviewRoot = Files.createDirectory(temporaryRoot.resolve("stale-managed-review"))
         val executable = createFakeEngineLauncher(temporaryRoot)
         GaepEngineClient(temporaryRoot, executable.toString()).use { client ->
             val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -207,6 +215,68 @@ class PortableDesignClientTest {
             assertTrue(managedDetailView.contains("Apply-decision evidence records a past exact decision"))
             assertFalse(managedDetailView.contains(privateRoot))
             assertFalse(managedDetailView.contains(privateCredential))
+
+            val stagedReview = controller.readManagedReview(stagedManagedRunId.toString())
+            assertEquals(stagedManagedRunId, stagedReview.managedRunId)
+            assertEquals(3L, stagedReview.managedRunRevision)
+            assertEquals("review-required", stagedReview.state)
+            assertTrue(stagedReview.canApply)
+            assertTrue(stagedReview.canDiscard)
+            assertEquals("record-not-assessed", stagedReview.postApplyGatePolicy)
+            assertEquals(listOf("src/new.kt", "src/review.kt"), stagedReview.staging.changedInventory.map { it.path })
+            assertEquals(listOf("src"), stagedReview.applyConfirmation?.writeEnvelope)
+            assertEquals(stagedReview.staging.changeCount, stagedReview.staging.changedInventory.size)
+            assertEquals(0, stagedReview.staging.omittedCount)
+            assertFalse(Gson().toJson(stagedReview).contains(privateRoot))
+            assertFalse(Gson().toJson(stagedReview).contains(privateCredential))
+            val stagedReviewView = controller.renderManagedReviewPreview(stagedReview)
+            assertTrue(stagedReviewView.contains("Exact changed-file inventory"))
+            assertTrue(stagedReviewView.contains("src/review.kt"))
+            assertTrue(stagedReviewView.contains("authorizes no mutation"))
+            assertTrue(stagedReviewView.contains("Workflow gates not assessed"))
+
+            val applyTransition = controller.applyManagedReview(stagedReview, "founder.review")
+            assertEquals("apply-exact-managed-review", applyTransition.decision)
+            assertEquals(stagedReview.previewDigest, applyTransition.sourcePreviewDigest)
+            assertEquals(4L, applyTransition.managedRunRevision)
+            assertEquals("failed", applyTransition.state)
+            assertEquals("failed", applyTransition.detail.result?.outcomeStatus)
+            assertEquals("applied", applyTransition.detail.evidence?.staging?.applyState)
+            assertEquals(3, applyTransition.detail.applyDecision?.managedRunRevision)
+            assertFalse(Gson().toJson(applyTransition).contains(privateRoot))
+            assertFalse(Gson().toJson(applyTransition).contains(privateCredential))
+            val transitionView = controller.renderManagedReviewTransition(applyTransition)
+            assertTrue(transitionView.contains("Persisted state: failed"))
+            assertTrue(transitionView.contains("governed outcome satisfaction"))
+
+            val discardTransition = controller.discardManagedReview(stagedReview, "founder.review")
+            assertEquals("discard-exact-managed-review", discardTransition.decision)
+            assertEquals("discarded", discardTransition.state)
+            assertFalse(discardTransition.canApply)
+            assertFalse(discardTransition.canDiscard)
+            assertEquals("discarded", discardTransition.detail.evidence?.staging?.applyState)
+            assertEquals(null, discardTransition.detail.applyDecision)
+
+            assertFailsWith<IllegalArgumentException> {
+                client.applyManagedReview(
+                    stagedReview.copy(previewDigest = "sha256:${"0".repeat(64)}"),
+                    "founder.review",
+                )
+            }
+            val reboundLocalReview = hostError {
+                client.discardManagedReview(
+                    stagedReview.copy(
+                        staging = stagedReview.staging.copy(
+                            changedInventory = stagedReview.staging.changedInventory.mapIndexed { index, change ->
+                                if (index == 0) change.copy(path = "$privateRoot/secret.kt") else change
+                            },
+                        ),
+                    ),
+                    "founder.review",
+                )
+            }
+            assertEquals("HOST_RESPONSE_INVALID", reboundLocalReview.kind)
+            assertPrivateTextWithheld(reboundLocalReview)
             assertFailsWith<IllegalArgumentException> {
                 client.executeManagedReadOnly(managedPreview, timeoutMs = 999, actorId = "founder.review")
             }
@@ -274,6 +344,36 @@ class PortableDesignClientTest {
                     assertEquals("HOST_RESPONSE_INVALID", invalidDetail.kind)
                     assertPrivateTextWithheld(invalidDetail)
                 }
+            }
+            listOf(
+                badManagedReviewDigestRoot,
+                badManagedReviewPrivateRoot,
+                badManagedReviewBindingRoot,
+                badManagedReviewPathRoot,
+                badManagedReviewMetadataRoot,
+            ).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val invalidReview = hostError { hostileClient.readManagedReview(stagedManagedRunId) }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidReview.kind)
+                    assertPrivateTextWithheld(invalidReview)
+                }
+            }
+            listOf(badManagedTransitionDigestRoot, badManagedTransitionPrivateRoot).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val hostilePreview = hostileClient.readManagedReview(stagedManagedRunId)
+                    val invalidTransition = hostError {
+                        hostileClient.applyManagedReview(hostilePreview, "founder.review")
+                    }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidTransition.kind)
+                    assertPrivateTextWithheld(invalidTransition)
+                }
+            }
+            GaepEngineClient(staleManagedReviewRoot, executable.toString()).use { hostileClient ->
+                val stalePreview = hostileClient.readManagedReview(stagedManagedRunId)
+                val staleError = hostError { hostileClient.applyManagedReview(stalePreview, "founder.review") }
+                assertEquals("MANAGED_REVIEW_CHANGED", staleError.kind)
+                assertEquals(-32_029, staleError.code)
+                assertPrivateTextWithheld(staleError)
             }
 
             val handoffContext = controller.readAgentHandoffContext()

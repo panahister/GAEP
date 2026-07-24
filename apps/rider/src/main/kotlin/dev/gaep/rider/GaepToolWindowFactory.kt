@@ -110,6 +110,14 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += managedEvidenceButton
         actions.add(managedEvidenceButton)
 
+        val managedReviewButton = JButton("Review pending staged Managed Run…").apply {
+            addActionListener {
+                beginManagedReview(project, controller, status, output, buttons)
+            }
+        }
+        buttons += managedReviewButton
+        actions.add(managedReviewButton)
+
         addAction("List design imports") { controller.listPortableDesignSnapshots() }
 
         val readButton = JButton("Read design import…").apply {
@@ -160,6 +168,9 @@ class GaepToolWindowFactory : ToolWindowFactory {
                 "and provider completion is reported separately from the governed outcome. " +
                 "Managed Run evidence is an audit-gated, snapshot-bounded read-only view of portable counts and digests; " +
                 "it cannot start, resume, cancel, apply, discard, approve, or infer outcome success. " +
+                "Exact staged review is a separate two-confirmation flow bound to one Managed Run revision, preview digest, " +
+                "complete changed-file inventory, and host-owned write envelope. Post-apply Workflow gates remain not assessed, " +
+                "and persisted state does not prove machine-local cleanup. " +
                 "Governance boundary: portable-design imports remain pending human review. " +
                 "Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. " +
                 "Only validated metadata and digests are displayed; local paths and source content are withheld.",
@@ -267,12 +278,139 @@ class GaepToolWindowFactory : ToolWindowFactory {
         }
     }
 
-    private fun promptManagedUuid(project: Project, label: String, prompt: String): String? {
+    private fun beginManagedReview(
+        project: Project,
+        controller: RiderProductController,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+    ) {
+        val managedRunId = promptManagedUuid(
+            project,
+            label = "Managed Run ID",
+            prompt = "Enter the exact pending staged Managed Run UUID.",
+            title = "Review Staged Managed Run",
+        ) ?: return
+        buttons.forEach { it.isEnabled = false }
+        status.text = "Loading exact staged Managed Run review…"
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching { controller.readManagedReview(managedRunId) }
+                .onSuccess { preview ->
+                    ApplicationManager.getApplication().invokeLater {
+                        val previewText = controller.renderManagedReviewPreview(preview)
+                        output.text = previewText
+                        output.caretPosition = 0
+                        val options = buildList {
+                            if (preview.canApply) add("Apply Exact Reviewed Inventory")
+                            if (preview.canDiscard) add("Discard Staged Changes")
+                            add("Cancel and Keep Pending")
+                        }.toTypedArray()
+                        val decisionIndex = Messages.showDialog(
+                            project,
+                            "Managed Run ${preview.managedRunId} revision ${preview.managedRunRevision} is ${preview.state}.\n\n" +
+                                "${preview.staging.changeCount} exact staged file change(s); inventory " +
+                                "${preview.staging.changedInventoryDigest}; preview ${preview.previewDigest}.\n\n" +
+                                if (preview.canApply) {
+                                    "Apply can change only the exact reviewed workspace-relative inventory and write envelope. " +
+                                        "Post-apply Workflow gates will be recorded not assessed, so governed outcome success cannot be claimed.\n\n" +
+                                        "Cancel keeps the review pending. Opening this view caused no mutation."
+                                } else {
+                                    "Apply is unavailable. Exact discard remains available for this recovery state.\n\n" +
+                                        "Cancel keeps the review pending. Opening this view caused no mutation."
+                                },
+                            "Choose Exact Managed Review Decision",
+                            options,
+                            options.lastIndex,
+                            Messages.getWarningIcon(),
+                        )
+                        val selected = options.getOrNull(decisionIndex)
+                        if (selected == null || selected == "Cancel and Keep Pending") {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "Managed review kept pending",
+                                "$previewText\n\nNo apply or discard decision was sent. The exact review remains pending.",
+                            )
+                            return@invokeLater
+                        }
+                        val apply = selected == "Apply Exact Reviewed Inventory"
+                        val confirmationLabel = if (apply) "Confirm Exact Apply" else "Confirm Exact Discard"
+                        val confirmation = Messages.showDialog(
+                            project,
+                            "$confirmationLabel for Managed Run ${preview.managedRunId}?\n\n" +
+                                "Bound revision: ${preview.managedRunRevision}\n" +
+                                "Preview: ${preview.previewDigest}\n" +
+                                "Changes: ${preview.staging.changeCount}\n" +
+                                "Inventory: ${preview.staging.changedInventoryDigest}\n\n" +
+                                if (apply) {
+                                    "Write envelope: ${preview.applyConfirmation?.writeEnvelope?.joinToString() ?: "none"}. " +
+                                        "This can mutate those exact source-workspace paths. Workflow gates remain not assessed."
+                                } else {
+                                    "Discard persists a governed discarded state. Machine-local stage and recovery-journal " +
+                                        "cleanup remain separate, unproven claims."
+                                },
+                            confirmationLabel,
+                            arrayOf(confirmationLabel, "Cancel and Keep Pending"),
+                            1,
+                            Messages.getWarningIcon(),
+                        )
+                        if (confirmation != 0) {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "Managed review kept pending",
+                                "$previewText\n\nThe final confirmation was cancelled. No decision was sent.",
+                            )
+                            return@invokeLater
+                        }
+                        status.text = if (apply) "Applying exact reviewed inventory…" else "Discarding exact staged review…"
+                        ApplicationManager.getApplication().executeOnPooledThread {
+                            val actorId = System.getenv("GAEP_ACTOR_ID") ?: "gaep.rider-local-human"
+                            runCatching {
+                                if (apply) {
+                                    controller.applyManagedReview(preview, actorId)
+                                } else {
+                                    controller.discardManagedReview(preview, actorId)
+                                }
+                            }.onSuccess { transition ->
+                                ApplicationManager.getApplication().invokeLater {
+                                    val transitionText = controller.renderManagedReviewTransition(transition)
+                                    val transitionStatus = if (apply) {
+                                        "Exact apply persisted as ${transition.state}; Workflow gates not assessed"
+                                    } else {
+                                        "Exact discard persisted as ${transition.state}; cleanup not independently proven"
+                                    }
+                                    finishRequest(status, output, buttons, transitionStatus, transitionText)
+                                }
+                            }.onFailure { error ->
+                                ApplicationManager.getApplication().invokeLater {
+                                    finishRequest(status, output, buttons, "GAEP managed review stopped", safeError(error))
+                                }
+                            }
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    ApplicationManager.getApplication().invokeLater {
+                        finishRequest(status, output, buttons, "GAEP managed review stopped", safeError(error))
+                    }
+                }
+        }
+    }
+
+    private fun promptManagedUuid(
+        project: Project,
+        label: String,
+        prompt: String,
+        title: String = "Managed Read-Only Execution",
+    ): String? {
         while (true) {
             val entered = Messages.showInputDialog(
                 project,
                 prompt,
-                "Managed Read-Only Execution",
+                title,
                 Messages.getQuestionIcon(),
             ) ?: return null
             val normalized = entered.trim()
@@ -281,7 +419,7 @@ class GaepToolWindowFactory : ToolWindowFactory {
                 UUID.fromString(normalized).also { require(it != UUID(0, 0)) }
             }
             if (parsed.isSuccess) return parsed.getOrThrow().toString()
-            Messages.showErrorDialog(project, "$label must be a non-empty UUID.", "Managed Read-Only Execution")
+            Messages.showErrorDialog(project, "$label must be a non-empty UUID.", title)
         }
     }
 

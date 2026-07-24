@@ -206,6 +206,109 @@ internal class RiderProductController(private val client: GaepEngineClient) {
     fun readManagedEvidence(managedRunId: String): String =
         renderManagedEvidenceDetail(client.readManagedEvidence(parseUuid(managedRunId, "Managed Run ID")))
 
+    fun readManagedReview(managedRunId: String): ManagedReviewPreview =
+        client.readManagedReview(parseUuid(managedRunId, "Managed Run ID"))
+
+    fun applyManagedReview(preview: ManagedReviewPreview, actorId: String): ManagedReviewTransition =
+        client.applyManagedReview(preview, actorId)
+
+    fun discardManagedReview(preview: ManagedReviewPreview, actorId: String): ManagedReviewTransition =
+        client.discardManagedReview(preview, actorId)
+
+    fun renderManagedReviewPreview(preview: ManagedReviewPreview): String = buildString {
+        appendLine("GAEP exact staged Managed Run review")
+        appendLine()
+        appendLine("Managed Run: ${preview.managedRunId}")
+        appendLine("Governed Run: ${preview.runId}")
+        appendLine("Revision / state: ${preview.managedRunRevision} / ${preview.state}")
+        appendLine("Product / Initiative: ${preview.productId} / ${preview.initiativeId}")
+        appendLine("Bindings digest: ${preview.bindingsDigest}")
+        appendLine("Result: ${preview.result.resultId} (${preview.result.resultDigest})")
+        appendLine("Provider disposition: ${preview.result.providerDisposition}")
+        appendLine(
+            "Governed outcome before decision: ${preview.result.outcomeStatus} (${preview.result.outcomeBasis})",
+        )
+        appendLine("Evidence: ${preview.staging.evidenceId} (${preview.staging.evidenceDigest})")
+        appendLine(
+            "Stage: ${preview.staging.applyState}; baseline=${preview.staging.baselineDigest}; " +
+                "final=${preview.staging.finalDigest}",
+        )
+        appendLine(
+            "Complete bounded inventory: ${preview.staging.changeCount}/${preview.staging.changedInventoryLimit}; " +
+                "omitted=${preview.staging.omittedCount}; digest=${preview.staging.changedInventoryDigest}",
+        )
+        appendLine(
+            "Excluded staged paths: ${preview.staging.excludedPathCount}; " +
+                "set digest=${preview.staging.excludedPathSetDigest}",
+        )
+        appendLine(
+            "Apply available: ${yesNo(preview.canApply)}; discard available: ${yesNo(preview.canDiscard)}; " +
+                "local journal observed: ${yesNo(preview.hasLocalJournal)}",
+        )
+        appendLine(
+            "Exact write envelope: ${preview.applyConfirmation?.writeEnvelope?.joinToString() ?: "not available"}",
+        )
+        appendLine("Preview digest: ${preview.previewDigest}")
+        appendLine(
+            "Warnings: ${if (preview.result.warningCodes.isEmpty()) "none" else preview.result.warningCodes.joinToString()}",
+        )
+        appendLine()
+        appendLine("Exact changed-file inventory")
+        appendLine()
+        if (preview.staging.changedInventory.isEmpty()) appendLine("No staged workspace file changes were recorded.")
+        preview.staging.changedInventory.forEachIndexed { index, change ->
+            appendLine("${index + 1}. ${change.kind.uppercase(Locale.ROOT)} ${change.path}")
+            appendLine(
+                "   Before: ${change.beforeDigest ?: "absent"}; ${change.beforeSize ?: 0} byte(s); " +
+                    "mode ${change.beforeMode?.toString(8) ?: "absent"}",
+            )
+            appendLine(
+                "   After: ${change.afterDigest ?: "absent"}; ${change.afterSize ?: 0} byte(s); " +
+                    "mode ${change.afterMode?.toString(8) ?: "absent"}",
+            )
+        }
+        appendLine()
+        appendLine(
+            "Boundary: this view authorizes no mutation. Apply or discard requires a separate exact " +
+                "revision-and-preview-digest-bound human decision and a second cancel-default confirmation.",
+        )
+        appendLine(
+            "Apply is limited to this exact changed inventory and write envelope. The host records post-apply " +
+                "Workflow gates not assessed, so it cannot claim governed outcome satisfaction.",
+        )
+        append(
+            "Provider output, prompts, context content, staged source bytes, absolute paths, executable paths, " +
+                "process state, workspace paths and credentials are withheld.",
+        )
+    }
+
+    fun renderManagedReviewTransition(transition: ManagedReviewTransition): String = buildString {
+        val detail = transition.detail
+        appendLine("GAEP managed staged-review transition")
+        appendLine()
+        appendLine("Decision: ${transition.decision}")
+        appendLine("Managed Run: ${transition.managedRunId}")
+        appendLine("Revision: ${transition.sourceManagedRunRevision} -> ${transition.managedRunRevision}")
+        appendLine("Persisted state: ${transition.state}")
+        appendLine("Source preview: ${transition.sourcePreviewDigest}")
+        appendLine("Transition digest: ${transition.transitionDigest}")
+        appendLine(
+            "Apply available: ${yesNo(transition.canApply)}; discard available: ${yesNo(transition.canDiscard)}",
+        )
+        appendLine("Local journal observed: ${yesNo(transition.hasLocalJournal)}")
+        appendLine("Result digest: ${detail.summary.resultDigest ?: "not bound"}")
+        appendLine("Apply-decision digest: ${detail.summary.applyDecisionDigest ?: "not bound"}")
+        appendLine("Provider disposition: ${detail.result?.providerDisposition ?: "not available"}")
+        appendLine(
+            "Governed outcome: ${detail.result?.let { "${it.outcomeStatus} (${it.outcomeBasis})" } ?: "not available"}",
+        )
+        appendLine()
+        append(
+            "Boundary: this receipt proves only the verified persisted transition. Provider completion, governed " +
+                "outcome satisfaction, machine-local stage cleanup and recovery-journal cleanup remain separate claims.",
+        )
+    }
+
     fun listPortableDesignSnapshots(): String {
         val page = client.listPortableDesignSnapshots(offset = 0, limit = PortableDesignProtocol.DEFAULT_PAGE_SIZE)
         return buildString {

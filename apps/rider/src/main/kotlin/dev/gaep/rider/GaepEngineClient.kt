@@ -226,6 +226,46 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readManagedReview(managedRunId: UUID): ManagedReviewPreview {
+        require(managedRunId != UUID(0, 0)) { "Managed Run ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("managedRunId", managedRunId.toString()) }
+        return portableRequest("managed.review.read", params) { envelope ->
+            PortableDesignProtocol.parseManagedReviewPreviewEnvelope(envelope, managedRunId)
+        }
+    }
+
+    @Synchronized
+    fun applyManagedReview(preview: ManagedReviewPreview, actorId: String): ManagedReviewTransition =
+        decideManagedReview(preview, actorId, "apply-exact-managed-review")
+
+    @Synchronized
+    fun discardManagedReview(preview: ManagedReviewPreview, actorId: String): ManagedReviewTransition =
+        decideManagedReview(preview, actorId, "discard-exact-managed-review")
+
+    private fun decideManagedReview(
+        preview: ManagedReviewPreview,
+        actorId: String,
+        decision: String,
+    ): ManagedReviewTransition {
+        PortableDesignProtocol.validateManagedReviewPreview(preview)
+        require(decision in setOf("apply-exact-managed-review", "discard-exact-managed-review")) {
+            "Managed review decision is invalid"
+        }
+        val normalizedActorId = PortableDesignProtocol.normalizeActorId(actorId)
+        val method = if (decision == "apply-exact-managed-review") "managed.review.apply" else "managed.review.discard"
+        val params = JsonObject().apply {
+            addProperty("actorId", normalizedActorId)
+            addProperty("managedRunId", preview.managedRunId.toString())
+            addProperty("expectedManagedRunRevision", preview.managedRunRevision)
+            addProperty("expectedPreviewDigest", preview.previewDigest)
+            addProperty("confirmation", decision)
+        }
+        return portableRequest(method, params) { envelope ->
+            PortableDesignProtocol.parseManagedReviewTransitionEnvelope(envelope, preview, decision)
+        }
+    }
+
+    @Synchronized
     fun importPortableDesignSnapshot(
         bundleRoot: Path,
         expectedProductId: UUID,

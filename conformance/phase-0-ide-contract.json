@@ -125,7 +125,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun previewManagedReadOnly(", "fun executeManagedReadOnly(", "attest-exact-managed-readonly-preview"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parseManagedReadOnlyPreviewEnvelope(", "preview.previewDigest == canonicalDigest(body)", "parseManagedReadOnlyReceiptEnvelope("] }
         ] },
-        { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
+        { "capabilityId": "staged-effectful-review", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["private fun beginManagedReview(", "Apply Exact Reviewed Inventory", "controller.applyManagedReview(preview, actorId)", "controller.discardManagedReview(preview, actorId)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readManagedReview(", "fun applyManagedReview(", "fun discardManagedReview(", "addProperty(\"expectedPreviewDigest\", preview.previewDigest)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parseManagedReviewPreviewEnvelope(", "preview.previewDigest == canonicalDigest(body)", "parseManagedReviewTransitionEnvelope(", "workspaceRelativePath(change.requireString(\"path\"))"] }
+        ] },
         { "capabilityId": "evidence-dashboard", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["List Managed Run evidence", "Read Managed Run evidence"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["fun listManagedEvidence()", "fun readManagedEvidence(managedRunId: String)", "this audit-gated observation cannot start, resume, cancel, apply, discard, approve"] },
