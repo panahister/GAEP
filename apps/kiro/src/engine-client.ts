@@ -7,6 +7,7 @@ import { once } from "node:events"
 
 import {
   defaultPageSize,
+  canonicalDigest,
   frameTooLarge,
   GaepHostError,
   hostUnavailable,
@@ -18,6 +19,7 @@ import {
   normalizeExistingLocalFolder,
   normalizeUuid,
   parseAgentReadiness,
+  parseAgentModelDashboard,
   parseAgentHandoff,
   parseManagedReadOnlyPreview,
   parseManagedReadOnlyReceipt,
@@ -44,6 +46,7 @@ import {
   type PortableDesignSnapshotSummary,
   type ProductBinding,
   type AgentReadinessSnapshot,
+  type AgentModelDashboard,
   type AgentHandoff,
   type AgentRun,
   type AgentSelection,
@@ -199,6 +202,35 @@ export class GaepEngineClient {
         expectedChangeRevision: changeRevision,
         expectedChangeDigest: changeDigest,
       }), { product: expectedProduct, change: expectedChange })
+    })
+  }
+
+  async readAgentModel(product: ProductBinding): Promise<AgentModelDashboard> {
+    const capabilities = await this.probeAgentReadiness()
+    const selection = await this.readAgentSelection()
+    return this.enqueue(async () => {
+      const productId = normalizeUuid(product.id, "Product ID")
+      const productRevision = validateProductRevision(product.revision)
+      const productDigest = product.digest.trim().toLowerCase()
+      if (!/^sha256:[0-9a-f]{64}$/u.test(productDigest)) throw new TypeError("Product digest must be SHA-256")
+      const expectedSelection = selection.status === "selected"
+        ? { status: "selected" as const, selectionDigest: canonicalDigest(selection.selection) }
+        : selection.status === "migration-required"
+          ? { status: "migration-required" as const, selectionDigest: canonicalDigest(selection.portableCandidate) }
+          : { status: selection.status }
+      const expectedCapabilities = capabilities.map((entry) => ({
+        adapterId: entry.adapterId,
+        agentId: entry.agentId,
+        capabilityDigest: entry.capabilityDigest,
+      }))
+      const expectedProduct = { ...product, id: productId, revision: productRevision, digest: productDigest }
+      return parseAgentModelDashboard(await this.request("dashboard.agentModel", {
+        expectedProductId: productId,
+        expectedProductRevision: productRevision,
+        expectedProductDigest: productDigest,
+        expectedSelection,
+        expectedCapabilities,
+      }), { product: expectedProduct, capabilities, selection })
     })
   }
 

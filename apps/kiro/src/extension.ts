@@ -11,6 +11,7 @@ import {
   normalizeUuid,
   validatePage,
   type AgentHandoff,
+  type AgentModelDashboard,
   type AgentReadinessSnapshot,
   type AgentRun,
   type AgentSelection,
@@ -43,6 +44,7 @@ const commandIds = {
   stagedReview: "gaepKiro.runs.stagedReview",
   dashboard: "gaepKiro.dashboard.phase",
   changeImpact: "gaepKiro.dashboard.changeImpact",
+  agentModel: "gaepKiro.dashboard.agentModel",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -127,6 +129,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.stagedReview, () => runUserCommand(() => reviewManagedStagedChanges(pool))),
     vscode.commands.registerCommand(commandIds.dashboard, () => runUserCommand(() => showPhaseDashboard(pool))),
     vscode.commands.registerCommand(commandIds.changeImpact, () => runUserCommand(() => showChangeImpactDashboard(pool))),
+    vscode.commands.registerCommand(commandIds.agentModel, () => runUserCommand(() => showAgentModelDashboard(pool))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -199,7 +202,7 @@ function productStudioHtml(): string {
     <p>Use the Kiro Command Palette to observe verified local readiness, record one guarded portable Agent Selection, or create a versioned switch handoff from the latest terminal Run.</p>
     <p>Selection and handoff records are configuration and history only. The separate managed read-only command can run one exact, already-confirmed Charter and Workflow Plan after a digest-bound human attestation. It denies every Tool, write, and non-observation effect, uses a bounded timeout, and withholds success if staged changes appear.</p>
     <p>The Managed Run evidence command shows an audit-gated, snapshot-bound page of at most 100 runs and one exact verified detail. It displays portable states, counts, digests and timestamps only; it cannot apply, discard, resume, approve, or infer success.</p>
-    <p>The phase-dashboard command shows the exact Phase 0/1A slice plus required Change/Impact and Agent/Model views. The Change/Impact command separately selects one exact current Change from an audit-gated metadata-only catalog and shows bounded Work Items, portable changed/effect targets, trace assessments, Decisions, Risks, freshness and omissions. Phase applicability remains attention-required until a governed decision exists; neither projection can approve a Change or complete a phase.</p>
+    <p>The phase-dashboard command shows the exact Phase 0/1A slice plus required Change/Impact and Agent/Model views. The Change/Impact command separately selects one exact current Change from an audit-gated metadata-only catalog and shows bounded Work Items, portable changed/effect targets, trace assessments, Decisions, Risks, freshness and omissions. The Agent/Model command shows exact current capability, portable selection, Run, Managed evidence, handoff, freshness and unavailable usage/cost metadata. Phase applicability remains attention-required until a governed decision exists; these projections cannot select or switch an agent, launch a Run, authorize effects, approve a Change, or complete a phase.</p>
     <p>The separate staged-review command can inspect one exact pending Codex inventory of at most 512 workspace-relative changed paths and then, only after a cancel-default digest-bound human decision, ask the engine to apply that inventory or persist discard. It receives no source bytes or general filesystem-write authority. Post-apply Workflow gates are recorded not assessed, so this surface cannot claim governed outcome satisfaction.</p>
   </section>
   <section>
@@ -748,6 +751,63 @@ async function showChangeImpactDashboard(pool: EngineClientPool): Promise<Change
     "",
     "Boundary: this read-only projection grants no Change approval, risk acceptance, mutation, Run, Tool, write, effect, phase-entry, readiness, release, or outcome authority.",
     "Product text, Change text, Work Item text, source bytes, absolute paths, provider output, prompts, executable state, and credentials are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return dashboard
+}
+
+async function showAgentModelDashboard(pool: EngineClientPool): Promise<AgentModelDashboard> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const product = await client.readProduct()
+  const dashboard = await client.readAgentModel(product)
+  const selectionLines = dashboard.selection.status === "selected" || dashboard.selection.status === "migration-required"
+    ? [
+        `Selection: ${dashboard.selection.status} · ${dashboard.selection.adapterId}/${dashboard.selection.agentId} · ${dashboard.selection.modelId}`,
+        `Selection digest: ${dashboard.selection.selectionDigest}`,
+        `Selection capability: ${dashboard.selection.capabilityState} · ${dashboard.selection.capabilityDigest}`,
+        ...Object.entries(dashboard.selection.settings).map(([key, value]) =>
+          `  setting ${key}=${Array.isArray(value) ? value.join(", ") : String(value)}`),
+      ]
+    : [`Selection: ${dashboard.selection.status}`]
+  const lines = [
+    "GAEP exact Agent and Model dashboard",
+    "",
+    `Product revision: ${dashboard.product.revision}`,
+    `Product digest: ${dashboard.product.digest}`,
+    `Snapshot digest: ${dashboard.snapshotDigest}`,
+    `Freshness: ${dashboard.freshness.state} · selection capability ${dashboard.freshness.selectionCapabilityState}`,
+    `Capability observation range: ${dashboard.freshness.oldestCapabilityObservedAt} to ${dashboard.freshness.newestCapabilityObservedAt}`,
+    "Provider usage: unavailable; current Managed Run records have no provider usage contract.",
+    "Provider cost: unavailable; current Managed Run records have no provider cost contract.",
+    "",
+    ...selectionLines,
+    "",
+    `Observed capabilities (${dashboard.limits.capabilities.shown}/${dashboard.limits.capabilities.total}):`,
+    ...dashboard.capabilities.map((entry) =>
+      `  ${entry.adapterId}/${entry.agentId} · ${entry.agentLabel} · ${entry.executionInterface}/${entry.interfaceMaturity} · models=${entry.modelCount} · selected=${entry.selected} · ${entry.capabilityDigest}`),
+    "",
+    `Runs (${dashboard.limits.runs.shown}/${dashboard.limits.runs.total}):`,
+    ...dashboard.runs.map((entry) => {
+      const managed = entry.managed.status === "observed"
+        ? `${entry.managed.state}/attempt-${entry.managed.attemptNumber}/${entry.managed.result.status}`
+        : entry.managed.status
+      return `  ${entry.record.recordId}@${entry.record.revision} · ${entry.state} · ${entry.agent.adapterId}/${entry.agent.agentId}/${entry.agent.modelId} · managed=${managed}`
+    }),
+    "",
+    `Agent/model handoffs (${dashboard.limits.handoffs.shown}/${dashboard.limits.handoffs.total}):`,
+    ...dashboard.handoffs.map((entry) =>
+      `  ${entry.record.recordId} · Run ${entry.fromRun.recordId} -> ${entry.toSelection.adapterId}/${entry.toSelection.agentId}/${entry.toSelection.modelId} · ${entry.state}`),
+    "",
+    `Managed Run observations: ${dashboard.limits.managedRuns.shown}/${dashboard.limits.managedRuns.total}`,
+    `Omissions: ${dashboard.limits.truncated ? "one or more bounded categories are truncated" : "none in reported categories"}`,
+    "Coverage: bounded current records do not prove provider-account or native-host readiness.",
+    ...dashboard.limitations.map((limitation) => `Limit: ${limitation}`),
+    "",
+    "Boundary: this read-only projection cannot select or switch an agent, create a handoff, launch a Run, authorize a Tool/write/effect, approve an outcome, establish readiness, or grant release authority.",
+    "Product text, Run narrative, source bytes, absolute paths, provider output, prompts, executable state, credentials, and sensitive setting values are withheld.",
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })

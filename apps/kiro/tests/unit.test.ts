@@ -7,7 +7,7 @@ import test from "node:test"
 import { fileURLToPath } from "node:url"
 
 import { GaepEngineClient, safeEngineEnvironment } from "../src/engine-client.js"
-import { GaepHostError } from "../src/protocol.js"
+import { canonicalDigest, GaepHostError } from "../src/protocol.js"
 
 const productId = "11111111-1111-4111-8111-111111111111"
 const bundleId = "22222222-2222-4222-8222-222222222222"
@@ -140,6 +140,12 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badChangeImpactFreshnessRoot = join(root, "bad-change-impact-freshness")
   const badChangeImpactDigestRoot = join(root, "bad-change-impact-digest")
   const badChangeImpactPrivateRoot = join(root, "bad-change-impact-private")
+  const badAgentModelBindingRoot = join(root, "bad-agent-model-binding")
+  const badAgentModelCountRoot = join(root, "bad-agent-model-count")
+  const badAgentModelFreshnessRoot = join(root, "bad-agent-model-freshness")
+  const badAgentModelMetricsRoot = join(root, "bad-agent-model-metrics")
+  const badAgentModelDigestRoot = join(root, "bad-agent-model-digest")
+  const badAgentModelPrivateRoot = join(root, "bad-agent-model-private")
   await Promise.all([
     workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot, badRunsRoot, badHandoffRoot,
     badHandoffBindingRoot, badManagedPreviewRoot, badManagedCriterionRoot, badManagedDigestRoot, badManagedReceiptRoot,
@@ -150,7 +156,8 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     badManagedTransitionPrivateRoot, staleManagedReviewRoot, badDashboardBindingRoot, badDashboardApplicabilityRoot,
     badDashboardDigestRoot, badDashboardPrivateRoot, badChangeCatalogBindingRoot, badChangeCatalogDigestRoot,
     badChangeCatalogPrivateRoot, badChangeImpactBindingRoot, badChangeImpactCountRoot, badChangeImpactFreshnessRoot,
-    badChangeImpactDigestRoot, badChangeImpactPrivateRoot,
+    badChangeImpactDigestRoot, badChangeImpactPrivateRoot, badAgentModelBindingRoot, badAgentModelCountRoot,
+    badAgentModelFreshnessRoot, badAgentModelMetricsRoot, badAgentModelDigestRoot, badAgentModelPrivateRoot,
   ].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
@@ -265,6 +272,42 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
       TypeError,
     )
 
+    const agentModel = await client.readAgentModel(product)
+    assert.equal(agentModel.product.digest, product.digest)
+    assert.equal(agentModel.capabilities.length, 2)
+    assert.equal(agentModel.selection.status, "unselected")
+    assert.equal(agentModel.providerMetrics.usage.state, "unavailable")
+    assert.equal(agentModel.providerMetrics.cost.state, "unavailable")
+    assert.equal(agentModel.freshness.state, "current")
+    assert.equal(agentModel.limits.truncated, false)
+    assert.equal(JSON.stringify(agentModel).includes("Example Product"), false)
+    assert.equal(JSON.stringify(agentModel).includes(privateRoot), false)
+    assert.equal(JSON.stringify(agentModel).includes(privateCredential), false)
+
+    for (const workspacePath of [
+      badAgentModelBindingRoot, badAgentModelCountRoot, badAgentModelFreshnessRoot, badAgentModelMetricsRoot,
+      badAgentModelDigestRoot, badAgentModelPrivateRoot,
+    ]) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        const hostileProduct = await hostileClient.readProduct()
+        await assert.rejects(
+          () => hostileClient.readAgentModel(hostileProduct),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
+    await assert.rejects(
+      () => client.readAgentModel({ ...product, digest: "sha256:not-a-digest" }),
+      TypeError,
+    )
+
     const readiness = await client.probeAgentReadiness()
     assert.deepEqual(readiness.map((agent) => agent.agentId), ["claude-code", "codex"])
     assert.equal(readiness[0]?.detected, false)
@@ -273,7 +316,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.deepEqual(
       Object.keys(readiness[1] ?? {}).sort(),
       [
-        "adapterId", "adapterVersion", "agentId", "agentLabel", "detected", "executionInterface",
+        "adapterId", "adapterVersion", "agentId", "agentLabel", "capabilityDigest", "detected", "executionInterface",
         "interfaceMaturity", "limitations", "models", "observedAt", "runtimeVersion", "schemaVersion",
         "settings", "settingsCount", "supportsCancel", "supportsCheckpoints", "supportsModelDiscovery", "supportsResume",
         "supportsToolSelection",
@@ -313,6 +356,22 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.deepEqual(await client.readAgentSelection(), { status: "selected", selection: selected })
     assert.equal(JSON.stringify(selected).includes(privateRoot), false)
     assert.equal(JSON.stringify(selected).includes(privateCredential), false)
+    const selectedAgentModel = await client.readAgentModel(product)
+    assert.deepEqual(selectedAgentModel.selection, {
+      status: "selected",
+      selectionDigest: canonicalDigest(selected),
+      adapterId: selected.adapterId,
+      agentId: selected.agentId,
+      modelId: selected.modelId,
+      modelTruthClass: selected.modelTruthClass,
+      modelAlias: selected.modelAlias,
+      settings: selected.settings,
+      selectedAt: selected.selectedAt,
+      capabilityDigest: selected.capabilityDigest,
+      capabilityState: "stale",
+    })
+    assert.equal(selectedAgentModel.capabilities.filter((entry) => entry.selected).length, 1)
+    assert.equal(selectedAgentModel.freshness.state, "attention-required")
 
     const runs = await client.listRuns()
     assert.equal(runs.length, 1)

@@ -304,6 +304,130 @@ export interface ChangeImpactDashboard {
   readonly snapshotDigest: string
 }
 
+interface AgentModelLimit {
+  readonly shown: number
+  readonly total: number
+  readonly omitted: number
+}
+
+interface AgentModelRecordReference {
+  readonly recordType: "product" | "run" | "managed-run" | "handoff"
+  readonly recordId: string
+  readonly revision: number
+  readonly digest: string
+}
+
+export interface AgentModelDashboard {
+  readonly schemaVersion: 1
+  readonly kind: "agent-model-dashboard"
+  readonly product: AgentModelRecordReference & { readonly recordType: "product" }
+  readonly capabilities: readonly {
+    readonly adapterId: string
+    readonly adapterVersion: string
+    readonly agentId: string
+    readonly agentLabel: string
+    readonly runtimeVersion: string | null
+    readonly capabilityDigest: string
+    readonly detected: boolean
+    readonly executionInterface: AgentReadinessSnapshot["executionInterface"]
+    readonly interfaceMaturity: AgentReadinessSnapshot["interfaceMaturity"]
+    readonly support: {
+      readonly resume: boolean
+      readonly cancel: boolean
+      readonly checkpoints: boolean
+      readonly modelDiscovery: boolean
+      readonly toolSelection: boolean
+    }
+    readonly modelCount: number
+    readonly limitations: { readonly values: readonly string[]; readonly shown: number; readonly total: number; readonly omitted: number }
+    readonly observedAt: string
+    readonly selected: boolean
+  }[]
+  readonly selection:
+    | { readonly status: "unselected" | "invalid" }
+    | {
+        readonly status: "selected" | "migration-required"
+        readonly selectionDigest: string
+        readonly adapterId: string
+        readonly agentId: string
+        readonly modelId: string
+        readonly modelTruthClass: AgentTruthClass
+        readonly modelAlias: boolean | null
+        readonly settings: Readonly<Record<string, PortableAgentSettingValue>>
+        readonly selectedAt: string
+        readonly capabilityDigest: string
+        readonly capabilityState: "current" | "stale" | "migration-required"
+      }
+  readonly runs: readonly {
+    readonly record: AgentModelRecordReference & { readonly recordType: "run" }
+    readonly initiativeId: string
+    readonly state: AgentRunState
+    readonly agent: { readonly adapterId: string; readonly agentId: string; readonly modelId: string; readonly selectionDigest: string }
+    readonly startedAt: string | null
+    readonly endedAt: string | null
+    readonly managed:
+      | { readonly status: "not-observed-in-bounded-window" }
+      | {
+          readonly status: "observed"
+          readonly record: AgentModelRecordReference & { readonly recordType: "managed-run" }
+          readonly mode: "codex-staged" | "manual-offline" | "claude-context-only"
+          readonly state: ManagedRunState
+          readonly attemptNumber: number
+          readonly bindingsDigest: string
+          readonly provider: { readonly adapterId: string; readonly agentId: string; readonly modelId: string; readonly capabilityDigest: string }
+          readonly result:
+            | { readonly status: "not-bound" }
+            | {
+                readonly status: "bound"
+                readonly recordId: string
+                readonly digest: string
+                readonly providerDisposition: "completed" | "failed" | "cancelled" | "interrupted" | "crashed" | "protocol-error" | "unknown"
+                readonly outcomeStatus: "satisfied" | "failed" | "not-assessed" | "indeterminate"
+                readonly evidence: {
+                  readonly recordId: string
+                  readonly digest: string
+                  readonly eventCount: number
+                  readonly eventsDigest: string
+                  readonly actualEffectCount: number
+                  readonly capturedAt: string
+                }
+              }
+        }
+  }[]
+  readonly handoffs: readonly {
+    readonly record: AgentModelRecordReference & { readonly recordType: "handoff" }
+    readonly fromRun: AgentModelRecordReference & { readonly recordType: "run" }
+    readonly toSelection: { readonly adapterId: string; readonly agentId: string; readonly modelId: string; readonly selectionDigest: string }
+    readonly state: "pending-acknowledgement" | "acknowledged"
+    readonly createdAt: string
+    readonly acknowledgedAt: string | null
+  }[]
+  readonly providerMetrics: {
+    readonly usage: { readonly state: "unavailable"; readonly basis: "current-managed-records-have-no-provider-usage-or-cost-contract" }
+    readonly cost: { readonly state: "unavailable"; readonly basis: "current-managed-records-have-no-provider-usage-or-cost-contract" }
+  }
+  readonly freshness: {
+    readonly state: "current" | "attention-required"
+    readonly selectionCapabilityState: "current" | "unselected" | "stale" | "migration-required" | "invalid"
+    readonly oldestCapabilityObservedAt: string
+    readonly newestCapabilityObservedAt: string
+    readonly truncated: boolean
+    readonly coverageBoundary: "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness"
+  }
+  readonly limits: {
+    readonly capabilities: AgentModelLimit
+    readonly runs: AgentModelLimit
+    readonly handoffs: AgentModelLimit
+    readonly managedRuns: AgentModelLimit
+    readonly truncated: boolean
+  }
+  readonly observedAt: string
+  readonly sourceBoundary: "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata"
+  readonly limitations: readonly string[]
+  readonly authorityBoundary: "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects"
+  readonly snapshotDigest: string
+}
+
 export type AgentTruthClass = "observed" | "provider-declared" | "configured" | "inferred" | "unknown"
 
 export interface AgentModelReadiness {
@@ -670,6 +794,7 @@ export interface AgentReadinessSnapshot {
   readonly models: readonly AgentModelReadiness[]
   readonly limitations: readonly string[]
   readonly observedAt: string
+  readonly capabilityDigest: string
 }
 
 export class GaepHostError extends Error {
@@ -1133,6 +1258,97 @@ export function parseChangeImpactDashboard(
     sourceBoundary: "current-governed-records-and-bounded-trace-analysis" as const,
     limitations: parseChangeImpactLimitations(dashboard.limitations),
     authorityBoundary: "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects" as const,
+  })
+  const snapshotDigest = requireDigest(dashboard, "snapshotDigest")
+  if (snapshotDigest !== canonicalDigest(content)) throw invalidHostResponse()
+  return Object.freeze({ ...content, snapshotDigest })
+}
+
+export function parseAgentModelDashboard(
+  result: unknown,
+  expected: {
+    readonly product: ProductBinding
+    readonly capabilities: readonly AgentReadinessSnapshot[]
+    readonly selection: AgentSelectionState
+  },
+): AgentModelDashboard {
+  const dashboard = requireRecord(result)
+  requireExactKeys(dashboard, [
+    "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs", "providerMetrics",
+    "freshness", "limits", "observedAt", "sourceBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+  ])
+  if (requireSafeInteger(dashboard, "schemaVersion") !== 1 || requireString(dashboard, "kind") !== "agent-model-dashboard" ||
+      requireString(dashboard, "sourceBoundary") !== "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" ||
+      requireString(dashboard, "authorityBoundary") !== "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects") {
+    throw invalidHostResponse()
+  }
+  const product = parseAgentModelReference(dashboard.product, "product") as AgentModelDashboard["product"]
+  if (product.recordId !== expected.product.id || product.revision !== expected.product.revision ||
+      product.digest !== expected.product.digest) throw invalidHostResponse()
+  if (!Array.isArray(dashboard.capabilities) || dashboard.capabilities.length < 1 || dashboard.capabilities.length > 16 ||
+      dashboard.capabilities.length !== expected.capabilities.length) throw invalidHostResponse()
+  const expectedCapabilities = new Map(expected.capabilities.map((entry) => [`${entry.adapterId}:${entry.agentId}`, entry]))
+  const capabilities = Object.freeze(dashboard.capabilities.map((entry) => {
+    const row = requireRecord(entry)
+    const key = `${requireString(row, "adapterId")}:${requireString(row, "agentId")}`
+    const expectedCapability = expectedCapabilities.get(key)
+    if (!expectedCapability) throw invalidHostResponse()
+    return parseAgentModelCapability(row, expectedCapability)
+  }))
+  if (new Set(capabilities.map((entry) => `${entry.adapterId}:${entry.agentId}`)).size !== capabilities.length ||
+      capabilities.some((entry, index) => index > 0 &&
+        `${capabilities[index - 1]!.adapterId}:${capabilities[index - 1]!.agentId}` >= `${entry.adapterId}:${entry.agentId}`)) {
+    throw invalidHostResponse()
+  }
+  const selection = parseAgentModelSelection(dashboard.selection, expected.selection, capabilities)
+  if (!Array.isArray(dashboard.runs) || dashboard.runs.length > 256 || !Array.isArray(dashboard.handoffs) || dashboard.handoffs.length > 256) {
+    throw invalidHostResponse()
+  }
+  const runs = Object.freeze(dashboard.runs.map(parseAgentModelRun))
+  const handoffs = Object.freeze(dashboard.handoffs.map(parseAgentModelHandoff))
+  if (new Set(runs.map((entry) => entry.record.recordId)).size !== runs.length ||
+      new Set(handoffs.map((entry) => entry.record.recordId)).size !== handoffs.length ||
+      new Set(runs.flatMap((entry) => entry.managed.status === "observed" ? [entry.managed.record.recordId] : [])).size !==
+        runs.filter((entry) => entry.managed.status === "observed").length) throw invalidHostResponse()
+  const providerMetrics = parseAgentModelMetrics(dashboard.providerMetrics)
+  const freshness = parseAgentModelFreshness(dashboard.freshness)
+  const limits = parseAgentModelLimits(dashboard.limits)
+  const categories = [[capabilities, limits.capabilities], [runs, limits.runs], [handoffs, limits.handoffs]] as const
+  if (categories.some(([rows, limit]) => rows.length !== limit.shown)) throw invalidHostResponse()
+  const truncated = categories.some(([, limit]) => limit.omitted > 0) || limits.managedRuns.omitted > 0
+  const selectionCapabilityState = selection.status === "selected" ? selection.capabilityState : selection.status
+  const attentionRequired = truncated || ["stale", "migration-required", "invalid"].includes(selectionCapabilityState)
+  const selectedCapabilities = capabilities.filter((entry) => entry.selected)
+  if (freshness.selectionCapabilityState !== selectionCapabilityState || freshness.truncated !== truncated ||
+      limits.truncated !== truncated || (freshness.state === "attention-required") !== attentionRequired) throw invalidHostResponse()
+  if (selection.status === "selected") {
+    if (selectedCapabilities.length !== 1 || selectedCapabilities[0]?.adapterId !== selection.adapterId ||
+        selectedCapabilities[0]?.agentId !== selection.agentId ||
+        ((selectedCapabilities[0]?.capabilityDigest === selection.capabilityDigest) !== (selection.capabilityState === "current"))) {
+      throw invalidHostResponse()
+    }
+  } else if (selectedCapabilities.length !== 0) throw invalidHostResponse()
+  const runIds = new Set(runs.map((entry) => entry.record.recordId))
+  if (limits.runs.omitted === 0 && handoffs.some((entry) => !runIds.has(entry.fromRun.recordId))) throw invalidHostResponse()
+  const observedAt = requireTimestamp(dashboard, "observedAt")
+  if (Date.parse(freshness.oldestCapabilityObservedAt) > Date.parse(freshness.newestCapabilityObservedAt) ||
+      Date.parse(freshness.newestCapabilityObservedAt) > Date.parse(observedAt)) throw invalidHostResponse()
+  const limitations = parseChangeImpactLimitations(dashboard.limitations)
+  const content = Object.freeze({
+    schemaVersion: 1 as const,
+    kind: "agent-model-dashboard" as const,
+    product,
+    capabilities,
+    selection,
+    runs,
+    handoffs,
+    providerMetrics,
+    freshness,
+    limits,
+    observedAt,
+    sourceBoundary: "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata" as const,
+    limitations,
+    authorityBoundary: "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects" as const,
   })
   const snapshotDigest = requireDigest(dashboard, "snapshotDigest")
   if (snapshotDigest !== canonicalDigest(content)) throw invalidHostResponse()
@@ -2242,7 +2458,284 @@ function ensureUniqueChangeImpactRows(
       !unique(governance.risks.map((entry) => entry.record.recordId))) throw invalidHostResponse()
 }
 
-function canonicalDigest(value: unknown): string {
+function parseAgentModelReference(value: unknown, recordType: AgentModelRecordReference["recordType"]): AgentModelRecordReference {
+  const record = requireRecord(value)
+  requireExactKeys(record, ["recordType", "recordId", "revision", "digest"])
+  if (requireString(record, "recordType") !== recordType) throw invalidHostResponse()
+  return Object.freeze({
+    recordType,
+    recordId: normalizeUuidValue(record.recordId, `Agent/Model ${recordType} ID`),
+    revision: validateProductRevision(requireSafeInteger(record, "revision")),
+    digest: requireDigest(record, "digest"),
+  })
+}
+
+function parseAgentModelCapability(
+  row: JsonRecord,
+  expected: AgentReadinessSnapshot,
+): AgentModelDashboard["capabilities"][number] {
+  requireExactKeys(row, [
+    "adapterId", "adapterVersion", "agentId", "agentLabel", "runtimeVersion", "capabilityDigest", "detected",
+    "executionInterface", "interfaceMaturity", "support", "modelCount", "limitations", "observedAt", "selected",
+  ])
+  const runtimeVersion = row.runtimeVersion === null ? null : requirePortableText(row, "runtimeVersion", 1)
+  const executionInterface = requireEnum(row, "executionInterface", [
+    "cli-jsonl", "cli-stream-json", "stdio-rpc", "managed-in-process", "unavailable",
+  ] as const)
+  const interfaceMaturity = requireEnum(row, "interfaceMaturity", ["stable", "beta", "experimental", "unknown"] as const)
+  const support = requireRecord(row.support)
+  requireExactKeys(support, ["resume", "cancel", "checkpoints", "modelDiscovery", "toolSelection"])
+  const parsedSupport = Object.freeze({
+    resume: requireBoolean(support, "resume"),
+    cancel: requireBoolean(support, "cancel"),
+    checkpoints: requireBoolean(support, "checkpoints"),
+    modelDiscovery: requireBoolean(support, "modelDiscovery"),
+    toolSelection: requireBoolean(support, "toolSelection"),
+  })
+  const limitationRecord = requireRecord(row.limitations)
+  requireExactKeys(limitationRecord, ["values", "shown", "total", "omitted"])
+  if (!Array.isArray(limitationRecord.values) || limitationRecord.values.length > 64) throw invalidHostResponse()
+  const limitationValues = Object.freeze(limitationRecord.values.map((entry) => portableText(entry, 1, 20_000)))
+  const limitationShown = nonNegativeInteger(limitationRecord, "shown", 64)
+  const limitationTotal = nonNegativeInteger(limitationRecord, "total", 512)
+  const limitationOmitted = nonNegativeInteger(limitationRecord, "omitted", 512)
+  if (limitationShown !== limitationValues.length || limitationShown + limitationOmitted !== limitationTotal) throw invalidHostResponse()
+  const parsed = Object.freeze({
+    adapterId: requirePortableText(row, "adapterId", 1),
+    adapterVersion: requirePortableText(row, "adapterVersion", 1),
+    agentId: requirePortableText(row, "agentId", 1),
+    agentLabel: requirePortableText(row, "agentLabel", 1),
+    runtimeVersion,
+    capabilityDigest: requireDigest(row, "capabilityDigest"),
+    detected: requireBoolean(row, "detected"),
+    executionInterface,
+    interfaceMaturity,
+    support: parsedSupport,
+    modelCount: nonNegativeInteger(row, "modelCount", 512),
+    limitations: Object.freeze({ values: limitationValues, shown: limitationShown, total: limitationTotal, omitted: limitationOmitted }),
+    observedAt: requireTimestamp(row, "observedAt"),
+    selected: requireBoolean(row, "selected"),
+  })
+  if (parsed.adapterId !== expected.adapterId || parsed.adapterVersion !== expected.adapterVersion ||
+      parsed.agentId !== expected.agentId || parsed.agentLabel !== expected.agentLabel ||
+      parsed.runtimeVersion !== (expected.runtimeVersion ?? null) || parsed.capabilityDigest !== expected.capabilityDigest ||
+      parsed.detected !== expected.detected || parsed.executionInterface !== expected.executionInterface ||
+      parsed.interfaceMaturity !== expected.interfaceMaturity || parsed.modelCount !== expected.models.length ||
+      parsed.limitations.total !== expected.limitations.length || parsed.observedAt !== expected.observedAt ||
+      JSON.stringify(parsed.limitations.values) !== JSON.stringify(expected.limitations.slice(0, 64)) ||
+      parsedSupport.resume !== expected.supportsResume || parsedSupport.cancel !== expected.supportsCancel ||
+      parsedSupport.checkpoints !== expected.supportsCheckpoints || parsedSupport.modelDiscovery !== expected.supportsModelDiscovery ||
+      parsedSupport.toolSelection !== expected.supportsToolSelection) throw invalidHostResponse()
+  return parsed
+}
+
+function parseAgentModelSelection(
+  value: unknown,
+  expected: AgentSelectionState,
+  capabilities: AgentModelDashboard["capabilities"],
+): AgentModelDashboard["selection"] {
+  const selection = requireRecord(value)
+  const status = requireString(selection, "status")
+  if (status !== expected.status) throw invalidHostResponse()
+  if (status === "unselected" || status === "invalid") {
+    requireExactKeys(selection, ["status"])
+    return Object.freeze({ status })
+  }
+  if (status !== "selected" && status !== "migration-required") throw invalidHostResponse()
+  requireExactKeys(selection, [
+    "status", "selectionDigest", "adapterId", "agentId", "modelId", "modelTruthClass", "modelAlias", "settings",
+    "selectedAt", "capabilityDigest", "capabilityState",
+  ])
+  if (expected.status !== "selected" && expected.status !== "migration-required") throw invalidHostResponse()
+  const current = expected.status === "selected" ? expected.selection : expected.portableCandidate
+  const parsed = Object.freeze({
+    status,
+    selectionDigest: requireDigest(selection, "selectionDigest"),
+    adapterId: requirePortableText(selection, "adapterId", 1),
+    agentId: requirePortableText(selection, "agentId", 1),
+    modelId: requirePortableText(selection, "modelId", 1),
+    modelTruthClass: requireTruthClass(selection, "modelTruthClass"),
+    modelAlias: selection.modelAlias === null ? null : requireBoolean(selection, "modelAlias"),
+    settings: parsePortableSelectionSettings(selection.settings),
+    selectedAt: requireTimestamp(selection, "selectedAt"),
+    capabilityDigest: requireDigest(selection, "capabilityDigest"),
+    capabilityState: requireEnum(selection, "capabilityState", status === "selected"
+      ? ["current", "stale"] as const
+      : ["migration-required"] as const),
+  })
+  if (parsed.selectionDigest !== canonicalDigest(current) || parsed.adapterId !== current.adapterId ||
+      parsed.agentId !== current.agentId || parsed.modelId !== current.modelId ||
+      parsed.modelTruthClass !== current.modelTruthClass || parsed.modelAlias !== current.modelAlias ||
+      parsed.selectedAt !== current.selectedAt || parsed.capabilityDigest !== current.capabilityDigest) throw invalidHostResponse()
+  if (status === "selected") {
+    const capability = capabilities.find((entry) => entry.adapterId === parsed.adapterId && entry.agentId === parsed.agentId)
+    if (!capability || ((capability.capabilityDigest === parsed.capabilityDigest) !== (parsed.capabilityState === "current"))) {
+      throw invalidHostResponse()
+    }
+  }
+  return parsed
+}
+
+function parseAgentModelRun(value: unknown): AgentModelDashboard["runs"][number] {
+  const row = requireRecord(value)
+  requireExactKeys(row, ["record", "initiativeId", "state", "agent", "startedAt", "endedAt", "managed"])
+  const agent = requireRecord(row.agent)
+  requireExactKeys(agent, ["adapterId", "agentId", "modelId", "selectionDigest"])
+  return Object.freeze({
+    record: parseAgentModelReference(row.record, "run") as AgentModelDashboard["runs"][number]["record"],
+    initiativeId: normalizeUuidValue(row.initiativeId, "Agent/Model Initiative ID"),
+    state: requireEnum(row, "state", ["prepared", "running", "paused", "completed", "failed", "cancelled", "unknown"] as const),
+    agent: Object.freeze({
+      adapterId: requirePortableText(agent, "adapterId", 1),
+      agentId: requirePortableText(agent, "agentId", 1),
+      modelId: requirePortableText(agent, "modelId", 1),
+      selectionDigest: requireDigest(agent, "selectionDigest"),
+    }),
+    startedAt: nullableTimestamp(row.startedAt),
+    endedAt: nullableTimestamp(row.endedAt),
+    managed: parseAgentModelManaged(row.managed),
+  })
+}
+
+function parseAgentModelManaged(value: unknown): AgentModelDashboard["runs"][number]["managed"] {
+  const managed = requireRecord(value)
+  const status = requireString(managed, "status")
+  if (status === "not-observed-in-bounded-window") {
+    requireExactKeys(managed, ["status"])
+    return Object.freeze({ status })
+  }
+  if (status !== "observed") throw invalidHostResponse()
+  requireExactKeys(managed, ["status", "record", "mode", "state", "attemptNumber", "bindingsDigest", "provider", "result"])
+  const provider = requireRecord(managed.provider)
+  requireExactKeys(provider, ["adapterId", "agentId", "modelId", "capabilityDigest"])
+  const result = requireRecord(managed.result)
+  const resultStatus = requireString(result, "status")
+  let parsedResult: Extract<AgentModelDashboard["runs"][number]["managed"], { status: "observed" }>["result"]
+  if (resultStatus === "not-bound") {
+    requireExactKeys(result, ["status"])
+    parsedResult = Object.freeze({ status: "not-bound" })
+  } else {
+    if (resultStatus !== "bound") throw invalidHostResponse()
+    requireExactKeys(result, ["status", "recordId", "digest", "providerDisposition", "outcomeStatus", "evidence"])
+    const evidence = requireRecord(result.evidence)
+    requireExactKeys(evidence, ["recordId", "digest", "eventCount", "eventsDigest", "actualEffectCount", "capturedAt"])
+    parsedResult = Object.freeze({
+      status: "bound",
+      recordId: normalizeUuidValue(result.recordId, "Agent/Model result ID"),
+      digest: requireDigest(result, "digest"),
+      providerDisposition: requireEnum(result, "providerDisposition", [
+        "completed", "failed", "cancelled", "interrupted", "crashed", "protocol-error", "unknown",
+      ] as const),
+      outcomeStatus: requireEnum(result, "outcomeStatus", ["satisfied", "failed", "not-assessed", "indeterminate"] as const),
+      evidence: Object.freeze({
+        recordId: normalizeUuidValue(evidence.recordId, "Agent/Model evidence ID"),
+        digest: requireDigest(evidence, "digest"),
+        eventCount: nonNegativeInteger(evidence, "eventCount", 4_096),
+        eventsDigest: requireDigest(evidence, "eventsDigest"),
+        actualEffectCount: nonNegativeInteger(evidence, "actualEffectCount", 32),
+        capturedAt: requireTimestamp(evidence, "capturedAt"),
+      }),
+    })
+  }
+  return Object.freeze({
+    status: "observed",
+    record: parseAgentModelReference(managed.record, "managed-run") as Extract<AgentModelDashboard["runs"][number]["managed"], { status: "observed" }>["record"],
+    mode: requireEnum(managed, "mode", ["codex-staged", "manual-offline", "claude-context-only"] as const),
+    state: requireEnum(managed, "state", [
+      "prepared", "running", "review-required", "applying", "completed", "failed", "cancelled", "timed-out",
+      "unknown", "conflict", "discarded",
+    ] as const),
+    attemptNumber: positiveInteger(managed, "attemptNumber", 1_000_000),
+    bindingsDigest: requireDigest(managed, "bindingsDigest"),
+    provider: Object.freeze({
+      adapterId: requirePortableText(provider, "adapterId", 1),
+      agentId: requirePortableText(provider, "agentId", 1),
+      modelId: requirePortableText(provider, "modelId", 1),
+      capabilityDigest: requireDigest(provider, "capabilityDigest"),
+    }),
+    result: parsedResult,
+  })
+}
+
+function parseAgentModelHandoff(value: unknown): AgentModelDashboard["handoffs"][number] {
+  const row = requireRecord(value)
+  requireExactKeys(row, ["record", "fromRun", "toSelection", "state", "createdAt", "acknowledgedAt"])
+  const record = parseAgentModelReference(row.record, "handoff") as AgentModelDashboard["handoffs"][number]["record"]
+  if (record.revision !== 1) throw invalidHostResponse()
+  const toSelection = requireRecord(row.toSelection)
+  requireExactKeys(toSelection, ["adapterId", "agentId", "modelId", "selectionDigest"])
+  return Object.freeze({
+    record,
+    fromRun: parseAgentModelReference(row.fromRun, "run") as AgentModelDashboard["handoffs"][number]["fromRun"],
+    toSelection: Object.freeze({
+      adapterId: requirePortableText(toSelection, "adapterId", 1),
+      agentId: requirePortableText(toSelection, "agentId", 1),
+      modelId: requirePortableText(toSelection, "modelId", 1),
+      selectionDigest: requireDigest(toSelection, "selectionDigest"),
+    }),
+    state: requireEnum(row, "state", ["pending-acknowledgement", "acknowledged"] as const),
+    createdAt: requireTimestamp(row, "createdAt"),
+    acknowledgedAt: nullableTimestamp(row.acknowledgedAt),
+  })
+}
+
+function parseAgentModelMetrics(value: unknown): AgentModelDashboard["providerMetrics"] {
+  const metrics = requireRecord(value)
+  requireExactKeys(metrics, ["usage", "cost"])
+  const unavailable = (metricValue: unknown) => {
+    const metric = requireRecord(metricValue)
+    requireExactKeys(metric, ["state", "basis"])
+    if (requireString(metric, "state") !== "unavailable" ||
+        requireString(metric, "basis") !== "current-managed-records-have-no-provider-usage-or-cost-contract") {
+      throw invalidHostResponse()
+    }
+    return Object.freeze({
+      state: "unavailable" as const,
+      basis: "current-managed-records-have-no-provider-usage-or-cost-contract" as const,
+    })
+  }
+  return Object.freeze({ usage: unavailable(metrics.usage), cost: unavailable(metrics.cost) })
+}
+
+function parseAgentModelFreshness(value: unknown): AgentModelDashboard["freshness"] {
+  const freshness = requireRecord(value)
+  requireExactKeys(freshness, [
+    "state", "selectionCapabilityState", "oldestCapabilityObservedAt", "newestCapabilityObservedAt", "truncated", "coverageBoundary",
+  ])
+  if (requireString(freshness, "coverageBoundary") !== "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness") {
+    throw invalidHostResponse()
+  }
+  return Object.freeze({
+    state: requireEnum(freshness, "state", ["current", "attention-required"] as const),
+    selectionCapabilityState: requireEnum(freshness, "selectionCapabilityState", [
+      "current", "unselected", "stale", "migration-required", "invalid",
+    ] as const),
+    oldestCapabilityObservedAt: requireTimestamp(freshness, "oldestCapabilityObservedAt"),
+    newestCapabilityObservedAt: requireTimestamp(freshness, "newestCapabilityObservedAt"),
+    truncated: requireBoolean(freshness, "truncated"),
+    coverageBoundary: "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness" as const,
+  })
+}
+
+function parseAgentModelLimits(value: unknown): AgentModelDashboard["limits"] {
+  const limits = requireRecord(value)
+  requireExactKeys(limits, ["capabilities", "runs", "handoffs", "managedRuns", "truncated"])
+  return Object.freeze({
+    capabilities: parseChangeImpactLimit(limits.capabilities),
+    runs: parseChangeImpactLimit(limits.runs),
+    handoffs: parseChangeImpactLimit(limits.handoffs),
+    managedRuns: parseChangeImpactLimit(limits.managedRuns),
+    truncated: requireBoolean(limits, "truncated"),
+  })
+}
+
+function nullableTimestamp(value: unknown): string | null {
+  if (value === null) return null
+  const record = { value }
+  return requireTimestamp(record, "value")
+}
+
+export function canonicalDigest(value: unknown): string {
   const normalize = (entry: unknown): unknown => {
     if (Array.isArray(entry)) return entry.map(normalize)
     if (entry !== null && typeof entry === "object") {
@@ -2269,6 +2762,12 @@ function normalizeUuidValue(value: unknown, label: string): string {
 function nonNegativeInteger(record: JsonRecord, name: string, maximum: number): number {
   const value = requireSafeInteger(record, name)
   if (value < 0 || value > maximum) throw invalidHostResponse()
+  return value
+}
+
+function positiveInteger(record: JsonRecord, name: string, maximum: number): number {
+  const value = nonNegativeInteger(record, name, maximum)
+  if (value < 1) throw invalidHostResponse()
   return value
 }
 
@@ -2438,6 +2937,7 @@ function parseAgentReadinessSnapshot(snapshot: JsonRecord): AgentReadinessSnapsh
     models,
     limitations,
     observedAt: requireTimestamp(snapshot, "observedAt"),
+    capabilityDigest: canonicalDigest(snapshot),
   })
 }
 

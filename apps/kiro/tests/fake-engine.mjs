@@ -52,6 +52,8 @@ input.on("line", (line) => {
       return readChangeCatalog(id, request.params)
     case "dashboard.changeImpact":
       return readChangeImpact(id, request.params)
+    case "dashboard.agentModel":
+      return readAgentModel(id, request.params)
     case "probeAgents":
       if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
       return writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
@@ -285,6 +287,109 @@ function readChangeImpact(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-change-impact-digest")) value.change.state = "blocked"
   if (workspacePath.endsWith("bad-change-impact-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readAgentModel(id, params) {
+  const productDigest = canonicalDigest(productRecord())
+  const readiness = readinessSnapshots(false)
+  const expectedCapabilities = readiness.map((entry) => ({
+    adapterId: entry.adapterId,
+    agentId: entry.agentId,
+    capabilityDigest: canonicalDigest(entry),
+  })).sort((left, right) => `${left.adapterId}:${left.agentId}`.localeCompare(`${right.adapterId}:${right.agentId}`))
+  const expectedSelection = selectedAgent
+    ? { status: "selected", selectionDigest: canonicalDigest(selectedAgent) }
+    : { status: "unselected" }
+  if (!exactKeys(params, [
+    "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedSelection", "expectedCapabilities",
+  ]) || params.expectedProductId !== productId || params.expectedProductRevision !== 7 ||
+      params.expectedProductDigest !== productDigest || canonicalDigest(params.expectedSelection) !== canonicalDigest(expectedSelection) ||
+      canonicalDigest(params.expectedCapabilities) !== canonicalDigest(expectedCapabilities)) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE AGENT MODEL PARAMS")
+  }
+  const capabilities = readiness.map((entry) => ({
+    adapterId: entry.adapterId,
+    adapterVersion: entry.adapterVersion,
+    agentId: entry.agentId,
+    agentLabel: entry.agentLabel,
+    runtimeVersion: entry.runtimeVersion ?? null,
+    capabilityDigest: canonicalDigest(entry),
+    detected: entry.detected,
+    executionInterface: entry.executionInterface,
+    interfaceMaturity: entry.interfaceMaturity,
+    support: {
+      resume: entry.supportsResume,
+      cancel: entry.supportsCancel,
+      checkpoints: entry.supportsCheckpoints,
+      modelDiscovery: entry.supportsModelDiscovery,
+      toolSelection: entry.supportsToolSelection,
+    },
+    modelCount: entry.models.length,
+    limitations: { values: entry.limitations, shown: entry.limitations.length, total: entry.limitations.length, omitted: 0 },
+    observedAt: entry.observedAt,
+    selected: selectedAgent?.adapterId === entry.adapterId && selectedAgent?.agentId === entry.agentId,
+  })).sort((left, right) => `${left.adapterId}:${left.agentId}`.localeCompare(`${right.adapterId}:${right.agentId}`))
+  const selectedCapability = selectedAgent
+    ? capabilities.find((entry) => entry.adapterId === selectedAgent.adapterId && entry.agentId === selectedAgent.agentId)
+    : undefined
+  const selection = selectedAgent ? {
+    status: "selected",
+    selectionDigest: canonicalDigest(selectedAgent),
+    adapterId: selectedAgent.adapterId,
+    agentId: selectedAgent.agentId,
+    modelId: selectedAgent.modelId,
+    modelTruthClass: selectedAgent.modelTruthClass,
+    modelAlias: selectedAgent.modelAlias,
+    settings: selectedAgent.settings,
+    selectedAt: selectedAgent.selectedAt,
+    capabilityDigest: selectedAgent.capabilityDigest,
+    capabilityState: selectedCapability?.capabilityDigest === selectedAgent.capabilityDigest ? "current" : "stale",
+  } : { status: "unselected" }
+  const selectionCapabilityState = selection.status === "selected" ? selection.capabilityState : selection.status
+  const freshnessState = selectionCapabilityState === "stale" ? "attention-required" : "current"
+  const content = {
+    schemaVersion: 1,
+    kind: "agent-model-dashboard",
+    product: { recordType: "product", recordId: productId, revision: 7, digest: productDigest },
+    capabilities,
+    selection,
+    runs: [],
+    handoffs: [],
+    providerMetrics: {
+      usage: { state: "unavailable", basis: "current-managed-records-have-no-provider-usage-or-cost-contract" },
+      cost: { state: "unavailable", basis: "current-managed-records-have-no-provider-usage-or-cost-contract" },
+    },
+    freshness: {
+      state: freshnessState,
+      selectionCapabilityState,
+      oldestCapabilityObservedAt: "2026-07-24T08:00:00.000Z",
+      newestCapabilityObservedAt: "2026-07-24T08:00:00.000Z",
+      truncated: false,
+      coverageBoundary: "bounded-current-records-do-not-prove-provider-account-or-native-host-readiness",
+    },
+    limits: {
+      capabilities: { shown: 2, total: 2, omitted: 0 },
+      runs: { shown: 0, total: 0, omitted: 0 },
+      handoffs: { shown: 0, total: 0, omitted: 0 },
+      managedRuns: { shown: 0, total: 0, omitted: 0 },
+      truncated: false,
+    },
+    observedAt: "2026-07-24T12:06:00.000Z",
+    sourceBoundary: "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata",
+    limitations: [
+      "Capability truth is bounded to current portable observations and does not prove provider-account readiness.",
+      "Current managed records have no provider usage or cost contract, so both metrics remain unavailable.",
+    ],
+    authorityBoundary: "agent-model-dashboard-does-not-select-switch-handoff-launch-or-authorize-effects",
+  }
+  if (workspacePath.endsWith("bad-agent-model-binding")) content.product.digest = `sha256:${"0".repeat(64)}`
+  if (workspacePath.endsWith("bad-agent-model-count")) content.limits.capabilities.total = 3
+  if (workspacePath.endsWith("bad-agent-model-freshness")) content.freshness.state = "attention-required"
+  if (workspacePath.endsWith("bad-agent-model-metrics")) content.providerMetrics.cost = { state: "available", amount: 0 }
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-agent-model-digest")) value.capabilities[0].agentLabel = "Forged label"
+  if (workspacePath.endsWith("bad-agent-model-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

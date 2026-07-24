@@ -41,6 +41,7 @@
     "onCommand:gaepKiro.runs.stagedReview",
     "onCommand:gaepKiro.dashboard.phase",
     "onCommand:gaepKiro.dashboard.changeImpact",
+    "onCommand:gaepKiro.dashboard.agentModel",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -94,6 +95,10 @@
       {
         "command": "gaepKiro.dashboard.changeImpact",
         "title": "GAEP for Kiro: Show Change and Impact Dashboard"
+      },
+      {
+        "command": "gaepKiro.dashboard.agentModel",
+        "title": "GAEP for Kiro: Show Agent and Model Dashboard"
       },
       {
         "command": "gaepKiro.portableDesign.import",
