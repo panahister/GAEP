@@ -1,0 +1,95 @@
+name: Visual Studio Windows package
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/visual-studio-windows.yml"
+      - "apps/engine-host/**"
+      - "apps/visual-studio/**"
+      - "packages/**"
+      - "scripts/build_engine_bundle.mjs"
+      - "scripts/test_visual_studio_windows_package.ps1"
+      - "scripts/verify_visual_studio_windows_receipt.mjs"
+      - "scripts/visual_studio_windows_ci.test.mjs"
+      - "scripts/visual_studio_windows_receipt.test.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/visual-studio-windows.yml"
+      - "apps/engine-host/**"
+      - "apps/visual-studio/**"
+      - "packages/**"
+      - "scripts/build_engine_bundle.mjs"
+      - "scripts/test_visual_studio_windows_package.ps1"
+      - "scripts/verify_visual_studio_windows_receipt.mjs"
+      - "scripts/visual_studio_windows_ci.test.mjs"
+      - "scripts/visual_studio_windows_receipt.test.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-studio-windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  visual-studio-package:
+    name: VS 2022 package and install lifecycle
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Set up .NET 9
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore locked JavaScript dependencies
+        run: npm ci
+
+      - name: Build and verify the native VSIX and packaged engine client
+        run: npm run test:visual-studio:host
+
+      - name: Verify install, uninstall, reinstall, and cleanup
+        shell: pwsh
+        run: >-
+          ./scripts/test_visual_studio_windows_package.ps1
+          -VsixPath ./apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix
+          -EvidencePath "${{ runner.temp }}/gaep-evidence/visual-studio-windows.json"
+
+      - name: Verify the private-safe lifecycle receipt
+        run: >-
+          node ./scripts/verify_visual_studio_windows_receipt.mjs
+          --receipt "${{ runner.temp }}/gaep-evidence/visual-studio-windows.json"
+          --vsix ./apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix
+
+      - name: Upload bounded VSIX and lifecycle evidence
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: gaep-visual-studio-windows-${{ github.sha }}
+          path: |
+            apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix
+            ${{ runner.temp }}/gaep-evidence/visual-studio-windows.json
+          if-no-files-found: error
+          retention-days: 14
