@@ -34,10 +34,82 @@ public sealed class EngineClient : IAsyncDisposable
             expectedEngineSha256 ?? Environment.GetEnvironmentVariable("GAEP_ENGINE_SHA256"));
     }
 
-    public async Task<JsonDocument> RequestAsync(
+    public async Task<PortableDesignSnapshotSummary> ImportPortableDesignSnapshotAsync(
+        string bundleRoot,
+        Guid expectedProductId,
+        long expectedProductRevision,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        if (expectedProductId == Guid.Empty)
+        {
+            throw new ArgumentException("Expected Product ID must be a non-empty UUID.", nameof(expectedProductId));
+        }
+        var normalizedBundleRoot = PortableDesignProtocol.NormalizeBundleRoot(bundleRoot);
+        PortableDesignProtocol.ValidateProductRevision(expectedProductRevision);
+        var normalizedActorId = PortableDesignProtocol.ValidateActorId(actorId);
+        using var response = await RequestPortableDesignAsync(
+            "productStudio.portableDesign.import",
+            new Dictionary<string, object?>
+            {
+                ["bundleRoot"] = normalizedBundleRoot,
+                ["expectedProductId"] = expectedProductId,
+                ["expectedProductRevision"] = expectedProductRevision,
+                ["actorId"] = normalizedActorId,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            element => PortableDesignProtocol.ParseSnapshotResponse(element, expectedProductId: expectedProductId));
+    }
+
+    public async Task<PortableDesignSnapshotPage> ListPortableDesignSnapshotsAsync(
+        int offset = 0,
+        int limit = PortableDesignProtocol.DefaultPageSize,
+        CancellationToken cancellationToken = default)
+    {
+        PortableDesignProtocol.ValidatePage(offset, limit);
+        using var response = await RequestPortableDesignAsync(
+            "productStudio.portableDesign.list",
+            new Dictionary<string, object?>
+            {
+                ["offset"] = offset,
+                ["limit"] = limit,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            element => PortableDesignProtocol.ParsePageResponse(element, offset, limit));
+    }
+
+    public async Task<PortableDesignSnapshotSummary> ReadPortableDesignSnapshotAsync(
+        Guid bundleId,
+        CancellationToken cancellationToken = default)
+    {
+        if (bundleId == Guid.Empty)
+        {
+            throw new ArgumentException("Bundle ID must be a non-empty UUID.", nameof(bundleId));
+        }
+        using var response = await RequestPortableDesignAsync(
+            "productStudio.portableDesign.read",
+            new Dictionary<string, object?> { ["bundleId"] = bundleId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            element => PortableDesignProtocol.ParseSnapshotResponse(element, expectedBundleId: bundleId));
+    }
+
+    public Task<JsonDocument> RequestAsync(
         string method,
         IReadOnlyDictionary<string, object?>? parameters = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        RequestAsync(method, parameters, protocolVersion: null, cancellationToken);
+
+    private async Task<JsonDocument> RequestAsync(
+        string method,
+        IReadOnlyDictionary<string, object?>? parameters,
+        int? protocolVersion,
+        CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         await requestGate.WaitAsync(cancellationToken);
@@ -46,21 +118,39 @@ public sealed class EngineClient : IAsyncDisposable
             ObjectDisposedException.ThrowIf(disposed, this);
             StartIfNeeded();
             var id = Interlocked.Increment(ref nextId);
-            var request = JsonSerializer.Serialize(new
+            var envelope = new Dictionary<string, object?>
             {
-                jsonrpc = "2.0",
-                id,
-                method,
-                @params = parameters ?? new Dictionary<string, object?>(),
-            });
+                ["jsonrpc"] = "2.0",
+                ["id"] = id,
+                ["method"] = method,
+                ["params"] = parameters ?? new Dictionary<string, object?>(),
+            };
+            if (protocolVersion.HasValue) envelope["protocolVersion"] = protocolVersion.Value;
+            var request = JsonSerializer.Serialize(envelope);
+            if (StrictUtf8.GetByteCount(request) > MaxResponseFrameBytes)
+            {
+                throw new EngineHostException(
+                    -32_001,
+                    "FRAME_TOO_LARGE",
+                    "The GAEP engine request exceeded the configured frame boundary.");
+            }
             await process!.StandardInput.WriteLineAsync(request.AsMemory(), cancellationToken);
             await process.StandardInput.FlushAsync(cancellationToken);
             var response = await ReadBoundedResponseAsync(cancellationToken);
-            var document = JsonDocument.Parse(response);
-            if (!document.RootElement.TryGetProperty("id", out var responseId) || responseId.GetInt64() != id)
+            JsonDocument document;
+            try
+            {
+                document = JsonDocument.Parse(response);
+            }
+            catch (JsonException)
+            {
+                throw InvalidHostResponse();
+            }
+            if (!document.RootElement.TryGetProperty("id", out var responseId) ||
+                !responseId.TryGetInt64(out var returnedId) || returnedId != id)
             {
                 document.Dispose();
-                throw new InvalidOperationException("GAEP engine returned an unexpected response identity.");
+                throw InvalidHostResponse();
             }
             return document;
         }
@@ -72,6 +162,55 @@ public sealed class EngineClient : IAsyncDisposable
         finally
         {
             requestGate.Release();
+        }
+    }
+
+    private async Task<JsonDocument> RequestPortableDesignAsync(
+        string method,
+        IReadOnlyDictionary<string, object?> parameters,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await RequestAsync(method, parameters, PortableDesignProtocol.ProtocolVersion, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (EngineHostException)
+        {
+            throw;
+        }
+        catch
+        {
+            throw PortableDesignProtocol.HostUnavailable();
+        }
+    }
+
+    private static EngineHostException InvalidHostResponse() => new(
+        -32_603,
+        "HOST_RESPONSE_INVALID",
+        "The GAEP engine returned a response that could not be verified.");
+
+    private static EngineHostException HostUnavailable() => new(
+        -32_603,
+        "HOST_UNAVAILABLE",
+        "The GAEP engine host could not complete the request.");
+
+    private static T ParsePortableDesignResponse<T>(JsonDocument response, Func<JsonElement, T> parse)
+    {
+        try
+        {
+            return parse(response.RootElement);
+        }
+        catch (EngineHostException)
+        {
+            throw;
+        }
+        catch
+        {
+            throw PortableDesignProtocol.InvalidResponse();
         }
     }
 
@@ -206,19 +345,35 @@ public sealed class EngineClient : IAsyncDisposable
             {
                 if (newline > MaxResponseFrameBytes)
                 {
-                    throw new InvalidOperationException("GAEP engine response exceeds the configured byte limit.");
+                    throw new EngineHostException(
+                        -32_002,
+                        "RESPONSE_TOO_LARGE",
+                        "The GAEP engine response exceeded the configured frame boundary.");
                 }
                 var length = newline > 0 && pendingResponseBytes[newline - 1] == (byte)'\r' ? newline - 1 : newline;
                 var frame = pendingResponseBytes.GetRange(0, length).ToArray();
                 pendingResponseBytes.RemoveRange(0, newline + 1);
-                return StrictUtf8.GetString(frame);
+                try
+                {
+                    return StrictUtf8.GetString(frame);
+                }
+                catch (DecoderFallbackException)
+                {
+                    throw new EngineHostException(
+                        -32_700,
+                        "INVALID_UTF8",
+                        "The GAEP engine response was not valid UTF-8.");
+                }
             }
             if (pendingResponseBytes.Count > MaxResponseFrameBytes)
             {
-                throw new InvalidOperationException("GAEP engine response exceeds the configured byte limit.");
+                throw new EngineHostException(
+                    -32_002,
+                    "RESPONSE_TOO_LARGE",
+                    "The GAEP engine response exceeded the configured frame boundary.");
             }
             var read = await process!.StandardOutput.BaseStream.ReadAsync(responseReadBuffer, cancellationToken);
-            if (read == 0) throw new InvalidOperationException("GAEP engine closed before responding.");
+            if (read == 0) throw HostUnavailable();
             pendingResponseBytes.AddRange(responseReadBuffer.AsSpan(0, read).ToArray());
         }
     }
