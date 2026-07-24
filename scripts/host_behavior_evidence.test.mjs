@@ -7,10 +7,13 @@ import test from "node:test"
 import {
   hostBehaviorDefinitionDigest,
   hostBehaviorSourceSnapshot,
+  verifyHostBehaviorEvidence,
 } from "./lib/host_behavior_evidence.mjs"
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const contractPath = resolve(repositoryRoot, "conformance/phase-0-ide-contract.json")
+const receiptPath = resolve(repositoryRoot, "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json")
+const packageReportPath = resolve(repositoryRoot, "evidence/local-packages/2026-07-24T232408Z-phase-0-local-host-behavior-final.json")
 const digestPattern = /^sha256:[0-9a-f]{64}$/u
 
 async function contract() {
@@ -43,5 +46,39 @@ test("rejects source inventory paths that escape the repository", async () => {
   await assert.rejects(
     hostBehaviorSourceSnapshot({ repositoryRoot, contract: hostile, hostId: "vscode" }),
     /escaped the repository/u,
+  )
+})
+
+test("accepts the sealed receipt and rejects a forged passing check", async () => {
+  const current = await contract()
+  const receipt = JSON.parse(await readFile(receiptPath, "utf8"))
+  const packageReport = JSON.parse(await readFile(packageReportPath, "utf8"))
+  const artifact = packageReport.artifacts.find((entry) => entry.host === "vscode")
+  const packageState = {
+    status: artifact.status,
+    artifactPath: artifact.artifactPath,
+    bytes: artifact.bytes,
+    digest: artifact.digest,
+  }
+  const verified = await verifyHostBehaviorEvidence({
+    repositoryRoot,
+    contract: current,
+    receipt,
+    hostId: "vscode",
+    packageState,
+  })
+  assert.equal(verified.checksPassed, 1)
+
+  const forged = structuredClone(receipt)
+  forged.hosts.find((host) => host.id === "vscode").checks[0].requiredMarkersVerified = 0
+  await assert.rejects(
+    verifyHostBehaviorEvidence({
+      repositoryRoot,
+      contract: current,
+      receipt: forged,
+      hostId: "vscode",
+      packageState,
+    }),
+    /behavior check differs/u,
   )
 })

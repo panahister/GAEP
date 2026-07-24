@@ -31,9 +31,11 @@
       "packageId": "gaep.gaep-vscode@0.1.0",
       "packagePlatforms": ["darwin", "linux", "win32"],
       "runtimeEvidence": {
-        "source": "package-report",
+        "source": "json-evidence",
+        "format": "gaep-host-behavior-v1",
+        "reportPath": "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json",
+        "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
-        "requiredVerificationFragments": ["exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-bundled-engine-empty-recovery-evidence-workflow"],
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
@@ -83,9 +85,11 @@
       "packageId": "gaep.gaep-kiro@0.1.0",
       "packagePlatforms": ["darwin", "linux", "win32"],
       "runtimeEvidence": {
-        "source": "package-report",
+        "source": "json-evidence",
+        "format": "gaep-host-behavior-v1",
+        "reportPath": "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json",
+        "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
-        "requiredVerificationFragments": ["exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-digest-bound-package-local-empty-evidence-workflow"],
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
@@ -150,9 +154,11 @@
       "packageId": "dev.gaep.productstudio@0.1.0",
       "packagePlatforms": ["darwin", "linux", "win32"],
       "runtimeEvidence": {
-        "source": "package-report",
+        "source": "json-evidence",
+        "format": "gaep-host-behavior-v1",
+        "reportPath": "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json",
+        "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-startup-and-packaged-engine-client-workflow-local",
-        "requiredVerificationFragments": ["clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-native-startup-and-client-packaged-engine-empty-evidence-workflow"],
         "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
@@ -222,9 +228,11 @@
       "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
       "packagePlatforms": ["win32"],
       "runtimeEvidence": {
-        "source": "package-report",
+        "source": "json-evidence",
+        "format": "gaep-host-behavior-v1",
+        "reportPath": "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json",
+        "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-229-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending"],
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [

@@ -10,7 +10,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const contractPath = join(repositoryRoot, "conformance/phase-0-ide-contract.json")
 const packageReportPath = join(
   repositoryRoot,
-  "evidence/local-packages/2026-07-24T231618Z-phase-0-local-freshness-evidence-cues-final.json",
+  "evidence/local-packages/2026-07-24T232408Z-phase-0-local-host-behavior-final.json",
 )
 let temporaryRoot
 
@@ -61,7 +61,7 @@ describe("Phase 0 IDE conformance matrix", () => {
     await writeFile(hostileContract, JSON.stringify(contract))
     await assert.rejects(
       buildIdeConformanceReport({ repositoryRoot, contractPath: hostileContract, packageReportPath }),
-      /source marker is missing/u,
+      /behavior source snapshot is stale|source marker is missing/u,
     )
   })
 

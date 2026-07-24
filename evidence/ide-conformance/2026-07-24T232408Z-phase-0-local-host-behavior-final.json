@@ -1,0 +1,569 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-0-ide-conformance-report-v1",
+  "phase": "phase-0-local",
+  "recordedAt": "2026-07-24T23:24:08Z",
+  "contractPath": "conformance/phase-0-ide-contract.json",
+  "packageReportPath": "evidence/local-packages/2026-07-24T232408Z-phase-0-local-host-behavior-final.json",
+  "verificationResult": "pass",
+  "phaseGate": "incomplete",
+  "summary": {
+    "hosts": 4,
+    "capabilities": 20,
+    "assessments": 80,
+    "implemented": 73,
+    "partial": 7,
+    "not-implemented": 0,
+    "producedPackages": 3,
+    "acceptedHosts": 0
+  },
+  "hosts": [
+    {
+      "id": "vscode",
+      "displayName": "VS Code",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "package": {
+        "status": "produced",
+        "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
+        "bytes": 387231,
+        "digest": "sha256:b8f688cb9e268e369d027946b1ad8665d0c811c044cc96f3a1df195cdb205962",
+        "verification": "exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-bundled-engine-empty-recovery-evidence-workflow"
+      },
+      "runtimeEvidence": {
+        "source": "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json",
+        "level": "installed-package-bundled-engine-workflow-local",
+        "recordedAt": "2026-07-24T23:24:08Z",
+        "sourceSnapshotDigest": "sha256:3d655a64035cc5e5281c015bec369dbbaf532c2dc0de2f53bc30610954b7432b",
+        "checksPassed": 1
+      },
+      "capabilityCounts": {
+        "implemented": 13,
+        "partial": 7,
+        "not-implemented": 0
+      },
+      "capabilities": [
+        {
+          "capabilityId": "shared-engine-boundary",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "product-binding-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-list",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-local-import",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "exact-product-revision-recheck",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "pending-review-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "metadata-only-privacy",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "codex-readiness",
+          "state": "partial",
+          "sourceProbesVerified": 0,
+          "limitation": "Shared adapter readiness exists, but four-host supported-version acceptance is incomplete."
+        },
+        {
+          "capabilityId": "claude-readiness",
+          "state": "partial",
+          "sourceProbesVerified": 0,
+          "limitation": "Capability-truth probing exists, but live Claude invocation and four-host acceptance are incomplete."
+        },
+        {
+          "capabilityId": "provider-model-selection",
+          "state": "partial",
+          "sourceProbesVerified": 0,
+          "limitation": "Selection surfaces exist, but complete live discovery and provenance acceptance are incomplete."
+        },
+        {
+          "capabilityId": "versioned-handoff",
+          "state": "partial",
+          "sourceProbesVerified": 0,
+          "limitation": "Portable handoff observation exists, but complete bidirectional provider/model acceptance is incomplete."
+        },
+        {
+          "capabilityId": "managed-readonly-execution",
+          "state": "partial",
+          "sourceProbesVerified": 0,
+          "limitation": "Managed observation-only execution is implemented for declared slices; full provider and native-host parity is incomplete."
+        },
+        {
+          "capabilityId": "staged-effectful-review",
+          "state": "partial",
+          "sourceProbesVerified": 0,
+          "limitation": "Single-step Codex staged review is durable; effectful multi-step and four-host parity remain fail-closed."
+        },
+        {
+          "capabilityId": "evidence-dashboard",
+          "state": "partial",
+          "sourceProbesVerified": 0,
+          "limitation": "Bounded evidence and recovery views exist; native assistive-technology and supported-host acceptance remain incomplete."
+        },
+        {
+          "capabilityId": "phase-dashboard-framework",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "accessible-dashboard-tables",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "freshness-evidence-cues",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        }
+      ],
+      "remainingRequirements": [
+        "native assistive-technology acceptance",
+        "real-provider managed read-only and staged-review package workflow acceptance",
+        "supported-OS installation matrix",
+        "Product Owner acceptance"
+      ],
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "kiro",
+      "displayName": "Kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "package": {
+        "status": "produced",
+        "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
+        "bytes": 344830,
+        "digest": "sha256:63b11eddbe157121cfa035978c616c99929e77b9ace8dd9de0ce12a1089844e4",
+        "verification": "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-digest-bound-package-local-empty-evidence-workflow"
+      },
+      "runtimeEvidence": {
+        "source": "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json",
+        "level": "compatible-host-packaged-engine-workflow-local",
+        "recordedAt": "2026-07-24T23:24:08Z",
+        "sourceSnapshotDigest": "sha256:ec4172b34670840b9a7cb0bbd963b5436b8ed42ec54db5f9578bfb43c54eaafe",
+        "checksPassed": 1
+      },
+      "capabilityCounts": {
+        "implemented": 20,
+        "partial": 0,
+        "not-implemented": 0
+      },
+      "capabilities": [
+        {
+          "capabilityId": "shared-engine-boundary",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "product-binding-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-list",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-local-import",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "exact-product-revision-recheck",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "pending-review-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "metadata-only-privacy",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "codex-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "claude-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "provider-model-selection",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "versioned-handoff",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "managed-readonly-execution",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "staged-effectful-review",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "evidence-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "phase-dashboard-framework",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "accessible-dashboard-tables",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "freshness-evidence-cues",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        }
+      ],
+      "remainingRequirements": [
+        "native Kiro installation and activation",
+        "native assistive-technology acceptance",
+        "real-provider managed read-only and staged-review package workflow acceptance",
+        "interactive cancellation and resume",
+        "supported-OS matrix",
+        "Product Owner acceptance"
+      ],
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "rider",
+      "displayName": "Rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "package": {
+        "status": "produced",
+        "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+        "bytes": 685404,
+        "digest": "sha256:287cfa4dd493362cf6a2e55dea9cc0fbb84c2e82f30943452f11a2ef3dd814b4",
+        "verification": "clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-native-startup-and-client-packaged-engine-empty-evidence-workflow"
+      },
+      "runtimeEvidence": {
+        "source": "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json",
+        "level": "native-startup-and-packaged-engine-client-workflow-local",
+        "recordedAt": "2026-07-24T23:24:08Z",
+        "sourceSnapshotDigest": "sha256:9e04b56286ad013ef37d4a8badae68bad1f9a65a5952e86421f0052f4e36a6ad",
+        "checksPassed": 2
+      },
+      "capabilityCounts": {
+        "implemented": 20,
+        "partial": 0,
+        "not-implemented": 0
+      },
+      "capabilities": [
+        {
+          "capabilityId": "shared-engine-boundary",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "product-binding-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-list",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-local-import",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "exact-product-revision-recheck",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "pending-review-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "metadata-only-privacy",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "codex-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "claude-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "provider-model-selection",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "versioned-handoff",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "managed-readonly-execution",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "staged-effectful-review",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "evidence-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "phase-dashboard-framework",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "accessible-dashboard-tables",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "freshness-evidence-cues",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        }
+      ],
+      "remainingRequirements": [
+        "plugin-manager installation",
+        "interactive Product tool-window packaged-engine and assistive-technology automation",
+        "real-provider managed read-only and staged-review package workflow acceptance",
+        "interactive cancellation and resume",
+        "supported-OS matrix",
+        "Product Owner acceptance"
+      ],
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "visual-studio",
+      "displayName": "Visual Studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "package": {
+        "status": "not-produced-on-this-platform",
+        "artifactPath": "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
+        "verification": "cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-229-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending",
+        "limitation": "Native Visual Studio VSIX container creation and installation require Windows and VsixUtil.exe."
+      },
+      "runtimeEvidence": {
+        "source": "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json",
+        "level": "cross-platform-packaged-engine-client-workflow-local",
+        "recordedAt": "2026-07-24T23:24:08Z",
+        "sourceSnapshotDigest": "sha256:d14c402fb308933371ebc8e01b9c3f2ff2615be01dcdda233ab73c78dc5f8a49",
+        "checksPassed": 1
+      },
+      "capabilityCounts": {
+        "implemented": 20,
+        "partial": 0,
+        "not-implemented": 0
+      },
+      "capabilities": [
+        {
+          "capabilityId": "shared-engine-boundary",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "product-binding-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-list",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-local-import",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "exact-product-revision-recheck",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "pending-review-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "metadata-only-privacy",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "codex-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "claude-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "provider-model-selection",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "versioned-handoff",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "managed-readonly-execution",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "staged-effectful-review",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "evidence-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 5
+        },
+        {
+          "capabilityId": "phase-dashboard-framework",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 5
+        },
+        {
+          "capabilityId": "agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 5
+        },
+        {
+          "capabilityId": "accessible-dashboard-tables",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "freshness-evidence-cues",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        }
+      ],
+      "remainingRequirements": [
+        "Windows VSIX container",
+        "Windows installation and activation",
+        "rendered Remote UI automation",
+        "installed Windows-package engine workflow",
+        "real-provider managed read-only workflow acceptance",
+        "interactive provider cancellation and resume",
+        "supported-Visual-Studio matrix",
+        "Product Owner acceptance"
+      ],
+      "acceptance": "incomplete"
+    }
+  ],
+  "claimBoundary": "This contract records source-level capability presence, exact local package state and bounded runtime evidence. It is not native-host acceptance, supported-platform certification, Product readiness, release approval or security review."
+}
