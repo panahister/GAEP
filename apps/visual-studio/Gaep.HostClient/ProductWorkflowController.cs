@@ -30,6 +30,16 @@ public sealed class ProductWorkflowController(EngineClient client)
             cancellationToken));
     }
 
+    public async Task<IReadOnlyList<AccessibleMetadataTable>> ReadPhaseDashboardTablesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        return AccessibleDashboardTables.Phase(await client.ReadPhaseDashboardAsync(
+            product,
+            DeliveryPhaseId.Phase0Foundation,
+            cancellationToken));
+    }
+
     public async Task<ChangeImpactContext> ReadChangeImpactContextAsync(
         CancellationToken cancellationToken = default)
     {
@@ -54,10 +64,34 @@ public sealed class ProductWorkflowController(EngineClient client)
             await client.ReadChangeImpactAsync(context.Product, change, cancellationToken));
     }
 
+    public async Task<IReadOnlyList<AccessibleMetadataTable>> ReadChangeImpactTablesAsync(
+        ChangeImpactContext context,
+        ChangeImpactChangeReference change,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(change);
+        if (!context.Catalog.Items.Contains(change))
+        {
+            throw new ArgumentException(
+                "The selected Change is not part of the verified current catalog. Reload and select the Change again.",
+                nameof(change));
+        }
+        return AccessibleDashboardTables.ChangeImpact(
+            await client.ReadChangeImpactAsync(context.Product, change, cancellationToken));
+    }
+
     public async Task<string> ReadAgentModelAsync(CancellationToken cancellationToken = default)
     {
         var product = await client.ReadProductBindingAsync(cancellationToken);
         return RenderAgentModelDashboard(await client.ReadAgentModelAsync(product, cancellationToken));
+    }
+
+    public async Task<IReadOnlyList<AccessibleMetadataTable>> ReadAgentModelTablesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        return AccessibleDashboardTables.AgentModel(await client.ReadAgentModelAsync(product, cancellationToken));
     }
 
     public async Task<string> ReadAgentReadinessAsync(CancellationToken cancellationToken = default)

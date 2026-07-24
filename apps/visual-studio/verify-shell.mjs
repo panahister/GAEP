@@ -60,6 +60,18 @@ for (const binding of [
   "LoadChangeImpactCommand",
   "ShowChangeImpactCommand",
   "ShowAgentModelCommand",
+  "AccessibleDashboardGroups",
+  "SelectedAccessibleDashboardGroup",
+  "LoadAccessibleTablesCommand",
+  "AvailableAccessibleTables",
+  "SelectedAccessibleTable",
+  "AvailableAccessibleSortColumns",
+  "SelectedAccessibleSortColumn",
+  "AccessibleSortDirections",
+  "SelectedAccessibleSortDirection",
+  "AccessibleFilter",
+  "RenderAccessibleTableCommand",
+  "AccessibleCsv",
   "AvailableChangeChoices",
   "SelectedChangeChoice",
   "RefreshAgentReadinessCommand",
@@ -108,6 +120,14 @@ requireText(remoteUi, /Show exact Change and impact/u,
   "Visual Studio Product Studio does not expose exact Change and impact projection")
 requireText(remoteUi, /Show exact Agent and model/u,
   "Visual Studio Product Studio does not expose exact Agent and model projection")
+requireText(remoteUi, /Load exact accessible dashboard tables/u,
+  "Visual Studio Product Studio does not expose exact accessible dashboard tables")
+requireText(remoteUi, /Render accessible table and prepare visible CSV/u,
+  "Visual Studio Product Studio does not expose accessible table filtering and CSV preparation")
+requireText(remoteUi, /Copy visible rows as CSV/u,
+  "Visual Studio Product Studio does not expose native visible-row CSV copy")
+requireText(remoteUi, /ApplicationCommands\.Copy/u,
+  "Visual Studio visible-row CSV copy is not confined to the native Remote UI text control")
 requireText(remoteUi, /cannot select or switch an agent, create a handoff, launch a Run, authorize effects, establish readiness, or invent provider usage or cost/u,
   "Visual Studio Agent and model action does not communicate its no-authority and unavailable-metric boundary")
 requireText(remoteUi, /Selection grants no Change approval, Risk acceptance, mutation, Run, Tool, write, or effect authority/u,

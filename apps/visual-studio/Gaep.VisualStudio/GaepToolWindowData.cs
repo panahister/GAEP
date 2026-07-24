@@ -53,6 +53,24 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private string selectedChangeChoice = string.Empty;
     private ChangeImpactContext? changeImpactContext;
     private string? changeImpactWorkspace;
+    private readonly string[] accessibleDashboardGroups =
+    [
+        "Phase dashboard tables",
+        "Change and impact tables",
+        "Agent and model tables",
+    ];
+    private string selectedAccessibleDashboardGroup = "Phase dashboard tables";
+    private AccessibleMetadataTable[] accessibleTables = [];
+    private string? accessibleTablesWorkspace;
+    private string? loadedAccessibleDashboardGroup;
+    private string[] availableAccessibleTables = [];
+    private string selectedAccessibleTable = string.Empty;
+    private string[] availableAccessibleSortColumns = [];
+    private string selectedAccessibleSortColumn = string.Empty;
+    private readonly string[] accessibleSortDirections = ["Ascending", "Descending"];
+    private string selectedAccessibleSortDirection = "Ascending";
+    private string accessibleFilter = string.Empty;
+    private string accessibleCsv = string.Empty;
     private string[] availableAgentChoices = [];
     private string selectedAgentChoice = string.Empty;
     private string[] availableModelIds = [];
@@ -87,6 +105,8 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadChangeImpactCommand = new AsyncCommand(LoadChangeImpactAsync);
         ShowChangeImpactCommand = new AsyncCommand(ShowChangeImpactAsync);
         ShowAgentModelCommand = new AsyncCommand(ShowAgentModelAsync);
+        LoadAccessibleTablesCommand = new AsyncCommand(LoadAccessibleTablesAsync);
+        RenderAccessibleTableCommand = new AsyncCommand(RenderAccessibleTableAsync);
         RefreshAgentReadinessCommand = new AsyncCommand(RefreshAgentReadinessAsync);
         LoadAgentSelectionCommand = new AsyncCommand(LoadAgentSelectionAsync);
         SelectAgentCommand = new AsyncCommand(SelectAgentAsync);
@@ -115,7 +135,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Change/Impact selection and projection are exact audit-gated metadata views; they cannot approve a Change, accept a Risk, mutate records, or authorize effects. Agent/Model is an exact Product-, capability-, and selection-bound metadata projection; it cannot select, switch, hand off, launch, authorize effects, establish readiness, or invent usage/cost. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Change/Impact selection and projection are exact audit-gated metadata views; they cannot approve a Change, accept a Risk, mutate records, or authorize effects. Agent/Model is an exact Product-, capability-, and selection-bound metadata projection; it cannot select, switch, hand off, launch, authorize effects, establish readiness, or invent usage/cost. Accessible dashboard tables sort and filter only already-verified metadata, expose exact visible/omitted/source totals, and prepare formula-neutralized CSV for native UI copy without file authority. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
@@ -131,6 +151,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ShowAgentModelCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadAccessibleTablesCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand RenderAccessibleTableCommand { get; }
 
     [DataMember]
     public IAsyncCommand RefreshAgentReadinessCommand { get; }
@@ -195,6 +221,71 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     {
         get => selectedChangeChoice;
         set => SetProperty(ref selectedChangeChoice, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string[] AccessibleDashboardGroups => accessibleDashboardGroups;
+
+    [DataMember]
+    public string SelectedAccessibleDashboardGroup
+    {
+        get => selectedAccessibleDashboardGroup;
+        set => SetProperty(ref selectedAccessibleDashboardGroup, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string[] AvailableAccessibleTables
+    {
+        get => availableAccessibleTables;
+        private set => SetProperty(ref availableAccessibleTables, value);
+    }
+
+    [DataMember]
+    public string SelectedAccessibleTable
+    {
+        get => selectedAccessibleTable;
+        set
+        {
+            if (SetProperty(ref selectedAccessibleTable, value ?? string.Empty)) RebuildAccessibleSortColumns();
+        }
+    }
+
+    [DataMember]
+    public string[] AvailableAccessibleSortColumns
+    {
+        get => availableAccessibleSortColumns;
+        private set => SetProperty(ref availableAccessibleSortColumns, value);
+    }
+
+    [DataMember]
+    public string SelectedAccessibleSortColumn
+    {
+        get => selectedAccessibleSortColumn;
+        set => SetProperty(ref selectedAccessibleSortColumn, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string[] AccessibleSortDirections => accessibleSortDirections;
+
+    [DataMember]
+    public string SelectedAccessibleSortDirection
+    {
+        get => selectedAccessibleSortDirection;
+        set => SetProperty(ref selectedAccessibleSortDirection, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string AccessibleFilter
+    {
+        get => accessibleFilter;
+        set => SetProperty(ref accessibleFilter, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string AccessibleCsv
+    {
+        get => accessibleCsv;
+        private set => SetProperty(ref accessibleCsv, value);
     }
 
     [DataMember]
@@ -395,6 +486,100 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
             "Loading exact Agent and Model projection",
             (controller, _, token) => controller.ReadAgentModelAsync(token),
             cancellationToken);
+
+    private Task LoadAccessibleTablesAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact accessible dashboard tables",
+            async (controller, workspace, token) =>
+            {
+                IReadOnlyList<AccessibleMetadataTable> tables = SelectedAccessibleDashboardGroup switch
+                {
+                    "Phase dashboard tables" => await controller.ReadPhaseDashboardTablesAsync(token),
+                    "Change and impact tables" => await ReadAccessibleChangeImpactTablesAsync(
+                        controller,
+                        workspace,
+                        token),
+                    "Agent and model tables" => await controller.ReadAgentModelTablesAsync(token),
+                    _ => throw new ArgumentException("Select one accessible dashboard table group."),
+                };
+                if (tables.Count == 0)
+                {
+                    throw new ArgumentException("No verified accessible dashboard table was returned.");
+                }
+                accessibleTables = tables.ToArray();
+                accessibleTablesWorkspace = workspace;
+                loadedAccessibleDashboardGroup = SelectedAccessibleDashboardGroup;
+                AvailableAccessibleTables = accessibleTables.Select(AccessibleTableChoice).ToArray();
+                SelectedAccessibleTable = AvailableAccessibleTables[0];
+                AccessibleFilter = string.Empty;
+                AccessibleCsv = string.Empty;
+                return $"Verified {accessibleTables.Length} accessible {SelectedAccessibleDashboardGroup.ToLowerInvariant()} " +
+                    "from strict metadata. Select one table, source order or a visible sort column, direction, and an optional " +
+                    "256-character visible-metadata filter. Rendering and CSV preparation grant no state, approval, Run, Tool, " +
+                    "write, effect, readiness, release, or acceptance authority.";
+            },
+            cancellationToken);
+
+    private async Task<IReadOnlyList<AccessibleMetadataTable>> ReadAccessibleChangeImpactTablesAsync(
+        ProductWorkflowController controller,
+        string workspace,
+        CancellationToken cancellationToken)
+    {
+        var context = changeImpactContext
+            ?? throw new ArgumentException(
+                "Load the exact current Change catalog and select one Change before loading accessible Change/Impact tables.");
+        if (!StringComparer.Ordinal.Equals(changeImpactWorkspace, workspace))
+        {
+            throw new ArgumentException("The workspace changed after the Change catalog was loaded. Load it again.");
+        }
+        var change = context.Catalog.Items.SingleOrDefault(item => ChangeChoice(item) == SelectedChangeChoice)
+            ?? throw new ArgumentException("Select one exact Change from the verified current catalog.");
+        return await controller.ReadChangeImpactTablesAsync(context, change, cancellationToken);
+    }
+
+    private Task RenderAccessibleTableAsync(object? commandParameter, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            var workspace = ProductWorkflowController.NormalizeWorkspacePath(WorkspacePath);
+            if (!StringComparer.Ordinal.Equals(accessibleTablesWorkspace, workspace) ||
+                !StringComparer.Ordinal.Equals(loadedAccessibleDashboardGroup, SelectedAccessibleDashboardGroup))
+            {
+                throw new ArgumentException(
+                    "The workspace or table group changed after accessible metadata was loaded. Load the exact tables again.");
+            }
+            var table = accessibleTables.SingleOrDefault(item => AccessibleTableChoice(item) == SelectedAccessibleTable)
+                ?? throw new ArgumentException("Select one verified accessible metadata table.");
+            var sourceOrder = "Keep verified source order";
+            var sortColumn = table.Columns.SingleOrDefault(column => AccessibleSortChoice(column) == SelectedAccessibleSortColumn);
+            string? sortKey = SelectedAccessibleSortColumn == sourceOrder
+                ? null
+                : sortColumn?.Key ?? throw new ArgumentException("Select source order or one visible table column.");
+            AccessibleTableSortDirection? direction = sortKey is null
+                ? null
+                : SelectedAccessibleSortDirection switch
+                {
+                    "Ascending" => AccessibleTableSortDirection.Ascending,
+                    "Descending" => AccessibleTableSortDirection.Descending,
+                    _ => throw new ArgumentException("Select ascending or descending sort direction."),
+                };
+            var view = AccessibleDashboardTables.View(table, AccessibleFilter, sortKey, direction);
+            Output = AccessibleDashboardTables.Render(view);
+            AccessibleCsv = view.Rows.Count == 0 ? string.Empty : AccessibleDashboardTables.Csv(view);
+            Status = $"{table.Title}: showing {view.Rows.Count} of {table.Rows.Count} verified rows; " +
+                (view.Rows.Count == 0
+                    ? "no CSV was prepared"
+                    : "visible-row CSV is ready for native Select All and Copy");
+        }
+        catch (Exception error)
+        {
+            Status = error is OperationCanceledException ? "GAEP accessible table cancelled" : "GAEP accessible table stopped";
+            Output = ProductWorkflowController.SafeError(error);
+            AccessibleCsv = string.Empty;
+        }
+        return Task.CompletedTask;
+    }
 
     private Task RefreshAgentReadinessAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(
@@ -793,6 +978,29 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private AgentReadinessSnapshot ResolveSelectedAgent(AgentSelectionContext context) =>
         context.Available.SingleOrDefault(snapshot => AgentChoice(snapshot) == SelectedAgentChoice)
         ?? throw new ArgumentException("Select one verified adapter from the loaded capability snapshot.");
+
+    private void RebuildAccessibleSortColumns()
+    {
+        var table = accessibleTables.SingleOrDefault(item => AccessibleTableChoice(item) == SelectedAccessibleTable);
+        if (table is null)
+        {
+            AvailableAccessibleSortColumns = [];
+            SelectedAccessibleSortColumn = string.Empty;
+            return;
+        }
+        AvailableAccessibleSortColumns = [
+            "Keep verified source order",
+            .. table.Columns.Select(AccessibleSortChoice),
+        ];
+        SelectedAccessibleSortColumn = AvailableAccessibleSortColumns[0];
+        SelectedAccessibleSortDirection = "Ascending";
+    }
+
+    private static string AccessibleTableChoice(AccessibleMetadataTable table) =>
+        $"{table.Title} — {table.Rows.Count} verified row{(table.Rows.Count == 1 ? string.Empty : "s")}; " +
+        $"{table.Omitted} omitted upstream";
+
+    private static string AccessibleSortChoice(AccessibleTableColumn column) => $"Sort by {column.Label}";
 
     private static string ChangeChoice(ChangeImpactChangeReference change) =>
         $"{change.RecordId:D} · {change.State} · revision {change.Revision} · " +

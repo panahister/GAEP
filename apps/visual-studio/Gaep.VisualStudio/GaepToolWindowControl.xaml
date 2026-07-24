@@ -1,5 +1,6 @@
 <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:input="clr-namespace:System.Windows.Input;assembly=PresentationCore"
               xmlns:styles="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0"
               xmlns:colors="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0">
   <Border Background="{DynamicResource {x:Static colors:EnvironmentColors.ToolWindowBackgroundBrushKey}}"
@@ -44,6 +45,49 @@
                    TextWrapping="Wrap" Margin="0,4,0,8" />
         <Button x:Name="ShowAgentModelButton" Content="Show exact Agent and model"
                 Command="{Binding ShowAgentModelCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
+        <TextBlock Text="Accessible dashboard tables" FontWeight="SemiBold" />
+        <TextBlock Text="Load strict Phase, Change/Impact, or Agent/Model metadata, then sort and filter only visible bounded columns. Rendering states exact visible, omitted, and source totals. CSV preparation writes no file and includes no hidden or omitted data."
+                   TextWrapping="Wrap" Margin="0,4,0,8" />
+        <TextBlock Text="Dashboard table group" />
+        <ComboBox ItemsSource="{Binding AccessibleDashboardGroups}"
+                  SelectedItem="{Binding SelectedAccessibleDashboardGroup, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <Button x:Name="LoadAccessibleTablesButton" Content="Load exact accessible dashboard tables"
+                Command="{Binding LoadAccessibleTablesCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <TextBlock Text="Verified table" />
+        <ComboBox ItemsSource="{Binding AvailableAccessibleTables}"
+                  SelectedItem="{Binding SelectedAccessibleTable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Sort column" />
+        <ComboBox ItemsSource="{Binding AvailableAccessibleSortColumns}"
+                  SelectedItem="{Binding SelectedAccessibleSortColumn, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Sort direction" />
+        <ComboBox ItemsSource="{Binding AccessibleSortDirections}"
+                  SelectedItem="{Binding SelectedAccessibleSortDirection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Optional visible-metadata filter (maximum 256 characters)" />
+        <TextBox Text="{Binding AccessibleFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MaxLength="256" MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="RenderAccessibleTableButton" Content="Render accessible table and prepare visible CSV"
+                Command="{Binding RenderAccessibleTableCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <TextBlock Text="Visible-row CSV (formula-neutralized; no file is written)" />
+        <TextBox x:Name="AccessibleCsvTextBox" Text="{Binding AccessibleCsv, Mode=OneWay}" IsReadOnly="True"
+                 AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto"
+                 AutomationProperties.Name="GAEP visible-row CSV" MinHeight="80" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button Content="1. Select all visible-row CSV"
+                Command="{x:Static input:ApplicationCommands.SelectAll}"
+                CommandTarget="{Binding ElementName=AccessibleCsvTextBox}" MinHeight="28" Margin="0,0,0,6"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button Content="2. Copy visible rows as CSV"
+                Command="{x:Static input:ApplicationCommands.Copy}"
+                CommandTarget="{Binding ElementName=AccessibleCsvTextBox}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <Button x:Name="RefreshAgentReadinessButton" Content="Refresh Codex and Claude readiness"
@@ -198,6 +242,8 @@
     <DataTrigger Binding="{Binding Busy}" Value="True">
       <Setter TargetName="RefreshProductButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhaseDashboardButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="LoadAccessibleTablesButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="RenderAccessibleTableButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadChangeImpactButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowChangeImpactButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="RefreshAgentReadinessButton" Property="IsEnabled" Value="False" />

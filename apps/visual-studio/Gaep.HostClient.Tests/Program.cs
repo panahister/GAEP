@@ -189,6 +189,57 @@ internal static class Program
               !safeEnvironment.ContainsKey("HOME"),
             "Visual Studio engine environment preserves launch essentials and strips inherited provider authority");
 
+        var accessibleFixture = AccessibleTableFixture();
+        var sortedAccessible = AccessibleDashboardTables.View(
+            accessibleFixture,
+            sortKey: "state",
+            sortDirection: AccessibleTableSortDirection.Ascending);
+        Check(sortedAccessible.Rows.Select(row => row.Id).SequenceEqual(["row-c", "row-a", "row-b"]),
+            "Accessible metadata tables sort deterministically with row-ID tie breaking");
+        var filteredAccessible = AccessibleDashboardTables.View(
+            accessibleFixture,
+            filter: "PENDING",
+            sortKey: "name",
+            sortDirection: AccessibleTableSortDirection.Descending);
+        Check(filteredAccessible.Rows.Select(row => row.Id).SequenceEqual(["row-b", "row-a"]),
+            "Accessible metadata tables filter only visible cells before deterministic sorting");
+        Expect<ArgumentOutOfRangeException>(
+            () => AccessibleDashboardTables.View(accessibleFixture, filter: new string('x', 257)),
+            "Accessible metadata filters reject more than 256 characters");
+        Expect<ArgumentException>(
+            () => AccessibleDashboardTables.View(
+                accessibleFixture,
+                sortKey: "hidden",
+                sortDirection: AccessibleTableSortDirection.Ascending),
+            "Accessible metadata sorts reject hidden columns");
+        var formulaView = AccessibleDashboardTables.View(accessibleFixture, filter: "SUM");
+        Check(AccessibleDashboardTables.Csv(formulaView) ==
+              "\"Name\",\"State\"\r\n\"'=SUM(A1:A2)\",\"complete\"" &&
+              !AccessibleDashboardTables.Csv(formulaView).Contains("Bravo", StringComparison.Ordinal) &&
+              AccessibleDashboardTables.Render(formulaView).Contains(
+                  "Showing 1 of 3 verified rows; 2 omitted upstream; source total 5.",
+                  StringComparison.Ordinal),
+            "Accessible metadata CSV contains only filtered visible rows, neutralizes formulas, and renders exact totals");
+        Expect<ArgumentOutOfRangeException>(
+            () => AccessibleDashboardTables.Exact(accessibleFixture with { Total = 4 }),
+            "Accessible metadata tables reject unreconciled totals");
+        Expect<ArgumentException>(
+            () => AccessibleDashboardTables.Exact(accessibleFixture with
+            {
+                Rows = new[]
+                {
+                    new AccessibleTableRow("row-a", new Dictionary<string, string>
+                    {
+                        ["name"] = "Alpha",
+                        ["state"] = "pending",
+                        ["secret"] = "withheld",
+                    }),
+                },
+                Total = 3,
+                Omitted = 2,
+            }),
+            "Accessible metadata tables reject non-visible row fields");
+
         var packagedWorkspace = Path.Combine(temporaryRoot, "packaged-workspace");
         var packagedCache = Path.Combine(temporaryRoot, "packaged-cache");
         Directory.CreateDirectory(packagedWorkspace);
@@ -273,6 +324,11 @@ internal static class Program
               !dashboardOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
               !dashboardOutput.Contains(PrivateCredential, StringComparison.Ordinal),
             "Phase-dashboard workflow renders only bounded metadata and an explicit no-authority boundary");
+        var phaseTables = await new ProductWorkflowController(client).ReadPhaseDashboardTablesAsync();
+        Check(phaseTables.Select(table => table.Id).SequenceEqual(["phase-panels"]) &&
+              phaseTables.Single().Rows.Count == 3 &&
+              phaseTables.Single().SnapshotDigest == dashboard.CompositionDigest,
+            "Accessible Phase tables preserve the exact panel rows and composition digest");
         foreach (var hostileRoot in new[]
                  {
                      badDashboardBindingRoot,
@@ -321,6 +377,18 @@ internal static class Program
               !changeOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
               !changeOutput.Contains(PrivateCredential, StringComparison.Ordinal),
             "Change/Impact workflow renders metadata only with explicit coverage and no-authority boundaries");
+        var changeTables = await changeController.ReadChangeImpactTablesAsync(
+            changeContext,
+            changeContext.Catalog.Items.Single());
+        Check(changeTables.Select(table => table.Id).SequenceEqual([
+                  "change-work-items",
+                  "changed-artifacts",
+                  "effect-targets",
+                  "affected-units",
+                  "related-decisions",
+                  "related-risks",
+              ]) && changeTables.All(table => table.SnapshotDigest == changeDashboard.SnapshotDigest),
+            "Accessible Change/Impact tables preserve all six exact categories and the verified snapshot digest");
         foreach (var hostileRoot in new[]
                  {
                      badChangeCatalogBindingRoot,
@@ -381,6 +449,15 @@ internal static class Program
               !agentModelOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
               !agentModelOutput.Contains(PrivateCredential, StringComparison.Ordinal),
             "Agent/Model workflow renders metadata only with unavailable metrics and explicit no-authority boundaries");
+        var agentModelTables = await new ProductWorkflowController(client).ReadAgentModelTablesAsync();
+        Check(agentModelTables.Select(table => table.Id).SequenceEqual([
+                  "agent-capabilities",
+                  "agent-selection",
+                  "agent-runs",
+                  "agent-handoffs",
+                  "provider-metrics",
+              ]) && agentModelTables.All(table => table.SnapshotDigest == agentModel.SnapshotDigest),
+            "Accessible Agent/Model tables preserve all five exact categories and the verified snapshot digest");
         foreach (var hostileRoot in new[]
                  {
                      badAgentModelBindingRoot,
@@ -1070,6 +1147,39 @@ internal static class Program
             ["evidence/visual-studio-selection.json"],
             "founder.review");
 
+    private static AccessibleMetadataTable AccessibleTableFixture() => AccessibleDashboardTables.Exact(
+        new AccessibleMetadataTable(
+            "verified-runs",
+            "Verified Runs",
+            new[]
+            {
+                new AccessibleTableColumn("name", "Name"),
+                new AccessibleTableColumn("state", "State"),
+            },
+            new[]
+            {
+                new AccessibleTableRow("row-b", new Dictionary<string, string>
+                {
+                    ["name"] = "Bravo",
+                    ["state"] = "pending",
+                }),
+                new AccessibleTableRow("row-a", new Dictionary<string, string>
+                {
+                    ["name"] = "Alpha",
+                    ["state"] = "pending",
+                }),
+                new AccessibleTableRow("row-c", new Dictionary<string, string>
+                {
+                    ["name"] = "=SUM(A1:A2)",
+                    ["state"] = "complete",
+                }),
+            },
+            5,
+            2,
+            $"sha256:{new string('a', 64)}",
+            "already-verified-bounded-metadata-only",
+            "table-does-not-authorize-run-or-effects"));
+
     private static async Task<EngineHostException> CaptureHostErrorAsync(Func<Task> action)
     {
         try
@@ -1090,6 +1200,21 @@ internal static class Program
         try
         {
             await action();
+        }
+        catch (TException)
+        {
+            passed++;
+            return;
+        }
+        throw new InvalidOperationException($"Expected {typeof(TException).Name}: {description}");
+    }
+
+    private static void Expect<TException>(Action action, string description)
+        where TException : Exception
+    {
+        try
+        {
+            action();
         }
         catch (TException)
         {
