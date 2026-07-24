@@ -38,6 +38,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { GaepEngine } from "./engine.js"
 import {
   compileManagedCodexPolicy,
+  compileManagedWorkflowBatches,
   compileManagedWorkflowOrder,
   workspacePathWithinEnvelope,
 } from "./managed-execution.js"
@@ -174,7 +175,14 @@ describe("managed execution engine", () => {
 
   async function readyRun(
     script: "success" | "failure" | "cancellation" | "resume" = "success",
-    options: { stepCount?: number; retry?: WorkflowStep["retry"]; extraUnusedContext?: boolean; timeoutMs?: number } = {},
+    options: {
+      stepCount?: number
+      retry?: WorkflowStep["retry"]
+      extraUnusedContext?: boolean
+      timeoutMs?: number
+      strategy?: WorkflowPlan["strategy"]
+      independentSteps?: boolean
+    } = {},
   ) {
     const product = await engine.createProduct({
       name: "Managed Atlas",
@@ -254,7 +262,7 @@ describe("managed execution engine", () => {
         responsibility: { kind: "agent", id: "manual" },
         contextPacks: [packRef],
         toolDefinitions: [],
-        dependsOn: index === 0 ? [] : [steps[index - 1]!.id],
+        dependsOn: options.independentSteps || index === 0 ? [] : [steps[index - 1]!.id],
         preconditions: ["The exact Context Pack is sufficient"],
         outputs: ["A normalized deterministic observation"],
         evidenceCriteria: ["A portable event digest is committed"],
@@ -271,7 +279,7 @@ describe("managed execution engine", () => {
       objective: "Execute one offline observation without granting tool authority.",
       subject: { recordType: "product", recordId: product.id, revision: 1, digest: canonicalDigest(product) },
       actor: { kind: "human", id: "founder" },
-      strategy: "sequential",
+      strategy: options.strategy ?? "sequential",
       contextPacks: planContextRefs,
       toolDefinitions: [],
       steps,
@@ -1158,6 +1166,166 @@ describe("managed execution engine", () => {
     )).resolves.toMatchObject({ status: "compatible" })
   })
 
+  it("executes independent observation-only steps in deterministic batches of at most four", async () => {
+    const { run, plan, steps } = await readyRun("success", {
+      stepCount: 6,
+      strategy: "parallel-readonly",
+      independentSteps: true,
+    })
+    let releaseFirstBatch!: () => void
+    const firstBatchBarrier = new Promise<void>((resolve) => { releaseFirstBatch = resolve })
+    let preconditionsStarted = 0
+    let activePreconditions = 0
+    let maximumActivePreconditions = 0
+    const evaluator: ManagedWorkflowGateEvaluator = async (request) => {
+      if (request.phase === "preconditions") {
+        preconditionsStarted += 1
+        activePreconditions += 1
+        maximumActivePreconditions = Math.max(maximumActivePreconditions, activePreconditions)
+        if (preconditionsStarted === 4) releaseFirstBatch()
+        await firstBatchBarrier
+        activePreconditions -= 1
+      }
+      return satisfyWorkflowGate(request)
+    }
+    const { review } = await drain(await engine.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      evaluateWorkflowGate: evaluator,
+    }, "founder"))
+    expect(review.record.state).toBe("completed")
+    expect(review.evidence.workflow.strategy).toBe("parallel-readonly")
+    expect(review.evidence.workflow.attempts.map((attempt) => attempt.stepId)).toEqual(steps.map((step) => step.id))
+    expect(review.evidence.workflow.completedStepIds).toEqual(steps.map((step) => step.id))
+    expect(review.record.workflowCheckpoints?.map((checkpoint) => checkpoint.nextStepIndex)).toEqual([4])
+    expect(maximumActivePreconditions).toBe(4)
+    await expect(engine.productStudio.previewImportBundle(
+      await engine.productStudio.buildPortableExport(),
+    )).resolves.toMatchObject({ status: "compatible" })
+  }, 10_000)
+
+  it("preserves a completed parallel batch and resumes only the unfinished batch after process loss", async () => {
+    const { run, plan, steps } = await readyRun("success", {
+      stepCount: 6,
+      strategy: "parallel-readonly",
+      independentSteps: true,
+    })
+    let signalSecondBatch!: () => void
+    const secondBatchStarted = new Promise<void>((resolve) => { signalSecondBatch = resolve })
+    const blockedEvaluator: ManagedWorkflowGateEvaluator = async (request) => {
+      if (steps.slice(4).some((step) => step.id === request.stepId) && request.phase === "preconditions") {
+        signalSecondBatch()
+        await new Promise<void>((resolve) => request.signal.addEventListener("abort", () => resolve(), { once: true }))
+      }
+      return satisfyWorkflowGate(request)
+    }
+    const abandoned = await engine.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      evaluateWorkflowGate: blockedEvaluator,
+    }, "founder")
+    const abandonedEventDrain = (async () => {
+      for await (const _event of abandoned.events) { /* drain the simulated lost process */ }
+    })()
+    const abandonedCompletion = abandoned.completion.catch(() => undefined)
+    await secondBatchStarted
+    const running = await engine.readManagedRun(abandoned.record.id)
+    expect(running.workflowCheckpoints?.map((checkpoint) => checkpoint.nextStepIndex)).toEqual([4])
+
+    const restarted = new GaepEngine(workspace, [adapter])
+    await restarted.recoverInterruptedRuns("gaep.managed-test.parallel-restart")
+    expect(await restarted.readManagedRun(running.id)).toMatchObject({
+      state: "unknown",
+      recovery: { status: "recovered", reasonCode: "workflow-checkpoint-preserved" },
+    })
+    await abandoned.cancel("Simulate parallel process teardown after checkpoint recovery")
+    await abandonedCompletion
+    await abandonedEventDrain
+
+    const resumedStepIds = new Set<string>()
+    const resumed = await drain(await restarted.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      previousManagedRunId: running.id,
+      evaluateWorkflowGate: async (request) => {
+        if (request.phase === "preconditions") resumedStepIds.add(request.stepId)
+        return satisfyWorkflowGate(request)
+      },
+    }, "founder"))
+    expect(resumed.review.record.state).toBe("completed")
+    expect([...resumedStepIds].sort()).toEqual(steps.slice(4).map((step) => step.id).sort())
+    expect(resumed.review.evidence.workflow.completedStepIds).toEqual(steps.map((step) => step.id))
+    await expect(restarted.productStudio.previewImportBundle(
+      await restarted.productStudio.buildPortableExport(),
+    )).resolves.toMatchObject({ status: "compatible" })
+  }, 10_000)
+
+  it("records honest non-prefix completion when one parallel peer is blocked", async () => {
+    const { run, plan, steps } = await readyRun("success", {
+      stepCount: 2,
+      strategy: "parallel-readonly",
+      independentSteps: true,
+    })
+    const evaluator: ManagedWorkflowGateEvaluator = async (request) => request.phase === "preconditions" &&
+      request.stepId === steps[0]!.id
+      ? {
+          status: "failed",
+          basis: "system-evaluator",
+          evaluator: systemGateEvaluator,
+          evidenceDigest: canonicalDigest({ blocked: request.criteriaDigest }) as `sha256:${string}`,
+        }
+      : satisfyWorkflowGate(request)
+    const { review } = await drain(await engine.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      evaluateWorkflowGate: evaluator,
+    }, "founder"))
+    expect(review.record.state).toBe("failed")
+    expect(review.evidence.workflow.attempts.map((attempt) => ({ stepId: attempt.stepId, state: attempt.state }))).toEqual([
+      { stepId: steps[0]!.id, state: "blocked" },
+      { stepId: steps[1]!.id, state: "completed" },
+    ])
+    expect(review.evidence.workflow.completedStepIds).toEqual([steps[1]!.id])
+    expect(review.evidence.actualEffects).toContainEqual(
+      expect.objectContaining({ effect: "observe", status: "observed-provisional" }),
+    )
+    await expect(engine.productStudio.previewImportBundle(
+      await engine.productStudio.buildPortableExport(),
+    )).resolves.toMatchObject({ status: "compatible" })
+  })
+
+  it("cancels every active peer in a parallel-readonly batch", async () => {
+    const { run, plan } = await readyRun("cancellation", {
+      stepCount: 2,
+      strategy: "parallel-readonly",
+      independentSteps: true,
+    })
+    const handle = await engine.startManagedRun({
+      runId: run.id,
+      workflowPlanId: plan.id,
+      evaluateWorkflowGate: satisfyWorkflowGate,
+    }, "founder")
+    let signalBothStarted!: () => void
+    const bothStarted = new Promise<void>((resolve) => { signalBothStarted = resolve })
+    let startedCount = 0
+    const eventDrain = (async () => {
+      for await (const event of handle.events) {
+        if (event.type === "lifecycle" && event.phase === "turn-started") {
+          startedCount += 1
+          if (startedCount === 2) signalBothStarted()
+        }
+      }
+    })()
+    await bothStarted
+    await handle.cancel("Cancel all parallel peers")
+    const review = await handle.completion
+    await eventDrain
+    expect(review.record.state).toBe("cancelled")
+    expect(review.evidence.workflow.attempts).toHaveLength(2)
+    expect(review.evidence.workflow.attempts.every((attempt) => attempt.state === "cancelled")).toBe(true)
+    expect(review.record.workflowCheckpoints).toBeUndefined()
+  }, 10_000)
+
   it("recovers and resumes an observation-only multi-step Workflow from its durable completed prefix", async () => {
     const { run, plan, steps } = await readyRun("success", { stepCount: 2 })
     let signalSecondStep!: () => void
@@ -1515,7 +1683,7 @@ describe("managed execution engine", () => {
 })
 
 describe("managed Workflow compilation and write-envelope containment", () => {
-  it("uses deterministic declared-order tie breaking and rejects unsupported parallel claims", () => {
+  it("uses deterministic declared-order tie breaking and bounded parallel dependency batches", () => {
     const first = randomUUID()
     const second = randomUUID()
     const third = randomUUID()
@@ -1540,8 +1708,11 @@ describe("managed Workflow compilation and write-envelope containment", () => {
       steps: [step(second, [first]), step(first, []), step(third, [first])],
     } as WorkflowPlan
     expect(compileManagedWorkflowOrder(plan).map((candidate) => candidate.id)).toEqual([first, second, third])
-    expect(() => compileManagedWorkflowOrder({ ...plan, strategy: "parallel-readonly" }))
-      .toThrow(/fails closed/)
+    const parallel = { ...plan, strategy: "parallel-readonly" as const }
+    expect(compileManagedWorkflowOrder(parallel).map((candidate) => candidate.id)).toEqual([first, second, third])
+    expect(compileManagedWorkflowBatches(parallel).map((batch) => batch.map((candidate) => candidate.id)))
+      .toEqual([[first], [second, third]])
+    expect(() => compileManagedWorkflowBatches(parallel, 5)).toThrow(/between 1 and 4/)
   })
 
   it("accepts only an exact path or descendant of a confirmed workspace scope", () => {

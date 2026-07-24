@@ -3403,13 +3403,17 @@ export class ProductStudioService {
       const orderedStepIds: string[] = []
       const completedForOrder = new Set<string>()
       while (orderedStepIds.length < workflowPlan.steps.length) {
-        const next = workflowPlan.steps.find((step) =>
+        const ready = workflowPlan.steps.filter((step) =>
           !completedForOrder.has(step.id) && step.dependsOn.every((dependency) => completedForOrder.has(dependency)))
-        if (!next) throw new Error(`Import Managed Evidence ${evidence.id} Workflow order cannot be compiled`)
-        orderedStepIds.push(next.id)
-        completedForOrder.add(next.id)
+        if (ready.length === 0) throw new Error(`Import Managed Evidence ${evidence.id} Workflow order cannot be compiled`)
+        const selected = workflowPlan.strategy === "parallel-readonly" ? ready : ready.slice(0, 1)
+        for (const step of selected) {
+          orderedStepIds.push(step.id)
+          completedForOrder.add(step.id)
+        }
       }
-      if (canonicalDigest(orderedStepIds) !== canonicalDigest(evidence.workflow.orderedStepIds)) {
+      if (evidence.workflow.strategy !== workflowPlan.strategy ||
+          canonicalDigest(orderedStepIds) !== canonicalDigest(evidence.workflow.orderedStepIds)) {
         throw new Error(`Import Managed Evidence ${evidence.id} carries a forged Workflow order`)
       }
       for (const attempt of evidence.workflow.attempts) {
@@ -3435,8 +3439,10 @@ export class ProductStudioService {
       if (canonicalDigest(evidence.workflow.completedStepIds) !== canonicalDigest(exactCompletedStepIds)) {
         throw new Error(`Import Managed Evidence ${evidence.id} completed Workflow step set is not exact`)
       }
-      if (canonicalDigest(evidence.workflow.completedStepIds) !==
-          canonicalDigest(evidence.workflow.orderedStepIds.slice(0, evidence.workflow.completedStepIds.length))) {
+      if ((evidence.workflow.strategy === "sequential" ||
+          ["workflow-checkpoint", "process-loss"].includes(evidence.workflow.terminalReasonCode)) &&
+          canonicalDigest(evidence.workflow.completedStepIds) !==
+            canonicalDigest(evidence.workflow.orderedStepIds.slice(0, evidence.workflow.completedStepIds.length))) {
         throw new Error(`Import Managed Evidence ${evidence.id} completed Workflow steps are not a sequential dependency prefix`)
       }
       if (evidence.staging?.applyDecision) {

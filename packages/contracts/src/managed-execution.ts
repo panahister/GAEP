@@ -334,7 +334,7 @@ export const managedWorkflowStepAttemptSchema = z.object({
 
 export const managedWorkflowExecutionSchema = z.object({
   plan: managedExactBindingSchema,
-  strategy: z.literal("sequential"),
+  strategy: z.enum(["sequential", "parallel-readonly"]),
   orderedStepIds: z.array(uuidSchema).min(1).max(512),
   attempts: z.array(managedWorkflowStepAttemptSchema).max(5_120),
   completedStepIds: z.array(uuidSchema).max(512),
@@ -602,9 +602,8 @@ export const managedRunRecordSchema = z.object({
         context.addIssue({ code: "custom", path: ["workflowCheckpoints", index, "evidenceId"], message: "Workflow checkpoint evidence identities must be unique" })
       }
       evidenceIds.add(checkpoint.evidenceId)
-      if (checkpoint.nextStepIndex <= previousNextStepIndex ||
-          (index > 0 && checkpoint.nextStepIndex !== previousNextStepIndex + 1)) {
-        context.addIssue({ code: "custom", path: ["workflowCheckpoints", index, "nextStepIndex"], message: "Workflow checkpoints must advance the next step consecutively" })
+      if (checkpoint.nextStepIndex <= previousNextStepIndex) {
+        context.addIssue({ code: "custom", path: ["workflowCheckpoints", index, "nextStepIndex"], message: "Workflow checkpoints must advance the next step monotonically" })
       }
       previousNextStepIndex = checkpoint.nextStepIndex
     }
