@@ -129,8 +129,8 @@
       "runtimeEvidence": {
         "source": "package-report",
         "level": "cross-platform-compile-and-controller-only",
-        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-77-protocol-controller-checks-windows-container-install-pending"],
-        "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
+        "requiredVerificationFragments": ["cross-platform-shell-contribution-remote-ui-binding-and-98-protocol-controller-checks-windows-container-install-pending"],
+        "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "packaged-engine workflow", "supported-Visual-Studio matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["await using var client = new EngineClient(workspace)"] }] },
@@ -145,9 +145,14 @@
         { "capabilityId": "claude-readiness", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Refresh Codex and Claude readiness", "RefreshAgentReadinessCommand"] }] },
         { "capabilityId": "provider-model-selection", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["LoadAgentSelectionCommand", "SelectAgentCommand", "Confirm guarded selection"] }] },
         { "capabilityId": "versioned-handoff", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["LoadAgentHandoffCommand", "CreateAgentHandoffCommand", "Create versioned handoff"] }] },
-        { "capabilityId": "managed-readonly-execution", "state": "not-implemented", "reason": "Managed analysis execution is not wired." },
+        { "capabilityId": "managed-readonly-execution", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["LoadManagedReadOnlyPreviewAsync", "cancelIsDefault: true", "controller.ExecuteManagedReadOnlyAsync("] },
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["LoadManagedReadOnlyPreviewCommand", "ExecuteManagedReadOnlyCommand", "Attest exact preview and run"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["PreviewManagedReadOnlyAsync(", "ExecuteManagedReadOnlyAsync(", "attest-exact-managed-readonly-preview"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseManagedReadOnlyPreviewResponse(", "preview.PreviewDigest != CanonicalDigest(body)", "ParseManagedReadOnlyReceiptResponse("] }
+        ] },
         { "capabilityId": "staged-effectful-review", "state": "not-implemented", "reason": "Staged review and apply/discard are not wired." },
-        { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "The Remote UI currently exposes Product and portable-design metadata only." }
+        { "capabilityId": "evidence-dashboard", "state": "not-implemented", "reason": "The Remote UI renders bounded managed preview and receipt documents but has no complete Run and evidence dashboard." }
       ]
     }
   ],
