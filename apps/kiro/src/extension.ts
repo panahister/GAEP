@@ -3,6 +3,16 @@ import { join } from "node:path"
 
 import * as vscode from "vscode"
 
+import {
+  accessibleTableCsv,
+  buildAccessibleTableView,
+  createAccessibleMetadataTable,
+  renderAccessibleTableText,
+  type AccessibleMetadataTable,
+  type AccessibleTableColumn,
+  type AccessibleTableRow,
+  type AccessibleTableSortDirection,
+} from "./accessible-table.js"
 import { GaepEngineClient } from "./engine-client.js"
 import {
   GaepHostError,
@@ -45,6 +55,7 @@ const commandIds = {
   dashboard: "gaepKiro.dashboard.phase",
   changeImpact: "gaepKiro.dashboard.changeImpact",
   agentModel: "gaepKiro.dashboard.agentModel",
+  accessibleTables: "gaepKiro.dashboard.accessibleTables",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -130,6 +141,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.dashboard, () => runUserCommand(() => showPhaseDashboard(pool))),
     vscode.commands.registerCommand(commandIds.changeImpact, () => runUserCommand(() => showChangeImpactDashboard(pool))),
     vscode.commands.registerCommand(commandIds.agentModel, () => runUserCommand(() => showAgentModelDashboard(pool))),
+    vscode.commands.registerCommand(commandIds.accessibleTables, () => runUserCommand(() => showAccessibleDashboardTables(pool))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -202,7 +214,7 @@ function productStudioHtml(): string {
     <p>Use the Kiro Command Palette to observe verified local readiness, record one guarded portable Agent Selection, or create a versioned switch handoff from the latest terminal Run.</p>
     <p>Selection and handoff records are configuration and history only. The separate managed read-only command can run one exact, already-confirmed Charter and Workflow Plan after a digest-bound human attestation. It denies every Tool, write, and non-observation effect, uses a bounded timeout, and withholds success if staged changes appear.</p>
     <p>The Managed Run evidence command shows an audit-gated, snapshot-bound page of at most 100 runs and one exact verified detail. It displays portable states, counts, digests and timestamps only; it cannot apply, discard, resume, approve, or infer success.</p>
-    <p>The phase-dashboard command shows the exact Phase 0/1A slice plus required Change/Impact and Agent/Model views. The Change/Impact command separately selects one exact current Change from an audit-gated metadata-only catalog and shows bounded Work Items, portable changed/effect targets, trace assessments, Decisions, Risks, freshness and omissions. The Agent/Model command shows exact current capability, portable selection, Run, Managed evidence, handoff, freshness and unavailable usage/cost metadata. Phase applicability remains attention-required until a governed decision exists; these projections cannot select or switch an agent, launch a Run, authorize effects, approve a Change, or complete a phase.</p>
+    <p>The phase-dashboard command shows the exact Phase 0/1A slice plus required Change/Impact and Agent/Model views. The Change/Impact command separately selects one exact current Change from an audit-gated metadata-only catalog and shows bounded Work Items, portable changed/effect targets, trace assessments, Decisions, Risks, freshness and omissions. The Agent/Model command shows exact current capability, portable selection, Run, Managed evidence, handoff, freshness and unavailable usage/cost metadata. The accessible-tables command uses native keyboard and screen-reader controls to select one of those verified tables, apply deterministic sorting and a bounded visible-metadata filter, open a textual alternative, and optionally copy only the visible columns and rows as formula-neutralized CSV. Phase applicability remains attention-required until a governed decision exists; these projections cannot select or switch an agent, launch a Run, authorize effects, approve a Change, or complete a phase.</p>
     <p>The separate staged-review command can inspect one exact pending Codex inventory of at most 512 workspace-relative changed paths and then, only after a cancel-default digest-bound human decision, ask the engine to apply that inventory or persist discard. It receives no source bytes or general filesystem-write authority. Post-apply Workflow gates are recorded not assessed, so this surface cannot claim governed outcome satisfaction.</p>
   </section>
   <section>
@@ -812,6 +824,378 @@ async function showAgentModelDashboard(pool: EngineClientPool): Promise<AgentMod
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })
   return dashboard
+}
+
+async function showAccessibleDashboardTables(pool: EngineClientPool): Promise<void> {
+  requireTrustedWorkspace()
+  const dashboardKind = await vscode.window.showQuickPick([
+    {
+      label: "Phase dashboard tables",
+      description: "Exact phase-panel metadata",
+      value: "phase" as const,
+    },
+    {
+      label: "Change and impact tables",
+      description: "Exact Work Item, artifact, effect, trace, Decision, and Risk metadata",
+      value: "change-impact" as const,
+    },
+    {
+      label: "Agent and model tables",
+      description: "Exact capability, selection, Run, handoff, and unavailable-metric metadata",
+      value: "agent-model" as const,
+    },
+  ], {
+    title: "Select an accessible GAEP dashboard table group",
+    placeHolder: "Keyboard and screen-reader flow; all rows remain read-only verified metadata",
+    ignoreFocusOut: true,
+  })
+  if (!dashboardKind) throw new WorkflowCancelled()
+
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const product = await client.readProduct()
+  let tables: readonly AccessibleMetadataTable[]
+  if (dashboardKind.value === "phase") {
+    tables = phaseDashboardTables(await client.readPhaseDashboard(product, "phase-0-1a-foundation"))
+  } else if (dashboardKind.value === "change-impact") {
+    const catalog = await client.listChangeImpactChanges(product)
+    if (catalog.items.length === 0) {
+      throw new ConfigurationBoundaryError("No current Change metadata is available for accessible Change/Impact tables.")
+    }
+    const selectedChange = await vscode.window.showQuickPick(catalog.items.map((change) => ({
+      label: change.recordId,
+      description: `${change.state} · revision ${change.revision}`,
+      detail: `Effects: ${change.effectEnvelope.join(", ")} · digest ${change.digest}`,
+      change,
+    })), {
+      title: `Select one exact current Change (${catalog.items.length} of ${catalog.total}; ${catalog.omitted} omitted)`,
+      placeHolder: "Table selection grants no approval or effect authority",
+      ignoreFocusOut: true,
+    })
+    if (!selectedChange) throw new WorkflowCancelled()
+    tables = changeImpactDashboardTables(await client.readChangeImpact(product, selectedChange.change))
+  } else {
+    tables = agentModelDashboardTables(await client.readAgentModel(product))
+  }
+
+  const selectedTable = await vscode.window.showQuickPick(tables.map((table) => ({
+    label: table.title,
+    description: `${table.rows.length} verified row${table.rows.length === 1 ? "" : "s"} · ${table.omitted} omitted upstream`,
+    detail: "Sort and filter only these already-bounded visible metadata columns",
+    table,
+  })), {
+    title: "Select one accessible metadata table",
+    placeHolder: "Dismiss to leave all governed state unchanged",
+    ignoreFocusOut: true,
+  })
+  if (!selectedTable) throw new WorkflowCancelled()
+
+  const sourceOrder = Symbol("source-order")
+  const sort = await vscode.window.showQuickPick([
+    { label: "Keep verified source order", description: "No client-side sort", value: sourceOrder as string | typeof sourceOrder },
+    ...selectedTable.table.columns.map((column) => ({
+      label: `Sort by ${column.label}`,
+      description: "Deterministic text sort with row-ID tie breaking",
+      value: column.key as string | typeof sourceOrder,
+    })),
+  ], {
+    title: `Sort ${selectedTable.table.title}`,
+    placeHolder: "Choose a visible column or keep verified source order",
+    ignoreFocusOut: true,
+  })
+  if (!sort) throw new WorkflowCancelled()
+  let sortDirection: AccessibleTableSortDirection | undefined
+  if (sort.value !== sourceOrder) {
+    const direction = await vscode.window.showQuickPick([
+      { label: "Ascending", description: "A to Z", value: "ascending" as const },
+      { label: "Descending", description: "Z to A", value: "descending" as const },
+    ], {
+      title: `Choose ${sort.label.toLocaleLowerCase()} direction`,
+      ignoreFocusOut: true,
+    })
+    if (!direction) throw new WorkflowCancelled()
+    sortDirection = direction.value
+  }
+
+  const filter = await vscode.window.showInputBox({
+    title: `Filter ${selectedTable.table.title}`,
+    prompt: "Optional: match up to 256 characters against only the visible verified metadata columns",
+    placeHolder: "Leave empty to show every verified row",
+    ignoreFocusOut: true,
+    validateInput: (value) => value.length > 256 ? "Use at most 256 characters" : undefined,
+  })
+  if (filter === undefined) throw new WorkflowCancelled()
+  const view = sort.value === sourceOrder
+    ? buildAccessibleTableView(selectedTable.table, { filter })
+    : buildAccessibleTableView(selectedTable.table, { filter, sortKey: sort.value, sortDirection: sortDirection! })
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: renderAccessibleTableText(view),
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  if (view.rows.length === 0) {
+    void vscode.window.showInformationMessage(
+      `${view.table.title}: showing 0 of ${view.table.rows.length} verified rows. Nothing was copied.`,
+    )
+    return
+  }
+  const action = await vscode.window.showInformationMessage(
+    `${view.table.title}: showing ${view.rows.length} of ${view.table.rows.length} verified rows.`,
+    "Copy Visible Rows as CSV",
+  )
+  if (action !== "Copy Visible Rows as CSV") return
+  try {
+    await vscode.env.clipboard.writeText(accessibleTableCsv(view))
+    void vscode.window.showInformationMessage(
+      `${view.table.title}: copied ${view.rows.length} visible metadata row${view.rows.length === 1 ? "" : "s"} as CSV.`,
+    )
+  } catch {
+    await vscode.window.showErrorMessage(`${view.table.title}: CSV copy failed. No file was written.`)
+  }
+}
+
+function phaseDashboardTables(dashboard: PhaseDashboardFramework): readonly AccessibleMetadataTable[] {
+  return [metadataTable({
+    id: "phase-panels",
+    title: `${dashboard.phase.label} panels`,
+    columns: columns([
+      ["panel-id", "Panel ID"], ["title", "Title"], ["role", "Role"], ["applicability", "Applicability"],
+      ["basis", "Applicability basis"], ["state", "State"], ["decision", "Decision binding"],
+    ]),
+    rows: dashboard.panels.map((panel) => metadataRow(panel.id, {
+      "panel-id": panel.id,
+      title: panel.title,
+      role: panel.role,
+      applicability: panel.applicability.status,
+      basis: panel.applicability.basis,
+      state: panel.state,
+      decision: panel.applicability.decision
+        ? `${panel.applicability.decision.recordId}@${panel.applicability.decision.revision} · ${panel.applicability.decision.digest}`
+        : "not bound",
+    })),
+    total: dashboard.panels.length,
+    omitted: 0,
+    snapshotDigest: dashboard.compositionDigest,
+    sourceBoundary: dashboard.sourceBoundary,
+    authorityBoundary: dashboard.authorityBoundary,
+  })]
+}
+
+function changeImpactDashboardTables(dashboard: ChangeImpactDashboard): readonly AccessibleMetadataTable[] {
+  const locator = (value: ChangeImpactDashboard["changedArtifacts"][number]["locator"]): string =>
+    value.kind === "workspace-relative" ? value.path : value.kind === "logical" ? value.value : value.uri
+  const common = {
+    snapshotDigest: dashboard.snapshotDigest,
+    sourceBoundary: dashboard.sourceBoundary,
+    authorityBoundary: dashboard.authorityBoundary,
+  }
+  return [
+    metadataTable({
+      ...common,
+      id: "change-work-items",
+      title: "Change Work Items",
+      columns: columns([["record-id", "Record ID"], ["revision", "Revision"], ["state", "State"], ["digest", "Digest"]]),
+      rows: dashboard.workItems.map((entry) => metadataRow(entry.record.recordId, {
+        "record-id": entry.record.recordId, revision: String(entry.record.revision), state: entry.state, digest: entry.record.digest,
+      })),
+      total: dashboard.limits.workItems.total,
+      omitted: dashboard.limits.workItems.omitted,
+    }),
+    metadataTable({
+      ...common,
+      id: "changed-artifacts",
+      title: "Changed artifacts",
+      columns: columns([["locator", "Locator"], ["kind", "Kind"], ["work-item", "Source Work Item"]]),
+      rows: dashboard.changedArtifacts.map((entry, index) => metadataRow(`${entry.sourceWorkItem.recordId}:artifact:${index}`, {
+        locator: locator(entry.locator), kind: entry.locator.kind, "work-item": entry.sourceWorkItem.recordId,
+      })),
+      total: dashboard.limits.changedArtifacts.total,
+      omitted: dashboard.limits.changedArtifacts.omitted,
+    }),
+    metadataTable({
+      ...common,
+      id: "effect-targets",
+      title: "Effect targets",
+      columns: columns([["locator", "Locator"], ["kind", "Kind"], ["work-item", "Source Work Item"]]),
+      rows: dashboard.effectTargets.map((entry, index) => metadataRow(`${entry.sourceWorkItem.recordId}:effect:${index}`, {
+        locator: locator(entry.locator), kind: entry.locator.kind, "work-item": entry.sourceWorkItem.recordId,
+      })),
+      total: dashboard.limits.effectTargets.total,
+      omitted: dashboard.limits.effectTargets.omitted,
+    }),
+    metadataTable({
+      ...common,
+      id: "affected-units",
+      title: "Affected units",
+      columns: columns([
+        ["direction", "Direction"], ["endpoint", "Endpoint"], ["relationship", "Relationship"],
+        ["trace-state", "Trace state"], ["trace-id", "Trace ID"], ["assessment-digest", "Assessment digest"],
+      ]),
+      rows: dashboard.affectedUnits.map((entry) => metadataRow(`${entry.trace.recordId}:${entry.direction}:${entry.endpoint.recordId}`, {
+        direction: entry.direction,
+        endpoint: `${entry.endpoint.recordType}:${entry.endpoint.recordId}`,
+        relationship: entry.relationship,
+        "trace-state": entry.trace.assessedState,
+        "trace-id": entry.trace.recordId,
+        "assessment-digest": entry.trace.assessmentDigest,
+      })),
+      total: dashboard.limits.affectedUnits.total,
+      omitted: dashboard.limits.affectedUnits.omitted,
+    }),
+    metadataTable({
+      ...common,
+      id: "related-decisions",
+      title: "Related Decisions",
+      columns: columns([["record-id", "Record ID"], ["revision", "Revision"], ["state", "State"], ["outcome", "Outcome"], ["digest", "Digest"]]),
+      rows: dashboard.governance.decisions.map((entry) => metadataRow(entry.record.recordId, {
+        "record-id": entry.record.recordId, revision: String(entry.record.revision), state: entry.state,
+        outcome: entry.outcome, digest: entry.record.digest,
+      })),
+      total: dashboard.limits.decisions.total,
+      omitted: dashboard.limits.decisions.omitted,
+    }),
+    metadataTable({
+      ...common,
+      id: "related-risks",
+      title: "Related Risks",
+      columns: columns([
+        ["record-id", "Record ID"], ["revision", "Revision"], ["state", "State"], ["likelihood", "Likelihood"],
+        ["impact", "Impact"], ["acceptance", "Acceptance"], ["digest", "Digest"],
+      ]),
+      rows: dashboard.governance.risks.map((entry) => metadataRow(entry.record.recordId, {
+        "record-id": entry.record.recordId, revision: String(entry.record.revision), state: entry.state,
+        likelihood: entry.likelihood, impact: entry.impact, acceptance: entry.acceptance, digest: entry.record.digest,
+      })),
+      total: dashboard.limits.risks.total,
+      omitted: dashboard.limits.risks.omitted,
+    }),
+  ]
+}
+
+function agentModelDashboardTables(dashboard: AgentModelDashboard): readonly AccessibleMetadataTable[] {
+  const common = {
+    snapshotDigest: dashboard.snapshotDigest,
+    sourceBoundary: dashboard.sourceBoundary,
+    authorityBoundary: dashboard.authorityBoundary,
+  }
+  const selection = dashboard.selection
+  return [
+    metadataTable({
+      ...common,
+      id: "agent-capabilities",
+      title: "Observed agent capabilities",
+      columns: columns([
+        ["agent", "Agent"], ["adapter-version", "Adapter version"], ["runtime-version", "Runtime version"],
+        ["detected", "Detected"], ["interface", "Execution interface"], ["maturity", "Interface maturity"],
+        ["models", "Model count"], ["selected", "Selected"], ["observed-at", "Observed at"], ["digest", "Capability digest"],
+      ]),
+      rows: dashboard.capabilities.map((entry) => metadataRow(`${entry.adapterId}:${entry.agentId}`, {
+        agent: `${entry.adapterId}/${entry.agentId} · ${entry.agentLabel}`,
+        "adapter-version": entry.adapterVersion,
+        "runtime-version": entry.runtimeVersion ?? "not observed",
+        detected: String(entry.detected),
+        interface: entry.executionInterface,
+        maturity: entry.interfaceMaturity,
+        models: String(entry.modelCount),
+        selected: String(entry.selected),
+        "observed-at": entry.observedAt,
+        digest: entry.capabilityDigest,
+      })),
+      total: dashboard.limits.capabilities.total,
+      omitted: dashboard.limits.capabilities.omitted,
+    }),
+    metadataTable({
+      ...common,
+      id: "agent-selection",
+      title: "Current Agent Selection",
+      columns: columns([
+        ["status", "Status"], ["agent", "Agent"], ["model", "Model"], ["truth-class", "Model truth class"],
+        ["alias", "Model alias"], ["capability-state", "Capability state"], ["selected-at", "Selected at"],
+        ["selection-digest", "Selection digest"], ["capability-digest", "Capability digest"],
+      ]),
+      rows: [metadataRow("current-selection", {
+        status: selection.status,
+        agent: selection.status === "selected" || selection.status === "migration-required" ? `${selection.adapterId}/${selection.agentId}` : "not available",
+        model: selection.status === "selected" || selection.status === "migration-required" ? selection.modelId : "not available",
+        "truth-class": selection.status === "selected" || selection.status === "migration-required" ? selection.modelTruthClass : "not available",
+        alias: selection.status === "selected" || selection.status === "migration-required" ? String(selection.modelAlias) : "not available",
+        "capability-state": selection.status === "selected" || selection.status === "migration-required" ? selection.capabilityState : "not available",
+        "selected-at": selection.status === "selected" || selection.status === "migration-required" ? selection.selectedAt : "not available",
+        "selection-digest": selection.status === "selected" || selection.status === "migration-required" ? selection.selectionDigest : "not available",
+        "capability-digest": selection.status === "selected" || selection.status === "migration-required" ? selection.capabilityDigest : "not available",
+      })],
+      total: 1,
+      omitted: 0,
+    }),
+    metadataTable({
+      ...common,
+      id: "agent-runs",
+      title: "Agent Runs and Managed evidence",
+      columns: columns([
+        ["run-id", "Run ID"], ["revision", "Revision"], ["state", "State"], ["agent", "Agent"], ["model", "Model"],
+        ["started-at", "Started at"], ["ended-at", "Ended at"], ["managed-state", "Managed state"],
+        ["managed-result", "Managed result"], ["digest", "Run digest"],
+      ]),
+      rows: dashboard.runs.map((entry) => metadataRow(entry.record.recordId, {
+        "run-id": entry.record.recordId,
+        revision: String(entry.record.revision),
+        state: entry.state,
+        agent: `${entry.agent.adapterId}/${entry.agent.agentId}`,
+        model: entry.agent.modelId,
+        "started-at": entry.startedAt ?? "not recorded",
+        "ended-at": entry.endedAt ?? "not recorded",
+        "managed-state": entry.managed.status === "observed" ? `${entry.managed.state} · attempt ${entry.managed.attemptNumber}` : entry.managed.status,
+        "managed-result": entry.managed.status === "observed" ? entry.managed.result.status : "not observed",
+        digest: entry.record.digest,
+      })),
+      total: dashboard.limits.runs.total,
+      omitted: dashboard.limits.runs.omitted,
+    }),
+    metadataTable({
+      ...common,
+      id: "agent-handoffs",
+      title: "Agent and model handoffs",
+      columns: columns([
+        ["handoff-id", "Handoff ID"], ["from-run", "From Run"], ["target", "Target selection"], ["state", "State"],
+        ["created-at", "Created at"], ["acknowledged-at", "Acknowledged at"], ["digest", "Handoff digest"],
+      ]),
+      rows: dashboard.handoffs.map((entry) => metadataRow(entry.record.recordId, {
+        "handoff-id": entry.record.recordId,
+        "from-run": entry.fromRun.recordId,
+        target: `${entry.toSelection.adapterId}/${entry.toSelection.agentId}/${entry.toSelection.modelId}`,
+        state: entry.state,
+        "created-at": entry.createdAt,
+        "acknowledged-at": entry.acknowledgedAt ?? "not acknowledged",
+        digest: entry.record.digest,
+      })),
+      total: dashboard.limits.handoffs.total,
+      omitted: dashboard.limits.handoffs.omitted,
+    }),
+    metadataTable({
+      ...common,
+      id: "provider-metrics",
+      title: "Provider usage and cost metadata",
+      columns: columns([["metric", "Metric"], ["state", "State"], ["basis", "Basis"]]),
+      rows: [
+        metadataRow("usage", { metric: "Usage", state: dashboard.providerMetrics.usage.state, basis: dashboard.providerMetrics.usage.basis }),
+        metadataRow("cost", { metric: "Cost", state: dashboard.providerMetrics.cost.state, basis: dashboard.providerMetrics.cost.basis }),
+      ],
+      total: 2,
+      omitted: 0,
+    }),
+  ]
+}
+
+function columns(values: readonly (readonly [key: string, label: string])[]): readonly AccessibleTableColumn[] {
+  return values.map(([key, label]) => ({ key, label }))
+}
+
+function metadataRow(id: string, cells: Readonly<Record<string, string>>): AccessibleTableRow {
+  return { id, cells }
+}
+
+function metadataTable(table: AccessibleMetadataTable): AccessibleMetadataTable {
+  return createAccessibleMetadataTable(table)
 }
 
 async function showManagedEvidencePage(page: ManagedRunSummaryPage): Promise<void> {

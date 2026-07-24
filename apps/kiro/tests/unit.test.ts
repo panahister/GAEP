@@ -6,6 +6,12 @@ import { dirname, join, resolve } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 
+import {
+  accessibleTableCsv,
+  buildAccessibleTableView,
+  createAccessibleMetadataTable,
+  renderAccessibleTableText,
+} from "../src/accessible-table.js"
 import { GaepEngineClient, safeEngineEnvironment } from "../src/engine-client.js"
 import { canonicalDigest, GaepHostError } from "../src/protocol.js"
 
@@ -18,6 +24,68 @@ const stagedManagedRunId = "16161616-1616-4616-8616-161616161616"
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
 const fakeEngine = resolve(dirname(fileURLToPath(import.meta.url)), "../tests/fake-engine.mjs")
+
+const accessibleTableFixture = createAccessibleMetadataTable({
+  id: "verified-runs",
+  title: "Verified Runs",
+  columns: [
+    { key: "name", label: "Name" },
+    { key: "state", label: "State" },
+  ],
+  rows: [
+    { id: "row-b", cells: { name: "Bravo", state: "pending" } },
+    { id: "row-a", cells: { name: "Alpha", state: "pending" } },
+    { id: "row-c", cells: { name: "=SUM(A1:A2)", state: "complete" } },
+  ],
+  total: 5,
+  omitted: 2,
+  snapshotDigest: `sha256:${"a".repeat(64)}`,
+  sourceBoundary: "already-verified-bounded-metadata-only",
+  authorityBoundary: "table-does-not-authorize-run-or-effects",
+})
+
+test("accessible metadata tables filter visible cells and sort deterministically with row-ID ties", () => {
+  const sorted = buildAccessibleTableView(accessibleTableFixture, {
+    sortKey: "state",
+    sortDirection: "ascending",
+  })
+  assert.deepEqual(sorted.rows.map((row) => row.id), ["row-c", "row-a", "row-b"])
+
+  const filtered = buildAccessibleTableView(accessibleTableFixture, {
+    filter: "PENDING",
+    sortKey: "name",
+    sortDirection: "descending",
+  })
+  assert.deepEqual(filtered.rows.map((row) => row.id), ["row-b", "row-a"])
+  assert.throws(() => buildAccessibleTableView(accessibleTableFixture, { filter: "x".repeat(257) }), RangeError)
+  assert.throws(() => buildAccessibleTableView(accessibleTableFixture, { sortKey: "hidden", sortDirection: "ascending" }), TypeError)
+})
+
+test("accessible metadata CSV exports only filtered rows and neutralizes spreadsheet formula prefixes", () => {
+  const view = buildAccessibleTableView(accessibleTableFixture, { filter: "SUM" })
+  assert.equal(
+    accessibleTableCsv(view),
+    '"Name","State"\r\n"\'=SUM(A1:A2)","complete"',
+  )
+  assert.equal(accessibleTableCsv(view).includes("Bravo"), false)
+  assert.equal(accessibleTableCsv(view).includes("omitted"), false)
+  const rendered = renderAccessibleTableText(view)
+  assert.match(rendered, /Showing 1 of 3 verified rows; 2 omitted upstream; source total 5\./u)
+  assert.match(rendered, /Boundary: table-does-not-authorize-run-or-effects/u)
+})
+
+test("accessible metadata tables reject unreconciled totals and non-visible row fields", () => {
+  assert.throws(() => createAccessibleMetadataTable({
+    ...accessibleTableFixture,
+    total: 4,
+  }), RangeError)
+  assert.throws(() => createAccessibleMetadataTable({
+    ...accessibleTableFixture,
+    rows: [{ id: "row-a", cells: { name: "Alpha", state: "pending", secret: "withheld" } }],
+    total: 3,
+    omitted: 2,
+  }), TypeError)
+})
 
 test("sanitized engine environment handles Windows Path casing without copying provider state", () => {
   const sanitized = safeEngineEnvironment({

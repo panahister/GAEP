@@ -42,6 +42,7 @@
     "onCommand:gaepKiro.dashboard.phase",
     "onCommand:gaepKiro.dashboard.changeImpact",
     "onCommand:gaepKiro.dashboard.agentModel",
+    "onCommand:gaepKiro.dashboard.accessibleTables",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -99,6 +100,10 @@
       {
         "command": "gaepKiro.dashboard.agentModel",
         "title": "GAEP for Kiro: Show Agent and Model Dashboard"
+      },
+      {
+        "command": "gaepKiro.dashboard.accessibleTables",
+        "title": "GAEP for Kiro: Browse Accessible Dashboard Tables"
       },
       {
         "command": "gaepKiro.portableDesign.import",
