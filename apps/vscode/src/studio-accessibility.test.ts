@@ -201,7 +201,40 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         health: [],
         designRevisions: table("design-revisions"),
         productRevisions: table("product-revisions"),
-        portability: [{ term: "Export", value: "Portable and path-free" }],
+        portableDesignSnapshots: {
+          id: "portable-design-snapshots",
+          title: "Portable design snapshots",
+          columns: [
+            { key: "title", label: "Design snapshot", identifier: true },
+            { key: "governance", label: "GAEP state" },
+            { key: "sourceReview", label: "Upstream source review" },
+          ],
+          rows: [{
+            id: "22222222-2222-4222-8222-222222222222",
+            cells: {
+              title: "Checkout design",
+              governance: "pending-human-review",
+              sourceReview: "approved upstream claim; not GAEP approval",
+            },
+            state: "pending-human-review",
+            actions: [{
+              label: "Read verified metadata",
+              enabled: true,
+              action: { kind: "read-portable-design-snapshot", bundleId: "22222222-2222-4222-8222-222222222222" },
+            }],
+          }],
+          actions: [{
+            label: "Import local design bundle",
+            enabled: true,
+            emphasis: "primary",
+            action: { kind: "domain-workflow", workflow: "import-portable-design-snapshot" },
+          }],
+          pagination: { offset: 0, limit: 50, total: 1, hasPrevious: false, hasNext: false },
+        },
+        portability: [{
+          term: "Upstream source review",
+          value: "The preserved claim is not GAEP approval, a Design Baseline, implementation readiness, or release readiness.",
+        }],
       }
   }
 }
@@ -333,6 +366,18 @@ describe("Product Studio rendered accessibility", () => {
     send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: empty })
     expect(dom.window.document.querySelector('ol[aria-label="Durable normalized Managed Run events"]')).toBeNull()
     expect(dom.window.document.body.textContent).toMatch(/No durable normalized Managed Run events.*Legacy lifecycle state does not imply evidence/i)
+  })
+
+  it("renders the portable design import stop-line and keyboard-operable metadata action", () => {
+    const candidate = snapshot("readiness", 92)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
+    expect(dom.window.document.body.textContent).toMatch(/pending-human-review/i)
+    expect(dom.window.document.body.textContent).toMatch(/approved upstream claim; not GAEP approval/i)
+    expect(dom.window.document.body.textContent).toMatch(/not GAEP approval, a Design Baseline, implementation readiness, or release readiness/i)
+    const read = Array.from(dom.window.document.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent === "Read verified metadata")
+    expect(read?.disabled).toBe(false)
+    expect(read?.tabIndex).toBeGreaterThanOrEqual(0)
   })
 
   it("keeps names, focus order, and icon semantics explicit", () => {

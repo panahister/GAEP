@@ -267,6 +267,10 @@
         "title": "GAEP Product Studio: Preview Portable Import"
       },
       {
+        "command": "gaep.productStudio.import.portable.design.snapshot",
+        "title": "GAEP Product Studio: Import Local Portable Design Bundle"
+      },
+      {
         "command": "gaep.productStudio.workspace.health",
         "title": "GAEP Product Studio: Inspect Workspace Health"
       }

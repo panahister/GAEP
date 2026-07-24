@@ -96,6 +96,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         health: [],
         designRevisions: table("design-revisions"),
         productRevisions: table("product-revisions"),
+        portableDesignSnapshots: table("portable-design-snapshots"),
         portability: [],
       }
   }
@@ -217,12 +218,16 @@ describe("Product Studio protocol", () => {
     expect(isStudioAction({ kind: "save-draft", route: "direction", values: {}, states: { problem: "approved" } })).toBe(false)
     expect(isStudioAction({ kind: "domain-workflow", workflow: "create-context-pack" })).toBe(true)
     expect(isStudioAction({ kind: "domain-workflow", workflow: "create-instruction-privilege-grant" })).toBe(true)
+    expect(isStudioAction({ kind: "domain-workflow", workflow: "import-portable-design-snapshot" })).toBe(true)
     expect(isStudioAction({ kind: "domain-workflow", workflow: "revoke-instruction-privilege-grant", recordId: "grant-1", expectedRevision: 2 })).toBe(true)
     expect(isStudioAction({ kind: "domain-workflow", workflow: "run-arbitrary-command" })).toBe(false)
     expect(isStudioAction({ kind: "domain-page", recordKind: "requirement", offset: 50, limit: 50 })).toBe(true)
     expect(isStudioAction({ kind: "domain-page", recordKind: "unknown", offset: 0, limit: 50 })).toBe(false)
     expect(isStudioAction({ kind: "domain-page", recordKind: "requirement", offset: -1, limit: 50 })).toBe(false)
     expect(isStudioAction({ kind: "domain-page", recordKind: "requirement", offset: 0, limit: 201 })).toBe(false)
+    expect(isStudioAction({ kind: "domain-page", recordKind: "portable-design-snapshot", offset: 50, limit: 50 })).toBe(true)
+    expect(isStudioAction({ kind: "read-portable-design-snapshot", bundleId: "22222222-2222-4222-8222-222222222222" })).toBe(true)
+    expect(isStudioAction({ kind: "read-portable-design-snapshot", bundleId: "/tmp/private" })).toBe(false)
     expect(isStudioAction({ kind: "save-draft", route: "direction", values: { problem: "x".repeat(50_001) } })).toBe(false)
     expect(isStudioAction({
       kind: "analyze-impact",

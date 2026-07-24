@@ -37,6 +37,7 @@ import type { ProductStudioPage, ProductStudioRecordMap, ProductStudioService } 
 
 import type { PortableHandoffObservation } from "./handoff-observation.js"
 import { readVerifiedManagedArtifacts } from "./managed-evidence-verifier.js"
+import type { PortableDesignSnapshot } from "./portable-design-workflow.js"
 import { agentStatus } from "./provider-truth.js"
 import { currentInitiative, initiativeRunEligibility, newestRun, unsafeSelectionReasons } from "./safety.js"
 import {
@@ -162,6 +163,8 @@ interface ObservedStudioState {
   searchResultTotal: number
   impact?: TraceImpact
   importPreview?: ProductImportPreview
+  portableDesignSnapshots: PortableDesignSnapshot[]
+  selectedPortableDesignSnapshot?: PortableDesignSnapshot
   domainPages: Partial<Record<StudioDomainPageKind, ProductStudioPageMetadata>>
 }
 
@@ -1630,6 +1633,92 @@ function evidenceTable(records: EvidenceRecord[]): StudioTableSnapshot {
   }
 }
 
+function portableDesignReviewLabel(record: PortableDesignSnapshot): string {
+  return `${record.sourceReview.status} upstream claim; not GAEP approval`
+}
+
+function portableDesignImportControl(
+  enabled: boolean,
+  emphasis: StudioActionControl["emphasis"] = "primary",
+): StudioActionControl {
+  return control(
+    "Import local design bundle",
+    { kind: "domain-workflow", workflow: "import-portable-design-snapshot" },
+    enabled,
+    emphasis,
+    enabled ? undefined : "Audit and governed snapshot inventory verification must pass before importing a local design bundle.",
+  )
+}
+
+function portableDesignSnapshotTable(records: PortableDesignSnapshot[], auditVerified: boolean): StudioTableSnapshot {
+  const importAction = portableDesignImportControl(auditVerified)
+  return {
+    id: "portable-design-snapshots",
+    title: "Portable design snapshots",
+    columns: [
+      { key: "title", label: "Design snapshot", identifier: true },
+      { key: "governance", label: "GAEP state" },
+      { key: "sourceReview", label: "Upstream source review" },
+      { key: "source", label: "Source tool" },
+      { key: "artifacts", label: "Validated artifacts" },
+      { key: "classification", label: "Classification" },
+      { key: "imported", label: "Imported" },
+    ],
+    rows: records.map((record) => ({
+      id: record.bundleId,
+      cells: {
+        title: record.title,
+        governance: record.governance.state,
+        sourceReview: portableDesignReviewLabel(record),
+        source: record.source.tool,
+        artifacts: String(record.artifacts.length),
+        classification: record.classification,
+        imported: record.evidence.importedAt,
+      },
+      state: record.governance.state,
+      actions: [control("Read verified metadata", { kind: "read-portable-design-snapshot", bundleId: record.bundleId })],
+    })),
+    actions: [importAction],
+    ...(records.length === 0 ? {
+      emptyState: emptySurface(
+        "No portable design snapshots",
+        "Import one local portable design bundle. A validated import remains pending human review and does not create approval or a Design Baseline.",
+        [importAction],
+      ),
+    } : {}),
+  }
+}
+
+function portableDesignSnapshotInspector(record: PortableDesignSnapshot): StudioInspectorSnapshot {
+  return {
+    title: "Verified portable design metadata",
+    recordId: record.bundleId,
+    entries: [
+      { term: "Title", value: record.title },
+      { term: "Bundle ID", value: record.bundleId },
+      { term: "Product ID", value: record.productId },
+      ...(record.initiativeId ? [{ term: "Initiative ID", value: record.initiativeId }] : []),
+      { term: "GAEP state", value: record.governance.state },
+      { term: "Upstream source review", value: portableDesignReviewLabel(record) },
+      { term: "Authority boundary", value: "Import validation is not design approval, a Design Baseline, implementation readiness, or release readiness." },
+      { term: "Source tool", value: record.source.tool },
+      { term: "Classification", value: record.classification },
+      { term: "Validated artifacts", value: String(record.artifacts.length) },
+      { term: "Normalized design tokens", value: String(record.tokens.length) },
+      { term: "Validation checks", value: `${record.evidence.checks.length} bounded checks recorded` },
+      { term: "Imported", value: record.evidence.importedAt },
+      { term: "Snapshot digest", value: record.snapshotDigest },
+      { term: "Evidence digest", value: record.evidence.evidenceDigest },
+      { term: "Privacy boundary", value: "Artifact paths, normalized design-token values, local bundle roots, source bytes, external-account state, credentials, and access tokens are not displayed." },
+    ],
+    relationships: [
+      { term: "Bound Product", value: record.productId },
+      ...(record.initiativeId ? [{ term: "Bound Initiative", value: record.initiativeId }] : []),
+    ],
+    actions: [],
+  }
+}
+
 function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
   const sections = sectionsFor(state)
   const gaps: StudioIssue[] = []
@@ -1695,12 +1784,19 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
     actions: [],
     ...(state.productRevisions.length === 0 ? { emptyState: emptySurface("No Product revision history", "Initialize or revise Product design to create immutable Product history.") } : {}),
   }
+  const portableDesignPage = state.domainPages["portable-design-snapshot"]
+  const portableDesignImportEnabled = state.audit?.valid === true && portableDesignPage !== undefined
+  const portableDesignSnapshots = portableDesignSnapshotTable(state.portableDesignSnapshots, portableDesignImportEnabled)
+  const portableDesignInventory = portableDesignPage
+    ? `${portableDesignPage.total} governed record${portableDesignPage.total === 1 ? "" : "s"}; every validated import remains pending human review.`
+    : "Unavailable until audit and governed snapshot inventory verification both succeed."
   return {
     ...base("readiness", state.product),
     ...(designPanel("readiness", state) ? { design: designPanel("readiness", state) } : {}),
     kind: "readiness",
     actions: [
-      domainControl("Build portable export", "export", undefined, undefined, "primary"),
+      portableDesignImportControl(portableDesignImportEnabled),
+      domainControl("Build portable export", "export"),
       domainControl("Preview import", "import-preview"),
       domainControl("Refresh workspace health", "workspace-health"),
     ],
@@ -1717,9 +1813,13 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
     health,
     designRevisions,
     productRevisions,
+    portableDesignSnapshots,
     portability: [
       { term: "Export", value: "Portable bundle only; authority, readiness, runtime bindings, credentials, and implementation approval are not conferred." },
-      { term: "Import", value: state.importPreview ? `${state.importPreview.status}; preview only; no mutation performed.` : "No preview loaded; import mutation is not performed by Product Studio." },
+      { term: "Product export preview", value: state.importPreview ? `${state.importPreview.status}; preview only; no mutation performed.` : "No Product export preview is loaded; that preview workflow never mutates Product state." },
+      { term: "Portable design snapshots", value: portableDesignInventory },
+      { term: "Upstream source review", value: "The preserved sourceReview value is an upstream claim. It is not GAEP approval, a Design Baseline, implementation readiness, or release readiness." },
+      { term: "Design import privacy", value: "Persistence is limited to engine-validated snapshot metadata and digests. This view omits artifact paths and normalized design-token values; local bundle roots, source bytes, credentials, access tokens, OAuth state, and external-account data are never displayed." },
       { term: "Restricted context", value: "Review engine health and bundle exclusions before treating an export as distributable." },
     ],
   }
@@ -1784,7 +1884,12 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       evidence: capTable(page.evidence),
       handoffs: capTable(page.handoffs),
     }
-    case "readiness": return { ...page, designRevisions: capTable(page.designRevisions), productRevisions: capTable(page.productRevisions) }
+    case "readiness": return {
+      ...page,
+      designRevisions: capTable(page.designRevisions),
+      productRevisions: capTable(page.productRevisions),
+      portableDesignSnapshots: capTable(page.portableDesignSnapshots),
+    }
   }
 }
 
@@ -1863,6 +1968,7 @@ function addDomainPagination(page: StudioPageSnapshot, state: ObservedStudioStat
       ...page,
       designRevisions: pageTable(page.designRevisions, "product-design-revision"),
       productRevisions: pageTable(page.productRevisions, "product-revision"),
+      portableDesignSnapshots: pageTable(page.portableDesignSnapshots, "portable-design-snapshot"),
     }
   }
 }
@@ -2070,6 +2176,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
   private searchResultTotal = 0
   private impact?: TraceImpact
   private importPreview?: ProductImportPreview
+  private portableDesignInspectorId?: string
 
   constructor(private readonly context: CurrentEngineStudioContext) {}
 
@@ -2085,6 +2192,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       this.searchResultTotal = 0
       this.impact = undefined
       this.importPreview = undefined
+      this.portableDesignInspectorId = undefined
     }
     const observed = await this.observe(route)
     signal?.throwIfAborted()
@@ -2094,7 +2202,10 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     const workspace = this.context.workspace()
     const pageResult = pageFor(route, observed)
     const page = { ...pageResult, page: addDomainPagination(capPageTables(pageResult.page), observed) }
-    const selectedInspector = this.selectedRecordId ? inspectorFor(observed, this.selectedRecordId) : undefined
+    const selectedInspector = route === "readiness" && observed.domainPages["portable-design-snapshot"] &&
+      observed.selectedPortableDesignSnapshot
+      ? portableDesignSnapshotInspector(observed.selectedPortableDesignSnapshot)
+      : this.selectedRecordId ? inspectorFor(observed, this.selectedRecordId) : undefined
     const sections = sectionsFor(observed)
     this.offeredProductRevision = observed.product?.revision ?? (observed.product ? 1 : undefined)
     return {
@@ -2150,9 +2261,40 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         !Number.isInteger(action.limit) || action.limit < 1 || action.limit > 200) {
         return { status: "rejected", announcement: "The requested Product-domain page is outside the bounded paging contract." }
       }
+      if (action.recordKind === "portable-design-snapshot" && action.offset > 10_000) {
+        return { status: "rejected", announcement: "The requested portable design snapshot page is outside its 10,000-record safety bound." }
+      }
       this.domainPageOffsets.set(action.recordKind, action.offset)
       this.domainPageLimits.set(action.recordKind, action.limit)
       return { status: "accepted", announcement: `Loaded the requested ${action.recordKind.replaceAll("-", " ")} page.` }
+    }
+    if (action.kind === "read-portable-design-snapshot") {
+      if (!studio) return { status: "rejected", announcement: "The Product design snapshot service is unavailable. No metadata was opened." }
+      let record: PortableDesignSnapshot
+      try {
+        record = await studio.readPortableDesignSnapshot(action.bundleId)
+      } catch {
+        this.context.logDiagnostic("Product Studio portable-design-snapshot exact read failed; local source details were withheld")
+        return {
+          status: "rejected",
+          announcement: "GAEP could not verify this portable design snapshot against the current audit and Product binding. No metadata was opened.",
+        }
+      }
+      request.signal?.throwIfAborted()
+      if (record.bundleId.toLowerCase() !== action.bundleId.toLowerCase() ||
+        record.governance.state !== "pending-human-review" ||
+        record.governance.claimBoundary !== "import-validation-is-not-design-approval-or-baseline") {
+        this.context.logDiagnostic("Product Studio portable-design-snapshot exact read returned an invalid identity or governance boundary")
+        return {
+          status: "rejected",
+          announcement: "GAEP withheld this portable design snapshot because its identity or governance boundary was invalid.",
+        }
+      }
+      this.portableDesignInspectorId = record.bundleId
+      return {
+        status: "accepted",
+        announcement: "Opened verified privacy-safe portable design metadata. The snapshot remains pending human review.",
+      }
     }
     if (action.kind === "start-design-draft") {
       if (!studio) return { status: "rejected", announcement: "The Product design service is unavailable. No state was changed." }
@@ -2280,6 +2422,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       agents: [], issues: [], productState: "absent",
       designRevisions: [], productRevisions: [], changes: [], workItems: [], requirements: [], decisions: [], risks: [],
       architecture: [], evidence: [], contextPacks: [], instructionPrivilegeGrants: [], workflowPlans: [], toolDefinitions: [], runToolSelections: [], traceLinks: [],
+      portableDesignSnapshots: [],
       health: [], healthTotal: 0, searchResults: this.searchResults, searchResultTotal: this.searchResultTotal,
       domainPages: {},
       ...(this.selectedRecordId ? { selectedRecordId: this.selectedRecordId } : {}),
@@ -2439,6 +2582,30 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     if (route === "readiness") {
       addPage("design-revisions", "product-design-revision", (value) => { empty.designRevisions = value })
       addPage("product-revisions", "product-revision", (value) => { empty.productRevisions = value })
+      if (auditSemanticsVerified) {
+        add("portable-design-snapshots", () => this.readPortableDesignPage(studio), (value) => {
+          const page = value as ProductStudioPage<PortableDesignSnapshot>
+          empty.portableDesignSnapshots = page.items
+          empty.domainPages["portable-design-snapshot"] = {
+            offset: page.offset,
+            limit: page.limit,
+            total: page.total,
+            hasMore: page.hasMore,
+          }
+        })
+        const inspectorId = this.portableDesignInspectorId
+        if (inspectorId) {
+          add("portable-design-snapshot-inspector", () => studio.readPortableDesignSnapshot(inspectorId), (value) => {
+            empty.selectedPortableDesignSnapshot = value as PortableDesignSnapshot
+          })
+        }
+      } else {
+        empty.issues.push(issue(
+          "portable-design-snapshots-unavailable",
+          "Portable design snapshot metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
       add("workspace-health", () => studio.healthIssues(), (value) => {
         const issues = value as WorkspaceHealthIssue[]
         empty.healthTotal = issues.length
@@ -2487,7 +2654,11 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
   }
 
   private recordObservationFailure(state: ObservedStudioState, area: string, error: unknown): void {
-    this.context.logDiagnostic(`Product Studio ${area} observation failed`, error)
+    if (area.startsWith("portable-design-snapshot")) {
+      this.context.logDiagnostic(`Product Studio ${area} observation failed; local source details were withheld`)
+    } else {
+      this.context.logDiagnostic(`Product Studio ${area} observation failed`, error)
+    }
     state.issues.push(issue(`${area}-unavailable`, `${area.replaceAll("-", " ")} could not be observed. Review GAEP diagnostics.`, "warning"))
   }
 
@@ -2502,6 +2673,21 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       const lastOffset = page.total === 0 ? 0 : Math.floor((page.total - 1) / page.limit) * page.limit
       this.domainPageOffsets.set(kind, lastOffset)
       page = await studio.listDomainPage(kind, { offset: lastOffset, limit: page.limit })
+    }
+    return page
+  }
+
+  private async readPortableDesignPage(
+    studio: ProductStudioService,
+  ): Promise<ProductStudioPage<PortableDesignSnapshot>> {
+    const kind: StudioDomainPageKind = "portable-design-snapshot"
+    const requestedOffset = this.domainPageOffsets.get(kind) ?? 0
+    const requestedLimit = this.domainPageLimits.get(kind) ?? this.domainPageLimit
+    let page = await studio.listPortableDesignSnapshots({ offset: requestedOffset, limit: requestedLimit })
+    if (page.items.length === 0 && requestedOffset > 0) {
+      const lastOffset = page.total === 0 ? 0 : Math.floor((page.total - 1) / page.limit) * page.limit
+      this.domainPageOffsets.set(kind, lastOffset)
+      page = await studio.listPortableDesignSnapshots({ offset: lastOffset, limit: page.limit })
     }
     return page
   }

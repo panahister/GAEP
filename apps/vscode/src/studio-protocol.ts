@@ -77,7 +77,7 @@ export const studioDomainWorkflows = [
   "create-tool-definition", "edit-tool-definition",
   "create-run-tool-selection", "edit-run-tool-selection",
   "create-trace-link", "reassess-trace-link",
-  "search", "export", "import-preview", "workspace-health",
+  "search", "export", "import-preview", "import-portable-design-snapshot", "workspace-health",
 ] as const
 
 export type StudioDomainWorkflow = typeof studioDomainWorkflows[number]
@@ -85,7 +85,7 @@ export type StudioDomainWorkflow = typeof studioDomainWorkflows[number]
 export const studioDomainPageKinds = [
   "product-design-revision", "product-revision", "change", "work-item", "requirement", "decision", "risk",
   "architecture-record", "evidence", "trace-link", "context-pack", "workflow-plan", "tool-definition",
-  "instruction-privilege-grant", "run-tool-selection",
+  "instruction-privilege-grant", "run-tool-selection", "portable-design-snapshot",
 ] as const
 
 export type StudioDomainPageKind = typeof studioDomainPageKinds[number]
@@ -365,6 +365,7 @@ export interface ReadinessPageSnapshot extends StudioPageBase {
   health: StudioIssue[]
   designRevisions: StudioTableSnapshot
   productRevisions: StudioTableSnapshot
+  portableDesignSnapshots: StudioTableSnapshot
   portability: StudioDefinitionEntry[]
 }
 
@@ -418,6 +419,7 @@ export type StudioAction =
   | { kind: "open-record"; recordId: string }
   | { kind: "show-source"; recordId: string }
   | { kind: "select-record"; recordId: string }
+  | { kind: "read-portable-design-snapshot"; bundleId: string }
   | { kind: "start-design-draft"; expectedProductRevision: number }
   | {
       kind: "save-draft"
@@ -589,6 +591,9 @@ export function isStudioAction(value: unknown): value is StudioAction {
     case "show-source":
     case "select-record":
       return hasOnlyKeys(value, ["kind", "recordId"]) && isNonEmptyString(value.recordId)
+    case "read-portable-design-snapshot":
+      return hasOnlyKeys(value, ["kind", "bundleId"]) && typeof value.bundleId === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value.bundleId)
     case "analyze-impact":
       return hasOnlyKeys(value, ["kind", "recordId", "recordType", "revision", "digest"]) && isNonEmptyString(value.recordId) &&
         isOptionalString(value.recordType) && (value.revision === undefined || (isNonNegativeInteger(value.revision) && value.revision > 0)) &&
@@ -893,14 +898,15 @@ function isRunPage(page: Record<string, unknown>): boolean {
 function isReadinessPage(page: Record<string, unknown>): boolean {
   return hasOnlyKeys(page, [
     "kind", "route", "title", "purpose", "source", "actions", "design", "statement", "sections", "gaps", "conflicts", "nextAction",
-    "health", "designRevisions", "productRevisions", "portability",
+    "health", "designRevisions", "productRevisions", "portableDesignSnapshots", "portability",
   ]) && isPageBase(page, "readiness") && page.kind === "readiness" && isNonEmptyString(page.statement) &&
     Array.isArray(page.sections) && page.sections.length === studioRoutes.length && page.sections.every(isOverviewSection) &&
     Array.isArray(page.gaps) && page.gaps.length <= 1_000 && page.gaps.every(isStudioIssue) &&
     Array.isArray(page.conflicts) && page.conflicts.length <= 1_000 && page.conflicts.every(isStudioIssue) &&
     (page.nextAction === undefined || isStudioActionControl(page.nextAction)) && Array.isArray(page.health) &&
     page.health.length <= 1_000 && page.health.every(isStudioIssue) && isTableSnapshot(page.designRevisions) &&
-    isTableSnapshot(page.productRevisions) && Array.isArray(page.portability) && page.portability.every(isDefinitionEntry)
+    isTableSnapshot(page.productRevisions) && isTableSnapshot(page.portableDesignSnapshots) &&
+    Array.isArray(page.portability) && page.portability.every(isDefinitionEntry)
 }
 
 function isEnvelope(value: Record<string, unknown>, expectedChannelId: string): boolean {

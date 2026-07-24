@@ -26,6 +26,7 @@ import {
   type CurrentEngineStudioContext,
   type ExistingStudioCommand,
 } from "./current-engine-studio-data-source.js"
+import type { PortableDesignSnapshot } from "./portable-design-workflow.js"
 import { isStudioSnapshot, studioRoutes } from "./studio-protocol.js"
 
 const workspacePath = "/machine-only/example-product"
@@ -432,6 +433,69 @@ const designDraft: ProductDesignDraft = {
   updatedAt: "2026-07-21T00:00:00.000Z",
 }
 
+const portableDesignSnapshot = {
+  schemaVersion: 1,
+  kind: "portable-design-snapshot",
+  bundleId: "23232323-2323-4323-8323-232323232323",
+  productId: product.id,
+  initiativeId: initiative.id,
+  title: "Checkout design",
+  classification: "internal",
+  owner: { kind: "human", id: "upstream-designer" },
+  source: {
+    tool: "figma",
+    objectId: "private-source-object",
+    revision: "source-r1",
+    exportMethod: "manual-export",
+    exportedAt: "2026-07-21T00:00:00.000Z",
+  },
+  sourceReview: {
+    status: "approved",
+    actor: { kind: "human", id: "upstream-reviewer" },
+    occurredAt: "2026-07-21T00:01:00.000Z",
+    evidenceId: "upstream-evidence",
+  },
+  governance: {
+    state: "pending-human-review",
+    claimBoundary: "import-validation-is-not-design-approval-or-baseline",
+  },
+  artifacts: [{
+    id: "checkout-screen",
+    kind: "screen",
+    format: "png",
+    path: "private/raw-checkout.png",
+    mediaType: "image/png",
+    sizeBytes: 512,
+    digest: `sha256:${"a".repeat(64)}`,
+    targets: [],
+    validation: "signature-verified",
+  }],
+  tokens: [{
+    artifactId: "checkout-tokens",
+    path: "auth.private",
+    type: "string",
+    value: "private-token-value",
+    valueDigest: `sha256:${"b".repeat(64)}`,
+  }],
+  snapshotDigest: `sha256:${"c".repeat(64)}`,
+  evidence: {
+    policy: "gaep-portable-design-import/1",
+    importedAt: "2026-07-21T00:02:00.000Z",
+    manifestDigest: `sha256:${"d".repeat(64)}`,
+    artifactInventoryDigest: `sha256:${"e".repeat(64)}`,
+    checks: [
+      "manifest-strict-schema",
+      "bundle-exact-inventory",
+      "paths-contained-and-link-free",
+      "sizes-and-digests-exact",
+      "text-secret-scan-clear",
+      "formats-passively-validated",
+    ],
+    limitations: ["A successful import remains pending human review and does not establish a Design Baseline."],
+    evidenceDigest: `sha256:${"f".repeat(64)}`,
+  },
+} as PortableDesignSnapshot
+
 function productStudioStub(): ProductStudioService {
   const readiness = {
     schemaVersion: 1 as const,
@@ -479,6 +543,16 @@ function productStudioStub(): ProductStudioService {
       total: 0,
       hasMore: false,
     }),
+    listPortableDesignSnapshots: async (input: { offset?: number; limit?: number } = {}) => ({
+      items: [],
+      offset: input.offset ?? 0,
+      limit: input.limit ?? 50,
+      total: 0,
+      hasMore: false,
+    }),
+    readPortableDesignSnapshot: async () => {
+      throw Object.assign(new Error("missing portable design snapshot"), { code: "ENOENT" })
+    },
     healthIssues: async () => [],
   } as unknown as ProductStudioService
 }
@@ -940,6 +1014,156 @@ describe("current-engine Product Studio data source", () => {
     if (shrunk.page.kind !== "record-form") throw new Error("Expected Scope form")
     expect(shrunk.page.relatedRecords?.find((candidate) => candidate.id === "requirements")?.pagination)
       .toEqual({ offset: 50, limit: 25, total: 70, hasPrevious: true, hasNext: false })
+  })
+
+  it("lists and exactly reads bounded portable design metadata without exposing source paths or token values", async () => {
+    const listPortableDesignSnapshots = vi.fn(async (input: { offset?: number; limit?: number } = {}) => {
+      const offset = input.offset ?? 0
+      const limit = input.limit ?? 50
+      return {
+        items: [portableDesignSnapshot],
+        offset,
+        limit,
+        total: 51,
+        hasMore: offset + limit < 51,
+      }
+    })
+    const readPortableDesignSnapshot = vi.fn(async () => portableDesignSnapshot)
+    const auditState = { valid: true, events: 8, error: undefined as string | undefined }
+    const source = harness({
+      audit: auditState,
+      productStudio: {
+        ...productStudioStub(),
+        listPortableDesignSnapshots,
+        readPortableDesignSnapshot,
+      } as unknown as ProductStudioService,
+    }).source
+
+    const first = await source.readSnapshot("readiness")
+    expect(isStudioSnapshot(first)).toBe(true)
+    if (first.page.kind !== "readiness") throw new Error("Expected Readiness page")
+    const table = first.page.portableDesignSnapshots
+    expect(table.pagination).toEqual({ offset: 0, limit: 50, total: 51, hasPrevious: false, hasNext: true })
+    expect(table.rows[0]).toMatchObject({
+      id: portableDesignSnapshot.bundleId,
+      cells: {
+        governance: "pending-human-review",
+        sourceReview: "approved upstream claim; not GAEP approval",
+        artifacts: "1",
+      },
+    })
+    expect(listPortableDesignSnapshots).toHaveBeenCalledWith({ offset: 0, limit: 50 })
+    const portableUi = JSON.stringify({ table, portability: first.page.portability })
+    expect(portableUi).not.toContain("private/raw-checkout.png")
+    expect(portableUi).not.toContain("private-token-value")
+    expect(portableUi).not.toContain("private-source-object")
+    expect(portableUi).toMatch(/not GAEP approval.*Design Baseline.*implementation readiness.*release readiness/i)
+
+    const read = table.rows[0]?.actions.find((candidate) => candidate.action.kind === "read-portable-design-snapshot")
+    if (!read) throw new Error("Expected exact portable design metadata action")
+    expect(await source.execute(read.action, {
+      requestId: "read-portable-design",
+      expectedContextGeneration: first.contextGeneration,
+      expectedSnapshotRevision: first.snapshotRevision,
+    })).toMatchObject({ status: "accepted", announcement: expect.stringMatching(/pending human review/i) })
+    expect(readPortableDesignSnapshot).toHaveBeenCalledWith(portableDesignSnapshot.bundleId)
+
+    const inspected = await source.readSnapshot("readiness")
+    expect(inspected.inspector?.title).toMatch(/Verified portable design metadata/i)
+    const inspector = JSON.stringify(inspected.inspector)
+    expect(inspector).toMatch(/pending-human-review/i)
+    expect(inspector).toMatch(/not design approval.*Design Baseline.*implementation readiness.*release readiness/i)
+    expect(inspector).not.toContain("private/raw-checkout.png")
+    expect(inspector).not.toContain("private-token-value")
+    expect(inspector).not.toContain("private-source-object")
+
+    if (inspected.page.kind !== "readiness") throw new Error("Expected Readiness page")
+    const next = inspected.page.portableDesignSnapshots.actions.find((candidate) =>
+      candidate.label === "Next Portable design snapshots page")
+    if (!next) throw new Error("Expected next portable design page action")
+    expect(await source.execute(next.action, {
+      requestId: "next-portable-design-page",
+      expectedContextGeneration: inspected.contextGeneration,
+      expectedSnapshotRevision: inspected.snapshotRevision,
+    })).toMatchObject({ status: "accepted" })
+    const second = await source.readSnapshot("readiness")
+    if (second.page.kind !== "readiness") throw new Error("Expected Readiness page")
+    expect(second.page.portableDesignSnapshots.pagination)
+      .toEqual({ offset: 50, limit: 50, total: 51, hasPrevious: true, hasNext: false })
+    expect(listPortableDesignSnapshots).toHaveBeenLastCalledWith({ offset: 50, limit: 50 })
+
+    auditState.valid = false
+    auditState.error = "invalid after exact read"
+    const auditInvalidated = await source.readSnapshot("readiness")
+    expect(auditInvalidated.inspector).toBeUndefined()
+    if (auditInvalidated.page.kind !== "readiness") throw new Error("Expected Readiness page")
+    expect(auditInvalidated.page.portableDesignSnapshots.rows).toEqual([])
+  })
+
+  it("withholds portable design records when audit verification or inventory validation fails", async () => {
+    const listWithInvalidAudit = vi.fn(async () => ({
+      items: [portableDesignSnapshot], offset: 0, limit: 50, total: 1, hasMore: false,
+    }))
+    const invalidAudit = harness({
+      audit: { valid: false, events: 8, error: "invalid" },
+      productStudio: {
+        ...productStudioStub(),
+        listPortableDesignSnapshots: listWithInvalidAudit,
+      } as unknown as ProductStudioService,
+    }).source
+    const blocked = await invalidAudit.readSnapshot("readiness")
+    if (blocked.page.kind !== "readiness") throw new Error("Expected Readiness page")
+    expect(listWithInvalidAudit).not.toHaveBeenCalled()
+    expect(blocked.page.portableDesignSnapshots.rows).toEqual([])
+    expect(blocked.page.portableDesignSnapshots.actions[0]).toMatchObject({
+      enabled: false,
+      disabledReason: expect.stringMatching(/Audit and governed snapshot inventory verification must pass/i),
+    })
+    expect(blocked.page.actions[0]).toMatchObject({ enabled: false })
+    expect(blocked.page.gaps.some((candidate) => /withheld because the audit chain is invalid/i.test(candidate.message))).toBe(true)
+
+    const privateFailure = "/Users/private/token-ghp_secret/candidates/raw-content"
+    const tampered = harness({
+      productStudio: {
+        ...productStudioStub(),
+        listPortableDesignSnapshots: async () => { throw new Error(`tampered inventory at ${privateFailure}`) },
+      } as unknown as ProductStudioService,
+    })
+    const withheld = await tampered.source.readSnapshot("readiness")
+    if (withheld.page.kind !== "readiness") throw new Error("Expected Readiness page")
+    expect(withheld.page.portableDesignSnapshots.rows).toEqual([])
+    expect(withheld.page.portableDesignSnapshots.actions[0]).toMatchObject({ enabled: false })
+    expect(withheld.page.actions[0]).toMatchObject({ enabled: false })
+    expect(withheld.page.gaps.some((candidate) => /portable design snapshots could not be observed/i.test(candidate.message))).toBe(true)
+    expect(JSON.stringify(withheld)).not.toContain(privateFailure)
+    expect(tampered.diagnostics.some((entry) =>
+      /Product Studio portable-design-snapshots observation failed; local source details were withheld/i.test(entry))).toBe(true)
+    expect(JSON.stringify(tampered.diagnostics)).not.toContain(privateFailure)
+
+    const exactReadFailure = harness({
+      productStudio: {
+        ...productStudioStub(),
+        listPortableDesignSnapshots: async () => ({
+          items: [portableDesignSnapshot], offset: 0, limit: 50, total: 1, hasMore: false,
+        }),
+        readPortableDesignSnapshot: async () => { throw new Error(`raw snapshot content at ${privateFailure}`) },
+      } as unknown as ProductStudioService,
+    })
+    const readable = await exactReadFailure.source.readSnapshot("readiness")
+    const rejected = await exactReadFailure.source.execute({
+      kind: "read-portable-design-snapshot",
+      bundleId: portableDesignSnapshot.bundleId,
+    }, {
+      requestId: "private-exact-read-failure",
+      expectedContextGeneration: readable.contextGeneration,
+      expectedSnapshotRevision: readable.snapshotRevision,
+    })
+    expect(rejected).toMatchObject({
+      status: "rejected",
+      announcement: expect.stringMatching(/could not verify.*current audit and Product binding/i),
+    })
+    expect(JSON.stringify(rejected)).not.toContain(privateFailure)
+    expect(JSON.stringify(exactReadFailure.diagnostics)).not.toContain(privateFailure)
   })
 
   it("saves one design section with exact optimistic revisions and local actor provenance", async () => {

@@ -33,6 +33,7 @@ import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-sour
 import { observePortableHandoffs } from "./handoff-observation.js"
 import { resolveLocalActorPrincipal } from "./local-actor.js"
 import { ManagedRunSession } from "./managed-run-session.js"
+import { runPortableDesignImportWorkflow } from "./portable-design-workflow.js"
 import { manualModelEntryCopy } from "./provider-truth.js"
 import {
   buildManagedWorkflowEnvelope,
@@ -1262,6 +1263,50 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const preview = await studio.previewImportFile(source.fsPath)
       await vscode.window.showInformationMessage(`Import preview: ${preview.status}; ${preview.memberCount} member(s); ${preview.conflicts.length} conflict(s). No mutation was performed.`)
       return preview
+    }
+    if (action.workflow === "import-portable-design-snapshot") {
+      const outcome = await runPortableDesignImportWorkflow({
+        trusted: () => vscode.workspace.isTrusted,
+        contextGeneration: () => studioContextGeneration,
+        productRootIdentity: () => selectedFolder?.uri.toString(),
+        actorId: () => actorId,
+        readProduct: () => runtime.engine.readProduct(),
+        importSnapshot: (input, importActorId) => withProductDomainMutation(async () => {
+          await assertWorkflowContext()
+          return studio.importPortableDesignSnapshot(input, importActorId)
+        }),
+      }, {
+        selectLocalBundleFolder: async () => {
+          const selected = await vscode.window.showOpenDialog({
+            title: "Select one local portable design bundle folder",
+            openLabel: "Select Local Bundle Folder",
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+          })
+          const source = selected?.[0]
+          return source ? { scheme: source.scheme, path: source.fsPath, kind: "folder" } : undefined
+        },
+        confirmImport: async (binding) => {
+          const confirmed = await vscode.window.showWarningMessage(
+            `Import the selected local bundle into ${binding.name} at Product revision ${binding.revision}? GAEP will save only validated metadata and digests. The result remains pending human review even when upstream sourceReview says approved.`,
+            { modal: true },
+            "Import as Pending Review",
+          )
+          return confirmed === "Import as Pending Review"
+        },
+      })
+      if (outcome.status === "cancelled") throw new WorkflowCancelled()
+      refresh()
+      await vscode.window.showInformationMessage(outcome.announcement)
+      return {
+        bundleId: outcome.snapshot.bundleId,
+        productId: outcome.snapshot.productId,
+        governanceState: outcome.snapshot.governance.state,
+        sourceReviewStatus: outcome.snapshot.sourceReview.status,
+        artifactCount: outcome.snapshot.artifacts.length,
+        importedAt: outcome.snapshot.evidence.importedAt,
+      }
     }
     if (action.workflow === "revoke-instruction-privilege-grant") {
       let record = action.recordId
