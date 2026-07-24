@@ -120,7 +120,22 @@ async function runInstalledPhase() {
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
   await openStudio()
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
-  process.stdout.write("PASS installed: exact VSIX activation, commands, views, Product Studio, and no workspace mutation\n")
+  const dismissNotifications = setInterval(() => {
+    void vscode.commands.executeCommand("notifications.clearAll")
+  }, 100)
+  let recovery
+  try {
+    recovery = await vscode.commands.executeCommand("gaep.retryRecovery")
+  } finally {
+    clearInterval(dismissNotifications)
+    await vscode.commands.executeCommand("notifications.clearAll")
+  }
+  assert.deepEqual(recovery, {
+    level: "information",
+    message: "The recovery pass returned and the bounded persisted inventory has no interrupted non-terminal Managed Run. This does not attest provider outcome or machine-local cleanup.",
+  })
+  await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
+  process.stdout.write("PASS installed: exact VSIX activation, commands, views, Product Studio, bundled-engine empty recovery/evidence workflow, and no workspace mutation\n")
 }
 
 async function runMultiRootPhase() {

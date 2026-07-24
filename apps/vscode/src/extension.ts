@@ -556,11 +556,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return outcomes.filter((outcome): outcome is AdapterProbeResult => outcome !== undefined)
   }
 
-  const safely = <TArgs extends unknown[]>(
-    operation: (...args: TArgs) => Promise<void>,
-  ): ((...args: TArgs) => Promise<void>) => async (...args: TArgs) => {
+  const safely = <TArgs extends unknown[], TResult>(
+    operation: (...args: TArgs) => Promise<TResult>,
+  ): ((...args: TArgs) => Promise<TResult | undefined>) => async (...args: TArgs) => {
     try {
-      await operation(...args)
+      return await operation(...args)
     } catch (error) {
       if (error instanceof WorkflowCancelled) return
       const message = error instanceof Error ? error.message : "Unknown GAEP failure"
@@ -1703,6 +1703,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const presentation = managedRecoveryPassPresentation(page.items, audit.valid, page.limit, page.total)
       if (presentation.level === "warning") await vscode.window.showWarningMessage(presentation.message)
       else await vscode.window.showInformationMessage(presentation.message)
+      return presentation
     })),
   )
 
