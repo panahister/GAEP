@@ -1,0 +1,163 @@
+import { createInterface } from "node:readline"
+
+const productId = "11111111-1111-4111-8111-111111111111"
+const bundleId = "22222222-2222-4222-8222-222222222222"
+const privateRoot = "/Users/private/portable-design"
+const privateCredential = "PRIVATE-OAUTH-TOKEN"
+
+if (process.env.AWS_SECRET_ACCESS_KEY || process.env.OPENAI_API_KEY || process.env.HOME || process.env.USERPROFILE) {
+  process.exit(91)
+}
+
+const input = createInterface({ input: process.stdin, crlfDelay: Infinity })
+input.on("line", (line) => {
+  const request = JSON.parse(line)
+  const id = request.id
+  if (!exactKeys(request, ["jsonrpc", "id", "method", "params", "protocolVersion"]) ||
+    request.jsonrpc !== "2.0" || request.protocolVersion !== 2) {
+    writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID ENVELOPE")
+    return
+  }
+  switch (request.method) {
+    case "readProduct":
+      if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
+      return writeResult(id, {
+        id: productId,
+        name: "Example Product",
+        revision: 7,
+        providerState: privateCredential,
+      })
+    case "productStudio.portableDesign.import":
+      return importSnapshot(id, request.params)
+    case "productStudio.portableDesign.list":
+      return listSnapshots(id, request.params)
+    case "productStudio.portableDesign.read":
+      return readSnapshot(id, request.params)
+    default:
+      return writeError(id, -32_601, "METHOD_NOT_FOUND", "PRIVATE METHOD")
+  }
+})
+
+function importSnapshot(id, params) {
+  if (!exactKeys(params, ["bundleRoot", "expectedProductId", "expectedProductRevision", "actorId"]) ||
+    params.expectedProductId !== productId || params.expectedProductRevision !== 7 ||
+    params.actorId !== "founder.kiro-review") {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE IMPORT PARAMS")
+  }
+  if (params.bundleRoot.endsWith("source-error")) {
+    return writeError(
+      id,
+      -32_030,
+      "PORTABLE_DESIGN_SOURCE_INVALID",
+      `Malformed bundle at ${privateRoot}; password=${privateCredential}`,
+    )
+  }
+  return writeResult(id, snapshot())
+}
+
+function listSnapshots(id, params) {
+  if (!exactKeys(params, ["offset", "limit"])) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE LIST PARAMS")
+  }
+  const items = params.offset === 9_999 ? Array.from({ length: 201 }, () => snapshot()) : [snapshot()]
+  return writeResult(id, {
+    items,
+    offset: params.offset,
+    limit: params.limit,
+    total: params.offset === 9_999 ? 10_200 : 1,
+    hasMore: params.offset === 9_999,
+    governanceBoundary: "Every item remains pending human review; source review is an upstream claim only.",
+    privacyBoundary: "Items contain validated metadata and digests only; local paths and source content are omitted.",
+  })
+}
+
+function readSnapshot(id, params) {
+  if (!exactKeys(params, ["bundleId"])) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE READ PARAMS")
+  }
+  switch (params.bundleId) {
+    case "33333333-3333-4333-8333-333333333333":
+      return writeError(id, -32_035, "PORTABLE_DESIGN_NOT_FOUND", `Missing ${privateRoot}; token=${privateCredential}`)
+    case "44444444-4444-4444-8444-444444444444":
+      process.stdout.write(`{"jsonrpc":"2.0","id":${id},"id":${id},"result":{}}\n`)
+      return
+    case "55555555-5555-4555-8555-555555555555":
+      process.stdout.write(Buffer.from([0xc3, 0x28, 0x0a]))
+      return
+    case "66666666-6666-4666-8666-666666666666":
+      process.stdout.write(`{"jsonrpc":"2.0","id":${id},"result":{"padding":"${"x".repeat(1024 * 1024 + 1)}"}}\n`)
+      return
+    case "77777777-7777-4777-8777-777777777777": {
+      const value = snapshot(params.bundleId)
+      value.bundleRoot = `${privateRoot}/${privateCredential}`
+      return writeResult(id, value)
+    }
+    case "88888888-8888-4888-8888-888888888888": {
+      const value = snapshot(params.bundleId)
+      value.governance.state = "approved"
+      return writeResult(id, value)
+    }
+    case "99999999-9999-4999-8999-999999999999":
+      return writeError(id, -32_030, "PORTABLE_DESIGN_NOT_FOUND", `Wrong code ${privateRoot} ${privateCredential}`)
+    default:
+      return writeResult(id, snapshot(params.bundleId))
+  }
+}
+
+function snapshot(id = bundleId) {
+  return {
+    schemaVersion: 1,
+    kind: "portable-design-snapshot-summary",
+    bundleId: id,
+    productId,
+    initiativeId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    title: "Imported Product Design",
+    classification: "confidential",
+    governance: {
+      state: "pending-human-review",
+      humanReviewRequired: true,
+      claimBoundary: "import-validation-is-not-design-approval-or-baseline",
+      nonEscalation: "not-gaep-approval-design-baseline-implementation-or-release-readiness",
+    },
+    sourceReview: {
+      status: "approved",
+      claimLabel: "approved upstream claim; not GAEP approval, a Design Baseline, implementation readiness, or release readiness",
+      gaepApproval: false,
+    },
+    source: { tool: "figma", exportMethod: "manual-export" },
+    counts: { artifacts: 2, normalizedDesignTokens: 1, validationChecks: 6, recordedLimitations: 5 },
+    digests: {
+      snapshot: `sha256:${"a".repeat(64)}`,
+      evidence: `sha256:${"b".repeat(64)}`,
+      manifest: `sha256:${"c".repeat(64)}`,
+      artifactInventory: `sha256:${"d".repeat(64)}`,
+    },
+    timestamps: {
+      sourceExportedAt: "2026-07-24T00:00:00.000Z",
+      importedAt: "2026-07-24T00:01:00.000Z",
+    },
+    privacyBoundary: "Validated metadata only; no bundle root, artifact path, token value, source bytes, credentials, OAuth state, or external-account state.",
+  }
+}
+
+function writeResult(id, result) {
+  process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id, result })}\n`)
+}
+
+function writeError(id, code, kind, rawMessage) {
+  process.stdout.write(`${JSON.stringify({
+    jsonrpc: "2.0",
+    id,
+    error: {
+      code,
+      message: rawMessage,
+      data: { kind, detail: { bundleRoot: privateRoot, credential: privateCredential } },
+    },
+  })}\n`)
+}
+
+function exactKeys(value, expected) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const keys = Object.keys(value)
+  return keys.length === expected.length && keys.every((key) => expected.includes(key))
+}

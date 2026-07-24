@@ -1,0 +1,111 @@
+{
+  "name": "gaep-kiro",
+  "displayName": "GAEP for Kiro",
+  "description": "Governed local Product Studio and portable-design metadata workflows for Kiro.",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "publisher": "gaep",
+  "license": "UNLICENSED",
+  "main": "dist/extension.cjs",
+  "files": [
+    "dist/extension.cjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22",
+    "vscode": "^1.95.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "gaep",
+    "kiro",
+    "product studio",
+    "portable design",
+    "governance"
+  ],
+  "activationEvents": [
+    "onCommand:gaepKiro.openProductStudio",
+    "onCommand:gaepKiro.portableDesign.import",
+    "onCommand:gaepKiro.portableDesign.list",
+    "onCommand:gaepKiro.portableDesign.read",
+    "onWebviewPanel:gaepKiro.productStudio"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "GAEP for Kiro can show its static Product Studio boundary, but it does not inspect Product state, start the local engine, or import/read/list portable design metadata until the workspace is trusted.",
+      "restrictedConfigurations": [
+        "gaepKiro.engineExecutable",
+        "gaepKiro.engineSha256",
+        "gaepKiro.actorId"
+      ]
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "gaepKiro.openProductStudio",
+        "title": "GAEP for Kiro: Open Product Studio"
+      },
+      {
+        "command": "gaepKiro.portableDesign.import",
+        "title": "GAEP for Kiro: Import Local Portable Design Bundle"
+      },
+      {
+        "command": "gaepKiro.portableDesign.list",
+        "title": "GAEP for Kiro: List Portable Design Snapshots"
+      },
+      {
+        "command": "gaepKiro.portableDesign.read",
+        "title": "GAEP for Kiro: Read Portable Design Snapshot"
+      }
+    ],
+    "configuration": {
+      "title": "GAEP for Kiro",
+      "properties": {
+        "gaepKiro.engineExecutable": {
+          "type": "string",
+          "default": "gaep-engine",
+          "scope": "machine",
+          "description": "Machine-scoped local GAEP engine executable name or absolute path. Workspace overrides are ignored."
+        },
+        "gaepKiro.engineSha256": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Optional machine-scoped SHA-256 pin for the local GAEP engine executable. Workspace overrides are ignored."
+        },
+        "gaepKiro.actorId": {
+          "type": "string",
+          "default": "gaep.kiro-local-human",
+          "scope": "machine",
+          "description": "Portable human actor ID recorded for local imports. It cannot contain credentials and workspace overrides are ignored."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').rmSync('dist-test',{recursive:true,force:true})\"",
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository -o dist/gaep-kiro.vsix",
+    "test": "node esbuild.mjs --tests && node --test dist-test/unit.test.mjs",
+    "test:extension-host": "npm run build && node test/e2e/run.mjs",
+    "typecheck": "tsc --noEmit --pretty false",
+    "verify": "npm run typecheck && npm test && npm run package"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/vscode": "1.95.0",
+    "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.25.11",
+    "typescript": "^6.0.3"
+  }
+}
