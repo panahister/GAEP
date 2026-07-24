@@ -416,6 +416,27 @@ details summary {
   border-radius: 5px;
 }
 
+.table-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+  margin: 0 0 8px;
+}
+
+.table-filter {
+  display: grid;
+  flex: 1 1 240px;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.table-filter-status {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: 12px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -575,6 +596,12 @@ tr[aria-selected="true"] {
 
   .action-row button {
     width: 100%;
+  }
+
+  .table-controls > button,
+  .table-filter {
+    width: 100%;
+    flex-basis: 100%;
   }
 }
 

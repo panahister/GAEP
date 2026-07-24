@@ -31,6 +31,7 @@ interface CapturedState {
 interface CapturedWebviewApi {
   messages: unknown[]
   state?: CapturedState
+  clipboardText?: string
 }
 
 const captured: CapturedWebviewApi = { messages: [] }
@@ -440,12 +441,17 @@ beforeAll(() => {
   }
   Object.defineProperty(dom.window, "requestAnimationFrame", { configurable: true, value: immediateAnimationFrame })
   Object.defineProperty(dom.window, "confirm", { configurable: true, value: () => true })
+  Object.defineProperty(dom.window.navigator, "clipboard", {
+    configurable: true,
+    value: { writeText: async (value: string) => { captured.clipboardText = value } },
+  })
   for (const [name, value] of Object.entries({
     window: dom.window,
     document: dom.window.document,
     navigator: dom.window.navigator,
     HTMLElement: dom.window.HTMLElement,
     HTMLButtonElement: dom.window.HTMLButtonElement,
+    HTMLInputElement: dom.window.HTMLInputElement,
     Node: dom.window.Node,
     Event: dom.window.Event,
     MessageEvent: dom.window.MessageEvent,
@@ -630,6 +636,58 @@ describe("Product Studio rendered accessibility", () => {
     })
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(dom.window.document.activeElement?.textContent).toBe("Next Changes page")
+  })
+
+  it("keeps table sorting keyboard-focused, filters visible metadata, and exports only the visible CSV rows", async () => {
+    const candidate = snapshot("delivery", 101)
+    if (candidate.page.kind !== "delivery") throw new Error("Expected Delivery page")
+    candidate.page.changes = {
+      ...candidate.page.changes,
+      title: "Accessible Changes",
+      rows: [
+        { id: "change-b", cells: { name: "Beta", state: "proposed", note: "=2+2" }, actions: [] },
+        { id: "change-a", cells: { name: "Alpha", state: "active", note: "plain metadata" }, actions: [] },
+      ],
+      columns: [
+        { key: "name", label: "Name" },
+        { key: "state", label: "State" },
+        { key: "note", label: "Note" },
+      ],
+    }
+    expect(isStudioSnapshot(candidate)).toBe(true)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
+
+    const region = dom.window.document.querySelector<HTMLElement>('[aria-label="Accessible Changes"]')
+    expect(region).not.toBeNull()
+    const nameSort = Array.from(region?.querySelectorAll<HTMLButtonElement>("thead button") ?? [])
+      .find((button) => button.textContent === "Name")
+    nameSort?.click()
+    const sortedRegion = dom.window.document.querySelector<HTMLElement>('[aria-label="Accessible Changes"]')
+    expect(sortedRegion?.querySelector("tbody td")?.textContent).toBe("Alpha")
+    expect(dom.window.document.activeElement?.getAttribute("data-table-column")).toBe("name")
+    expect(sortedRegion?.querySelector("th")?.getAttribute("aria-sort")).toBe("ascending")
+    expect(dom.window.document.getElementById("studio-live-polite")?.textContent).toMatch(/sorted by Name, ascending/i)
+
+    const filter = Array.from(dom.window.document.querySelectorAll<HTMLInputElement>('input[type="search"]'))
+      .find((input) => input.getAttribute("data-table-id") === "changes")
+    if (!filter) throw new Error("Expected Changes filter")
+    filter.value = "beta"
+    filter.setSelectionRange(4, 4)
+    filter.dispatchEvent(new dom.window.Event("input", { bubbles: true }))
+    const filteredRegion = dom.window.document.querySelector<HTMLElement>('[aria-label="Accessible Changes"]')
+    expect(filteredRegion?.querySelectorAll("tbody tr")).toHaveLength(1)
+    expect(filteredRegion?.querySelector("tbody td")?.textContent).toBe("Beta")
+    expect(dom.window.document.activeElement?.getAttribute("data-table-control")).toBe("filter")
+    expect((dom.window.document.activeElement as HTMLInputElement).selectionStart).toBe(4)
+    expect(dom.window.document.body.textContent).toMatch(/Showing 1 of 2 rows/)
+
+    const copy = Array.from(dom.window.document.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.getAttribute("aria-label") === "Copy Accessible Changes visible metadata rows as CSV")
+    copy?.click()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(captured.clipboardText).toBe('\"Name\",\"State\",\"Note\"\r\n\"Beta\",\"proposed\",\"\'=2+2\"')
+    expect(captured.clipboardText).not.toContain("Alpha")
+    expect(dom.window.document.getElementById("studio-live-polite")?.textContent).toMatch(/copied 1 visible metadata row as CSV/i)
   })
 
   it("enforces the deny-by-default CSP and excludes forbidden decorative UI", () => {

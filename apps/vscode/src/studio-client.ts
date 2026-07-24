@@ -127,6 +127,14 @@ class StudioShell {
   private draftDirty = false
   private pendingActionFocusLabel?: string
   private readonly sortState = new Map<string, { key: string; direction: "ascending" | "descending" }>()
+  private readonly filterState = new Map<string, string>()
+  private pendingTableFocus?: {
+    tableId: string
+    control: "filter" | "sort"
+    columnKey?: string
+    selectionStart?: number
+    selectionEnd?: number
+  }
 
   constructor(
     private readonly root: HTMLElement,
@@ -213,7 +221,20 @@ class StudioShell {
     this.root.setAttribute("aria-busy", "false")
     const focusLabel = this.pendingActionFocusLabel
     this.pendingActionFocusLabel = undefined
-    if (focusLabel && !focusRoute) {
+    const tableFocus = this.pendingTableFocus
+    this.pendingTableFocus = undefined
+    if (tableFocus && !focusRoute) {
+      requestAnimationFrame(() => {
+        const target = Array.from(this.root.querySelectorAll<HTMLElement>("[data-table-control]"))
+          .find((candidate) => candidate.dataset.tableId === tableFocus.tableId &&
+            candidate.dataset.tableControl === tableFocus.control &&
+            (tableFocus.control !== "sort" || candidate.dataset.tableColumn === tableFocus.columnKey))
+        target?.focus()
+        if (target instanceof HTMLInputElement && tableFocus.selectionStart !== undefined) {
+          target.setSelectionRange(tableFocus.selectionStart, tableFocus.selectionEnd ?? tableFocus.selectionStart)
+        }
+      })
+    } else if (focusLabel && !focusRoute) {
       requestAnimationFrame(() => {
         const target = Array.from(this.root.querySelectorAll<HTMLButtonElement>("button"))
           .find((button) => button.textContent === focusLabel)
@@ -767,7 +788,8 @@ class StudioShell {
 
   private renderTable(table: StudioTableSnapshot, includeHeading = true): HTMLElement {
     const section = element("section", "section")
-    if (includeHeading) section.append(element("h3", undefined, table.title))
+    const heading = includeHeading ? element("h3", undefined, table.title) : undefined
+    if (heading) section.append(heading)
     if (table.truncation) {
       const notice = element("p", "prose muted", `${table.truncation.message} Showing ${table.truncation.shown} of ${table.truncation.total}.`)
       notice.setAttribute("role", "status")
@@ -790,6 +812,80 @@ class StudioShell {
       if (table.emptyState) section.append(this.renderSurfaceState(table.emptyState))
       return section
     }
+    const filter = this.filterState.get(table.id) ?? ""
+    const normalizedFilter = filter.trim().toLocaleLowerCase()
+    const rows = table.rows.filter((row) => normalizedFilter.length === 0 ||
+      table.columns.some((column) => (row.cells[column.key] ?? "").toLocaleLowerCase().includes(normalizedFilter)))
+    const sort = this.sortState.get(table.id)
+    if (sort) {
+      rows.sort((left, right) => {
+        const comparison = (left.cells[sort.key] ?? "").localeCompare(right.cells[sort.key] ?? "")
+        const stable = comparison === 0 ? left.id.localeCompare(right.id) : comparison
+        return sort.direction === "ascending" ? stable : -stable
+      })
+    }
+    const controls = element("div", "table-controls")
+    const filterLabel = element("label", "table-filter")
+    filterLabel.append(element("span", undefined, `Filter ${table.title}`))
+    const filterInput = element("input")
+    filterInput.type = "search"
+    filterInput.maxLength = 256
+    filterInput.value = filter
+    filterInput.placeholder = "Filter visible metadata"
+    filterInput.setAttribute("aria-label", `Filter ${table.title} visible metadata`)
+    filterInput.dataset.tableId = table.id
+    filterInput.dataset.tableControl = "filter"
+    filterInput.addEventListener("input", () => {
+      this.filterState.set(table.id, filterInput.value)
+      this.pendingTableFocus = {
+        tableId: table.id,
+        control: "filter",
+        selectionStart: filterInput.selectionStart ?? filterInput.value.length,
+        selectionEnd: filterInput.selectionEnd ?? filterInput.value.length,
+      }
+      const nextFilter = filterInput.value.trim().toLocaleLowerCase()
+      const visible = table.rows.filter((row) => nextFilter.length === 0 ||
+        table.columns.some((column) => (row.cells[column.key] ?? "").toLocaleLowerCase().includes(nextFilter))).length
+      this.render(false)
+      this.announce(`${table.title}: showing ${visible} of ${table.rows.length} rows.`, "polite")
+    })
+    filterLabel.append(filterInput)
+    controls.append(filterLabel)
+    const clearFilter = element("button", "secondary", "Clear filter")
+    clearFilter.type = "button"
+    clearFilter.disabled = filter.length === 0
+    clearFilter.setAttribute("aria-label", `Clear ${table.title} filter`)
+    clearFilter.addEventListener("click", () => {
+      this.filterState.delete(table.id)
+      this.pendingTableFocus = { tableId: table.id, control: "filter", selectionStart: 0, selectionEnd: 0 }
+      this.render(false)
+      this.announce(`${table.title}: filter cleared; showing ${table.rows.length} rows.`, "polite")
+    })
+    controls.append(clearFilter)
+    const exportCsv = element("button", "secondary", "Copy visible rows as CSV")
+    exportCsv.type = "button"
+    exportCsv.disabled = rows.length === 0
+    exportCsv.setAttribute("aria-label", `Copy ${table.title} visible metadata rows as CSV`)
+    exportCsv.addEventListener("click", () => {
+      const csvCell = (value: string): string => {
+        const safeValue = /^\s*[=+\-@]/u.test(value) || /^[\t\r\n]/u.test(value) ? `'${value}` : value
+        return `"${safeValue.replaceAll('"', '""')}"`
+      }
+      const lines = [
+        table.columns.map((column) => csvCell(column.label)).join(","),
+        ...rows.map((row) => table.columns.map((column) => csvCell(row.cells[column.key] ?? "")).join(",")),
+      ]
+      void navigator.clipboard.writeText(lines.join("\r\n")).then(
+        () => this.announce(`${table.title}: copied ${rows.length} visible metadata row${rows.length === 1 ? "" : "s"} as CSV.`, "polite"),
+        () => this.announce(`${table.title}: CSV copy failed.`, "assertive"),
+      )
+    })
+    controls.append(exportCsv)
+    const resultStatus = element("p", "prose muted table-filter-status", `Showing ${rows.length} of ${table.rows.length} rows.`)
+    resultStatus.setAttribute("role", "status")
+    resultStatus.setAttribute("aria-live", "polite")
+    controls.append(resultStatus)
+    section.append(controls)
     const region = element("div", "table-region")
     region.tabIndex = 0
     region.setAttribute("role", "region")
@@ -797,17 +893,22 @@ class StudioShell {
     const htmlTable = element("table")
     const head = element("thead")
     const headRow = element("tr")
-    const sort = this.sortState.get(table.id)
     for (const column of table.columns) {
       const th = element("th")
       th.scope = "col"
       if (sort?.key === column.key) th.setAttribute("aria-sort", sort.direction)
       const button = element("button", undefined, column.label)
       button.type = "button"
+      button.dataset.tableId = table.id
+      button.dataset.tableControl = "sort"
+      button.dataset.tableColumn = column.key
+      button.setAttribute("aria-label", `Sort ${table.title} by ${column.label}${sort?.key === column.key ? `; currently ${sort.direction}` : ""}`)
       button.addEventListener("click", () => {
         const direction = sort?.key === column.key && sort.direction === "ascending" ? "descending" : "ascending"
         this.sortState.set(table.id, { key: column.key, direction })
+        this.pendingTableFocus = { tableId: table.id, control: "sort", columnKey: column.key }
         this.render(false)
+        this.announce(`${table.title} sorted by ${column.label}, ${direction}.`, "polite")
       })
       th.append(button)
       headRow.append(th)
@@ -817,13 +918,6 @@ class StudioShell {
     headRow.append(actionHeader)
     head.append(headRow)
 
-    const rows = [...table.rows]
-    if (sort) {
-      rows.sort((left, right) => {
-        const comparison = (left.cells[sort.key] ?? "").localeCompare(right.cells[sort.key] ?? "")
-        return sort.direction === "ascending" ? comparison : -comparison
-      })
-    }
     const body = element("tbody")
     for (const row of rows) {
       const tr = element("tr")
