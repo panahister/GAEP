@@ -5,6 +5,7 @@
     <description>Governed product design and multi-agent execution for Rider.</description>
     <depends>com.intellij.modules.rider</depends>
     <extensions defaultExtensionNs="com.intellij">
+        <applicationInitializedListener implementation="dev.gaep.rider.GaepApplicationInitializedListener" />
         <toolWindow id="GAEP"
                     anchor="right"
                     factoryClass="dev.gaep.rider.GaepToolWindowFactory"

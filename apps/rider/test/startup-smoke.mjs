@@ -54,6 +54,7 @@ const exactMarkers = [
   "IDE STARTED",
   "Loaded custom plugins: GAEP (0.1.0)",
   "id=dev.gaep.productstudio, version=0.1.0, isBundled=false",
+  "GAEP_NATIVE_PLUGIN_ACTIVATED id=dev.gaep.productstudio version=0.1.0 boundary=no-provider-no-write-authority",
   "-Didea.plugin.in.sandbox.mode=true",
   "-Didea.required.plugins.id=dev.gaep.productstudio",
   `-Didea.config.path=${join(sandboxRoot, "config")}`,
@@ -86,7 +87,7 @@ try {
     const log = await readCurrentLog(startedAt)
     if (log && exactMarkers.every((marker) => log.includes(marker))) {
       completed = true
-      process.stdout.write("PASS bounded Rider 2025.3 sandbox startup: dev.gaep.productstudio@0.1.0 loaded from exact isolated paths\n")
+      process.stdout.write("PASS bounded Rider 2025.3 sandbox startup and native plugin-code activation: dev.gaep.productstudio@0.1.0 loaded from exact isolated paths\n")
       break
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 250))

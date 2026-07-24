@@ -114,6 +114,9 @@ abstract class VerifyInstalledSandboxTask : DefaultTask() {
             require("factoryClass=\"dev.gaep.rider.GaepToolWindowFactory\"" in xml) {
                 "The prepared sandbox plugin does not declare the GAEP tool window factory"
             }
+            require("applicationInitializedListener implementation=\"dev.gaep.rider.GaepApplicationInitializedListener\"" in xml) {
+                "The prepared sandbox plugin does not declare the native activation listener"
+            }
         }
         logger.lifecycle("PASS exact Rider package/prepared-sandbox parity: ${expectedPluginId.get()}@$pluginVersion")
     }

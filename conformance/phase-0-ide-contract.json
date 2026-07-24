@@ -158,7 +158,7 @@
         "format": "gaep-host-behavior-v1",
         "reportPath": "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
-        "level": "native-startup-and-packaged-engine-client-workflow-local",
+        "level": "native-plugin-code-activation-startup-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["plugin-manager installation", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
       },
       "capabilityAssessments": [
