@@ -10,6 +10,7 @@ import test from "node:test"
 
 import { canonicalDigest } from "@gaep/agent-sdk"
 
+import { verifyPhase0ExampleArtifactDirectory } from "./phase0_example_artifacts.mjs"
 import { runPhase0Example } from "./run_phase0_example.mjs"
 import { verifyPhase0ExampleReceiptFile, verifyPhase0ExampleReceiptObject } from "./verify_phase0_example_receipt.mjs"
 
@@ -88,7 +89,15 @@ test("creates a new inspectable artifact directory without exposing private runt
     assert.equal(stderr, "")
     const stdoutReceipt = JSON.parse(stdout)
     const receipt = await verifyPhase0ExampleReceiptFile(join(artifacts, "receipt.json"))
+    const manifest = await verifyPhase0ExampleArtifactDirectory(artifacts)
     assert.deepEqual(stdoutReceipt, receipt)
+    assert.equal(manifest.scenario.digest, receipt.scenario.digest)
+    assert.equal(manifest.receipt.summaryDigest, receipt.summaryDigest)
+    assert.equal(manifest.portableStore.checks.auditValid, true)
+    assert.equal(manifest.portableStore.checks.managedResultMatches, true)
+    assert.equal(manifest.portableStore.checks.managedEvidenceMatches, true)
+    assert.equal(manifest.store.fileCount > 0, true)
+    assert.equal(manifest.store.entries.length, manifest.store.fileCount)
     const workspace = await lstat(join(artifacts, "workspace"))
     const gaepStore = await lstat(join(artifacts, "workspace", ".gaep"))
     assert.equal(workspace.isDirectory(), true)
@@ -97,6 +106,22 @@ test("creates a new inspectable artifact directory without exposing private runt
     assert.equal(serialized.includes(directory), false)
     assert.equal(serialized.includes("deterministic output"), false)
     assert.equal(serialized.includes("manual-thread-"), false)
+
+    const storedRecord = manifest.store.entries.find((entry) => entry.path.endsWith(".json"))
+    assert.notEqual(storedRecord, undefined)
+    const storedRecordPath = join(artifacts, manifest.store.root, ...storedRecord.path.split("/"))
+    const original = await readFile(storedRecordPath)
+    await writeFile(storedRecordPath, Buffer.concat([original, Buffer.from(" ")]))
+    await assert.rejects(
+      verifyPhase0ExampleArtifactDirectory(artifacts),
+      /artifact-manifest\.json differs from the exact receipt and portable store/,
+    )
+    await writeFile(storedRecordPath, original)
+    await writeFile(join(artifacts, "workspace", ".gaep", "untracked.json"), "{}")
+    await assert.rejects(
+      verifyPhase0ExampleArtifactDirectory(artifacts),
+      /artifact-manifest\.json differs from the exact receipt and portable store/,
+    )
 
     await assert.rejects(
       execute(process.execPath, [runner, "--artifacts", artifacts], { cwd: repository }),

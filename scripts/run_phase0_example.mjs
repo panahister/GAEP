@@ -13,6 +13,7 @@ import {
   GaepEngine,
 } from "@gaep/engine"
 
+import { createPhase0ExampleArtifactManifest } from "./phase0_example_artifacts.mjs"
 import { loadPhase0ExampleContract, verifyPhase0ExampleReceiptObject } from "./verify_phase0_example_receipt.mjs"
 
 const workspaceRoot = { kind: "workspace-relative", path: "." }
@@ -530,8 +531,14 @@ async function main() {
   const artifactDirectory = options.artifacts ? await createArtifactDirectory(options.artifacts) : undefined
   const receipt = await runPhase0Example({ workspacePath: artifactDirectory?.workspace })
   const output = `${JSON.stringify(receipt, null, 2)}\n`
-  if (artifactDirectory) await writeExclusive(artifactDirectory.receipt, output)
-  else if (options.output) await writeExclusive(options.output, output)
+  if (artifactDirectory) {
+    await writeExclusive(artifactDirectory.receipt, output)
+    const manifest = await createPhase0ExampleArtifactManifest(artifactDirectory.target)
+    await writeExclusive(
+      resolve(artifactDirectory.target, "artifact-manifest.json"),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+    )
+  } else if (options.output) await writeExclusive(options.output, output)
   process.stdout.write(output)
 }
 
