@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict")
-const { access } = require("node:fs/promises")
+const { createHash } = require("node:crypto")
+const { access, readFile } = require("node:fs/promises")
 const path = require("node:path")
 
 const vscode = require("vscode")
@@ -39,14 +40,36 @@ async function run() {
   for (const setting of ["engineExecutable", "engineSha256", "actorId"]) {
     assert.equal(extension.packageJSON.contributes.configuration.properties[`gaepKiro.${setting}`].scope, "machine")
   }
+  assert.equal(extension.packageJSON.contributes.configuration.properties["gaepKiro.engineExecutable"].default, "")
+
+  const packagedEnginePath = path.join(extension.extensionPath, "dist", "gaep-engine.mjs")
+  const extensionBundlePath = path.join(extension.extensionPath, "dist", "extension.cjs")
+  const [packagedEngine, extensionBundle] = await Promise.all([
+    readFile(packagedEnginePath),
+    readFile(extensionBundlePath, "utf8"),
+  ])
+  const packagedEngineSha256 = createHash("sha256").update(packagedEngine).digest("hex")
+  assert.ok(extensionBundle.includes(`sha256:${packagedEngineSha256}`), "installed extension must embed the exact packaged-engine digest")
 
   const registered = new Set(await vscode.commands.getCommands(true))
   for (const command of commands) assert.ok(registered.has(command), `${command} must be registered after activation`)
   await vscode.commands.executeCommand("gaepKiro.openProductStudio")
   const tab = await waitFor(productStudioTab, "GAEP for Kiro Product Studio did not open")
   assert.equal(tab.label, "GAEP for Kiro Product Studio")
+  const evidenceRequest = vscode.commands.executeCommand("gaepKiro.runs.evidence")
+  const evidenceDocument = await waitFor(
+    () => vscode.workspace.textDocuments.find((document) => document.getText().startsWith("GAEP bounded Managed Run evidence\n")),
+    "The installed package-local engine did not return a Managed Run evidence page",
+  )
+  const evidenceText = evidenceDocument.getText()
+  assert.ok(evidenceText.includes("Offset / limit: 0 / 100"))
+  assert.ok(evidenceText.includes("Displayed: 0 of 0"))
+  assert.ok(evidenceText.includes("More pages available: no"))
+  assert.equal(evidenceText.includes(workspace), false)
+  await vscode.commands.executeCommand("notifications.clearAll")
+  await evidenceRequest
   await assert.rejects(access(path.join(workspace, ".gaep")), (error) => error?.code === "ENOENT")
-  process.stdout.write("PASS activation: ten bounded commands, machine-only configuration, static Product Studio, and no workspace mutation\n")
+  process.stdout.write(`PASS activation: ten bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, empty audit-gated evidence workflow, and no workspace mutation\n`)
 }
 
 function productStudioTab() {

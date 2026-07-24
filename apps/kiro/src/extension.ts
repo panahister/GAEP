@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto"
+import { join } from "node:path"
 
 import * as vscode from "vscode"
 
@@ -26,6 +27,8 @@ import {
   type ProductBinding,
 } from "./protocol.js"
 
+declare const __GAEP_PACKAGED_ENGINE_SHA256__: string
+
 const productStudioViewType = "gaepKiro.productStudio"
 const commandIds = {
   open: "gaepKiro.openProductStudio",
@@ -51,18 +54,37 @@ interface ClientEntry {
 class EngineClientPool implements vscode.Disposable {
   private readonly clients = new Map<string, ClientEntry>()
 
+  constructor(private readonly extensionPath: string) {}
+
   async get(workspacePath: string): Promise<GaepEngineClient> {
-    const executable = machineSetting("engineExecutable", "GAEP_ENGINE_EXECUTABLE", "gaep-engine")
+    const executable = machineSetting("engineExecutable", "GAEP_ENGINE_EXECUTABLE", "").trim()
     const digest = machineSetting("engineSha256", "GAEP_ENGINE_SHA256", "")
-    const signature = JSON.stringify([executable, digest])
+    if (!executable && digest.trim()) {
+      throw new ConfigurationBoundaryError(
+        "gaepKiro.engineSha256 can pin only an explicitly configured external engine executable. Clear it to use the package-local digest-bound engine.",
+      )
+    }
+    const packagedEnginePath = join(this.extensionPath, "dist", "gaep-engine.mjs")
+    const signature = executable
+      ? JSON.stringify(["external", executable, digest])
+      : JSON.stringify(["packaged", process.execPath, packagedEnginePath, __GAEP_PACKAGED_ENGINE_SHA256__])
     const current = this.clients.get(workspacePath)
     if (current?.signature === signature) return current.client
     if (current) await current.client.dispose()
-    const client = await GaepEngineClient.create({
-      workspacePath,
-      engineExecutable: executable,
-      ...(digest ? { expectedEngineSha256: digest } : {}),
-    })
+    const client = await GaepEngineClient.create(executable
+      ? {
+          workspacePath,
+          engineExecutable: executable,
+          ...(digest ? { expectedEngineSha256: digest } : {}),
+        }
+      : {
+          workspacePath,
+          engineExecutable: process.execPath,
+          packagedEngine: {
+            path: packagedEnginePath,
+            expectedSha256: __GAEP_PACKAGED_ENGINE_SHA256__,
+          },
+        })
     this.clients.set(workspacePath, { signature, client })
     return client
   }
@@ -82,7 +104,7 @@ let studioPanel: vscode.WebviewPanel | undefined
 let activePool: EngineClientPool | undefined
 
 export function activate(context: vscode.ExtensionContext): void {
-  const pool = new EngineClientPool()
+  const pool = new EngineClientPool(context.extensionPath)
   activePool = pool
   context.subscriptions.push(
     pool,

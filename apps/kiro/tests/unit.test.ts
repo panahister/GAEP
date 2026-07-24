@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
-import { mkdtemp, mkdir, rm } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { readFile, mkdtemp, mkdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import test from "node:test"
@@ -25,13 +26,71 @@ test("sanitized engine environment handles Windows Path casing without copying p
     AWS_SECRET_ACCESS_KEY: "private-aws-secret",
     OPENAI_API_KEY: "private-openai-key",
     HOME: "/private/home",
+    ELECTRON_RUN_AS_NODE: "host-controlled",
   })
   assert.equal(sanitized.PATH, "/safe/bin")
   assert.equal(sanitized.PATHEXT, ".EXE;.CMD")
   assert.equal(sanitized.AWS_SECRET_ACCESS_KEY, undefined)
   assert.equal(sanitized.OPENAI_API_KEY, undefined)
   assert.equal(sanitized.HOME, undefined)
+  assert.equal(sanitized.ELECTRON_RUN_AS_NODE, undefined)
   assert.equal(sanitized.GAEP_HOST_SURFACE, "kiro-portable-design")
+
+  const packaged = safeEngineEnvironment({ ELECTRON_RUN_AS_NODE: "host-controlled" }, true)
+  assert.equal(packaged.ELECTRON_RUN_AS_NODE, "1")
+  assert.equal(packaged.GAEP_HOST_SURFACE, "kiro-portable-design")
+})
+
+test("package-local engine mode binds the exact module digest and launches through the host runtime", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-packaged-engine-"))
+  const workspace = join(root, "workspace")
+  await mkdir(workspace)
+  const expectedSha256 = createHash("sha256").update(await readFile(fakeEngine)).digest("hex")
+  const client = await GaepEngineClient.create({
+    workspacePath: workspace,
+    engineExecutable: process.execPath,
+    packagedEngine: { path: fakeEngine, expectedSha256 },
+    sourceEnvironment: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "host-controlled",
+      OPENAI_API_KEY: "private-openai-key",
+    },
+  })
+  try {
+    assert.deepEqual(await client.readProduct(), { id: productId, name: "Example Product", revision: 7 })
+  } finally {
+    await client.dispose()
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test("package-local engine mode fails closed on a digest mismatch or extra launcher arguments", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-packaged-engine-hostile-"))
+  const workspace = join(root, "workspace")
+  await mkdir(workspace)
+  const mismatched = await GaepEngineClient.create({
+    workspacePath: workspace,
+    engineExecutable: process.execPath,
+    packagedEngine: { path: fakeEngine, expectedSha256: "0".repeat(64) },
+  })
+  try {
+    await assert.rejects(
+      () => mismatched.readProduct(),
+      (error) => safeHostError(error, "HOST_UNAVAILABLE"),
+    )
+    await assert.rejects(
+      () => GaepEngineClient.create({
+        workspacePath: workspace,
+        engineExecutable: process.execPath,
+        packagedEngine: { path: fakeEngine, expectedSha256: "0".repeat(64) },
+        engineArgumentsPrefix: ["caller-controlled"],
+      }),
+      TypeError,
+    )
+  } finally {
+    await mismatched.dispose()
+    await rm(root, { recursive: true, force: true })
+  }
 })
 
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {

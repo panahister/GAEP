@@ -95,6 +95,8 @@ try {
     ],
     extensionTestsEnv: {
       GAEP_KIRO_E2E_WORKSPACE: workspace,
+      GAEP_ENGINE_EXECUTABLE: "",
+      GAEP_ENGINE_SHA256: "",
     },
   })
   process.stdout.write("GAEP for Kiro exact installed VSIX activation smoke: PASS\n")

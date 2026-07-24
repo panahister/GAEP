@@ -58,6 +58,10 @@ export interface EngineClientOptions {
   readonly engineExecutable?: string
   readonly expectedEngineSha256?: string
   readonly engineArgumentsPrefix?: readonly string[]
+  readonly packagedEngine?: {
+    readonly path: string
+    readonly expectedSha256: string
+  }
   readonly sourceEnvironment?: NodeJS.ProcessEnv
 }
 
@@ -71,19 +75,22 @@ const safeEnvironmentNames = [
   "SYSTEMROOT", "WINDIR", "PATHEXT", "COMSPEC",
 ] as const
 
-export function safeEngineEnvironment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+export function safeEngineEnvironment(source: NodeJS.ProcessEnv, runPackagedEngine = false): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = Object.create(null) as NodeJS.ProcessEnv
   for (const name of safeEnvironmentNames) {
     const value = environmentValue(source, name)
     if (value !== undefined) environment[name] = value
   }
   environment.GAEP_HOST_SURFACE = "kiro-portable-design"
+  if (runPackagedEngine) environment.ELECTRON_RUN_AS_NODE = "1"
   return environment
 }
 
 export class GaepEngineClient {
   private readonly configuredDigest: string | undefined
+  private readonly configuredPackagedEngineDigest: string | undefined
   private readonly requestedExecutable: string
+  private readonly requestedPackagedEngine: string | undefined
   private readonly engineArgumentsPrefix: readonly string[]
   private readonly childEnvironment: NodeJS.ProcessEnv
   private requestTail: Promise<void> = Promise.resolve()
@@ -92,6 +99,7 @@ export class GaepEngineClient {
   private stdoutIterator: AsyncIterator<Buffer> | undefined
   private pendingResponse: Buffer<ArrayBufferLike> = Buffer.alloc(0)
   private boundIdentity: EngineIdentity | undefined
+  private boundPackagedEngineIdentity: EngineIdentity | undefined
   private disposed = false
 
   private constructor(
@@ -99,9 +107,22 @@ export class GaepEngineClient {
     options: EngineClientOptions,
   ) {
     this.requestedExecutable = options.engineExecutable ?? process.env.GAEP_ENGINE_EXECUTABLE ?? "gaep-engine"
-    this.configuredDigest = normalizeDigest(options.expectedEngineSha256 ?? process.env.GAEP_ENGINE_SHA256)
+    this.configuredDigest = normalizeDigest(
+      options.expectedEngineSha256 ?? (options.packagedEngine ? undefined : process.env.GAEP_ENGINE_SHA256),
+    )
+    this.requestedPackagedEngine = options.packagedEngine?.path
+    this.configuredPackagedEngineDigest = normalizeDigest(
+      options.packagedEngine?.expectedSha256,
+      "Expected packaged engine SHA-256",
+    )
+    if (this.requestedPackagedEngine && !this.configuredPackagedEngineDigest) {
+      throw new TypeError("Expected packaged engine SHA-256 must contain exactly 64 hexadecimal characters")
+    }
+    if (this.requestedPackagedEngine && options.engineArgumentsPrefix?.length) {
+      throw new TypeError("Packaged engine mode cannot include an additional engine argument prefix")
+    }
     this.engineArgumentsPrefix = Object.freeze([...(options.engineArgumentsPrefix ?? [])])
-    this.childEnvironment = safeEngineEnvironment(options.sourceEnvironment ?? process.env)
+    this.childEnvironment = safeEngineEnvironment(options.sourceEnvironment ?? process.env, Boolean(this.requestedPackagedEngine))
   }
 
   static async create(options: EngineClientOptions): Promise<GaepEngineClient> {
@@ -417,9 +438,14 @@ export class GaepEngineClient {
     if (this.child && this.child.exitCode === null && !this.child.killed) return
     this.stopProcess()
     const identity = await this.resolveAndVerifyEngine()
+    const packagedEngineIdentity = await this.resolveAndVerifyPackagedEngine()
     const child = spawn(
       identity.path,
-      [...this.engineArgumentsPrefix, "--workspace", this.workspacePath],
+      [
+        ...(packagedEngineIdentity ? [packagedEngineIdentity.path] : this.engineArgumentsPrefix),
+        "--workspace",
+        this.workspacePath,
+      ],
       {
         stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
@@ -444,6 +470,9 @@ export class GaepEngineClient {
       if (await digest(identity.path) !== identity.digest) {
         throw new Error("The GAEP engine executable changed while the host process was starting")
       }
+      if (packagedEngineIdentity && await digest(packagedEngineIdentity.path) !== packagedEngineIdentity.digest) {
+        throw new Error("The packaged GAEP engine changed while the host process was starting")
+      }
       this.child = child
       this.stdoutIterator = child.stdout[Symbol.asyncIterator]() as AsyncIterator<Buffer>
       this.pendingResponse = Buffer.alloc(0)
@@ -464,6 +493,22 @@ export class GaepEngineClient {
     }
     this.boundIdentity ??= Object.freeze({ path, digest: executableDigest })
     return this.boundIdentity
+  }
+
+  private async resolveAndVerifyPackagedEngine(): Promise<EngineIdentity | undefined> {
+    if (!this.requestedPackagedEngine) return undefined
+    const path = await resolveAbsoluteRegularFile(this.requestedPackagedEngine)
+    const packagedEngineDigest = await digest(path)
+    if (this.configuredPackagedEngineDigest !== packagedEngineDigest) {
+      throw new Error("The packaged GAEP engine does not match its embedded SHA-256 digest")
+    }
+    if (this.boundPackagedEngineIdentity &&
+        (samePath(this.boundPackagedEngineIdentity.path, path) === false ||
+          this.boundPackagedEngineIdentity.digest !== packagedEngineDigest)) {
+      throw new Error("The bound packaged GAEP engine changed after this client was created")
+    }
+    this.boundPackagedEngineIdentity ??= Object.freeze({ path, digest: packagedEngineDigest })
+    return this.boundPackagedEngineIdentity
   }
 
   private async readResponseFrame(): Promise<string> {
@@ -565,6 +610,19 @@ async function resolveExecutable(requested: string, environment: NodeJS.ProcessE
   throw new Error("The GAEP engine executable could not be resolved to an existing file")
 }
 
+async function resolveAbsoluteRegularFile(requested: string): Promise<string> {
+  if (!requested || requested.length > 32_768 || requested.includes("\0") || !isAbsolute(requested)) {
+    throw new Error("The packaged GAEP engine path is invalid")
+  }
+  try {
+    const canonical = await realpath(requested)
+    if ((await stat(canonical)).isFile()) return canonical
+  } catch {
+    // Fall through to one stable path-free error.
+  }
+  throw new Error("The packaged GAEP engine could not be resolved to an existing file")
+}
+
 function executableCandidates(requested: string, environment: NodeJS.ProcessEnv): string[] {
   const path = environmentValue(environment, "PATH") ?? ""
   const extensions = process.platform === "win32"
@@ -587,12 +645,12 @@ function digest(path: string): Promise<string> {
   })
 }
 
-function normalizeDigest(value: string | undefined): string | undefined {
+function normalizeDigest(value: string | undefined, label = "Expected engine SHA-256"): string | undefined {
   if (!value?.trim()) return undefined
-  if (value.length > 80) throw new TypeError("Expected engine SHA-256 must contain exactly 64 hexadecimal characters")
+  if (value.length > 80) throw new TypeError(`${label} must contain exactly 64 hexadecimal characters`)
   const normalized = value.trim().toLowerCase().replace(/^sha256:/u, "")
   if (!/^[0-9a-f]{64}$/u.test(normalized)) {
-    throw new TypeError("Expected engine SHA-256 must contain exactly 64 hexadecimal characters")
+    throw new TypeError(`${label} must contain exactly 64 hexadecimal characters`)
   }
   return normalized
 }

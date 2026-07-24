@@ -10,6 +10,7 @@
   "main": "dist/extension.cjs",
   "files": [
     "dist/extension.cjs",
+    "dist/gaep-engine.mjs",
     "README.md",
     "LICENSE"
   ],
@@ -102,15 +103,15 @@
       "properties": {
         "gaepKiro.engineExecutable": {
           "type": "string",
-          "default": "gaep-engine",
+          "default": "",
           "scope": "machine",
-          "description": "Machine-scoped local GAEP engine executable name or absolute path. Workspace overrides are ignored."
+          "description": "Optional machine-scoped external GAEP engine executable name or absolute path. Empty uses the package-local digest-bound engine. Workspace overrides are rejected."
         },
         "gaepKiro.engineSha256": {
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Optional machine-scoped SHA-256 pin for the local GAEP engine executable. Workspace overrides are ignored."
+          "description": "Optional machine-scoped SHA-256 pin for an explicitly configured external GAEP engine executable. It is rejected when the package-local engine is selected. Workspace overrides are rejected."
         },
         "gaepKiro.actorId": {
           "type": "string",
