@@ -24,6 +24,11 @@ const workItemId = "24242424-2424-4424-8424-242424242424"
 const traceId = "25252525-2525-4525-8525-252525252525"
 const decisionId = "26262626-2626-4626-8626-262626262626"
 const riskId = "27272727-2727-4727-8727-272727272727"
+const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
+const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
+const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
+const subjectCatalogDigest = `sha256:${"f".repeat(64)}`
+const subjectCatalogCount = 49
 const previewDigest = managedReadOnlyPreview().previewDigest
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
@@ -148,7 +153,9 @@ function initiativeAssessment() {
   const applicability = initiativeState.applicability
   const reasons = []
   if (!classification) reasons.push("Initiative classification is missing")
+  if (classification) reasons.push("Initiative classification does not satisfy the current completeness policy")
   if (!applicability) reasons.push("Initiative applicability has not been resolved")
+  if (applicability) reasons.push("Initiative applicability does not cover every canonical subject")
   const pendingHumanDecisionCount = applicability?.decisions.filter((decision) => decision.status === "awaiting-human-decision").length ?? 0
   const blockedDecisionCount = applicability?.decisions.filter((decision) => decision.status === "blocked").length ?? 0
   const pendingApprovalCount = applicability?.decisions.filter((decision) => decision.approval.state === "pending").length ?? 0
@@ -167,8 +174,31 @@ function initiativeAssessment() {
     productRevision: 7,
     productDigest: canonicalDigest(productRecord()),
     classification: classification
-      ? { status: "current", digest: canonicalDigest(classification) }
-      : { status: "missing" },
+      ? {
+          status: "current",
+          digest: canonicalDigest(classification),
+          completeness: {
+            status: "incomplete",
+            policyVersion: completenessPolicyVersion,
+            policyDigest: completenessPolicyDigest,
+            unknownDimensionCount: 0,
+            unresolvedQuestionCount: classification.unresolvedQuestions.length,
+            missingConditionalDimensionCount: 0,
+            confidenceSufficient: true,
+          },
+        }
+      : {
+          status: "missing",
+          completeness: {
+            status: "missing",
+            policyVersion: completenessPolicyVersion,
+            policyDigest: completenessPolicyDigest,
+            unknownDimensionCount: 0,
+            unresolvedQuestionCount: 0,
+            missingConditionalDimensionCount: 0,
+            confidenceSufficient: false,
+          },
+        },
     applicability: applicability
       ? {
           status: "current",
@@ -180,6 +210,16 @@ function initiativeAssessment() {
           blockedDecisionCount,
           pendingApprovalCount,
           rejectedApprovalCount,
+          coverage: {
+            status: "incomplete",
+            catalogVersion: subjectCatalogVersion,
+            catalogDigest: subjectCatalogDigest,
+            subjectCount: subjectCatalogCount,
+            coveredSubjectCount: 1,
+            missingSubjectCount: subjectCatalogCount - 1,
+            unexpectedSubjectCount: 0,
+            mismatchedSubjectCount: 0,
+          },
         }
       : {
           status: "missing",
@@ -189,6 +229,25 @@ function initiativeAssessment() {
           blockedDecisionCount: 0,
           pendingApprovalCount: 0,
           rejectedApprovalCount: 0,
+          coverage: classification
+            ? {
+                status: "missing",
+                catalogVersion: subjectCatalogVersion,
+                catalogDigest: subjectCatalogDigest,
+                subjectCount: subjectCatalogCount,
+                coveredSubjectCount: 0,
+                missingSubjectCount: subjectCatalogCount,
+                unexpectedSubjectCount: 0,
+                mismatchedSubjectCount: 0,
+              }
+            : {
+                status: "unavailable",
+                subjectCount: 0,
+                coveredSubjectCount: 0,
+                missingSubjectCount: 0,
+                unexpectedSubjectCount: 0,
+                mismatchedSubjectCount: 0,
+              },
         },
     state: blockedDecisionCount > 0 || rejectedApprovalCount > 0 ? "blocked" : reasons.length > 0 ? "attention-required" : "ready",
     reasons,
@@ -203,6 +262,7 @@ function assessInitiativeEntry(id, params) {
   }
   const value = initiativeAssessment()
   if (workspacePath.endsWith("bad-entry-boundary")) value.authorityBoundary = "approved"
+  if (workspacePath.endsWith("bad-entry-policy")) delete value.classification.completeness
   return writeResult(id, value)
 }
 
@@ -220,6 +280,8 @@ function classifyInitiative(id, params) {
       productProfile: "software",
       productRevision: 7,
       productDigest: canonicalDigest(productRecord()),
+      completenessPolicyVersion,
+      completenessPolicyDigest,
       classifiedBy: { kind: "human", id: params.actorId },
       classifiedAt: now,
       authorityBoundary: "classification-guides-profile-selection-and-does-not-grant-approval-or-action-authority",
@@ -276,6 +338,11 @@ function resolveInitiativeApplicability(id, params) {
       productId,
       initiativeRevision: nextRevision,
       classificationDigest: canonicalDigest(initiativeState.classification),
+      subjectCatalog: {
+        catalogVersion: subjectCatalogVersion,
+        digest: subjectCatalogDigest,
+        subjectCount: subjectCatalogCount,
+      },
       state: "current",
       evaluatedBy: { kind: "human", id: params.actorId },
       evaluatedAt: now,

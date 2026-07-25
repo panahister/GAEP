@@ -1041,6 +1041,8 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
       const mutable = !["completed", "cancelled"].includes(candidate.state)
       const exactRevision = candidate.revision ?? 1
       const canResolve = mutable && assessment?.classification.status === "current"
+      const completeness = assessment?.classification.completeness
+      const coverage = assessment?.applicability.coverage
       return {
         id: candidate.id,
         cells: {
@@ -1048,10 +1050,10 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
           outcome: candidate.outcome,
           state: candidate.state,
           classification: assessment
-            ? `${assessment.classification.status}${candidate.classification ? ` · ${candidate.classification.primaryType} / ${candidate.classification.productProfile}` : ""}`
+            ? `${assessment.classification.status}${candidate.classification ? ` · ${candidate.classification.primaryType} / ${candidate.classification.productProfile}` : ""} · completeness ${completeness?.status ?? "unreported"}${completeness ? ` (${completeness.unknownDimensionCount} unknown, ${completeness.unresolvedQuestionCount} unresolved question(s))` : ""}`
             : "unavailable",
           applicability: assessment
-            ? `${assessment.applicability.status} · ${assessment.applicability.decisionCount} decision(s) · ${assessment.applicability.unresolvedSubjectCount} unresolved`
+            ? `${assessment.applicability.status} · ${assessment.applicability.decisionCount} decision(s) · ${assessment.applicability.unresolvedSubjectCount} unresolved · coverage ${coverage?.status ?? "unreported"}${coverage ? ` (${coverage.coveredSubjectCount}/${coverage.subjectCount}, ${coverage.missingSubjectCount} missing, ${coverage.unexpectedSubjectCount} unexpected, ${coverage.mismatchedSubjectCount} mismatched)` : ""}`
             : "unavailable",
           entry: assessment
             ? `${assessment.state}${assessment.reasons.length > 0 ? ` · ${assessment.reasons.join("; ")}` : " · no recorded entry gaps"}`

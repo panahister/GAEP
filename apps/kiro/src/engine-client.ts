@@ -176,7 +176,9 @@ export class GaepEngineClient {
       )
       if (!parsed.success) throw invalidHostResponse()
       const assessment = parsed.data
-      if (assessment.initiativeId.toLowerCase() !== initiativeId) {
+      if (assessment.initiativeId.toLowerCase() !== initiativeId ||
+          assessment.classification.completeness === undefined ||
+          assessment.applicability.coverage === undefined) {
         throw invalidHostResponse()
       }
       return assessment
@@ -750,6 +752,8 @@ function classificationInputFromRecord(classification: NonNullable<Initiative["c
     productProfile: _productProfile,
     productRevision: _productRevision,
     productDigest: _productDigest,
+    completenessPolicyVersion: _completenessPolicyVersion,
+    completenessPolicyDigest: _completenessPolicyDigest,
     classifiedBy: _classifiedBy,
     classifiedAt: _classifiedAt,
     authorityBoundary: _authorityBoundary,
@@ -775,6 +779,7 @@ function applicabilityInputFromRecord(
       return input
     }),
     unresolvedSubjects: matrix.unresolvedSubjects,
+    ...(matrix.subjectCatalog ? { subjectCatalog: matrix.subjectCatalog } : {}),
   })
 }
 

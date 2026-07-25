@@ -380,10 +380,21 @@ async function resolveInitiativeApplicability(pool: EngineClientPool, input: unk
   if (containsSecretShapedValue(applicability)) {
     throw new ConfigurationBoundaryError("The Initiative applicability matrix contains a secret-shaped value and was not persisted.")
   }
+  const coverage = context.assessment.applicability.coverage
+  if (!coverage?.catalogVersion || !coverage.catalogDigest || coverage.subjectCount < 1) {
+    throw new ConfigurationBoundaryError("The canonical applicability subject catalog is unavailable. Refresh the exact entry assessment.")
+  }
   const updated = await context.client.resolveInitiativeApplicability(
     context.initiative.id,
     context.initiative.revision ?? 1,
-    applicability,
+    {
+      ...applicability,
+      subjectCatalog: {
+        catalogVersion: coverage.catalogVersion,
+        digest: coverage.catalogDigest,
+        subjectCount: coverage.subjectCount,
+      },
+    },
     actorId,
   )
   const assessment = await context.client.assessInitiativeEntry(updated.id)
@@ -403,7 +414,16 @@ async function showInitiativeEntryDocument(
     `Initiative revision: ${initiative.revision ?? 1}`,
     `Lifecycle state: ${initiative.state}`,
     `Classification: ${assessment.classification.status}${initiative.classification ? ` · ${initiative.classification.primaryType} / ${initiative.classification.productProfile}` : ""}`,
+    `Classification completeness: ${assessment.classification.completeness?.status ?? "unreported"}`,
+    `Completeness policy: ${assessment.classification.completeness?.policyVersion ?? "unreported"}`,
+    `Classification unknown dimensions: ${assessment.classification.completeness?.unknownDimensionCount ?? "unreported"}`,
+    `Classification unresolved questions: ${assessment.classification.completeness?.unresolvedQuestionCount ?? "unreported"}`,
+    `Classification missing conditional dimensions: ${assessment.classification.completeness?.missingConditionalDimensionCount ?? "unreported"}`,
+    `Classification confidence sufficient: ${assessment.classification.completeness?.confidenceSufficient ?? "unreported"}`,
     `Applicability: ${assessment.applicability.status} · matrix revision ${assessment.applicability.matrixRevision ?? "not recorded"}`,
+    `Applicability coverage: ${assessment.applicability.coverage?.status ?? "unreported"}`,
+    `Canonical subject coverage: ${assessment.applicability.coverage ? `${assessment.applicability.coverage.coveredSubjectCount}/${assessment.applicability.coverage.subjectCount}` : "unreported"}`,
+    `Coverage gaps: ${assessment.applicability.coverage ? `${assessment.applicability.coverage.missingSubjectCount} missing · ${assessment.applicability.coverage.unexpectedSubjectCount} unexpected · ${assessment.applicability.coverage.mismatchedSubjectCount} mismatched` : "unreported"}`,
     `Decisions: ${assessment.applicability.decisionCount}`,
     `Unresolved subjects: ${assessment.applicability.unresolvedSubjectCount}`,
     `Awaiting human decisions: ${assessment.applicability.pendingHumanDecisionCount}`,

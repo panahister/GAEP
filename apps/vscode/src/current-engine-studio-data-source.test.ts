@@ -82,7 +82,19 @@ function entryAssessment(
     productId: product.id,
     productRevision: product.revision ?? 1,
     productDigest: canonicalDigest(product),
-    classification: { status: "current", digest: `sha256:${"c".repeat(64)}` },
+    classification: {
+      status: "current",
+      digest: `sha256:${"c".repeat(64)}`,
+      completeness: {
+        status: "complete",
+        policyVersion: "gaep-initiative-classification-completeness-v1",
+        policyDigest: `sha256:${"e".repeat(64)}`,
+        unknownDimensionCount: 0,
+        unresolvedQuestionCount: 0,
+        missingConditionalDimensionCount: 0,
+        confidenceSufficient: true,
+      },
+    },
     applicability: {
       status: "missing",
       decisionCount: 0,
@@ -91,6 +103,16 @@ function entryAssessment(
       blockedDecisionCount: 0,
       pendingApprovalCount: 0,
       rejectedApprovalCount: 0,
+      coverage: {
+        status: "missing",
+        catalogVersion: "gaep-initiative-applicability-subjects-v1",
+        catalogDigest: `sha256:${"f".repeat(64)}`,
+        subjectCount: 49,
+        coveredSubjectCount: 0,
+        missingSubjectCount: 49,
+        unexpectedSubjectCount: 0,
+        mismatchedSubjectCount: 0,
+      },
     },
     state: "attention-required",
     reasons: ["Initiative applicability has not been resolved"],
@@ -1140,8 +1162,8 @@ describe("current-engine Product Studio data source", () => {
     if (snapshot.page.kind !== "delivery") throw new Error("Expected Delivery page")
     const row = snapshot.page.initiatives.rows[0]
     expect(row?.cells).toMatchObject({
-      classification: "current",
-      applicability: "missing · 0 decision(s) · 0 unresolved",
+      classification: "current · completeness complete (0 unknown, 0 unresolved question(s))",
+      applicability: "missing · 0 decision(s) · 0 unresolved · coverage missing (0/49, 49 missing, 0 unexpected, 0 mismatched)",
       entry: "attention-required · Initiative applicability has not been resolved",
     })
     const classify = row?.actions.find((action) => action.action.kind === "classify-initiative")

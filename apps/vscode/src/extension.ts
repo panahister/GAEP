@@ -2005,9 +2005,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (containsSecretShapedValue(applicability)) {
         throw new Error("The Initiative applicability matrix contains a secret-shaped value and was not persisted.")
       }
+      const coverage = before.applicability.coverage
+      if (!coverage?.catalogVersion || !coverage.catalogDigest || coverage.subjectCount < 1) {
+        throw new Error("The canonical applicability subject catalog is unavailable. Refresh the exact entry assessment.")
+      }
       const updated = await runtime.engine.resolveInitiativeApplicability(
         initiative.id,
-        applicability,
+        {
+          ...applicability,
+          subjectCatalog: {
+            catalogVersion: coverage.catalogVersion,
+            digest: coverage.catalogDigest,
+            subjectCount: coverage.subjectCount,
+          },
+        },
         initiative.revision ?? 1,
         actorId,
       )

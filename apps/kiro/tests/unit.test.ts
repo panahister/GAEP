@@ -63,8 +63,13 @@ const initiativeClassification = {
 } as const satisfies InitiativeClassificationInput
 
 const initiativeApplicability = {
+  subjectCatalog: {
+    catalogVersion: "gaep-initiative-applicability-subjects-v1",
+    digest: `sha256:${"f".repeat(64)}`,
+    subjectCount: 49,
+  },
   decisions: [{
-    subject: { type: "test-level", key: "consumer-contract-testing", label: "Consumer contract testing" },
+    subject: { type: "test-method", key: "consumer-contract-testing", label: "Consumer contract testing" },
     status: "required",
     rationale: "Independently deployed partner consumers require version-bound compatibility evidence.",
     sources: [{ kind: "policy", reference: "GAEP-POL-CONTRACT-001" }],
@@ -228,6 +233,7 @@ test("protocol-v2 Initiative entry client preserves exact request binding and re
   const hostileRoots = [
     "bad-initiative-private",
     "bad-entry-boundary",
+    "bad-entry-policy",
     "bad-classification-binding",
     "bad-classification-content",
     "bad-applicability-binding",
@@ -250,7 +256,9 @@ test("protocol-v2 Initiative entry client preserves exact request binding and re
     const initialAssessment = await client.assessInitiativeEntry(initiativeId)
     assert.equal(initialAssessment.initiativeRevision, 1)
     assert.equal(initialAssessment.classification.status, "missing")
+    assert.equal(initialAssessment.classification.completeness?.status, "missing")
     assert.equal(initialAssessment.applicability.status, "missing")
+    assert.equal(initialAssessment.applicability.coverage?.status, "unavailable")
     assert.equal(initialAssessment.state, "attention-required")
 
     const classified = await client.classifyInitiative(initiativeId, 1, initiativeClassification, "founder.kiro-review")
@@ -259,7 +267,10 @@ test("protocol-v2 Initiative entry client preserves exact request binding and re
     assert.equal(classified.classification?.classifiedBy.id, "founder.kiro-review")
     const classifiedAssessment = await client.assessInitiativeEntry(initiativeId)
     assert.equal(classifiedAssessment.classification.status, "current")
+    assert.equal(classifiedAssessment.classification.completeness?.status, "incomplete")
+    assert.equal(classifiedAssessment.classification.completeness?.unresolvedQuestionCount, 1)
     assert.equal(classifiedAssessment.applicability.status, "missing")
+    assert.equal(classifiedAssessment.applicability.coverage?.missingSubjectCount, 49)
 
     const resolved = await client.resolveInitiativeApplicability(
       initiativeId,
@@ -276,6 +287,9 @@ test("protocol-v2 Initiative entry client preserves exact request binding and re
     assert.equal(finalAssessment.applicability.status, "current")
     assert.equal(finalAssessment.applicability.decisionCount, 1)
     assert.equal(finalAssessment.applicability.pendingApprovalCount, 1)
+    assert.equal(finalAssessment.applicability.coverage?.status, "incomplete")
+    assert.equal(finalAssessment.applicability.coverage?.coveredSubjectCount, 1)
+    assert.equal(finalAssessment.applicability.coverage?.missingSubjectCount, 48)
     assert.equal(finalAssessment.state, "attention-required")
     assert.equal(
       finalAssessment.authorityBoundary,
@@ -290,9 +304,9 @@ test("protocol-v2 Initiative entry client preserves exact request binding and re
     try {
       if (index === 0) {
         await assert.rejects(() => hostile.readInitiative(initiativeId), (error) => safeHostError(error, "HOST_RESPONSE_INVALID"))
-      } else if (index === 1) {
+      } else if (index === 1 || index === 2) {
         await assert.rejects(() => hostile.assessInitiativeEntry(initiativeId), (error) => safeHostError(error, "HOST_RESPONSE_INVALID"))
-      } else if (index === 2 || index === 3) {
+      } else if (index === 3 || index === 4) {
         await assert.rejects(
           () => hostile.classifyInitiative(initiativeId, 1, initiativeClassification, "founder.kiro-review"),
           (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
