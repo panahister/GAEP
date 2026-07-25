@@ -5,6 +5,7 @@
   "capabilities": [
     { "id": "shared-engine-boundary", "label": "Shared GAEP engine boundary" },
     { "id": "product-binding-read", "label": "Exact Product identity and revision read" },
+    { "id": "initiative-entry-workflow", "label": "Exact governed Initiative classification and applicability entry workflow" },
     { "id": "portable-design-list", "label": "Bounded portable-design metadata list" },
     { "id": "portable-design-read", "label": "Exact portable-design metadata read" },
     { "id": "portable-design-local-import", "label": "Local-folder portable-design import" },
@@ -33,7 +34,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T015113Z-phase-1-entry-foundation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T031646Z-phase-1-entry-four-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -41,6 +42,10 @@
       "capabilityAssessments": [
         { "capabilityId": "shared-engine-boundary", "state": "implemented", "probes": [{ "path": "apps/vscode/src/extension.ts", "contains": ["engine = new GaepEngine(folder.uri.fsPath", "engine.listManagedRunsPage({ offset: 0, limit: 200 })", "return presentation"] }] },
         { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["const product = await context.readProduct()"] }] },
+        { "capabilityId": "initiative-entry-workflow", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/extension.ts", "contains": ["vscode.commands.registerCommand(", "\"gaep.classifyInitiative\"", "runtime.engine.classifyInitiative(", "\"gaep.resolveInitiativeApplicability\"", "runtime.engine.resolveInitiativeApplicability("] },
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["gaep.classifyInitiative", "gaep.resolveInitiativeApplicability", "classification grants no approval or action authority", "matrix grants no approval, readiness, or action authority"] }
+        ] },
         { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["studio.listPortableDesignSnapshots"] }] },
         { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["studio.readPortableDesignSnapshot"] }] },
         { "capabilityId": "portable-design-local-import", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["context.importSnapshot", "selectLocalBundleFolder"] }] },
@@ -103,7 +108,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T015113Z-phase-1-entry-foundation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T031646Z-phase-1-entry-four-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -114,6 +119,10 @@
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["resolveAndVerifyPackagedEngine", "The packaged GAEP engine changed while the host process was starting", "ELECTRON_RUN_AS_NODE"] }
         ] },
         { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["const initial = await client.readProduct()"] }] },
+        { "capabilityId": "initiative-entry-workflow", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function classifyInitiative", "client.classifyInitiative(", "async function resolveInitiativeApplicability", "client.resolveInitiativeApplicability(", "entry assessment is read-only and grants no approval"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["classifyInitiative(", "this.request(\"classifyInitiative\"", "resolveInitiativeApplicability(", "this.request(\"resolveInitiativeApplicability\""] }
+        ] },
         { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function listPortableDesign", ".listPortableDesignSnapshots(offset, limit)"] }] },
         { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function readPortableDesign", "client.readPortableDesignSnapshot(bundleId)"] }] },
         { "capabilityId": "portable-design-local-import", "state": "implemented", "probes": [{ "path": "apps/kiro/src/extension.ts", "contains": ["async function importPortableDesign", "client.importPortableDesignSnapshot"] }] },
@@ -172,7 +181,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T015113Z-phase-1-entry-foundation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T031646Z-phase-1-entry-four-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -184,6 +193,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["resolveAndVerifyPackagedEngine", "The packaged GAEP engine changed while the host process was starting", "safeRiderEngineEnvironment"] }
         ] },
         { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.readProductBinding()"] }] },
+        { "capabilityId": "initiative-entry-workflow", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Inspect Initiative entry", "Classify Initiative", "Resolve Initiative applicability", "Absence never means not applicable"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["fun readInitiativeEntryContext", "fun classifyInitiative(", "fun resolveInitiativeApplicability(", "sameInitiativeEntryBinding"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readInitiative(", "fun assessInitiativeEntry(", "fun classifyInitiative(", "fun resolveInitiativeApplicability("] }
+        ] },
         { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.listPortableDesignSnapshots"] }] },
         { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.readPortableDesignSnapshot(normalized)"] }] },
         { "capabilityId": "portable-design-local-import", "state": "implemented", "probes": [{ "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["client.importPortableDesignSnapshot"] }] },
@@ -246,7 +260,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T015113Z-phase-1-entry-foundation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T031646Z-phase-1-entry-four-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -259,6 +273,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/Gaep.HostClient.csproj", "contains": ["BuildGaepPackagedEngine", "EmbeddedResource", "Gaep.HostClient.PackagedEngine.gaep-engine.mjs"] }
         ] },
         { "capabilityId": "product-binding-read", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ReadProductBindingAsync"] }] },
+        { "capabilityId": "initiative-entry-workflow", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Load exact Initiative entry", "Classify or reclassify exact Initiative", "Resolve or re-resolve exact applicability", "absence never means not applicable"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["ReadInitiativeEntryContextAsync(", "ClassifyInitiativeAsync(", "ResolveInitiativeApplicabilityAsync(", "SameInitiativeEntryBinding"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/InitiativeEntryProtocol.cs", "contains": ["ParseInitiativeResponse(", "ParseInitiativeEntryAssessmentResponse(", "ValidateInitiativeClassificationInput", "ValidateInitiativeApplicabilityInput"] }
+        ] },
         { "capabilityId": "portable-design-list", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ListPortableDesignSnapshotsAsync"] }] },
         { "capabilityId": "portable-design-read", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ReadPortableDesignSnapshotAsync"] }] },
         { "capabilityId": "portable-design-local-import", "state": "implemented", "probes": [{ "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["client.ImportPortableDesignSnapshotAsync"] }] },
@@ -322,7 +341,7 @@
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-25T015113Z-phase-1-entry-foundation-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-25T031646Z-phase-1-entry-four-host-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",
