@@ -24,7 +24,10 @@
     { "id": "change-impact-dashboard", "label": "Exact current Change and impact projection" },
     { "id": "agent-model-dashboard", "label": "Exact current Agent and Model evidence projection" },
     { "id": "accessible-dashboard-tables", "label": "Accessible dashboard sorting, filtering, textual alternative, and bounded metadata export" },
-    { "id": "freshness-evidence-cues", "label": "Governed dashboard source, freshness, confidence, and stale-state cues" }
+    { "id": "freshness-evidence-cues", "label": "Governed dashboard source, freshness, confidence, and stale-state cues" },
+    { "id": "source-intake-governance", "label": "Exact governed Source intake and authority metadata projection" },
+    { "id": "candidate-source-baseline", "label": "Exact candidate Source Baseline projection without designation authority" },
+    { "id": "source-provenance", "label": "Exact Source Provenance projection without authority transfer" }
   ],
   "hosts": [
     {
@@ -35,7 +38,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T082715Z-phase-1-entry-policy-coverage-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T093233Z-phase-1-source-governance-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -103,6 +106,18 @@
         { "capabilityId": "freshness-evidence-cues", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isDashboardEvidenceCues", "value.freshness === expectedFreshness", "no-governed-confidence-evaluation-is-bound"] },
           { "path": "apps/vscode/src/studio-client.ts", "contains": ["Source: ${dashboard.sourceBoundary}", "Evidence freshness: ${dashboard.evidenceCues.freshness}", "Confidence: not assessed; no governed confidence evaluation is bound"] }
+        ] },
+        { "capabilityId": "source-intake-governance", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["sourceGovernance?: {", "engine.sourceGovernance!.project(initiative.id)", "title: \"Governed Sources\"", "record.semanticAuthority.standing"] },
+          { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["sources: StudioTableSnapshot", "sourceBaselines: StudioTableSnapshot", "sourceProvenance: StudioTableSnapshot"] }
+        ] },
+        { "capabilityId": "candidate-source-baseline", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["title: \"Candidate Source Baselines\"", "record.assessmentStatus", "Candidate snapshot only; no approval, designation, authorization, or supersession."] },
+          { "path": "apps/vscode/src/studio-client.ts", "contains": ["page.sourceBaselines"] }
+        ] },
+        { "capabilityId": "source-provenance", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["title: \"Source Provenance\"", "record.targetKind", "no approval, validation, authorization, or authority transfer"] },
+          { "path": "apps/vscode/src/studio-client.ts", "contains": ["page.sourceProvenance"] }
         ] }
       ]
     },
@@ -114,7 +129,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T082715Z-phase-1-entry-policy-coverage-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T093233Z-phase-1-source-governance-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -181,6 +196,17 @@
         { "capabilityId": "freshness-evidence-cues", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/protocol.ts", "contains": ["function parseDashboardEvidenceCues", "freshness !== expectedFreshness", "no-governed-confidence-evaluation-is-bound"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["Source: ${dashboard.sourceBoundary}", "Evidence freshness: ${dashboard.evidenceCues.freshness}", "Confidence: not assessed; no governed confidence evaluation is bound"] }
+        ] },
+        { "capabilityId": "source-intake-governance", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readSourceGovernance(", "this.request(\"source.snapshot\"", "sourceGovernanceProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showSourceGovernance", "Source records (showing", "source.semanticAuthority.standing"] }
+        ] },
+        { "capabilityId": "candidate-source-baseline", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["Candidate Baselines (showing", "projection.baselines", "Authority boundary: ${projection.authorityBoundary}"] }
+        ] },
+        { "capabilityId": "source-provenance", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["`Provenance (showing", "record.targetKind", "Authority boundary: ${projection.authorityBoundary}"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["snapshotDigest !== canonicalDigest(projectionBody)"] }
         ] }
       ]
     },
@@ -192,7 +218,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T082715Z-phase-1-entry-policy-coverage-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T093233Z-phase-1-source-governance-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -265,6 +291,17 @@
         { "capabilityId": "freshness-evidence-cues", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["private fun parseDashboardEvidenceCues", "freshness != expectedFreshness", "no-governed-confidence-evaluation-is-bound"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["Source: ${dashboard.sourceBoundary}", "Evidence freshness: ${dashboard.evidenceCues.freshness}", "Confidence: not assessed; no governed confidence evaluation is bound"] }
+        ] },
+        { "capabilityId": "source-intake-governance", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readSourceGovernance(", "portableRequest(\"source.snapshot\"", "parseSourceGovernanceEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP Source governance", "Governed Sources", "authority ${source.semanticAuthority}"] }
+        ] },
+        { "capabilityId": "candidate-source-baseline", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["Candidate Source Baselines", "candidate Baselines", "grants no Baseline designation"] }
+        ] },
+        { "capabilityId": "source-provenance", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["Source Provenance", "provenance.targetKind", "authority transfer"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["SourceGovernanceProvenanceView", "snapshotDigest != canonicalDigest(digestBody)"] }
         ] }
       ]
     },
@@ -276,7 +313,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T082715Z-phase-1-entry-policy-coverage-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T093233Z-phase-1-source-governance-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -357,13 +394,25 @@
         { "capabilityId": "freshness-evidence-cues", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParseDashboardEvidenceCues", "freshness != expectedFreshness", "no-governed-confidence-evaluation-is-bound"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["Source: {dashboard.SourceBoundary}", "Evidence freshness: {dashboard.EvidenceCues.Freshness}", "Confidence: not assessed; no governed confidence evaluation is bound"] }
+        ] },
+        { "capabilityId": "source-intake-governance", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadSourceGovernanceAsync(", "\"source.snapshot\"", "ParseSourceGovernanceResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP Source governance", "Governed Sources", "authority {source.SemanticAuthority}"] }
+        ] },
+        { "capabilityId": "candidate-source-baseline", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["Candidate Source Baselines", "candidate Baselines", "grants no Baseline designation"] },
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Inspect Source governance", "LoadSourceGovernanceCommand"] }
+        ] },
+        { "capabilityId": "source-provenance", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["Source Provenance", "provenance.TargetKind", "authority transfer"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/SourceGovernanceProtocol.cs", "contains": ["ParseSourceProvenanceView", "snapshotDigest != CanonicalDigest(WithoutProperty(projection, \"snapshotDigest\"))"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-25T082715Z-phase-1-entry-policy-coverage-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-25T093233Z-phase-1-source-governance-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",
