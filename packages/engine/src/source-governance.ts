@@ -5,6 +5,7 @@ import {
   sourceBaselineInputSchema,
   sourceBaselineSchema,
   sourceGovernanceAssessmentSchema,
+  sourceGovernanceProjectionSchema,
   sourceProvenanceInputSchema,
   sourceProvenanceSchema,
   sourceRecordInputSchema,
@@ -17,6 +18,7 @@ import {
   type SourceBaseline,
   type SourceBaselineInput,
   type SourceGovernanceAssessment,
+  type SourceGovernanceProjection,
   type SourceProvenance,
   type SourceProvenanceInput,
   type SourceRecord,
@@ -482,6 +484,107 @@ export class SourceGovernanceService {
     })
   }
 
+  async project(initiativeId: string): Promise<SourceGovernanceProjection> {
+    const targetId = this.requireUuid(initiativeId, "Initiative ID")
+    const [product, initiative, assessment, allSources, allBaselines, allProvenance] = await Promise.all([
+      this.readProduct(),
+      this.readInitiative(targetId),
+      this.assess(targetId),
+      this.listSources(targetId),
+      this.listBaselines(targetId),
+      this.listProvenance(targetId),
+    ])
+    if (
+      assessment.productId !== product.id ||
+      assessment.productRevision !== revisionOf(product) ||
+      assessment.initiativeId !== initiative.id ||
+      assessment.initiativeRevision !== revisionOf(initiative)
+    ) throw new Error("Source projection context changed while the governed records were read")
+    const limit = <T>(records: T[]) => ({
+      records: records.slice(0, 200),
+      counts: {
+        shown: Math.min(records.length, 200),
+        total: records.length,
+        omitted: Math.max(0, records.length - 200),
+      },
+    })
+    const sources = limit(allSources)
+    const baselines = limit(allBaselines)
+    const provenance = limit(allProvenance)
+    const latestBaseline = assessment.currentBaseline
+    const projection = {
+      schemaVersion: 1 as const,
+      kind: "source-governance-projection" as const,
+      product: {
+        id: product.id,
+        revision: revisionOf(product),
+        digest: canonicalDigest(product),
+      },
+      initiative: {
+        id: initiative.id,
+        revision: revisionOf(initiative),
+        digest: canonicalDigest(initiative),
+        state: initiative.state,
+      },
+      assessment,
+      sources: sources.records.map((source) => ({
+        id: source.id,
+        revision: source.revision,
+        title: source.title,
+        sourceType: source.sourceType,
+        owner: source.owner,
+        semanticAuthority: {
+          standing: source.semanticAuthority.standing,
+          domain: source.semanticAuthority.domain,
+          scope: source.semanticAuthority.scope,
+        },
+        knowledgeDisposition: source.knowledgeDisposition,
+        informationClassification: source.informationClassification,
+        freshness: source.freshness.status,
+        availability: source.availability.status,
+        contentDigest: source.contentDigest,
+        recordDigest: canonicalDigest(source),
+        updatedAt: source.updatedAt,
+      })),
+      baselines: baselines.records.map((baseline) => ({
+        id: baseline.id,
+        revision: baseline.revision,
+        title: baseline.title,
+        state: baseline.state,
+        membershipDigest: baseline.membershipDigest,
+        memberCount: baseline.members.length,
+        assessmentStatus: latestBaseline?.id === baseline.id && latestBaseline.revision === baseline.revision
+          ? latestBaseline.status
+          : "not-assessed" as const,
+        updatedAt: baseline.updatedAt,
+      })),
+      provenance: provenance.records.map((record) => ({
+        id: record.id,
+        targetKind: record.target.kind,
+        targetDigest: targetDigest(record.target),
+        disposition: record.disposition,
+        sourceCount: record.sources.length,
+        transformationCount: record.transformations.length,
+        ...(record.amendment ? { amendmentRecordId: record.amendment.recordId } : {}),
+        recordedAt: record.recordedAt,
+      })),
+      limits: {
+        sources: sources.counts,
+        baselines: baselines.counts,
+        provenance: provenance.counts,
+      },
+      observedAt: assessment.assessedAt,
+      privacyBoundary:
+        "projection-contains-portable-governance-metadata-and-digests-only-not-source-bytes-locators-local-paths-or-credentials" as const,
+      authorityBoundary:
+        "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action" as const,
+    }
+    return sourceGovernanceProjectionSchema.parse({
+      ...projection,
+      snapshotDigest: canonicalDigest(projection),
+    })
+  }
+
   async healthIssues(): Promise<WorkspaceHealthIssue[]> {
     const issues: WorkspaceHealthIssue[] = []
     const product = await this.readProduct()
@@ -795,8 +898,9 @@ export class SourceGovernanceService {
     return records.sort((left, right) => {
       const leftRecord = left as Record<string, unknown>
       const rightRecord = right as Record<string, unknown>
-      return String(rightRecord.updatedAt ?? rightRecord.recordedAt ?? "")
+      const recency = String(rightRecord.updatedAt ?? rightRecord.recordedAt ?? "")
         .localeCompare(String(leftRecord.updatedAt ?? leftRecord.recordedAt ?? ""))
+      return recency !== 0 ? recency : String(leftRecord.id ?? "").localeCompare(String(rightRecord.id ?? ""))
     })
   }
 

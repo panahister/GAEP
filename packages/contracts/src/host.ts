@@ -15,6 +15,11 @@ import {
   productSchema,
 } from "./product.js"
 import { productDomainRecordKindSchema, productExportBundleSchema } from "./product-studio.js"
+import {
+  sourceBaselineInputSchema,
+  sourceProvenanceInputSchema,
+  sourceRecordInputSchema,
+} from "./source-governance.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -154,6 +159,39 @@ export const hostImportPreviewParamsSchema = z.object({
   bundle: productExportBundleSchema,
 }).strict()
 
+export const hostSourceInitiativeParamsSchema = z.object({
+  initiativeId: z.string().uuid(),
+}).strict()
+
+export const hostSourceCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  source: sourceRecordInputSchema,
+}).strict()
+
+export const hostSourceReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  sourceId: z.string().uuid(),
+  expectedSourceRevision: z.number().int().positive(),
+  source: sourceRecordInputSchema,
+}).strict()
+
+export const hostSourceBaselineCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  baseline: sourceBaselineInputSchema,
+}).strict()
+
+export const hostSourceBaselineReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  baselineId: z.string().uuid(),
+  expectedBaselineRevision: z.number().int().positive(),
+  baseline: sourceBaselineInputSchema,
+}).strict()
+
+export const hostSourceProvenanceRecordParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  provenance: sourceProvenanceInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -194,6 +232,16 @@ export const hostMethodSchema = z.enum([
   "productStudio.search",
   "productStudio.exportBuild",
   "productStudio.importPreview",
+  "source.list",
+  "source.create",
+  "source.revise",
+  "source.baseline.list",
+  "source.baseline.create",
+  "source.baseline.revise",
+  "source.provenance.list",
+  "source.provenance.record",
+  "source.assess",
+  "source.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -246,6 +294,16 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("productStudio.search", hostSearchProductStudioParamsSchema),
   requestVariant("productStudio.exportBuild", hostNoParamsSchema.default({})),
   requestVariant("productStudio.importPreview", hostImportPreviewParamsSchema),
+  requestVariant("source.list", hostSourceInitiativeParamsSchema),
+  requestVariant("source.create", hostSourceCreateParamsSchema),
+  requestVariant("source.revise", hostSourceReviseParamsSchema),
+  requestVariant("source.baseline.list", hostSourceInitiativeParamsSchema),
+  requestVariant("source.baseline.create", hostSourceBaselineCreateParamsSchema),
+  requestVariant("source.baseline.revise", hostSourceBaselineReviseParamsSchema),
+  requestVariant("source.provenance.list", hostSourceInitiativeParamsSchema),
+  requestVariant("source.provenance.record", hostSourceProvenanceRecordParamsSchema),
+  requestVariant("source.assess", hostSourceInitiativeParamsSchema),
+  requestVariant("source.snapshot", hostSourceInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

@@ -79,6 +79,16 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "productStudio.search",
   "productStudio.exportBuild",
   "productStudio.importPreview",
+  "source.list",
+  "source.create",
+  "source.revise",
+  "source.baseline.list",
+  "source.baseline.create",
+  "source.baseline.revise",
+  "source.provenance.list",
+  "source.provenance.record",
+  "source.assess",
+  "source.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -663,6 +673,45 @@ export class EngineHost {
         return this.engine.productStudio.buildPortableExport()
       case "productStudio.importPreview":
         return this.engine.productStudio.previewImportBundle(request.params.bundle)
+      case "source.list":
+        return this.engine.sourceGovernance.listSources(request.params.initiativeId)
+      case "source.create":
+        return this.engine.sourceGovernance.createSource(
+          request.params.source,
+          actorId(request.params.actorId),
+        )
+      case "source.revise":
+        return this.engine.sourceGovernance.reviseSource(
+          request.params.sourceId,
+          request.params.expectedSourceRevision,
+          request.params.source,
+          actorId(request.params.actorId),
+        )
+      case "source.baseline.list":
+        return this.engine.sourceGovernance.listBaselines(request.params.initiativeId)
+      case "source.baseline.create":
+        return this.engine.sourceGovernance.createBaseline(
+          request.params.baseline,
+          actorId(request.params.actorId),
+        )
+      case "source.baseline.revise":
+        return this.engine.sourceGovernance.reviseBaseline(
+          request.params.baselineId,
+          request.params.expectedBaselineRevision,
+          request.params.baseline,
+          actorId(request.params.actorId),
+        )
+      case "source.provenance.list":
+        return this.engine.sourceGovernance.listProvenance(request.params.initiativeId)
+      case "source.provenance.record":
+        return this.engine.sourceGovernance.recordProvenance(
+          request.params.provenance,
+          actorId(request.params.actorId),
+        )
+      case "source.assess":
+        return this.engine.sourceGovernance.assess(request.params.initiativeId)
+      case "source.snapshot":
+        return this.engine.sourceGovernance.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

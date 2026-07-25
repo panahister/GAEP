@@ -191,6 +191,20 @@ describe("Source governance", () => {
       state: "candidate",
       authorityBoundary: baseline.authorityBoundary,
     })
+    const projection = await engine.sourceGovernance.project(initiativeId)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      sources: [{ id: source.id, semanticAuthority: { standing: "authoritative" } }],
+      baselines: [{ id: baseline.id, assessmentStatus: "current", state: "candidate" }],
+      provenance: [{ id: provenance.id, targetKind: "claim" }],
+      limits: {
+        sources: { shown: 1, total: 1, omitted: 0 },
+        baselines: { shown: 1, total: 1, omitted: 0 },
+        provenance: { shown: 1, total: 1, omitted: 0 },
+      },
+    })
+    expect(JSON.stringify(projection)).not.toContain("requirements.reviewed")
     expect(await engine.workspaceHealth()).toMatchObject({
       status: "healthy",
       issues: [],

@@ -357,6 +357,106 @@ export const sourceGovernanceAssessmentSchema = z.object({
   ),
 }).strict()
 
+const sourceProjectionLimitSchema = z.object({
+  shown: z.number().int().nonnegative().max(200),
+  total: z.number().int().nonnegative().max(10_000),
+  omitted: z.number().int().nonnegative().max(10_000),
+}).strict().refine(
+  (limit) => limit.shown + limit.omitted === limit.total,
+  "Source projection shown and omitted counts must reconcile to the total",
+)
+
+export const sourceGovernanceProjectionSchema = z.object({
+  schemaVersion: z.literal(1),
+  kind: z.literal("source-governance-projection"),
+  product: z.object({
+    id: z.string().uuid(),
+    revision: z.number().int().positive(),
+    digest: digestSchema,
+  }).strict(),
+  initiative: z.object({
+    id: z.string().uuid(),
+    revision: z.number().int().positive(),
+    digest: digestSchema,
+    state: z.enum(["proposed", "active", "blocked", "completed", "cancelled"]),
+  }).strict(),
+  assessment: sourceGovernanceAssessmentSchema,
+  sources: z.array(z.object({
+    id: z.string().uuid(),
+    revision: z.number().int().positive(),
+    title: z.string().trim().min(2).max(240),
+    sourceType: sourceMaterialTypeSchema,
+    owner: sourceOwnerSchema,
+    semanticAuthority: z.object({
+      standing: z.enum(["authoritative", "advisory", "non-authoritative", "unknown"]),
+      domain: shortTextSchema,
+      scope: z.array(shortTextSchema).min(1).max(128),
+    }).strict(),
+    knowledgeDisposition: sourceKnowledgeDispositionSchema,
+    informationClassification: informationClassificationSchema,
+    freshness: z.enum(["fresh", "potentially-stale", "stale", "unknown"]),
+    availability: z.enum(["available", "unavailable", "moved", "deleted", "unknown"]),
+    contentDigest: digestSchema,
+    recordDigest: digestSchema,
+    updatedAt: z.string().datetime(),
+  }).strict()).max(200),
+  baselines: z.array(z.object({
+    id: z.string().uuid(),
+    revision: z.number().int().positive(),
+    title: z.string().trim().min(2).max(240),
+    state: z.literal("candidate"),
+    membershipDigest: digestSchema,
+    memberCount: z.number().int().positive().max(2_000),
+    assessmentStatus: z.enum(["current", "stale", "incomplete", "not-assessed"]),
+    updatedAt: z.string().datetime(),
+  }).strict()).max(200),
+  provenance: z.array(z.object({
+    id: z.string().uuid(),
+    targetKind: z.enum(["governed-record", "claim", "artifact"]),
+    targetDigest: digestSchema,
+    disposition: sourceKnowledgeDispositionSchema,
+    sourceCount: z.number().int().positive().max(256),
+    transformationCount: z.number().int().nonnegative().max(128),
+    amendmentRecordId: z.string().uuid().optional(),
+    recordedAt: z.string().datetime(),
+  }).strict()).max(200),
+  limits: z.object({
+    sources: sourceProjectionLimitSchema,
+    baselines: sourceProjectionLimitSchema,
+    provenance: sourceProjectionLimitSchema,
+  }).strict(),
+  observedAt: z.string().datetime(),
+  privacyBoundary: z.literal(
+    "projection-contains-portable-governance-metadata-and-digests-only-not-source-bytes-locators-local-paths-or-credentials",
+  ),
+  authorityBoundary: z.literal(
+    "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action",
+  ),
+  snapshotDigest: digestSchema,
+}).strict().superRefine((projection, context) => {
+  if (
+    projection.product.id !== projection.assessment.productId ||
+    projection.product.revision !== projection.assessment.productRevision ||
+    projection.initiative.id !== projection.assessment.initiativeId ||
+    projection.initiative.revision !== projection.assessment.initiativeRevision
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["assessment"],
+      message: "Source projection assessment must bind the exact Product and Initiative revisions",
+    })
+  }
+  for (const key of ["sources", "baselines", "provenance"] as const) {
+    if (projection[key].length !== projection.limits[key].shown) {
+      context.addIssue({
+        code: "custom",
+        path: [key],
+        message: `Source projection ${key} rows must match the shown count`,
+      })
+    }
+  }
+})
+
 export type SourceRecordInput = z.infer<typeof sourceRecordInputSchema>
 export type SourceRecord = z.infer<typeof sourceRecordSchema>
 export type ExactSourceReference = z.infer<typeof exactSourceReferenceSchema>
@@ -366,3 +466,4 @@ export type SourceBaseline = z.infer<typeof sourceBaselineSchema>
 export type SourceProvenanceInput = z.infer<typeof sourceProvenanceInputSchema>
 export type SourceProvenance = z.infer<typeof sourceProvenanceSchema>
 export type SourceGovernanceAssessment = z.infer<typeof sourceGovernanceAssessmentSchema>
+export type SourceGovernanceProjection = z.infer<typeof sourceGovernanceProjectionSchema>

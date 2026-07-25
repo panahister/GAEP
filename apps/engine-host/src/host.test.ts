@@ -403,6 +403,170 @@ describe("engine host protocol", () => {
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
   })
 
+  it("exposes exact Source intake, candidate Baseline, Provenance, and assessment through protocol v2", async () => {
+    const { initiativeId } = await createProductAndInitiative(false)
+    const sourceInput = {
+      initiativeId,
+      sourceType: "requirements" as const,
+      title: "Reviewed host requirements",
+      description: "The exact reviewed requirements input for the bounded engine-host Source workflow.",
+      locator: { kind: "logical" as const, value: "host.requirements.reviewed" },
+      revisionIdentity: { kind: "resource-revision" as const, value: "HOST-REQ-001@1" },
+      contentDigest: `sha256:${"a".repeat(64)}` as const,
+      digestScope: "Canonical UTF-8 requirements content",
+      owner: { kind: "human" as const, id: "gaep.host-test" },
+      semanticAuthority: {
+        standing: "authoritative" as const,
+        domain: "Host protocol requirements",
+        scope: ["Source protocol v2"],
+        basis: "The accountable host Product owner declared this exact revision as the governing requirements input.",
+        declaredBy: { kind: "human" as const, id: "gaep.host-test" },
+      },
+      knowledgeDisposition: "confirmed" as const,
+      trust: { sourceAuthenticity: "verified" as const, contentIntegrity: "verified" as const },
+      informationClassification: "internal" as const,
+      rights: { status: "verified" as const, basis: "Internal Product use is recorded." },
+      freshness: {
+        status: "fresh" as const,
+        assessedAt: "2026-07-25T00:00:00.000Z",
+        basis: "The accountable owner reviewed this exact revision.",
+        validUntil: "2026-08-25T00:00:00.000Z",
+      },
+      availability: { status: "available" as const, basis: "The logical source resolver is available." },
+      limitations: ["This record does not establish Product readiness."],
+    }
+    const source = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "source-create",
+      protocolVersion: 2,
+      method: "source.create",
+      params: { actorId: "gaep.host-test", source: sourceInput },
+    }) as { id: string; revision: number; contentDigest: `sha256:${string}`; authorityBoundary: string }
+    const exactSource = {
+      sourceId: source.id,
+      sourceRevision: source.revision,
+      recordDigest: canonicalDigest(source),
+      contentDigest: source.contentDigest,
+    }
+    const baseline = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "baseline-create",
+      protocolVersion: 2,
+      method: "source.baseline.create",
+      params: {
+        actorId: "gaep.host-test",
+        baseline: {
+          initiativeId,
+          title: "Host Source candidate snapshot",
+          purpose: "Freeze the exact host Source revision without designating an approved Product Baseline Set.",
+          scope: ["Source protocol v2"],
+          members: [exactSource],
+          limitations: ["Human approval and designation are not represented."],
+        },
+      },
+    }) as { id: string; revision: number; state: string; authorityBoundary: string }
+    const provenance = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "provenance-create",
+      protocolVersion: 2,
+      method: "source.provenance.record",
+      params: {
+        actorId: "gaep.host-test",
+        provenance: {
+          initiativeId,
+          target: {
+            kind: "claim",
+            lineageId: "00000000-0000-4000-8000-000000000100",
+            revision: 1,
+            digest: source.contentDigest,
+            label: "The reviewed host requirements source is recorded",
+          },
+          disposition: "confirmed",
+          sources: [{
+            reference: exactSource,
+            role: "origin",
+            rationale: "The exact Source revision directly originates the bounded host claim.",
+          }],
+          transformations: [],
+          contributors: [{ kind: "human", id: "gaep.host-test" }],
+          generation: { kind: "manual", processId: "host-source-review-v1" },
+          omissions: ["This lineage does not establish readiness."],
+          uncertainty: [],
+        },
+      },
+    }) as { id: string; authorityBoundary: string }
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "source-assess",
+      protocolVersion: 2,
+      method: "source.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      sourceCount: 1,
+      baselineCount: 1,
+      provenanceCount: 1,
+      currentBaseline: { id: baseline.id, status: "current" },
+      state: "ready",
+      authorityBoundary: "source-governance-assessment-reports-recorded-evidence-and-does-not-designate-a-baseline-approve-readiness-or-authorize-action",
+    })
+    const projection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "source-snapshot",
+      protocolVersion: 2,
+      method: "source.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      privacyBoundary: "projection-contains-portable-governance-metadata-and-digests-only-not-source-bytes-locators-local-paths-or-credentials",
+      authorityBoundary: "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action",
+    })
+    expect(JSON.stringify(projection)).not.toContain("host.requirements.reviewed")
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "source-list",
+      protocolVersion: 2,
+      method: "source.list",
+      params: { initiativeId },
+    })).resolves.toEqual([expect.objectContaining({ id: source.id })])
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "baseline-list",
+      protocolVersion: 2,
+      method: "source.baseline.list",
+      params: { initiativeId },
+    })).resolves.toEqual([expect.objectContaining({ id: baseline.id, state: "candidate" })])
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "provenance-list",
+      protocolVersion: 2,
+      method: "source.provenance.list",
+      params: { initiativeId },
+    })).resolves.toEqual([expect.objectContaining({ id: provenance.id })])
+    expect(source.authorityBoundary).toContain("does-not-grant")
+    expect(baseline.authorityBoundary).toContain("does-not-approve")
+    expect(provenance.authorityBoundary).toContain("does-not-approve")
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "source-v1-block",
+      method: "source.list",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "source-actor-substitution",
+      protocolVersion: 2,
+      method: "source.create",
+      params: {
+        actorId: "another-human",
+        source: { ...sourceInput, title: "Substituted Source declaration" },
+      },
+    })).rejects.toMatchObject({ kind: "INTERNAL_ERROR" })
+  })
+
   it("rejects unknown methods, malformed params, caller capability injection, and oversized direct requests", async () => {
     await expect(host.dispatch({ jsonrpc: "2.0", id: 1, method: "eraseEverything", params: {} })).rejects.toMatchObject({
       code: -32_601,
