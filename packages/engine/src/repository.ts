@@ -17,6 +17,7 @@ import {
   architectureRecordSchema,
   auditCheckpointSchema,
   auditEventSchema,
+  businessUnderstandingSchema,
   changeSchema,
   contextPackSchema,
   decisionSchema,
@@ -30,6 +31,7 @@ import {
   managedRunEvidenceSchema,
   managedRunRecordSchema,
   managedRunResultSchema,
+  outcomeModelSchema,
   productSchema,
   productDesignRevisionSchema,
   productRevisionSchema,
@@ -42,6 +44,7 @@ import {
   sourceProvenanceSchema,
   sourceRecordRevisionSchema,
   sourceRecordSchema,
+  stakeholderModelSchema,
   requirementSchema,
   riskSchema,
   runToolSelectionSchema,
@@ -78,6 +81,12 @@ const directoryNames = [
   "source-baselines",
   "source-baseline-history",
   "source-provenance",
+  "business-understanding",
+  "business-understanding-history",
+  "stakeholder-models",
+  "stakeholder-model-history",
+  "outcome-models",
+  "outcome-model-history",
   "initiatives",
   "changes",
   "work-items",
@@ -839,6 +848,12 @@ export class GaepRepository {
       ["source-baselines", /^[0-9a-f-]+\.json$/i],
       ["source-baseline-history", /^baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["source-provenance", /^[0-9a-f-]+\.json$/i],
+      ["business-understanding", /^[0-9a-f-]+\.json$/i],
+      ["business-understanding-history", /^business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
+      ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["outcome-models", /^[0-9a-f-]+\.json$/i],
+      ["outcome-model-history", /^outcome-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["initiatives", /^[0-9a-f-]+\.json$/i],
       ["changes", /^[0-9a-f-]+\.json$/i],
       ["work-items", /^[0-9a-f-]+\.json$/i],
@@ -918,6 +933,18 @@ export class GaepRepository {
     }
     if (/^source-provenance\/[0-9a-f-]+\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, sourceProvenanceSchema)
+    }
+    if (/^business-understanding\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^business-understanding-history\/business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, businessUnderstandingSchema)
+    }
+    if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, stakeholderModelSchema)
+    }
+    if (/^outcome-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^outcome-model-history\/outcome-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, outcomeModelSchema)
     }
     if (/^changes\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, changeSchema)
     if (/^work-items\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, workItemSchema)

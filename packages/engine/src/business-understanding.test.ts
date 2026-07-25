@@ -1,0 +1,490 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+import {
+  stakeholderCategoryValues,
+  stakeholderModelInputSchema,
+  type BusinessUnderstanding,
+  type BusinessUnderstandingInput,
+  type ExactSourceReference,
+  type Initiative,
+  type OutcomeModelInput,
+  type Product,
+  type SourceRecord,
+  type SourceRecordInput,
+  type StakeholderModel,
+  type StakeholderModelInput,
+} from "@gaep/contracts"
+import { canonicalDigest } from "@gaep/agent-sdk"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
+
+import { GaepEngine } from "./engine.js"
+
+const actorId = "product-owner"
+const digest = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as const
+
+describe("Business understanding governance", () => {
+  let workspace: string
+  let engine: GaepEngine
+  let product: Product
+  let initiative: Initiative
+  let source: SourceRecord
+
+  beforeEach(async () => {
+    workspace = await mkdtemp(join(tmpdir(), "gaep-business-understanding-"))
+    engine = new GaepEngine(workspace, [])
+    product = await engine.createProduct({
+      name: "Atlas",
+      summary: "A governed Product with attributable business context.",
+      problem: "Business intent, stakeholder authority, and outcome evidence can silently drift.",
+      affectedUsers: "Product owners, reviewers, stewards, and affected contributors",
+      desiredOutcome: "Business understanding stays exact, attributable, and independently reviewable.",
+      successSignals: ["Candidate context remains source bound without synthesizing approval"],
+      firstWorkflow: "Record business understanding, stakeholder roles, and measurable outcomes.",
+      exclusions: ["Authority appointment", "Readiness approval", "Release authorization"],
+      profile: "software",
+    }, actorId)
+    initiative = await engine.createInitiative({
+      title: "Govern business understanding",
+      outcome: "The P1 candidate context remains attributable and measurable.",
+      scope: ["Business understanding", "Stakeholder roles", "Outcome measures"],
+      exclusions: ["Approval substitution"],
+    }, actorId)
+    source = await engine.sourceGovernance.createSource(sourceInput(), actorId)
+  })
+
+  afterEach(async () => {
+    await rm(workspace, { recursive: true, force: true })
+  })
+
+  function sourceInput(overrides: Partial<SourceRecordInput> = {}): SourceRecordInput {
+    return {
+      initiativeId: initiative.id,
+      sourceType: "stakeholder-note",
+      title: "Reviewed stakeholder discovery",
+      description: "The exact reviewed discovery input for the bounded business-understanding workflow.",
+      locator: { kind: "logical", value: "discovery.reviewed" },
+      revisionIdentity: { kind: "resource-revision", value: "DISCOVERY-001@1" },
+      contentDigest: digest("a"),
+      digestScope: "Canonical UTF-8 discovery content",
+      owner: { kind: "human", id: actorId },
+      semanticAuthority: {
+        standing: "advisory",
+        domain: "Initiative business context",
+        scope: ["P1 candidate understanding"],
+        basis: "The accountable Product owner reviewed this exact discovery input as advisory evidence.",
+        declaredBy: { kind: "human", id: actorId },
+      },
+      knowledgeDisposition: "confirmed",
+      trust: { sourceAuthenticity: "verified", contentIntegrity: "verified" },
+      informationClassification: "internal",
+      rights: { status: "verified", basis: "Internal Product analysis is recorded for this source." },
+      freshness: {
+        status: "fresh",
+        assessedAt: "2026-07-25T00:00:00.000Z",
+        basis: "The accountable owner reviewed this exact revision.",
+        validUntil: "2026-08-25T00:00:00.000Z",
+      },
+      availability: { status: "available", basis: "The logical discovery source is available." },
+      limitations: ["The record does not establish stakeholder authority or Product approval."],
+      ...overrides,
+    }
+  }
+
+  function reference(record: SourceRecord = source): ExactSourceReference {
+    return {
+      sourceId: record.id,
+      sourceRevision: record.revision,
+      recordDigest: canonicalDigest(record),
+      contentDigest: record.contentDigest,
+    }
+  }
+
+  function context() {
+    return {
+      productRevision: product.revision ?? 1,
+      productDigest: canonicalDigest(product),
+      initiativeRevision: initiative.revision ?? 1,
+      initiativeDigest: canonicalDigest(initiative),
+    }
+  }
+
+  function attributed(text: string) {
+    return { text, disposition: "confirmed" as const, sources: [reference()] }
+  }
+
+  function businessInput(overrides: Partial<BusinessUnderstandingInput> = {}): BusinessUnderstandingInput {
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      problem: attributed("Teams cannot independently reconstruct why this bounded Initiative should exist."),
+      opportunity: attributed("Exact governed context can reduce re-explanation while preserving human authority."),
+      currentState: attributed("Business understanding is distributed across sources and informal participant knowledge."),
+      targetState: attributed("Candidate business context is versioned, attributable, measurable, and reviewable."),
+      scope: {
+        included: ["Business context", "Outcome measures", "Stakeholder roles"],
+        excluded: ["Authority appointment", "Release authorization"],
+        boundaries: ["Candidate records only", "No implicit approval"],
+      },
+      objectives: [{
+        id: "reduce-context-loss",
+        ...attributed("Reduce material context loss across governed Product handoffs."),
+      }],
+      constraints: [{
+        id: "preserve-human-authority",
+        ...attributed("Preserve human decision, approval, and authorization boundaries."),
+      }],
+      assumptions: [{
+        id: "reviewers-can-inspect",
+        statement: attributed("Qualified reviewers can inspect portable metadata without receiving source content."),
+        status: "supported",
+        reviewTrigger: "Reassess when the projection or disclosure policy changes.",
+      }],
+      unresolvedQuestions: [],
+      glossary: [{
+        term: "Business Understanding",
+        definition: attributed("A versioned candidate context record that remains separate from decisions and approval."),
+      }],
+      limitations: ["No realistic Product participant study is represented."],
+      ...overrides,
+    }
+  }
+
+  function businessReference(record: BusinessUnderstanding) {
+    return { recordId: record.id, revision: record.revision, digest: canonicalDigest(record) }
+  }
+
+  function stakeholderInput(
+    business: BusinessUnderstanding,
+    overrides: Partial<StakeholderModelInput> = {},
+  ): StakeholderModelInput {
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      businessUnderstanding: businessReference(business),
+      stakeholders: [{
+        key: "primary-user",
+        label: "Primary governed workflow user",
+        category: "user",
+        job: attributed("Prepare and challenge the bounded context needed for an accountable engineering decision."),
+        concerns: ["Incorrect context", "Unnecessary ceremony"],
+        successSignals: ["Can explain current state and unresolved matters"],
+        assignment: {
+          status: "confirmed",
+          subject: { kind: "human", id: "pilot-user" },
+          basis: "The named pilot participant confirmed this bounded workflow assignment.",
+          sources: [reference()],
+          confirmedBy: { kind: "human", id: actorId },
+          confirmedAt: "2026-07-25T01:00:00.000Z",
+        },
+        authority: {
+          standing: "none",
+          domains: [],
+          scope: [],
+          basis: "Workflow participation does not grant decision, approval, or action authority.",
+          sources: [reference()],
+        },
+        competence: {
+          status: "verified",
+          basis: "The participant completed the bounded workflow rehearsal.",
+          sources: [reference()],
+          verifiedBy: { kind: "human", id: actorId },
+          verifiedAt: "2026-07-25T01:00:00.000Z",
+        },
+      }],
+      coverage: stakeholderCategoryValues.map((category) => ({
+        category,
+        status: category === "user" ? "represented" as const : "not-applicable" as const,
+        rationale: category === "user"
+          ? "The bounded pilot records one primary workflow user."
+          : `The bounded local contract test does not require a ${category} participant.`,
+        sources: [reference()],
+      })),
+      responsibilities: [{
+        id: "prepare-context",
+        subject: "Prepare candidate business context",
+        stakeholderKey: "primary-user",
+        relationship: "responsible",
+        basis: "The participant performs preparation without acquiring approval authority.",
+        sources: [reference()],
+      }],
+      separationOfDuty: [],
+      contestability: {
+        path: "Challenge incorrect context through an attributable amendment request.",
+        ownerStakeholderKey: "primary-user",
+        escalation: "Escalate unresolved authority or evidence disputes to the separately assigned decision owner.",
+        sources: [reference()],
+      },
+      limitations: ["The local fixture does not establish organization-wide role applicability."],
+      ...overrides,
+    }
+  }
+
+  function stakeholderReference(record: StakeholderModel) {
+    return { recordId: record.id, revision: record.revision, digest: canonicalDigest(record) }
+  }
+
+  function outcomeInput(
+    business: BusinessUnderstanding,
+    stakeholder: StakeholderModel,
+    overrides: Partial<OutcomeModelInput> = {},
+  ): OutcomeModelInput {
+    const measure = (
+      key: "MET-BURDEN-001" | "MET-VALUE-001",
+      kind: "countermetric" | "metric",
+      category: "burden" | "user-value-flow",
+      name: string,
+    ) => ({
+      key,
+      name,
+      outcomeIds: ["trusted-context"],
+      category,
+      kind,
+      definition: `${name} is measured for the bounded workflow using the declared evidence method.`,
+      direction: kind === "countermetric" ? "maintain" as const : "decrease" as const,
+      unit: "Participant minutes",
+      baseline: {
+        status: "observed" as const,
+        value: kind === "countermetric" ? "15 minutes" : "90 minutes",
+        observedAt: "2026-07-25T02:00:00.000Z",
+        sources: [reference()],
+      },
+      target: {
+        status: "candidate" as const,
+        statement: kind === "countermetric"
+          ? "Do not increase review burden above the observed baseline."
+          : "Reduce reconstruction time while preserving decision quality.",
+      },
+      collection: {
+        ownerStakeholderKey: "primary-user",
+        method: "Record bounded participant time and independently review the resulting evidence.",
+        cadence: "Each selected pilot workflow",
+        qualityConditions: ["Exclude paused waiting time", "Record missing observations"],
+      },
+      dataUse: {
+        purpose: "Evaluate the bounded workflow without ranking individual worker productivity.",
+        classification: "internal" as const,
+        aggregation: "Aggregate by workflow and risk class.",
+        retention: "Retain only for the declared pilot review period.",
+        prohibitedUses: ["Individual productivity ranking", "Undisclosed workforce surveillance"],
+      },
+      acceptanceSignal: kind === "countermetric"
+        ? "Review burden does not materially increase without an explicit justified tradeoff."
+        : "Qualified participants reconstruct decision-ready context with less effort.",
+      sources: [reference()],
+    })
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      businessUnderstanding: businessReference(business),
+      stakeholderModel: stakeholderReference(stakeholder),
+      primaryHypothesis: attributed(
+        "The governed workflow should reduce context reconstruction effort without increasing burden or downstream harm.",
+      ),
+      outcomes: [{
+        id: "trusted-context",
+        level: "decision",
+        statement: attributed("Reviewers can reconstruct a bounded decision-ready context from permitted evidence."),
+        beneficiaryStakeholderKeys: ["primary-user"],
+        confounders: ["Facilitator expertise", "Initiative complexity"],
+      }],
+      measures: [
+        measure("MET-BURDEN-001", "countermetric", "burden", "Review burden"),
+        measure("MET-VALUE-001", "metric", "user-value-flow", "Context reconstruction time"),
+      ],
+      countermetricDisposition: {
+        status: "included",
+        rationale: "Review burden is a material countermetric for the governed workflow.",
+        sources: [reference()],
+      },
+      burdenDisposition: {
+        status: "included",
+        rationale: "Governance burden is measured explicitly rather than presented as zero-cost.",
+        sources: [reference()],
+      },
+      unresolvedQuestions: [],
+      limitations: ["The candidate measures do not establish causal Product outcomes."],
+      ...overrides,
+    }
+  }
+
+  async function createCompleteModel() {
+    const business = await engine.businessUnderstanding.createBusinessUnderstanding(businessInput(), actorId)
+    const stakeholder = await engine.businessUnderstanding.createStakeholderModel(
+      stakeholderInput(business),
+      actorId,
+    )
+    const outcome = await engine.businessUnderstanding.createOutcomeModel(
+      outcomeInput(business, stakeholder),
+      actorId,
+    )
+    return { business, stakeholder, outcome }
+  }
+
+  it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+
+    expect(await engine.businessUnderstanding.assess(initiative.id)).toMatchObject({
+      businessUnderstanding: businessReference(business),
+      stakeholderModel: stakeholderReference(stakeholder),
+      outcomeModel: { recordId: outcome.id, revision: 1, digest: canonicalDigest(outcome) },
+      stakeholderCount: 1,
+      representedStakeholderCategoryCount: 1,
+      unresolvedStakeholderCategoryCount: 0,
+      verifiedAuthorityCount: 0,
+      unverifiedAuthorityCount: 0,
+      outcomeCount: 1,
+      measureCount: 2,
+      observedBaselineCount: 2,
+      unresolvedQuestionCount: 0,
+      blockingQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+    })
+    expect(await engine.businessUnderstanding.listBusinessUnderstandingHistory(business.id)).toHaveLength(1)
+    expect(await engine.businessUnderstanding.listStakeholderModelHistory(stakeholder.id)).toHaveLength(1)
+    expect(await engine.businessUnderstanding.listOutcomeModelHistory(outcome.id)).toHaveLength(1)
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as {
+        eventType: string
+        payload: Record<string, unknown>
+      })
+    expect(events.find((event) => event.eventType === "business.understanding.created")?.payload)
+      .toMatchObject({ revision: 1, recordDigest: canonicalDigest(business), state: "candidate" })
+    expect(events.find((event) => event.eventType === "business.stakeholders.created")?.payload)
+      .toMatchObject({ revision: 1, recordDigest: canonicalDigest(stakeholder), state: "candidate" })
+    expect(events.find((event) => event.eventType === "business.outcomes.created")?.payload)
+      .toMatchObject({ revision: 1, recordDigest: canonicalDigest(outcome), state: "candidate" })
+  })
+
+  it("keeps immutable predecessor history and exposes stale upstream bindings after revision", async () => {
+    const { business } = await createCompleteModel()
+    const revised = await engine.businessUnderstanding.reviseBusinessUnderstanding(
+      business.id,
+      business.revision,
+      businessInput({
+        limitations: ["A realistic participant study and external authority review remain outstanding."],
+      }),
+      actorId,
+    )
+
+    expect(revised).toMatchObject({
+      id: business.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(business),
+      state: "candidate",
+    })
+    expect((await engine.businessUnderstanding.listBusinessUnderstandingHistory(business.id))
+      .map((record) => record.revision)).toEqual([2, 1])
+    expect(await engine.businessUnderstanding.assess(initiative.id)).toMatchObject({
+      staleBindingCount: 2,
+      state: "attention-required",
+    })
+  })
+
+  it("detects superseded Source references without invalidating their exact historical identity", async () => {
+    await createCompleteModel()
+    source = await engine.sourceGovernance.reviseSource(
+      source.id,
+      source.revision,
+      sourceInput({
+        revisionIdentity: { kind: "resource-revision", value: "DISCOVERY-001@2" },
+        contentDigest: digest("b"),
+      }),
+      actorId,
+    )
+
+    expect(await engine.businessUnderstanding.assess(initiative.id)).toMatchObject({
+      staleSourceReferenceCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "business.binding-review-required", severity: "warning" }),
+    ]))
+  })
+
+  it("projects only bounded identity, count, status, and digest metadata", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const projection = await engine.businessUnderstanding.project(initiative.id)
+
+    expect(projection).toMatchObject({
+      assessment: { state: "complete-for-review" },
+      businessUnderstanding: { id: business.id, objectiveCount: 1, glossaryTermCount: 1 },
+      stakeholderModel: { id: stakeholder.id, stakeholderCount: 1, representedCategoryCount: 1 },
+      outcomeModel: { id: outcome.id, outcomeCount: 1, measureCount: 2, countermetricCount: 1 },
+      privacyBoundary: expect.stringContaining("not-business-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-approve"),
+    })
+    const serialized = JSON.stringify(projection)
+    expect(serialized).not.toContain("Teams cannot independently reconstruct")
+    expect(serialized).not.toContain("pilot-user")
+    expect(projection.snapshotDigest).toBe(canonicalDigest({
+      ...projection,
+      snapshotDigest: undefined,
+    }))
+  })
+
+  it("rejects forged authority, unknown stakeholder bindings, stale context, secrets, and terminal mutation", async () => {
+    const business = await engine.businessUnderstanding.createBusinessUnderstanding(businessInput(), actorId)
+    expect(() => stakeholderModelInputSchema.parse(stakeholderInput(business, {
+      stakeholders: [{
+        ...stakeholderInput(business).stakeholders[0]!,
+        authority: {
+          standing: "verified",
+          domains: ["Product approval"],
+          scope: ["All Initiative effects"],
+          basis: "A role label alone is incorrectly presented as verified authority.",
+          sources: [reference()],
+        },
+      }],
+    }))).toThrow(/Verified authority requires/)
+
+    const stakeholder = await engine.businessUnderstanding.createStakeholderModel(
+      stakeholderInput(business),
+      actorId,
+    )
+    await expect(engine.businessUnderstanding.createOutcomeModel(
+      outcomeInput(business, stakeholder, {
+        outcomes: [{
+          ...outcomeInput(business, stakeholder).outcomes[0]!,
+          beneficiaryStakeholderKeys: ["missing-stakeholder"],
+        }],
+      }),
+      actorId,
+    )).rejects.toThrow(/beneficiaries/)
+
+    await expect(engine.businessUnderstanding.reviseBusinessUnderstanding(
+      business.id,
+      business.revision,
+      businessInput({
+        context: { ...context(), productDigest: digest("f") },
+      }),
+      actorId,
+    )).rejects.toThrow(/exact current Product and Initiative/)
+
+    expect(() => businessInput({
+      problem: attributed("api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable context"),
+    })).not.toThrow()
+    await expect(engine.businessUnderstanding.reviseBusinessUnderstanding(
+      business.id,
+      business.revision,
+      businessInput({
+        problem: attributed("api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable context"),
+      }),
+      actorId,
+    )).rejects.toThrow(/secret-shaped/)
+
+    await engine.updateInitiativeState(initiative.id, "cancelled", "The bounded test Initiative is closed.", actorId)
+    initiative = await engine.readInitiative(initiative.id)
+    await expect(engine.businessUnderstanding.reviseStakeholderModel(
+      stakeholder.id,
+      stakeholder.revision,
+      stakeholderInput(business),
+      actorId,
+    )).rejects.toThrow(/Terminal Initiative cancelled/)
+  })
+})

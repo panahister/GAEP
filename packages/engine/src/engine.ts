@@ -71,6 +71,7 @@ import {
 } from "./managed-execution.js"
 import { ProductStudioService } from "./product-studio.js"
 import { SourceGovernanceService } from "./source-governance.js"
+import { BusinessUnderstandingService } from "./business-understanding.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -231,6 +232,7 @@ export class GaepEngine {
   readonly repository: GaepRepository
   readonly productStudio: ProductStudioService
   readonly sourceGovernance: SourceGovernanceService
+  readonly businessUnderstanding: BusinessUnderstandingService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -251,6 +253,12 @@ export class GaepEngine {
       () => this.readProduct(),
       (id) => this.readInitiative(id),
       (reference) => this.productStudio.resolveExactDomainRecord(reference),
+    )
+    this.businessUnderstanding = new BusinessUnderstandingService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
     )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
@@ -345,11 +353,12 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
+        this.businessUnderstanding.healthIssues(),
       ])
-      domainIssues = [...productIssues, ...sourceIssues]
+      domainIssues = [...productIssues, ...sourceIssues, ...businessIssues]
     } catch (error) {
       domainIssues = [{
         code: "product.health-evaluation-failed" as const,
