@@ -144,6 +144,77 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readSourceGovernance(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readSourceGovernance(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) {
+            "The Product or Initiative changed while Source governance was read. Refresh the exact records."
+        }
+        return renderSourceGovernance(projection)
+    }
+
+    fun renderSourceGovernance(projection: SourceGovernanceProjection): String = buildString {
+        appendLine("GAEP Source governance")
+        appendLine()
+        appendLine(
+            "Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · " +
+                projection.initiativeState,
+        )
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Records: ${projection.sourceCount} Sources · ${projection.baselineCount} candidate Baselines · " +
+                "${projection.provenanceCount} Provenance records",
+        )
+        appendLine(
+            "Gaps: ${projection.staleSourceCount} stale · ${projection.unknownAuthorityCount} unknown authority · " +
+                "${projection.unbaselinedSourceCount} unbaselined · " +
+                "${projection.unprovenancedSourceCount} unprovenanced",
+        )
+        appendLine("Current candidate Baseline: ${projection.currentBaseline ?: "not recorded"}")
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        appendLine("Governed Sources")
+        projection.sources.take(50).forEach { source ->
+            appendLine(
+                "  - ${source.title} · ${source.id}@${source.revision} · owner ${source.owner} · " +
+                    "authority ${source.semanticAuthority} · ${source.knowledgeDisposition} · " +
+                    "${source.freshness}/${source.availability}",
+            )
+        }
+        if (projection.sources.size > 50) appendLine("  - ${projection.sources.size - 50} more withheld from this compact view")
+        appendLine()
+        appendLine("Candidate Source Baselines")
+        projection.baselines.take(50).forEach { baseline ->
+            appendLine(
+                "  - ${baseline.title} · ${baseline.id}@${baseline.revision} · " +
+                    "${baseline.memberCount} exact Source(s) · ${baseline.assessmentStatus}",
+            )
+        }
+        if (projection.baselines.size > 50) appendLine("  - ${projection.baselines.size - 50} more withheld from this compact view")
+        appendLine()
+        appendLine("Source Provenance")
+        projection.provenance.take(50).forEach { provenance ->
+            appendLine(
+                "  - ${provenance.id} · ${provenance.targetKind} · ${provenance.disposition} · " +
+                    "${provenance.sourceCount} Source(s) · ${provenance.transformationCount} transformation(s)",
+            )
+        }
+        if (projection.provenance.size > 50) appendLine("  - ${projection.provenance.size - 50} more withheld from this compact view")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this is a bounded metadata projection. It contains no Source bytes, locators, local paths, " +
+                "or credentials and grants no Baseline designation, approval, readiness, authority transfer, or action authority.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

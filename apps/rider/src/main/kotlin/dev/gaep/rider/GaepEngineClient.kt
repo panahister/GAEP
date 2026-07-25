@@ -96,6 +96,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readSourceGovernance(initiativeId: UUID): SourceGovernanceProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("source.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseSourceGovernanceEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

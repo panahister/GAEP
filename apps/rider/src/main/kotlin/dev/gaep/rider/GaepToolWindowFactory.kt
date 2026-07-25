@@ -98,6 +98,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += resolveApplicabilityButton
         actions.add(resolveApplicabilityButton)
 
+        val sourceGovernanceButton = JButton("Inspect Source governance…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Source bytes, locators, local paths, credentials, and authority are withheld.",
+                    "GAEP Source Governance",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Source governance", status, output, buttons) {
+                    controller.readSourceGovernance(initiativeId)
+                }
+            }
+        }
+        buttons += sourceGovernanceButton
+        actions.add(sourceGovernanceButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {
@@ -223,6 +239,9 @@ class GaepToolWindowFactory : ToolWindowFactory {
             "Initiative entry boundary: the exact assessment is read-only; classification and applicability require " +
                 "explicit human inputs and confirmation. Absence never means not applicable, and no entry action grants " +
                 "approval, readiness, or execution authority. " +
+            "Source governance boundary: the Initiative-bound view contains bounded Source, candidate Baseline, and " +
+                "Provenance metadata only. It exposes no Source bytes, locators, local paths, or credentials and cannot " +
+                "designate a Baseline, approve readiness, transfer authority, or authorize action. " +
             "Change/Impact boundary: selection and projection are exact, audit-gated, read-only metadata views; " +
                 "they cannot approve a Change, accept a Risk, mutate records, or authorize effects. " +
             "Agent boundary: Codex and Claude readiness is observation-only; guarded selection and versioned handoff record portable configuration and history only. " +

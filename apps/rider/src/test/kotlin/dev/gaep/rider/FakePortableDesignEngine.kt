@@ -10,6 +10,9 @@ import java.util.UUID
 
 private val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
 private val initiativeId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+private val sourceId = UUID.fromString("36363636-3636-4636-8636-363636363636")
+private val sourceBaselineId = UUID.fromString("37373737-3737-4737-8737-373737373737")
+private val sourceProvenanceId = UUID.fromString("38383838-3838-4838-8838-383838383838")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -78,6 +81,11 @@ fun main(arguments: Array<String>) {
             "assessInitiativeEntry" -> handleAssessInitiativeEntry(id, request.getAsJsonObject("params"), workspacePath)
             "classifyInitiative" -> handleClassifyInitiative(id, request.getAsJsonObject("params"), workspacePath)
             "resolveInitiativeApplicability" -> handleResolveInitiativeApplicability(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "source.snapshot" -> handleSourceGovernance(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -208,6 +216,140 @@ private fun handleReadInitiative(id: Long, params: JsonObject, workspacePath: St
     val value = initiativeState.deepCopy()
     if (workspacePath.endsWith("bad-initiative-private")) {
         value.addProperty("privateRoot", "$privateRoot/$privateCredential")
+    }
+    writeResult(id, value)
+}
+
+private fun handleSourceGovernance(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE SOURCE GOVERNANCE PARAMS")
+        return
+    }
+    val assessedAt = "2026-07-25T00:03:00.000Z"
+    val baselineDigest = "sha256:${"a".repeat(64)}"
+    val membershipDigest = "sha256:${"b".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "source-governance-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", 7)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("assessment", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "source-governance-assessment")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", 7)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            addProperty("sourceCount", 1)
+            addProperty("baselineCount", 1)
+            addProperty("provenanceCount", 1)
+            addProperty("staleSourceCount", 0)
+            addProperty("unknownAuthorityCount", 0)
+            addProperty("unbaselinedSourceCount", 0)
+            addProperty("unprovenancedSourceCount", 0)
+            addProperty("state", "ready")
+            add("reasons", JsonArray())
+            add("currentBaseline", JsonObject().apply {
+                addProperty("id", sourceBaselineId.toString())
+                addProperty("revision", 1)
+                addProperty("digest", baselineDigest)
+                addProperty("membershipDigest", membershipDigest)
+                addProperty("status", "current")
+                addProperty("memberCount", 1)
+            })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "source-governance-assessment-reports-recorded-evidence-and-does-not-designate-a-baseline-approve-readiness-or-authorize-action",
+            )
+        })
+        add("sources", JsonArray().apply {
+            add(JsonObject().apply {
+                addProperty("id", sourceId.toString())
+                addProperty("revision", 1)
+                addProperty("title", "Reviewed repository source")
+                addProperty("sourceType", "repository")
+                add("owner", JsonObject().apply {
+                    addProperty("kind", "human")
+                    addProperty("id", "founder.source-review")
+                })
+                add("semanticAuthority", JsonObject().apply {
+                    addProperty("standing", "authoritative")
+                    addProperty("domain", "product requirements")
+                    add("scope", JsonArray().apply { add("Initiative source governance") })
+                })
+                addProperty("knowledgeDisposition", "confirmed")
+                addProperty("informationClassification", "internal")
+                addProperty("freshness", "fresh")
+                addProperty("availability", "available")
+                addProperty("contentDigest", "sha256:${"c".repeat(64)}")
+                addProperty("recordDigest", "sha256:${"d".repeat(64)}")
+                addProperty("updatedAt", "2026-07-25T00:02:00.000Z")
+            })
+        })
+        add("baselines", JsonArray().apply {
+            add(JsonObject().apply {
+                addProperty("id", sourceBaselineId.toString())
+                addProperty("revision", 1)
+                addProperty("title", "Candidate source baseline")
+                addProperty("state", "candidate")
+                addProperty("membershipDigest", membershipDigest)
+                addProperty("memberCount", 1)
+                addProperty("assessmentStatus", "current")
+                addProperty("updatedAt", "2026-07-25T00:02:30.000Z")
+            })
+        })
+        add("provenance", JsonArray().apply {
+            add(JsonObject().apply {
+                addProperty("id", sourceProvenanceId.toString())
+                addProperty("targetKind", "governed-record")
+                addProperty("targetDigest", "sha256:${"e".repeat(64)}")
+                addProperty("disposition", "confirmed")
+                addProperty("sourceCount", 1)
+                addProperty("transformationCount", 1)
+                addProperty("recordedAt", "2026-07-25T00:02:45.000Z")
+            })
+        })
+        add("limits", JsonObject().apply {
+            listOf("sources", "baselines", "provenance").forEach { name ->
+                add(name, JsonObject().apply {
+                    addProperty("shown", 1)
+                    addProperty("total", 1)
+                    addProperty("omitted", 0)
+                })
+            }
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-portable-governance-metadata-and-digests-only-not-source-bytes-locators-local-paths-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-source-snapshot-binding") -> {
+            value.getAsJsonObject("initiative").addProperty("digest", "sha256:${"0".repeat(64)}")
+            refreshCanonicalDigest(value, "snapshotDigest")
+        }
+        workspacePath.endsWith("bad-source-snapshot-digest") -> {
+            value.getAsJsonArray("sources")[0].asJsonObject.addProperty("title", "Forged source title")
+        }
+        workspacePath.endsWith("bad-source-snapshot-private") -> {
+            value.addProperty("privateRoot", "$privateRoot/$privateCredential")
+        }
     }
     writeResult(id, value)
 }

@@ -178,6 +178,7 @@ data class InitiativeEntryRecord(
     val revision: Long,
     val productId: UUID,
     val state: String,
+    val digest: String,
     val classification: InitiativeClassificationView?,
     val applicability: InitiativeApplicabilityView?,
 )

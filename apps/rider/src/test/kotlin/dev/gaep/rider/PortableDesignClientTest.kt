@@ -304,6 +304,49 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Source governance projection is exact bounded private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("source-governance-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readSourceGovernance(entryId)
+            assertEquals("ready", projection.assessmentState)
+            assertEquals(1, projection.sourceCount)
+            assertEquals(1, projection.baselineCount)
+            assertEquals(1, projection.provenanceCount)
+            assertEquals("Reviewed repository source", projection.sources.single().title)
+            assertEquals("authoritative · product requirements", projection.sources.single().semanticAuthority)
+            assertEquals("current", projection.baselines.single().assessmentStatus)
+            assertEquals("governed-record", projection.provenance.single().targetKind)
+
+            val rendered = RiderProductController(client).readSourceGovernance(entryId)
+            assertTrue(rendered.contains("GAEP Source governance"))
+            assertTrue(rendered.contains("1 Sources · 1 candidate Baselines · 1 Provenance records"))
+            assertTrue(rendered.contains("grants no Baseline designation, approval, readiness"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+        }
+
+        listOf("bad-source-snapshot-digest", "bad-source-snapshot-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readSourceGovernance(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-source-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readSourceGovernance(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

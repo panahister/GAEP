@@ -753,6 +753,59 @@ data class PortableDesignSnapshotPage(
     val privacyBoundary: String,
 )
 
+data class SourceGovernanceSourceView(
+    val id: UUID,
+    val revision: Long,
+    val title: String,
+    val sourceType: String,
+    val owner: String,
+    val semanticAuthority: String,
+    val knowledgeDisposition: String,
+    val classification: String,
+    val freshness: String,
+    val availability: String,
+)
+
+data class SourceGovernanceBaselineView(
+    val id: UUID,
+    val revision: Long,
+    val title: String,
+    val memberCount: Int,
+    val assessmentStatus: String,
+)
+
+data class SourceGovernanceProvenanceView(
+    val id: UUID,
+    val targetKind: String,
+    val disposition: String,
+    val sourceCount: Int,
+    val transformationCount: Int,
+)
+
+data class SourceGovernanceProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val sourceCount: Int,
+    val baselineCount: Int,
+    val provenanceCount: Int,
+    val staleSourceCount: Int,
+    val unknownAuthorityCount: Int,
+    val unbaselinedSourceCount: Int,
+    val unprovenancedSourceCount: Int,
+    val currentBaseline: String?,
+    val sources: List<SourceGovernanceSourceView>,
+    val baselines: List<SourceGovernanceBaselineView>,
+    val provenance: List<SourceGovernanceProvenanceView>,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -778,6 +831,12 @@ internal object PortableDesignProtocol {
         "Every item remains pending human review; source review is an upstream claim only."
     private const val PAGE_PRIVACY_BOUNDARY =
         "Items contain validated metadata and digests only; local paths and source content are omitted."
+    private const val SOURCE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-portable-governance-metadata-and-digests-only-not-source-bytes-locators-local-paths-or-credentials"
+    private const val SOURCE_PROJECTION_AUTHORITY_BOUNDARY =
+        "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action"
+    private const val SOURCE_ASSESSMENT_AUTHORITY_BOUNDARY =
+        "source-governance-assessment-reports-recorded-evidence-and-does-not-designate-a-baseline-approve-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -1348,7 +1407,15 @@ internal object PortableDesignProtocol {
                 throw invalidResponse()
             }
         }
-        return InitiativeEntryRecord(id, revision, productId, state, classification, applicability)
+        return InitiativeEntryRecord(
+            id,
+            revision,
+            productId,
+            state,
+            canonicalDigest(initiative),
+            classification,
+            applicability,
+        )
     }
 
     fun parseInitiativeEntryAssessmentEnvelope(
@@ -1507,6 +1574,226 @@ internal object PortableDesignProtocol {
             state = state,
             reasons = reasons,
             assessedAt = assessment.requireInstant("assessedAt"),
+        )
+    }
+
+    fun parseSourceGovernanceEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): SourceGovernanceProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireExactKeys(
+            "schemaVersion", "kind", "product", "initiative", "assessment", "sources", "baselines",
+            "provenance", "limits", "observedAt", "privacyBoundary", "authorityBoundary", "snapshotDigest",
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "source-governance-projection" ||
+            projection.requireString("privacyBoundary") != SOURCE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != SOURCE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        val assessment = projection.get("assessment").requireObject()
+        assessment.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "sourceCount", "baselineCount", "provenanceCount", "staleSourceCount", "unknownAuthorityCount",
+                "unbaselinedSourceCount", "unprovenancedSourceCount", "state", "reasons", "assessedAt",
+                "authorityBoundary",
+            ),
+            setOf("currentBaseline"),
+        )
+        if (assessment.requireInt("schemaVersion") != 1 ||
+            assessment.requireString("kind") != "source-governance-assessment" ||
+            assessment.requireNonEmptyUuid("productId") != productId ||
+            assessment.requireLong("productRevision") != productRevision ||
+            assessment.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            assessment.requireLong("initiativeRevision") != initiativeRevision ||
+            assessment.requireString("authorityBoundary") != SOURCE_ASSESSMENT_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val sourceCount = assessment.requireBoundedNonNegativeInt("sourceCount", 10_000)
+        val baselineCount = assessment.requireBoundedNonNegativeInt("baselineCount", 10_000)
+        val provenanceCount = assessment.requireBoundedNonNegativeInt("provenanceCount", 10_000)
+        val staleSourceCount = assessment.requireBoundedNonNegativeInt("staleSourceCount", sourceCount)
+        val unknownAuthorityCount = assessment.requireBoundedNonNegativeInt("unknownAuthorityCount", sourceCount)
+        val unbaselinedSourceCount = assessment.requireBoundedNonNegativeInt("unbaselinedSourceCount", sourceCount)
+        val unprovenancedSourceCount = assessment.requireBoundedNonNegativeInt("unprovenancedSourceCount", sourceCount)
+        val assessmentState = assessment.requireOneOf("state", setOf("ready", "attention-required"))
+        val reasonsElement = assessment.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "ready") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = assessment.requireInstant("assessedAt")
+        val currentBaseline = assessment.get("currentBaseline")?.let { element ->
+            val current = element.requireObject()
+            current.requireExactKeys("id", "revision", "digest", "membershipDigest", "status", "memberCount")
+            val id = current.requireNonEmptyUuid("id")
+            val revision = current.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                current.requireBoundedNonNegativeInt("memberCount", 2_000) < 1
+            ) throw invalidResponse()
+            current.requireDigest("digest")
+            current.requireDigest("membershipDigest")
+            "$id@$revision · ${current.requireOneOf("status", setOf("current", "stale", "incomplete"))}"
+        }
+        if ((baselineCount == 0) != (currentBaseline == null)) throw invalidResponse()
+
+        val limits = projection.get("limits").requireObject()
+        limits.requireExactKeys("sources", "baselines", "provenance")
+        fun parseLimit(name: String, expectedTotal: Int): Int {
+            val limit = limits.get(name).requireObject()
+            limit.requireExactKeys("shown", "total", "omitted")
+            val shown = limit.requireBoundedNonNegativeInt("shown", 200)
+            val total = limit.requireBoundedNonNegativeInt("total", 10_000)
+            val omitted = limit.requireBoundedNonNegativeInt("omitted", 10_000)
+            if (total != expectedTotal || shown + omitted != total) throw invalidResponse()
+            return shown
+        }
+        val sourceShown = parseLimit("sources", sourceCount)
+        val baselineShown = parseLimit("baselines", baselineCount)
+        val provenanceShown = parseLimit("provenance", provenanceCount)
+        val sourceTypes = setOf(
+            "stakeholder-note", "voice-transcript", "whiteboard", "feature-list", "research", "repository",
+            "requirements", "design", "architecture", "production-observation", "policy", "standard",
+            "boilerplate", "dataset", "external-system", "other",
+        )
+        val knowledgeStates = setOf("confirmed", "inferred", "assumed", "placeholder", "deferred", "unknown")
+
+        val sourceElements = projection.get("sources")
+        if (sourceElements == null || !sourceElements.isJsonArray || sourceElements.asJsonArray.size() != sourceShown) {
+            throw invalidResponse()
+        }
+        val sources = sourceElements.asJsonArray.map { element ->
+            val source = element.requireObject()
+            source.requireExactKeys(
+                "id", "revision", "title", "sourceType", "owner", "semanticAuthority",
+                "knowledgeDisposition", "informationClassification", "freshness", "availability",
+                "contentDigest", "recordDigest", "updatedAt",
+            )
+            val id = source.requireNonEmptyUuid("id")
+            val revision = source.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            val title = portableText(source.requireString("title"), 2, 240)
+            val sourceType = source.requireOneOf("sourceType", sourceTypes)
+            val owner = source.get("owner").requireObject()
+            owner.requireKeys(setOf("kind"), setOf("id"))
+            val ownerKind = owner.requireOneOf("kind", setOf("human", "organization", "role", "system", "unassigned"))
+            val ownerId = owner.get("id")?.requireString()?.let { portableText(it, 2, 2_000) }
+            if ((ownerKind == "unassigned") != (ownerId == null)) throw invalidResponse()
+            val semantic = source.get("semanticAuthority").requireObject()
+            semantic.requireExactKeys("standing", "domain", "scope")
+            val authority = semantic.requireOneOf(
+                "standing",
+                setOf("authoritative", "advisory", "non-authoritative", "unknown"),
+            )
+            val domain = portableText(semantic.requireString("domain"), 2, 2_000)
+            validateInitiativeTextArray(semantic.get("scope"), 1, 128)
+            val disposition = source.requireOneOf("knowledgeDisposition", knowledgeStates)
+            val classification = source.requireOneOf(
+                "informationClassification",
+                setOf("public", "internal", "confidential", "restricted"),
+            )
+            val freshness = source.requireOneOf("freshness", setOf("fresh", "potentially-stale", "stale", "unknown"))
+            val availability = source.requireOneOf(
+                "availability",
+                setOf("available", "unavailable", "moved", "deleted", "unknown"),
+            )
+            source.requireDigest("contentDigest")
+            source.requireDigest("recordDigest")
+            source.requireInstant("updatedAt")
+            SourceGovernanceSourceView(
+                id, revision, title, sourceType, "$ownerKind:${ownerId ?: "unassigned"}",
+                "$authority · $domain", disposition, classification, freshness, availability,
+            )
+        }
+
+        val baselineElements = projection.get("baselines")
+        if (baselineElements == null || !baselineElements.isJsonArray ||
+            baselineElements.asJsonArray.size() != baselineShown
+        ) throw invalidResponse()
+        val baselines = baselineElements.asJsonArray.map { element ->
+            val baseline = element.requireObject()
+            baseline.requireExactKeys(
+                "id", "revision", "title", "state", "membershipDigest", "memberCount",
+                "assessmentStatus", "updatedAt",
+            )
+            val id = baseline.requireNonEmptyUuid("id")
+            val revision = baseline.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || baseline.requireString("state") != "candidate") {
+                throw invalidResponse()
+            }
+            val title = portableText(baseline.requireString("title"), 2, 240)
+            baseline.requireDigest("membershipDigest")
+            val memberCount = baseline.requireBoundedNonNegativeInt("memberCount", 2_000)
+            if (memberCount < 1) throw invalidResponse()
+            val status = baseline.requireOneOf(
+                "assessmentStatus",
+                setOf("current", "stale", "incomplete", "not-assessed"),
+            )
+            baseline.requireInstant("updatedAt")
+            SourceGovernanceBaselineView(id, revision, title, memberCount, status)
+        }
+
+        val provenanceElements = projection.get("provenance")
+        if (provenanceElements == null || !provenanceElements.isJsonArray ||
+            provenanceElements.asJsonArray.size() != provenanceShown
+        ) throw invalidResponse()
+        val provenance = provenanceElements.asJsonArray.map { element ->
+            val record = element.requireObject()
+            record.requireKeys(
+                setOf(
+                    "id", "targetKind", "targetDigest", "disposition", "sourceCount",
+                    "transformationCount", "recordedAt",
+                ),
+                setOf("amendmentRecordId"),
+            )
+            val id = record.requireNonEmptyUuid("id")
+            val targetKind = record.requireOneOf("targetKind", setOf("governed-record", "claim", "artifact"))
+            record.requireDigest("targetDigest")
+            val disposition = record.requireOneOf("disposition", knowledgeStates)
+            val exactSources = record.requireBoundedNonNegativeInt("sourceCount", 256)
+            if (exactSources < 1) throw invalidResponse()
+            val transformations = record.requireBoundedNonNegativeInt("transformationCount", 128)
+            record.get("amendmentRecordId")?.requireString()?.let(::parseNonEmptyUuid)
+            record.requireInstant("recordedAt")
+            SourceGovernanceProvenanceView(id, targetKind, disposition, exactSources, transformations)
+        }
+        if (sources.map { it.id }.distinct().size != sources.size ||
+            baselines.map { it.id }.distinct().size != baselines.size ||
+            provenance.map { it.id }.distinct().size != provenance.size ||
+            (baselineCount > 0 && baselines.firstOrNull()?.let {
+                currentBaseline?.startsWith("${it.id}@${it.revision} · ")
+            } != true) ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return SourceGovernanceProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState,
+            assessmentState, reasons, sourceCount, baselineCount, provenanceCount, staleSourceCount,
+            unknownAuthorityCount, unbaselinedSourceCount, unprovenancedSourceCount, currentBaseline,
+            sources, baselines, provenance, snapshotDigest,
         )
     }
 
