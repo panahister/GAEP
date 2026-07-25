@@ -25,6 +25,7 @@ import {
   type SourceGovernanceProjection,
   type TraceImpact,
   type TraceLink,
+  type ValueStreamModelProjection,
   type WorkItem,
 } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
@@ -362,6 +363,67 @@ function businessCapabilityMapProjection(): BusinessCapabilityMapProjection {
     observedAt: assessment.assessedAt,
     privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-capability-narrative-personal-data-source-content-locators-or-credentials" as const,
     authorityBoundary: "business-capability-map-projection-does-not-approve-prioritize-baseline-designate-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
+function valueStreamModelProjection(): ValueStreamModelProjection {
+  const assessment = {
+    schemaVersion: 1 as const,
+    kind: "value-stream-model-assessment" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    valueStreamModel: {
+      recordId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      revision: 2,
+      digest: `sha256:${"e".repeat(64)}` as const,
+    },
+    valueStreamCount: 3,
+    ownedValueStreamCount: 2,
+    unownedValueStreamCount: 1,
+    stageCount: 9,
+    dependencyCount: 2,
+    capabilityCoverageCount: 6,
+    outcomeCoverageCount: 2,
+    absentFlowEvidenceCount: 1,
+    openBottleneckCount: 2,
+    criticalBottleneckCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more value streams do not have a candidate owner"],
+    assessedAt: "2026-07-25T05:00:00.000Z",
+    authorityBoundary: "value-stream-model-assessment-reports-recorded-candidate-flow-coverage-and-gaps-and-does-not-approve-baseline-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "value-stream-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    assessment,
+    valueStreamModel: {
+      id: assessment.valueStreamModel.recordId,
+      revision: assessment.valueStreamModel.revision,
+      digest: assessment.valueStreamModel.digest,
+      state: "candidate" as const,
+      valueStreamCount: 3,
+      ownedValueStreamCount: 2,
+      stageCount: 9,
+      dependencyCount: 2,
+      openBottleneckCount: 2,
+      criticalBottleneckCount: 1,
+      updatedAt: "2026-07-25T04:59:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-value-stream-narrative-personal-data-source-content-locators-or-credentials" as const,
+    authorityBoundary: "value-stream-model-projection-does-not-approve-baseline-priority-readiness-or-authorize-action" as const,
   }
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
@@ -920,6 +982,7 @@ interface HarnessOptions {
   sourceGovernanceProjection?: SourceGovernanceProjection
   businessUnderstandingProjection?: BusinessUnderstandingProjection
   businessCapabilityMapProjection?: BusinessCapabilityMapProjection
+  valueStreamModelProjection?: ValueStreamModelProjection
   commandResult?: unknown
 }
 
@@ -1023,6 +1086,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.businessCapabilityMapProjection ? {
       businessCapabilityMap: {
         project: async () => options.businessCapabilityMapProjection!,
+      },
+    } : {}),
+    ...(options.valueStreamModelProjection ? {
+      valueStreamModel: {
+        project: async () => options.valueStreamModelProjection!,
       },
     } : {}),
   }
@@ -1245,6 +1313,28 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /capability narrative|personal assignment|source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed value-stream metadata on the native architecture page", async () => {
+    const projection = valueStreamModelProjection()
+    const { source } = harness({ valueStreamModelProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[1]).toMatchObject({
+      id: "value-stream-model",
+      rows: [{
+        id: projection.valueStreamModel?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          counts: "3 value streams · 2 owned · 9 stages · 2 dependencies · 2 open bottlenecks · 1 critical bottlenecks",
+          assessment: "attention-required",
+          boundary: "Candidate value flow only; no baseline, priority, readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /value-stream narrative|personal assignment|source content|customer@example\.com|api_key/iu,
     )
   })
 

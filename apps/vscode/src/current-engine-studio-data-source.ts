@@ -37,6 +37,7 @@ import type {
   ToolDefinition,
   TraceImpact,
   TraceLink,
+  ValueStreamModelProjection,
   WorkItem,
   WorkflowPlan,
   WorkspaceHealthIssue,
@@ -121,6 +122,9 @@ export interface CurrentStudioEngineReader {
   businessCapabilityMap?: {
     project(initiativeId: string): Promise<BusinessCapabilityMapProjection>
   }
+  valueStreamModel?: {
+    project(initiativeId: string): Promise<ValueStreamModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -162,6 +166,7 @@ interface ObservedStudioState {
   initiativeEntryAssessments: Map<string, InitiativeEntryAssessment>
   businessUnderstandingProjections: Map<string, BusinessUnderstandingProjection>
   businessCapabilityMapProjections: Map<string, BusinessCapabilityMapProjection>
+  valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -555,6 +560,50 @@ function businessCapabilityMapTable(state: ObservedStudioState): StudioTableSnap
   }
 }
 
+function valueStreamModelTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.valueStreamModelProjections.values()].flatMap((projection) => {
+    const record = projection.valueStreamModel
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        state: record.state,
+        counts: `${record.valueStreamCount} value streams · ${record.ownedValueStreamCount} owned · ${record.stageCount} stages · ${record.dependencyCount} dependencies · ${record.openBottleneckCount} open bottlenecks · ${record.criticalBottleneckCount} critical bottlenecks`,
+        assessment: projection.assessment.state,
+        boundary: "Candidate value flow only; no baseline, priority, readiness, or action authority.",
+      },
+      state: projection.assessment.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "value-stream-model",
+    title: "Governed Value Stream Model",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Value Stream Model" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Value Stream Model",
+        "Create the candidate model through the governed engine workflow. This view does not infer value flow, ownership, bottlenecks, or authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -564,7 +613,9 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const legacy = legacyForm(route, state.product)
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
-      ...(route === "architecture" ? [businessCapabilityMapTable(state), architectureTable(state.architecture)] : []),
+      ...(route === "architecture"
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), architectureTable(state.architecture)]
+        : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
   }
@@ -572,7 +623,11 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
   if (businessTable) relatedRecords.push(businessTable)
   if (route === "scope") relatedRecords.push(requirementsTable(state.requirements))
   if (route === "architecture") {
-    relatedRecords.push(businessCapabilityMapTable(state), architectureTable(state.architecture))
+    relatedRecords.push(
+      businessCapabilityMapTable(state),
+      valueStreamModelTable(state),
+      architectureTable(state.architecture),
+    )
   }
   return {
     ...base(route, state.product),
@@ -3016,6 +3071,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     const empty: ObservedStudioState = {
       initiatives: [], initiativeEntryAssessments: new Map(), businessUnderstandingProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
+      valueStreamModelProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -3261,6 +3317,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "business-capability-map-unavailable",
           "Business Capability Map metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.valueStreamModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.valueStreamModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.valueStreamModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Value Stream Model projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `value-stream-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Value Stream Model metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "value-stream-model-unavailable",
+          "Value Stream Model metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
