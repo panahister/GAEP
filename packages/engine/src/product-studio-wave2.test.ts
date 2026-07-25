@@ -5,11 +5,13 @@ import { join } from "node:path"
 
 import {
   containsSecretShapedValue,
+  initiativeApplicabilitySubjectDefinitions,
   type AdapterCapabilities,
   type AgentSelection,
   type ContextItem,
   type ContextTrustDimensions,
   type ExecutionCharter,
+  type Initiative,
   type ManagedRunEvidence,
   type ManagedRunRecord,
   type ManagedRunResult,
@@ -134,6 +136,54 @@ describe("Product Studio context, workflow, tools, and portability", () => {
       exclusions: ["External effects"],
     }, "founder")
     return { product, initiative }
+  }
+
+  async function activateTestInitiative(initiative: Initiative, reason: string): Promise<Initiative> {
+    const classified = await engine.classifyInitiative(initiative.id, {
+      primaryType: "product-increment",
+      secondaryTypes: ["feature"],
+      systemState: "brownfield",
+      changePosture: "existing",
+      motivations: ["business-driven", "technical"],
+      characteristics: {
+        userInterface: "ui-bearing",
+        data: "data-bearing",
+        integration: "mixed",
+        interactionModes: ["interactive", "synchronous"],
+        exposure: "internal",
+      },
+      regulated: false,
+      policyDomains: [],
+      sensitivities: ["security", "privacy", "data"],
+      expectedLifetime: "long-lived",
+      maintenanceHorizon: "Maintained with the local Product Studio lifecycle",
+      risk: { blastRadius: "localized", reversibility: "reversible", urgency: "normal", costOfFailure: "medium" },
+      dependencies: ["Local Product Studio records"],
+      affectedAssets: ["Portable Product workspace"],
+      owner: "Product Studio test owner",
+      accountableAuthority: "Product Studio test authority",
+      confidence: { level: "high", basis: "The deterministic Product Studio fixture is exact" },
+      evidence: [{ kind: "evidence", reference: "product-studio-wave2-test-fixture" }],
+      unresolvedQuestions: [],
+      rationale: "The fixture exercises an existing Product Studio increment with bounded portable evidence.",
+    }, initiative.revision!, "founder")
+    const resolved = await engine.resolveInitiativeApplicability(initiative.id, {
+      decisions: initiativeApplicabilitySubjectDefinitions.map((subject) => ({
+        subject: { ...subject },
+        status: "optional",
+        rationale: "This canonical subject was explicitly evaluated for the bounded Product Studio fixture.",
+        sources: [{ kind: "policy", reference: "GAEP-DYNAMIC-ENGINEERING-MODEL" }],
+        owner: "Product Studio test owner",
+        dependencies: [],
+        conditions: [],
+        reviewTriggers: ["The fixture scope, classification, policy, or evidence changes"],
+        approval: { state: "not-required", conditions: [] },
+        relatedRecords: [],
+        relatedImplementationUnits: [],
+      })),
+      unresolvedSubjects: [],
+    }, classified.revision!, "founder")
+    return engine.updateInitiativeState(resolved.id, "active", reason, "founder")
   }
 
   function trust(
@@ -300,7 +350,7 @@ describe("Product Studio context, workflow, tools, and portability", () => {
         scope: ["Portable evidence validation"],
         exclusions: ["Workspace mutation"],
       }, "founder")
-      await engine.updateInitiativeState(initiative.id, "active", "Begin portable graph fixture", "founder")
+      await activateTestInitiative(initiative, "Begin portable graph fixture")
       const content = `Bounded deterministic Context for Managed Run ${runIndex + 1}.`
       const manualTrust = trust()
       manualTrust.confidentiality.recipients = ["manual"]
@@ -657,7 +707,7 @@ describe("Product Studio context, workflow, tools, and portability", () => {
 
   it("keeps Tool Definitions non-authorizing and derives exact run-selection policy readiness", async () => {
     const { product, initiative } = await initialize()
-    await engine.updateInitiativeState(initiative.id, "active", "Begin bounded execution preparation", "founder")
+    await activateTestInitiative(initiative, "Begin bounded execution preparation")
     await engine.selectAgent(capabilities, "fake-model", {}, "founder")
     const charter = await engine.createCharter({
       initiativeId: initiative.id,

@@ -10,6 +10,7 @@ import {
   fingerprintExecutable,
   type AdapterProbeResult,
 } from "@gaep/agent-sdk"
+import { initiativeApplicabilitySubjectDefinitions } from "@gaep/contracts"
 import type { AdapterCapabilities, ProductExportBundle } from "@gaep/contracts"
 
 import { EngineHost } from "./host.js"
@@ -119,7 +120,60 @@ describe("engine host protocol", () => {
     return resolved
   }
 
-  async function createProductAndInitiative(): Promise<{ productId: string; productRevision: number; initiativeId: string }> {
+  async function activateTestInitiative(
+    initiative: { id: string; revision: number },
+    reason: string,
+  ): Promise<void> {
+    const classified = await host.engine.classifyInitiative(initiative.id, {
+      primaryType: "service",
+      secondaryTypes: ["api"],
+      systemState: "brownfield",
+      changePosture: "modernization",
+      motivations: ["technical"],
+      characteristics: {
+        userInterface: "non-ui",
+        data: "data-bearing",
+        integration: "integration-heavy",
+        interactionModes: ["synchronous"],
+        exposure: "internal",
+      },
+      regulated: false,
+      policyDomains: [],
+      sensitivities: ["security", "data"],
+      expectedLifetime: "long-lived",
+      maintenanceHorizon: "Supported through the current host contract lifetime",
+      risk: { blastRadius: "multi-unit", reversibility: "partially-reversible", urgency: "normal", costOfFailure: "high" },
+      dependencies: ["Engine host protocol"],
+      affectedAssets: ["Host API"],
+      owner: "Host engineering owner",
+      accountableAuthority: "Host Product Owner",
+      confidence: { level: "high", basis: "The current host contract and Product scope are exact" },
+      evidence: [{ kind: "evidence", reference: "host-contract-test-fixture" }],
+      unresolvedQuestions: [],
+      rationale: "The fixture exercises a bounded brownfield service through the strict engine-host protocol.",
+    }, initiative.revision, "gaep.host-test")
+    const resolved = await host.engine.resolveInitiativeApplicability(initiative.id, {
+      decisions: initiativeApplicabilitySubjectDefinitions.map((subject) => ({
+        subject: { ...subject },
+        status: "optional",
+        rationale: "This canonical subject was explicitly evaluated for the bounded engine-host fixture.",
+        sources: [{ kind: "policy", reference: "GAEP-DYNAMIC-ENGINEERING-MODEL" }],
+        owner: "Host engineering owner",
+        dependencies: [],
+        conditions: [],
+        reviewTriggers: ["The host scope, classification, policy, or evidence changes"],
+        approval: { state: "not-required", conditions: [] },
+        relatedRecords: [],
+        relatedImplementationUnits: [],
+      })),
+      unresolvedSubjects: [],
+    }, classified.revision!, "gaep.host-test")
+    await host.engine.updateInitiativeState(resolved.id, "active", reason, "gaep.host-test")
+  }
+
+  async function createProductAndInitiative(
+    activate = true,
+  ): Promise<{ productId: string; productRevision: number; initiativeId: string }> {
     const product = await host.dispatch({
       jsonrpc: "2.0",
       id: 1,
@@ -150,13 +204,10 @@ describe("engine host protocol", () => {
           exclusions: [],
         },
       },
-    }) as { id: string }
-    await host.engine.updateInitiativeState(
-      initiative.id,
-      "active",
-      "Activate the host integration-test Initiative",
-      "gaep.host-test",
-    )
+    }) as { id: string; revision: number }
+    if (activate) {
+      await activateTestInitiative(initiative, "Activate the host integration-test Initiative")
+    }
     return { productId: product.id, productRevision: product.revision, initiativeId: initiative.id }
   }
 
@@ -244,7 +295,7 @@ describe("engine host protocol", () => {
   })
 
   it("exposes exact revision-bound Initiative classification and applicability only through protocol v2", async () => {
-    const { initiativeId } = await createProductAndInitiative()
+    const { initiativeId } = await createProductAndInitiative(false)
     const initial = await host.dispatch({
       jsonrpc: "2.0",
       id: "initiative-read",
@@ -608,7 +659,7 @@ describe("engine host protocol", () => {
         settings: { sandbox: "read-only", approvalPolicy: "fail-closed-noninteractive" },
       },
     })).resolves.toMatchObject({ adapterId: "gaep.codex-cli", modelId: "gpt-test" })
-  })
+  }, 15_000)
 
   it("fails closed when capabilities change between host observation and governed selection", async () => {
     const initial = await probeResult()

@@ -10,6 +10,7 @@ import type {
   ContextItem,
   ContextTrustDimensions,
   ExecutionCharter,
+  Initiative,
   ManagedEvidenceEvent,
   ToolDefinition,
   WorkflowPlan,
@@ -17,6 +18,7 @@ import type {
 } from "@gaep/contracts"
 import {
   adapterCapabilitiesSnapshotSchema,
+  initiativeApplicabilitySubjectDefinitions,
   managedRunEvidenceSchema,
   managedRunRecordSchema,
   runSchema,
@@ -174,6 +176,54 @@ describe("managed execution engine", () => {
     }
   }
 
+  async function activateTestInitiative(initiative: Initiative, reason: string): Promise<Initiative> {
+    const classified = await engine.classifyInitiative(initiative.id, {
+      primaryType: "service",
+      secondaryTypes: [],
+      systemState: "greenfield",
+      changePosture: "new",
+      motivations: ["technical"],
+      characteristics: {
+        userInterface: "non-ui",
+        data: "stateless",
+        integration: "isolated",
+        interactionModes: ["synchronous"],
+        exposure: "internal",
+      },
+      regulated: false,
+      policyDomains: [],
+      sensitivities: ["none"],
+      expectedLifetime: "short-lived",
+      maintenanceHorizon: "Bounded to the deterministic local test lifecycle",
+      risk: { blastRadius: "localized", reversibility: "reversible", urgency: "normal", costOfFailure: "low" },
+      dependencies: [],
+      affectedAssets: ["Deterministic test workspace"],
+      owner: "Managed execution test owner",
+      accountableAuthority: "Managed execution test authority",
+      confidence: { level: "high", basis: "The deterministic fixture scope is exact" },
+      evidence: [{ kind: "evidence", reference: "managed-execution-test-fixture" }],
+      unresolvedQuestions: [],
+      rationale: "The deterministic local fixture exercises a bounded service-like managed execution path.",
+    }, initiative.revision!, "founder")
+    const resolved = await engine.resolveInitiativeApplicability(initiative.id, {
+      decisions: initiativeApplicabilitySubjectDefinitions.map((subject) => ({
+        subject: { ...subject },
+        status: "optional",
+        rationale: "This canonical subject was explicitly evaluated for the bounded deterministic fixture.",
+        sources: [{ kind: "policy", reference: "GAEP-DYNAMIC-ENGINEERING-MODEL" }],
+        owner: "Managed execution test owner",
+        dependencies: [],
+        conditions: [],
+        reviewTriggers: ["The fixture scope, classification, policy, or evidence changes"],
+        approval: { state: "not-required", conditions: [] },
+        relatedRecords: [],
+        relatedImplementationUnits: [],
+      })),
+      unresolvedSubjects: [],
+    }, classified.revision!, "founder")
+    return engine.updateInitiativeState(resolved.id, "active", reason, "founder")
+  }
+
   async function readyRun(
     script: "success" | "failure" | "cancellation" | "resume" = "success",
     options: {
@@ -202,7 +252,7 @@ describe("managed execution engine", () => {
       scope: ["Managed runtime"],
       exclusions: ["Network and workspace mutation"],
     }, "founder")
-    await engine.updateInitiativeState(initiative.id, "active", "Begin managed fixture", "founder")
+    await activateTestInitiative(initiative, "Begin managed fixture")
     const probe = await adapter.probe()
     await engine.selectAgent(probe.capabilities, "manual-deterministic-v1", { script }, "founder")
     const content = "Bounded governed context for the deterministic offline Managed Run."
@@ -336,7 +386,7 @@ describe("managed execution engine", () => {
       scope: ["Read-only managed execution"],
       exclusions: ["Workspace mutation"],
     }, "founder")
-    await engine.updateInitiativeState(initiative.id, "active", "Begin read-only observation", "founder")
+    await activateTestInitiative(initiative, "Begin read-only observation")
     const probe = await codex.probe()
     await engine.selectAgent(probe.capabilities, "fake-model", {}, "founder")
     const content = "Exact bounded Context for a read-only managed Codex observation."
@@ -747,7 +797,7 @@ describe("managed execution engine", () => {
         scope: ["Managed staging"],
         exclusions: ["External effects"],
       }, "founder")
-      await engine.updateInitiativeState(initiative.id, "active", "Begin receipt test", "founder")
+      await activateTestInitiative(initiative, "Begin receipt test")
       const probe = await codex.probe()
       await engine.selectAgent(probe.capabilities, "fake-model", {}, "founder")
       const content = "Exact bounded Context for the managed staged apply fixture."

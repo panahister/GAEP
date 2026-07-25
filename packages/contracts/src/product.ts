@@ -199,10 +199,21 @@ export const initiativeClassificationSchema = initiativeClassificationInputSchem
   productProfile: productProfileSchema,
   productRevision: z.number().int().positive(),
   productDigest: initiativeDigestSchema,
+  completenessPolicyVersion: z.literal("gaep-initiative-classification-completeness-v1").optional(),
+  completenessPolicyDigest: initiativeDigestSchema.optional(),
   classifiedBy: z.object({ kind: z.literal("human"), id: initiativeBoundedTextSchema }).strict(),
   classifiedAt: z.string().datetime(),
   authorityBoundary: z.literal("classification-guides-profile-selection-and-does-not-grant-approval-or-action-authority"),
-}).strict()
+}).strict().superRefine((classification, context) => {
+  if ((classification.completenessPolicyVersion === undefined) !==
+      (classification.completenessPolicyDigest === undefined)) {
+    context.addIssue({
+      code: "custom",
+      path: ["completenessPolicyDigest"],
+      message: "Classification completeness policy version and digest must be present together",
+    })
+  }
+})
 
 export const initiativeApplicabilityStatusSchema = z.enum([
   "required",
@@ -382,6 +393,11 @@ export const initiativeApplicabilityDecisionSchema = initiativeApplicabilityDeci
 }).strict()
 
 export const initiativeApplicabilityMatrixInputSchema = z.object({
+  subjectCatalog: z.object({
+    catalogVersion: z.literal("gaep-initiative-applicability-subjects-v1"),
+    digest: initiativeDigestSchema,
+    subjectCount: z.number().int().positive(),
+  }).strict().optional(),
   decisions: z.array(initiativeApplicabilityDecisionInputSchema).min(1).max(512),
   unresolvedSubjects: z.array(z.object({
     subject: initiativeApplicabilitySubjectSchema,
@@ -440,6 +456,15 @@ export const initiativeEntryAssessmentSchema = z.object({
   classification: z.object({
     status: z.enum(["missing", "current", "stale"]),
     digest: initiativeDigestSchema.optional(),
+    completeness: z.object({
+      status: z.enum(["missing", "complete", "incomplete", "stale"]),
+      policyVersion: z.literal("gaep-initiative-classification-completeness-v1"),
+      policyDigest: initiativeDigestSchema,
+      unknownDimensionCount: z.number().int().nonnegative(),
+      unresolvedQuestionCount: z.number().int().nonnegative(),
+      missingConditionalDimensionCount: z.number().int().nonnegative(),
+      confidenceSufficient: z.boolean(),
+    }).strict().optional(),
   }).strict(),
   applicability: z.object({
     status: z.enum(["missing", "current", "stale"]),
@@ -451,6 +476,16 @@ export const initiativeEntryAssessmentSchema = z.object({
     blockedDecisionCount: z.number().int().nonnegative(),
     pendingApprovalCount: z.number().int().nonnegative(),
     rejectedApprovalCount: z.number().int().nonnegative(),
+    coverage: z.object({
+      status: z.enum(["unavailable", "missing", "complete", "incomplete", "stale"]),
+      catalogVersion: z.literal("gaep-initiative-applicability-subjects-v1").optional(),
+      catalogDigest: initiativeDigestSchema.optional(),
+      subjectCount: z.number().int().nonnegative(),
+      coveredSubjectCount: z.number().int().nonnegative(),
+      missingSubjectCount: z.number().int().nonnegative(),
+      unexpectedSubjectCount: z.number().int().nonnegative(),
+      mismatchedSubjectCount: z.number().int().nonnegative(),
+    }).strict().optional(),
   }).strict(),
   state: z.enum(["ready", "attention-required", "blocked"]),
   reasons: z.array(initiativeBoundedTextSchema).max(256),
@@ -460,10 +495,31 @@ export const initiativeEntryAssessmentSchema = z.object({
   if ((assessment.classification.status === "missing") !== (assessment.classification.digest === undefined)) {
     context.addIssue({ code: "custom", path: ["classification", "digest"], message: "Only a present classification can carry a digest" })
   }
+  const completeness = assessment.classification.completeness
+  if (completeness && assessment.classification.status === "missing" && completeness.status !== "missing") {
+    context.addIssue({ code: "custom", path: ["classification", "completeness", "status"], message: "Missing classification requires missing completeness" })
+  }
+  if (completeness && assessment.classification.status === "stale" && completeness.status !== "stale") {
+    context.addIssue({ code: "custom", path: ["classification", "completeness", "status"], message: "Stale classification requires stale completeness" })
+  }
   const hasMatrixRevision = assessment.applicability.matrixRevision !== undefined
   const hasMatrixDigest = assessment.applicability.digest !== undefined
   if (hasMatrixRevision !== hasMatrixDigest || (assessment.applicability.status === "missing") === hasMatrixRevision) {
     context.addIssue({ code: "custom", path: ["applicability", "digest"], message: "Only a present applicability matrix can carry identity" })
+  }
+  const coverage = assessment.applicability.coverage
+  if (coverage) {
+    const catalogAvailable = coverage.catalogVersion !== undefined && coverage.catalogDigest !== undefined
+    if ((coverage.status === "unavailable") === catalogAvailable) {
+      context.addIssue({ code: "custom", path: ["applicability", "coverage"], message: "Only available applicability coverage can bind a catalog" })
+    }
+    if (coverage.coveredSubjectCount + coverage.missingSubjectCount + coverage.mismatchedSubjectCount !== coverage.subjectCount) {
+      context.addIssue({ code: "custom", path: ["applicability", "coverage"], message: "Applicability coverage counts must reconcile to the canonical catalog" })
+    }
+    if (coverage.status === "complete" &&
+        (coverage.missingSubjectCount > 0 || coverage.unexpectedSubjectCount > 0 || coverage.mismatchedSubjectCount > 0)) {
+      context.addIssue({ code: "custom", path: ["applicability", "coverage", "status"], message: "Complete applicability coverage cannot carry gaps" })
+    }
   }
   if (assessment.state === "ready" && assessment.reasons.length > 0) {
     context.addIssue({ code: "custom", path: ["reasons"], message: "A ready entry assessment cannot carry blockers or attention reasons" })

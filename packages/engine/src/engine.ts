@@ -53,6 +53,12 @@ import {
 
 import { GaepRepository, type GaepRepositoryOptions } from "./repository.js"
 import {
+  assessInitiativeApplicabilityCoverage,
+  assessInitiativeClassificationCompleteness,
+  composeInitiativeApplicabilitySubjectCatalog,
+  composeInitiativeClassificationCompletenessPolicy,
+} from "./initiative-entry.js"
+import {
   ManagedExecutionService,
   type ManagedExecutionApplyInput,
   type ManagedExecutionHandle,
@@ -406,18 +412,31 @@ export class GaepEngine {
     const classificationDigest = initiative.classification
       ? sha256Digest(initiative.classification)
       : undefined
+    const completeness = assessInitiativeClassificationCompleteness(product, initiative.classification)
+    const classificationPolicyCurrent = initiative.classification !== undefined &&
+      initiative.classification.completenessPolicyVersion === completeness.policy.policyVersion &&
+      initiative.classification.completenessPolicyDigest === completeness.policyDigest
     const classificationStatus = !initiative.classification
       ? "missing" as const
       : initiative.classification.productRevision !== revisionOf(product) ||
           initiative.classification.productDigest !== productDigest ||
-          initiative.classification.productProfile !== product.profile
+          initiative.classification.productProfile !== product.profile ||
+          !classificationPolicyCurrent
         ? "stale" as const
         : "current" as const
     const matrix = initiative.applicability
+    const coverage = initiative.classification
+      ? assessInitiativeApplicabilityCoverage(product, initiative.classification, matrix)
+      : undefined
+    const matrixCatalogCurrent = matrix !== undefined && coverage !== undefined &&
+      matrix.subjectCatalog?.catalogVersion === coverage.catalog.catalogVersion &&
+      matrix.subjectCatalog.digest === coverage.catalogDigest &&
+      matrix.subjectCatalog.subjectCount === coverage.catalog.subjects.length
     const applicabilityStatus = !matrix
       ? "missing" as const
       : matrix.state !== "current" || classificationStatus !== "current" ||
-          matrix.classificationDigest !== classificationDigest
+          matrix.classificationDigest !== classificationDigest ||
+          !matrixCatalogCurrent
         ? "stale" as const
         : "current" as const
     const pendingHumanDecisionCount = matrix?.decisions
@@ -430,9 +449,15 @@ export class GaepEngine {
       .filter((decision) => decision.approval.state === "rejected").length ?? 0
     const reasons: string[] = []
     if (classificationStatus === "missing") reasons.push("Initiative classification is missing")
-    if (classificationStatus === "stale") reasons.push("Initiative classification does not bind the current Product revision")
+    if (classificationStatus === "stale") reasons.push("Initiative classification does not bind the current Product and completeness policy")
+    if (classificationStatus === "current" && completeness.status === "incomplete") {
+      reasons.push("Initiative classification does not satisfy the current completeness policy")
+    }
     if (applicabilityStatus === "missing") reasons.push("Initiative applicability has not been resolved")
-    if (applicabilityStatus === "stale") reasons.push("Initiative applicability does not bind the current classification")
+    if (applicabilityStatus === "stale") reasons.push("Initiative applicability does not bind the current classification and subject catalog")
+    if (applicabilityStatus === "current" && coverage?.status === "incomplete") {
+      reasons.push("Initiative applicability does not cover every canonical subject")
+    }
     if ((matrix?.unresolvedSubjects.length ?? 0) > 0) reasons.push("Applicability subjects remain explicitly unresolved")
     if (pendingHumanDecisionCount > 0) reasons.push("Applicability decisions await accountable human judgment")
     if (blockedDecisionCount > 0) reasons.push("One or more required applicability decisions are blocked")
@@ -454,6 +479,19 @@ export class GaepEngine {
       classification: {
         status: classificationStatus,
         digest: classificationDigest,
+        completeness: {
+          status: classificationStatus === "missing"
+            ? "missing"
+            : classificationStatus === "stale"
+              ? "stale"
+              : completeness.status,
+          policyVersion: completeness.policy.policyVersion,
+          policyDigest: completeness.policyDigest,
+          unknownDimensionCount: completeness.unknownDimensions.length,
+          unresolvedQuestionCount: completeness.unresolvedQuestionCount,
+          missingConditionalDimensionCount: completeness.missingConditionalDimensions.length,
+          confidenceSufficient: completeness.confidenceSufficient,
+        },
       },
       applicability: {
         status: applicabilityStatus,
@@ -465,6 +503,27 @@ export class GaepEngine {
         blockedDecisionCount,
         pendingApprovalCount,
         rejectedApprovalCount,
+        coverage: coverage
+          ? {
+              status: applicabilityStatus === "stale"
+                ? "stale"
+                : coverage.status,
+              catalogVersion: coverage.catalog.catalogVersion,
+              catalogDigest: coverage.catalogDigest,
+              subjectCount: coverage.catalog.subjects.length,
+              coveredSubjectCount: coverage.coveredSubjectCount,
+              missingSubjectCount: coverage.missingSubjects.length,
+              unexpectedSubjectCount: coverage.unexpectedSubjects.length,
+              mismatchedSubjectCount: coverage.mismatchedSubjects.length,
+            }
+          : {
+              status: "unavailable",
+              subjectCount: 0,
+              coveredSubjectCount: 0,
+              missingSubjectCount: 0,
+              unexpectedSubjectCount: 0,
+              mismatchedSubjectCount: 0,
+            },
       },
       state,
       reasons,
@@ -496,6 +555,7 @@ export class GaepEngine {
         throw new Error(`Terminal Initiative ${current.state} classification is immutable`)
       }
       const now = new Date().toISOString()
+      const completenessPolicy = composeInitiativeClassificationCompletenessPolicy(product)
       const previousClassificationDigest = current.classification
         ? sha256Digest(current.classification)
         : undefined
@@ -504,6 +564,8 @@ export class GaepEngine {
         productProfile: product.profile,
         productRevision: revisionOf(product),
         productDigest: sha256Digest(product),
+        completenessPolicyVersion: completenessPolicy.policyVersion,
+        completenessPolicyDigest: sha256Digest(completenessPolicy),
         classifiedBy: { kind: "human", id: actorId },
         classifiedAt: now,
         authorityBoundary: "classification-guides-profile-selection-and-does-not-grant-approval-or-action-authority",
@@ -577,6 +639,15 @@ export class GaepEngine {
         throw new Error("Initiative classification does not bind the current Product; reclassify before applicability resolution")
       }
       const now = new Date().toISOString()
+      const subjectCatalog = composeInitiativeApplicabilitySubjectCatalog(product, current.classification)
+      const subjectCatalogDigest = sha256Digest(subjectCatalog)
+      if (validatedInput.subjectCatalog && (
+        validatedInput.subjectCatalog.catalogVersion !== subjectCatalog.catalogVersion ||
+        validatedInput.subjectCatalog.digest !== subjectCatalogDigest ||
+        validatedInput.subjectCatalog.subjectCount !== subjectCatalog.subjects.length
+      )) {
+        throw new Error("Initiative applicability subject catalog changed; reload the exact current catalog")
+      }
       const nextInitiativeRevision = revisionOf(current) + 1
       const previousDecisions = new Map((current.applicability?.decisions ?? []).map((decision) => [
         `${decision.subject.type}:${decision.subject.key}`,
@@ -602,6 +673,11 @@ export class GaepEngine {
         productId: current.productId,
         initiativeRevision: nextInitiativeRevision,
         classificationDigest: sha256Digest(current.classification),
+        subjectCatalog: {
+          catalogVersion: subjectCatalog.catalogVersion,
+          digest: subjectCatalogDigest,
+          subjectCount: subjectCatalog.subjects.length,
+        },
         state: "current",
         decisions,
         unresolvedSubjects: validatedInput.unresolvedSubjects,
@@ -629,6 +705,8 @@ export class GaepEngine {
             classificationDigest: matrix.classificationDigest,
             matrixRevision: matrix.revision,
             matrixDigest: sha256Digest(matrix),
+            subjectCatalogDigest,
+            subjectCatalogSubjectCount: subjectCatalog.subjects.length,
             decisionCount: matrix.decisions.length,
             unresolvedSubjectCount: matrix.unresolvedSubjects.length,
             statusCounts,
@@ -654,6 +732,28 @@ export class GaepEngine {
       await this.assertAuditIntegrity()
       const current = await this.repository.readJson(path, initiativeSchema)
       assertTransition(current.state, state, initiativeTransitions, "Initiative")
+      let entryGate: {
+        assessmentDigest: string
+        assessedAt: string
+        classificationDigest: string
+        completenessPolicyDigest: string
+        applicabilityDigest: string
+        subjectCatalogDigest: string
+      } | undefined
+      if (current.state === "proposed" && state === "active") {
+        const entryAssessment = await this.assessInitiativeEntry(initiativeId)
+        if (entryAssessment.state !== "ready") {
+          throw new Error(`Initiative cannot become active until the entry gate is ready: ${entryAssessment.reasons.join("; ")}`)
+        }
+        entryGate = {
+          assessmentDigest: canonicalDigest(entryAssessment),
+          assessedAt: entryAssessment.assessedAt,
+          classificationDigest: entryAssessment.classification.digest!,
+          completenessPolicyDigest: entryAssessment.classification.completeness!.policyDigest,
+          applicabilityDigest: entryAssessment.applicability.digest!,
+          subjectCatalogDigest: entryAssessment.applicability.coverage!.catalogDigest!,
+        }
+      }
       if (state === "completed" || state === "cancelled") {
         const nonTerminalRuns = (await this.listRuns()).filter((run) =>
           run.initiativeId === initiativeId && ["prepared", "running", "paused", "unknown"].includes(run.state),
@@ -684,6 +784,7 @@ export class GaepEngine {
             revision: revisionOf(updated),
             recordDigest: canonicalDigest(updated),
             productMutation: false,
+            ...(entryGate ? { entryGate } : {}),
           },
         },
       })
