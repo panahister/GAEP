@@ -89,6 +89,17 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "source.provenance.record",
   "source.assess",
   "source.snapshot",
+  "business.understanding.read",
+  "business.understanding.create",
+  "business.understanding.revise",
+  "business.stakeholders.read",
+  "business.stakeholders.create",
+  "business.stakeholders.revise",
+  "business.outcomes.read",
+  "business.outcomes.create",
+  "business.outcomes.revise",
+  "business.assess",
+  "business.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -712,6 +723,58 @@ export class EngineHost {
         return this.engine.sourceGovernance.assess(request.params.initiativeId)
       case "source.snapshot":
         return this.engine.sourceGovernance.project(request.params.initiativeId)
+      case "business.understanding.read":
+        return await this.engine.businessUnderstanding.readCurrentBusinessUnderstanding(
+          request.params.initiativeId,
+        ) ?? null
+      case "business.understanding.create":
+        return this.engine.businessUnderstanding.createBusinessUnderstanding(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "business.understanding.revise":
+        return this.engine.businessUnderstanding.reviseBusinessUnderstanding(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "business.stakeholders.read":
+        return await this.engine.businessUnderstanding.readCurrentStakeholderModel(
+          request.params.initiativeId,
+        ) ?? null
+      case "business.stakeholders.create":
+        return this.engine.businessUnderstanding.createStakeholderModel(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "business.stakeholders.revise":
+        return this.engine.businessUnderstanding.reviseStakeholderModel(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "business.outcomes.read":
+        return await this.engine.businessUnderstanding.readCurrentOutcomeModel(
+          request.params.initiativeId,
+        ) ?? null
+      case "business.outcomes.create":
+        return this.engine.businessUnderstanding.createOutcomeModel(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "business.outcomes.revise":
+        return this.engine.businessUnderstanding.reviseOutcomeModel(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "business.assess":
+        return this.engine.businessUnderstanding.assess(request.params.initiativeId)
+      case "business.snapshot":
+        return this.engine.businessUnderstanding.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

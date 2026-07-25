@@ -567,6 +567,150 @@ describe("engine host protocol", () => {
     })).rejects.toMatchObject({ kind: "INTERNAL_ERROR" })
   })
 
+  it("exposes bounded business-understanding records and projection only through protocol v2", async () => {
+    const { initiativeId } = await createProductAndInitiative(false)
+    const [product, initiative] = await Promise.all([
+      host.engine.readProduct(),
+      host.engine.readInitiative(initiativeId),
+    ])
+    const source = await host.engine.sourceGovernance.createSource({
+      initiativeId,
+      sourceType: "stakeholder-note",
+      title: "Reviewed host business discovery",
+      description: "The exact reviewed discovery source for the bounded engine-host business workflow.",
+      locator: { kind: "logical", value: "host.business.discovery" },
+      revisionIdentity: { kind: "resource-revision", value: "HOST-DISCOVERY-001@1" },
+      contentDigest: `sha256:${"b".repeat(64)}`,
+      digestScope: "Canonical UTF-8 discovery content",
+      owner: { kind: "human", id: "gaep.host-test" },
+      semanticAuthority: {
+        standing: "advisory",
+        domain: "Business understanding",
+        scope: ["P1 candidate context"],
+        basis: "The exact discovery revision is reviewed advisory evidence for this bounded host workflow.",
+        declaredBy: { kind: "human", id: "gaep.host-test" },
+      },
+      knowledgeDisposition: "confirmed",
+      trust: { sourceAuthenticity: "verified", contentIntegrity: "verified" },
+      informationClassification: "internal",
+      rights: { status: "verified", basis: "Internal Product analysis is recorded." },
+      freshness: {
+        status: "fresh",
+        assessedAt: "2026-07-25T00:00:00.000Z",
+        basis: "The accountable owner reviewed this exact revision.",
+        validUntil: "2026-08-25T00:00:00.000Z",
+      },
+      availability: { status: "available", basis: "The logical source resolver is available." },
+      limitations: ["The Source does not appoint a stakeholder or approve a Product decision."],
+    }, "gaep.host-test")
+    const exactSource = {
+      sourceId: source.id,
+      sourceRevision: source.revision,
+      recordDigest: canonicalDigest(source),
+      contentDigest: source.contentDigest,
+    }
+    const statement = (text: string) => ({
+      text,
+      disposition: "confirmed" as const,
+      sources: [exactSource],
+    })
+    const record = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "business-create",
+      protocolVersion: 2,
+      method: "business.understanding.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          context: {
+            productRevision: product.revision ?? 1,
+            productDigest: canonicalDigest(product),
+            initiativeRevision: initiative.revision ?? 1,
+            initiativeDigest: canonicalDigest(initiative),
+          },
+          informationClassification: "internal",
+          problem: statement("Teams cannot reconstruct why the bounded host Initiative exists."),
+          currentState: statement("Business context is distributed across exact Sources and participant knowledge."),
+          targetState: statement("Candidate business context is versioned and independently reviewable."),
+          scope: {
+            included: ["Business context"],
+            excluded: ["Authority appointment"],
+            boundaries: ["Candidate records only"],
+          },
+          objectives: [{
+            id: "preserve-context",
+            ...statement("Preserve attributable business context across host boundaries."),
+          }],
+          constraints: [],
+          assumptions: [],
+          unresolvedQuestions: [],
+          glossary: [],
+          limitations: ["Human acceptance is not represented."],
+        },
+      },
+    }) as { id: string; revision: number; state: string; authorityBoundary: string }
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "business-read",
+      protocolVersion: 2,
+      method: "business.understanding.read",
+      params: { initiativeId },
+    })).resolves.toMatchObject({ id: record.id, revision: 1, state: "candidate" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "stakeholder-read-empty",
+      protocolVersion: 2,
+      method: "business.stakeholders.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "business-assess",
+      protocolVersion: 2,
+      method: "business.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      businessUnderstanding: { recordId: record.id, revision: 1 },
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-approve"),
+    })
+    const projection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "business-snapshot",
+      protocolVersion: 2,
+      method: "business.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-business-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-approve"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("host.business.discovery")
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "business-v1-block",
+      method: "business.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "business-extra-authority",
+      protocolVersion: 2,
+      method: "business.understanding.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          approval: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+  })
+
   it("rejects unknown methods, malformed params, caller capability injection, and oversized direct requests", async () => {
     await expect(host.dispatch({ jsonrpc: "2.0", id: 1, method: "eraseEverything", params: {} })).rejects.toMatchObject({
       code: -32_601,

@@ -2,6 +2,11 @@ import { z } from "zod"
 
 import { portableSelectionSettingsSchema } from "./agent.js"
 import {
+  businessUnderstandingInputSchema,
+  outcomeModelInputSchema,
+  stakeholderModelInputSchema,
+} from "./business-understanding.js"
+import {
   agentModelDashboardRequestSchema,
   changeImpactChangeCatalogRequestSchema,
   changeImpactDashboardRequestSchema,
@@ -192,6 +197,46 @@ export const hostSourceProvenanceRecordParamsSchema = z.object({
   provenance: sourceProvenanceInputSchema,
 }).strict()
 
+export const hostBusinessInitiativeParamsSchema = z.object({
+  initiativeId: z.string().uuid(),
+}).strict()
+
+export const hostBusinessUnderstandingCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: businessUnderstandingInputSchema,
+}).strict()
+
+export const hostBusinessUnderstandingReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: businessUnderstandingInputSchema,
+}).strict()
+
+export const hostStakeholderModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: stakeholderModelInputSchema,
+}).strict()
+
+export const hostStakeholderModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: stakeholderModelInputSchema,
+}).strict()
+
+export const hostOutcomeModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: outcomeModelInputSchema,
+}).strict()
+
+export const hostOutcomeModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: outcomeModelInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -242,6 +287,17 @@ export const hostMethodSchema = z.enum([
   "source.provenance.record",
   "source.assess",
   "source.snapshot",
+  "business.understanding.read",
+  "business.understanding.create",
+  "business.understanding.revise",
+  "business.stakeholders.read",
+  "business.stakeholders.create",
+  "business.stakeholders.revise",
+  "business.outcomes.read",
+  "business.outcomes.create",
+  "business.outcomes.revise",
+  "business.assess",
+  "business.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -304,6 +360,17 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("source.provenance.record", hostSourceProvenanceRecordParamsSchema),
   requestVariant("source.assess", hostSourceInitiativeParamsSchema),
   requestVariant("source.snapshot", hostSourceInitiativeParamsSchema),
+  requestVariant("business.understanding.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.understanding.create", hostBusinessUnderstandingCreateParamsSchema),
+  requestVariant("business.understanding.revise", hostBusinessUnderstandingReviseParamsSchema),
+  requestVariant("business.stakeholders.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.stakeholders.create", hostStakeholderModelCreateParamsSchema),
+  requestVariant("business.stakeholders.revise", hostStakeholderModelReviseParamsSchema),
+  requestVariant("business.outcomes.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.outcomes.create", hostOutcomeModelCreateParamsSchema),
+  requestVariant("business.outcomes.revise", hostOutcomeModelReviseParamsSchema),
+  requestVariant("business.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
