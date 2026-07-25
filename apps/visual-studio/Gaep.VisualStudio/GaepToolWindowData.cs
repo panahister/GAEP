@@ -202,6 +202,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         this.extensibility = extensibility ?? throw new ArgumentNullException(nameof(extensibility));
         RefreshProductCommand = new AsyncCommand(RefreshProductAsync);
         LoadInitiativeEntryCommand = new AsyncCommand(LoadInitiativeEntryAsync);
+        LoadSourceGovernanceCommand = new AsyncCommand(LoadSourceGovernanceAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -241,13 +242,16 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Initiative entry reads and assessments are exact Product- and revision-bound projections. Classification and applicability require explicit human inputs plus cancel-default confirmation; absence never means not applicable, and no result grants approval, readiness, execution, implementation, or release authority. Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Change/Impact selection and projection are exact audit-gated metadata views; they cannot approve a Change, accept a Risk, mutate records, or authorize effects. Agent/Model is an exact Product-, capability-, and selection-bound metadata projection; it cannot select, switch, hand off, launch, authorize effects, establish readiness, or invent usage/cost. Accessible dashboard tables sort and filter only already-verified metadata, expose exact visible/omitted/source totals, and prepare formula-neutralized CSV for native UI copy without file authority. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Initiative entry reads and assessments are exact Product- and revision-bound projections. Classification and applicability require explicit human inputs plus cancel-default confirmation; absence never means not applicable, and no result grants approval, readiness, execution, implementation, or release authority. Source governance is an exact Initiative-bound, bounded metadata view of Sources, candidate Baselines, and Provenance; it exposes no Source bytes, locators, local paths, or credentials and cannot designate a Baseline, approve readiness, transfer authority, or authorize action. Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Change/Impact selection and projection are exact audit-gated metadata views; they cannot approve a Change, accept a Risk, mutate records, or authorize effects. Agent/Model is an exact Product-, capability-, and selection-bound metadata projection; it cannot select, switch, hand off, launch, authorize effects, establish readiness, or invent usage/cost. Accessible dashboard tables sort and filter only already-verified metadata, expose exact visible/omitted/source totals, and prepare formula-neutralized CSV for native UI copy without file authority. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadInitiativeEntryCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadSourceGovernanceCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -610,6 +614,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
                 RefreshInitiativeDraftSummary();
                 return ProductWorkflowController.RenderInitiativeEntry(context);
             },
+            cancellationToken);
+
+    private Task LoadSourceGovernanceAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Source governance",
+            (controller, _, token) => controller.ReadSourceGovernanceAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

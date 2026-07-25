@@ -330,7 +330,14 @@ internal static partial class PortableDesignProtocol
                 throw InvalidResponse();
             }
         }
-        return new InitiativeEntryRecord(id, revision, productId, state, classification, applicability);
+        return new InitiativeEntryRecord(
+            id,
+            revision,
+            productId,
+            state,
+            CanonicalDigest(initiative),
+            classification,
+            applicability);
     }
 
     internal static InitiativeEntryAssessment ParseInitiativeEntryAssessmentResponse(

@@ -34,7 +34,10 @@
                  MinHeight="26" Margin="0,4,0,6"
                  Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
         <Button x:Name="LoadInitiativeEntryButton" Content="Load exact Initiative entry"
-                Command="{Binding LoadInitiativeEntryCommand}" MinHeight="28" Margin="0,0,0,10"
+                Command="{Binding LoadInitiativeEntryCommand}" MinHeight="28" Margin="0,0,0,6"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadSourceGovernanceButton" Content="Inspect Source governance"
+                Command="{Binding LoadSourceGovernanceCommand}" MinHeight="28" Margin="0,0,0,10"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />

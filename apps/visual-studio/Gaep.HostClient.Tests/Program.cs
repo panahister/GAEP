@@ -39,6 +39,9 @@ internal static class Program
     private static readonly Guid ChangeDecisionId = Guid.Parse("32323232-3232-4232-8232-323232323232");
     private static readonly Guid ChangeRiskId = Guid.Parse("34343434-3434-4434-8434-343434343434");
     private static readonly Guid InitiativeDecisionId = Guid.Parse("35353535-3535-4535-8535-353535353535");
+    private static readonly Guid SourceId = Guid.Parse("36363636-3636-4636-8636-363636363636");
+    private static readonly Guid SourceBaselineId = Guid.Parse("37373737-3737-4737-8737-373737373737");
+    private static readonly Guid SourceProvenanceId = Guid.Parse("38383838-3838-4838-8838-383838383838");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -97,6 +100,9 @@ internal static class Program
         var badInitiativeAssessmentCoverageRoot = Path.Combine(temporaryRoot, "bad-initiative-assessment-coverage");
         var badInitiativeClassificationBindingRoot = Path.Combine(temporaryRoot, "bad-initiative-classification-binding");
         var badInitiativeApplicabilityBindingRoot = Path.Combine(temporaryRoot, "bad-initiative-applicability-binding");
+        var badSourceSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-source-snapshot-binding");
+        var badSourceSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-source-snapshot-digest");
+        var badSourceSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-source-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -152,6 +158,9 @@ internal static class Program
         Directory.CreateDirectory(badInitiativeAssessmentCoverageRoot);
         Directory.CreateDirectory(badInitiativeClassificationBindingRoot);
         Directory.CreateDirectory(badInitiativeApplicabilityBindingRoot);
+        Directory.CreateDirectory(badSourceSnapshotBindingRoot);
+        Directory.CreateDirectory(badSourceSnapshotDigestRoot);
+        Directory.CreateDirectory(badSourceSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -479,6 +488,44 @@ internal static class Program
                 "founder.review"));
             Check(invalid.Kind == "HOST_RESPONSE_INVALID",
                 "Initiative applicability rejects actor/content substitution");
+        }
+
+        var sourceProjection = await client.ReadSourceGovernanceAsync(InitiativeId);
+        Check(sourceProjection.ProductId == product.Id &&
+              sourceProjection.ProductRevision == product.Revision &&
+              sourceProjection.ProductDigest == product.Digest &&
+              sourceProjection.InitiativeId == resolved.Id &&
+              sourceProjection.InitiativeRevision == resolved.Revision &&
+              sourceProjection.InitiativeDigest == resolved.Digest &&
+              sourceProjection.AssessmentState == "ready" &&
+              sourceProjection.SourceCount == 1 &&
+              sourceProjection.BaselineCount == 1 &&
+              sourceProjection.ProvenanceCount == 1 &&
+              sourceProjection.Sources.Single().SemanticAuthority == "authoritative · product requirements" &&
+              sourceProjection.Baselines.Single().AssessmentStatus == "current" &&
+              sourceProjection.Provenance.Single().TargetKind == "governed-record",
+            "Typed Source governance preserves exact Product, Initiative, Source, candidate Baseline, and Provenance metadata");
+        var sourceOutput = await initiativeController.ReadSourceGovernanceAsync(InitiativeId);
+        Check(sourceOutput.Contains("GAEP Source governance", StringComparison.Ordinal) &&
+              sourceOutput.Contains("1 Sources · 1 candidate Baselines · 1 Provenance records", StringComparison.Ordinal) &&
+              sourceOutput.Contains("grants no Baseline designation, approval, readiness", StringComparison.Ordinal) &&
+              !sourceOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !sourceOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Source governance workflow renders bounded private-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badSourceSnapshotDigestRoot, badSourceSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadSourceGovernanceAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Source governance rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badSourceSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadSourceGovernanceAsync(InitiativeId),
+                "Source governance rejects a projection bound to a substituted Initiative digest");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -1559,6 +1606,9 @@ internal static class Program
         var badInitiativeAssessmentCoverage = Path.GetFileName(workspace) == "bad-initiative-assessment-coverage";
         var badInitiativeClassificationBinding = Path.GetFileName(workspace) == "bad-initiative-classification-binding";
         var badInitiativeApplicabilityBinding = Path.GetFileName(workspace) == "bad-initiative-applicability-binding";
+        var badSourceSnapshotBinding = Path.GetFileName(workspace) == "bad-source-snapshot-binding";
+        var badSourceSnapshotDigest = Path.GetFileName(workspace) == "bad-source-snapshot-digest";
+        var badSourceSnapshotPrivate = Path.GetFileName(workspace) == "bad-source-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -1677,6 +1727,17 @@ internal static class Program
                         initiativeClassification,
                         badInitiativeApplicabilityBinding);
                     if (initiativeApplicability is not null) initiativeRevision++;
+                    break;
+                case "source.snapshot":
+                    await HandleSourceGovernanceAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badSourceSnapshotBinding,
+                        badSourceSnapshotDigest,
+                        badSourceSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -1860,6 +1921,157 @@ internal static class Program
         if (includePrivateField) result["workspaceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
+
+    private static async Task HandleSourceGovernanceAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeInitiativeBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID SOURCE GOVERNANCE");
+            return;
+        }
+        var assessedAt = "2026-07-25T00:03:00.000Z";
+        var baselineDigest = $"sha256:{new string('a', 64)}";
+        var membershipDigest = $"sha256:{new string('b', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var initiativeBinding = new Dictionary<string, object?>
+        {
+            ["id"] = InitiativeId.ToString("D"),
+            ["revision"] = initiativeRevision,
+            ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+            ["state"] = "active",
+        };
+        var source = new Dictionary<string, object?>
+        {
+            ["id"] = SourceId.ToString("D"),
+            ["revision"] = 1,
+            ["title"] = "Reviewed repository source",
+            ["sourceType"] = "repository",
+            ["owner"] = new Dictionary<string, object?>
+            {
+                ["kind"] = "human",
+                ["id"] = "founder.source-review",
+            },
+            ["semanticAuthority"] = new Dictionary<string, object?>
+            {
+                ["standing"] = "authoritative",
+                ["domain"] = "product requirements",
+                ["scope"] = new[] { "Initiative source governance" },
+            },
+            ["knowledgeDisposition"] = "confirmed",
+            ["informationClassification"] = "internal",
+            ["freshness"] = "fresh",
+            ["availability"] = "available",
+            ["contentDigest"] = $"sha256:{new string('c', 64)}",
+            ["recordDigest"] = $"sha256:{new string('d', 64)}",
+            ["updatedAt"] = "2026-07-25T00:02:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "source-governance-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = 7,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7))),
+            },
+            ["initiative"] = initiativeBinding,
+            ["assessment"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "source-governance-assessment",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = 7,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["sourceCount"] = 1,
+                ["baselineCount"] = 1,
+                ["provenanceCount"] = 1,
+                ["staleSourceCount"] = 0,
+                ["unknownAuthorityCount"] = 0,
+                ["unbaselinedSourceCount"] = 0,
+                ["unprovenancedSourceCount"] = 0,
+                ["state"] = "ready",
+                ["reasons"] = Array.Empty<string>(),
+                ["currentBaseline"] = new Dictionary<string, object?>
+                {
+                    ["id"] = SourceBaselineId.ToString("D"),
+                    ["revision"] = 1,
+                    ["digest"] = baselineDigest,
+                    ["membershipDigest"] = membershipDigest,
+                    ["status"] = "current",
+                    ["memberCount"] = 1,
+                },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "source-governance-assessment-reports-recorded-evidence-and-does-not-designate-a-baseline-approve-readiness-or-authorize-action",
+            },
+            ["sources"] = new[] { source },
+            ["baselines"] = new[]
+            {
+                new Dictionary<string, object?>
+                {
+                    ["id"] = SourceBaselineId.ToString("D"),
+                    ["revision"] = 1,
+                    ["title"] = "Candidate source baseline",
+                    ["state"] = "candidate",
+                    ["membershipDigest"] = membershipDigest,
+                    ["memberCount"] = 1,
+                    ["assessmentStatus"] = "current",
+                    ["updatedAt"] = "2026-07-25T00:02:30.000Z",
+                },
+            },
+            ["provenance"] = new[]
+            {
+                new Dictionary<string, object?>
+                {
+                    ["id"] = SourceProvenanceId.ToString("D"),
+                    ["targetKind"] = "governed-record",
+                    ["targetDigest"] = $"sha256:{new string('e', 64)}",
+                    ["disposition"] = "confirmed",
+                    ["sourceCount"] = 1,
+                    ["transformationCount"] = 1,
+                    ["recordedAt"] = "2026-07-25T00:02:45.000Z",
+                },
+            },
+            ["limits"] = new Dictionary<string, object?>
+            {
+                ["sources"] = SourceProjectionLimit(),
+                ["baselines"] = SourceProjectionLimit(),
+                ["provenance"] = SourceProjectionLimit(),
+            },
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-portable-governance-metadata-and-digests-only-not-source-bytes-locators-local-paths-or-credentials",
+            ["authorityBoundary"] =
+                "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (forgeInitiativeBinding)
+        {
+            initiativeBinding["digest"] = $"sha256:{new string('0', 64)}";
+            RefreshCanonicalDigest(result, "snapshotDigest");
+        }
+        if (mutateAfterDigest) source["title"] = "Forged source title";
+        if (includePrivateField) result["privateRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static Dictionary<string, object?> SourceProjectionLimit() => new()
+    {
+        ["shown"] = 1,
+        ["total"] = 1,
+        ["omitted"] = 0,
+    };
 
     private static async Task HandleAssessInitiativeEntryAsync(
         long id,

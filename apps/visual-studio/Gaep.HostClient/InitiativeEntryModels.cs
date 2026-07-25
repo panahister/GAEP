@@ -112,6 +112,7 @@ public sealed record InitiativeEntryRecord(
     long Revision,
     Guid ProductId,
     string State,
+    string Digest,
     InitiativeClassificationView? Classification,
     InitiativeApplicabilityView? Applicability);
 

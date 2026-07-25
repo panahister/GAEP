@@ -106,6 +106,92 @@ public sealed class ProductWorkflowController(EngineClient client)
         CancellationToken cancellationToken = default) =>
         RenderInitiativeEntry(await ReadInitiativeEntryContextAsync(initiativeId, cancellationToken));
 
+    public async Task<string> ReadSourceGovernanceAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadSourceGovernanceAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException(
+                "The Product or Initiative changed while Source governance was read. Refresh the exact records.");
+        }
+        return RenderSourceGovernance(projection);
+    }
+
+    public static string RenderSourceGovernance(SourceGovernanceProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP Source governance")
+            .AppendLine()
+            .AppendLine(
+                $"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · " +
+                projection.InitiativeState)
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Records: {projection.SourceCount} Sources · {projection.BaselineCount} candidate Baselines · " +
+                $"{projection.ProvenanceCount} Provenance records")
+            .AppendLine(
+                $"Gaps: {projection.StaleSourceCount} stale · {projection.UnknownAuthorityCount} unknown authority · " +
+                $"{projection.UnbaselinedSourceCount} unbaselined · " +
+                $"{projection.UnprovenancedSourceCount} unprovenanced")
+            .AppendLine(
+                "Current candidate Baseline: " +
+                (projection.CurrentBaseline is null
+                    ? "not recorded"
+                    : $"{projection.CurrentBaseline.Id:D}@{projection.CurrentBaseline.Revision} · " +
+                      projection.CurrentBaseline.Status));
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine().AppendLine("Governed Sources");
+        foreach (var source in projection.Sources.Take(50))
+        {
+            output.AppendLine(
+                $"  - {source.Title} · {source.Id:D}@{source.Revision} · owner {source.Owner} · " +
+                $"authority {source.SemanticAuthority} · {source.KnowledgeDisposition} · " +
+                $"{source.Freshness}/{source.Availability}");
+        }
+        if (projection.Sources.Count > 50)
+        {
+            output.AppendLine($"  - {projection.Sources.Count - 50} more withheld from this compact view");
+        }
+        output.AppendLine().AppendLine("Candidate Source Baselines");
+        foreach (var baseline in projection.Baselines.Take(50))
+        {
+            output.AppendLine(
+                $"  - {baseline.Title} · {baseline.Id:D}@{baseline.Revision} · " +
+                $"{baseline.MemberCount} exact Source(s) · {baseline.AssessmentStatus}");
+        }
+        if (projection.Baselines.Count > 50)
+        {
+            output.AppendLine($"  - {projection.Baselines.Count - 50} more withheld from this compact view");
+        }
+        output.AppendLine().AppendLine("Source Provenance");
+        foreach (var provenance in projection.Provenance.Take(50))
+        {
+            output.AppendLine(
+                $"  - {provenance.Id:D} · {provenance.TargetKind} · {provenance.Disposition} · " +
+                $"{provenance.SourceCount} Source(s) · {provenance.TransformationCount} transformation(s)");
+        }
+        if (projection.Provenance.Count > 50)
+        {
+            output.AppendLine($"  - {projection.Provenance.Count - 50} more withheld from this compact view");
+        }
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this is a bounded metadata projection. It contains no Source bytes, locators, local paths, " +
+                "or credentials and grants no Baseline designation, approval, readiness, authority transfer, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,
