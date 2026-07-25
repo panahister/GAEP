@@ -12,8 +12,8 @@ import {
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const contractPath = resolve(repositoryRoot, "conformance/phase-0-ide-contract.json")
-const receiptPath = resolve(repositoryRoot, "evidence/ide-smokes/2026-07-24T232408Z-phase-0-four-host-behavior.json")
-const packageReportPath = resolve(repositoryRoot, "evidence/local-packages/2026-07-24T232408Z-phase-0-local-host-behavior-final.json")
+const receiptPath = resolve(repositoryRoot, "evidence/ide-smokes/2026-07-24T235810Z-phase-0-four-host-behavior-rider-native-activation.json")
+const packageReportPath = resolve(repositoryRoot, "evidence/local-packages/2026-07-24T235925Z-phase-0-local-rider-native-activation-final.json")
 const digestPattern = /^sha256:[0-9a-f]{64}$/u
 
 async function contract() {
