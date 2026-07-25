@@ -70,6 +70,7 @@ import {
   type ManagedWorkflowGateEvaluator,
 } from "./managed-execution.js"
 import { ProductStudioService } from "./product-studio.js"
+import { SourceGovernanceService } from "./source-governance.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -229,6 +230,7 @@ export interface LegacyAgentSelectionMigrationInput {
 export class GaepEngine {
   readonly repository: GaepRepository
   readonly productStudio: ProductStudioService
+  readonly sourceGovernance: SourceGovernanceService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -243,6 +245,12 @@ export class GaepEngine {
       this.repository,
       () => this.readProduct(),
       (id) => this.readInitiative(id),
+    )
+    this.sourceGovernance = new SourceGovernanceService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      (reference) => this.productStudio.resolveExactDomainRecord(reference),
     )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
@@ -337,7 +345,11 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      domainIssues = await this.productStudio.healthIssues()
+      const [productIssues, sourceIssues] = await Promise.all([
+        this.productStudio.healthIssues(),
+        this.sourceGovernance.healthIssues(),
+      ])
+      domainIssues = [...productIssues, ...sourceIssues]
     } catch (error) {
       domainIssues = [{
         code: "product.health-evaluation-failed" as const,

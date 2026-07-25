@@ -36,6 +36,10 @@ import {
   runToolSelectionSchema,
   riskSchema,
   runSchema,
+  sourceBaselineSchema,
+  sourceProvenanceSchema,
+  sourceRecordRevisionSchema,
+  sourceRecordSchema,
   traceImpactSchema,
   traceLinkSchema,
   toolDefinitionSchema,
@@ -67,6 +71,8 @@ import {
   type Run,
   type RunToolSelection,
   type Risk,
+  type SourceBaseline,
+  type SourceRecordRevision,
   type TraceEndpoint,
   type TraceImpact,
   type TraceLink,
@@ -1863,16 +1869,45 @@ export class ProductStudioService {
       throw new Error("Confidential or restricted export disclosure requires an explicit human reviewer")
     }
     const contextPacks = await this.listContextPacks()
+    const sources = await this.listRecords("sources", /^[0-9a-f-]+\.json$/i, sourceRecordSchema)
+    const sourceHistory = await this.listRecords(
+      "source-history",
+      /^source-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      sourceRecordRevisionSchema,
+    )
+    const sourceBaselines = await this.listRecords(
+      "source-baselines",
+      /^[0-9a-f-]+\.json$/i,
+      sourceBaselineSchema,
+    )
+    const sourceBaselineHistory = await this.listRecords(
+      "source-baseline-history",
+      /^baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      sourceBaselineSchema,
+    )
+    const sourceProvenance = await this.listRecords(
+      "source-provenance",
+      /^[0-9a-f-]+\.json$/i,
+      sourceProvenanceSchema,
+    )
     const sensitiveContextIds = new Set(contextPacks
       .filter((pack) => ["confidential", "restricted"].includes(pack.classification.level))
       .map((pack) => pack.id))
-    for (const id of sensitiveContextIds) {
+    const sensitiveSourceIds = new Set(sources
+      .filter((source) => ["confidential", "restricted"].includes(source.informationClassification))
+      .map((source) => source.id))
+    const sensitiveRecordIds = new Set([...sensitiveContextIds, ...sensitiveSourceIds])
+    for (const id of sensitiveRecordIds) {
       if (!reviewedRecordIds.has(id)) {
-        throw new Error(`Context Pack ${id} is ${contextPacks.find((pack) => pack.id === id)?.classification.level}; explicit disclosure review is required`)
+        const classification = contextPacks.find((pack) => pack.id === id)?.classification.level ??
+          sources.find((source) => source.id === id)?.informationClassification
+        throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
       }
     }
     for (const id of reviewedRecordIds) {
-      if (!sensitiveContextIds.has(id)) throw new Error(`Disclosure review references a record that does not require sensitive-context review: ${id}`)
+      if (!sensitiveRecordIds.has(id)) {
+        throw new Error(`Disclosure review references a record that does not require sensitive-record review: ${id}`)
+      }
     }
     const portableRecords: Array<{ path: string; recordType: string; content: unknown }> = [
       { path: "manifest.json", recordType: "repository-manifest", content: manifest },
@@ -1904,6 +1939,13 @@ export class ProductStudioService {
     append("tools", "tool-definition", await this.listToolDefinitions())
     append("instruction-grants", "instruction-privilege-grant", await this.listInstructionPrivilegeGrants())
     append("tool-selections", "run-tool-selection", await this.listRunToolSelections())
+    append("sources", "source-record", sources)
+    append("source-history", "source-record-revision", sourceHistory, (record) =>
+      `source-history/source-${record.sourceId}-r${record.revision}.json`)
+    append("source-baselines", "source-baseline-snapshot", sourceBaselines)
+    append("source-baseline-history", "source-baseline-snapshot", sourceBaselineHistory, (record) =>
+      `source-baseline-history/baseline-${record.id}-r${record.revision}.json`)
+    append("source-provenance", "source-provenance-record", sourceProvenance)
     const recordHistory = await this.listRecords(
       "record-history", /^[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i, productRecordRevisionSchema,
     )
@@ -1960,6 +2002,7 @@ export class ProductStudioService {
           "public",
           "internal",
           ...contextPacks.map((pack) => pack.classification.level),
+          ...sources.map((source) => source.informationClassification),
         ])],
         reviewedRecordIds: [...reviewedRecordIds].sort(),
         excludedRecordIds: [],
@@ -2062,6 +2105,20 @@ export class ProductStudioService {
         const expectedHistoryPath = `record-history/${history.recordType}-${history.recordId}-r${history.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Record History filename does not match its envelope: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("source-history/")) {
+        const history = validated as SourceRecordRevision
+        const expectedHistoryPath = `source-history/source-${history.sourceId}-r${history.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Source history filename does not match its envelope: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("source-baseline-history/")) {
+        const baseline = validated as SourceBaseline
+        const expectedHistoryPath = `source-baseline-history/baseline-${baseline.id}-r${baseline.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Source Baseline history filename does not match its snapshot: ${member.path}`)
         }
       }
       const prefixedIdentityMatch = /^(?:sessions\/(?:charter|run|managed-run|managed-evidence|managed-result|managed-apply-decision))-([0-9a-f-]+)\.json$/i.exec(member.path)
@@ -2620,6 +2677,10 @@ export class ProductStudioService {
     for (const reference of references) await this.validateExactDomainReference(reference)
   }
 
+  async resolveExactDomainRecord(reference: ExactDomainRecordReference): Promise<unknown> {
+    return this.validateExactDomainReference(reference)
+  }
+
   private async validateExactDomainReference(referenceInput: ExactDomainRecordReference): Promise<unknown> {
     const reference = exactDomainRecordReferenceSchema.parse(referenceInput)
     let record: unknown
@@ -2821,6 +2882,18 @@ export class ProductStudioService {
         throw new Error(`Import Record History snapshot digest mismatch: ${path}`)
       }
     }
+    if (/^source-history\//.test(path)) {
+      const history = validated as SourceRecordRevision
+      if (history.recordDigest !== canonicalDigest(history.snapshot)) {
+        throw new Error(`Import Source history snapshot digest mismatch: ${path}`)
+      }
+    }
+    if (/^source-baselines\//.test(path) || /^source-baseline-history\//.test(path)) {
+      const baseline = validated as SourceBaseline
+      if (baseline.membershipDigest !== canonicalDigest(baseline.members)) {
+        throw new Error(`Import Source Baseline membership digest mismatch: ${path}`)
+      }
+    }
     return validated
   }
 
@@ -2977,6 +3050,163 @@ export class ProductStudioService {
     const changes = [...recordsByPath.entries()].filter(([path]) => path.startsWith("changes/"))
       .map(([, record]) => changeSchema.parse(record))
     const changesById = new Map(changes.map((change) => [change.id, change]))
+
+    const sources = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("sources/"))
+      .map(([, record]) => sourceRecordSchema.parse(record))
+    const currentSourceById = new Map(sources.map((source) => [source.id, source]))
+    const sourceHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("source-history/"))
+      .map(([, record]) => sourceRecordRevisionSchema.parse(record))
+    const sourceHistoryGroups = new Map<string, SourceRecordRevision[]>()
+    const exactSources = new Map<string, SourceRecordRevision>()
+    const exactSourceKey = (
+      sourceId: string,
+      revision: number,
+      recordDigest: string,
+      contentDigest: string,
+    ) => `${sourceId}:${revision}:${recordDigest}:${contentDigest}`
+    for (const history of sourceHistory) {
+      const group = sourceHistoryGroups.get(history.sourceId) ?? []
+      group.push(history)
+      sourceHistoryGroups.set(history.sourceId, group)
+      exactSources.set(exactSourceKey(
+        history.sourceId,
+        history.revision,
+        history.recordDigest,
+        history.snapshot.contentDigest,
+      ), history)
+    }
+    for (const source of sources) {
+      const initiative = initiativesById.get(source.initiativeId)
+      if (!initiative) throw new Error(`Import Source ${source.id} has no Initiative`)
+      const group = (sourceHistoryGroups.get(source.id) ?? [])
+        .sort((left, right) => left.revision - right.revision)
+      if (group.length !== source.revision) {
+        throw new Error(`Import immutable Source history is incomplete for ${source.id}`)
+      }
+      for (const [index, history] of group.entries()) {
+        if (
+          history.revision !== index + 1 ||
+          (index === 0 && history.predecessorDigest !== undefined) ||
+          (index > 0 && history.predecessorDigest !== group[index - 1]?.recordDigest)
+        ) throw new Error(`Import immutable Source history predecessor chain is invalid for ${source.id}`)
+      }
+      if (group.at(-1)?.recordDigest !== canonicalDigest(source)) {
+        throw new Error(`Import current Source does not match immutable history for ${source.id}`)
+      }
+    }
+    for (const sourceId of sourceHistoryGroups.keys()) {
+      if (!currentSourceById.has(sourceId)) {
+        throw new Error(`Import immutable Source history has no current record: ${sourceId}`)
+      }
+    }
+    const resolveExactSource = (reference: SourceBaseline["members"][number]): SourceRecordRevision => {
+      const history = exactSources.get(exactSourceKey(
+        reference.sourceId,
+        reference.sourceRevision,
+        reference.recordDigest,
+        reference.contentDigest,
+      ))
+      if (!history) {
+        throw new Error(`Import exact Source reference is unresolved: ${reference.sourceId}@${reference.sourceRevision}`)
+      }
+      return history
+    }
+
+    const sourceBaselines = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("source-baselines/"))
+      .map(([, record]) => sourceBaselineSchema.parse(record))
+    const currentBaselineById = new Map(sourceBaselines.map((baseline) => [baseline.id, baseline]))
+    const sourceBaselineHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("source-baseline-history/"))
+      .map(([, record]) => sourceBaselineSchema.parse(record))
+    const sourceBaselineHistoryGroups = new Map<string, SourceBaseline[]>()
+    for (const baseline of sourceBaselineHistory) {
+      const group = sourceBaselineHistoryGroups.get(baseline.id) ?? []
+      group.push(baseline)
+      sourceBaselineHistoryGroups.set(baseline.id, group)
+    }
+    const validateBaselineMembers = (baseline: SourceBaseline): void => {
+      if (!initiativesById.has(baseline.initiativeId)) {
+        throw new Error(`Import Source Baseline ${baseline.id} has no Initiative`)
+      }
+      for (const member of baseline.members) {
+        const source = resolveExactSource(member).snapshot
+        if (source.initiativeId !== baseline.initiativeId) {
+          throw new Error(`Import Source Baseline ${baseline.id} contains a Source from another Initiative`)
+        }
+      }
+    }
+    for (const baseline of sourceBaselines) {
+      const group = (sourceBaselineHistoryGroups.get(baseline.id) ?? [])
+        .sort((left, right) => left.revision - right.revision)
+      if (group.length !== baseline.revision) {
+        throw new Error(`Import immutable Source Baseline history is incomplete for ${baseline.id}`)
+      }
+      for (const [index, revision] of group.entries()) {
+        if (
+          revision.revision !== index + 1 ||
+          (index === 0 && revision.predecessorDigest !== undefined) ||
+          (index > 0 && revision.predecessorDigest !== canonicalDigest(group[index - 1]))
+        ) throw new Error(`Import Source Baseline predecessor chain is invalid for ${baseline.id}`)
+        validateBaselineMembers(revision)
+      }
+      if (canonicalDigest(group.at(-1)) !== canonicalDigest(baseline)) {
+        throw new Error(`Import current Source Baseline does not match immutable history for ${baseline.id}`)
+      }
+    }
+    for (const baselineId of sourceBaselineHistoryGroups.keys()) {
+      if (!currentBaselineById.has(baselineId)) {
+        throw new Error(`Import immutable Source Baseline history has no current snapshot: ${baselineId}`)
+      }
+    }
+
+    const sourceProvenance = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("source-provenance/"))
+      .map(([, record]) => sourceProvenanceSchema.parse(record))
+    const sourceProvenanceById = new Map(sourceProvenance.map((record) => [record.id, record]))
+    for (const provenance of sourceProvenance) {
+      if (!initiativesById.has(provenance.initiativeId)) {
+        throw new Error(`Import Source Provenance ${provenance.id} has no Initiative`)
+      }
+      const availableDigests = new Set<string>()
+      const transformationOutputs = new Set<string>()
+      for (const source of provenance.sources) {
+        const resolved = resolveExactSource(source.reference).snapshot
+        if (resolved.initiativeId !== provenance.initiativeId) {
+          throw new Error(`Import Source Provenance ${provenance.id} contains a Source from another Initiative`)
+        }
+        availableDigests.add(source.reference.contentDigest)
+      }
+      for (const transformation of provenance.transformations) {
+        if (transformation.inputDigests.some((digest) => !availableDigests.has(digest))) {
+          throw new Error(`Import Source Provenance ${provenance.id} has an unresolved transformation input`)
+        }
+        if (transformationOutputs.has(transformation.outputDigest)) {
+          throw new Error(`Import Source Provenance ${provenance.id} reuses a transformation output digest`)
+        }
+        transformationOutputs.add(transformation.outputDigest)
+        availableDigests.add(transformation.outputDigest)
+      }
+      const provenanceTargetDigest = provenance.target.kind === "governed-record"
+        ? provenance.target.reference.digest
+        : provenance.target.digest
+      if (!availableDigests.has(provenanceTargetDigest)) {
+        throw new Error(`Import Source Provenance ${provenance.id} target is not produced by its exact lineage`)
+      }
+      if (provenance.target.kind === "governed-record") resolveExact(provenance.target.reference)
+      if (provenance.generation.kind === "run") resolveExact(provenance.generation.run)
+      if (provenance.amendment) {
+        const amended = sourceProvenanceById.get(provenance.amendment.recordId)
+        if (
+          !amended ||
+          amended.initiativeId !== provenance.initiativeId ||
+          canonicalDigest(amended) !== provenance.amendment.recordDigest
+        ) throw new Error(`Import Source Provenance ${provenance.id} amendment is unresolved`)
+      }
+    }
+
     for (const change of changes) {
       if (!initiativesById.has(change.initiativeId)) throw new Error(`Import Change ${change.id} has no Initiative`)
       if (change.baseline.kind === "exact") {
@@ -3567,6 +3797,13 @@ export class ProductStudioService {
     if (/^workflow-plans\/[0-9a-f-]+\.json$/i.test(path)) return "workflow-plan"
     if (/^tools\/[0-9a-f-]+\.json$/i.test(path)) return "tool-definition"
     if (/^tool-selections\/[0-9a-f-]+\.json$/i.test(path)) return "run-tool-selection"
+    if (/^sources\/[0-9a-f-]+\.json$/i.test(path)) return "source-record"
+    if (/^source-history\/source-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) return "source-record-revision"
+    if (/^source-baselines\/[0-9a-f-]+\.json$/i.test(path)) return "source-baseline-snapshot"
+    if (/^source-baseline-history\/baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "source-baseline-snapshot"
+    }
+    if (/^source-provenance\/[0-9a-f-]+\.json$/i.test(path)) return "source-provenance-record"
     if (/^record-history\/[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) return "product-record-revision"
     if (/^sessions\/charter-[0-9a-f-]+\.json$/i.test(path)) return "execution-charter"
     if (/^sessions\/run-[0-9a-f-]+\.json$/i.test(path)) return "run"
@@ -3597,6 +3834,13 @@ export class ProductStudioService {
     if (/^workflow-plans\/[0-9a-f-]+\.json$/i.test(path)) return workflowPlanSchema
     if (/^tools\/[0-9a-f-]+\.json$/i.test(path)) return toolDefinitionSchema
     if (/^tool-selections\/[0-9a-f-]+\.json$/i.test(path)) return runToolSelectionSchema
+    if (/^sources\/[0-9a-f-]+\.json$/i.test(path)) return sourceRecordSchema
+    if (/^source-history\/source-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) return sourceRecordRevisionSchema
+    if (/^source-baselines\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^source-baseline-history\/baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return sourceBaselineSchema
+    }
+    if (/^source-provenance\/[0-9a-f-]+\.json$/i.test(path)) return sourceProvenanceSchema
     if (/^record-history\/[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) return productRecordRevisionSchema
     if (/^sessions\/charter-[0-9a-f-]+\.json$/i.test(path)) return executionCharterSchema
     if (/^sessions\/run-[0-9a-f-]+\.json$/i.test(path)) return runSchema

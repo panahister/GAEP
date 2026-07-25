@@ -38,6 +38,10 @@ import {
   repositoryTransactionBodySchema,
   repositoryTransactionSchema,
   runSchema,
+  sourceBaselineSchema,
+  sourceProvenanceSchema,
+  sourceRecordRevisionSchema,
+  sourceRecordSchema,
   requirementSchema,
   riskSchema,
   runToolSelectionSchema,
@@ -69,6 +73,11 @@ const directoryNames = [
   "design-revisions",
   "product-history",
   "record-history",
+  "sources",
+  "source-history",
+  "source-baselines",
+  "source-baseline-history",
+  "source-provenance",
   "initiatives",
   "changes",
   "work-items",
@@ -825,6 +834,11 @@ export class GaepRepository {
       ["design-revisions", /^[0-9a-f-]+\.json$/i],
       ["product-history", /^product-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["record-history", /^[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["sources", /^[0-9a-f-]+\.json$/i],
+      ["source-history", /^source-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["source-baselines", /^[0-9a-f-]+\.json$/i],
+      ["source-baseline-history", /^baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["source-provenance", /^[0-9a-f-]+\.json$/i],
       ["initiatives", /^[0-9a-f-]+\.json$/i],
       ["changes", /^[0-9a-f-]+\.json$/i],
       ["work-items", /^[0-9a-f-]+\.json$/i],
@@ -891,6 +905,19 @@ export class GaepRepository {
     }
     if (/^record-history\/[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, productRecordRevisionSchema)
+    }
+    if (/^sources\/[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, sourceRecordSchema)
+    }
+    if (/^source-history\/source-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, sourceRecordRevisionSchema)
+    }
+    if (/^source-baselines\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^source-baseline-history\/baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, sourceBaselineSchema)
+    }
+    if (/^source-provenance\/[0-9a-f-]+\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, sourceProvenanceSchema)
     }
     if (/^changes\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, changeSchema)
     if (/^work-items\/[0-9a-f-]+\.json$/i.test(relativePath)) return this.readJsonUnlocked(path, workItemSchema)
