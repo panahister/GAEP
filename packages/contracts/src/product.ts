@@ -39,6 +39,59 @@ const initiativeBoundedTextSchema = z.string().trim().min(2).max(2_000)
 const initiativeDigestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/)
 const initiativeIdentifierSchema = z.string().regex(/^[a-z][a-z0-9.-]{0,127}$/)
 
+export const initiativeClassificationCompletenessDimensionIds = [
+  "primary-type",
+  "system-state",
+  "change-posture",
+  "motivation",
+  "interface-posture",
+  "data-posture",
+  "integration-posture",
+  "interaction-mode",
+  "exposure",
+  "regulation",
+  "sensitivity",
+  "expected-lifetime",
+  "maintenance-horizon",
+  "blast-radius",
+  "reversibility",
+  "urgency",
+  "cost-of-failure",
+  "dependencies",
+  "affected-assets",
+  "owner",
+  "accountable-authority",
+  "confidence",
+  "evidence",
+  "unresolved-questions",
+] as const
+
+export const initiativeClassificationCompletenessPolicySchema = z.object({
+  schemaVersion: z.literal(1),
+  kind: z.literal("initiative-classification-completeness-policy"),
+  policyVersion: z.literal("gaep-initiative-classification-completeness-v1"),
+  productId: z.string().uuid(),
+  productRevision: z.number().int().positive(),
+  productDigest: initiativeDigestSchema,
+  productProfile: productProfileSchema,
+  requiredDimensions: z.array(z.enum(initiativeClassificationCompletenessDimensionIds))
+    .length(initiativeClassificationCompletenessDimensionIds.length),
+  minimumConfidence: z.literal("medium"),
+  unknownValueDisposition: z.literal("attention-required"),
+  unresolvedQuestionDisposition: z.literal("attention-required"),
+  regulatedPolicyDomainDisposition: z.literal("at-least-one-policy-domain-required"),
+  authorityBoundary: z.literal("completeness-policy-evaluates-classification-evidence-and-does-not-classify-approve-or-authorize"),
+}).strict().superRefine((policy, context) => {
+  if (policy.requiredDimensions.some((dimension, index) =>
+    dimension !== initiativeClassificationCompletenessDimensionIds[index])) {
+    context.addIssue({
+      code: "custom",
+      path: ["requiredDimensions"],
+      message: "Classification completeness dimensions must match the canonical ordered policy",
+    })
+  }
+})
+
 export const initiativeTypeSchema = z.enum([
   "product",
   "platform",
@@ -169,6 +222,89 @@ export const initiativeApplicabilitySubjectSchema = z.object({
   key: initiativeIdentifierSchema,
   label: initiativeBoundedTextSchema,
 }).strict()
+
+export const initiativeApplicabilitySubjectDefinitions = [
+  { type: "phase", key: "intake", label: "Initiative intake" },
+  { type: "phase", key: "initiative-classification", label: "Initiative classification" },
+  { type: "phase", key: "existing-system-assessment", label: "Existing-system and lifecycle-state assessment" },
+  { type: "phase", key: "scope-criticality-assessment", label: "Scope and criticality assessment" },
+  { type: "phase", key: "applicability-assessment", label: "Applicability assessment" },
+  { type: "phase", key: "architecture-assurance-resolution", label: "Architecture and assurance resolution" },
+  { type: "phase", key: "implementation-verification", label: "Implementation and verification" },
+  { type: "phase", key: "release-operation-learning", label: "Release, operation, and learning" },
+  { type: "activity", key: "product-discovery", label: "Product discovery" },
+  { type: "activity", key: "business-architecture", label: "Business architecture" },
+  { type: "activity", key: "experience-design", label: "Experience and interaction design" },
+  { type: "activity", key: "existing-system-discovery", label: "Existing-system discovery" },
+  { type: "activity", key: "human-ai-challenge", label: "Human-AI challenge" },
+  { type: "activity", key: "threat-modeling", label: "Threat modeling" },
+  { type: "activity", key: "identity-authorization-analysis", label: "Identity and authorization analysis" },
+  { type: "activity", key: "technology-selection", label: "Technology selection" },
+  { type: "activity", key: "change-impact-analysis", label: "Change and impact analysis" },
+  { type: "artifact", key: "initiative-profile", label: "Initiative Profile" },
+  { type: "artifact", key: "applicability-matrix", label: "Applicability Matrix" },
+  { type: "artifact", key: "source-baseline", label: "Source baseline" },
+  { type: "artifact", key: "requirements-acceptance", label: "Requirements and acceptance criteria" },
+  { type: "artifact", key: "architecture-assets", label: "Architecture Assets" },
+  { type: "artifact", key: "technology-profile", label: "Technology Profile" },
+  { type: "artifact", key: "assurance-strategy", label: "Assurance Strategy and Profile" },
+  { type: "artifact", key: "release-evidence", label: "Release evidence package" },
+  { type: "capability", key: "design-reference-integration", label: "Design-reference integration" },
+  { type: "capability", key: "governed-agent-execution", label: "Governed agent execution" },
+  { type: "capability", key: "managed-staging", label: "Managed staged changes" },
+  { type: "capability", key: "provider-model-handoff", label: "Provider and model handoff" },
+  { type: "test-method", key: "unit-testing", label: "Unit testing" },
+  { type: "test-method", key: "integration-testing", label: "Integration testing" },
+  { type: "test-method", key: "consumer-contract-testing", label: "Consumer contract testing" },
+  { type: "test-method", key: "security-testing", label: "Security testing" },
+  { type: "test-method", key: "usability-accessibility-testing", label: "Usability and accessibility testing" },
+  { type: "test-level", key: "component", label: "Component test level" },
+  { type: "test-level", key: "service", label: "Service test level" },
+  { type: "test-level", key: "system", label: "System test level" },
+  { type: "test-level", key: "acceptance", label: "Acceptance test level" },
+  { type: "approval", key: "initiative-entry", label: "Initiative entry approval" },
+  { type: "approval", key: "architecture", label: "Architecture approval" },
+  { type: "approval", key: "security", label: "Security approval" },
+  { type: "approval", key: "implementation", label: "Implementation approval" },
+  { type: "approval", key: "release", label: "Release approval" },
+  { type: "evidence-obligation", key: "classification", label: "Classification evidence" },
+  { type: "evidence-obligation", key: "applicability", label: "Applicability evidence" },
+  { type: "evidence-obligation", key: "traceability", label: "Traceability evidence" },
+  { type: "evidence-obligation", key: "test-results", label: "Test result evidence" },
+  { type: "evidence-obligation", key: "approval", label: "Approval evidence" },
+  { type: "evidence-obligation", key: "rollback-operability", label: "Rollback and operability evidence" },
+] as const satisfies readonly z.infer<typeof initiativeApplicabilitySubjectSchema>[]
+
+export const initiativeApplicabilitySubjectCatalogSchema = z.object({
+  schemaVersion: z.literal(1),
+  kind: z.literal("initiative-applicability-subject-catalog"),
+  catalogVersion: z.literal("gaep-initiative-applicability-subjects-v1"),
+  productId: z.string().uuid(),
+  productRevision: z.number().int().positive(),
+  productDigest: initiativeDigestSchema,
+  productProfile: productProfileSchema,
+  classificationDigest: initiativeDigestSchema,
+  subjects: z.array(initiativeApplicabilitySubjectSchema)
+    .length(initiativeApplicabilitySubjectDefinitions.length),
+  authorityBoundary: z.literal("subject-catalog-defines-evaluation-coverage-and-does-not-decide-applicability-approve-or-authorize"),
+}).strict().superRefine((catalog, context) => {
+  const seen = new Set<string>()
+  for (const [index, expected] of initiativeApplicabilitySubjectDefinitions.entries()) {
+    const subject = catalog.subjects[index]
+    const key = subject ? `${subject.type}:${subject.key}` : ""
+    if (seen.has(key)) {
+      context.addIssue({ code: "custom", path: ["subjects", index], message: "Applicability catalog subjects must be unique" })
+    }
+    seen.add(key)
+    if (!subject || subject.type !== expected.type || subject.key !== expected.key || subject.label !== expected.label) {
+      context.addIssue({
+        code: "custom",
+        path: ["subjects", index],
+        message: "Applicability subjects must match the canonical ordered catalog",
+      })
+    }
+  }
+})
 
 const initiativeRelatedRecordSchema = z.object({
   recordType: initiativeIdentifierSchema,
@@ -357,10 +493,12 @@ export const initiativeSchema = z.object({
 export type Product = z.infer<typeof productSchema>
 export type Initiative = z.infer<typeof initiativeSchema>
 export type InitiativeType = z.infer<typeof initiativeTypeSchema>
+export type InitiativeClassificationCompletenessPolicy = z.infer<typeof initiativeClassificationCompletenessPolicySchema>
 export type InitiativeClassificationInput = z.infer<typeof initiativeClassificationInputSchema>
 export type InitiativeClassification = z.infer<typeof initiativeClassificationSchema>
 export type InitiativeApplicabilityStatus = z.infer<typeof initiativeApplicabilityStatusSchema>
 export type InitiativeApplicabilitySubject = z.infer<typeof initiativeApplicabilitySubjectSchema>
+export type InitiativeApplicabilitySubjectCatalog = z.infer<typeof initiativeApplicabilitySubjectCatalogSchema>
 export type InitiativeApplicabilityDecisionInput = z.infer<typeof initiativeApplicabilityDecisionInputSchema>
 export type InitiativeApplicabilityDecision = z.infer<typeof initiativeApplicabilityDecisionSchema>
 export type InitiativeApplicabilityMatrixInput = z.infer<typeof initiativeApplicabilityMatrixInputSchema>

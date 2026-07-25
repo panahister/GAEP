@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest"
 import {
   initiativeApplicabilityDecisionInputSchema,
   initiativeApplicabilityMatrixInputSchema,
+  initiativeApplicabilitySubjectCatalogSchema,
+  initiativeApplicabilitySubjectDefinitions,
+  initiativeClassificationCompletenessDimensionIds,
+  initiativeClassificationCompletenessPolicySchema,
   initiativeClassificationInputSchema,
 } from "./product.js"
 
@@ -56,6 +60,71 @@ export const applicabilityDecisionInput = {
 } as const
 
 describe("Initiative classification and applicability contracts", () => {
+  it("binds the exact Product-scoped classification completeness policy", () => {
+    const policy = {
+      schemaVersion: 1,
+      kind: "initiative-classification-completeness-policy",
+      policyVersion: "gaep-initiative-classification-completeness-v1",
+      productId: "11111111-1111-4111-8111-111111111111",
+      productRevision: 2,
+      productDigest: `sha256:${"a".repeat(64)}`,
+      productProfile: "software",
+      requiredDimensions: [...initiativeClassificationCompletenessDimensionIds],
+      minimumConfidence: "medium",
+      unknownValueDisposition: "attention-required",
+      unresolvedQuestionDisposition: "attention-required",
+      regulatedPolicyDomainDisposition: "at-least-one-policy-domain-required",
+      authorityBoundary: "completeness-policy-evaluates-classification-evidence-and-does-not-classify-approve-or-authorize",
+    } as const
+
+    expect(initiativeClassificationCompletenessPolicySchema.parse(policy)).toEqual(policy)
+    expect(initiativeClassificationCompletenessPolicySchema.safeParse({
+      ...policy,
+      requiredDimensions: policy.requiredDimensions.slice(1),
+    }).success).toBe(false)
+    expect(initiativeClassificationCompletenessPolicySchema.safeParse({
+      ...policy,
+      requiredDimensions: [policy.requiredDimensions[1], policy.requiredDimensions[0], ...policy.requiredDimensions.slice(2)],
+    }).success).toBe(false)
+  })
+
+  it("binds every canonical applicability subject by ordered type, key, and label", () => {
+    const catalog = {
+      schemaVersion: 1,
+      kind: "initiative-applicability-subject-catalog",
+      catalogVersion: "gaep-initiative-applicability-subjects-v1",
+      productId: "11111111-1111-4111-8111-111111111111",
+      productRevision: 2,
+      productDigest: `sha256:${"a".repeat(64)}`,
+      productProfile: "software",
+      classificationDigest: `sha256:${"b".repeat(64)}`,
+      subjects: initiativeApplicabilitySubjectDefinitions.map((subject) => ({ ...subject })),
+      authorityBoundary: "subject-catalog-defines-evaluation-coverage-and-does-not-decide-applicability-approve-or-authorize",
+    } as const
+
+    expect(initiativeApplicabilitySubjectCatalogSchema.parse(catalog)).toEqual(catalog)
+    expect(new Set(catalog.subjects.map((subject) => `${subject.type}:${subject.key}`)).size)
+      .toBe(initiativeApplicabilitySubjectDefinitions.length)
+    expect(new Set(catalog.subjects.map((subject) => subject.type))).toEqual(new Set([
+      "phase",
+      "activity",
+      "artifact",
+      "capability",
+      "test-method",
+      "test-level",
+      "approval",
+      "evidence-obligation",
+    ]))
+    expect(initiativeApplicabilitySubjectCatalogSchema.safeParse({
+      ...catalog,
+      subjects: catalog.subjects.slice(0, -1),
+    }).success).toBe(false)
+    expect(initiativeApplicabilitySubjectCatalogSchema.safeParse({
+      ...catalog,
+      subjects: catalog.subjects.map((subject, index) => index === 0 ? { ...subject, label: "Drifted label" } : subject),
+    }).success).toBe(false)
+  })
+
   it("accepts a multi-dimensional classification and rejects contradictory lists", () => {
     expect(initiativeClassificationInputSchema.parse(classificationInput)).toEqual(classificationInput)
     expect(initiativeClassificationInputSchema.safeParse({
