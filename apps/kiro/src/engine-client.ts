@@ -14,6 +14,7 @@ import {
   initiativeEntryAssessmentSchema,
   initiativeSchema,
   sourceGovernanceProjectionSchema,
+  valueStreamModelProjectionSchema,
   type Initiative,
   type BusinessCapabilityMapProjection,
   type BusinessUnderstandingProjection,
@@ -21,6 +22,7 @@ import {
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
   type SourceGovernanceProjection,
+  type ValueStreamModelProjection,
 } from "@gaep/contracts"
 
 import {
@@ -231,6 +233,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = businessCapabilityMapProjectionSchema.safeParse(
         await this.request("business.capabilities.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readValueStreamModel(initiativeValue: string): Promise<ValueStreamModelProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = valueStreamModelProjectionSchema.safeParse(
+        await this.request("business.valueStreams.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

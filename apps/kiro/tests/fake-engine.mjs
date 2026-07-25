@@ -31,6 +31,7 @@ const businessUnderstandingId = "33333333-3333-4333-8333-333333333333"
 const stakeholderModelId = "34343434-3434-4434-8434-343434343434"
 const outcomeModelId = "35353535-3535-4535-8535-353535353535"
 const businessCapabilityMapId = "36363636-3636-4636-8636-363636363636"
+const valueStreamModelId = "37373737-3737-4737-8737-373737373737"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -74,6 +75,8 @@ input.on("line", (line) => {
       return readBusinessUnderstanding(id, request.params)
     case "business.capabilities.snapshot":
       return readBusinessCapabilityMap(id, request.params)
+    case "business.valueStreams.snapshot":
+      return readValueStreamModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -413,6 +416,73 @@ function readBusinessCapabilityMap(id, params) {
   if (workspacePath.endsWith("bad-capability-snapshot-digest")) value.capabilityMap.openGapCount = 3
   if (workspacePath.endsWith("bad-capability-snapshot-private")) {
     value.capabilityNarrative = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readValueStreamModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE VALUE STREAM PARAMS")
+  }
+  const modelDigest = `sha256:${"7".repeat(64)}`
+  const assessment = {
+    schemaVersion: 1,
+    kind: "value-stream-model-assessment",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    valueStreamModel: { recordId: valueStreamModelId, revision: 2, digest: modelDigest },
+    valueStreamCount: 3,
+    ownedValueStreamCount: 2,
+    unownedValueStreamCount: 1,
+    stageCount: 9,
+    dependencyCount: 2,
+    capabilityCoverageCount: 6,
+    outcomeCoverageCount: 2,
+    absentFlowEvidenceCount: 1,
+    openBottleneckCount: 2,
+    criticalBottleneckCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more value streams do not have a candidate owner"],
+    assessedAt: "2026-07-25T05:00:00.000Z",
+    authorityBoundary: "value-stream-model-assessment-reports-recorded-candidate-flow-coverage-and-gaps-and-does-not-approve-baseline-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "value-stream-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: {
+      id: initiativeId,
+      revision: initiativeState.revision,
+      digest: canonicalDigest(initiativeState),
+      state: initiativeState.state,
+    },
+    assessment,
+    valueStreamModel: {
+      id: valueStreamModelId,
+      revision: 2,
+      digest: modelDigest,
+      state: "candidate",
+      valueStreamCount: 3,
+      ownedValueStreamCount: 2,
+      stageCount: 9,
+      dependencyCount: 2,
+      openBottleneckCount: 2,
+      criticalBottleneckCount: 1,
+      updatedAt: "2026-07-25T04:59:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-value-stream-narrative-personal-data-source-content-locators-or-credentials",
+    authorityBoundary: "value-stream-model-projection-does-not-approve-baseline-priority-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-value-stream-snapshot-binding")) content.initiative.id = valueStreamModelId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-value-stream-snapshot-digest")) value.valueStreamModel.openBottleneckCount = 3
+  if (workspacePath.endsWith("bad-value-stream-snapshot-private")) {
+    value.valueStreamNarrative = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

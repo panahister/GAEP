@@ -52,6 +52,7 @@
     "onCommand:gaepKiro.sourceGovernance.inspect",
     "onCommand:gaepKiro.businessUnderstanding.inspect",
     "onCommand:gaepKiro.businessCapabilityMap.inspect",
+    "onCommand:gaepKiro.valueStreamModel.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -137,6 +138,10 @@
       {
         "command": "gaepKiro.businessCapabilityMap.inspect",
         "title": "GAEP for Kiro: Inspect Governed Business Capability Map"
+      },
+      {
+        "command": "gaepKiro.valueStreamModel.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Value Stream Model"
       },
       {
         "command": "gaepKiro.portableDesign.import",

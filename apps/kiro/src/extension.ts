@@ -14,6 +14,7 @@ import {
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
   type SourceGovernanceProjection,
+  type ValueStreamModelProjection,
 } from "@gaep/contracts"
 
 import {
@@ -75,6 +76,7 @@ const commandIds = {
   sourceGovernance: "gaepKiro.sourceGovernance.inspect",
   businessUnderstanding: "gaepKiro.businessUnderstanding.inspect",
   businessCapabilityMap: "gaepKiro.businessCapabilityMap.inspect",
+  valueStreamModel: "gaepKiro.valueStreamModel.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -167,6 +169,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.sourceGovernance, (input?: unknown) => runUserCommand(() => showSourceGovernance(pool, input))),
     vscode.commands.registerCommand(commandIds.businessUnderstanding, (input?: unknown) => runUserCommand(() => showBusinessUnderstanding(pool, input))),
     vscode.commands.registerCommand(commandIds.businessCapabilityMap, (input?: unknown) => runUserCommand(() => showBusinessCapabilityMap(pool, input))),
+    vscode.commands.registerCommand(commandIds.valueStreamModel, (input?: unknown) => runUserCommand(() => showValueStreamModel(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -581,6 +584,47 @@ async function showBusinessCapabilityMap(
     ...(map ? [
       `Map counts: ${map.capabilityCount} capabilities · ${map.ownedCapabilityCount} owned · ${map.openGapCount} open gaps · ${map.criticalGapCount} critical gaps · ${map.candidatePriorityCount} candidate priorities`,
       `Updated: ${map.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showValueStreamModel(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ValueStreamModelProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Value Stream Model", "Initiative ID")
+  const projection = await client.readValueStreamModel(initiativeId)
+  const model = projection.valueStreamModel
+  const lines = [
+    "GAEP governed Value Stream Model",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${projection.assessment.state}`,
+    `Assessment counts: ${projection.assessment.valueStreamCount} value streams · ${projection.assessment.ownedValueStreamCount} owned · ${projection.assessment.unownedValueStreamCount} unowned · ${projection.assessment.stageCount} stages · ${projection.assessment.dependencyCount} dependencies · ${projection.assessment.capabilityCoverageCount} capabilities covered · ${projection.assessment.outcomeCoverageCount} outcomes covered`,
+    `Flow gaps: ${projection.assessment.absentFlowEvidenceCount} stages without evidence · ${projection.assessment.openBottleneckCount} open bottlenecks · ${projection.assessment.criticalBottleneckCount} critical bottlenecks · ${projection.assessment.staleBindingCount} stale bindings · ${projection.assessment.staleSourceReferenceCount} stale Source references`,
+    ...projection.assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Value Stream Model: ${model
+      ? `${model.id}@${model.revision} · ${model.state} · ${model.digest}`
+      : "not recorded"}`,
+    ...(model ? [
+      `Model counts: ${model.valueStreamCount} value streams · ${model.ownedValueStreamCount} owned · ${model.stageCount} stages · ${model.dependencyCount} dependencies · ${model.openBottleneckCount} open bottlenecks · ${model.criticalBottleneckCount} critical bottlenecks`,
+      `Updated: ${model.updatedAt}`,
     ] : []),
     "",
     `Snapshot digest: ${projection.snapshotDigest}`,
