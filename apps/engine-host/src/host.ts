@@ -105,6 +105,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "business.capabilities.revise",
   "business.capabilities.assess",
   "business.capabilities.snapshot",
+  "business.valueStreams.read",
+  "business.valueStreams.create",
+  "business.valueStreams.revise",
+  "business.valueStreams.assess",
+  "business.valueStreams.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -800,6 +805,26 @@ export class EngineHost {
         return this.engine.businessCapabilityMap.assess(request.params.initiativeId)
       case "business.capabilities.snapshot":
         return this.engine.businessCapabilityMap.project(request.params.initiativeId)
+      case "business.valueStreams.read":
+        return await this.engine.valueStreamModel.readCurrent(
+          request.params.initiativeId,
+        ) ?? null
+      case "business.valueStreams.create":
+        return this.engine.valueStreamModel.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "business.valueStreams.revise":
+        return this.engine.valueStreamModel.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "business.valueStreams.assess":
+        return this.engine.valueStreamModel.assess(request.params.initiativeId)
+      case "business.valueStreams.snapshot":
+        return this.engine.valueStreamModel.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

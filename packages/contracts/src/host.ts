@@ -26,6 +26,7 @@ import {
   sourceProvenanceInputSchema,
   sourceRecordInputSchema,
 } from "./source-governance.js"
+import { valueStreamModelInputSchema } from "./value-stream-model.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -250,6 +251,18 @@ export const hostBusinessCapabilityMapReviseParamsSchema = z.object({
   record: businessCapabilityMapInputSchema,
 }).strict()
 
+export const hostValueStreamModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: valueStreamModelInputSchema,
+}).strict()
+
+export const hostValueStreamModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: valueStreamModelInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -316,6 +329,11 @@ export const hostMethodSchema = z.enum([
   "business.capabilities.revise",
   "business.capabilities.assess",
   "business.capabilities.snapshot",
+  "business.valueStreams.read",
+  "business.valueStreams.create",
+  "business.valueStreams.revise",
+  "business.valueStreams.assess",
+  "business.valueStreams.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -394,6 +412,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("business.capabilities.revise", hostBusinessCapabilityMapReviseParamsSchema),
   requestVariant("business.capabilities.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("business.capabilities.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.valueStreams.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.valueStreams.create", hostValueStreamModelCreateParamsSchema),
+  requestVariant("business.valueStreams.revise", hostValueStreamModelReviseParamsSchema),
+  requestVariant("business.valueStreams.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.valueStreams.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

@@ -723,6 +723,37 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "value-stream-read-empty",
+      protocolVersion: 2,
+      method: "business.valueStreams.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "value-stream-assess-empty",
+      protocolVersion: 2,
+      method: "business.valueStreams.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      valueStreamCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-approve"),
+    })
+    const valueStreamProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "value-stream-snapshot-empty",
+      protocolVersion: 2,
+      method: "business.valueStreams.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: valueStreamSnapshotDigest, ...valueStreamProjectionBody } = valueStreamProjection
+    expect(valueStreamSnapshotDigest).toBe(canonicalDigest(valueStreamProjectionBody))
+    expect(valueStreamProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-value-stream-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-approve"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -735,6 +766,12 @@ describe("engine host protocol", () => {
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "value-stream-v1-block",
+      method: "business.valueStreams.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "capability-extra-authority",
       protocolVersion: 2,
       method: "business.capabilities.create",
@@ -743,6 +780,19 @@ describe("engine host protocol", () => {
         record: {
           initiativeId,
           approval: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "value-stream-extra-authority",
+      protocolVersion: 2,
+      method: "business.valueStreams.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          approvedBaseline: true,
         },
       },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
