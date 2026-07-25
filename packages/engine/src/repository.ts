@@ -46,6 +46,7 @@ import {
   sourceRecordRevisionSchema,
   sourceRecordSchema,
   stakeholderModelSchema,
+  valueStreamModelSchema,
   requirementSchema,
   riskSchema,
   runToolSelectionSchema,
@@ -86,6 +87,8 @@ const directoryNames = [
   "business-understanding-history",
   "business-capability-maps",
   "business-capability-map-history",
+  "value-stream-models",
+  "value-stream-model-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -855,6 +858,8 @@ export class GaepRepository {
       ["business-understanding-history", /^business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["business-capability-maps", /^[0-9a-f-]+\.json$/i],
       ["business-capability-map-history", /^business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["value-stream-models", /^[0-9a-f-]+\.json$/i],
+      ["value-stream-model-history", /^value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -946,6 +951,10 @@ export class GaepRepository {
     if (/^business-capability-maps\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^business-capability-map-history\/business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, businessCapabilityMapSchema)
+    }
+    if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, valueStreamModelSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

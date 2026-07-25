@@ -6,6 +6,7 @@ import {
   businessCapabilityMapInputSchema,
   stakeholderCategoryValues,
   stakeholderModelInputSchema,
+  valueStreamModelInputSchema,
   type BusinessCapabilityMap,
   type BusinessCapabilityMapInput,
   type BusinessUnderstanding,
@@ -19,6 +20,7 @@ import {
   type SourceRecordInput,
   type StakeholderModel,
   type StakeholderModelInput,
+  type ValueStreamModelInput,
 } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -414,6 +416,71 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function valueStreamInput(
+    business: BusinessUnderstanding,
+    stakeholder: StakeholderModel,
+    outcome: Awaited<ReturnType<typeof engine.businessUnderstanding.createOutcomeModel>>,
+    capabilityMap: BusinessCapabilityMap,
+    overrides: Partial<ValueStreamModelInput> = {},
+  ): ValueStreamModelInput {
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      businessUnderstanding: businessReference(business),
+      stakeholderModel: stakeholderReference(stakeholder),
+      outcomeModel: { recordId: outcome.id, revision: outcome.revision, digest: canonicalDigest(outcome) },
+      capabilityMap: {
+        recordId: capabilityMap.id,
+        revision: capabilityMap.revision,
+        digest: canonicalDigest(capabilityMap),
+      },
+      valueStreams: [{
+        key: "governed-delivery",
+        name: "Governed context delivery",
+        purpose: "Deliver attributable Product context to a stakeholder without losing exact upstream evidence.",
+        placement: "gaep-native-authority",
+        trigger: "A bounded Product Initiative requires governed context before downstream engineering work begins.",
+        valueProposition: "The receiving stakeholder obtains exact portable context with visible limitations and no synthesized authority.",
+        ownerStakeholderKey: "primary-user",
+        beneficiaryStakeholderKeys: ["primary-user"],
+        participatingStakeholderKeys: ["primary-user"],
+        objectiveIds: ["reduce-context-loss"],
+        outcomeIds: ["trusted-context"],
+        capabilityKeys: ["governed-context"],
+        dependencyKeys: [],
+        stages: [{
+          key: "preserve-context",
+          sequence: 1,
+          name: "Preserve governed context",
+          purpose: "Bind the current business evidence and capability identity into portable candidate context.",
+          entryCriteria: ["Exact governed upstream records are available"],
+          exitCriteria: ["Portable candidate context retains every exact governed binding"],
+          capabilityKeys: ["governed-context"],
+          participatingStakeholderKeys: ["primary-user"],
+          outcomeIds: ["trusted-context"],
+          inputs: ["Exact upstream business records"],
+          outputs: ["Bounded portable context record"],
+          flowEvidence: {
+            state: "observed",
+            statement: "The contract and engine tests observe exact binding through the bounded value-delivery stage.",
+            sources: [reference()],
+          },
+          sources: [reference()],
+        }],
+        bottlenecks: [],
+        externalDependencies: ["Governed Source inventory"],
+        burden: "Exact binding requires explicit superseding revisions whenever upstream business truth changes.",
+        risk: "A candidate flow description could be mistaken for an approved operating process or delivery commitment.",
+        exitPath: "Retire the candidate stream through a superseding revision while preserving immutable history.",
+        lifecycle: "candidate",
+        sources: [reference()],
+      }],
+      limitations: ["No realistic Product Owner acceptance or organization-wide value-stream baseline is represented."],
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -589,6 +656,119 @@ describe("Business understanding governance", () => {
         state: "candidate",
         authorityBoundary: expect.stringContaining("does-not-approve"),
       },
+    })
+  })
+
+  it("governs an exact immutable Value Stream Model and projects privacy-safe flow counts", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const model = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+
+    expect(await engine.valueStreamModel.assess(initiative.id)).toMatchObject({
+      valueStreamModel: { recordId: model.id, revision: 1, digest: canonicalDigest(model) },
+      valueStreamCount: 1,
+      ownedValueStreamCount: 1,
+      unownedValueStreamCount: 0,
+      stageCount: 1,
+      dependencyCount: 0,
+      capabilityCoverageCount: 1,
+      outcomeCoverageCount: 1,
+      absentFlowEvidenceCount: 0,
+      openBottleneckCount: 0,
+      criticalBottleneckCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.valueStreamModel.project(initiative.id)
+    expect(projection).toMatchObject({
+      valueStreamModel: {
+        id: model.id,
+        revision: 1,
+        valueStreamCount: 1,
+        ownedValueStreamCount: 1,
+        stageCount: 1,
+        dependencyCount: 0,
+        openBottleneckCount: 0,
+      },
+      privacyBoundary: expect.stringContaining("not-value-stream-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-approve"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Governed context delivery")
+    expect(projection.snapshotDigest).toBe(canonicalDigest({ ...projection, snapshotDigest: undefined }))
+
+    const revised = await engine.valueStreamModel.revise(
+      model.id,
+      model.revision,
+      valueStreamInput(business, stakeholder, outcome, capabilityMap, {
+        limitations: ["A realistic end-to-end stakeholder flow review remains outstanding."],
+      }),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: model.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(model),
+      state: "candidate",
+    })
+    expect((await engine.valueStreamModel.listHistory(model.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+  })
+
+  it("rejects hostile Value Stream graphs and reports stale capability-map bindings", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const base = valueStreamInput(business, stakeholder, outcome, capabilityMap)
+    expect(() => valueStreamModelInputSchema.parse({
+      ...base,
+      valueStreams: [{
+        ...base.valueStreams[0]!,
+        dependencyKeys: ["missing-stream"],
+      }],
+    })).toThrow(/dependencies must reference/)
+    expect(() => valueStreamModelInputSchema.parse({
+      ...base,
+      valueStreams: [{
+        ...base.valueStreams[0]!,
+        purpose: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable flow context",
+      }],
+    })).toThrow(/secret-shaped/)
+
+    await expect(engine.valueStreamModel.create({
+      ...base,
+      valueStreams: [{
+        ...base.valueStreams[0]!,
+        capabilityKeys: ["invented-capability"],
+        stages: [{
+          ...base.valueStreams[0]!.stages[0]!,
+          capabilityKeys: ["invented-capability"],
+        }],
+      }],
+    }, actorId)).rejects.toThrow(/exact bound Business Capability Map/)
+
+    const model = await engine.valueStreamModel.create(base, actorId)
+    await engine.businessCapabilityMap.revise(
+      capabilityMap.id,
+      capabilityMap.revision,
+      capabilityMapInput(business, stakeholder, outcome, {
+        limitations: ["The exact capability-map revision changed after value-stream modeling."],
+      }),
+      actorId,
+    )
+    expect(await engine.valueStreamModel.assess(initiative.id)).toMatchObject({
+      valueStreamModel: { recordId: model.id },
+      staleBindingCount: 1,
+      state: "attention-required",
     })
   })
 
