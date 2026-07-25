@@ -1,9 +1,10 @@
 const assert = require("node:assert/strict")
 const { createHash } = require("node:crypto")
-const { access, readFile } = require("node:fs/promises")
+const { readFile } = require("node:fs/promises")
 const path = require("node:path")
 
 const vscode = require("vscode")
+const { inspectPortableStore, verifyPortableStore } = require("../store-integrity.cjs")
 
 const extensionId = "gaep.gaep-kiro"
 const commands = [
@@ -26,8 +27,12 @@ const studioViewType = "gaepKiro.productStudio"
 
 async function run() {
   const workspace = path.resolve(process.env.GAEP_KIRO_E2E_WORKSPACE)
+  const fixtureProductName = process.env.GAEP_KIRO_E2E_PRODUCT_NAME
+  const fixtureStoreManifest = JSON.parse(process.env.GAEP_KIRO_E2E_STORE_MANIFEST)
   assert.equal(vscode.workspace.workspaceFolders?.length, 1)
   assert.equal(path.resolve(vscode.workspace.workspaceFolders[0].uri.fsPath), workspace)
+  assert.equal(typeof fixtureProductName, "string")
+  assert.deepEqual(await verifyPortableStore(path.join(workspace, ".gaep"), fixtureStoreManifest), fixtureStoreManifest)
 
   const extension = vscode.extensions.getExtension(extensionId)
   assert.ok(extension, `${extensionId} must be present in the isolated Extension Development Host`)
@@ -60,6 +65,26 @@ async function run() {
   await vscode.commands.executeCommand("gaepKiro.openProductStudio")
   const tab = await waitFor(productStudioTab, "GAEP for Kiro Product Studio did not open")
   assert.equal(tab.label, "GAEP for Kiro Product Studio")
+
+  const dashboardRequest = vscode.commands.executeCommand("gaepKiro.dashboard.agentModel")
+  const dashboardDocument = await waitFor(
+    () => vscode.workspace.textDocuments.find((document) => document.getText().startsWith("GAEP exact Agent and Model dashboard\n")),
+    "The installed package-local engine did not return the Agent and Model dashboard",
+    60_000,
+  )
+  const dashboardText = dashboardDocument.getText()
+  for (const marker of [
+    "Selection: unselected",
+    "Provider usage: unavailable; current Managed Run records have no provider usage contract.",
+    "Provider cost: unavailable; current Managed Run records have no provider cost contract.",
+    "Observed capabilities (2/2):",
+    "gaep.codex-cli/codex-cli",
+    "gaep.claude-code-cli/claude-code-cli",
+    "Boundary: this read-only projection cannot select or switch an agent, create a handoff, launch a Run, authorize a Tool/write/effect, approve an outcome, establish readiness, or grant release authority.",
+  ]) assert.ok(dashboardText.includes(marker), `Agent and Model dashboard must include ${marker}`)
+  assertPrivateSafe(dashboardText, workspace, fixtureProductName)
+  await dashboardRequest
+
   const evidenceRequest = vscode.commands.executeCommand("gaepKiro.runs.evidence")
   const evidenceDocument = await waitFor(
     () => vscode.workspace.textDocuments.find((document) => document.getText().startsWith("GAEP bounded Managed Run evidence\n")),
@@ -72,8 +97,16 @@ async function run() {
   assert.equal(evidenceText.includes(workspace), false)
   await vscode.commands.executeCommand("notifications.clearAll")
   await evidenceRequest
-  await assert.rejects(access(path.join(workspace, ".gaep")), (error) => error?.code === "ENOENT")
-  process.stdout.write(`PASS activation: fourteen bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, empty audit-gated evidence workflow, and no workspace mutation\n`)
+  const finalStoreManifest = await inspectPortableStore(path.join(workspace, ".gaep"))
+  assert.deepEqual(finalStoreManifest, fixtureStoreManifest)
+  process.stdout.write("PASS installed compatible-host provider/model/dashboard smoke: two bounded capability rows, unselected model state, unavailable usage/cost, private-safe output, and immutable fixture store\n")
+  process.stdout.write(`PASS activation: fourteen bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model dashboard, empty audit-gated evidence workflow, and no workspace mutation\n`)
+}
+
+function assertPrivateSafe(content, workspace, fixtureProductName) {
+  for (const privateValue of [workspace, fixtureProductName, "gaep.kiro-e2e-owner"]) {
+    assert.equal(content.includes(privateValue), false, "installed metadata output exposed private fixture content")
+  }
 }
 
 function productStudioTab() {

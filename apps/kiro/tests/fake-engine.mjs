@@ -306,7 +306,7 @@ function readAgentModel(id, params) {
   const expectedCapabilities = readiness.map((entry) => ({
     adapterId: entry.adapterId,
     agentId: entry.agentId,
-    capabilityDigest: canonicalDigest(entry),
+    capabilityDigest: stableCapabilityDigest(entry),
   })).sort((left, right) => `${left.adapterId}:${left.agentId}`.localeCompare(`${right.adapterId}:${right.agentId}`))
   const expectedSelection = selectedAgent
     ? { status: "selected", selectionDigest: canonicalDigest(selectedAgent) }
@@ -324,7 +324,7 @@ function readAgentModel(id, params) {
     agentId: entry.agentId,
     agentLabel: entry.agentLabel,
     runtimeVersion: entry.runtimeVersion ?? null,
-    capabilityDigest: canonicalDigest(entry),
+    capabilityDigest: stableCapabilityDigest(entry),
     detected: entry.detected,
     executionInterface: entry.executionInterface,
     interfaceMaturity: entry.interfaceMaturity,
@@ -1051,6 +1051,11 @@ function readSnapshot(id, params) {
     default:
       return writeResult(id, snapshot(params.bundleId))
   }
+}
+
+function stableCapabilityDigest(entry) {
+  const { observedAt: _observedAt, ...stable } = entry
+  return canonicalDigest(stable)
 }
 
 function snapshot(id = bundleId) {

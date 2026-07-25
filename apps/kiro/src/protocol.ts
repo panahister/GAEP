@@ -2963,6 +2963,7 @@ function parseAgentReadinessSnapshot(snapshot: JsonRecord): AgentReadinessSnapsh
   const models = Object.freeze(snapshot.models.map((model) => parseAgentModel(requireRecord(model))))
   if (new Set(models.map((model) => model.id)).size !== models.length) throw invalidHostResponse()
   const limitations = Object.freeze(snapshot.limitations.map((limitation) => portableText(limitation)))
+  const { observedAt: _observedAt, ...stableCapabilitySnapshot } = snapshot
   return Object.freeze({
     schemaVersion: 1,
     adapterId,
@@ -2983,7 +2984,7 @@ function parseAgentReadinessSnapshot(snapshot: JsonRecord): AgentReadinessSnapsh
     models,
     limitations,
     observedAt: requireTimestamp(snapshot, "observedAt"),
-    capabilityDigest: canonicalDigest(snapshot),
+    capabilityDigest: canonicalDigest(stableCapabilitySnapshot),
   })
 }
 

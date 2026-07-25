@@ -148,9 +148,10 @@
     "package": "npm run build && vsce package --no-dependencies --allow-missing-repository -o dist/gaep-kiro.vsix",
     "test:package-contract": "node --test test/package-contract.test.mjs",
     "test": "node esbuild.mjs --tests && node --test dist-test/unit.test.mjs",
-    "test:extension-host": "npm run package && npm run verify:package && node test/e2e/run.mjs",
+    "test:extension-contract": "node --test test/store-integrity.test.mjs",
+    "test:extension-host": "npm --prefix ../.. run build --workspace @gaep/engine && npm run test:extension-contract && npm run package && npm run verify:package && node test/e2e/run.mjs",
     "typecheck": "tsc --noEmit --pretty false",
-    "verify": "npm run typecheck && npm test && npm run package && npm run verify:package && npm run test:package-contract",
+    "verify": "npm run typecheck && npm test && npm run test:extension-contract && npm run package && npm run verify:package && npm run test:package-contract",
     "verify:package": "node test/verify-package.mjs dist/gaep-kiro.vsix"
   },
   "devDependencies": {

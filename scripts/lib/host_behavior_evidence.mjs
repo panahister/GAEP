@@ -42,6 +42,8 @@ const definitions = {
       "apps/kiro/package.json",
       "apps/kiro/test/e2e/run.mjs",
       "apps/kiro/test/e2e/suite/index.cjs",
+      "apps/kiro/test/e2e/store-integrity.cjs",
+      "apps/kiro/test/store-integrity.test.mjs",
       "apps/kiro/test/e2e/harness/extension.cjs",
       "apps/kiro/test/e2e/harness/package.json",
       "apps/kiro/test/verify-package.mjs",
@@ -55,6 +57,7 @@ const definitions = {
       requiredMarkers: [
         "PASS exact bounded Kiro VSIX payload and built-byte parity",
         "PASS isolated compatible-host VSIX previous-version install/upgrade/reinstall/rollback/uninstall/absence/final install",
+        "PASS installed compatible-host provider/model/dashboard smoke: two bounded capability rows, unselected model state, unavailable usage/cost, private-safe output, and immutable fixture store",
         "GAEP for Kiro exact installed VSIX activation smoke: PASS",
       ],
     }],

@@ -7,7 +7,11 @@ import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 
 import { runTests } from "@vscode/test-electron"
+import { GaepEngine } from "@gaep/engine"
 import { createVsixLifecycleFixture } from "../../../../scripts/create_vsix_lifecycle_fixture.mjs"
+import storeIntegrity from "./store-integrity.cjs"
+
+const { inspectPortableStore } = storeIntegrity
 
 const extensionDevelopmentPath = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const testHarnessPath = join(extensionDevelopmentPath, "test/e2e/harness")
@@ -28,7 +32,21 @@ const exactPackage = `${packageId}@0.1.0`
 
 try {
   await Promise.all([workspace, profile, extensions].map((path) => mkdir(path, { recursive: true })))
+  const fixtureProductName = "Installed Kiro package private smoke fixture"
+  const fixtureEngine = new GaepEngine(workspace, [])
+  await fixtureEngine.createProduct({
+    name: fixtureProductName,
+    summary: "A disposable Product used only to exercise installed compatible-host metadata commands.",
+    problem: "An installed-package smoke must prove provider and model dashboard behavior without reading a real Product.",
+    affectedUsers: "Local GAEP package testers",
+    desiredOutcome: "Exercise exact private-safe metadata projections while leaving every fixture-store byte unchanged.",
+    successSignals: ["The installed commands return bounded metadata and preserve the exact fixture store"],
+    firstWorkflow: "Observe provider capability and unselected model metadata through the packaged engine.",
+    exclusions: ["Live provider requests", "Credentials", "Normal user profiles", "Source workspace mutation"],
+    profile: "internal-tool",
+  }, "gaep.kiro-e2e-owner")
   await writeFile(join(workspace, "README.md"), "# Isolated GAEP for Kiro extension-host fixture\n", "utf8")
+  const fixtureStoreManifest = await inspectPortableStore(join(workspace, ".gaep"))
   const cliEnvironment = {
     ...process.env,
     ELECTRON_RUN_AS_NODE: "1",
@@ -95,6 +113,8 @@ try {
     ],
     extensionTestsEnv: {
       GAEP_KIRO_E2E_WORKSPACE: workspace,
+      GAEP_KIRO_E2E_PRODUCT_NAME: fixtureProductName,
+      GAEP_KIRO_E2E_STORE_MANIFEST: JSON.stringify(fixtureStoreManifest),
       GAEP_ENGINE_EXECUTABLE: "",
       GAEP_ENGINE_SHA256: "",
     },
