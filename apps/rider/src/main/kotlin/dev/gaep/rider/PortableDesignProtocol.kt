@@ -806,6 +806,58 @@ data class SourceGovernanceProjection(
     val snapshotDigest: String,
 )
 
+data class BusinessUnderstandingRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val objectiveCount: Int,
+    val constraintCount: Int,
+    val assumptionCount: Int,
+    val unresolvedQuestionCount: Int,
+    val glossaryTermCount: Int,
+)
+
+data class StakeholderModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val stakeholderCount: Int,
+    val representedCategoryCount: Int,
+    val unresolvedCategoryCount: Int,
+    val verifiedAuthorityCount: Int,
+)
+
+data class OutcomeModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val outcomeCount: Int,
+    val measureCount: Int,
+    val countermetricCount: Int,
+    val burdenMeasureCount: Int,
+    val observedBaselineCount: Int,
+)
+
+data class BusinessUnderstandingProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val unresolvedQuestionCount: Int,
+    val blockingQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val businessUnderstanding: BusinessUnderstandingRecordView?,
+    val stakeholderModel: StakeholderModelRecordView?,
+    val outcomeModel: OutcomeModelRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -837,6 +889,12 @@ internal object PortableDesignProtocol {
         "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action"
     private const val SOURCE_ASSESSMENT_AUTHORITY_BOUNDARY =
         "source-governance-assessment-reports-recorded-evidence-and-does-not-designate-a-baseline-approve-readiness-or-authorize-action"
+    private const val BUSINESS_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-business-narrative-personal-data-source-content-locators-or-credentials"
+    private const val BUSINESS_PROJECTION_AUTHORITY_BOUNDARY =
+        "business-understanding-projection-does-not-approve-appoint-decide-designate-readiness-or-authorize-action"
+    private const val BUSINESS_ASSESSMENT_AUTHORITY_BOUNDARY =
+        "business-understanding-assessment-reports-recorded-candidate-evidence-and-does-not-approve-decide-designate-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -1794,6 +1852,225 @@ internal object PortableDesignProtocol {
             assessmentState, reasons, sourceCount, baselineCount, provenanceCount, staleSourceCount,
             unknownAuthorityCount, unbaselinedSourceCount, unprovenancedSourceCount, currentBaseline,
             sources, baselines, provenance, snapshotDigest,
+        )
+    }
+
+    fun parseBusinessUnderstandingEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): BusinessUnderstandingProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "assessment", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("businessUnderstanding", "stakeholderModel", "outcomeModel"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "business-understanding-projection" ||
+            projection.requireString("privacyBoundary") != BUSINESS_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != BUSINESS_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        fun reference(container: JsonObject, name: String): Reference? = container.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+
+        val assessment = projection.get("assessment").requireObject()
+        assessment.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "stakeholderCount", "representedStakeholderCategoryCount", "unresolvedStakeholderCategoryCount",
+                "verifiedAuthorityCount", "unverifiedAuthorityCount", "outcomeCount", "measureCount",
+                "observedBaselineCount", "unresolvedQuestionCount", "blockingQuestionCount", "staleBindingCount",
+                "staleSourceReferenceCount", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("businessUnderstanding", "stakeholderModel", "outcomeModel"),
+        )
+        if (assessment.requireInt("schemaVersion") != 1 ||
+            assessment.requireString("kind") != "business-understanding-assessment" ||
+            assessment.requireNonEmptyUuid("productId") != productId ||
+            assessment.requireLong("productRevision") != productRevision ||
+            assessment.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            assessment.requireLong("initiativeRevision") != initiativeRevision ||
+            assessment.requireString("authorityBoundary") != BUSINESS_ASSESSMENT_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val businessReference = reference(assessment, "businessUnderstanding")
+        val stakeholderReference = reference(assessment, "stakeholderModel")
+        val outcomeReference = reference(assessment, "outcomeModel")
+        val stakeholderCount = assessment.requireBoundedNonNegativeInt("stakeholderCount", 256)
+        val representedCategoryCount =
+            assessment.requireBoundedNonNegativeInt("representedStakeholderCategoryCount", 8)
+        val unresolvedCategoryCount =
+            assessment.requireBoundedNonNegativeInt("unresolvedStakeholderCategoryCount", 8)
+        val verifiedAuthorityCount = assessment.requireBoundedNonNegativeInt("verifiedAuthorityCount", 256)
+        val unverifiedAuthorityCount = assessment.requireBoundedNonNegativeInt("unverifiedAuthorityCount", 256)
+        val outcomeCount = assessment.requireBoundedNonNegativeInt("outcomeCount", 256)
+        val measureCount = assessment.requireBoundedNonNegativeInt("measureCount", 512)
+        val observedBaselineCount = assessment.requireBoundedNonNegativeInt("observedBaselineCount", measureCount)
+        val unresolvedQuestionCount = assessment.requireBoundedNonNegativeInt("unresolvedQuestionCount", 256)
+        val blockingQuestionCount =
+            assessment.requireBoundedNonNegativeInt("blockingQuestionCount", unresolvedQuestionCount)
+        val staleBindingCount = assessment.requireBoundedNonNegativeInt("staleBindingCount", 3)
+        val staleSourceReferenceCount =
+            assessment.requireBoundedNonNegativeInt("staleSourceReferenceCount", 10_000)
+        if (representedCategoryCount + unresolvedCategoryCount > 8 ||
+            verifiedAuthorityCount + unverifiedAuthorityCount > stakeholderCount
+        ) throw invalidResponse()
+        val assessmentState = assessment.requireOneOf(
+            "state",
+            setOf("complete-for-review", "attention-required"),
+        )
+        val reasonsElement = assessment.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = assessment.requireInstant("assessedAt")
+
+        fun matches(reference: Reference?, id: UUID, revision: Long, digest: String): Boolean =
+            reference?.let { it.id == id && it.revision == revision && it.digest == digest } == true
+
+        val business = projection.get("businessUnderstanding")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "objectiveCount", "constraintCount", "assumptionCount",
+                "unresolvedQuestionCount", "glossaryTermCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                !matches(businessReference, id, revision, digest)
+            ) throw invalidResponse()
+            val record = BusinessUnderstandingRecordView(
+                id,
+                revision,
+                digest,
+                value.requireBoundedNonNegativeInt("objectiveCount", 256),
+                value.requireBoundedNonNegativeInt("constraintCount", 256),
+                value.requireBoundedNonNegativeInt("assumptionCount", 256),
+                value.requireBoundedNonNegativeInt("unresolvedQuestionCount", 256),
+                value.requireBoundedNonNegativeInt("glossaryTermCount", 512),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        val stakeholders = projection.get("stakeholderModel")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "stakeholderCount", "representedCategoryCount",
+                "unresolvedCategoryCount", "verifiedAuthorityCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                !matches(stakeholderReference, id, revision, digest)
+            ) throw invalidResponse()
+            val record = StakeholderModelRecordView(
+                id,
+                revision,
+                digest,
+                value.requireBoundedNonNegativeInt("stakeholderCount", 256),
+                value.requireBoundedNonNegativeInt("representedCategoryCount", 8),
+                value.requireBoundedNonNegativeInt("unresolvedCategoryCount", 8),
+                value.requireBoundedNonNegativeInt("verifiedAuthorityCount", 256),
+            )
+            if (record.representedCategoryCount + record.unresolvedCategoryCount > 8 ||
+                record.verifiedAuthorityCount > record.stakeholderCount
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        val outcomes = projection.get("outcomeModel")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "outcomeCount", "measureCount", "countermetricCount",
+                "burdenMeasureCount", "observedBaselineCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                !matches(outcomeReference, id, revision, digest)
+            ) throw invalidResponse()
+            val recordMeasureCount = value.requireBoundedNonNegativeInt("measureCount", 512)
+            val record = OutcomeModelRecordView(
+                id,
+                revision,
+                digest,
+                value.requireBoundedNonNegativeInt("outcomeCount", 256),
+                recordMeasureCount,
+                value.requireBoundedNonNegativeInt("countermetricCount", recordMeasureCount),
+                value.requireBoundedNonNegativeInt("burdenMeasureCount", recordMeasureCount),
+                value.requireBoundedNonNegativeInt("observedBaselineCount", recordMeasureCount),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((businessReference == null) != (business == null) ||
+            (stakeholderReference == null) != (stakeholders == null) ||
+            (outcomeReference == null) != (outcomes == null) ||
+            (business?.unresolvedQuestionCount ?: 0) != unresolvedQuestionCount ||
+            (stakeholders?.stakeholderCount ?: 0) != stakeholderCount ||
+            (stakeholders?.representedCategoryCount ?: 0) != representedCategoryCount ||
+            (stakeholders?.unresolvedCategoryCount ?: 0) != unresolvedCategoryCount ||
+            (stakeholders?.verifiedAuthorityCount ?: 0) != verifiedAuthorityCount ||
+            (outcomes?.outcomeCount ?: 0) != outcomeCount ||
+            (outcomes?.measureCount ?: 0) != measureCount ||
+            (outcomes?.observedBaselineCount ?: 0) != observedBaselineCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+
+        return BusinessUnderstandingProjection(
+            productId,
+            productRevision,
+            productDigest,
+            initiativeId,
+            initiativeRevision,
+            initiativeDigest,
+            initiativeState,
+            assessmentState,
+            reasons,
+            unresolvedQuestionCount,
+            blockingQuestionCount,
+            staleBindingCount,
+            staleSourceReferenceCount,
+            business,
+            stakeholders,
+            outcomes,
+            snapshotDigest,
         )
     }
 

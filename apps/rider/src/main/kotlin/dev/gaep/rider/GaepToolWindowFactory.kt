@@ -114,6 +114,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += sourceGovernanceButton
         actions.add(sourceGovernanceButton)
 
+        val businessUnderstandingButton = JButton("Inspect Business Understanding…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Business narrative, personal assignments, Source content, local paths, credentials, and authority are withheld.",
+                    "GAEP Business Understanding",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Business Understanding", status, output, buttons) {
+                    controller.readBusinessUnderstanding(initiativeId)
+                }
+            }
+        }
+        buttons += businessUnderstandingButton
+        actions.add(businessUnderstandingButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {
@@ -242,6 +258,10 @@ class GaepToolWindowFactory : ToolWindowFactory {
             "Source governance boundary: the Initiative-bound view contains bounded Source, candidate Baseline, and " +
                 "Provenance metadata only. It exposes no Source bytes, locators, local paths, or credentials and cannot " +
                 "designate a Baseline, approve readiness, transfer authority, or authorize action. " +
+            "Business Understanding boundary: the Initiative-bound view contains exact governed record identities, " +
+                "revisions, digests, states, counts, and assessment status only. It exposes no business narrative, personal " +
+                "assignments, Source content, locators, local paths, or credentials and cannot approve, appoint, decide, " +
+                "designate readiness, or authorize action. " +
             "Change/Impact boundary: selection and projection are exact, audit-gated, read-only metadata views; " +
                 "they cannot approve a Change, accept a Risk, mutate records, or authorize effects. " +
             "Agent boundary: Codex and Claude readiness is observation-only; guarded selection and versioned handoff record portable configuration and history only. " +

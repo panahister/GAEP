@@ -13,6 +13,9 @@ private val initiativeId = UUID.fromString("22222222-2222-4222-8222-222222222222
 private val sourceId = UUID.fromString("36363636-3636-4636-8636-363636363636")
 private val sourceBaselineId = UUID.fromString("37373737-3737-4737-8737-373737373737")
 private val sourceProvenanceId = UUID.fromString("38383838-3838-4838-8838-383838383838")
+private val businessUnderstandingId = UUID.fromString("39393939-3939-4939-8939-393939393939")
+private val stakeholderModelId = UUID.fromString("40404040-4040-4040-8040-404040404040")
+private val outcomeModelId = UUID.fromString("41414141-4141-4141-8141-414141414141")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -86,6 +89,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "source.snapshot" -> handleSourceGovernance(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "business.snapshot" -> handleBusinessUnderstanding(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -349,6 +357,129 @@ private fun handleSourceGovernance(id: Long, params: JsonObject, workspacePath: 
         }
         workspacePath.endsWith("bad-source-snapshot-private") -> {
             value.addProperty("privateRoot", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleBusinessUnderstanding(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BUSINESS UNDERSTANDING PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-business-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-25T00:04:00.000Z"
+    val businessDigest = "sha256:${"3".repeat(64)}"
+    val stakeholderDigest = "sha256:${"4".repeat(64)}"
+    val outcomeDigest = "sha256:${"5".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "business-understanding-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("assessment", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "business-understanding-assessment")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("businessUnderstanding", JsonObject().apply {
+                addProperty("recordId", businessUnderstandingId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", businessDigest)
+            })
+            add("stakeholderModel", JsonObject().apply {
+                addProperty("recordId", stakeholderModelId.toString())
+                addProperty("revision", 1)
+                addProperty("digest", stakeholderDigest)
+            })
+            add("outcomeModel", JsonObject().apply {
+                addProperty("recordId", outcomeModelId.toString())
+                addProperty("revision", 1)
+                addProperty("digest", outcomeDigest)
+            })
+            addProperty("stakeholderCount", 8)
+            addProperty("representedStakeholderCategoryCount", 8)
+            addProperty("unresolvedStakeholderCategoryCount", 0)
+            addProperty("verifiedAuthorityCount", 0)
+            addProperty("unverifiedAuthorityCount", 0)
+            addProperty("outcomeCount", 2)
+            addProperty("measureCount", 4)
+            addProperty("observedBaselineCount", 4)
+            addProperty("unresolvedQuestionCount", 0)
+            addProperty("blockingQuestionCount", 0)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "complete-for-review")
+            add("reasons", JsonArray())
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "business-understanding-assessment-reports-recorded-candidate-evidence-and-does-not-approve-decide-designate-readiness-or-authorize-action",
+            )
+        })
+        add("businessUnderstanding", JsonObject().apply {
+            addProperty("id", businessUnderstandingId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", businessDigest)
+            addProperty("state", "candidate")
+            addProperty("objectiveCount", 3)
+            addProperty("constraintCount", 2)
+            addProperty("assumptionCount", 1)
+            addProperty("unresolvedQuestionCount", 0)
+            addProperty("glossaryTermCount", 5)
+            addProperty("updatedAt", "2026-07-25T00:03:30.000Z")
+        })
+        add("stakeholderModel", JsonObject().apply {
+            addProperty("id", stakeholderModelId.toString())
+            addProperty("revision", 1)
+            addProperty("digest", stakeholderDigest)
+            addProperty("state", "candidate")
+            addProperty("stakeholderCount", 8)
+            addProperty("representedCategoryCount", 8)
+            addProperty("unresolvedCategoryCount", 0)
+            addProperty("verifiedAuthorityCount", 0)
+            addProperty("updatedAt", "2026-07-25T00:03:35.000Z")
+        })
+        add("outcomeModel", JsonObject().apply {
+            addProperty("id", outcomeModelId.toString())
+            addProperty("revision", 1)
+            addProperty("digest", outcomeDigest)
+            addProperty("state", "candidate")
+            addProperty("outcomeCount", 2)
+            addProperty("measureCount", 4)
+            addProperty("countermetricCount", 1)
+            addProperty("burdenMeasureCount", 1)
+            addProperty("observedBaselineCount", 4)
+            addProperty("updatedAt", "2026-07-25T00:03:40.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-business-narrative-personal-data-source-content-locators-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "business-understanding-projection-does-not-approve-appoint-decide-designate-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-business-snapshot-digest") -> {
+            value.getAsJsonObject("outcomeModel").addProperty("measureCount", 5)
+        }
+        workspacePath.endsWith("bad-business-snapshot-private") -> {
+            value.addProperty("personalAssignment", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

@@ -215,6 +215,73 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readBusinessUnderstanding(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readBusinessUnderstanding(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) {
+            "The Product or Initiative changed while Business Understanding was read. Refresh the exact records."
+        }
+        return renderBusinessUnderstanding(projection)
+    }
+
+    fun renderBusinessUnderstanding(projection: BusinessUnderstandingProjection): String = buildString {
+        appendLine("GAEP governed Business Understanding")
+        appendLine()
+        appendLine(
+            "Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · " +
+                projection.initiativeState,
+        )
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Assessment gaps: ${projection.unresolvedQuestionCount} unresolved questions · " +
+                "${projection.blockingQuestionCount} blocking questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.businessUnderstanding?.let { record ->
+            appendLine("Business Understanding: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine(
+                "Business counts: ${record.objectiveCount} objectives · ${record.constraintCount} constraints · " +
+                    "${record.assumptionCount} assumptions · ${record.unresolvedQuestionCount} unresolved questions · " +
+                    "${record.glossaryTermCount} glossary terms",
+            )
+        } ?: appendLine("Business Understanding: not recorded")
+        appendLine()
+        projection.stakeholderModel?.let { record ->
+            appendLine("Stakeholder Model: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine(
+                "Stakeholder counts: ${record.stakeholderCount} stakeholders · " +
+                    "${record.representedCategoryCount} represented categories · " +
+                    "${record.unresolvedCategoryCount} unresolved categories · " +
+                    "${record.verifiedAuthorityCount} verified authority claims",
+            )
+        } ?: appendLine("Stakeholder Model: not recorded")
+        appendLine()
+        projection.outcomeModel?.let { record ->
+            appendLine("Outcome Model: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine(
+                "Outcome counts: ${record.outcomeCount} outcomes · ${record.measureCount} measures · " +
+                    "${record.countermetricCount} countermetrics · ${record.burdenMeasureCount} burden measures · " +
+                    "${record.observedBaselineCount} observed baselines",
+            )
+        } ?: appendLine("Outcome Model: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view contains record identities, revisions, digests, states, counts, and " +
+                "assessment status only. It exposes no business narrative, personal assignments, Source content, locators, " +
+                "local paths, or credentials and grants no approval, appointment, decision, readiness, or action authority.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,
