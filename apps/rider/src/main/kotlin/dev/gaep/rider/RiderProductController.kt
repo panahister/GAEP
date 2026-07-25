@@ -35,25 +35,38 @@ internal class RiderProductController(private val client: GaepEngineClient) {
             "The Initiative changed while its entry assessment was read. Refresh the exact record."
         }
         val classification = initiative.classification
+        val completeness = assessment.classification.completeness
         require(
             when (assessment.classification.status) {
                 "missing" -> classification == null && assessment.classification.digest == null
                 "current" -> classification != null && assessment.classification.digest == classification.digest &&
                     classification.productRevision == assessment.productRevision &&
-                    classification.productDigest == assessment.productDigest
+                    classification.productDigest == assessment.productDigest &&
+                    classification.completenessPolicyVersion == completeness.policyVersion &&
+                    classification.completenessPolicyDigest == completeness.policyDigest
                 "stale" -> classification != null && assessment.classification.digest == classification.digest &&
                     (classification.productRevision != assessment.productRevision ||
-                        classification.productDigest != assessment.productDigest)
+                        classification.productDigest != assessment.productDigest ||
+                        classification.completenessPolicyVersion != completeness.policyVersion ||
+                        classification.completenessPolicyDigest != completeness.policyDigest)
                 else -> false
             },
         ) { "The Initiative classification assessment is not bound to the exact current record." }
         val applicability = initiative.applicability
+        val coverage = assessment.applicability.coverage
         require(
             when (assessment.applicability.status) {
                 "missing" -> applicability == null && assessment.applicability.matrixRevision == null &&
                     assessment.applicability.digest == null
-                "current", "stale" -> applicability != null &&
-                    assessment.applicability.status == applicability.state &&
+                "current" -> applicability != null && applicability.state == "current" &&
+                    assessment.applicability.matrixRevision == applicability.revision &&
+                    assessment.applicability.digest == applicability.digest &&
+                    assessment.applicability.decisionCount == applicability.decisionCount &&
+                    assessment.applicability.unresolvedSubjectCount == applicability.unresolvedSubjectCount &&
+                    applicability.subjectCatalog?.catalogVersion == coverage.catalogVersion &&
+                    applicability.subjectCatalog?.digest == coverage.catalogDigest &&
+                    applicability.subjectCatalog?.subjectCount == coverage.subjectCount
+                "stale" -> applicability != null &&
                     assessment.applicability.matrixRevision == applicability.revision &&
                     assessment.applicability.digest == applicability.digest &&
                     assessment.applicability.decisionCount == applicability.decisionCount &&
@@ -61,6 +74,18 @@ internal class RiderProductController(private val client: GaepEngineClient) {
                 else -> false
             },
         ) { "The Initiative applicability assessment is not bound to the exact current record." }
+        require(
+            when (coverage.status) {
+                "unavailable" -> coverage.catalogVersion == null && coverage.catalogDigest == null &&
+                    coverage.subjectCount == 0 && assessment.classification.status == "missing"
+                "missing" -> applicability == null && coverage.catalogVersion != null && coverage.catalogDigest != null
+                "complete", "incomplete" -> assessment.applicability.status == "current" &&
+                    coverage.catalogVersion != null && coverage.catalogDigest != null
+                "stale" -> assessment.applicability.status == "stale" &&
+                    coverage.catalogVersion != null && coverage.catalogDigest != null
+                else -> false
+            },
+        ) { "The Initiative applicability coverage is not bound to the exact current catalog." }
         return InitiativeEntryContext(initiative, assessment)
     }
 
@@ -76,9 +101,29 @@ internal class RiderProductController(private val client: GaepEngineClient) {
             "Classification: ${assessment.classification.status}" +
                 initiative.classification?.let { " · ${it.primaryType} / ${it.productProfile}" }.orEmpty(),
         )
+        appendLine("Classification completeness: ${assessment.classification.completeness.status}")
+        appendLine("Completeness policy: ${assessment.classification.completeness.policyVersion}")
+        appendLine(
+            "Classification gaps: ${assessment.classification.completeness.unknownDimensionCount} unknown · " +
+                "${assessment.classification.completeness.unresolvedQuestionCount} unresolved question(s) · " +
+                "${assessment.classification.completeness.missingConditionalDimensionCount} missing conditional dimension(s)",
+        )
+        appendLine(
+            "Classification confidence sufficient: ${assessment.classification.completeness.confidenceSufficient}",
+        )
         appendLine(
             "Applicability: ${assessment.applicability.status} · matrix revision " +
                 (assessment.applicability.matrixRevision ?: "not recorded"),
+        )
+        appendLine("Applicability coverage: ${assessment.applicability.coverage.status}")
+        appendLine(
+            "Canonical subject coverage: ${assessment.applicability.coverage.coveredSubjectCount}/" +
+                assessment.applicability.coverage.subjectCount,
+        )
+        appendLine(
+            "Coverage gaps: ${assessment.applicability.coverage.missingSubjectCount} missing · " +
+                "${assessment.applicability.coverage.unexpectedSubjectCount} unexpected · " +
+                "${assessment.applicability.coverage.mismatchedSubjectCount} mismatched",
         )
         appendLine("Decisions: ${assessment.applicability.decisionCount}")
         appendLine("Unresolved subjects: ${assessment.applicability.unresolvedSubjectCount}")
@@ -128,10 +173,24 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         require(sameInitiativeEntryBinding(readInitiativeEntryContext(context.initiative.id), context)) {
             "The Initiative changed while the applicability form was open. Refresh and review the exact revision."
         }
+        val coverage = context.assessment.applicability.coverage
+        val subjectCatalog = InitiativeApplicabilitySubjectCatalogBinding(
+            catalogVersion = coverage.catalogVersion
+                ?: throw IllegalArgumentException("The canonical applicability subject catalog is unavailable."),
+            digest = coverage.catalogDigest
+                ?: throw IllegalArgumentException("The canonical applicability subject catalog is unavailable."),
+            subjectCount = coverage.subjectCount,
+        )
+        require(subjectCatalog.subjectCount > 0) {
+            "The canonical applicability subject catalog is unavailable."
+        }
+        require(input.subjectCatalog == null || input.subjectCatalog == subjectCatalog) {
+            "The applicability form targets a stale subject catalog. Refresh and review the exact catalog."
+        }
         val updated = client.resolveInitiativeApplicability(
             context.initiative.id,
             context.initiative.revision,
-            input,
+            input.copy(subjectCatalog = subjectCatalog),
             actorId,
         )
         return renderInitiativeEntry(readInitiativeEntryContext(updated.id))

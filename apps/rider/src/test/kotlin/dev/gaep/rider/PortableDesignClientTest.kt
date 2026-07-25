@@ -182,7 +182,9 @@ class PortableDesignClientTest {
             val initial = controller.readInitiativeEntryContext(entryId)
             assertEquals(1, initial.initiative.revision)
             assertEquals("missing", initial.assessment.classification.status)
+            assertEquals("missing", initial.assessment.classification.completeness.status)
             assertEquals("missing", initial.assessment.applicability.status)
+            assertEquals("unavailable", initial.assessment.applicability.coverage.status)
             assertEquals("attention-required", initial.assessment.state)
             assertTrue(controller.renderInitiativeEntry(initial).contains("grants no approval, readiness"))
 
@@ -192,7 +194,10 @@ class PortableDesignClientTest {
             assertEquals("founder.rider-entry", classified.classification?.classifiedBy)
             val classifiedContext = controller.readInitiativeEntryContext(entryId)
             assertEquals("current", classifiedContext.assessment.classification.status)
+            assertEquals("incomplete", classifiedContext.assessment.classification.completeness.status)
+            assertEquals(1, classifiedContext.assessment.classification.completeness.unresolvedQuestionCount)
             assertEquals("missing", classifiedContext.assessment.applicability.status)
+            assertEquals(49, classifiedContext.assessment.applicability.coverage.missingSubjectCount)
 
             val resolved = client.resolveInitiativeApplicability(
                 entryId,
@@ -206,8 +211,13 @@ class PortableDesignClientTest {
             val finalContext = controller.readInitiativeEntryContext(entryId)
             assertEquals("current", finalContext.assessment.applicability.status)
             assertEquals(1, finalContext.assessment.applicability.pendingApprovalCount)
+            assertEquals("incomplete", finalContext.assessment.applicability.coverage.status)
+            assertEquals(1, finalContext.assessment.applicability.coverage.coveredSubjectCount)
+            assertEquals(48, finalContext.assessment.applicability.coverage.missingSubjectCount)
             assertEquals("attention-required", finalContext.assessment.state)
             val rendered = controller.renderInitiativeEntry(finalContext)
+            assertTrue(rendered.contains("Classification completeness: incomplete"))
+            assertTrue(rendered.contains("Canonical subject coverage: 1/49"))
             assertFalse(rendered.contains(privateRoot))
             assertFalse(rendered.contains(privateCredential))
             val reclassifiedView = controller.classifyInitiative(
@@ -221,7 +231,8 @@ class PortableDesignClientTest {
             assertTrue(reclassifiedView.contains("Assessment: attention-required"))
         }
 
-        listOf("bad-initiative-private", "bad-entry-boundary").forEachIndexed { index, name ->
+        listOf("bad-initiative-private", "bad-entry-boundary", "bad-entry-policy", "bad-entry-coverage")
+            .forEachIndexed { index, name ->
             val root = Files.createDirectory(temporaryRoot.resolve(name))
             GaepEngineClient(root, executable.toString()).use { client ->
                 val error = if (index == 0) {
@@ -1115,7 +1126,7 @@ class PortableDesignClientTest {
         decisions = listOf(
             InitiativeApplicabilityDecisionInput(
                 subject = InitiativeApplicabilitySubject(
-                    "test-level",
+                    "test-method",
                     "consumer-contract-testing",
                     "Consumer contract testing",
                 ),
@@ -1133,6 +1144,11 @@ class PortableDesignClientTest {
             ),
         ),
         unresolvedSubjects = emptyList(),
+        subjectCatalog = InitiativeApplicabilitySubjectCatalogBinding(
+            catalogVersion = "gaep-initiative-applicability-subjects-v1",
+            digest = "sha256:${"f".repeat(64)}",
+            subjectCount = 49,
+        ),
     )
 
     private fun assertInvalidResponse(client: GaepEngineClient, id: UUID) {

@@ -1198,6 +1198,13 @@ internal object PortableDesignProtocol {
     }
 
     fun initiativeApplicabilityInputToJson(input: InitiativeApplicabilityMatrixInput): JsonObject = JsonObject().apply {
+        input.subjectCatalog?.let { catalog ->
+            add("subjectCatalog", JsonObject().apply {
+                addProperty("catalogVersion", catalog.catalogVersion)
+                addProperty("digest", catalog.digest)
+                addProperty("subjectCount", catalog.subjectCount)
+            })
+        }
         add("decisions", JsonArray().apply {
             input.decisions.forEach { decision ->
                 add(JsonObject().apply {
@@ -1341,16 +1348,34 @@ internal object PortableDesignProtocol {
             throw invalidResponse()
         }
         val classification = assessment.get("classification").requireObject()
-        classification.requireKeys(setOf("status"), setOf("digest"))
+        classification.requireKeys(setOf("status", "completeness"), setOf("digest"))
         val classificationStatus = classification.requireOneOf("status", setOf("missing", "current", "stale"))
         val classificationDigest = classification.get("digest")?.let { classification.requireDigest("digest") }
         if ((classificationStatus == "missing") != (classificationDigest == null)) throw invalidResponse()
+        val completeness = classification.get("completeness").requireObject()
+        completeness.requireExactKeys(
+            "status", "policyVersion", "policyDigest", "unknownDimensionCount", "unresolvedQuestionCount",
+            "missingConditionalDimensionCount", "confidenceSufficient",
+        )
+        val completenessStatus = completeness.requireOneOf("status", setOf("missing", "complete", "incomplete", "stale"))
+        if ((classificationStatus == "missing" && completenessStatus != "missing") ||
+            (classificationStatus == "stale" && completenessStatus != "stale")
+        ) {
+            throw invalidResponse()
+        }
+        val completenessPolicyVersion = completeness.requireString("policyVersion")
+        if (completenessPolicyVersion != "gaep-initiative-classification-completeness-v1") throw invalidResponse()
+        val completenessCounts = listOf(
+            "unknownDimensionCount",
+            "unresolvedQuestionCount",
+            "missingConditionalDimensionCount",
+        ).map { completeness.requireBoundedNonNegativeInt(it, 512) }
 
         val applicability = assessment.get("applicability").requireObject()
         applicability.requireKeys(
             required = setOf(
                 "status", "decisionCount", "unresolvedSubjectCount", "pendingHumanDecisionCount",
-                "blockedDecisionCount", "pendingApprovalCount", "rejectedApprovalCount",
+                "blockedDecisionCount", "pendingApprovalCount", "rejectedApprovalCount", "coverage",
             ),
             optional = setOf("matrixRevision", "digest"),
         )
@@ -1372,6 +1397,38 @@ internal object PortableDesignProtocol {
                 512,
             )
         }
+        val coverage = applicability.get("coverage").requireObject()
+        coverage.requireKeys(
+            required = setOf(
+                "status", "subjectCount", "coveredSubjectCount", "missingSubjectCount",
+                "unexpectedSubjectCount", "mismatchedSubjectCount",
+            ),
+            optional = setOf("catalogVersion", "catalogDigest"),
+        )
+        val coverageStatus = coverage.requireOneOf(
+            "status",
+            setOf("unavailable", "missing", "complete", "incomplete", "stale"),
+        )
+        val catalogVersion = coverage.get("catalogVersion")?.let { coverage.requireString("catalogVersion") }
+        val catalogDigest = coverage.get("catalogDigest")?.let { coverage.requireDigest("catalogDigest") }
+        if ((catalogVersion == null) != (catalogDigest == null) ||
+            (coverageStatus == "unavailable") != (catalogVersion == null) ||
+            (catalogVersion != null && catalogVersion != "gaep-initiative-applicability-subjects-v1")
+        ) {
+            throw invalidResponse()
+        }
+        val coverageCounts = listOf(
+            "subjectCount",
+            "coveredSubjectCount",
+            "missingSubjectCount",
+            "unexpectedSubjectCount",
+            "mismatchedSubjectCount",
+        ).map { coverage.requireBoundedNonNegativeInt(it, 512) }
+        if (coverageCounts[1] + coverageCounts[2] + coverageCounts[4] != coverageCounts[0] ||
+            (coverageStatus == "complete" && coverageCounts.slice(2..4).any { it > 0 })
+        ) {
+            throw invalidResponse()
+        }
         val reasonsElement = assessment.get("reasons")
         if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 256) {
             throw invalidResponse()
@@ -1385,7 +1442,19 @@ internal object PortableDesignProtocol {
             productId = assessment.requireNonEmptyUuid("productId"),
             productRevision = productRevision,
             productDigest = assessment.requireDigest("productDigest"),
-            classification = InitiativeEntryAssessmentClassification(classificationStatus, classificationDigest),
+            classification = InitiativeEntryAssessmentClassification(
+                classificationStatus,
+                classificationDigest,
+                InitiativeClassificationCompletenessAssessment(
+                    completenessStatus,
+                    completenessPolicyVersion,
+                    completeness.requireDigest("policyDigest"),
+                    completenessCounts[0],
+                    completenessCounts[1],
+                    completenessCounts[2],
+                    completeness.requireBoolean("confidenceSufficient"),
+                ),
+            ),
             applicability = InitiativeEntryAssessmentApplicability(
                 applicabilityStatus,
                 matrixRevision,
@@ -1396,6 +1465,16 @@ internal object PortableDesignProtocol {
                 counts[3],
                 counts[4],
                 counts[5],
+                InitiativeApplicabilityCoverageAssessment(
+                    coverageStatus,
+                    catalogVersion,
+                    catalogDigest,
+                    coverageCounts[0],
+                    coverageCounts[1],
+                    coverageCounts[2],
+                    coverageCounts[3],
+                    coverageCounts[4],
+                ),
             ),
             state = state,
             reasons = reasons,
@@ -3462,7 +3541,16 @@ internal object PortableDesignProtocol {
     }
 
     private fun validateInitiativeApplicabilityInput(input: JsonObject) {
-        input.requireExactKeys("decisions", "unresolvedSubjects")
+        input.requireKeys(setOf("decisions", "unresolvedSubjects"), setOf("subjectCatalog"))
+        input.get("subjectCatalog")?.let { value ->
+            val catalog = value.requireObject()
+            catalog.requireExactKeys("catalogVersion", "digest", "subjectCount")
+            if (catalog.requireString("catalogVersion") != "gaep-initiative-applicability-subjects-v1") {
+                throw invalidResponse()
+            }
+            catalog.requireDigest("digest")
+            if (catalog.requireBoundedNonNegativeInt("subjectCount", 512) !in 1..512) throw invalidResponse()
+        }
         val decisions = input.get("decisions")
         if (decisions == null || !decisions.isJsonArray || decisions.asJsonArray.size() !in 1..512) {
             throw invalidResponse()
@@ -3547,16 +3635,20 @@ internal object PortableDesignProtocol {
     }
 
     private fun parseInitiativeClassification(classification: JsonObject): InitiativeClassificationView {
-        classification.requireExactKeys(
-            "primaryType", "secondaryTypes", "systemState", "changePosture", "motivations", "characteristics",
-            "regulated", "policyDomains", "sensitivities", "expectedLifetime", "maintenanceHorizon", "risk",
-            "dependencies", "affectedAssets", "owner", "accountableAuthority", "confidence", "evidence",
-            "unresolvedQuestions", "rationale", "productProfile", "productRevision", "productDigest", "classifiedBy",
-            "classifiedAt", "authorityBoundary",
+        classification.requireKeys(
+            required = setOf(
+                "primaryType", "secondaryTypes", "systemState", "changePosture", "motivations", "characteristics",
+                "regulated", "policyDomains", "sensitivities", "expectedLifetime", "maintenanceHorizon", "risk",
+                "dependencies", "affectedAssets", "owner", "accountableAuthority", "confidence", "evidence",
+                "unresolvedQuestions", "rationale", "productProfile", "productRevision", "productDigest", "classifiedBy",
+                "classifiedAt", "authorityBoundary",
+            ),
+            optional = setOf("completenessPolicyVersion", "completenessPolicyDigest"),
         )
         val input = classification.deepCopy().apply {
             listOf(
-                "productProfile", "productRevision", "productDigest", "classifiedBy", "classifiedAt", "authorityBoundary",
+                "productProfile", "productRevision", "productDigest", "completenessPolicyVersion",
+                "completenessPolicyDigest", "classifiedBy", "classifiedAt", "authorityBoundary",
             ).forEach(::remove)
         }
         validateInitiativeClassificationInput(input)
@@ -3565,6 +3657,15 @@ internal object PortableDesignProtocol {
         }
         val productRevision = classification.requireLong("productRevision")
         if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val completenessPolicyVersion = classification.get("completenessPolicyVersion")?.let {
+            classification.requireString("completenessPolicyVersion").also { version ->
+                if (version != "gaep-initiative-classification-completeness-v1") throw invalidResponse()
+            }
+        }
+        val completenessPolicyDigest = classification.get("completenessPolicyDigest")?.let {
+            classification.requireDigest("completenessPolicyDigest")
+        }
+        if ((completenessPolicyVersion == null) != (completenessPolicyDigest == null)) throw invalidResponse()
         return InitiativeClassificationView(
             primaryType = input.requireString("primaryType"),
             productProfile = classification.requireOneOf(
@@ -3573,6 +3674,8 @@ internal object PortableDesignProtocol {
             ),
             productRevision = productRevision,
             productDigest = classification.requireDigest("productDigest"),
+            completenessPolicyVersion = completenessPolicyVersion,
+            completenessPolicyDigest = completenessPolicyDigest,
             classifiedBy = parseInitiativeHuman(classification.get("classifiedBy").requireObject()),
             classifiedAt = classification.requireInstant("classifiedAt"),
             digest = canonicalDigest(classification),
@@ -3590,7 +3693,7 @@ internal object PortableDesignProtocol {
                 "decisions", "unresolvedSubjects", "schemaVersion", "kind", "revision", "initiativeId", "productId",
                 "initiativeRevision", "classificationDigest", "state", "evaluatedBy", "evaluatedAt", "authorityBoundary",
             ),
-            optional = setOf("invalidatedAt", "invalidationReason"),
+            optional = setOf("subjectCatalog", "invalidatedAt", "invalidationReason"),
         )
         if (matrix.requireInt("schemaVersion") != 1 ||
             matrix.requireString("kind") != "initiative-applicability-matrix" ||
@@ -3634,7 +3737,28 @@ internal object PortableDesignProtocol {
                 listOf("id", "revision", "initiativeRevision", "decidedBy", "decidedAt", "authorityBoundary").forEach(::remove)
             })
         }
+        val subjectCatalog = matrix.get("subjectCatalog")?.let { value ->
+            val catalog = value.requireObject()
+            catalog.requireExactKeys("catalogVersion", "digest", "subjectCount")
+            val catalogVersion = catalog.requireString("catalogVersion")
+            val subjectCount = catalog.requireBoundedNonNegativeInt("subjectCount", 512)
+            if (catalogVersion != "gaep-initiative-applicability-subjects-v1" || subjectCount !in 1..512) {
+                throw invalidResponse()
+            }
+            InitiativeApplicabilitySubjectCatalogBinding(
+                catalogVersion,
+                catalog.requireDigest("digest"),
+                subjectCount,
+            )
+        }
         val input = JsonObject().apply {
+            subjectCatalog?.let { catalog ->
+                add("subjectCatalog", JsonObject().apply {
+                    addProperty("catalogVersion", catalog.catalogVersion)
+                    addProperty("digest", catalog.digest)
+                    addProperty("subjectCount", catalog.subjectCount)
+                })
+            }
             add("decisions", decisionInputs)
             add("unresolvedSubjects", matrix.get("unresolvedSubjects").deepCopy())
         }
@@ -3650,6 +3774,7 @@ internal object PortableDesignProtocol {
             decisionCount = decisionInputs.size(),
             unresolvedSubjectCount = input.getAsJsonArray("unresolvedSubjects").size(),
             classificationDigest = matrix.requireDigest("classificationDigest"),
+            subjectCatalog = subjectCatalog,
             evaluatedBy = evaluatedBy,
             evaluatedAt = matrix.requireInstant("evaluatedAt"),
             digest = canonicalDigest(matrix),

@@ -47,6 +47,12 @@ data class InitiativeClassificationInput(
 
 data class InitiativeApplicabilitySubject(val type: String, val key: String, val label: String)
 
+data class InitiativeApplicabilitySubjectCatalogBinding(
+    val catalogVersion: String,
+    val digest: String,
+    val subjectCount: Int,
+)
+
 data class InitiativeApplicabilityApproval(
     val state: String,
     val conditions: List<String>,
@@ -85,6 +91,7 @@ data class InitiativeUnresolvedSubject(
 data class InitiativeApplicabilityMatrixInput(
     val decisions: List<InitiativeApplicabilityDecisionInput>,
     val unresolvedSubjects: List<InitiativeUnresolvedSubject>,
+    val subjectCatalog: InitiativeApplicabilitySubjectCatalogBinding? = null,
 )
 
 data class InitiativeClassificationView(
@@ -92,6 +99,8 @@ data class InitiativeClassificationView(
     val productProfile: String,
     val productRevision: Long,
     val productDigest: String,
+    val completenessPolicyVersion: String?,
+    val completenessPolicyDigest: String?,
     val classifiedBy: String,
     val classifiedAt: Instant,
     val digest: String,
@@ -105,6 +114,7 @@ data class InitiativeApplicabilityView(
     val decisionCount: Int,
     val unresolvedSubjectCount: Int,
     val classificationDigest: String,
+    val subjectCatalog: InitiativeApplicabilitySubjectCatalogBinding?,
     val evaluatedBy: String,
     val evaluatedAt: Instant,
     val digest: String,
@@ -120,7 +130,32 @@ data class InitiativeEntryRecord(
     val applicability: InitiativeApplicabilityView?,
 )
 
-data class InitiativeEntryAssessmentClassification(val status: String, val digest: String?)
+data class InitiativeClassificationCompletenessAssessment(
+    val status: String,
+    val policyVersion: String,
+    val policyDigest: String,
+    val unknownDimensionCount: Int,
+    val unresolvedQuestionCount: Int,
+    val missingConditionalDimensionCount: Int,
+    val confidenceSufficient: Boolean,
+)
+
+data class InitiativeEntryAssessmentClassification(
+    val status: String,
+    val digest: String?,
+    val completeness: InitiativeClassificationCompletenessAssessment,
+)
+
+data class InitiativeApplicabilityCoverageAssessment(
+    val status: String,
+    val catalogVersion: String?,
+    val catalogDigest: String?,
+    val subjectCount: Int,
+    val coveredSubjectCount: Int,
+    val missingSubjectCount: Int,
+    val unexpectedSubjectCount: Int,
+    val mismatchedSubjectCount: Int,
+)
 
 data class InitiativeEntryAssessmentApplicability(
     val status: String,
@@ -132,6 +167,7 @@ data class InitiativeEntryAssessmentApplicability(
     val blockedDecisionCount: Int,
     val pendingApprovalCount: Int,
     val rejectedApprovalCount: Int,
+    val coverage: InitiativeApplicabilityCoverageAssessment,
 )
 
 data class InitiativeEntryAssessment(

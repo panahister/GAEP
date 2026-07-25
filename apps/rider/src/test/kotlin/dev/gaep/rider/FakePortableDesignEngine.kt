@@ -10,6 +10,11 @@ import java.util.UUID
 
 private val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
 private val initiativeId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
+private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
+private const val subjectCatalogCount = 49
+private val completenessPolicyDigest = "sha256:${"e".repeat(64)}"
+private val subjectCatalogDigest = "sha256:${"f".repeat(64)}"
 internal val runId: UUID = UUID.fromString("12121212-1212-4121-8121-121212121212")
 private val charterId: UUID = UUID.fromString("13131313-1313-4131-8131-131313131313")
 internal val managedCharterId: UUID = charterId
@@ -220,9 +225,15 @@ private fun initiativeAssessment(): JsonObject {
     val rejectedApproval = decisions.count {
         it.asJsonObject.getAsJsonObject("approval").get("state").asString == "rejected"
     }
+    val coveredSubjects = (decisions.size() + unresolved.size()).coerceAtMost(subjectCatalogCount)
+    val missingSubjects = subjectCatalogCount - coveredSubjects
     val reasons = buildList {
         if (classification == null) add("Initiative classification is missing")
+        if (classification != null) add("Initiative classification does not satisfy the current completeness policy")
         if (applicability == null) add("Initiative applicability has not been resolved")
+        if (applicability != null && missingSubjects > 0) {
+            add("Initiative applicability does not cover every canonical subject")
+        }
         if (unresolved.size() > 0) add("Applicability subjects remain explicitly unresolved")
         if (pendingHuman > 0) add("Applicability decisions await accountable human judgment")
         if (blocked > 0) add("One or more required applicability decisions are blocked")
@@ -244,6 +255,18 @@ private fun initiativeAssessment(): JsonObject {
                 addProperty("status", "current")
                 addProperty("digest", canonicalDigest(classification))
             }
+            add("completeness", JsonObject().apply {
+                addProperty("status", if (classification == null) "missing" else "incomplete")
+                addProperty("policyVersion", completenessPolicyVersion)
+                addProperty("policyDigest", completenessPolicyDigest)
+                addProperty("unknownDimensionCount", 0)
+                addProperty(
+                    "unresolvedQuestionCount",
+                    classification?.getAsJsonArray("unresolvedQuestions")?.size() ?: 0,
+                )
+                addProperty("missingConditionalDimensionCount", 0)
+                addProperty("confidenceSufficient", classification != null)
+            })
         })
         add("applicability", JsonObject().apply {
             if (applicability == null) {
@@ -259,6 +282,30 @@ private fun initiativeAssessment(): JsonObject {
             addProperty("blockedDecisionCount", blocked)
             addProperty("pendingApprovalCount", pendingApproval)
             addProperty("rejectedApprovalCount", rejectedApproval)
+            add("coverage", JsonObject().apply {
+                if (classification == null) {
+                    addProperty("status", "unavailable")
+                    addProperty("subjectCount", 0)
+                    addProperty("coveredSubjectCount", 0)
+                    addProperty("missingSubjectCount", 0)
+                } else {
+                    addProperty(
+                        "status",
+                        when {
+                            applicability == null -> "missing"
+                            applicability.get("state").asString == "stale" -> "stale"
+                            else -> "incomplete"
+                        },
+                    )
+                    addProperty("catalogVersion", subjectCatalogVersion)
+                    addProperty("catalogDigest", subjectCatalogDigest)
+                    addProperty("subjectCount", subjectCatalogCount)
+                    addProperty("coveredSubjectCount", coveredSubjects)
+                    addProperty("missingSubjectCount", missingSubjects)
+                }
+                addProperty("unexpectedSubjectCount", 0)
+                addProperty("mismatchedSubjectCount", 0)
+            })
         })
         addProperty("state", if (blocked > 0 || rejectedApproval > 0) "blocked" else if (reasons.isEmpty()) "ready" else "attention-required")
         add("reasons", JsonArray().apply { reasons.forEach(::add) })
@@ -278,6 +325,12 @@ private fun handleAssessInitiativeEntry(id: Long, params: JsonObject, workspaceP
     val value = initiativeAssessment()
     if (workspacePath.endsWith("bad-entry-boundary")) value.addProperty("authorityBoundary", "approved")
     if (workspacePath.endsWith("bad-entry-product")) value.addProperty("productDigest", "sha256:${"0".repeat(64)}")
+    if (workspacePath.endsWith("bad-entry-policy")) {
+        value.getAsJsonObject("classification").remove("completeness")
+    }
+    if (workspacePath.endsWith("bad-entry-coverage")) {
+        value.getAsJsonObject("applicability").remove("coverage")
+    }
     writeResult(id, value)
 }
 
@@ -297,6 +350,8 @@ private fun handleClassifyInitiative(id: Long, params: JsonObject, workspacePath
             addProperty("productProfile", "software")
             addProperty("productRevision", 7)
             addProperty("productDigest", canonicalDigest(productRecord()))
+            addProperty("completenessPolicyVersion", completenessPolicyVersion)
+            addProperty("completenessPolicyDigest", completenessPolicyDigest)
             add("classifiedBy", JsonObject().apply {
                 addProperty("kind", "human")
                 addProperty("id", actorId)
@@ -363,6 +418,7 @@ private fun handleResolveInitiativeApplicability(id: Long, params: JsonObject, w
         addProperty("productId", productId.toString())
         addProperty("initiativeRevision", nextRevision)
         addProperty("classificationDigest", canonicalDigest(initiativeState.getAsJsonObject("classification")))
+        add("subjectCatalog", input.getAsJsonObject("subjectCatalog").deepCopy())
         addProperty("state", "current")
         add("evaluatedBy", JsonObject().apply {
             addProperty("kind", "human")
