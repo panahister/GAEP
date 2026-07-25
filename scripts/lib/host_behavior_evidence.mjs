@@ -115,7 +115,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (256)",
+        "GAEP Visual Studio host-client tests: PASS (263)",
       ],
     }],
   },

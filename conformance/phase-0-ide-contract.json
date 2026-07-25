@@ -27,7 +27,10 @@
     { "id": "freshness-evidence-cues", "label": "Governed dashboard source, freshness, confidence, and stale-state cues" },
     { "id": "source-intake-governance", "label": "Exact governed Source intake and authority metadata projection" },
     { "id": "candidate-source-baseline", "label": "Exact candidate Source Baseline projection without designation authority" },
-    { "id": "source-provenance", "label": "Exact Source Provenance projection without authority transfer" }
+    { "id": "source-provenance", "label": "Exact Source Provenance projection without authority transfer" },
+    { "id": "business-understanding", "label": "Exact governed Business Understanding projection without decision authority" },
+    { "id": "stakeholder-role-model", "label": "Exact governed Stakeholder Model projection without appointment authority" },
+    { "id": "outcome-success-model", "label": "Exact governed Outcome Model projection without approval or readiness authority" }
   ],
   "hosts": [
     {
@@ -38,7 +41,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T093233Z-phase-1-source-governance-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T120212Z-phase-1-business-understanding-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -118,6 +121,15 @@
         { "capabilityId": "source-provenance", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["title: \"Source Provenance\"", "record.targetKind", "no approval, validation, authorization, or authority transfer"] },
           { "path": "apps/vscode/src/studio-client.ts", "contains": ["page.sourceProvenance"] }
+        ] },
+        { "capabilityId": "business-understanding", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["businessUnderstanding?: {", "engine.businessUnderstanding!.project(initiative.id)", "id: \"business-understanding\"", "Candidate evidence only; no approval, appointment, decision, readiness, or action authority."] }
+        ] },
+        { "capabilityId": "stakeholder-role-model", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["id: \"stakeholder-model\"", "projection.stakeholderModel", "verified authority claims"] }
+        ] },
+        { "capabilityId": "outcome-success-model", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["id: \"outcome-model\"", "projection.outcomeModel", "burden measures", "observed baselines"] }
         ] }
       ]
     },
@@ -129,7 +141,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T093233Z-phase-1-source-governance-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T120212Z-phase-1-business-understanding-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -207,6 +219,16 @@
         { "capabilityId": "source-provenance", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/extension.ts", "contains": ["`Provenance (showing", "record.targetKind", "Authority boundary: ${projection.authorityBoundary}"] },
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["snapshotDigest !== canonicalDigest(projectionBody)"] }
+        ] },
+        { "capabilityId": "business-understanding", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readBusinessUnderstanding(", "this.request(\"business.snapshot\"", "businessUnderstandingProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showBusinessUnderstanding", "GAEP governed Business Understanding", "Business counts:"] }
+        ] },
+        { "capabilityId": "stakeholder-role-model", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["Stakeholder Model:", "Stakeholder counts:", "verified authority claims"] }
+        ] },
+        { "capabilityId": "outcome-success-model", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["Outcome Model:", "Outcome counts:", "burden measures", "observed baselines"] }
         ] }
       ]
     },
@@ -218,7 +240,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T093233Z-phase-1-source-governance-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T120212Z-phase-1-business-understanding-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -302,6 +324,18 @@
         { "capabilityId": "source-provenance", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["Source Provenance", "provenance.targetKind", "authority transfer"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["SourceGovernanceProvenanceView", "snapshotDigest != canonicalDigest(digestBody)"] }
+        ] },
+        { "capabilityId": "business-understanding", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readBusinessUnderstanding(", "portableRequest(\"business.snapshot\"", "parseBusinessUnderstandingEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Business Understanding", "Business counts:", "grants no approval, appointment, decision, readiness, or action authority"] }
+        ] },
+        { "capabilityId": "stakeholder-role-model", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["Stakeholder Model:", "Stakeholder counts:", "verified authority claims"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["StakeholderModelRecordView", "stakeholderReference"] }
+        ] },
+        { "capabilityId": "outcome-success-model", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["Outcome Model:", "Outcome counts:", "burden measures", "observed baselines"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["OutcomeModelRecordView", "outcomeReference"] }
         ] }
       ]
     },
@@ -313,7 +347,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T093233Z-phase-1-source-governance-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T120212Z-phase-1-business-understanding-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -406,13 +440,25 @@
         { "capabilityId": "source-provenance", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["Source Provenance", "provenance.TargetKind", "authority transfer"] },
           { "path": "apps/visual-studio/Gaep.HostClient/SourceGovernanceProtocol.cs", "contains": ["ParseSourceProvenanceView", "snapshotDigest != CanonicalDigest(WithoutProperty(projection, \"snapshotDigest\"))"] }
+        ] },
+        { "capabilityId": "business-understanding", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadBusinessUnderstandingAsync(", "\"business.snapshot\"", "ParseBusinessUnderstandingResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Business Understanding", "Business counts:", "grants no approval, appointment, decision, readiness, or action authority"] }
+        ] },
+        { "capabilityId": "stakeholder-role-model", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["Stakeholder Model:", "Stakeholder counts:", "verified authority claims"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/BusinessUnderstandingProtocol.cs", "contains": ["ParseStakeholderModelRecord", "stakeholderReference"] }
+        ] },
+        { "capabilityId": "outcome-success-model", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["Outcome Model:", "Outcome counts:", "burden measures", "observed baselines"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/BusinessUnderstandingProtocol.cs", "contains": ["ParseOutcomeModelRecord", "outcomeReference"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-25T093233Z-phase-1-source-governance-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-25T120212Z-phase-1-business-understanding-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",
