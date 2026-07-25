@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { createInterface } from "node:readline"
 
 const productId = "11111111-1111-4111-8111-111111111111"
+const initiativeId = "29292929-2929-4929-8929-292929292929"
 const bundleId = "22222222-2222-4222-8222-222222222222"
 const runId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 const charterId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
@@ -28,6 +29,7 @@ const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
 const workspacePath = process.argv[process.argv.indexOf("--workspace") + 1] ?? ""
 let selectedAgent = null
+let initiativeState = initiativeRecord()
 
 if (process.env.AWS_SECRET_ACCESS_KEY || process.env.OPENAI_API_KEY || process.env.HOME || process.env.USERPROFILE) {
   process.exit(91)
@@ -46,6 +48,14 @@ input.on("line", (line) => {
     case "readProduct":
       if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
       return writeResult(id, productRecord())
+    case "readInitiative":
+      return readInitiative(id, request.params)
+    case "assessInitiativeEntry":
+      return assessInitiativeEntry(id, request.params)
+    case "classifyInitiative":
+      return classifyInitiative(id, request.params)
+    case "resolveInitiativeApplicability":
+      return resolveInitiativeApplicability(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -105,6 +115,177 @@ function productRecord() {
     revision: 7,
     providerState: privateCredential,
   }
+}
+
+function initiativeRecord() {
+  return {
+    schemaVersion: 1,
+    id: initiativeId,
+    kind: "initiative",
+    revision: 1,
+    productId,
+    title: "Governed entry",
+    outcome: "One exact Initiative entry can be reviewed safely.",
+    scope: ["Kiro host"],
+    exclusions: ["No implicit approval"],
+    state: "active",
+    createdAt: "2026-07-25T00:00:00.000Z",
+    updatedAt: "2026-07-25T00:00:00.000Z",
+  }
+}
+
+function readInitiative(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INITIATIVE PARAMS")
+  }
+  const value = structuredClone(initiativeState)
+  if (workspacePath.endsWith("bad-initiative-private")) value.privateRoot = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function initiativeAssessment() {
+  const classification = initiativeState.classification
+  const applicability = initiativeState.applicability
+  const reasons = []
+  if (!classification) reasons.push("Initiative classification is missing")
+  if (!applicability) reasons.push("Initiative applicability has not been resolved")
+  const pendingHumanDecisionCount = applicability?.decisions.filter((decision) => decision.status === "awaiting-human-decision").length ?? 0
+  const blockedDecisionCount = applicability?.decisions.filter((decision) => decision.status === "blocked").length ?? 0
+  const pendingApprovalCount = applicability?.decisions.filter((decision) => decision.approval.state === "pending").length ?? 0
+  const rejectedApprovalCount = applicability?.decisions.filter((decision) => decision.approval.state === "rejected").length ?? 0
+  if ((applicability?.unresolvedSubjects.length ?? 0) > 0) reasons.push("Applicability subjects remain explicitly unresolved")
+  if (pendingHumanDecisionCount > 0) reasons.push("Applicability decisions await accountable human judgment")
+  if (blockedDecisionCount > 0) reasons.push("One or more required applicability decisions are blocked")
+  if (pendingApprovalCount > 0) reasons.push("Applicability approvals remain pending")
+  if (rejectedApprovalCount > 0) reasons.push("One or more applicability approvals were rejected")
+  return {
+    schemaVersion: 1,
+    kind: "initiative-entry-assessment",
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    productId,
+    productRevision: 7,
+    productDigest: canonicalDigest(productRecord()),
+    classification: classification
+      ? { status: "current", digest: canonicalDigest(classification) }
+      : { status: "missing" },
+    applicability: applicability
+      ? {
+          status: "current",
+          matrixRevision: applicability.revision,
+          digest: canonicalDigest(applicability),
+          decisionCount: applicability.decisions.length,
+          unresolvedSubjectCount: applicability.unresolvedSubjects.length,
+          pendingHumanDecisionCount,
+          blockedDecisionCount,
+          pendingApprovalCount,
+          rejectedApprovalCount,
+        }
+      : {
+          status: "missing",
+          decisionCount: 0,
+          unresolvedSubjectCount: 0,
+          pendingHumanDecisionCount: 0,
+          blockedDecisionCount: 0,
+          pendingApprovalCount: 0,
+          rejectedApprovalCount: 0,
+        },
+    state: blockedDecisionCount > 0 || rejectedApprovalCount > 0 ? "blocked" : reasons.length > 0 ? "attention-required" : "ready",
+    reasons,
+    assessedAt: "2026-07-25T00:00:00.000Z",
+    authorityBoundary: "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
+  }
+}
+
+function assessInitiativeEntry(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE ASSESSMENT PARAMS")
+  }
+  const value = initiativeAssessment()
+  if (workspacePath.endsWith("bad-entry-boundary")) value.authorityBoundary = "approved"
+  return writeResult(id, value)
+}
+
+function classifyInitiative(id, params) {
+  if (!exactKeys(params, ["initiativeId", "expectedInitiativeRevision", "actorId", "classification"]) ||
+      params.initiativeId !== initiativeId || params.expectedInitiativeRevision !== initiativeState.revision) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE CLASSIFICATION PARAMS")
+  }
+  const now = "2026-07-25T00:01:00.000Z"
+  initiativeState = {
+    ...initiativeState,
+    revision: initiativeState.revision + 1,
+    classification: {
+      ...params.classification,
+      productProfile: "software",
+      productRevision: 7,
+      productDigest: canonicalDigest(productRecord()),
+      classifiedBy: { kind: "human", id: params.actorId },
+      classifiedAt: now,
+      authorityBoundary: "classification-guides-profile-selection-and-does-not-grant-approval-or-action-authority",
+    },
+    ...(initiativeState.applicability ? {
+      applicability: {
+        ...initiativeState.applicability,
+        state: "stale",
+        invalidatedAt: now,
+        invalidationReason: "Initiative classification was superseded",
+      },
+    } : {}),
+    updatedAt: now,
+  }
+  if (workspacePath.endsWith("bad-classification-binding")) initiativeState.revision += 1
+  if (workspacePath.endsWith("bad-classification-content")) initiativeState.classification.rationale = "Substituted classification content"
+  return writeResult(id, initiativeState)
+}
+
+function resolveInitiativeApplicability(id, params) {
+  if (!exactKeys(params, ["initiativeId", "expectedInitiativeRevision", "actorId", "applicability"]) ||
+      params.initiativeId !== initiativeId || params.expectedInitiativeRevision !== initiativeState.revision ||
+      !initiativeState.classification) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE APPLICABILITY PARAMS")
+  }
+  const now = "2026-07-25T00:02:00.000Z"
+  const nextRevision = initiativeState.revision + 1
+  const previous = new Map((initiativeState.applicability?.decisions ?? []).map((decision) => [
+    `${decision.subject.type}:${decision.subject.key}`,
+    decision,
+  ]))
+  const decisions = params.applicability.decisions.map((decision, index) => {
+    const prior = previous.get(`${decision.subject.type}:${decision.subject.key}`)
+    return {
+      ...decision,
+      id: prior?.id ?? `30303030-3030-4030-8030-${String(index + 1).padStart(12, "0")}`,
+      revision: (prior?.revision ?? 0) + 1,
+      initiativeRevision: nextRevision,
+      decidedBy: { kind: "human", id: params.actorId },
+      decidedAt: now,
+      authorityBoundary: "applicability-decision-does-not-grant-approval-readiness-or-action-authority",
+    }
+  })
+  initiativeState = {
+    ...initiativeState,
+    revision: nextRevision,
+    applicability: {
+      schemaVersion: 1,
+      kind: "initiative-applicability-matrix",
+      decisions,
+      unresolvedSubjects: params.applicability.unresolvedSubjects,
+      revision: (initiativeState.applicability?.revision ?? 0) + 1,
+      initiativeId,
+      productId,
+      initiativeRevision: nextRevision,
+      classificationDigest: canonicalDigest(initiativeState.classification),
+      state: "current",
+      evaluatedBy: { kind: "human", id: params.actorId },
+      evaluatedAt: now,
+      authorityBoundary: "applicability-matrix-does-not-grant-approval-readiness-or-action-authority",
+    },
+    updatedAt: now,
+  }
+  if (workspacePath.endsWith("bad-applicability-binding")) initiativeState.applicability.evaluatedBy.id = "other-actor"
+  if (workspacePath.endsWith("bad-applicability-content")) initiativeState.applicability.decisions[0].rationale = "Substituted applicability content"
+  return writeResult(id, initiativeState)
 }
 
 function readPhaseDashboard(id, params) {

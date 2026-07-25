@@ -6,6 +6,8 @@ import { dirname, join, resolve } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 
+import type { InitiativeApplicabilityMatrixInput, InitiativeClassificationInput } from "@gaep/contracts"
+
 import {
   accessibleTableCsv,
   buildAccessibleTableView,
@@ -16,6 +18,7 @@ import { GaepEngineClient, safeEngineEnvironment } from "../src/engine-client.js
 import { canonicalDigest, GaepHostError } from "../src/protocol.js"
 
 const productId = "11111111-1111-4111-8111-111111111111"
+const initiativeId = "29292929-2929-4929-8929-292929292929"
 const bundleId = "22222222-2222-4222-8222-222222222222"
 const charterId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 const workflowPlanId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
@@ -24,6 +27,58 @@ const stagedManagedRunId = "16161616-1616-4616-8616-161616161616"
 const privateRoot = "/Users/private/portable-design"
 const privateCredential = "PRIVATE-OAUTH-TOKEN"
 const fakeEngine = resolve(dirname(fileURLToPath(import.meta.url)), "../tests/fake-engine.mjs")
+
+const initiativeClassification = {
+  primaryType: "service",
+  secondaryTypes: ["api", "modernization"],
+  systemState: "brownfield",
+  changePosture: "modernization",
+  motivations: ["business-driven", "technical"],
+  characteristics: {
+    userInterface: "non-ui",
+    data: "data-bearing",
+    integration: "integration-heavy",
+    interactionModes: ["synchronous", "asynchronous"],
+    exposure: "partner",
+  },
+  regulated: true,
+  policyDomains: ["payments", "privacy"],
+  sensitivities: ["security", "privacy", "data"],
+  expectedLifetime: "long-lived",
+  maintenanceHorizon: "Supported for at least five years after initial release",
+  risk: {
+    blastRadius: "multi-unit",
+    reversibility: "partially-reversible",
+    urgency: "high",
+    costOfFailure: "high",
+  },
+  dependencies: ["Existing identity service", "Partner API consumers"],
+  affectedAssets: ["Payments API", "Settlement worker"],
+  owner: "Payments engineering owner",
+  accountableAuthority: "Payments Product Owner",
+  confidence: { level: "medium", basis: "Repository evidence is current but partner scope awaits confirmation" },
+  evidence: [{ kind: "evidence", reference: "GAEP-EVD-001" }],
+  unresolvedQuestions: ["Whether the legacy batch endpoint remains in scope"],
+  rationale: "The initiative changes a brownfield service and its independently deployed API consumers.",
+} as const satisfies InitiativeClassificationInput
+
+const initiativeApplicability = {
+  decisions: [{
+    subject: { type: "test-level", key: "consumer-contract-testing", label: "Consumer contract testing" },
+    status: "required",
+    rationale: "Independently deployed partner consumers require version-bound compatibility evidence.",
+    sources: [{ kind: "policy", reference: "GAEP-POL-CONTRACT-001" }],
+    owner: "Payments quality owner",
+    accountableApprover: "Payments Product Owner",
+    dependencies: ["partner-api-contract"],
+    conditions: [],
+    reviewTriggers: ["API contract or consumer inventory changes"],
+    approval: { state: "pending", conditions: [] },
+    relatedRecords: [],
+    relatedImplementationUnits: ["payments-api"],
+  }],
+  unresolvedSubjects: [],
+} as const satisfies InitiativeApplicabilityMatrixInput
 
 const accessibleTableFixture = createAccessibleMetadataTable({
   id: "verified-runs",
@@ -165,6 +220,106 @@ test("package-local engine mode fails closed on a digest mismatch or extra launc
     await mismatched.dispose()
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test("protocol-v2 Initiative entry client preserves exact request binding and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-initiative-entry-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-initiative-private",
+    "bad-entry-boundary",
+    "bad-classification-binding",
+    "bad-classification-content",
+    "bad-applicability-binding",
+    "bad-applicability-content",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const initial = await client.readInitiative(initiativeId)
+    assert.equal(initial.revision, 1)
+    assert.equal(initial.classification, undefined)
+    assert.equal(initial.applicability, undefined)
+
+    const initialAssessment = await client.assessInitiativeEntry(initiativeId)
+    assert.equal(initialAssessment.initiativeRevision, 1)
+    assert.equal(initialAssessment.classification.status, "missing")
+    assert.equal(initialAssessment.applicability.status, "missing")
+    assert.equal(initialAssessment.state, "attention-required")
+
+    const classified = await client.classifyInitiative(initiativeId, 1, initiativeClassification, "founder.kiro-review")
+    assert.equal(classified.revision, 2)
+    assert.equal(classified.classification?.primaryType, "service")
+    assert.equal(classified.classification?.classifiedBy.id, "founder.kiro-review")
+    const classifiedAssessment = await client.assessInitiativeEntry(initiativeId)
+    assert.equal(classifiedAssessment.classification.status, "current")
+    assert.equal(classifiedAssessment.applicability.status, "missing")
+
+    const resolved = await client.resolveInitiativeApplicability(
+      initiativeId,
+      2,
+      initiativeApplicability,
+      "founder.kiro-review",
+    )
+    assert.equal(resolved.revision, 3)
+    assert.equal(resolved.applicability?.decisions.length, 1)
+    assert.equal(resolved.applicability?.decisions[0]?.status, "required")
+    const finalAssessment = await client.assessInitiativeEntry(initiativeId)
+    assert.equal(finalAssessment.initiativeRevision, 3)
+    assert.equal(finalAssessment.classification.status, "current")
+    assert.equal(finalAssessment.applicability.status, "current")
+    assert.equal(finalAssessment.applicability.decisionCount, 1)
+    assert.equal(finalAssessment.applicability.pendingApprovalCount, 1)
+    assert.equal(finalAssessment.state, "attention-required")
+    assert.equal(
+      finalAssessment.authorityBoundary,
+      "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
+    )
+  } finally {
+    await client.dispose()
+  }
+
+  for (const [index, workspacePath] of hostileRoots.entries()) {
+    const hostile = await createClient(workspacePath!)
+    try {
+      if (index === 0) {
+        await assert.rejects(() => hostile.readInitiative(initiativeId), (error) => safeHostError(error, "HOST_RESPONSE_INVALID"))
+      } else if (index === 1) {
+        await assert.rejects(() => hostile.assessInitiativeEntry(initiativeId), (error) => safeHostError(error, "HOST_RESPONSE_INVALID"))
+      } else if (index === 2 || index === 3) {
+        await assert.rejects(
+          () => hostile.classifyInitiative(initiativeId, 1, initiativeClassification, "founder.kiro-review"),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } else {
+        const classified = await hostile.classifyInitiative(
+          initiativeId,
+          1,
+          initiativeClassification,
+          "founder.kiro-review",
+        )
+        await assert.rejects(
+          () => hostile.resolveInitiativeApplicability(
+            initiativeId,
+            classified.revision!,
+            initiativeApplicability,
+            "founder.kiro-review",
+          ),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      }
+    } finally {
+      await hostile.dispose()
+    }
+  }
+
+  await rm(root, { recursive: true, force: true })
 })
 
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {

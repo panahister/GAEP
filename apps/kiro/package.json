@@ -8,6 +8,9 @@
   "publisher": "gaep",
   "license": "UNLICENSED",
   "main": "dist/extension.cjs",
+  "dependencies": {
+    "@gaep/contracts": "file:../../packages/contracts"
+  },
   "files": [
     "dist/extension.cjs",
     "dist/gaep-engine.mjs",
@@ -43,6 +46,9 @@
     "onCommand:gaepKiro.dashboard.changeImpact",
     "onCommand:gaepKiro.dashboard.agentModel",
     "onCommand:gaepKiro.dashboard.accessibleTables",
+    "onCommand:gaepKiro.initiativeEntry.inspect",
+    "onCommand:gaepKiro.initiativeEntry.classify",
+    "onCommand:gaepKiro.initiativeEntry.resolveApplicability",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -51,7 +57,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "GAEP for Kiro can show its static Product Studio boundary, but it does not inspect Product or Managed Run state, start the local engine, run managed read-only work, review/apply/discard staged changes, or import/read/list portable design metadata until the workspace is trusted.",
+      "description": "GAEP for Kiro can show its static Product Studio boundary, but it does not inspect Product, Initiative entry, or Managed Run state, start the local engine, classify/resolve an Initiative, run managed read-only work, review/apply/discard staged changes, or import/read/list portable design metadata until the workspace is trusted.",
       "restrictedConfigurations": [
         "gaepKiro.engineExecutable",
         "gaepKiro.engineSha256",
@@ -104,6 +110,18 @@
       {
         "command": "gaepKiro.dashboard.accessibleTables",
         "title": "GAEP for Kiro: Browse Accessible Dashboard Tables"
+      },
+      {
+        "command": "gaepKiro.initiativeEntry.inspect",
+        "title": "GAEP for Kiro: Inspect Initiative Entry Assessment"
+      },
+      {
+        "command": "gaepKiro.initiativeEntry.classify",
+        "title": "GAEP for Kiro: Classify Initiative Entry"
+      },
+      {
+        "command": "gaepKiro.initiativeEntry.resolveApplicability",
+        "title": "GAEP for Kiro: Resolve Initiative Applicability"
       },
       {
         "command": "gaepKiro.portableDesign.import",

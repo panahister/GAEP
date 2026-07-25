@@ -7,7 +7,7 @@ import {
   type InitiativeApplicabilitySubject,
   type InitiativeClassificationInput,
   type InitiativeType,
-} from "@gaep/contracts"
+} from "./product.js"
 
 export class InitiativeEntryWorkflowCancelled extends Error {
   constructor() {

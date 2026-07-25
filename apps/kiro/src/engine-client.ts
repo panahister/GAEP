@@ -6,6 +6,17 @@ import { delimiter, dirname, extname, isAbsolute, resolve } from "node:path"
 import { once } from "node:events"
 
 import {
+  initiativeApplicabilityMatrixInputSchema,
+  initiativeClassificationInputSchema,
+  initiativeEntryAssessmentSchema,
+  initiativeSchema,
+  type Initiative,
+  type InitiativeApplicabilityMatrixInput,
+  type InitiativeClassificationInput,
+  type InitiativeEntryAssessment,
+} from "@gaep/contracts"
+
+import {
   defaultPageSize,
   canonicalDigest,
   frameTooLarge,
@@ -144,6 +155,90 @@ export class GaepEngineClient {
 
   readProduct(): Promise<ProductBinding> {
     return this.enqueue(async () => parseProductBinding(await this.request("readProduct", {})))
+  }
+
+  readInitiative(initiativeValue: string): Promise<Initiative> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = initiativeSchema.strict().safeParse(await this.request("readInitiative", { initiativeId }))
+      if (!parsed.success) throw invalidHostResponse()
+      const initiative = parsed.data
+      if (initiative.id.toLowerCase() !== initiativeId) throw invalidHostResponse()
+      return initiative
+    })
+  }
+
+  assessInitiativeEntry(initiativeValue: string): Promise<InitiativeEntryAssessment> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = initiativeEntryAssessmentSchema.safeParse(
+        await this.request("assessInitiativeEntry", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const assessment = parsed.data
+      if (assessment.initiativeId.toLowerCase() !== initiativeId) {
+        throw invalidHostResponse()
+      }
+      return assessment
+    })
+  }
+
+  classifyInitiative(
+    initiativeValue: string,
+    expectedRevisionValue: number,
+    inputValue: InitiativeClassificationInput,
+    actorValue: string,
+  ): Promise<Initiative> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const expectedInitiativeRevision = validateProductRevision(expectedRevisionValue)
+      const classification = initiativeClassificationInputSchema.parse(inputValue)
+      const actorId = normalizeActorId(actorValue)
+      const parsed = initiativeSchema.strict().safeParse(await this.request("classifyInitiative", {
+        initiativeId,
+        expectedInitiativeRevision,
+        actorId,
+        classification,
+      }))
+      if (!parsed.success) throw invalidHostResponse()
+      const updated = parsed.data
+      if (updated.id.toLowerCase() !== initiativeId || updated.revision !== expectedInitiativeRevision + 1 ||
+          updated.classification?.classifiedBy.id !== actorId ||
+          canonicalDigest(classificationInputFromRecord(updated.classification)) !== canonicalDigest(classification)) {
+        throw invalidHostResponse()
+      }
+      return updated
+    })
+  }
+
+  resolveInitiativeApplicability(
+    initiativeValue: string,
+    expectedRevisionValue: number,
+    inputValue: InitiativeApplicabilityMatrixInput,
+    actorValue: string,
+  ): Promise<Initiative> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const expectedInitiativeRevision = validateProductRevision(expectedRevisionValue)
+      const applicability = initiativeApplicabilityMatrixInputSchema.parse(inputValue)
+      const actorId = normalizeActorId(actorValue)
+      const parsed = initiativeSchema.strict().safeParse(await this.request("resolveInitiativeApplicability", {
+        initiativeId,
+        expectedInitiativeRevision,
+        actorId,
+        applicability,
+      }))
+      if (!parsed.success) throw invalidHostResponse()
+      const updated = parsed.data
+      if (updated.id.toLowerCase() !== initiativeId || updated.revision !== expectedInitiativeRevision + 1 ||
+          updated.applicability?.initiativeRevision !== updated.revision || updated.applicability.evaluatedBy.id !== actorId ||
+          updated.applicability.decisions.some((decision) => decision.decidedBy.id !== actorId) ||
+          updated.applicability.classificationDigest !== canonicalDigest(updated.classification) ||
+          canonicalDigest(applicabilityInputFromRecord(updated.applicability)) !== canonicalDigest(applicability)) {
+        throw invalidHostResponse()
+      }
+      return updated
+    })
   }
 
   readPhaseDashboard(product: ProductBinding, phaseValue: DeliveryPhaseId): Promise<PhaseDashboardFramework> {
@@ -648,6 +743,39 @@ export class GaepEngineClient {
     child.stderr.destroy()
     if (child.exitCode === null) child.kill()
   }
+}
+
+function classificationInputFromRecord(classification: NonNullable<Initiative["classification"]>): InitiativeClassificationInput {
+  const {
+    productProfile: _productProfile,
+    productRevision: _productRevision,
+    productDigest: _productDigest,
+    classifiedBy: _classifiedBy,
+    classifiedAt: _classifiedAt,
+    authorityBoundary: _authorityBoundary,
+    ...input
+  } = classification
+  return initiativeClassificationInputSchema.parse(input)
+}
+
+function applicabilityInputFromRecord(
+  matrix: NonNullable<Initiative["applicability"]>,
+): InitiativeApplicabilityMatrixInput {
+  return initiativeApplicabilityMatrixInputSchema.parse({
+    decisions: matrix.decisions.map((decision) => {
+      const {
+        id: _id,
+        revision: _revision,
+        initiativeRevision: _initiativeRevision,
+        decidedBy: _decidedBy,
+        decidedAt: _decidedAt,
+        authorityBoundary: _authorityBoundary,
+        ...input
+      } = decision
+      return input
+    }),
+    unresolvedSubjects: matrix.unresolvedSubjects,
+  })
 }
 
 function normalizeSelectionIdentifier(value: string, label: string): string {

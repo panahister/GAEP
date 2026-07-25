@@ -14,12 +14,16 @@ import {
 } from "@gaep/agent-sdk"
 import {
   containsSecretShapedValue,
+  collectInitiativeApplicability,
+  collectInitiativeClassification,
   handoffSchema,
+  InitiativeEntryWorkflowCancelled,
   productProfileSchema,
   type AdapterCapabilities,
   type AgentSelection,
   type AgentSetting,
   type Initiative,
+  type InitiativeEntryWorkflowUi,
 } from "@gaep/contracts"
 import {
   GaepEngine,
@@ -31,12 +35,6 @@ import * as vscode from "vscode"
 import { ActiveRunRegistry } from "./run-registry.js"
 import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-source.js"
 import { observePortableHandoffs } from "./handoff-observation.js"
-import {
-  collectInitiativeApplicability,
-  collectInitiativeClassification,
-  InitiativeEntryWorkflowCancelled,
-  type InitiativeEntryWorkflowUi,
-} from "./initiative-entry-workflow.js"
 import { resolveLocalActorPrincipal } from "./local-actor.js"
 import { readVerifiedManagedArtifacts } from "./managed-evidence-verifier.js"
 import {

@@ -4,6 +4,16 @@ import { join } from "node:path"
 import * as vscode from "vscode"
 
 import {
+  collectInitiativeApplicability,
+  collectInitiativeClassification,
+  containsSecretShapedValue,
+  InitiativeEntryWorkflowCancelled,
+  type Initiative,
+  type InitiativeEntryAssessment,
+  type InitiativeEntryWorkflowUi,
+} from "@gaep/contracts"
+
+import {
   accessibleTableCsv,
   buildAccessibleTableView,
   createAccessibleMetadataTable,
@@ -56,6 +66,9 @@ const commandIds = {
   changeImpact: "gaepKiro.dashboard.changeImpact",
   agentModel: "gaepKiro.dashboard.agentModel",
   accessibleTables: "gaepKiro.dashboard.accessibleTables",
+  initiativeEntry: "gaepKiro.initiativeEntry.inspect",
+  classifyInitiative: "gaepKiro.initiativeEntry.classify",
+  resolveApplicability: "gaepKiro.initiativeEntry.resolveApplicability",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -142,6 +155,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.changeImpact, () => runUserCommand(() => showChangeImpactDashboard(pool))),
     vscode.commands.registerCommand(commandIds.agentModel, () => runUserCommand(() => showAgentModelDashboard(pool))),
     vscode.commands.registerCommand(commandIds.accessibleTables, () => runUserCommand(() => showAccessibleDashboardTables(pool))),
+    vscode.commands.registerCommand(commandIds.initiativeEntry, (input?: unknown) => runUserCommand(() => showInitiativeEntry(pool, input))),
+    vscode.commands.registerCommand(commandIds.classifyInitiative, (input?: unknown) => runUserCommand(() => classifyInitiative(pool, input))),
+    vscode.commands.registerCommand(commandIds.resolveApplicability, (input?: unknown) => runUserCommand(() => resolveInitiativeApplicability(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -205,6 +221,11 @@ function productStudioHtml(): string {
   <h1>GAEP for Kiro Product Studio</h1>
   <p class="${vscode.workspace.isTrusted ? "" : "stop"}">${escapeHtml(trustState)}</p>
   <section>
+    <h2>Initiative entry</h2>
+    <p>Use the Kiro Command Palette to inspect one exact Initiative entry assessment by UUID, record a multi-dimensional human classification, or resolve an explicit applicability matrix.</p>
+    <p>Every write rechecks the exact Initiative and current Product binding, is cancel-default, rejects secret-shaped input, and records no implicit not-applicable, approval, readiness, or action authority.</p>
+  </section>
+  <section>
     <h2>Portable design</h2>
     <p>Use the Kiro Command Palette to import one local bundle folder, list metadata pages, or read one exact snapshot by UUID.</p>
     <p>Files, archives, <code>.fig</code> ingestion, OAuth, network fetches, and live design-tool accounts are not supported.</p>
@@ -224,6 +245,179 @@ function productStudioHtml(): string {
   </section>
 </body>
 </html>`
+}
+
+function initiativeEntryUi(): InitiativeEntryWorkflowUi {
+  return {
+    pick: async <T extends string>(title: string, options: readonly T[]): Promise<T | undefined> => {
+      const selected = await vscode.window.showQuickPick(
+        options.map((value) => ({ label: value, value })),
+        { title, ignoreFocusOut: true },
+      )
+      return selected?.value
+    },
+    pickMany: async <T extends string>(title: string, options: readonly T[], minimum = 0): Promise<T[] | undefined> => {
+      const selected = await vscode.window.showQuickPick(
+        options.map((value) => ({ label: value, value })),
+        { title, ignoreFocusOut: true, canPickMany: true, placeHolder: minimum > 0 ? `Select at least ${minimum}` : "Optional" },
+      )
+      if (!selected) return undefined
+      if (selected.length < minimum) throw new TypeError(`${title} requires at least ${minimum} selection${minimum === 1 ? "" : "s"}`)
+      return selected.map((entry) => entry.value)
+    },
+    input: async (prompt, options = {}) => vscode.window.showInputBox({
+      prompt,
+      ignoreFocusOut: true,
+      ...(options.value !== undefined ? { value: options.value } : {}),
+      ...(options.secret !== undefined ? { password: options.secret } : {}),
+      validateInput: (value) => validatePortableInput(value.trim(), options.required !== false, prompt),
+    }),
+    confirm: async (message, acceptLabel) => (await vscode.window.showWarningMessage(
+      message,
+      { modal: true },
+      acceptLabel,
+    )) === acceptLabel,
+  }
+}
+
+function initiativeInput(input: unknown): { initiativeId?: string; expectedRevision?: number } {
+  if (input === undefined) return {}
+  if (typeof input === "string") return { initiativeId: normalizeUuid(input, "Initiative ID") }
+  if (!isRecord(input) || Object.keys(input).some((key) => key !== "initiativeId" && key !== "expectedRevision")) {
+    throw new TypeError("Initiative entry input accepts only initiativeId and expectedRevision")
+  }
+  const initiativeId = typeof input.initiativeId === "string"
+    ? normalizeUuid(input.initiativeId, "Initiative ID")
+    : undefined
+  const expectedRevision = input.expectedRevision === undefined
+    ? undefined
+    : validatePageRevision(input.expectedRevision, "Expected Initiative revision")
+  return { ...(initiativeId ? { initiativeId } : {}), ...(expectedRevision ? { expectedRevision } : {}) }
+}
+
+function validatePageRevision(value: unknown, label: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 1) throw new TypeError(`${label} must be a positive integer`)
+  return value as number
+}
+
+async function readInitiativeEntryContext(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<{
+  folder: vscode.WorkspaceFolder
+  client: GaepEngineClient
+  initiative: Initiative
+  assessment: InitiativeEntryAssessment
+}> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  let initiativeId = normalized.initiativeId
+  if (!initiativeId) {
+    const value = await vscode.window.showInputBox({
+      title: "Inspect one exact Initiative entry",
+      prompt: "Initiative UUID",
+      ignoreFocusOut: true,
+      validateInput: (candidate) => {
+        try { normalizeUuid(candidate, "Initiative ID"); return undefined } catch { return "Enter an exact Initiative UUID" }
+      },
+    })
+    if (value === undefined) throw new WorkflowCancelled()
+    initiativeId = normalizeUuid(value, "Initiative ID")
+  }
+  const [initiative, assessment] = await Promise.all([
+    client.readInitiative(initiativeId),
+    client.assessInitiativeEntry(initiativeId),
+  ])
+  if (assessment.initiativeRevision !== (initiative.revision ?? 1)) {
+    throw new ConfigurationBoundaryError("The Initiative changed while its entry assessment was read. Refresh the exact record.")
+  }
+  if (normalized.expectedRevision !== undefined && normalized.expectedRevision !== (initiative.revision ?? 1)) {
+    throw new ConfigurationBoundaryError("The Initiative changed since this entry action was offered. Refresh the exact revision.")
+  }
+  return { folder, client, initiative, assessment }
+}
+
+async function showInitiativeEntry(pool: EngineClientPool, input: unknown): Promise<InitiativeEntryAssessment> {
+  const context = await readInitiativeEntryContext(pool, input)
+  await showInitiativeEntryDocument(context.initiative, context.assessment)
+  return context.assessment
+}
+
+async function classifyInitiative(pool: EngineClientPool, input: unknown): Promise<InitiativeEntryAssessment> {
+  const context = await readInitiativeEntryContext(pool, input)
+  if (["completed", "cancelled"].includes(context.initiative.state)) {
+    throw new ConfigurationBoundaryError(`Terminal Initiative ${context.initiative.state} entry records are immutable.`)
+  }
+  const classification = await collectInitiativeClassification(initiativeEntryUi())
+  if (containsSecretShapedValue(classification)) {
+    throw new ConfigurationBoundaryError("The Initiative classification contains a secret-shaped value and was not persisted.")
+  }
+  const actorId = normalizeActorId(machineSetting("actorId", undefined, "gaep.kiro-local-human"))
+  const updated = await context.client.classifyInitiative(
+    context.initiative.id,
+    context.initiative.revision ?? 1,
+    classification,
+    actorId,
+  )
+  const assessment = await context.client.assessInitiativeEntry(updated.id)
+  if (assessment.initiativeRevision !== updated.revision) throw new ConfigurationBoundaryError("The classified Initiative could not be revalidated.")
+  await showInitiativeEntryDocument(updated, assessment)
+  return assessment
+}
+
+async function resolveInitiativeApplicability(pool: EngineClientPool, input: unknown): Promise<InitiativeEntryAssessment> {
+  const context = await readInitiativeEntryContext(pool, input)
+  if (["completed", "cancelled"].includes(context.initiative.state)) {
+    throw new ConfigurationBoundaryError(`Terminal Initiative ${context.initiative.state} entry records are immutable.`)
+  }
+  if (context.assessment.classification.status !== "current") {
+    throw new ConfigurationBoundaryError("Record a classification bound to the current Product revision before resolving applicability.")
+  }
+  const actorId = normalizeActorId(machineSetting("actorId", undefined, "gaep.kiro-local-human"))
+  const applicability = await collectInitiativeApplicability(initiativeEntryUi(), actorId)
+  if (containsSecretShapedValue(applicability)) {
+    throw new ConfigurationBoundaryError("The Initiative applicability matrix contains a secret-shaped value and was not persisted.")
+  }
+  const updated = await context.client.resolveInitiativeApplicability(
+    context.initiative.id,
+    context.initiative.revision ?? 1,
+    applicability,
+    actorId,
+  )
+  const assessment = await context.client.assessInitiativeEntry(updated.id)
+  if (assessment.initiativeRevision !== updated.revision) throw new ConfigurationBoundaryError("The resolved Initiative could not be revalidated.")
+  await showInitiativeEntryDocument(updated, assessment)
+  return assessment
+}
+
+async function showInitiativeEntryDocument(
+  initiative: Initiative,
+  assessment: InitiativeEntryAssessment,
+): Promise<void> {
+  const lines = [
+    "GAEP Initiative entry assessment",
+    "",
+    `Initiative ID: ${initiative.id}`,
+    `Initiative revision: ${initiative.revision ?? 1}`,
+    `Lifecycle state: ${initiative.state}`,
+    `Classification: ${assessment.classification.status}${initiative.classification ? ` · ${initiative.classification.primaryType} / ${initiative.classification.productProfile}` : ""}`,
+    `Applicability: ${assessment.applicability.status} · matrix revision ${assessment.applicability.matrixRevision ?? "not recorded"}`,
+    `Decisions: ${assessment.applicability.decisionCount}`,
+    `Unresolved subjects: ${assessment.applicability.unresolvedSubjectCount}`,
+    `Awaiting human decisions: ${assessment.applicability.pendingHumanDecisionCount}`,
+    `Blocked decisions: ${assessment.applicability.blockedDecisionCount}`,
+    `Pending approvals: ${assessment.applicability.pendingApprovalCount}`,
+    `Rejected approvals: ${assessment.applicability.rejectedApprovalCount}`,
+    `Assessment: ${assessment.state}`,
+    ...assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    "Boundary: entry assessment is read-only and grants no approval, readiness, not-applicable inference, or action authority.",
+    "Product and Initiative narrative, evidence content, owners, local paths, credentials, and raw engine output are withheld from this compact view.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
 }
 
 async function importPortableDesign(pool: EngineClientPool): Promise<PortableDesignSnapshotSummary> {
@@ -1793,7 +1987,7 @@ async function runUserCommand<T>(operation: () => Promise<T>): Promise<T | undef
   try {
     return await operation()
   } catch (error) {
-    if (error instanceof WorkflowCancelled) return undefined
+    if (error instanceof WorkflowCancelled || error instanceof InitiativeEntryWorkflowCancelled) return undefined
     if (error instanceof GaepHostError || error instanceof ConfigurationBoundaryError ||
       error instanceof TypeError || error instanceof RangeError) {
       await vscode.window.showErrorMessage(error.message)
