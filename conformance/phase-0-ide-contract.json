@@ -33,7 +33,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T005926Z-phase-0-four-host-behavior-vscode-lifecycle.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T011602Z-phase-0-four-host-behavior-parity.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -47,13 +47,29 @@
         { "capabilityId": "exact-product-revision-recheck", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["current = await context.readProduct()", "currentRevision(current) !== expectedProduct.revision"] }] },
         { "capabilityId": "pending-review-governance", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["it is not GAEP approval, a Design Baseline, implementation readiness, or release readiness"] }] },
         { "capabilityId": "metadata-only-privacy", "state": "implemented", "probes": [{ "path": "apps/vscode/src/portable-design-workflow.ts", "contains": ["Only validated privacy-safe metadata and digests were saved"] }] },
-        { "capabilityId": "codex-readiness", "state": "partial", "reason": "Shared adapter readiness exists, but four-host supported-version acceptance is incomplete." },
-        { "capabilityId": "claude-readiness", "state": "partial", "reason": "Capability-truth probing exists, but live Claude invocation and four-host acceptance are incomplete." },
-        { "capabilityId": "provider-model-selection", "state": "partial", "reason": "Selection surfaces exist, but complete live discovery and provenance acceptance are incomplete." },
-        { "capabilityId": "versioned-handoff", "state": "partial", "reason": "Portable handoff observation exists, but complete bidirectional provider/model acceptance is incomplete." },
-        { "capabilityId": "managed-readonly-execution", "state": "partial", "reason": "Managed observation-only execution is implemented for declared slices; full provider and native-host parity is incomplete." },
-        { "capabilityId": "staged-effectful-review", "state": "partial", "reason": "Single-step Codex staged review is durable; effectful multi-step and four-host parity remain fail-closed." },
-        { "capabilityId": "evidence-dashboard", "state": "partial", "reason": "Bounded evidence and recovery views exist; native assistive-technology and supported-host acceptance remain incomplete." },
+        { "capabilityId": "codex-readiness", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/extension.ts", "contains": ["new CodexAdapter(machineSetting(\"codex.executable\", \"codex\"))", "probeAgents: async () => engine", "probeAdaptersResilient(runtime.engine)"] }
+        ] },
+        { "capabilityId": "claude-readiness", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/extension.ts", "contains": ["new ClaudeAdapter(machineSetting(\"claude.executable\", \"claude\"))", "probeAgents: async () => engine", "probeAdaptersResilient(runtime.engine)"] }
+        ] },
+        { "capabilityId": "provider-model-selection", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/extension.ts", "contains": ["vscode.commands.registerCommand(\"gaep.selectAgent\"", "const probes = await vscode.window.withProgress(", "await runtime.engine.selectAgent(agent.capability, modelId, settings, actorId)"] }
+        ] },
+        { "capabilityId": "versioned-handoff", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/extension.ts", "contains": ["const preview = await runtime.engine.previewHandoff(handoffInput)", "Accept Handoff and Switch", "await runtime.engine.createHandoff(handoffInput, actorId)"] }
+        ] },
+        { "capabilityId": "managed-readonly-execution", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/managed-workflow.ts", "contains": ["Manual and Claude context-only execution require an observe-only Workflow without Tools or write scopes", "permissions.push({ capability: \"all-tools\", mode: \"deny\", scope: [] })"] },
+          { "path": "apps/vscode/src/extension.ts", "contains": ["vscode.commands.registerCommand(\"gaep.prepareRun\"", "await runtime.engine.prepareManagedRun(charter.id, actorId)", "handle = await runtime.engine.startManagedRun({"] }
+        ] },
+        { "capabilityId": "staged-effectful-review", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/extension.ts", "contains": ["const reviewManagedRun = async (", "Apply Exact Reviewed Inventory", "review = await review.apply({ confirmation }, actorId)", "review = await review.discard(actorId)"] }
+        ] },
+        { "capabilityId": "evidence-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["const page = await engine.listManagedRunsPage({ offset: 0, limit: managedObservationLimit })", "page.snapshotDigest", "const artifacts = await readVerifiedManagedArtifacts(record"] },
+          { "path": "apps/vscode/src/extension.ts", "contains": ["engine.listManagedRunsPage({ offset: 0, limit: 200 })", "runtime.engine.readManagedRunEvidence(id)", "No apply, discard, cleanup, recovery, or outcome success is claimed"] }
+        ] },
         { "capabilityId": "phase-dashboard-framework", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["composePhaseDashboardFramework(observed.product", "phase: this.context.deliveryPhase()", "...(dashboard ? { dashboard } : {})"] },
           { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isPhaseDashboardFramework", "value.catalogVersion !== \"gaep-phase-dashboards-v1\"", "panel.id !== expected[index]", "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"] },
@@ -87,7 +103,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T005926Z-phase-0-four-host-behavior-vscode-lifecycle.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T011602Z-phase-0-four-host-behavior-parity.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -156,7 +172,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T005926Z-phase-0-four-host-behavior-vscode-lifecycle.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T011602Z-phase-0-four-host-behavior-parity.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -230,7 +246,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T005926Z-phase-0-four-host-behavior-vscode-lifecycle.json",
+        "reportPath": "evidence/ide-smokes/2026-07-25T011602Z-phase-0-four-host-behavior-parity.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
