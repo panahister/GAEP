@@ -1,4 +1,5 @@
 export * from "./agent.js"
+export * from "./business-capability-map.js"
 export * from "./business-understanding.js"
 export * from "./dashboard.js"
 export * from "./execution.js"

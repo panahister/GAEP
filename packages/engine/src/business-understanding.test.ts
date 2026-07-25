@@ -3,8 +3,10 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import {
+  businessCapabilityMapInputSchema,
   stakeholderCategoryValues,
   stakeholderModelInputSchema,
+  type BusinessCapabilityMapInput,
   type BusinessUnderstanding,
   type BusinessUnderstandingInput,
   type ExactSourceReference,
@@ -347,6 +349,70 @@ describe("Business understanding governance", () => {
     return { business, stakeholder, outcome }
   }
 
+  function capabilityMapInput(
+    business: BusinessUnderstanding,
+    stakeholder: StakeholderModel,
+    outcome: Awaited<ReturnType<typeof engine.businessUnderstanding.createOutcomeModel>>,
+    overrides: Partial<BusinessCapabilityMapInput> = {},
+  ): BusinessCapabilityMapInput {
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      businessUnderstanding: businessReference(business),
+      stakeholderModel: stakeholderReference(stakeholder),
+      outcomeModel: { recordId: outcome.id, revision: outcome.revision, digest: canonicalDigest(outcome) },
+      capabilities: [{
+        key: "governed-context",
+        name: "Governed context continuity",
+        purpose: "Preserve exact attributable Product context across bounded engineering handoffs.",
+        category: "differentiating",
+        placement: "gaep-native-authority",
+        scope: {
+          included: ["Candidate context governance", "Exact evidence binding"],
+          excluded: ["Approval substitution", "Execution authorization"],
+          boundaries: ["Portable metadata only", "Product Initiative scope"],
+        },
+        ownerStakeholderKey: "primary-user",
+        accountableStakeholderKeys: ["primary-user"],
+        participatingStakeholderKeys: ["primary-user"],
+        objectiveIds: ["reduce-context-loss"],
+        outcomeIds: ["trusted-context"],
+        dependencyKeys: [],
+        currentMaturity: {
+          level: "repeatable",
+          basis: "The bounded workflow has a repeatable governed-record implementation and test receipt.",
+          sources: [reference()],
+        },
+        targetMaturity: {
+          level: "managed",
+          basis: "The candidate target is evidence-backed management across supported Product workflows.",
+          sources: [reference()],
+        },
+        performanceEvidence: {
+          state: "observed",
+          statement: "The bounded contract workflow preserved exact upstream and Source identities.",
+          sources: [reference()],
+        },
+        gaps: [],
+        priority: {
+          status: "candidate",
+          tier: "high",
+          rationale: "Context continuity is a candidate high priority because downstream governance depends on it.",
+          sources: [reference()],
+        },
+        dependencies: ["Governed Source inventory", "Versioned Product identity"],
+        burden: "Maintaining exact bindings adds explicit review and superseding-revision work.",
+        risk: "Overstated maturity or priority could be mistaken for an approval or implementation commitment.",
+        exitPath: "Retire the candidate capability record through a superseding revision while preserving history.",
+        lifecycle: "candidate",
+        sources: [reference()],
+      }],
+      limitations: ["No realistic Product Owner acceptance or organization-wide capability baseline is represented."],
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -451,6 +517,119 @@ describe("Business understanding governance", () => {
       ...projection,
       snapshotDigest: undefined,
     }))
+  })
+
+  it("governs an exact immutable Business Capability Map and projects privacy-safe counts", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const map = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+
+    expect(await engine.businessCapabilityMap.assess(initiative.id)).toMatchObject({
+      capabilityMap: { recordId: map.id, revision: 1, digest: canonicalDigest(map) },
+      capabilityCount: 1,
+      ownedCapabilityCount: 1,
+      unownedCapabilityCount: 0,
+      objectiveCoverageCount: 1,
+      outcomeCoverageCount: 1,
+      openGapCount: 0,
+      criticalGapCount: 0,
+      unknownCurrentMaturityCount: 0,
+      unassessedPriorityCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.businessCapabilityMap.project(initiative.id)
+    expect(projection).toMatchObject({
+      capabilityMap: {
+        id: map.id,
+        revision: 1,
+        capabilityCount: 1,
+        ownedCapabilityCount: 1,
+        openGapCount: 0,
+        candidatePriorityCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-capability-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-approve"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Governed context continuity")
+    expect(projection.snapshotDigest).toBe(canonicalDigest({ ...projection, snapshotDigest: undefined }))
+
+    const revised = await engine.businessCapabilityMap.revise(
+      map.id,
+      map.revision,
+      capabilityMapInput(business, stakeholder, outcome, {
+        limitations: ["A realistic Product Owner acceptance workflow remains outstanding."],
+      }),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: map.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(map),
+      state: "candidate",
+    })
+    expect((await engine.businessCapabilityMap.listHistory(map.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as {
+        eventType: string
+        payload: Record<string, unknown>
+      })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "business.capability-map.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(map),
+        state: "candidate",
+        authorityBoundary: expect.stringContaining("does-not-approve"),
+      },
+    })
+  })
+
+  it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const base = capabilityMapInput(business, stakeholder, outcome)
+    expect(() => businessCapabilityMapInputSchema.parse({
+      ...base,
+      capabilities: [{
+        ...base.capabilities[0]!,
+        dependencyKeys: ["missing-capability"],
+      }],
+    })).toThrow(/dependencies must reference/)
+
+    await expect(engine.businessCapabilityMap.create({
+      ...base,
+      capabilities: [{
+        ...base.capabilities[0]!,
+        ownerStakeholderKey: "invented-owner",
+      }],
+    }, actorId)).rejects.toThrow(/exact bound Stakeholder Model/)
+
+    await expect(engine.businessCapabilityMap.create({
+      ...base,
+      capabilities: [{
+        ...base.capabilities[0]!,
+        purpose: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable capability context",
+      }],
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const map = await engine.businessCapabilityMap.create(base, actorId)
+    await engine.businessUnderstanding.reviseBusinessUnderstanding(
+      business.id,
+      business.revision,
+      businessInput({ limitations: ["The exact upstream context has changed after capability mapping."] }),
+      actorId,
+    )
+    expect(await engine.businessCapabilityMap.assess(initiative.id)).toMatchObject({
+      capabilityMap: { recordId: map.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
   })
 
   it("exports and validates the complete immutable business graph and rejects rebound upstream records", async () => {

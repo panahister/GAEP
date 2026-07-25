@@ -17,6 +17,7 @@ import {
   architectureRecordSchema,
   auditCheckpointSchema,
   auditEventSchema,
+  businessCapabilityMapSchema,
   businessUnderstandingSchema,
   changeSchema,
   contextPackSchema,
@@ -83,6 +84,8 @@ const directoryNames = [
   "source-provenance",
   "business-understanding",
   "business-understanding-history",
+  "business-capability-maps",
+  "business-capability-map-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -850,6 +853,8 @@ export class GaepRepository {
       ["source-provenance", /^[0-9a-f-]+\.json$/i],
       ["business-understanding", /^[0-9a-f-]+\.json$/i],
       ["business-understanding-history", /^business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["business-capability-maps", /^[0-9a-f-]+\.json$/i],
+      ["business-capability-map-history", /^business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -937,6 +942,10 @@ export class GaepRepository {
     if (/^business-understanding\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^business-understanding-history\/business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, businessUnderstandingSchema)
+    }
+    if (/^business-capability-maps\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^business-capability-map-history\/business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, businessCapabilityMapSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
