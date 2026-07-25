@@ -385,6 +385,52 @@ test("protocol-v2 Source governance projection is exact, bounded, private-safe, 
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Business Understanding projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-business-understanding-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-business-snapshot-binding",
+    "bad-business-snapshot-digest",
+    "bad-business-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readBusinessUnderstanding(initiativeId)
+    assert.equal(projection.assessment.state, "complete-for-review")
+    assert.equal(projection.businessUnderstanding?.objectiveCount, 3)
+    assert.equal(projection.stakeholderModel?.stakeholderCount, 8)
+    assert.equal(projection.outcomeModel?.countermetricCount, 1)
+    assert.equal(
+      projection.authorityBoundary,
+      "business-understanding-projection-does-not-approve-appoint-decide-designate-readiness-or-authorize-action",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes("personalAssignment"), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readBusinessUnderstanding(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

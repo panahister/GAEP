@@ -8,6 +8,7 @@ import {
   collectInitiativeClassification,
   containsSecretShapedValue,
   InitiativeEntryWorkflowCancelled,
+  type BusinessUnderstandingProjection,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -71,6 +72,7 @@ const commandIds = {
   classifyInitiative: "gaepKiro.initiativeEntry.classify",
   resolveApplicability: "gaepKiro.initiativeEntry.resolveApplicability",
   sourceGovernance: "gaepKiro.sourceGovernance.inspect",
+  businessUnderstanding: "gaepKiro.businessUnderstanding.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -161,6 +163,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.classifyInitiative, (input?: unknown) => runUserCommand(() => classifyInitiative(pool, input))),
     vscode.commands.registerCommand(commandIds.resolveApplicability, (input?: unknown) => runUserCommand(() => resolveInitiativeApplicability(pool, input))),
     vscode.commands.registerCommand(commandIds.sourceGovernance, (input?: unknown) => runUserCommand(() => showSourceGovernance(pool, input))),
+    vscode.commands.registerCommand(commandIds.businessUnderstanding, (input?: unknown) => runUserCommand(() => showBusinessUnderstanding(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -480,6 +483,61 @@ async function showSourceGovernance(
     `Provenance (showing ${Math.min(projection.provenance.length, renderLimit)} of ${projection.limits.provenance.total})`,
     ...projection.provenance.slice(0, renderLimit).map((record) =>
       `  - ${record.id} · ${record.targetKind} · ${record.disposition} · ${record.sourceCount} source(s) · ${record.transformationCount} transformation(s)`),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showBusinessUnderstanding(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<BusinessUnderstandingProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Business Understanding", "Initiative ID")
+  const projection = await client.readBusinessUnderstanding(initiativeId)
+  const business = projection.businessUnderstanding
+  const stakeholders = projection.stakeholderModel
+  const outcomes = projection.outcomeModel
+  const lines = [
+    "GAEP governed Business Understanding",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${projection.assessment.state}`,
+    `Assessment counts: ${projection.assessment.unresolvedQuestionCount} unresolved questions · ${projection.assessment.blockingQuestionCount} blocking questions · ${projection.assessment.staleBindingCount} stale bindings · ${projection.assessment.staleSourceReferenceCount} stale Source references`,
+    ...projection.assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Business Understanding: ${business
+      ? `${business.id}@${business.revision} · ${business.state} · ${business.digest}`
+      : "not recorded"}`,
+    ...(business ? [
+      `Business counts: ${business.objectiveCount} objectives · ${business.constraintCount} constraints · ${business.assumptionCount} assumptions · ${business.unresolvedQuestionCount} unresolved questions · ${business.glossaryTermCount} glossary terms`,
+    ] : []),
+    "",
+    `Stakeholder Model: ${stakeholders
+      ? `${stakeholders.id}@${stakeholders.revision} · ${stakeholders.state} · ${stakeholders.digest}`
+      : "not recorded"}`,
+    ...(stakeholders ? [
+      `Stakeholder counts: ${stakeholders.stakeholderCount} stakeholders · ${stakeholders.representedCategoryCount} represented categories · ${stakeholders.unresolvedCategoryCount} unresolved categories · ${stakeholders.verifiedAuthorityCount} verified authority claims`,
+    ] : []),
+    "",
+    `Outcome Model: ${outcomes
+      ? `${outcomes.id}@${outcomes.revision} · ${outcomes.state} · ${outcomes.digest}`
+      : "not recorded"}`,
+    ...(outcomes ? [
+      `Outcome counts: ${outcomes.outcomeCount} outcomes · ${outcomes.measureCount} measures · ${outcomes.countermetricCount} countermetrics · ${outcomes.burdenMeasureCount} burden measures · ${outcomes.observedBaselineCount} observed baselines`,
+    ] : []),
     "",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,

@@ -5,6 +5,7 @@ import type {
   AgentSelection,
   AgentSelectionState,
   ArchitectureRecord,
+  BusinessUnderstandingProjection,
   Change,
   ChangeImpactDashboard,
   ChangeImpactDashboardRequest,
@@ -113,6 +114,9 @@ export interface CurrentStudioEngineReader {
   sourceGovernance?: {
     project(initiativeId: string): Promise<SourceGovernanceProjection>
   }
+  businessUnderstanding?: {
+    project(initiativeId: string): Promise<BusinessUnderstandingProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -152,6 +156,7 @@ interface ObservedStudioState {
   product?: Product
   initiatives: Initiative[]
   initiativeEntryAssessments: Map<string, InitiativeEntryAssessment>
+  businessUnderstandingProjections: Map<string, BusinessUnderstandingProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -424,10 +429,94 @@ function legacyForm(route: RecordFormRoute, product?: Product): RecordFormPageSn
   }
 }
 
+function businessUnderstandingTable(
+  route: Extract<RecordFormRoute, "direction" | "users-jobs" | "outcomes">,
+  state: ObservedStudioState,
+): StudioTableSnapshot {
+  const definition = route === "direction"
+    ? {
+        id: "business-understanding",
+        title: "Governed Business Understanding",
+        recordLabel: "Business Understanding",
+        record: (projection: BusinessUnderstandingProjection) => projection.businessUnderstanding,
+        counts: (projection: BusinessUnderstandingProjection) => projection.businessUnderstanding
+          ? `${projection.businessUnderstanding.objectiveCount} objectives · ${projection.businessUnderstanding.constraintCount} constraints · ${projection.businessUnderstanding.assumptionCount} assumptions · ${projection.businessUnderstanding.unresolvedQuestionCount} unresolved questions`
+          : "",
+      }
+    : route === "users-jobs"
+      ? {
+          id: "stakeholder-model",
+          title: "Governed Stakeholder Model",
+          recordLabel: "Stakeholder Model",
+          record: (projection: BusinessUnderstandingProjection) => projection.stakeholderModel,
+          counts: (projection: BusinessUnderstandingProjection) => projection.stakeholderModel
+            ? `${projection.stakeholderModel.stakeholderCount} stakeholders · ${projection.stakeholderModel.representedCategoryCount} represented categories · ${projection.stakeholderModel.unresolvedCategoryCount} unresolved categories · ${projection.stakeholderModel.verifiedAuthorityCount} verified authority claims`
+            : "",
+        }
+      : {
+          id: "outcome-model",
+          title: "Governed Outcome Model",
+          recordLabel: "Outcome Model",
+          record: (projection: BusinessUnderstandingProjection) => projection.outcomeModel,
+          counts: (projection: BusinessUnderstandingProjection) => projection.outcomeModel
+            ? `${projection.outcomeModel.outcomeCount} outcomes · ${projection.outcomeModel.measureCount} measures · ${projection.outcomeModel.countermetricCount} countermetrics · ${projection.outcomeModel.burdenMeasureCount} burden measures · ${projection.outcomeModel.observedBaselineCount} observed baselines`
+            : "",
+        }
+  const projections = [...state.businessUnderstandingProjections.values()]
+  const rows = projections.flatMap((projection) => {
+    const record = definition.record(projection)
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        state: record.state,
+        counts: definition.counts(projection),
+        assessment: projection.assessment.state,
+        boundary: "Candidate evidence only; no approval, appointment, decision, readiness, or action authority.",
+      },
+      state: projection.assessment.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: definition.id,
+    title: definition.title,
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: definition.recordLabel },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        `No governed ${definition.recordLabel}`,
+        `Create the candidate ${definition.recordLabel} through the governed engine workflow. This view does not infer missing business context or authority.`,
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
-  if (!design) return legacyForm(route, state.product)
+  const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
+    ? businessUnderstandingTable(route, state)
+    : undefined
+  if (!design) {
+    const legacy = legacyForm(route, state.product)
+    return businessTable ? { ...legacy, relatedRecords: [businessTable] } : legacy
+  }
   const relatedRecords: StudioTableSnapshot[] = []
+  if (businessTable) relatedRecords.push(businessTable)
   if (route === "scope") relatedRecords.push(requirementsTable(state.requirements))
   if (route === "architecture") relatedRecords.push(architectureTable(state.architecture))
   return {
@@ -2870,7 +2959,8 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
 
   private async observe(route: StudioRoute): Promise<ObservedStudioState> {
     const empty: ObservedStudioState = {
-      initiatives: [], initiativeEntryAssessments: new Map(), sourceGovernanceProjections: new Map(),
+      initiatives: [], initiativeEntryAssessments: new Map(), businessUnderstandingProjections: new Map(),
+      sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
       handoffSelectedFileCount: 0, handoffOmittedOutsideWindow: 0, handoffOmittedForResourceSafety: 0,
@@ -3028,6 +3118,51 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "source-governance-unavailable",
           "Source governance metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (
+      (route === "direction" || route === "users-jobs" || route === "outcomes") &&
+      engine.businessUnderstanding
+    ) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.businessUnderstanding!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.businessUnderstandingProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Business Understanding projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `business-understanding-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Business Understanding, Stakeholder Model, and Outcome Model metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "business-understanding-unavailable",
+          "Business Understanding metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

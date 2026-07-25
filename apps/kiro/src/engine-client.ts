@@ -7,12 +7,14 @@ import { once } from "node:events"
 
 import {
   completeInitiativeApplicabilityCoverage,
+  businessUnderstandingProjectionSchema,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
   initiativeSchema,
   sourceGovernanceProjectionSchema,
   type Initiative,
+  type BusinessUnderstandingProjection,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
@@ -193,6 +195,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = sourceGovernanceProjectionSchema.safeParse(
         await this.request("source.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readBusinessUnderstanding(initiativeValue: string): Promise<BusinessUnderstandingProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = businessUnderstandingProjectionSchema.safeParse(
+        await this.request("business.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

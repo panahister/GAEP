@@ -27,6 +27,9 @@ const riskId = "27272727-2727-4727-8727-272727272727"
 const sourceId = "30303030-3030-4030-8030-303030303030"
 const sourceBaselineId = "31313131-3131-4131-8131-313131313131"
 const sourceProvenanceId = "32323232-3232-4232-8232-323232323232"
+const businessUnderstandingId = "33333333-3333-4333-8333-333333333333"
+const stakeholderModelId = "34343434-3434-4434-8434-343434343434"
+const outcomeModelId = "35353535-3535-4535-8535-353535353535"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -66,6 +69,8 @@ input.on("line", (line) => {
       return resolveInitiativeApplicability(id, request.params)
     case "source.snapshot":
       return readSourceGovernance(id, request.params)
+    case "business.snapshot":
+      return readBusinessUnderstanding(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -250,6 +255,97 @@ function readSourceGovernance(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-source-snapshot-digest")) value.sources[0].freshness = "stale"
   if (workspacePath.endsWith("bad-source-snapshot-private")) value.sourceLocator = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readBusinessUnderstanding(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BUSINESS PARAMS")
+  }
+  const businessDigest = `sha256:${"3".repeat(64)}`
+  const stakeholderDigest = `sha256:${"4".repeat(64)}`
+  const outcomeDigest = `sha256:${"5".repeat(64)}`
+  const assessment = {
+    schemaVersion: 1,
+    kind: "business-understanding-assessment",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    businessUnderstanding: { recordId: businessUnderstandingId, revision: 2, digest: businessDigest },
+    stakeholderModel: { recordId: stakeholderModelId, revision: 1, digest: stakeholderDigest },
+    outcomeModel: { recordId: outcomeModelId, revision: 1, digest: outcomeDigest },
+    stakeholderCount: 8,
+    representedStakeholderCategoryCount: 8,
+    unresolvedStakeholderCategoryCount: 0,
+    verifiedAuthorityCount: 0,
+    unverifiedAuthorityCount: 0,
+    outcomeCount: 2,
+    measureCount: 4,
+    observedBaselineCount: 4,
+    unresolvedQuestionCount: 0,
+    blockingQuestionCount: 0,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 0,
+    state: "complete-for-review",
+    reasons: [],
+    assessedAt: "2026-07-25T04:00:00.000Z",
+    authorityBoundary: "business-understanding-assessment-reports-recorded-candidate-evidence-and-does-not-approve-decide-designate-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "business-understanding-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: {
+      id: initiativeId,
+      revision: initiativeState.revision,
+      digest: canonicalDigest(initiativeState),
+      state: initiativeState.state,
+    },
+    assessment,
+    businessUnderstanding: {
+      id: businessUnderstandingId,
+      revision: 2,
+      digest: businessDigest,
+      state: "candidate",
+      objectiveCount: 3,
+      constraintCount: 2,
+      assumptionCount: 1,
+      unresolvedQuestionCount: 0,
+      glossaryTermCount: 5,
+      updatedAt: "2026-07-25T03:55:00.000Z",
+    },
+    stakeholderModel: {
+      id: stakeholderModelId,
+      revision: 1,
+      digest: stakeholderDigest,
+      state: "candidate",
+      stakeholderCount: 8,
+      representedCategoryCount: 8,
+      unresolvedCategoryCount: 0,
+      verifiedAuthorityCount: 0,
+      updatedAt: "2026-07-25T03:56:00.000Z",
+    },
+    outcomeModel: {
+      id: outcomeModelId,
+      revision: 1,
+      digest: outcomeDigest,
+      state: "candidate",
+      outcomeCount: 2,
+      measureCount: 4,
+      countermetricCount: 1,
+      burdenMeasureCount: 1,
+      observedBaselineCount: 4,
+      updatedAt: "2026-07-25T03:57:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-business-narrative-personal-data-source-content-locators-or-credentials",
+    authorityBoundary: "business-understanding-projection-does-not-approve-appoint-decide-designate-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-business-snapshot-binding")) content.initiative.id = businessUnderstandingId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-business-snapshot-digest")) value.outcomeModel.measureCount = 5
+  if (workspacePath.endsWith("bad-business-snapshot-private")) value.personalAssignment = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

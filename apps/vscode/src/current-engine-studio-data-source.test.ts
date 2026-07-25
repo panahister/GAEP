@@ -7,6 +7,7 @@ import {
   productStudioSectionIds,
   type AdapterCapabilities,
   type AgentSelection,
+  type BusinessUnderstandingProjection,
   type Change,
   type Decision,
   type Handoff,
@@ -208,6 +209,99 @@ function sourceGovernanceProjection(): SourceGovernanceProjection {
     observedAt: assessment.assessedAt,
     privacyBoundary: "projection-contains-portable-governance-metadata-and-digests-only-not-source-bytes-locators-local-paths-or-credentials" as const,
     authorityBoundary: "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
+function businessUnderstandingProjection(): BusinessUnderstandingProjection {
+  const assessment = {
+    schemaVersion: 1 as const,
+    kind: "business-understanding-assessment" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    businessUnderstanding: {
+      recordId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      revision: 2,
+      digest: `sha256:${"a".repeat(64)}` as const,
+    },
+    stakeholderModel: {
+      recordId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      revision: 1,
+      digest: `sha256:${"b".repeat(64)}` as const,
+    },
+    outcomeModel: {
+      recordId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      revision: 1,
+      digest: `sha256:${"c".repeat(64)}` as const,
+    },
+    stakeholderCount: 8,
+    representedStakeholderCategoryCount: 8,
+    unresolvedStakeholderCategoryCount: 0,
+    verifiedAuthorityCount: 0,
+    unverifiedAuthorityCount: 0,
+    outcomeCount: 2,
+    measureCount: 4,
+    observedBaselineCount: 4,
+    unresolvedQuestionCount: 0,
+    blockingQuestionCount: 0,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 0,
+    state: "complete-for-review" as const,
+    reasons: [],
+    assessedAt: "2026-07-25T04:00:00.000Z",
+    authorityBoundary: "business-understanding-assessment-reports-recorded-candidate-evidence-and-does-not-approve-decide-designate-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "business-understanding-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    assessment,
+    businessUnderstanding: {
+      id: assessment.businessUnderstanding.recordId,
+      revision: assessment.businessUnderstanding.revision,
+      digest: assessment.businessUnderstanding.digest,
+      state: "candidate" as const,
+      objectiveCount: 3,
+      constraintCount: 2,
+      assumptionCount: 1,
+      unresolvedQuestionCount: 0,
+      glossaryTermCount: 5,
+      updatedAt: "2026-07-25T03:55:00.000Z",
+    },
+    stakeholderModel: {
+      id: assessment.stakeholderModel.recordId,
+      revision: assessment.stakeholderModel.revision,
+      digest: assessment.stakeholderModel.digest,
+      state: "candidate" as const,
+      stakeholderCount: 8,
+      representedCategoryCount: 8,
+      unresolvedCategoryCount: 0,
+      verifiedAuthorityCount: 0,
+      updatedAt: "2026-07-25T03:56:00.000Z",
+    },
+    outcomeModel: {
+      id: assessment.outcomeModel.recordId,
+      revision: assessment.outcomeModel.revision,
+      digest: assessment.outcomeModel.digest,
+      state: "candidate" as const,
+      outcomeCount: 2,
+      measureCount: 4,
+      countermetricCount: 1,
+      burdenMeasureCount: 1,
+      observedBaselineCount: 4,
+      updatedAt: "2026-07-25T03:57:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-business-narrative-personal-data-source-content-locators-or-credentials" as const,
+    authorityBoundary: "business-understanding-projection-does-not-approve-appoint-decide-designate-readiness-or-authorize-action" as const,
   }
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
@@ -764,6 +858,7 @@ interface HarnessOptions {
   rotateContextDuringObservation?: boolean
   productStudio?: ProductStudioService
   sourceGovernanceProjection?: SourceGovernanceProjection
+  businessUnderstandingProjection?: BusinessUnderstandingProjection
   commandResult?: unknown
 }
 
@@ -857,6 +952,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.sourceGovernanceProjection ? {
       sourceGovernance: {
         project: async () => options.sourceGovernanceProjection!,
+      },
+    } : {}),
+    ...(options.businessUnderstandingProjection ? {
+      businessUnderstanding: {
+        project: async () => options.businessUnderstandingProjection!,
       },
     } : {}),
   }
@@ -1015,6 +1115,49 @@ describe("current-engine Product Studio data source", () => {
       },
     })
     expect(JSON.stringify(snapshot)).not.toContain("sourceLocator")
+  })
+
+  it("projects privacy-safe governed business, stakeholder, and outcome metadata on their native pages", async () => {
+    const projection = businessUnderstandingProjection()
+    const { source } = harness({ businessUnderstandingProjection: projection })
+    const direction = await source.readSnapshot("direction")
+    const stakeholders = await source.readSnapshot("users-jobs")
+    const outcomes = await source.readSnapshot("outcomes")
+
+    expect(direction.page.kind === "record-form" && direction.page.relatedRecords?.[0]).toMatchObject({
+      id: "business-understanding",
+      rows: [{
+        id: projection.businessUnderstanding?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          counts: "3 objectives · 2 constraints · 1 assumptions · 0 unresolved questions",
+          assessment: "complete-for-review",
+        },
+      }],
+    })
+    expect(stakeholders.page.kind === "record-form" && stakeholders.page.relatedRecords?.[0]).toMatchObject({
+      id: "stakeholder-model",
+      rows: [{
+        id: projection.stakeholderModel?.id,
+        cells: {
+          counts: "8 stakeholders · 8 represented categories · 0 unresolved categories · 0 verified authority claims",
+        },
+      }],
+    })
+    expect(outcomes.page.kind === "record-form" && outcomes.page.relatedRecords?.[0]).toMatchObject({
+      id: "outcome-model",
+      rows: [{
+        id: projection.outcomeModel?.id,
+        cells: {
+          counts: "2 outcomes · 4 measures · 1 countermetrics · 1 burden measures · 4 observed baselines",
+          boundary: "Candidate evidence only; no approval, appointment, decision, readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify({ direction, stakeholders, outcomes })).not.toMatch(
+      /personal assignment|business narrative|source content|customer@example\.com|api_key/iu,
+    )
   })
 
   it("withholds the Agent/Model projection when exact history sources are incomplete", async () => {
