@@ -6,6 +6,7 @@ import {
   businessCapabilityMapInputSchema,
   stakeholderCategoryValues,
   stakeholderModelInputSchema,
+  type BusinessCapabilityMap,
   type BusinessCapabilityMapInput,
   type BusinessUnderstanding,
   type BusinessUnderstandingInput,
@@ -634,10 +635,16 @@ describe("Business understanding governance", () => {
 
   it("exports and validates the complete immutable business graph and rejects rebound upstream records", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
       `business-understanding-history/business-understanding-${business.id}-r1.json`,
+      `business-capability-maps/${capabilityMap.id}.json`,
+      `business-capability-map-history/business-capability-map-${capabilityMap.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -661,6 +668,26 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(rebound))
       .rejects.toThrow(/Stakeholder Model does not match immutable history|Business Understanding reference is unresolved/)
+
+    const forgeUnknownObjective = (content: unknown) => ({
+      ...(content as BusinessCapabilityMap),
+      capabilities: [{
+        ...(content as BusinessCapabilityMap).capabilities[0]!,
+        objectiveIds: ["invented-objective"],
+      }],
+    })
+    let forgedCapabilityTrace = replacePortableRecord(
+      bundle,
+      `business-capability-maps/${capabilityMap.id}.json`,
+      forgeUnknownObjective,
+    )
+    forgedCapabilityTrace = replacePortableRecord(
+      forgedCapabilityTrace,
+      `business-capability-map-history/business-capability-map-${capabilityMap.id}-r1.json`,
+      forgeUnknownObjective,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedCapabilityTrace))
+      .rejects.toThrow(/unknown bound objective/)
   })
 
   it("requires explicit human disclosure review for confidential business records", async () => {

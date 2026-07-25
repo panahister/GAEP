@@ -5,6 +5,7 @@ import { isAbsolute } from "node:path"
 
 import {
   architectureRecordSchema,
+  businessCapabilityMapSchema,
   businessUnderstandingSchema,
   changeSchema,
   containsSecretShapedValue,
@@ -51,6 +52,7 @@ import {
   workflowPlanSchema,
   redactSecretShapedText,
   type ArchitectureRecord,
+  type BusinessCapabilityMap,
   type BusinessUnderstanding,
   type Change,
   type ContextPack,
@@ -1908,6 +1910,16 @@ export class ProductStudioService {
       /^business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       businessUnderstandingSchema,
     )
+    const businessCapabilityMaps = await this.listRecords(
+      "business-capability-maps",
+      /^[0-9a-f-]+\.json$/i,
+      businessCapabilityMapSchema,
+    )
+    const businessCapabilityMapHistory = await this.listRecords(
+      "business-capability-map-history",
+      /^business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      businessCapabilityMapSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -1937,6 +1949,8 @@ export class ProductStudioService {
     const sensitiveBusinessRecordIds = new Set([
       ...businessUnderstanding,
       ...businessUnderstandingHistory,
+      ...businessCapabilityMaps,
+      ...businessCapabilityMapHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -1953,6 +1967,7 @@ export class ProductStudioService {
         const classification = contextPacks.find((pack) => pack.id === id)?.classification.level ??
           sources.find((source) => source.id === id)?.informationClassification ??
           businessUnderstanding.find((record) => record.id === id)?.informationClassification ??
+          businessCapabilityMaps.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2006,6 +2021,13 @@ export class ProductStudioService {
       "business-understanding-record",
       businessUnderstandingHistory,
       (record) => `business-understanding-history/business-understanding-${record.id}-r${record.revision}.json`,
+    )
+    append("business-capability-maps", "business-capability-map", businessCapabilityMaps)
+    append(
+      "business-capability-map-history",
+      "business-capability-map",
+      businessCapabilityMapHistory,
+      (record) => `business-capability-map-history/business-capability-map-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2079,6 +2101,7 @@ export class ProductStudioService {
           ...contextPacks.map((pack) => pack.classification.level),
           ...sources.map((source) => source.informationClassification),
           ...businessUnderstanding.map((record) => record.informationClassification),
+          ...businessCapabilityMaps.map((record) => record.informationClassification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
         ])],
@@ -2205,6 +2228,14 @@ export class ProductStudioService {
           `business-understanding-history/business-understanding-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Business Understanding history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("business-capability-map-history/")) {
+        const record = validated as BusinessCapabilityMap
+        const expectedHistoryPath =
+          `business-capability-map-history/business-capability-map-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Business Capability Map history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3331,7 +3362,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3363,7 +3394,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -3462,7 +3493,11 @@ export class ProductStudioService {
     const outcomeModelHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("outcome-model-history/"))
       .map(([, record]) => outcomeModelSchema.parse(record))
-    validateVersionedBusinessRecords(outcomeModels, outcomeModelHistory, "Outcome Model")
+    const exactOutcomeModels = validateVersionedBusinessRecords(
+      outcomeModels,
+      outcomeModelHistory,
+      "Outcome Model",
+    )
     for (const outcome of [...outcomeModels, ...outcomeModelHistory]) {
       resolveBusinessUnderstanding(outcome.businessUnderstanding, outcome.initiativeId)
       const stakeholder = resolveStakeholderModel(outcome.stakeholderModel, outcome.initiativeId)
@@ -3472,6 +3507,55 @@ export class ProductStudioService {
           entry.beneficiaryStakeholderKeys.some((key) => !stakeholderKeys.has(key))) ||
         outcome.measures.some((measure) => !stakeholderKeys.has(measure.collection.ownerStakeholderKey))
       ) throw new Error(`Import Outcome Model ${outcome.id} references an unknown bound stakeholder`)
+    }
+
+    const resolveOutcomeModel = (
+      reference: BusinessCapabilityMap["outcomeModel"],
+      initiativeId: string,
+    ): OutcomeModel => {
+      const record = exactOutcomeModels.get(
+        `${reference.recordId}:${reference.revision}:${reference.digest}`,
+      )
+      if (!record || record.initiativeId !== initiativeId) {
+        throw new Error("Import exact Outcome Model reference is unresolved")
+      }
+      return record
+    }
+    const capabilityMaps = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("business-capability-maps/"))
+      .map(([, record]) => businessCapabilityMapSchema.parse(record))
+    const capabilityMapHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("business-capability-map-history/"))
+      .map(([, record]) => businessCapabilityMapSchema.parse(record))
+    validateVersionedBusinessRecords(
+      capabilityMaps,
+      capabilityMapHistory,
+      "Business Capability Map",
+    )
+    for (const map of [...capabilityMaps, ...capabilityMapHistory]) {
+      const business = resolveBusinessUnderstanding(map.businessUnderstanding, map.initiativeId)
+      const stakeholder = resolveStakeholderModel(map.stakeholderModel, map.initiativeId)
+      const outcome = resolveOutcomeModel(map.outcomeModel, map.initiativeId)
+      const objectiveIds = new Set(business.objectives.map((objective) => objective.id))
+      const stakeholderKeys = new Set(stakeholder.stakeholders.map((entry) => entry.key))
+      const outcomeIds = new Set(outcome.outcomes.map((entry) => entry.id))
+      for (const capability of map.capabilities) {
+        if (capability.objectiveIds.some((id) => !objectiveIds.has(id))) {
+          throw new Error(`Import Business Capability Map ${map.id} references an unknown bound objective`)
+        }
+        if (capability.outcomeIds.some((id) => !outcomeIds.has(id))) {
+          throw new Error(`Import Business Capability Map ${map.id} references an unknown bound outcome`)
+        }
+        const roleKeys = [
+          ...(capability.ownerStakeholderKey ? [capability.ownerStakeholderKey] : []),
+          ...capability.accountableStakeholderKeys,
+          ...capability.participatingStakeholderKeys,
+          ...capability.gaps.flatMap((gap) => gap.ownerStakeholderKey ? [gap.ownerStakeholderKey] : []),
+        ]
+        if (roleKeys.some((key) => !stakeholderKeys.has(key))) {
+          throw new Error(`Import Business Capability Map ${map.id} references an unknown bound stakeholder`)
+        }
+      }
     }
 
     for (const change of changes) {
@@ -4075,6 +4159,10 @@ export class ProductStudioService {
         /^business-understanding-history\/business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "business-understanding-record"
     }
+    if (/^business-capability-maps\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^business-capability-map-history\/business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "business-capability-map"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -4123,6 +4211,10 @@ export class ProductStudioService {
     if (/^business-understanding\/[0-9a-f-]+\.json$/i.test(path) ||
         /^business-understanding-history\/business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return businessUnderstandingSchema
+    }
+    if (/^business-capability-maps\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^business-capability-map-history\/business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return businessCapabilityMapSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
