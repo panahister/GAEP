@@ -381,7 +381,7 @@ internal static class Program
             "founder.review");
         Check(resolved.Revision == 5 && resolved.Applicability is not null &&
               resolved.Applicability.State == "current" && resolved.Applicability.InitiativeRevision == 5 &&
-              resolved.Applicability.DecisionCount == 1 && resolved.Applicability.UnresolvedSubjectCount == 0 &&
+              resolved.Applicability.DecisionCount == 1 && resolved.Applicability.UnresolvedSubjectCount == 48 &&
               resolved.Applicability.EvaluatedBy == "founder.review" &&
               resolved.Applicability.SubjectCatalog == applicabilityInput.SubjectCatalog &&
               resolved.Applicability.ClassificationDigest == resolved.Classification?.Digest,
@@ -393,18 +393,32 @@ internal static class Program
               initiativeContext.Assessment.Classification.Status == "current" &&
               initiativeContext.Assessment.Classification.Completeness.Status == "complete" &&
               initiativeContext.Assessment.Applicability.Status == "current" &&
-              initiativeContext.Assessment.Applicability.Coverage.Status == "incomplete" &&
-              initiativeContext.Assessment.Applicability.Coverage.CoveredSubjectCount == 1 &&
-              initiativeContext.Assessment.Applicability.Coverage.MissingSubjectCount == 48 &&
+              initiativeContext.Assessment.Applicability.Coverage.Status == "complete" &&
+              initiativeContext.Assessment.Applicability.Coverage.CoveredSubjectCount == 49 &&
+              initiativeContext.Assessment.Applicability.Coverage.MissingSubjectCount == 0 &&
               initiativeOutput.Contains("GAEP Initiative entry assessment", StringComparison.Ordinal) &&
               initiativeOutput.Contains("Classification completeness: complete", StringComparison.Ordinal) &&
-              initiativeOutput.Contains("Canonical subject coverage: 1/49", StringComparison.Ordinal) &&
+              initiativeOutput.Contains("Canonical subject coverage: 49/49", StringComparison.Ordinal) &&
               initiativeOutput.Contains("grants no approval, readiness, not-applicable inference", StringComparison.Ordinal) &&
               !initiativeOutput.Contains("Private Initiative title", StringComparison.Ordinal) &&
               !initiativeOutput.Contains("founder.review", StringComparison.Ordinal) &&
               !initiativeOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
               !initiativeOutput.Contains(PrivateCredential, StringComparison.Ordinal),
             "Initiative entry controller revalidates exact Product context and renders privacy-minimal no-authority truth");
+        var nonCanonicalDecision = applicabilityInput.Decisions.Single() with
+        {
+            Subject = new InitiativeApplicabilitySubject(
+                "activity",
+                "non-canonical-review",
+                "Non-canonical review"),
+        };
+        await ExpectAsync<ArgumentException>(
+            () => client.ResolveInitiativeApplicabilityAsync(
+                InitiativeId,
+                resolved.Revision,
+                applicabilityInput with { Decisions = [nonCanonicalDecision] },
+                "founder.review"),
+            "Initiative applicability rejects non-canonical subjects before transport");
 
         await using (var hostileClient = new EngineClient(badInitiativePrivateRoot, executable))
         {

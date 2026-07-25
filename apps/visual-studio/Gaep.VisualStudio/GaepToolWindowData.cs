@@ -728,11 +728,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         try
         {
             var subjectCatalog = LoadedInitiativeSubjectCatalog();
-            matrix = ProductWorkflowController.ValidateInitiativeApplicabilityInput(
+            matrix = ProductWorkflowController.CompleteInitiativeApplicabilityInput(
                 new InitiativeApplicabilityMatrixInput(
                     initiativeDraftDecisions.ToArray(),
                     initiativeDraftUnresolved.ToArray(),
-                    subjectCatalog));
+                    subjectCatalog),
+                CurrentActorId());
         }
         catch (Exception error)
         {

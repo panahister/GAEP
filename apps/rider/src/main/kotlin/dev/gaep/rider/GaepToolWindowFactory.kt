@@ -616,7 +616,10 @@ class GaepToolWindowFactory : ToolWindowFactory {
                 owner = entryText(project, "Unresolved subject $index owner", true),
             )
         }
-        return InitiativeApplicabilityMatrixInput(decisions, unresolved)
+        return PortableDesignProtocol.completeInitiativeApplicabilityCoverage(
+            InitiativeApplicabilityMatrixInput(decisions, unresolved),
+            actorId,
+        )
     }
 
     private fun promptInitiativeSubject(project: Project, prefix: String) = InitiativeApplicabilitySubject(

@@ -244,6 +244,13 @@ public sealed class ProductWorkflowController(EngineClient client)
         return input;
     }
 
+    public static InitiativeApplicabilityMatrixInput CompleteInitiativeApplicabilityInput(
+        InitiativeApplicabilityMatrixInput input,
+        string unresolvedOwner) =>
+        PortableDesignProtocol.CompleteInitiativeApplicabilityCoverage(
+            input,
+            PortableDesignProtocol.ValidateActorId(unresolvedOwner));
+
     public async Task<string> ReadPhaseDashboardAsync(CancellationToken cancellationToken = default)
     {
         var product = await client.ReadProductBindingAsync(cancellationToken);

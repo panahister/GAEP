@@ -1,5 +1,6 @@
 import {
   initiativeApplicabilityMatrixInputSchema,
+  initiativeApplicabilitySubjectDefinitions,
   initiativeClassificationInputSchema,
   type InitiativeApplicabilityDecisionInput,
   type InitiativeApplicabilityMatrixInput,
@@ -8,6 +9,9 @@ import {
   type InitiativeClassificationInput,
   type InitiativeType,
 } from "./product.js"
+
+const unresolvedCatalogSubjectReason =
+  "No explicit applicability decision was recorded in this review; accountable resolution remains required."
 
 export class InitiativeEntryWorkflowCancelled extends Error {
   constructor() {
@@ -228,11 +232,47 @@ export async function collectInitiativeApplicability(
       owner: requiredText(await ui.input(`Unresolved subject ${unresolvedSubjects.length + 1} owner`)),
     })
   }
-  const parsed = initiativeApplicabilityMatrixInputSchema.parse({ decisions, unresolvedSubjects })
+  const parsed = completeInitiativeApplicabilityCoverage({ decisions, unresolvedSubjects }, actorId)
   const accepted = await ui.confirm(
-    `Record ${parsed.decisions.length} explicit applicability decision(s) and ${parsed.unresolvedSubjects.length} unresolved subject(s)? Absence is never treated as not applicable, and this matrix grants no approval, readiness, or action authority.`,
+    `Record ${parsed.decisions.length} explicit applicability decision(s) and ${parsed.unresolvedSubjects.length} unresolved subject(s)? Every canonical subject is represented exactly once; absence is never treated as not applicable, and this matrix grants no approval, readiness, or action authority.`,
     "Record Exact Applicability Matrix",
   )
   if (!accepted) throw new InitiativeEntryWorkflowCancelled()
   return parsed
+}
+
+export function completeInitiativeApplicabilityCoverage(
+  input: InitiativeApplicabilityMatrixInput,
+  unresolvedOwner: string,
+): InitiativeApplicabilityMatrixInput {
+  const parsed = initiativeApplicabilityMatrixInputSchema.parse(input)
+  const catalog = new Map(initiativeApplicabilitySubjectDefinitions.map((subject) => [
+    `${subject.type}:${subject.key}`,
+    subject,
+  ]))
+  const represented = new Set<string>()
+  for (const subject of [
+    ...parsed.decisions.map((decision) => decision.subject),
+    ...parsed.unresolvedSubjects.map((unresolved) => unresolved.subject),
+  ]) {
+    const key = `${subject.type}:${subject.key}`
+    const canonical = catalog.get(key)
+    if (!canonical || canonical.label !== subject.label) {
+      throw new Error(`Applicability subject ${key} does not match the canonical catalog`)
+    }
+    represented.add(key)
+  }
+  return initiativeApplicabilityMatrixInputSchema.parse({
+    ...parsed,
+    unresolvedSubjects: [
+      ...parsed.unresolvedSubjects,
+      ...initiativeApplicabilitySubjectDefinitions
+        .filter((subject) => !represented.has(`${subject.type}:${subject.key}`))
+        .map((subject) => ({
+          subject: { ...subject },
+          reason: unresolvedCatalogSubjectReason,
+          owner: unresolvedOwner,
+        })),
+    ],
+  })
 }

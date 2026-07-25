@@ -6,6 +6,7 @@ import { delimiter, dirname, extname, isAbsolute, resolve } from "node:path"
 import { once } from "node:events"
 
 import {
+  completeInitiativeApplicabilityCoverage,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
@@ -222,8 +223,10 @@ export class GaepEngineClient {
     return this.enqueue(async () => {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const expectedInitiativeRevision = validateProductRevision(expectedRevisionValue)
-      const applicability = initiativeApplicabilityMatrixInputSchema.parse(inputValue)
       const actorId = normalizeActorId(actorValue)
+      const applicability = initiativeApplicabilityMatrixInputSchema.parse(
+        completeInitiativeApplicabilityCoverage(inputValue, actorId),
+      )
       const parsed = initiativeSchema.strict().safeParse(await this.request("resolveInitiativeApplicability", {
         initiativeId,
         expectedInitiativeRevision,

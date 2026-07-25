@@ -133,7 +133,11 @@ class GaepEngineClient(
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         PortableDesignProtocol.validateProductRevision(expectedInitiativeRevision)
         val normalizedActorId = PortableDesignProtocol.normalizeActorId(actorId)
-        val applicabilityJson = PortableDesignProtocol.initiativeApplicabilityInputToJson(applicability)
+        val completedApplicability = PortableDesignProtocol.completeInitiativeApplicabilityCoverage(
+            applicability,
+            normalizedActorId,
+        )
+        val applicabilityJson = PortableDesignProtocol.initiativeApplicabilityInputToJson(completedApplicability)
         val params = JsonObject().apply {
             addProperty("initiativeId", initiativeId.toString())
             addProperty("expectedInitiativeRevision", expectedInitiativeRevision)

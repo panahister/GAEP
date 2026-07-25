@@ -155,7 +155,12 @@ function initiativeAssessment() {
   if (!classification) reasons.push("Initiative classification is missing")
   if (classification) reasons.push("Initiative classification does not satisfy the current completeness policy")
   if (!applicability) reasons.push("Initiative applicability has not been resolved")
-  if (applicability) reasons.push("Initiative applicability does not cover every canonical subject")
+  const coveredSubjectCount = Math.min(
+    (applicability?.decisions.length ?? 0) + (applicability?.unresolvedSubjects.length ?? 0),
+    subjectCatalogCount,
+  )
+  const missingSubjectCount = classification ? subjectCatalogCount - coveredSubjectCount : 0
+  if (applicability && missingSubjectCount > 0) reasons.push("Initiative applicability does not cover every canonical subject")
   const pendingHumanDecisionCount = applicability?.decisions.filter((decision) => decision.status === "awaiting-human-decision").length ?? 0
   const blockedDecisionCount = applicability?.decisions.filter((decision) => decision.status === "blocked").length ?? 0
   const pendingApprovalCount = applicability?.decisions.filter((decision) => decision.approval.state === "pending").length ?? 0
@@ -211,12 +216,12 @@ function initiativeAssessment() {
           pendingApprovalCount,
           rejectedApprovalCount,
           coverage: {
-            status: "incomplete",
+            status: missingSubjectCount === 0 ? "complete" : "incomplete",
             catalogVersion: subjectCatalogVersion,
             catalogDigest: subjectCatalogDigest,
             subjectCount: subjectCatalogCount,
-            coveredSubjectCount: 1,
-            missingSubjectCount: subjectCatalogCount - 1,
+            coveredSubjectCount,
+            missingSubjectCount,
             unexpectedSubjectCount: 0,
             mismatchedSubjectCount: 0,
           },

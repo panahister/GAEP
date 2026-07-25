@@ -294,6 +294,7 @@ private fun initiativeAssessment(): JsonObject {
                         when {
                             applicability == null -> "missing"
                             applicability.get("state").asString == "stale" -> "stale"
+                            missingSubjects == 0 -> "complete"
                             else -> "incomplete"
                         },
                     )

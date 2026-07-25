@@ -286,10 +286,11 @@ test("protocol-v2 Initiative entry client preserves exact request binding and re
     assert.equal(finalAssessment.classification.status, "current")
     assert.equal(finalAssessment.applicability.status, "current")
     assert.equal(finalAssessment.applicability.decisionCount, 1)
+    assert.equal(finalAssessment.applicability.unresolvedSubjectCount, 48)
     assert.equal(finalAssessment.applicability.pendingApprovalCount, 1)
-    assert.equal(finalAssessment.applicability.coverage?.status, "incomplete")
-    assert.equal(finalAssessment.applicability.coverage?.coveredSubjectCount, 1)
-    assert.equal(finalAssessment.applicability.coverage?.missingSubjectCount, 48)
+    assert.equal(finalAssessment.applicability.coverage?.status, "complete")
+    assert.equal(finalAssessment.applicability.coverage?.coveredSubjectCount, 49)
+    assert.equal(finalAssessment.applicability.coverage?.missingSubjectCount, 0)
     assert.equal(finalAssessment.state, "attention-required")
     assert.equal(
       finalAssessment.authorityBoundary,

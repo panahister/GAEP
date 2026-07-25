@@ -207,17 +207,18 @@ class PortableDesignClientTest {
             )
             assertEquals(3, resolved.revision)
             assertEquals(1, resolved.applicability?.decisionCount)
+            assertEquals(48, resolved.applicability?.unresolvedSubjectCount)
             assertEquals("current", resolved.applicability?.state)
             val finalContext = controller.readInitiativeEntryContext(entryId)
             assertEquals("current", finalContext.assessment.applicability.status)
             assertEquals(1, finalContext.assessment.applicability.pendingApprovalCount)
-            assertEquals("incomplete", finalContext.assessment.applicability.coverage.status)
-            assertEquals(1, finalContext.assessment.applicability.coverage.coveredSubjectCount)
-            assertEquals(48, finalContext.assessment.applicability.coverage.missingSubjectCount)
+            assertEquals("complete", finalContext.assessment.applicability.coverage.status)
+            assertEquals(49, finalContext.assessment.applicability.coverage.coveredSubjectCount)
+            assertEquals(0, finalContext.assessment.applicability.coverage.missingSubjectCount)
             assertEquals("attention-required", finalContext.assessment.state)
             val rendered = controller.renderInitiativeEntry(finalContext)
             assertTrue(rendered.contains("Classification completeness: incomplete"))
-            assertTrue(rendered.contains("Canonical subject coverage: 1/49"))
+            assertTrue(rendered.contains("Canonical subject coverage: 49/49"))
             assertFalse(rendered.contains(privateRoot))
             assertFalse(rendered.contains(privateCredential))
             val reclassifiedView = controller.classifyInitiative(
@@ -229,6 +230,22 @@ class PortableDesignClientTest {
             )
             assertTrue(reclassifiedView.contains("Applicability: stale"))
             assertTrue(reclassifiedView.contains("Assessment: attention-required"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            PortableDesignProtocol.completeInitiativeApplicabilityCoverage(
+                initiativeApplicabilityInput().copy(
+                    decisions = listOf(
+                        initiativeApplicabilityInput().decisions.single().copy(
+                            subject = InitiativeApplicabilitySubject(
+                                "activity",
+                                "non-canonical-review",
+                                "Non-canonical review",
+                            ),
+                        ),
+                    ),
+                ),
+                "founder.rider-entry",
+            )
         }
 
         listOf("bad-initiative-private", "bad-entry-boundary", "bad-entry-policy", "bad-entry-coverage")

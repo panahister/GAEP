@@ -1197,6 +1197,34 @@ internal object PortableDesignProtocol {
         }
     }
 
+    fun completeInitiativeApplicabilityCoverage(
+        input: InitiativeApplicabilityMatrixInput,
+        unresolvedOwner: String,
+    ): InitiativeApplicabilityMatrixInput {
+        val canonical = canonicalInitiativeApplicabilitySubjects.associateBy { "${it.type}:${it.key}" }
+        val represented = mutableSetOf<String>()
+        (input.decisions.map { it.subject } + input.unresolvedSubjects.map { it.subject }).forEach { subject ->
+            val key = "${subject.type}:${subject.key}"
+            require(canonical[key] == subject) {
+                "Applicability subject $key does not match the canonical catalog."
+            }
+            represented += key
+        }
+        val completed = input.copy(
+            unresolvedSubjects = input.unresolvedSubjects + canonicalInitiativeApplicabilitySubjects
+                .filter { "${it.type}:${it.key}" !in represented }
+                .map { subject ->
+                    InitiativeUnresolvedSubject(
+                        subject,
+                        "No explicit applicability decision was recorded in this review; accountable resolution remains required.",
+                        unresolvedOwner,
+                    )
+                },
+        )
+        initiativeApplicabilityInputToJson(completed)
+        return completed
+    }
+
     fun initiativeApplicabilityInputToJson(input: InitiativeApplicabilityMatrixInput): JsonObject = JsonObject().apply {
         input.subjectCatalog?.let { catalog ->
             add("subjectCatalog", JsonObject().apply {

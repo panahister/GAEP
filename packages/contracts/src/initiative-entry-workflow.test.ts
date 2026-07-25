@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  completeInitiativeApplicabilityCoverage,
   collectInitiativeApplicability,
   collectInitiativeClassification,
   InitiativeEntryWorkflowCancelled,
@@ -59,7 +60,7 @@ function applicabilityUi(confirm = true): InitiativeEntryWorkflowUi {
       const preferred = title.includes("Add the first") ? "add-decision"
         : title.includes("Add another") ? (++decisionOperation > 0 ? "continue" : "add-decision")
           : title.includes("unresolved") ? "finish"
-            : title.includes("subject type") ? "test-level"
+            : title.includes("subject type") ? "test-method"
               : title.includes("status") && !title.includes("approval") ? "required"
                 : title.includes("approval state") ? "pending"
                   : title.includes("source kind") ? "policy"
@@ -105,13 +106,24 @@ describe("Initiative entry native workflow inputs", () => {
     )
     expect(input).toMatchObject({
       decisions: [{
-        subject: { type: "test-level", key: "consumer-contract-testing" },
+        subject: { type: "test-method", key: "consumer-contract-testing" },
         status: "required",
         approval: { state: "pending" },
       }],
-      unresolvedSubjects: [],
     })
+    expect(input.unresolvedSubjects).toHaveLength(48)
+    expect(input.unresolvedSubjects).toContainEqual(expect.objectContaining({
+      subject: { type: "approval", key: "release", label: "Release approval" },
+      owner: "founder",
+    }))
     expect(input.decisions[0]?.status).not.toBe("not-applicable")
+    expect(() => completeInitiativeApplicabilityCoverage({
+      ...input,
+      decisions: [{
+        ...input.decisions[0]!,
+        subject: { type: "activity", key: "non-canonical-review", label: "Non-canonical review" },
+      }],
+    }, "founder")).toThrow("does not match the canonical catalog")
   })
 
   it("is cancel-default at the final human confirmation boundary", async () => {

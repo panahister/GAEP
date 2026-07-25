@@ -40,6 +40,59 @@ internal static partial class PortableDesignProtocol
         "rule", "policy", "evidence", "requirement", "dependency", "human-decision",
     };
 
+    private static readonly InitiativeApplicabilitySubject[] CanonicalInitiativeApplicabilitySubjects =
+    [
+        new("phase", "intake", "Initiative intake"),
+        new("phase", "initiative-classification", "Initiative classification"),
+        new("phase", "existing-system-assessment", "Existing-system and lifecycle-state assessment"),
+        new("phase", "scope-criticality-assessment", "Scope and criticality assessment"),
+        new("phase", "applicability-assessment", "Applicability assessment"),
+        new("phase", "architecture-assurance-resolution", "Architecture and assurance resolution"),
+        new("phase", "implementation-verification", "Implementation and verification"),
+        new("phase", "release-operation-learning", "Release, operation, and learning"),
+        new("activity", "product-discovery", "Product discovery"),
+        new("activity", "business-architecture", "Business architecture"),
+        new("activity", "experience-design", "Experience and interaction design"),
+        new("activity", "existing-system-discovery", "Existing-system discovery"),
+        new("activity", "human-ai-challenge", "Human-AI challenge"),
+        new("activity", "threat-modeling", "Threat modeling"),
+        new("activity", "identity-authorization-analysis", "Identity and authorization analysis"),
+        new("activity", "technology-selection", "Technology selection"),
+        new("activity", "change-impact-analysis", "Change and impact analysis"),
+        new("artifact", "initiative-profile", "Initiative Profile"),
+        new("artifact", "applicability-matrix", "Applicability Matrix"),
+        new("artifact", "source-baseline", "Source baseline"),
+        new("artifact", "requirements-acceptance", "Requirements and acceptance criteria"),
+        new("artifact", "architecture-assets", "Architecture Assets"),
+        new("artifact", "technology-profile", "Technology Profile"),
+        new("artifact", "assurance-strategy", "Assurance Strategy and Profile"),
+        new("artifact", "release-evidence", "Release evidence package"),
+        new("capability", "design-reference-integration", "Design-reference integration"),
+        new("capability", "governed-agent-execution", "Governed agent execution"),
+        new("capability", "managed-staging", "Managed staged changes"),
+        new("capability", "provider-model-handoff", "Provider and model handoff"),
+        new("test-method", "unit-testing", "Unit testing"),
+        new("test-method", "integration-testing", "Integration testing"),
+        new("test-method", "consumer-contract-testing", "Consumer contract testing"),
+        new("test-method", "security-testing", "Security testing"),
+        new("test-method", "usability-accessibility-testing", "Usability and accessibility testing"),
+        new("test-level", "component", "Component test level"),
+        new("test-level", "service", "Service test level"),
+        new("test-level", "system", "System test level"),
+        new("test-level", "acceptance", "Acceptance test level"),
+        new("approval", "initiative-entry", "Initiative entry approval"),
+        new("approval", "architecture", "Architecture approval"),
+        new("approval", "security", "Security approval"),
+        new("approval", "implementation", "Implementation approval"),
+        new("approval", "release", "Release approval"),
+        new("evidence-obligation", "classification", "Classification evidence"),
+        new("evidence-obligation", "applicability", "Applicability evidence"),
+        new("evidence-obligation", "traceability", "Traceability evidence"),
+        new("evidence-obligation", "test-results", "Test result evidence"),
+        new("evidence-obligation", "approval", "Approval evidence"),
+        new("evidence-obligation", "rollback-operability", "Rollback and operability evidence"),
+    ];
+
     internal static IReadOnlyDictionary<string, object?> SerializeInitiativeClassificationInput(
         InitiativeClassificationInput input)
     {
@@ -174,6 +227,44 @@ internal static partial class PortableDesignProtocol
                 nameof(input));
         }
         return value;
+    }
+
+    internal static InitiativeApplicabilityMatrixInput CompleteInitiativeApplicabilityCoverage(
+        InitiativeApplicabilityMatrixInput input,
+        string unresolvedOwner)
+    {
+        SerializeInitiativeApplicabilityInput(input);
+        var canonical = CanonicalInitiativeApplicabilitySubjects.ToDictionary(
+            subject => $"{subject.Type}:{subject.Key}",
+            StringComparer.Ordinal);
+        var represented = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var subject in input.Decisions.Select(decision => decision.Subject)
+                     .Concat(input.UnresolvedSubjects.Select(unresolved => unresolved.Subject)))
+        {
+            var key = $"{subject.Type}:{subject.Key}";
+            if (!canonical.TryGetValue(key, out var expected) || expected != subject)
+            {
+                throw new ArgumentException(
+                    $"Applicability subject {key} does not match the canonical catalog.",
+                    nameof(input));
+            }
+            represented.Add(key);
+        }
+        var completed = input with
+        {
+            UnresolvedSubjects =
+            [
+                .. input.UnresolvedSubjects,
+                .. CanonicalInitiativeApplicabilitySubjects
+                    .Where(subject => !represented.Contains($"{subject.Type}:{subject.Key}"))
+                    .Select(subject => new InitiativeUnresolvedSubject(
+                        subject,
+                        "No explicit applicability decision was recorded in this review; accountable resolution remains required.",
+                        unresolvedOwner)),
+            ],
+        };
+        SerializeInitiativeApplicabilityInput(completed);
+        return completed;
     }
 
     internal static InitiativeEntryRecord ParseInitiativeResponse(

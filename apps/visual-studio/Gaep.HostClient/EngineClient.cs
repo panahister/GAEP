@@ -132,7 +132,10 @@ public sealed class EngineClient : IAsyncDisposable
         if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
         PortableDesignProtocol.ValidateProductRevision(expectedInitiativeRevision);
         var normalizedActorId = PortableDesignProtocol.ValidateActorId(actorId);
-        var serializedApplicability = PortableDesignProtocol.SerializeInitiativeApplicabilityInput(applicability);
+        var completedApplicability = PortableDesignProtocol.CompleteInitiativeApplicabilityCoverage(
+            applicability,
+            normalizedActorId);
+        var serializedApplicability = PortableDesignProtocol.SerializeInitiativeApplicabilityInput(completedApplicability);
         using var response = await RequestPortableDesignAsync(
             "resolveInitiativeApplicability",
             new Dictionary<string, object?>
