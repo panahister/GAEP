@@ -7,6 +7,7 @@ import {
   productStudioSectionIds,
   type AdapterCapabilities,
   type AgentSelection,
+  type BusinessCapabilityMapProjection,
   type BusinessUnderstandingProjection,
   type Change,
   type Decision,
@@ -302,6 +303,65 @@ function businessUnderstandingProjection(): BusinessUnderstandingProjection {
     observedAt: assessment.assessedAt,
     privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-business-narrative-personal-data-source-content-locators-or-credentials" as const,
     authorityBoundary: "business-understanding-projection-does-not-approve-appoint-decide-designate-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
+function businessCapabilityMapProjection(): BusinessCapabilityMapProjection {
+  const assessment = {
+    schemaVersion: 1 as const,
+    kind: "business-capability-map-assessment" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    capabilityMap: {
+      recordId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      revision: 2,
+      digest: `sha256:${"d".repeat(64)}` as const,
+    },
+    capabilityCount: 7,
+    ownedCapabilityCount: 6,
+    unownedCapabilityCount: 1,
+    objectiveCoverageCount: 3,
+    outcomeCoverageCount: 2,
+    openGapCount: 2,
+    criticalGapCount: 1,
+    unknownCurrentMaturityCount: 1,
+    unassessedPriorityCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more capabilities do not have a candidate owner"],
+    assessedAt: "2026-07-25T04:10:00.000Z",
+    authorityBoundary: "business-capability-map-assessment-reports-recorded-candidate-coverage-and-gaps-and-does-not-approve-priority-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "business-capability-map-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    assessment,
+    capabilityMap: {
+      id: assessment.capabilityMap.recordId,
+      revision: assessment.capabilityMap.revision,
+      digest: assessment.capabilityMap.digest,
+      state: "candidate" as const,
+      capabilityCount: 7,
+      ownedCapabilityCount: 6,
+      openGapCount: 2,
+      criticalGapCount: 1,
+      candidatePriorityCount: 6,
+      updatedAt: "2026-07-25T04:09:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-capability-narrative-personal-data-source-content-locators-or-credentials" as const,
+    authorityBoundary: "business-capability-map-projection-does-not-approve-prioritize-baseline-designate-readiness-or-authorize-action" as const,
   }
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
@@ -859,6 +919,7 @@ interface HarnessOptions {
   productStudio?: ProductStudioService
   sourceGovernanceProjection?: SourceGovernanceProjection
   businessUnderstandingProjection?: BusinessUnderstandingProjection
+  businessCapabilityMapProjection?: BusinessCapabilityMapProjection
   commandResult?: unknown
 }
 
@@ -957,6 +1018,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.businessUnderstandingProjection ? {
       businessUnderstanding: {
         project: async () => options.businessUnderstandingProjection!,
+      },
+    } : {}),
+    ...(options.businessCapabilityMapProjection ? {
+      businessCapabilityMap: {
+        project: async () => options.businessCapabilityMapProjection!,
       },
     } : {}),
   }
@@ -1157,6 +1223,28 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify({ direction, stakeholders, outcomes })).not.toMatch(
       /personal assignment|business narrative|source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed capability-map metadata on the native architecture page", async () => {
+    const projection = businessCapabilityMapProjection()
+    const { source } = harness({ businessCapabilityMapProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[0]).toMatchObject({
+      id: "business-capability-map",
+      rows: [{
+        id: projection.capabilityMap?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          counts: "7 capabilities · 6 owned · 2 open gaps · 1 critical gaps · 6 candidate priorities",
+          assessment: "attention-required",
+          boundary: "Candidate architecture only; no priority approval, baseline, readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /capability narrative|personal assignment|source content|customer@example\.com|api_key/iu,
     )
   })
 

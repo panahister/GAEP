@@ -5,6 +5,7 @@ import type {
   AgentSelection,
   AgentSelectionState,
   ArchitectureRecord,
+  BusinessCapabilityMapProjection,
   BusinessUnderstandingProjection,
   Change,
   ChangeImpactDashboard,
@@ -117,6 +118,9 @@ export interface CurrentStudioEngineReader {
   businessUnderstanding?: {
     project(initiativeId: string): Promise<BusinessUnderstandingProjection>
   }
+  businessCapabilityMap?: {
+    project(initiativeId: string): Promise<BusinessCapabilityMapProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -157,6 +161,7 @@ interface ObservedStudioState {
   initiatives: Initiative[]
   initiativeEntryAssessments: Map<string, InitiativeEntryAssessment>
   businessUnderstandingProjections: Map<string, BusinessUnderstandingProjection>
+  businessCapabilityMapProjections: Map<string, BusinessCapabilityMapProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -506,6 +511,50 @@ function businessUnderstandingTable(
   }
 }
 
+function businessCapabilityMapTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.businessCapabilityMapProjections.values()].flatMap((projection) => {
+    const record = projection.capabilityMap
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        state: record.state,
+        counts: `${record.capabilityCount} capabilities · ${record.ownedCapabilityCount} owned · ${record.openGapCount} open gaps · ${record.criticalGapCount} critical gaps · ${record.candidatePriorityCount} candidate priorities`,
+        assessment: projection.assessment.state,
+        boundary: "Candidate architecture only; no priority approval, baseline, readiness, or action authority.",
+      },
+      state: projection.assessment.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "business-capability-map",
+    title: "Governed Business Capability Map",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Capability Map" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Business Capability Map",
+        "Create the candidate map through the governed engine workflow. This view does not infer capabilities, ownership, priority, or authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -513,12 +562,18 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     : undefined
   if (!design) {
     const legacy = legacyForm(route, state.product)
-    return businessTable ? { ...legacy, relatedRecords: [businessTable] } : legacy
+    const relatedRecords = [
+      ...(businessTable ? [businessTable] : []),
+      ...(route === "architecture" ? [businessCapabilityMapTable(state), architectureTable(state.architecture)] : []),
+    ]
+    return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
   }
   const relatedRecords: StudioTableSnapshot[] = []
   if (businessTable) relatedRecords.push(businessTable)
   if (route === "scope") relatedRecords.push(requirementsTable(state.requirements))
-  if (route === "architecture") relatedRecords.push(architectureTable(state.architecture))
+  if (route === "architecture") {
+    relatedRecords.push(businessCapabilityMapTable(state), architectureTable(state.architecture))
+  }
   return {
     ...base(route, state.product),
     design,
@@ -2960,6 +3015,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
   private async observe(route: StudioRoute): Promise<ObservedStudioState> {
     const empty: ObservedStudioState = {
       initiatives: [], initiativeEntryAssessments: new Map(), businessUnderstandingProjections: new Map(),
+      businessCapabilityMapProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -3163,6 +3219,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "business-understanding-unavailable",
           "Business Understanding metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.businessCapabilityMap) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.businessCapabilityMap!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.businessCapabilityMapProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Business Capability Map projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `business-capability-map-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Business Capability Map metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "business-capability-map-unavailable",
+          "Business Capability Map metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
