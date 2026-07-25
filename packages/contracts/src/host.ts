@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { portableSelectionSettingsSchema } from "./agent.js"
+import { businessCapabilityMapInputSchema } from "./business-capability-map.js"
 import {
   businessUnderstandingInputSchema,
   outcomeModelInputSchema,
@@ -237,6 +238,18 @@ export const hostOutcomeModelReviseParamsSchema = z.object({
   record: outcomeModelInputSchema,
 }).strict()
 
+export const hostBusinessCapabilityMapCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: businessCapabilityMapInputSchema,
+}).strict()
+
+export const hostBusinessCapabilityMapReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: businessCapabilityMapInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -298,6 +311,11 @@ export const hostMethodSchema = z.enum([
   "business.outcomes.revise",
   "business.assess",
   "business.snapshot",
+  "business.capabilities.read",
+  "business.capabilities.create",
+  "business.capabilities.revise",
+  "business.capabilities.assess",
+  "business.capabilities.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -371,6 +389,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("business.outcomes.revise", hostOutcomeModelReviseParamsSchema),
   requestVariant("business.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("business.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.capabilities.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.capabilities.create", hostBusinessCapabilityMapCreateParamsSchema),
+  requestVariant("business.capabilities.revise", hostBusinessCapabilityMapReviseParamsSchema),
+  requestVariant("business.capabilities.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.capabilities.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

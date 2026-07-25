@@ -692,10 +692,60 @@ describe("engine host protocol", () => {
     expect(JSON.stringify(projection)).not.toContain("host.business.discovery")
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "capability-read-empty",
+      protocolVersion: 2,
+      method: "business.capabilities.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "capability-assess-empty",
+      protocolVersion: 2,
+      method: "business.capabilities.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      capabilityCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-approve"),
+    })
+    const capabilityProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "capability-snapshot-empty",
+      protocolVersion: 2,
+      method: "business.capabilities.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: capabilitySnapshotDigest, ...capabilityProjectionBody } = capabilityProjection
+    expect(capabilitySnapshotDigest).toBe(canonicalDigest(capabilityProjectionBody))
+    expect(capabilityProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-capability-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-approve"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "capability-v1-block",
+      method: "business.capabilities.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "capability-extra-authority",
+      protocolVersion: 2,
+      method: "business.capabilities.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          approval: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
     await expect(host.dispatch({
       jsonrpc: "2.0",
       id: "business-extra-authority",
