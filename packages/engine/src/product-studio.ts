@@ -5,6 +5,7 @@ import { isAbsolute } from "node:path"
 
 import {
   architectureRecordSchema,
+  businessUnderstandingSchema,
   changeSchema,
   containsSecretShapedValue,
   contextPackSchema,
@@ -12,6 +13,7 @@ import {
   designReadinessReportSchema,
   evidenceRecordSchema,
   exactDomainRecordReferenceSchema,
+  exactSourceReferenceSchema,
   executionCharterSchema,
   handoffSchema,
   instructionPrivilegeGrantSchema,
@@ -20,6 +22,7 @@ import {
   managedRunEvidenceSchema,
   managedRunRecordSchema,
   managedRunResultSchema,
+  outcomeModelSchema,
   productDesignDraftSchema,
   productDesignRevisionSchema,
   productDomainSearchResultSchema,
@@ -40,6 +43,7 @@ import {
   sourceProvenanceSchema,
   sourceRecordRevisionSchema,
   sourceRecordSchema,
+  stakeholderModelSchema,
   traceImpactSchema,
   traceLinkSchema,
   toolDefinitionSchema,
@@ -47,6 +51,7 @@ import {
   workflowPlanSchema,
   redactSecretShapedText,
   type ArchitectureRecord,
+  type BusinessUnderstanding,
   type Change,
   type ContextPack,
   type Decision,
@@ -54,9 +59,11 @@ import {
   type DesignReadinessReport,
   type EvidenceRecord,
   type ExactDomainRecordReference,
+  type ExactSourceReference,
   type Initiative,
   type InstructionPrivilegeGrant,
   type ManagedRunRecord,
+  type OutcomeModel,
   type Product,
   type ProductDesignDraft,
   type ProductDesignRevision,
@@ -73,6 +80,7 @@ import {
   type Risk,
   type SourceBaseline,
   type SourceRecordRevision,
+  type StakeholderModel,
   type TraceEndpoint,
   type TraceImpact,
   type TraceLink,
@@ -1890,17 +1898,63 @@ export class ProductStudioService {
       /^[0-9a-f-]+\.json$/i,
       sourceProvenanceSchema,
     )
+    const businessUnderstanding = await this.listRecords(
+      "business-understanding",
+      /^[0-9a-f-]+\.json$/i,
+      businessUnderstandingSchema,
+    )
+    const businessUnderstandingHistory = await this.listRecords(
+      "business-understanding-history",
+      /^business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      businessUnderstandingSchema,
+    )
+    const stakeholderModels = await this.listRecords(
+      "stakeholder-models",
+      /^[0-9a-f-]+\.json$/i,
+      stakeholderModelSchema,
+    )
+    const stakeholderModelHistory = await this.listRecords(
+      "stakeholder-model-history",
+      /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      stakeholderModelSchema,
+    )
+    const outcomeModels = await this.listRecords(
+      "outcome-models",
+      /^[0-9a-f-]+\.json$/i,
+      outcomeModelSchema,
+    )
+    const outcomeModelHistory = await this.listRecords(
+      "outcome-model-history",
+      /^outcome-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      outcomeModelSchema,
+    )
     const sensitiveContextIds = new Set(contextPacks
       .filter((pack) => ["confidential", "restricted"].includes(pack.classification.level))
       .map((pack) => pack.id))
     const sensitiveSourceIds = new Set(sources
       .filter((source) => ["confidential", "restricted"].includes(source.informationClassification))
       .map((source) => source.id))
-    const sensitiveRecordIds = new Set([...sensitiveContextIds, ...sensitiveSourceIds])
+    const sensitiveBusinessRecordIds = new Set([
+      ...businessUnderstanding,
+      ...businessUnderstandingHistory,
+      ...stakeholderModels,
+      ...stakeholderModelHistory,
+      ...outcomeModels,
+      ...outcomeModelHistory,
+    ].filter((record) => ["confidential", "restricted"].includes(record.informationClassification))
+      .map((record) => record.id))
+    const sensitiveRecordIds = new Set([
+      ...sensitiveContextIds,
+      ...sensitiveSourceIds,
+      ...sensitiveBusinessRecordIds,
+    ])
     for (const id of sensitiveRecordIds) {
       if (!reviewedRecordIds.has(id)) {
         const classification = contextPacks.find((pack) => pack.id === id)?.classification.level ??
-          sources.find((source) => source.id === id)?.informationClassification
+          sources.find((source) => source.id === id)?.informationClassification ??
+          businessUnderstanding.find((record) => record.id === id)?.informationClassification ??
+          stakeholderModels.find((record) => record.id === id)?.informationClassification ??
+          outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
       }
     }
@@ -1946,6 +2000,27 @@ export class ProductStudioService {
     append("source-baseline-history", "source-baseline-snapshot", sourceBaselineHistory, (record) =>
       `source-baseline-history/baseline-${record.id}-r${record.revision}.json`)
     append("source-provenance", "source-provenance-record", sourceProvenance)
+    append("business-understanding", "business-understanding-record", businessUnderstanding)
+    append(
+      "business-understanding-history",
+      "business-understanding-record",
+      businessUnderstandingHistory,
+      (record) => `business-understanding-history/business-understanding-${record.id}-r${record.revision}.json`,
+    )
+    append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
+    append(
+      "stakeholder-model-history",
+      "stakeholder-role-model",
+      stakeholderModelHistory,
+      (record) => `stakeholder-model-history/stakeholder-model-${record.id}-r${record.revision}.json`,
+    )
+    append("outcome-models", "outcome-measure-model", outcomeModels)
+    append(
+      "outcome-model-history",
+      "outcome-measure-model",
+      outcomeModelHistory,
+      (record) => `outcome-model-history/outcome-model-${record.id}-r${record.revision}.json`,
+    )
     const recordHistory = await this.listRecords(
       "record-history", /^[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i, productRecordRevisionSchema,
     )
@@ -2003,6 +2078,9 @@ export class ProductStudioService {
           "internal",
           ...contextPacks.map((pack) => pack.classification.level),
           ...sources.map((source) => source.informationClassification),
+          ...businessUnderstanding.map((record) => record.informationClassification),
+          ...stakeholderModels.map((record) => record.informationClassification),
+          ...outcomeModels.map((record) => record.informationClassification),
         ])],
         reviewedRecordIds: [...reviewedRecordIds].sort(),
         excludedRecordIds: [],
@@ -2119,6 +2197,30 @@ export class ProductStudioService {
         const expectedHistoryPath = `source-baseline-history/baseline-${baseline.id}-r${baseline.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Source Baseline history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("business-understanding-history/")) {
+        const record = validated as BusinessUnderstanding
+        const expectedHistoryPath =
+          `business-understanding-history/business-understanding-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Business Understanding history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("stakeholder-model-history/")) {
+        const record = validated as StakeholderModel
+        const expectedHistoryPath =
+          `stakeholder-model-history/stakeholder-model-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Stakeholder Model history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("outcome-model-history/")) {
+        const record = validated as OutcomeModel
+        const expectedHistoryPath =
+          `outcome-model-history/outcome-model-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Outcome Model history filename does not match its snapshot: ${member.path}`)
         }
       }
       const prefixedIdentityMatch = /^(?:sessions\/(?:charter|run|managed-run|managed-evidence|managed-result|managed-apply-decision))-([0-9a-f-]+)\.json$/i.exec(member.path)
@@ -3207,6 +3309,171 @@ export class ProductStudioService {
       }
     }
 
+    const collectBusinessSourceReferences = (
+      value: unknown,
+      references: ExactSourceReference[] = [],
+    ): ExactSourceReference[] => {
+      if (Array.isArray(value)) {
+        for (const item of value) collectBusinessSourceReferences(item, references)
+        return references
+      }
+      if (!value || typeof value !== "object") return references
+      const candidate = exactSourceReferenceSchema.safeParse(value)
+      if (candidate.success) {
+        references.push(candidate.data)
+        return references
+      }
+      for (const child of Object.values(value)) collectBusinessSourceReferences(child, references)
+      return references
+    }
+    const productSnapshotsByRevision = new Map(productHistory.map((history) => [
+      history.revision,
+      history.product,
+    ]))
+    const validateBusinessRecordBase = (
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel,
+      label: string,
+    ): void => {
+      const initiative = initiativesById.get(record.initiativeId)
+      if (!initiative) throw new Error(`Import ${label} ${record.id} has no Initiative`)
+      if (record.productId !== product.id || initiative.productId !== product.id) {
+        throw new Error(`Import ${label} ${record.id} targets a different Product`)
+      }
+      const productSnapshot = productSnapshotsByRevision.get(record.context.productRevision)
+      if (!productSnapshot || canonicalDigest(productSnapshot) !== record.context.productDigest) {
+        throw new Error(`Import ${label} ${record.id} Product binding is unresolved`)
+      }
+      const initiativeRevision = initiative.revision ?? 1
+      if (record.context.initiativeRevision > initiativeRevision) {
+        throw new Error(`Import ${label} ${record.id} references a future Initiative revision`)
+      }
+      if (
+        record.context.initiativeRevision === initiativeRevision &&
+        record.context.initiativeDigest !== canonicalDigest(initiative)
+      ) throw new Error(`Import ${label} ${record.id} current Initiative digest does not match`)
+      const uniqueReferences = new Map(collectBusinessSourceReferences(record).map((reference) => [
+        `${reference.sourceId}:${reference.sourceRevision}:${reference.recordDigest}:${reference.contentDigest}`,
+        reference,
+      ]))
+      for (const reference of uniqueReferences.values()) {
+        const resolved = resolveExactSource(reference).snapshot
+        if (resolved.initiativeId !== record.initiativeId) {
+          throw new Error(`Import ${label} ${record.id} contains a Source from another Initiative`)
+        }
+      }
+    }
+    const validateVersionedBusinessRecords = <
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel,
+    >(
+      currentRecords: T[],
+      historyRecords: T[],
+      label: string,
+    ): Map<string, T> => {
+      const currentById = new Map(currentRecords.map((record) => [record.id, record]))
+      const currentInitiatives = currentRecords.map((record) => record.initiativeId)
+      if (new Set(currentInitiatives).size !== currentInitiatives.length) {
+        throw new Error(`Import contains more than one current ${label} for an Initiative`)
+      }
+      const historyGroups = new Map<string, T[]>()
+      const exact = new Map<string, T>()
+      for (const history of historyRecords) {
+        const group = historyGroups.get(history.id) ?? []
+        group.push(history)
+        historyGroups.set(history.id, group)
+        exact.set(`${history.id}:${history.revision}:${canonicalDigest(history)}`, history)
+        validateBusinessRecordBase(history, label)
+      }
+      for (const current of currentRecords) {
+        validateBusinessRecordBase(current, label)
+        const group = (historyGroups.get(current.id) ?? []).sort((left, right) => left.revision - right.revision)
+        if (group.length !== current.revision) {
+          throw new Error(`Import immutable ${label} history is incomplete for ${current.id}`)
+        }
+        for (const [index, revision] of group.entries()) {
+          if (
+            revision.revision !== index + 1 ||
+            (index === 0 && revision.predecessorDigest !== undefined) ||
+            (index > 0 && revision.predecessorDigest !== canonicalDigest(group[index - 1]))
+          ) throw new Error(`Import ${label} predecessor chain is invalid for ${current.id}`)
+        }
+        if (canonicalDigest(group.at(-1)) !== canonicalDigest(current)) {
+          throw new Error(`Import current ${label} does not match immutable history for ${current.id}`)
+        }
+      }
+      for (const id of historyGroups.keys()) {
+        if (!currentById.has(id)) throw new Error(`Import immutable ${label} history has no current record: ${id}`)
+      }
+      return exact
+    }
+
+    const businessUnderstanding = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("business-understanding/"))
+      .map(([, record]) => businessUnderstandingSchema.parse(record))
+    const businessUnderstandingHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("business-understanding-history/"))
+      .map(([, record]) => businessUnderstandingSchema.parse(record))
+    const exactBusinessUnderstanding = validateVersionedBusinessRecords(
+      businessUnderstanding,
+      businessUnderstandingHistory,
+      "Business Understanding",
+    )
+    const stakeholderModels = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("stakeholder-models/"))
+      .map(([, record]) => stakeholderModelSchema.parse(record))
+    const stakeholderModelHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("stakeholder-model-history/"))
+      .map(([, record]) => stakeholderModelSchema.parse(record))
+    const exactStakeholderModels = validateVersionedBusinessRecords(
+      stakeholderModels,
+      stakeholderModelHistory,
+      "Stakeholder Model",
+    )
+    const resolveBusinessUnderstanding = (
+      reference: StakeholderModel["businessUnderstanding"],
+      initiativeId: string,
+    ): BusinessUnderstanding => {
+      const record = exactBusinessUnderstanding.get(
+        `${reference.recordId}:${reference.revision}:${reference.digest}`,
+      )
+      if (!record || record.initiativeId !== initiativeId) {
+        throw new Error("Import exact Business Understanding reference is unresolved")
+      }
+      return record
+    }
+    const resolveStakeholderModel = (
+      reference: OutcomeModel["stakeholderModel"],
+      initiativeId: string,
+    ): StakeholderModel => {
+      const record = exactStakeholderModels.get(
+        `${reference.recordId}:${reference.revision}:${reference.digest}`,
+      )
+      if (!record || record.initiativeId !== initiativeId) {
+        throw new Error("Import exact Stakeholder Model reference is unresolved")
+      }
+      return record
+    }
+    for (const stakeholder of [...stakeholderModels, ...stakeholderModelHistory]) {
+      resolveBusinessUnderstanding(stakeholder.businessUnderstanding, stakeholder.initiativeId)
+    }
+
+    const outcomeModels = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("outcome-models/"))
+      .map(([, record]) => outcomeModelSchema.parse(record))
+    const outcomeModelHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("outcome-model-history/"))
+      .map(([, record]) => outcomeModelSchema.parse(record))
+    validateVersionedBusinessRecords(outcomeModels, outcomeModelHistory, "Outcome Model")
+    for (const outcome of [...outcomeModels, ...outcomeModelHistory]) {
+      resolveBusinessUnderstanding(outcome.businessUnderstanding, outcome.initiativeId)
+      const stakeholder = resolveStakeholderModel(outcome.stakeholderModel, outcome.initiativeId)
+      const stakeholderKeys = new Set(stakeholder.stakeholders.map((entry) => entry.key))
+      if (
+        outcome.outcomes.some((entry) =>
+          entry.beneficiaryStakeholderKeys.some((key) => !stakeholderKeys.has(key))) ||
+        outcome.measures.some((measure) => !stakeholderKeys.has(measure.collection.ownerStakeholderKey))
+      ) throw new Error(`Import Outcome Model ${outcome.id} references an unknown bound stakeholder`)
+    }
+
     for (const change of changes) {
       if (!initiativesById.has(change.initiativeId)) throw new Error(`Import Change ${change.id} has no Initiative`)
       if (change.baseline.kind === "exact") {
@@ -3804,6 +4071,18 @@ export class ProductStudioService {
       return "source-baseline-snapshot"
     }
     if (/^source-provenance\/[0-9a-f-]+\.json$/i.test(path)) return "source-provenance-record"
+    if (/^business-understanding\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^business-understanding-history\/business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "business-understanding-record"
+    }
+    if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "stakeholder-role-model"
+    }
+    if (/^outcome-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^outcome-model-history\/outcome-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "outcome-measure-model"
+    }
     if (/^record-history\/[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) return "product-record-revision"
     if (/^sessions\/charter-[0-9a-f-]+\.json$/i.test(path)) return "execution-charter"
     if (/^sessions\/run-[0-9a-f-]+\.json$/i.test(path)) return "run"
@@ -3841,6 +4120,18 @@ export class ProductStudioService {
       return sourceBaselineSchema
     }
     if (/^source-provenance\/[0-9a-f-]+\.json$/i.test(path)) return sourceProvenanceSchema
+    if (/^business-understanding\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^business-understanding-history\/business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return businessUnderstandingSchema
+    }
+    if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return stakeholderModelSchema
+    }
+    if (/^outcome-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^outcome-model-history\/outcome-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return outcomeModelSchema
+    }
     if (/^record-history\/[a-z-]+-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) return productRecordRevisionSchema
     if (/^sessions\/charter-[0-9a-f-]+\.json$/i.test(path)) return executionCharterSchema
     if (/^sessions\/run-[0-9a-f-]+\.json$/i.test(path)) return runSchema

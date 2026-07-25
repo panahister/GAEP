@@ -11,6 +11,7 @@ import {
   type Initiative,
   type OutcomeModelInput,
   type Product,
+  type ProductExportBundle,
   type SourceRecord,
   type SourceRecordInput,
   type StakeholderModel,
@@ -118,6 +119,7 @@ describe("Business understanding governance", () => {
     return {
       initiativeId: initiative.id,
       context: context(),
+      informationClassification: "internal",
       problem: attributed("Teams cannot independently reconstruct why this bounded Initiative should exist."),
       opportunity: attributed("Exact governed context can reduce re-explanation while preserving human authority."),
       currentState: attributed("Business understanding is distributed across sources and informal participant knowledge."),
@@ -155,6 +157,27 @@ describe("Business understanding governance", () => {
     return { recordId: record.id, revision: record.revision, digest: canonicalDigest(record) }
   }
 
+  function replacePortableRecord(
+    bundle: ProductExportBundle,
+    path: string,
+    replace: (content: unknown) => unknown,
+  ): ProductExportBundle {
+    const copy = structuredClone(bundle)
+    const record = copy.records.find((candidate) => candidate.path === path)
+    const member = copy.manifest.members.find((candidate) => candidate.path === path)
+    if (!record || !member) throw new Error(`Missing portable test record: ${path}`)
+    record.content = replace(record.content) as never
+    member.digest = canonicalDigest(record.content)
+    member.byteLength = Buffer.byteLength(`${JSON.stringify(record.content, null, 2)}\n`)
+    copy.manifest.membershipDigest = canonicalDigest(
+      copy.manifest.members.map(({ path: memberPath, digest: memberDigest }) => ({
+        path: memberPath,
+        digest: memberDigest,
+      })),
+    )
+    return copy
+  }
+
   function stakeholderInput(
     business: BusinessUnderstanding,
     overrides: Partial<StakeholderModelInput> = {},
@@ -162,6 +185,7 @@ describe("Business understanding governance", () => {
     return {
       initiativeId: initiative.id,
       context: context(),
+      informationClassification: "internal",
       businessUnderstanding: businessReference(business),
       stakeholders: [{
         key: "primary-user",
@@ -277,6 +301,7 @@ describe("Business understanding governance", () => {
     return {
       initiativeId: initiative.id,
       context: context(),
+      informationClassification: "internal",
       businessUnderstanding: businessReference(business),
       stakeholderModel: stakeholderReference(stakeholder),
       primaryHypothesis: attributed(
@@ -426,6 +451,57 @@ describe("Business understanding governance", () => {
       ...projection,
       snapshotDigest: undefined,
     }))
+  })
+
+  it("exports and validates the complete immutable business graph and rejects rebound upstream records", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `business-understanding/${business.id}.json`,
+      `business-understanding-history/business-understanding-${business.id}-r1.json`,
+      `stakeholder-models/${stakeholder.id}.json`,
+      `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
+      `outcome-models/${outcome.id}.json`,
+      `outcome-model-history/outcome-model-${outcome.id}-r1.json`,
+    ]))
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
+    const rebound = replacePortableRecord(
+      bundle,
+      `stakeholder-models/${stakeholder.id}.json`,
+      (content) => ({
+        ...(content as StakeholderModel),
+        businessUnderstanding: {
+          ...(content as StakeholderModel).businessUnderstanding,
+          digest: digest("f"),
+        },
+      }),
+    )
+    await expect(engine.productStudio.previewImportBundle(rebound))
+      .rejects.toThrow(/Stakeholder Model does not match immutable history|Business Understanding reference is unresolved/)
+  })
+
+  it("requires explicit human disclosure review for confidential business records", async () => {
+    const business = await engine.businessUnderstanding.createBusinessUnderstanding(
+      businessInput({ informationClassification: "confidential" }),
+      actorId,
+    )
+    await expect(engine.productStudio.buildPortableExport()).rejects.toThrow(/explicit disclosure review/)
+    await expect(engine.productStudio.buildPortableExport({
+      actorId,
+      reviewedAt: "2026-07-25T03:00:00.000Z",
+      reviewedRecordIds: [business.id],
+    })).resolves.toMatchObject({
+      manifest: {
+        disclosureReview: {
+          reviewedRecordIds: [business.id],
+          reviewedBy: { kind: "human", id: actorId },
+        },
+      },
+    })
   })
 
   it("rejects forged authority, unknown stakeholder bindings, stale context, secrets, and terminal mutation", async () => {

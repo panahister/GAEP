@@ -79,6 +79,7 @@ const canonicalIdentifiedStatementsSchema = z.array(identifiedAttributedStatemen
 export const businessUnderstandingInputSchema = rejectSecrets(z.object({
   initiativeId: z.string().uuid(),
   context: businessContextBindingSchema,
+  informationClassification: informationClassificationSchema,
   problem: attributedBusinessStatementSchema,
   opportunity: attributedBusinessStatementSchema.optional(),
   currentState: attributedBusinessStatementSchema,
@@ -238,6 +239,7 @@ const competenceClaimSchema = z.object({
 export const stakeholderModelInputSchema = rejectSecrets(z.object({
   initiativeId: z.string().uuid(),
   context: businessContextBindingSchema,
+  informationClassification: informationClassificationSchema,
   businessUnderstanding: exactBusinessUnderstandingReferenceSchema,
   stakeholders: z.array(z.object({
     key: identifierSchema,
@@ -393,6 +395,7 @@ const measureTargetSchema = z.object({
 export const outcomeModelInputSchema = rejectSecrets(z.object({
   initiativeId: z.string().uuid(),
   context: businessContextBindingSchema,
+  informationClassification: informationClassificationSchema,
   businessUnderstanding: exactBusinessUnderstandingReferenceSchema,
   stakeholderModel: exactStakeholderModelReferenceSchema,
   primaryHypothesis: attributedBusinessStatementSchema,
