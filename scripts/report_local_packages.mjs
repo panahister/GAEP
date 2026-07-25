@@ -30,7 +30,7 @@ const definitions = [
     path: "apps/kiro/dist/gaep-kiro.vsix",
     maximumBytes: 8 * 1024 * 1024,
     requiredHere: true,
-    verification: "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-digest-bound-package-local-empty-evidence-workflow",
+    verification: "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-digest-bound-package-local-provider-model-dashboard-and-empty-evidence-workflows-with-private-safe-output-and-immutable-store",
   },
   {
     host: "rider",
