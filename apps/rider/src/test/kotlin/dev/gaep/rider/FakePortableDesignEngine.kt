@@ -17,6 +17,7 @@ private val businessUnderstandingId = UUID.fromString("39393939-3939-4939-8939-3
 private val stakeholderModelId = UUID.fromString("40404040-4040-4040-8040-404040404040")
 private val outcomeModelId = UUID.fromString("41414141-4141-4141-8141-414141414141")
 private val businessCapabilityMapId = UUID.fromString("42424242-4242-4242-8242-424242424242")
+private val valueStreamModelId = UUID.fromString("43434343-4343-4343-8343-434343434343")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -100,6 +101,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "business.capabilities.snapshot" -> handleBusinessCapabilityMap(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "business.valueStreams.snapshot" -> handleValueStreamModel(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -573,6 +579,95 @@ private fun handleBusinessCapabilityMap(id: Long, params: JsonObject, workspaceP
         }
         workspacePath.endsWith("bad-capability-snapshot-private") -> {
             value.addProperty("capabilityNarrative", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleValueStreamModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE VALUE STREAM MODEL PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-value-stream-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-25T00:05:00.000Z"
+    val modelDigest = "sha256:${"7".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "value-stream-model-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("assessment", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "value-stream-model-assessment")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("valueStreamModel", JsonObject().apply {
+                addProperty("recordId", valueStreamModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", modelDigest)
+            })
+            addProperty("valueStreamCount", 3)
+            addProperty("ownedValueStreamCount", 2)
+            addProperty("unownedValueStreamCount", 1)
+            addProperty("stageCount", 9)
+            addProperty("dependencyCount", 2)
+            addProperty("capabilityCoverageCount", 6)
+            addProperty("outcomeCoverageCount", 2)
+            addProperty("absentFlowEvidenceCount", 1)
+            addProperty("openBottleneckCount", 2)
+            addProperty("criticalBottleneckCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more value streams do not have a candidate owner") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "value-stream-model-assessment-reports-recorded-candidate-flow-coverage-and-gaps-and-does-not-approve-baseline-readiness-or-authorize-action",
+            )
+        })
+        add("valueStreamModel", JsonObject().apply {
+            addProperty("id", valueStreamModelId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", modelDigest)
+            addProperty("state", "candidate")
+            addProperty("valueStreamCount", 3)
+            addProperty("ownedValueStreamCount", 2)
+            addProperty("stageCount", 9)
+            addProperty("dependencyCount", 2)
+            addProperty("openBottleneckCount", 2)
+            addProperty("criticalBottleneckCount", 1)
+            addProperty("updatedAt", "2026-07-25T00:04:59.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-value-stream-narrative-personal-data-source-content-locators-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "value-stream-model-projection-does-not-approve-baseline-priority-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-value-stream-snapshot-digest") -> {
+            value.getAsJsonObject("valueStreamModel").addProperty("openBottleneckCount", 3)
+        }
+        workspacePath.endsWith("bad-value-stream-snapshot-private") -> {
+            value.addProperty("valueStreamNarrative", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

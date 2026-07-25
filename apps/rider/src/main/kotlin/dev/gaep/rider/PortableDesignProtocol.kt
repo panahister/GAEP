@@ -894,6 +894,44 @@ data class BusinessCapabilityMapProjection(
     val snapshotDigest: String,
 )
 
+data class ValueStreamModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val valueStreamCount: Int,
+    val ownedValueStreamCount: Int,
+    val stageCount: Int,
+    val dependencyCount: Int,
+    val openBottleneckCount: Int,
+    val criticalBottleneckCount: Int,
+)
+
+data class ValueStreamModelProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val valueStreamCount: Int,
+    val ownedValueStreamCount: Int,
+    val unownedValueStreamCount: Int,
+    val stageCount: Int,
+    val dependencyCount: Int,
+    val capabilityCoverageCount: Int,
+    val outcomeCoverageCount: Int,
+    val absentFlowEvidenceCount: Int,
+    val openBottleneckCount: Int,
+    val criticalBottleneckCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val valueStreamModel: ValueStreamModelRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -937,6 +975,12 @@ internal object PortableDesignProtocol {
         "business-capability-map-projection-does-not-approve-prioritize-baseline-designate-readiness-or-authorize-action"
     private const val CAPABILITY_MAP_ASSESSMENT_AUTHORITY_BOUNDARY =
         "business-capability-map-assessment-reports-recorded-candidate-coverage-and-gaps-and-does-not-approve-priority-readiness-or-authorize-action"
+    private const val VALUE_STREAM_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-value-stream-narrative-personal-data-source-content-locators-or-credentials"
+    private const val VALUE_STREAM_PROJECTION_AUTHORITY_BOUNDARY =
+        "value-stream-model-projection-does-not-approve-baseline-priority-readiness-or-authorize-action"
+    private const val VALUE_STREAM_ASSESSMENT_AUTHORITY_BOUNDARY =
+        "value-stream-model-assessment-reports-recorded-candidate-flow-coverage-and-gaps-and-does-not-approve-baseline-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -2268,6 +2312,169 @@ internal object PortableDesignProtocol {
             staleBindingCount,
             staleSourceReferenceCount,
             map,
+            snapshotDigest,
+        )
+    }
+
+    fun parseValueStreamModelEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): ValueStreamModelProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "assessment", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("valueStreamModel"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "value-stream-model-projection" ||
+            projection.requireString("privacyBoundary") != VALUE_STREAM_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != VALUE_STREAM_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val assessment = projection.get("assessment").requireObject()
+        assessment.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "valueStreamCount", "ownedValueStreamCount", "unownedValueStreamCount", "stageCount",
+                "dependencyCount", "capabilityCoverageCount", "outcomeCoverageCount", "absentFlowEvidenceCount",
+                "openBottleneckCount", "criticalBottleneckCount", "staleBindingCount",
+                "staleSourceReferenceCount", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("valueStreamModel"),
+        )
+        if (assessment.requireInt("schemaVersion") != 1 ||
+            assessment.requireString("kind") != "value-stream-model-assessment" ||
+            assessment.requireNonEmptyUuid("productId") != productId ||
+            assessment.requireLong("productRevision") != productRevision ||
+            assessment.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            assessment.requireLong("initiativeRevision") != initiativeRevision ||
+            assessment.requireString("authorityBoundary") != VALUE_STREAM_ASSESSMENT_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = assessment.get("valueStreamModel")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val valueStreamCount = assessment.requireBoundedNonNegativeInt("valueStreamCount", 256)
+        val ownedValueStreamCount =
+            assessment.requireBoundedNonNegativeInt("ownedValueStreamCount", valueStreamCount)
+        val unownedValueStreamCount =
+            assessment.requireBoundedNonNegativeInt("unownedValueStreamCount", valueStreamCount)
+        val stageCount = assessment.requireBoundedNonNegativeInt("stageCount", 131_072)
+        val dependencyCount = assessment.requireBoundedNonNegativeInt("dependencyCount", 65_536)
+        val capabilityCoverageCount = assessment.requireBoundedNonNegativeInt("capabilityCoverageCount", 512)
+        val outcomeCoverageCount = assessment.requireBoundedNonNegativeInt("outcomeCoverageCount", 512)
+        val absentFlowEvidenceCount =
+            assessment.requireBoundedNonNegativeInt("absentFlowEvidenceCount", stageCount)
+        val openBottleneckCount = assessment.requireBoundedNonNegativeInt("openBottleneckCount", 131_072)
+        val criticalBottleneckCount =
+            assessment.requireBoundedNonNegativeInt("criticalBottleneckCount", openBottleneckCount)
+        val staleBindingCount = assessment.requireBoundedNonNegativeInt("staleBindingCount", 5)
+        val staleSourceReferenceCount =
+            assessment.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        if (ownedValueStreamCount + unownedValueStreamCount != valueStreamCount) throw invalidResponse()
+        val assessmentState = assessment.requireOneOf(
+            "state",
+            setOf("complete-for-review", "attention-required"),
+        )
+        val reasonsElement = assessment.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = assessment.requireInstant("assessedAt")
+
+        val model = projection.get("valueStreamModel")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "valueStreamCount", "ownedValueStreamCount",
+                "stageCount", "dependencyCount", "openBottleneckCount", "criticalBottleneckCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val recordValueStreamCount = value.requireBoundedNonNegativeInt("valueStreamCount", 256)
+            val record = ValueStreamModelRecordView(
+                id,
+                revision,
+                digest,
+                recordValueStreamCount,
+                value.requireBoundedNonNegativeInt("ownedValueStreamCount", recordValueStreamCount),
+                value.requireBoundedNonNegativeInt("stageCount", 131_072),
+                value.requireBoundedNonNegativeInt("dependencyCount", 65_536),
+                value.requireBoundedNonNegativeInt("openBottleneckCount", 131_072),
+                value.requireBoundedNonNegativeInt("criticalBottleneckCount", 131_072),
+            )
+            if (record.criticalBottleneckCount > record.openBottleneckCount) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (model == null) ||
+            (model?.valueStreamCount ?: 0) != valueStreamCount ||
+            (model?.ownedValueStreamCount ?: 0) != ownedValueStreamCount ||
+            (model?.stageCount ?: 0) != stageCount ||
+            (model?.dependencyCount ?: 0) != dependencyCount ||
+            (model?.openBottleneckCount ?: 0) != openBottleneckCount ||
+            (model?.criticalBottleneckCount ?: 0) != criticalBottleneckCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return ValueStreamModelProjection(
+            productId,
+            productRevision,
+            productDigest,
+            initiativeId,
+            initiativeRevision,
+            initiativeDigest,
+            initiativeState,
+            assessmentState,
+            reasons,
+            valueStreamCount,
+            ownedValueStreamCount,
+            unownedValueStreamCount,
+            stageCount,
+            dependencyCount,
+            capabilityCoverageCount,
+            outcomeCoverageCount,
+            absentFlowEvidenceCount,
+            openBottleneckCount,
+            criticalBottleneckCount,
+            staleBindingCount,
+            staleSourceReferenceCount,
+            model,
             snapshotDigest,
         )
     }

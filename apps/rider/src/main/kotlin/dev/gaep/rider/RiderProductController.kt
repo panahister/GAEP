@@ -336,6 +336,60 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readValueStreamModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readValueStreamModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) {
+            "The Product or Initiative changed while the Value Stream Model was read. Refresh the exact records."
+        }
+        return renderValueStreamModel(projection)
+    }
+
+    fun renderValueStreamModel(projection: ValueStreamModelProjection): String = buildString {
+        appendLine("GAEP governed Value Stream Model")
+        appendLine()
+        appendLine(
+            "Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · " +
+                projection.initiativeState,
+        )
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Assessment counts: ${projection.valueStreamCount} value streams · ${projection.ownedValueStreamCount} owned · " +
+                "${projection.unownedValueStreamCount} unowned · ${projection.stageCount} stages · " +
+                "${projection.dependencyCount} dependencies · ${projection.capabilityCoverageCount} capabilities covered · " +
+                "${projection.outcomeCoverageCount} outcomes covered",
+        )
+        appendLine(
+            "Flow gaps: ${projection.absentFlowEvidenceCount} stages without evidence · " +
+                "${projection.openBottleneckCount} open bottlenecks · ${projection.criticalBottleneckCount} critical bottlenecks · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.valueStreamModel?.let { record ->
+            appendLine("Value Stream Model: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine(
+                "Model counts: ${record.valueStreamCount} value streams · ${record.ownedValueStreamCount} owned · " +
+                    "${record.stageCount} stages · ${record.dependencyCount} dependencies · " +
+                    "${record.openBottleneckCount} open bottlenecks · ${record.criticalBottleneckCount} critical bottlenecks",
+            )
+        } ?: appendLine("Value Stream Model: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view contains record identities, revisions, digests, states, counts, and " +
+                "assessment status only. It exposes no value-stream narrative, personal assignments, Source content, locators, " +
+                "local paths, or credentials and grants no baseline, priority, readiness, or action authority.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

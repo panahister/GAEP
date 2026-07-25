@@ -123,6 +123,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readValueStreamModel(initiativeId: UUID): ValueStreamModelProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("business.valueStreams.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseValueStreamModelEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

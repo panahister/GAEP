@@ -146,6 +146,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += businessCapabilityMapButton
         actions.add(businessCapabilityMapButton)
 
+        val valueStreamModelButton = JButton("Inspect Value Stream Model…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Value-stream narrative, personal assignments, Source content, local paths, credentials, and authority are withheld.",
+                    "GAEP Value Stream Model",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Value Stream Model", status, output, buttons) {
+                    controller.readValueStreamModel(initiativeId)
+                }
+            }
+        }
+        buttons += valueStreamModelButton
+        actions.add(valueStreamModelButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {
