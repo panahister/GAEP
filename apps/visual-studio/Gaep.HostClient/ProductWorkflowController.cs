@@ -192,6 +192,83 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadBusinessUnderstandingAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadBusinessUnderstandingAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException(
+                "The Product or Initiative changed while Business Understanding was read. Refresh the exact records.");
+        }
+        return RenderBusinessUnderstanding(projection);
+    }
+
+    public static string RenderBusinessUnderstanding(BusinessUnderstandingProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Business Understanding")
+            .AppendLine()
+            .AppendLine(
+                $"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · " +
+                projection.InitiativeState)
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Assessment gaps: {projection.UnresolvedQuestionCount} unresolved questions · " +
+                $"{projection.BlockingQuestionCount} blocking questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.BusinessUnderstanding is { } business)
+        {
+            output.AppendLine(
+                    $"Business Understanding: {business.Id:D}@{business.Revision} · candidate · {business.Digest}")
+                .AppendLine(
+                    $"Business counts: {business.ObjectiveCount} objectives · {business.ConstraintCount} constraints · " +
+                    $"{business.AssumptionCount} assumptions · {business.UnresolvedQuestionCount} unresolved questions · " +
+                    $"{business.GlossaryTermCount} glossary terms");
+        }
+        else output.AppendLine("Business Understanding: not recorded");
+        output.AppendLine();
+        if (projection.StakeholderModel is { } stakeholders)
+        {
+            output.AppendLine(
+                    $"Stakeholder Model: {stakeholders.Id:D}@{stakeholders.Revision} · candidate · {stakeholders.Digest}")
+                .AppendLine(
+                    $"Stakeholder counts: {stakeholders.StakeholderCount} stakeholders · " +
+                    $"{stakeholders.RepresentedCategoryCount} represented categories · " +
+                    $"{stakeholders.UnresolvedCategoryCount} unresolved categories · " +
+                    $"{stakeholders.VerifiedAuthorityCount} verified authority claims");
+        }
+        else output.AppendLine("Stakeholder Model: not recorded");
+        output.AppendLine();
+        if (projection.OutcomeModel is { } outcomes)
+        {
+            output.AppendLine($"Outcome Model: {outcomes.Id:D}@{outcomes.Revision} · candidate · {outcomes.Digest}")
+                .AppendLine(
+                    $"Outcome counts: {outcomes.OutcomeCount} outcomes · {outcomes.MeasureCount} measures · " +
+                    $"{outcomes.CountermetricCount} countermetrics · {outcomes.BurdenMeasureCount} burden measures · " +
+                    $"{outcomes.ObservedBaselineCount} observed baselines");
+        }
+        else output.AppendLine("Outcome Model: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view contains record identities, revisions, digests, states, counts, and " +
+                "assessment status only. It exposes no business narrative, personal assignments, Source content, locators, " +
+                "local paths, or credentials and grants no approval, appointment, decision, readiness, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

@@ -58,6 +58,8 @@ for (const binding of [
   "RefreshProductCommand",
   "InitiativeId",
   "LoadInitiativeEntryCommand",
+  "LoadSourceGovernanceCommand",
+  "LoadBusinessUnderstandingCommand",
   "InitiativeTypes",
   "InitiativeClassification",
   "ClassifyInitiativeCommand",
@@ -133,6 +135,10 @@ requireText(remoteUi, /Show Phase 0\/1A dashboards/u,
   "Visual Studio Product Studio does not expose the explicit phase-dashboard projection")
 requireText(remoteUi, /Load exact Initiative entry/u,
   "Visual Studio Product Studio does not expose exact Initiative entry assessment")
+requireText(remoteUi, /Inspect Source governance/u,
+  "Visual Studio Product Studio does not expose exact Source governance")
+requireText(remoteUi, /Inspect governed Business Understanding/u,
+  "Visual Studio Product Studio does not expose governed Business Understanding")
 requireText(remoteUi, /Classify or reclassify exact Initiative/u,
   "Visual Studio Product Studio does not expose governed Initiative classification")
 requireText(remoteUi, /Resolve or re-resolve exact applicability/u,

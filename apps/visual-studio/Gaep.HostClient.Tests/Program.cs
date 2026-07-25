@@ -42,6 +42,9 @@ internal static class Program
     private static readonly Guid SourceId = Guid.Parse("36363636-3636-4636-8636-363636363636");
     private static readonly Guid SourceBaselineId = Guid.Parse("37373737-3737-4737-8737-373737373737");
     private static readonly Guid SourceProvenanceId = Guid.Parse("38383838-3838-4838-8838-383838383838");
+    private static readonly Guid BusinessUnderstandingId = Guid.Parse("39393939-3939-4939-8939-393939393939");
+    private static readonly Guid StakeholderModelId = Guid.Parse("40404040-4040-4040-8040-404040404040");
+    private static readonly Guid OutcomeModelId = Guid.Parse("41414141-4141-4141-8141-414141414141");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -103,6 +106,9 @@ internal static class Program
         var badSourceSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-source-snapshot-binding");
         var badSourceSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-source-snapshot-digest");
         var badSourceSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-source-snapshot-private");
+        var badBusinessSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-business-snapshot-binding");
+        var badBusinessSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-business-snapshot-digest");
+        var badBusinessSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-business-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -161,6 +167,9 @@ internal static class Program
         Directory.CreateDirectory(badSourceSnapshotBindingRoot);
         Directory.CreateDirectory(badSourceSnapshotDigestRoot);
         Directory.CreateDirectory(badSourceSnapshotPrivateRoot);
+        Directory.CreateDirectory(badBusinessSnapshotBindingRoot);
+        Directory.CreateDirectory(badBusinessSnapshotDigestRoot);
+        Directory.CreateDirectory(badBusinessSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -526,6 +535,44 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadSourceGovernanceAsync(InitiativeId),
                 "Source governance rejects a projection bound to a substituted Initiative digest");
+        }
+
+        var businessProjection = await client.ReadBusinessUnderstandingAsync(InitiativeId);
+        Check(businessProjection.ProductId == product.Id &&
+              businessProjection.ProductRevision == product.Revision &&
+              businessProjection.ProductDigest == product.Digest &&
+              businessProjection.InitiativeId == resolved.Id &&
+              businessProjection.InitiativeRevision == resolved.Revision &&
+              businessProjection.InitiativeDigest == resolved.Digest &&
+              businessProjection.AssessmentState == "complete-for-review" &&
+              businessProjection.BusinessUnderstanding?.ObjectiveCount == 3 &&
+              businessProjection.StakeholderModel?.StakeholderCount == 8 &&
+              businessProjection.OutcomeModel?.CountermetricCount == 1,
+            "Typed Business Understanding preserves exact Product, Initiative, governed record, assessment, and count metadata");
+        var businessOutput = await initiativeController.ReadBusinessUnderstandingAsync(InitiativeId);
+        Check(businessOutput.Contains("GAEP governed Business Understanding", StringComparison.Ordinal) &&
+              businessOutput.Contains("3 objectives · 2 constraints · 1 assumptions", StringComparison.Ordinal) &&
+              businessOutput.Contains(
+                  "grants no approval, appointment, decision, readiness, or action authority",
+                  StringComparison.Ordinal) &&
+              !businessOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !businessOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !businessOutput.Contains("personalAssignment", StringComparison.Ordinal),
+            "Business Understanding workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badBusinessSnapshotDigestRoot, badBusinessSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadBusinessUnderstandingAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Business Understanding rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badBusinessSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadBusinessUnderstandingAsync(InitiativeId),
+                "Business Understanding rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -1609,6 +1656,9 @@ internal static class Program
         var badSourceSnapshotBinding = Path.GetFileName(workspace) == "bad-source-snapshot-binding";
         var badSourceSnapshotDigest = Path.GetFileName(workspace) == "bad-source-snapshot-digest";
         var badSourceSnapshotPrivate = Path.GetFileName(workspace) == "bad-source-snapshot-private";
+        var badBusinessSnapshotBinding = Path.GetFileName(workspace) == "bad-business-snapshot-binding";
+        var badBusinessSnapshotDigest = Path.GetFileName(workspace) == "bad-business-snapshot-digest";
+        var badBusinessSnapshotPrivate = Path.GetFileName(workspace) == "bad-business-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -1738,6 +1788,17 @@ internal static class Program
                         badSourceSnapshotBinding,
                         badSourceSnapshotDigest,
                         badSourceSnapshotPrivate);
+                    break;
+                case "business.snapshot":
+                    await HandleBusinessUnderstandingAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badBusinessSnapshotBinding,
+                        badBusinessSnapshotDigest,
+                        badBusinessSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -2072,6 +2133,140 @@ internal static class Program
         ["total"] = 1,
         ["omitted"] = 0,
     };
+
+    private static async Task HandleBusinessUnderstandingAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID BUSINESS UNDERSTANDING");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-25T00:04:00.000Z";
+        var businessDigest = $"sha256:{new string('3', 64)}";
+        var stakeholderDigest = $"sha256:{new string('4', 64)}";
+        var outcomeDigest = $"sha256:{new string('5', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var outcome = new Dictionary<string, object?>
+        {
+            ["id"] = OutcomeModelId.ToString("D"),
+            ["revision"] = 1,
+            ["digest"] = outcomeDigest,
+            ["state"] = "candidate",
+            ["outcomeCount"] = 2,
+            ["measureCount"] = 4,
+            ["countermetricCount"] = 1,
+            ["burdenMeasureCount"] = 1,
+            ["observedBaselineCount"] = 4,
+            ["updatedAt"] = "2026-07-25T00:03:40.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "business-understanding-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["assessment"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "business-understanding-assessment",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["businessUnderstanding"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BusinessUnderstandingId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = businessDigest,
+                },
+                ["stakeholderModel"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = StakeholderModelId.ToString("D"),
+                    ["revision"] = 1,
+                    ["digest"] = stakeholderDigest,
+                },
+                ["outcomeModel"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = OutcomeModelId.ToString("D"),
+                    ["revision"] = 1,
+                    ["digest"] = outcomeDigest,
+                },
+                ["stakeholderCount"] = 8,
+                ["representedStakeholderCategoryCount"] = 8,
+                ["unresolvedStakeholderCategoryCount"] = 0,
+                ["verifiedAuthorityCount"] = 0,
+                ["unverifiedAuthorityCount"] = 0,
+                ["outcomeCount"] = 2,
+                ["measureCount"] = 4,
+                ["observedBaselineCount"] = 4,
+                ["unresolvedQuestionCount"] = 0,
+                ["blockingQuestionCount"] = 0,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "complete-for-review",
+                ["reasons"] = Array.Empty<string>(),
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "business-understanding-assessment-reports-recorded-candidate-evidence-and-does-not-approve-decide-designate-readiness-or-authorize-action",
+            },
+            ["businessUnderstanding"] = new Dictionary<string, object?>
+            {
+                ["id"] = BusinessUnderstandingId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = businessDigest,
+                ["state"] = "candidate",
+                ["objectiveCount"] = 3,
+                ["constraintCount"] = 2,
+                ["assumptionCount"] = 1,
+                ["unresolvedQuestionCount"] = 0,
+                ["glossaryTermCount"] = 5,
+                ["updatedAt"] = "2026-07-25T00:03:30.000Z",
+            },
+            ["stakeholderModel"] = new Dictionary<string, object?>
+            {
+                ["id"] = StakeholderModelId.ToString("D"),
+                ["revision"] = 1,
+                ["digest"] = stakeholderDigest,
+                ["state"] = "candidate",
+                ["stakeholderCount"] = 8,
+                ["representedCategoryCount"] = 8,
+                ["unresolvedCategoryCount"] = 0,
+                ["verifiedAuthorityCount"] = 0,
+                ["updatedAt"] = "2026-07-25T00:03:35.000Z",
+            },
+            ["outcomeModel"] = outcome,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-business-narrative-personal-data-source-content-locators-or-credentials",
+            ["authorityBoundary"] =
+                "business-understanding-projection-does-not-approve-appoint-decide-designate-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) outcome["measureCount"] = 5;
+        if (includePrivateField) result["personalAssignment"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
 
     private static async Task HandleAssessInitiativeEntryAsync(
         long id,
