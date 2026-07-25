@@ -40,6 +40,69 @@ internal sealed class AgentSettingEditorData : NotifyPropertyChangedObject
 }
 
 [DataContract]
+internal sealed class InitiativeClassificationEditorData
+{
+    [DataMember] public string PrimaryType { get; set; } = "feature";
+    [DataMember] public string SecondaryTypes { get; set; } = string.Empty;
+    [DataMember] public string SystemState { get; set; } = "unknown";
+    [DataMember] public string ChangePosture { get; set; } = "existing";
+    [DataMember] public string Motivations { get; set; } = "business-driven";
+    [DataMember] public string UserInterface { get; set; } = "unknown";
+    [DataMember] public string Data { get; set; } = "unknown";
+    [DataMember] public string Integration { get; set; } = "unknown";
+    [DataMember] public string InteractionModes { get; set; } = "interactive";
+    [DataMember] public string Exposure { get; set; } = "unknown";
+    [DataMember] public string Regulated { get; set; } = "false";
+    [DataMember] public string PolicyDomains { get; set; } = string.Empty;
+    [DataMember] public string Sensitivities { get; set; } = "unknown";
+    [DataMember] public string ExpectedLifetime { get; set; } = "unknown";
+    [DataMember] public string MaintenanceHorizon { get; set; } = string.Empty;
+    [DataMember] public string BlastRadius { get; set; } = "unknown";
+    [DataMember] public string Reversibility { get; set; } = "unknown";
+    [DataMember] public string Urgency { get; set; } = "unknown";
+    [DataMember] public string CostOfFailure { get; set; } = "unknown";
+    [DataMember] public string Dependencies { get; set; } = string.Empty;
+    [DataMember] public string AffectedAssets { get; set; } = string.Empty;
+    [DataMember] public string Owner { get; set; } = string.Empty;
+    [DataMember] public string AccountableAuthority { get; set; } = string.Empty;
+    [DataMember] public string ConfidenceLevel { get; set; } = "medium";
+    [DataMember] public string ConfidenceBasis { get; set; } = string.Empty;
+    [DataMember] public string Evidence { get; set; } = string.Empty;
+    [DataMember] public string UnresolvedQuestions { get; set; } = string.Empty;
+    [DataMember] public string Rationale { get; set; } = string.Empty;
+}
+
+[DataContract]
+internal sealed class InitiativeDecisionEditorData
+{
+    [DataMember] public string SubjectType { get; set; } = "activity";
+    [DataMember] public string SubjectKey { get; set; } = string.Empty;
+    [DataMember] public string SubjectLabel { get; set; } = string.Empty;
+    [DataMember] public string Status { get; set; } = "required";
+    [DataMember] public string Rationale { get; set; } = string.Empty;
+    [DataMember] public string Sources { get; set; } = string.Empty;
+    [DataMember] public string Owner { get; set; } = string.Empty;
+    [DataMember] public string AccountableApprover { get; set; } = string.Empty;
+    [DataMember] public string Dependencies { get; set; } = string.Empty;
+    [DataMember] public string Conditions { get; set; } = string.Empty;
+    [DataMember] public string ReviewTriggers { get; set; } = string.Empty;
+    [DataMember] public string ApprovalState { get; set; } = "not-required";
+    [DataMember] public string ApprovalConditions { get; set; } = string.Empty;
+    [DataMember] public string RelatedRecords { get; set; } = string.Empty;
+    [DataMember] public string RelatedImplementationUnits { get; set; } = string.Empty;
+}
+
+[DataContract]
+internal sealed class InitiativeUnresolvedEditorData
+{
+    [DataMember] public string SubjectType { get; set; } = "activity";
+    [DataMember] public string SubjectKey { get; set; } = string.Empty;
+    [DataMember] public string SubjectLabel { get; set; } = string.Empty;
+    [DataMember] public string Reason { get; set; } = string.Empty;
+    [DataMember] public string Owner { get; set; } = string.Empty;
+}
+
+[DataContract]
 internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 {
     private readonly VisualStudioExtensibility extensibility;
@@ -49,6 +112,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private string bundleId = string.Empty;
     private string status = "GAEP engine has not been contacted";
     private string output = "Set one absolute local workspace folder, then refresh the Product.";
+    private string initiativeId = string.Empty;
+    private InitiativeEntryContext? initiativeEntryContext;
+    private string? initiativeEntryWorkspace;
+    private readonly List<InitiativeApplicabilityDecisionInput> initiativeDraftDecisions = [];
+    private readonly List<InitiativeUnresolvedSubject> initiativeDraftUnresolved = [];
+    private string initiativeDraftSummary = "No applicability decisions or unresolved subjects are staged.";
     private string[] availableChangeChoices = [];
     private string selectedChangeChoice = string.Empty;
     private ChangeImpactContext? changeImpactContext;
@@ -97,10 +166,47 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private string? managedReviewWorkspace;
     private bool busy;
 
+    private readonly string[] initiativeTypes =
+    [
+        "product", "platform", "product-increment", "feature", "epic", "backlog-item", "service", "module",
+        "client-application", "mobile-application", "api", "integration", "migration", "modernization",
+        "refactoring", "technical-debt-remediation", "security-remediation", "infrastructure", "devops",
+        "observability", "library", "sdk", "cli", "worker", "event-processor", "defect-fix", "experiment",
+        "research", "data-capability", "ai-capability",
+    ];
+    private readonly string[] initiativeSystemStates = ["greenfield", "brownfield", "mixed", "unknown"];
+    private readonly string[] initiativeChangePostures =
+        ["new", "existing", "replacement", "modernization", "migration", "retirement", "mixed"];
+    private readonly string[] initiativeUiStates = ["ui-bearing", "non-ui", "unknown"];
+    private readonly string[] initiativeDataStates = ["data-bearing", "stateless", "unknown"];
+    private readonly string[] initiativeIntegrationStates = ["integration-heavy", "isolated", "mixed", "unknown"];
+    private readonly string[] initiativeExposures = ["internal", "partner", "public", "mixed", "unknown"];
+    private readonly string[] initiativeBooleanChoices = ["false", "true"];
+    private readonly string[] initiativeLifetimes = ["short-lived", "medium-term", "long-lived", "indefinite", "unknown"];
+    private readonly string[] initiativeBlastRadii = ["localized", "multi-unit", "organization", "external", "unknown"];
+    private readonly string[] initiativeReversibilities = ["reversible", "partially-reversible", "irreversible", "unknown"];
+    private readonly string[] initiativeUrgencies = ["low", "normal", "high", "critical", "unknown"];
+    private readonly string[] initiativeFailureCosts = ["low", "medium", "high", "critical", "unknown"];
+    private readonly string[] initiativeConfidenceLevels = ["low", "medium", "high"];
+    private readonly string[] initiativeSubjectTypes =
+        ["phase", "activity", "artifact", "capability", "test-method", "test-level", "approval", "evidence-obligation"];
+    private readonly string[] initiativeApplicabilityStatuses =
+    [
+        "required", "recommended", "optional", "not-applicable", "deferred", "conditionally-required",
+        "already-satisfied", "reused", "blocked", "awaiting-human-decision",
+    ];
+    private readonly string[] initiativeApprovalStates = ["not-required", "pending", "approved", "rejected"];
+
     public GaepToolWindowData(VisualStudioExtensibility extensibility)
     {
         this.extensibility = extensibility ?? throw new ArgumentNullException(nameof(extensibility));
         RefreshProductCommand = new AsyncCommand(RefreshProductAsync);
+        LoadInitiativeEntryCommand = new AsyncCommand(LoadInitiativeEntryAsync);
+        ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
+        AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
+        AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
+        ClearInitiativeDraftCommand = new AsyncCommand(ClearInitiativeDraftAsync);
+        ResolveInitiativeApplicabilityCommand = new AsyncCommand(ResolveInitiativeApplicabilityAsync);
         ShowPhaseDashboardCommand = new AsyncCommand(ShowPhaseDashboardAsync);
         LoadChangeImpactCommand = new AsyncCommand(LoadChangeImpactAsync);
         ShowChangeImpactCommand = new AsyncCommand(ShowChangeImpactAsync);
@@ -135,10 +241,28 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public string GovernanceBoundary { get; } =
-        "Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Change/Impact selection and projection are exact audit-gated metadata views; they cannot approve a Change, accept a Risk, mutate records, or authorize effects. Agent/Model is an exact Product-, capability-, and selection-bound metadata projection; it cannot select, switch, hand off, launch, authorize effects, establish readiness, or invent usage/cost. Accessible dashboard tables sort and filter only already-verified metadata, expose exact visible/omitted/source totals, and prepare formula-neutralized CSV for native UI copy without file authority. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
+        "Initiative entry reads and assessments are exact Product- and revision-bound projections. Classification and applicability require explicit human inputs plus cancel-default confirmation; absence never means not applicable, and no result grants approval, readiness, execution, implementation, or release authority. Phase dashboards are exact read-only governed-state projections; they cannot decide applicability, approve a phase, establish readiness, or grant implementation or release authority. Change/Impact selection and projection are exact audit-gated metadata views; they cannot approve a Change, accept a Risk, mutate records, or authorize effects. Agent/Model is an exact Product-, capability-, and selection-bound metadata projection; it cannot select, switch, hand off, launch, authorize effects, establish readiness, or invent usage/cost. Accessible dashboard tables sort and filter only already-verified metadata, expose exact visible/omitted/source totals, and prepare formula-neutralized CSV for native UI copy without file authority. Codex and Claude readiness is observation-only. Guarded selection and versioned handoff record portable configuration and history only; they cannot start or resume a provider, create a Run, approve tools or effects, or grant execution authority. Managed read-only execution is a separate exact-digest command: every Tool remains denied, only observation is allowed, and provider completion is reported separately from governed outcome. Managed Run evidence inventory/detail is audit-gated, bounded, private-safe observation only; it cannot start, resume, cancel, apply, discard, approve, or grant outcome authority. Exact staged review is a separate two-confirmation flow bound to one Run revision, preview digest, complete changed-file inventory, and host-owned write envelope; post-apply gates remain not assessed and persisted state does not prove cleanup. Portable-design imports remain pending human review. Upstream approval is not GAEP approval, a Design Baseline, implementation readiness, or release readiness. Only validated metadata and digests are displayed.";
 
     [DataMember]
     public IAsyncCommand RefreshProductCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadInitiativeEntryCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ClassifyInitiativeCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand AddInitiativeDecisionCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand AddInitiativeUnresolvedCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ClearInitiativeDraftCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ResolveInitiativeApplicabilityCommand { get; }
 
     [DataMember]
     public IAsyncCommand ShowPhaseDashboardCommand { get; }
@@ -208,6 +332,41 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ImportDesignBundleCommand { get; }
+
+    [DataMember]
+    public string InitiativeId
+    {
+        get => initiativeId;
+        set => SetProperty(ref initiativeId, value ?? string.Empty);
+    }
+
+    [DataMember] public InitiativeClassificationEditorData InitiativeClassification { get; } = new();
+    [DataMember] public InitiativeDecisionEditorData InitiativeDecision { get; } = new();
+    [DataMember] public InitiativeUnresolvedEditorData InitiativeUnresolved { get; } = new();
+    [DataMember] public string[] InitiativeTypes => initiativeTypes;
+    [DataMember] public string[] InitiativeSystemStates => initiativeSystemStates;
+    [DataMember] public string[] InitiativeChangePostures => initiativeChangePostures;
+    [DataMember] public string[] InitiativeUiStates => initiativeUiStates;
+    [DataMember] public string[] InitiativeDataStates => initiativeDataStates;
+    [DataMember] public string[] InitiativeIntegrationStates => initiativeIntegrationStates;
+    [DataMember] public string[] InitiativeExposures => initiativeExposures;
+    [DataMember] public string[] InitiativeBooleanChoices => initiativeBooleanChoices;
+    [DataMember] public string[] InitiativeLifetimes => initiativeLifetimes;
+    [DataMember] public string[] InitiativeBlastRadii => initiativeBlastRadii;
+    [DataMember] public string[] InitiativeReversibilities => initiativeReversibilities;
+    [DataMember] public string[] InitiativeUrgencies => initiativeUrgencies;
+    [DataMember] public string[] InitiativeFailureCosts => initiativeFailureCosts;
+    [DataMember] public string[] InitiativeConfidenceLevels => initiativeConfidenceLevels;
+    [DataMember] public string[] InitiativeSubjectTypes => initiativeSubjectTypes;
+    [DataMember] public string[] InitiativeApplicabilityStatuses => initiativeApplicabilityStatuses;
+    [DataMember] public string[] InitiativeApprovalStates => initiativeApprovalStates;
+
+    [DataMember]
+    public string InitiativeDraftSummary
+    {
+        get => initiativeDraftSummary;
+        private set => SetProperty(ref initiativeDraftSummary, value);
+    }
 
     [DataMember]
     public string[] AvailableChangeChoices
@@ -436,6 +595,169 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
             "Refreshing Product",
             (controller, _, token) => controller.ReadProductAsync(token),
             cancellationToken);
+
+    private Task LoadInitiativeEntryAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Initiative entry",
+            async (controller, workspace, token) =>
+            {
+                var id = ParseInitiativeId(InitiativeId);
+                var context = await controller.ReadInitiativeEntryContextAsync(id, token);
+                initiativeEntryContext = context;
+                initiativeEntryWorkspace = workspace;
+                initiativeDraftDecisions.Clear();
+                initiativeDraftUnresolved.Clear();
+                RefreshInitiativeDraftSummary();
+                return ProductWorkflowController.RenderInitiativeEntry(context);
+            },
+            cancellationToken);
+
+    private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)
+    {
+        var context = initiativeEntryContext;
+        if (context is null)
+        {
+            Status = "Initiative entry is not loaded";
+            Output = "Load and review one exact Initiative entry before classifying it.";
+            return Task.CompletedTask;
+        }
+        InitiativeClassificationInput input;
+        try
+        {
+            input = ProductWorkflowController.ValidateInitiativeClassificationInput(BuildInitiativeClassificationInput());
+        }
+        catch (Exception error)
+        {
+            Status = "Initiative classification input is invalid";
+            Output = ProductWorkflowController.SafeError(error);
+            return Task.CompletedTask;
+        }
+        return RunRequestAsync(
+            "Recording exact Initiative classification",
+            async (controller, workspace, token) =>
+            {
+                EnsureInitiativeWorkspace(workspace, context);
+                var actorId = CurrentActorId();
+                var rendered = await controller.ClassifyInitiativeAsync(context, input, actorId, token);
+                initiativeEntryContext = await controller.ReadInitiativeEntryContextAsync(context.Initiative.Id, token);
+                return rendered;
+            },
+            cancellationToken,
+            confirmationMessage:
+                $"Record this exact human-authored Initiative classification against revision {context.Initiative.Revision}? " +
+                "The engine will re-read Product and Initiative state, reject stale or substituted content, and invalidate " +
+                "older applicability when required. Classification guides profile selection only; it grants no approval, " +
+                "readiness, implementation, execution, or release authority.");
+    }
+
+    private Task AddInitiativeDecisionAsync(object? commandParameter, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            var candidate = BuildInitiativeDecisionInput();
+            var matrix = new InitiativeApplicabilityMatrixInput(
+                [.. initiativeDraftDecisions, candidate],
+                initiativeDraftUnresolved.ToArray());
+            ProductWorkflowController.ValidateInitiativeApplicabilityInput(matrix);
+            initiativeDraftDecisions.Add(candidate);
+            RefreshInitiativeDraftSummary();
+            Status = "Applicability decision added to the local draft; no governed state changed";
+            Output = InitiativeDraftSummary;
+        }
+        catch (Exception error)
+        {
+            Status = "Applicability decision input is invalid";
+            Output = ProductWorkflowController.SafeError(error);
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task AddInitiativeUnresolvedAsync(object? commandParameter, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            if (initiativeDraftDecisions.Count == 0)
+            {
+                throw new ArgumentException("Add at least one explicit applicability decision before staging unresolved subjects.");
+            }
+            var candidate = BuildInitiativeUnresolvedSubject();
+            var matrix = new InitiativeApplicabilityMatrixInput(
+                initiativeDraftDecisions.ToArray(),
+                [.. initiativeDraftUnresolved, candidate]);
+            ProductWorkflowController.ValidateInitiativeApplicabilityInput(matrix);
+            initiativeDraftUnresolved.Add(candidate);
+            RefreshInitiativeDraftSummary();
+            Status = "Unresolved applicability subject added to the local draft; no governed state changed";
+            Output = InitiativeDraftSummary;
+        }
+        catch (Exception error)
+        {
+            Status = "Unresolved applicability input is invalid";
+            Output = ProductWorkflowController.SafeError(error);
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task ClearInitiativeDraftAsync(object? commandParameter, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        initiativeDraftDecisions.Clear();
+        initiativeDraftUnresolved.Clear();
+        RefreshInitiativeDraftSummary();
+        Status = "Local applicability draft cleared; no governed state changed";
+        Output = InitiativeDraftSummary;
+        return Task.CompletedTask;
+    }
+
+    private Task ResolveInitiativeApplicabilityAsync(object? commandParameter, CancellationToken cancellationToken)
+    {
+        var context = initiativeEntryContext;
+        if (context is null)
+        {
+            Status = "Initiative entry is not loaded";
+            Output = "Load and review one exact Initiative entry before resolving applicability.";
+            return Task.CompletedTask;
+        }
+        InitiativeApplicabilityMatrixInput matrix;
+        try
+        {
+            matrix = ProductWorkflowController.ValidateInitiativeApplicabilityInput(
+                new InitiativeApplicabilityMatrixInput(
+                    initiativeDraftDecisions.ToArray(),
+                    initiativeDraftUnresolved.ToArray()));
+        }
+        catch (Exception error)
+        {
+            Status = "Initiative applicability draft is invalid";
+            Output = ProductWorkflowController.SafeError(error);
+            return Task.CompletedTask;
+        }
+        return RunRequestAsync(
+            "Recording exact Initiative applicability",
+            async (controller, workspace, token) =>
+            {
+                EnsureInitiativeWorkspace(workspace, context);
+                var rendered = await controller.ResolveInitiativeApplicabilityAsync(
+                    context,
+                    matrix,
+                    CurrentActorId(),
+                    token);
+                initiativeEntryContext = await controller.ReadInitiativeEntryContextAsync(context.Initiative.Id, token);
+                initiativeDraftDecisions.Clear();
+                initiativeDraftUnresolved.Clear();
+                RefreshInitiativeDraftSummary();
+                return rendered;
+            },
+            cancellationToken,
+            confirmationMessage:
+                $"Record the exact staged applicability matrix against Initiative revision {context.Initiative.Revision}? " +
+                $"It contains {matrix.Decisions.Count} explicit decision(s) and {matrix.UnresolvedSubjects.Count} explicit " +
+                "unresolved subject(s). Absence never means not applicable. The engine will re-read the exact current " +
+                "Product, Initiative, classification, actors, and input content. This grants no approval, readiness, " +
+                "implementation, execution, or release authority.");
+    }
 
     private Task ShowPhaseDashboardAsync(object? commandParameter, CancellationToken cancellationToken) =>
         RunRequestAsync(
@@ -931,6 +1253,161 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
             confirmationMessage:
                 "Import one local folder as metadata and digests only? The result remains pending human review even when upstream sourceReview says approved.");
     }
+
+    private InitiativeClassificationInput BuildInitiativeClassificationInput()
+    {
+        var editor = InitiativeClassification;
+        if (!bool.TryParse(editor.Regulated, out var regulated))
+        {
+            throw new ArgumentException("Regulated must be selected explicitly as true or false.");
+        }
+        return new InitiativeClassificationInput(
+            editor.PrimaryType,
+            ParseInitiativeEntries(editor.SecondaryTypes),
+            editor.SystemState,
+            editor.ChangePosture,
+            ParseInitiativeEntries(editor.Motivations),
+            new InitiativeClassificationCharacteristics(
+                editor.UserInterface,
+                editor.Data,
+                editor.Integration,
+                ParseInitiativeEntries(editor.InteractionModes),
+                editor.Exposure),
+            regulated,
+            ParseInitiativeEntries(editor.PolicyDomains),
+            ParseInitiativeEntries(editor.Sensitivities),
+            editor.ExpectedLifetime,
+            editor.MaintenanceHorizon,
+            new InitiativeClassificationRisk(
+                editor.BlastRadius,
+                editor.Reversibility,
+                editor.Urgency,
+                editor.CostOfFailure),
+            ParseInitiativeEntries(editor.Dependencies),
+            ParseInitiativeEntries(editor.AffectedAssets),
+            editor.Owner,
+            editor.AccountableAuthority,
+            new InitiativeClassificationConfidence(editor.ConfidenceLevel, editor.ConfidenceBasis),
+            ParseInitiativeSources(editor.Evidence),
+            ParseInitiativeEntries(editor.UnresolvedQuestions),
+            editor.Rationale);
+    }
+
+    private InitiativeApplicabilityDecisionInput BuildInitiativeDecisionInput()
+    {
+        var editor = InitiativeDecision;
+        var decided = editor.ApprovalState is "approved" or "rejected";
+        return new InitiativeApplicabilityDecisionInput(
+            new InitiativeApplicabilitySubject(editor.SubjectType, editor.SubjectKey, editor.SubjectLabel),
+            editor.Status,
+            editor.Rationale,
+            ParseInitiativeSources(editor.Sources),
+            editor.Owner,
+            EmptyToNull(editor.AccountableApprover),
+            ParseInitiativeEntries(editor.Dependencies),
+            ParseInitiativeEntries(editor.Conditions),
+            ParseInitiativeEntries(editor.ReviewTriggers),
+            new InitiativeApplicabilityApproval(
+                editor.ApprovalState,
+                ParseInitiativeEntries(editor.ApprovalConditions),
+                decided ? CurrentActorId() : null,
+                decided ? DateTimeOffset.UtcNow : null),
+            ParseInitiativeRelatedRecords(editor.RelatedRecords),
+            ParseInitiativeEntries(editor.RelatedImplementationUnits));
+    }
+
+    private InitiativeUnresolvedSubject BuildInitiativeUnresolvedSubject()
+    {
+        var editor = InitiativeUnresolved;
+        return new InitiativeUnresolvedSubject(
+            new InitiativeApplicabilitySubject(editor.SubjectType, editor.SubjectKey, editor.SubjectLabel),
+            editor.Reason,
+            editor.Owner);
+    }
+
+    private static IReadOnlyList<string> ParseInitiativeEntries(string value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : Array.AsReadOnly(value
+                .Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToArray());
+
+    private static IReadOnlyList<InitiativeEntrySource> ParseInitiativeSources(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return Array.Empty<InitiativeEntrySource>();
+        return Array.AsReadOnly(value
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(line =>
+            {
+                var fields = line.Split('|', StringSplitOptions.TrimEntries);
+                if (fields.Length is < 2 or > 3 || fields.Any(string.IsNullOrWhiteSpace))
+                {
+                    throw new ArgumentException(
+                        "Each Initiative source must be one line: kind | portable reference | optional sha256 digest.");
+                }
+                return new InitiativeEntrySource(fields[0], fields[1], fields.Length == 3 ? fields[2] : null);
+            })
+            .ToArray());
+    }
+
+    private static IReadOnlyList<InitiativeRelatedRecord> ParseInitiativeRelatedRecords(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return Array.Empty<InitiativeRelatedRecord>();
+        return Array.AsReadOnly(value
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(line =>
+            {
+                var fields = line.Split('|', StringSplitOptions.TrimEntries);
+                if (fields.Length != 4 || !Guid.TryParseExact(fields[1], "D", out var recordId) || recordId == Guid.Empty ||
+                    !long.TryParse(fields[2], out var revision))
+                {
+                    throw new ArgumentException(
+                        "Each related record must be one line: record type | UUID | revision | sha256 digest.");
+                }
+                return new InitiativeRelatedRecord(fields[0], recordId, revision, fields[3]);
+            })
+            .ToArray());
+    }
+
+    private void EnsureInitiativeWorkspace(string workspace, InitiativeEntryContext context)
+    {
+        if (!StringComparer.Ordinal.Equals(initiativeEntryWorkspace, workspace))
+        {
+            throw new ArgumentException("The workspace changed after the Initiative entry was loaded. Load it again.");
+        }
+        if (!ReferenceEquals(context, initiativeEntryContext))
+        {
+            throw new ArgumentException("The Initiative entry changed while the form was open. Load and review it again.");
+        }
+    }
+
+    private void RefreshInitiativeDraftSummary()
+    {
+        var summary = new List<string>
+        {
+            $"Local applicability draft: {initiativeDraftDecisions.Count} decision(s), " +
+            $"{initiativeDraftUnresolved.Count} unresolved subject(s). No governed state has changed.",
+        };
+        summary.AddRange(initiativeDraftDecisions.Select((decision, index) =>
+            $"Decision {index + 1}: {decision.Subject.Type}/{decision.Subject.Key} — {decision.Status}"));
+        summary.AddRange(initiativeDraftUnresolved.Select((unresolved, index) =>
+            $"Unresolved {index + 1}: {unresolved.Subject.Type}/{unresolved.Subject.Key}"));
+        InitiativeDraftSummary = string.Join(Environment.NewLine, summary);
+    }
+
+    private static Guid ParseInitiativeId(string value)
+    {
+        if (!Guid.TryParseExact(value?.Trim(), "D", out var initiativeId) || initiativeId == Guid.Empty)
+        {
+            throw new ArgumentException("Initiative ID must be a non-empty UUID.");
+        }
+        return initiativeId;
+    }
+
+    private static string CurrentActorId() =>
+        Environment.GetEnvironmentVariable("GAEP_ACTOR_ID") ?? "gaep.visual-studio-local-human";
+
+    private static string? EmptyToNull(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     private void ConfigureAgentSelection(AgentSelectionContext context)
     {

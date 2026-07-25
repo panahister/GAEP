@@ -63,6 +63,96 @@ public sealed class EngineClient : IAsyncDisposable
             PortableDesignProtocol.ParseProductBindingResponse);
     }
 
+    public async Task<InitiativeEntryRecord> ReadInitiativeAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync(
+            "readInitiative",
+            new Dictionary<string, object?> { ["initiativeId"] = initiativeId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseInitiativeResponse(envelope, initiativeId));
+    }
+
+    public async Task<InitiativeEntryAssessment> AssessInitiativeEntryAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync(
+            "assessInitiativeEntry",
+            new Dictionary<string, object?> { ["initiativeId"] = initiativeId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseInitiativeEntryAssessmentResponse(envelope, initiativeId));
+    }
+
+    public async Task<InitiativeEntryRecord> ClassifyInitiativeAsync(
+        Guid initiativeId,
+        long expectedInitiativeRevision,
+        InitiativeClassificationInput classification,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        PortableDesignProtocol.ValidateProductRevision(expectedInitiativeRevision);
+        var normalizedActorId = PortableDesignProtocol.ValidateActorId(actorId);
+        var serializedClassification = PortableDesignProtocol.SerializeInitiativeClassificationInput(classification);
+        using var response = await RequestPortableDesignAsync(
+            "classifyInitiative",
+            new Dictionary<string, object?>
+            {
+                ["initiativeId"] = initiativeId,
+                ["expectedInitiativeRevision"] = expectedInitiativeRevision,
+                ["actorId"] = normalizedActorId,
+                ["classification"] = serializedClassification,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseInitiativeResponse(
+                envelope,
+                initiativeId,
+                expectedInitiativeRevision,
+                normalizedActorId,
+                expectedClassificationInput: serializedClassification));
+    }
+
+    public async Task<InitiativeEntryRecord> ResolveInitiativeApplicabilityAsync(
+        Guid initiativeId,
+        long expectedInitiativeRevision,
+        InitiativeApplicabilityMatrixInput applicability,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        PortableDesignProtocol.ValidateProductRevision(expectedInitiativeRevision);
+        var normalizedActorId = PortableDesignProtocol.ValidateActorId(actorId);
+        var serializedApplicability = PortableDesignProtocol.SerializeInitiativeApplicabilityInput(applicability);
+        using var response = await RequestPortableDesignAsync(
+            "resolveInitiativeApplicability",
+            new Dictionary<string, object?>
+            {
+                ["initiativeId"] = initiativeId,
+                ["expectedInitiativeRevision"] = expectedInitiativeRevision,
+                ["actorId"] = normalizedActorId,
+                ["applicability"] = serializedApplicability,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseInitiativeResponse(
+                envelope,
+                initiativeId,
+                expectedInitiativeRevision,
+                normalizedActorId,
+                expectedApplicabilityInput: serializedApplicability));
+    }
+
     public async Task<PhaseDashboardFramework> ReadPhaseDashboardAsync(
         ProductBinding product,
         DeliveryPhaseId phase = DeliveryPhaseId.Phase0Foundation,

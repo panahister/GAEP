@@ -26,6 +26,232 @@
                 Command="{Binding ShowPhaseDashboardCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
+        <TextBlock Text="Governed Initiative entry" FontWeight="SemiBold" />
+        <TextBlock Text="Load one exact Initiative and its Product-bound entry assessment. Classification and applicability are explicit human-authored records: absence never means not applicable, and no result grants approval, readiness, implementation, execution, or release authority."
+                   TextWrapping="Wrap" Margin="0,4,0,8" />
+        <TextBlock Text="Exact Initiative UUID" />
+        <TextBox Text="{Binding InitiativeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="LoadInitiativeEntryButton" Content="Load exact Initiative entry"
+                Command="{Binding LoadInitiativeEntryCommand}" MinHeight="28" Margin="0,0,0,10"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
+        <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
+        <TextBlock Text="Primary type" />
+        <ComboBox ItemsSource="{Binding InitiativeTypes}"
+                  SelectedItem="{Binding InitiativeClassification.PrimaryType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Secondary types (comma-separated canonical values)" />
+        <TextBox Text="{Binding InitiativeClassification.SecondaryTypes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="System state" />
+        <ComboBox ItemsSource="{Binding InitiativeSystemStates}"
+                  SelectedItem="{Binding InitiativeClassification.SystemState, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Change posture" />
+        <ComboBox ItemsSource="{Binding InitiativeChangePostures}"
+                  SelectedItem="{Binding InitiativeClassification.ChangePosture, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Motivations (comma-separated: business-driven, technical, regulatory, operational, security-driven, mixed)" TextWrapping="Wrap" />
+        <TextBox Text="{Binding InitiativeClassification.Motivations, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="User-interface characteristic" />
+        <ComboBox ItemsSource="{Binding InitiativeUiStates}"
+                  SelectedItem="{Binding InitiativeClassification.UserInterface, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Data characteristic" />
+        <ComboBox ItemsSource="{Binding InitiativeDataStates}"
+                  SelectedItem="{Binding InitiativeClassification.Data, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Integration characteristic" />
+        <ComboBox ItemsSource="{Binding InitiativeIntegrationStates}"
+                  SelectedItem="{Binding InitiativeClassification.Integration, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Interaction modes (comma-separated: synchronous, asynchronous, batch, streaming, interactive, mixed)" TextWrapping="Wrap" />
+        <TextBox Text="{Binding InitiativeClassification.InteractionModes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Exposure" />
+        <ComboBox ItemsSource="{Binding InitiativeExposures}"
+                  SelectedItem="{Binding InitiativeClassification.Exposure, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Regulated" />
+        <ComboBox ItemsSource="{Binding InitiativeBooleanChoices}"
+                  SelectedItem="{Binding InitiativeClassification.Regulated, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Policy domains (comma-separated portable identifiers)" />
+        <TextBox Text="{Binding InitiativeClassification.PolicyDomains, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Sensitivities (comma-separated: security, privacy, data, safety, financial, operational, none, unknown)" TextWrapping="Wrap" />
+        <TextBox Text="{Binding InitiativeClassification.Sensitivities, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Expected lifetime" />
+        <ComboBox ItemsSource="{Binding InitiativeLifetimes}"
+                  SelectedItem="{Binding InitiativeClassification.ExpectedLifetime, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Maintenance horizon" />
+        <TextBox Text="{Binding InitiativeClassification.MaintenanceHorizon, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Risk blast radius" />
+        <ComboBox ItemsSource="{Binding InitiativeBlastRadii}"
+                  SelectedItem="{Binding InitiativeClassification.BlastRadius, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Risk reversibility" />
+        <ComboBox ItemsSource="{Binding InitiativeReversibilities}"
+                  SelectedItem="{Binding InitiativeClassification.Reversibility, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Risk urgency" />
+        <ComboBox ItemsSource="{Binding InitiativeUrgencies}"
+                  SelectedItem="{Binding InitiativeClassification.Urgency, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Risk cost of failure" />
+        <ComboBox ItemsSource="{Binding InitiativeFailureCosts}"
+                  SelectedItem="{Binding InitiativeClassification.CostOfFailure, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Dependencies (comma-separated portable descriptions)" />
+        <TextBox Text="{Binding InitiativeClassification.Dependencies, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Affected assets (comma-separated portable descriptions)" />
+        <TextBox Text="{Binding InitiativeClassification.AffectedAssets, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Owner" />
+        <TextBox Text="{Binding InitiativeClassification.Owner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Accountable authority" />
+        <TextBox Text="{Binding InitiativeClassification.AccountableAuthority, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Confidence level" />
+        <ComboBox ItemsSource="{Binding InitiativeConfidenceLevels}"
+                  SelectedItem="{Binding InitiativeClassification.ConfidenceLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Confidence basis" />
+        <TextBox Text="{Binding InitiativeClassification.ConfidenceBasis, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Evidence sources (one per line: kind | portable reference | optional sha256 digest)" TextWrapping="Wrap" />
+        <TextBox Text="{Binding InitiativeClassification.Evidence, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True" MinHeight="60" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Unresolved questions (comma-separated explicit questions)" />
+        <TextBox Text="{Binding InitiativeClassification.UnresolvedQuestions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Classification rationale" />
+        <TextBox Text="{Binding InitiativeClassification.Rationale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True" MinHeight="60" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="ClassifyInitiativeButton" Content="Classify or reclassify exact Initiative"
+                Command="{Binding ClassifyInitiativeCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
+        <TextBlock Text="Applicability matrix draft" FontWeight="SemiBold" />
+        <TextBlock Text="Add every explicit decision and every unresolved subject to a local draft. The draft changes no governed state until the final cancel-default resolution command." TextWrapping="Wrap" Margin="0,4,0,8" />
+        <TextBlock Text="Decision subject type" />
+        <ComboBox ItemsSource="{Binding InitiativeSubjectTypes}"
+                  SelectedItem="{Binding InitiativeDecision.SubjectType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Decision subject key (portable identifier)" />
+        <TextBox Text="{Binding InitiativeDecision.SubjectKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Decision subject label" />
+        <TextBox Text="{Binding InitiativeDecision.SubjectLabel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Applicability status" />
+        <ComboBox ItemsSource="{Binding InitiativeApplicabilityStatuses}"
+                  SelectedItem="{Binding InitiativeDecision.Status, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Decision rationale" />
+        <TextBox Text="{Binding InitiativeDecision.Rationale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True" MinHeight="60" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Decision sources (one per line: kind | portable reference | optional sha256 digest)" TextWrapping="Wrap" />
+        <TextBox Text="{Binding InitiativeDecision.Sources, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True" MinHeight="60" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Decision owner" />
+        <TextBox Text="{Binding InitiativeDecision.Owner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Optional accountable approver" />
+        <TextBox Text="{Binding InitiativeDecision.AccountableApprover, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Dependencies (comma-separated portable identifiers)" />
+        <TextBox Text="{Binding InitiativeDecision.Dependencies, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Conditions (required for deferred, conditionally-required, or blocked)" TextWrapping="Wrap" />
+        <TextBox Text="{Binding InitiativeDecision.Conditions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Review triggers (comma-separated; at least one)" />
+        <TextBox Text="{Binding InitiativeDecision.ReviewTriggers, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Approval state" />
+        <ComboBox ItemsSource="{Binding InitiativeApprovalStates}"
+                  SelectedItem="{Binding InitiativeDecision.ApprovalState, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Approval conditions (comma-separated; approved/rejected is attributed to the current human actor and time)" TextWrapping="Wrap" />
+        <TextBox Text="{Binding InitiativeDecision.ApprovalConditions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Related records (one per line: record type | UUID | revision | sha256 digest; required for reused/already-satisfied)" TextWrapping="Wrap" />
+        <TextBox Text="{Binding InitiativeDecision.RelatedRecords, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True" MinHeight="60" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Related implementation units (comma-separated portable identifiers)" />
+        <TextBox Text="{Binding InitiativeDecision.RelatedImplementationUnits, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="AddInitiativeDecisionButton" Content="Add exact decision to local draft"
+                Command="{Binding AddInitiativeDecisionCommand}" MinHeight="28" Margin="0,0,0,10"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
+        <TextBlock Text="Explicit unresolved subject" FontWeight="SemiBold" />
+        <TextBlock Text="Unresolved subject type" />
+        <ComboBox ItemsSource="{Binding InitiativeSubjectTypes}"
+                  SelectedItem="{Binding InitiativeUnresolved.SubjectType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  MinHeight="26" Margin="0,4,0,6" />
+        <TextBlock Text="Unresolved subject key" />
+        <TextBox Text="{Binding InitiativeUnresolved.SubjectKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Unresolved subject label" />
+        <TextBox Text="{Binding InitiativeUnresolved.SubjectLabel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Unresolved reason" />
+        <TextBox Text="{Binding InitiativeUnresolved.Reason, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <TextBlock Text="Unresolved owner" />
+        <TextBox Text="{Binding InitiativeUnresolved.Owner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 MinHeight="26" Margin="0,4,0,6"
+                 Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="AddInitiativeUnresolvedButton" Content="Add unresolved subject to local draft"
+                Command="{Binding AddInitiativeUnresolvedCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <TextBlock Text="{Binding InitiativeDraftSummary}" TextWrapping="Wrap" Margin="0,0,0,8" />
+        <Button x:Name="ClearInitiativeDraftButton" Content="Clear local applicability draft"
+                Command="{Binding ClearInitiativeDraftCommand}" MinHeight="28" Margin="0,0,0,8"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="ResolveInitiativeApplicabilityButton" Content="Resolve or re-resolve exact applicability"
+                Command="{Binding ResolveInitiativeApplicabilityCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+
         <TextBlock Text="Change and impact" FontWeight="SemiBold" />
         <TextBlock Text="Load exact current Change metadata, select one bound revision, then open a read-only projection. Selection grants no Change approval, Risk acceptance, mutation, Run, Tool, write, or effect authority."
                    TextWrapping="Wrap" Margin="0,4,0,8" />
@@ -242,6 +468,12 @@
     <DataTrigger Binding="{Binding Busy}" Value="True">
       <Setter TargetName="RefreshProductButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhaseDashboardButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="LoadInitiativeEntryButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ClassifyInitiativeButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="AddInitiativeDecisionButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="AddInitiativeUnresolvedButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ClearInitiativeDraftButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ResolveInitiativeApplicabilityButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadAccessibleTablesButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="RenderAccessibleTableButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadChangeImpactButton" Property="IsEnabled" Value="False" />

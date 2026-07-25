@@ -56,6 +56,21 @@ for (const binding of [
   "BundleId",
   "BundlePath",
   "RefreshProductCommand",
+  "InitiativeId",
+  "LoadInitiativeEntryCommand",
+  "InitiativeTypes",
+  "InitiativeClassification",
+  "ClassifyInitiativeCommand",
+  "InitiativeSubjectTypes",
+  "InitiativeApplicabilityStatuses",
+  "InitiativeApprovalStates",
+  "InitiativeDecision",
+  "AddInitiativeDecisionCommand",
+  "InitiativeUnresolved",
+  "AddInitiativeUnresolvedCommand",
+  "InitiativeDraftSummary",
+  "ClearInitiativeDraftCommand",
+  "ResolveInitiativeApplicabilityCommand",
   "ShowPhaseDashboardCommand",
   "LoadChangeImpactCommand",
   "ShowChangeImpactCommand",
@@ -109,13 +124,21 @@ for (const binding of [
   "Output",
   "Busy",
 ]) {
-  requireText(remoteUi, new RegExp(`\\{Binding ${binding}(?:[,}])`, "u"),
+  requireText(remoteUi, new RegExp(`\\{Binding ${binding}(?:[.,}])`, "u"),
     `Visual Studio Product workflow binding is missing: ${binding}`)
 }
 requireText(remoteUi, /Import local bundle as pending review/u,
   "Visual Studio import action does not communicate its pending-review boundary")
 requireText(remoteUi, /Show Phase 0\/1A dashboards/u,
   "Visual Studio Product Studio does not expose the explicit phase-dashboard projection")
+requireText(remoteUi, /Load exact Initiative entry/u,
+  "Visual Studio Product Studio does not expose exact Initiative entry assessment")
+requireText(remoteUi, /Classify or reclassify exact Initiative/u,
+  "Visual Studio Product Studio does not expose governed Initiative classification")
+requireText(remoteUi, /Resolve or re-resolve exact applicability/u,
+  "Visual Studio Product Studio does not expose governed Initiative applicability")
+requireText(remoteUi, /absence never means not applicable/u,
+  "Visual Studio Initiative entry workflow does not preserve the explicit applicability boundary")
 requireText(remoteUi, /Show exact Change and impact/u,
   "Visual Studio Product Studio does not expose exact Change and impact projection")
 requireText(remoteUi, /Show exact Agent and model/u,

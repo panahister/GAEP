@@ -21,6 +21,169 @@ public sealed class ProductWorkflowController(EngineClient client)
     public async Task<string> ReadProductAsync(CancellationToken cancellationToken = default) =>
         RenderProduct(await client.ReadProductBindingAsync(cancellationToken));
 
+    public async Task<InitiativeEntryContext> ReadInitiativeEntryContextAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var assessment = await client.AssessInitiativeEntryAsync(initiativeId, cancellationToken);
+        if (assessment.InitiativeRevision != initiative.Revision || assessment.ProductId != initiative.ProductId ||
+            assessment.ProductId != product.Id || assessment.ProductRevision != product.Revision ||
+            assessment.ProductDigest != product.Digest)
+        {
+            throw new ArgumentException("The Initiative changed while its entry assessment was read. Refresh the exact record.");
+        }
+        var classificationValid = assessment.Classification.Status switch
+        {
+            "missing" => initiative.Classification is null && assessment.Classification.Digest is null,
+            "current" => initiative.Classification is not null &&
+                assessment.Classification.Digest == initiative.Classification.Digest &&
+                initiative.Classification.ProductRevision == assessment.ProductRevision &&
+                initiative.Classification.ProductDigest == assessment.ProductDigest,
+            "stale" => initiative.Classification is not null &&
+                assessment.Classification.Digest == initiative.Classification.Digest &&
+                (initiative.Classification.ProductRevision != assessment.ProductRevision ||
+                 initiative.Classification.ProductDigest != assessment.ProductDigest),
+            _ => false,
+        };
+        if (!classificationValid)
+        {
+            throw new ArgumentException("The Initiative classification assessment is not bound to the exact current record.");
+        }
+        var applicabilityValid = assessment.Applicability.Status switch
+        {
+            "missing" => initiative.Applicability is null && assessment.Applicability.MatrixRevision is null &&
+                assessment.Applicability.Digest is null,
+            "current" or "stale" => initiative.Applicability is not null &&
+                assessment.Applicability.Status == initiative.Applicability.State &&
+                assessment.Applicability.MatrixRevision == initiative.Applicability.Revision &&
+                assessment.Applicability.Digest == initiative.Applicability.Digest &&
+                assessment.Applicability.DecisionCount == initiative.Applicability.DecisionCount &&
+                assessment.Applicability.UnresolvedSubjectCount == initiative.Applicability.UnresolvedSubjectCount,
+            _ => false,
+        };
+        if (!applicabilityValid)
+        {
+            throw new ArgumentException("The Initiative applicability assessment is not bound to the exact current record.");
+        }
+        return new InitiativeEntryContext(initiative, assessment);
+    }
+
+    public async Task<string> ReadInitiativeEntryAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default) =>
+        RenderInitiativeEntry(await ReadInitiativeEntryContextAsync(initiativeId, cancellationToken));
+
+    public async Task<string> ClassifyInitiativeAsync(
+        InitiativeEntryContext context,
+        InitiativeClassificationInput input,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (context.Initiative.State is "completed" or "cancelled")
+        {
+            throw new ArgumentException($"Terminal Initiative {context.Initiative.State} entry records are immutable.");
+        }
+        var fresh = await ReadInitiativeEntryContextAsync(context.Initiative.Id, cancellationToken);
+        if (!SameInitiativeEntryBinding(fresh, context))
+        {
+            throw new ArgumentException(
+                "The Initiative changed while the classification form was open. Refresh and review the exact revision.");
+        }
+        var updated = await client.ClassifyInitiativeAsync(
+            context.Initiative.Id,
+            context.Initiative.Revision,
+            input,
+            actorId,
+            cancellationToken);
+        return RenderInitiativeEntry(await ReadInitiativeEntryContextAsync(updated.Id, cancellationToken));
+    }
+
+    public async Task<string> ResolveInitiativeApplicabilityAsync(
+        InitiativeEntryContext context,
+        InitiativeApplicabilityMatrixInput input,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (context.Initiative.State is "completed" or "cancelled")
+        {
+            throw new ArgumentException($"Terminal Initiative {context.Initiative.State} entry records are immutable.");
+        }
+        if (context.Assessment.Classification.Status != "current")
+        {
+            throw new ArgumentException(
+                "Record a classification bound to the current Product revision before resolving applicability.");
+        }
+        var fresh = await ReadInitiativeEntryContextAsync(context.Initiative.Id, cancellationToken);
+        if (!SameInitiativeEntryBinding(fresh, context))
+        {
+            throw new ArgumentException(
+                "The Initiative changed while the applicability form was open. Refresh and review the exact revision.");
+        }
+        var updated = await client.ResolveInitiativeApplicabilityAsync(
+            context.Initiative.Id,
+            context.Initiative.Revision,
+            input,
+            actorId,
+            cancellationToken);
+        return RenderInitiativeEntry(await ReadInitiativeEntryContextAsync(updated.Id, cancellationToken));
+    }
+
+    public static string RenderInitiativeEntry(InitiativeEntryContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var initiative = context.Initiative;
+        var assessment = context.Assessment;
+        var output = new StringBuilder()
+            .AppendLine("GAEP Initiative entry assessment")
+            .AppendLine()
+            .AppendLine($"Initiative ID: {initiative.Id:D}")
+            .AppendLine($"Initiative revision: {initiative.Revision}")
+            .AppendLine($"Lifecycle state: {initiative.State}")
+            .AppendLine(
+                $"Classification: {assessment.Classification.Status}" +
+                (initiative.Classification is null
+                    ? string.Empty
+                    : $" · {initiative.Classification.PrimaryType} / {initiative.Classification.ProductProfile}"))
+            .AppendLine(
+                $"Applicability: {assessment.Applicability.Status} · matrix revision " +
+                (assessment.Applicability.MatrixRevision?.ToString(CultureInfo.InvariantCulture) ?? "not recorded"))
+            .AppendLine($"Decisions: {assessment.Applicability.DecisionCount}")
+            .AppendLine($"Unresolved subjects: {assessment.Applicability.UnresolvedSubjectCount}")
+            .AppendLine($"Awaiting human decisions: {assessment.Applicability.PendingHumanDecisionCount}")
+            .AppendLine($"Blocked decisions: {assessment.Applicability.BlockedDecisionCount}")
+            .AppendLine($"Pending approvals: {assessment.Applicability.PendingApprovalCount}")
+            .AppendLine($"Rejected approvals: {assessment.Applicability.RejectedApprovalCount}")
+            .AppendLine($"Assessment: {assessment.State}");
+        foreach (var reason in assessment.Reasons) output.AppendLine($"  - {reason}");
+        return output.AppendLine()
+            .AppendLine(
+                "Boundary: entry assessment is read-only and grants no approval, readiness, not-applicable inference, " +
+                "or action authority.")
+            .Append(
+                "Product and Initiative narrative, evidence content, owners, local paths, credentials, and raw engine " +
+                "output are withheld from this compact view.")
+            .ToString();
+    }
+
+    public static InitiativeClassificationInput ValidateInitiativeClassificationInput(
+        InitiativeClassificationInput input)
+    {
+        PortableDesignProtocol.SerializeInitiativeClassificationInput(input);
+        return input;
+    }
+
+    public static InitiativeApplicabilityMatrixInput ValidateInitiativeApplicabilityInput(
+        InitiativeApplicabilityMatrixInput input)
+    {
+        PortableDesignProtocol.SerializeInitiativeApplicabilityInput(input);
+        return input;
+    }
+
     public async Task<string> ReadPhaseDashboardAsync(CancellationToken cancellationToken = default)
     {
         var product = await client.ReadProductBindingAsync(cancellationToken);
@@ -1033,6 +1196,22 @@ public sealed class ProductWorkflowController(EngineClient client)
         SameExactSelection(left.Agent, right.Agent) && left.State == right.State &&
         left.ProviderSessionRef == right.ProviderSessionRef && left.StartedAt == right.StartedAt &&
         left.EndedAt == right.EndedAt && left.PreviousRunId == right.PreviousRunId;
+
+    private static bool SameInitiativeEntryBinding(InitiativeEntryContext left, InitiativeEntryContext right)
+    {
+        var leftAssessment = left.Assessment;
+        var rightAssessment = right.Assessment;
+        return left.Initiative == right.Initiative &&
+            leftAssessment.InitiativeId == rightAssessment.InitiativeId &&
+            leftAssessment.InitiativeRevision == rightAssessment.InitiativeRevision &&
+            leftAssessment.ProductId == rightAssessment.ProductId &&
+            leftAssessment.ProductRevision == rightAssessment.ProductRevision &&
+            leftAssessment.ProductDigest == rightAssessment.ProductDigest &&
+            leftAssessment.Classification == rightAssessment.Classification &&
+            leftAssessment.Applicability == rightAssessment.Applicability &&
+            leftAssessment.State == rightAssessment.State &&
+            leftAssessment.Reasons.SequenceEqual(rightAssessment.Reasons, StringComparer.Ordinal);
+    }
 
     private static string YesNo(bool value) => value ? "yes" : "no";
 

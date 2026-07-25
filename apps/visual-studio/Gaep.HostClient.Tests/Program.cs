@@ -38,6 +38,7 @@ internal static class Program
     private static readonly Guid ChangeTraceId = Guid.Parse("31313131-3131-4131-8131-313131313131");
     private static readonly Guid ChangeDecisionId = Guid.Parse("32323232-3232-4232-8232-323232323232");
     private static readonly Guid ChangeRiskId = Guid.Parse("34343434-3434-4434-8434-343434343434");
+    private static readonly Guid InitiativeDecisionId = Guid.Parse("35353535-3535-4535-8535-353535353535");
     private const string PrivateRoot = "/Users/private/design-bundle";
     private const string PrivateCredential = "PRIVATE-OAUTH-TOKEN";
     private static int passed;
@@ -84,6 +85,11 @@ internal static class Program
         var invalidSourceRoot = Path.Combine(temporaryRoot, "source-error");
         var badReadinessRoot = Path.Combine(temporaryRoot, "bad-readiness");
         var badSelectionRoot = Path.Combine(temporaryRoot, "bad-selection");
+        var badInitiativePrivateRoot = Path.Combine(temporaryRoot, "bad-initiative-private");
+        var badInitiativeAssessmentAuthorityRoot = Path.Combine(temporaryRoot, "bad-initiative-assessment-authority");
+        var badInitiativeAssessmentBindingRoot = Path.Combine(temporaryRoot, "bad-initiative-assessment-binding");
+        var badInitiativeClassificationBindingRoot = Path.Combine(temporaryRoot, "bad-initiative-classification-binding");
+        var badInitiativeApplicabilityBindingRoot = Path.Combine(temporaryRoot, "bad-initiative-applicability-binding");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -132,6 +138,11 @@ internal static class Program
         Directory.CreateDirectory(invalidSourceRoot);
         Directory.CreateDirectory(badReadinessRoot);
         Directory.CreateDirectory(badSelectionRoot);
+        Directory.CreateDirectory(badInitiativePrivateRoot);
+        Directory.CreateDirectory(badInitiativeAssessmentAuthorityRoot);
+        Directory.CreateDirectory(badInitiativeAssessmentBindingRoot);
+        Directory.CreateDirectory(badInitiativeClassificationBindingRoot);
+        Directory.CreateDirectory(badInitiativeApplicabilityBindingRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -311,6 +322,117 @@ internal static class Program
             "Typed Product binding returns exact identity, revision, and canonical digest while omitting unrelated fields");
         Check(!JsonSerializer.Serialize(product).Contains(PrivateRoot, StringComparison.Ordinal),
             "Typed Product binding does not expose unrelated private Product fields");
+
+        var initiative = await client.ReadInitiativeAsync(InitiativeId);
+        var initialAssessment = await client.AssessInitiativeEntryAsync(InitiativeId);
+        Check(initiative.Revision == 3 && initiative.ProductId == ProductId && initiative.Classification is null &&
+              initiative.Applicability is null && initialAssessment.InitiativeRevision == 3 &&
+              initialAssessment.Classification.Status == "missing" &&
+              initialAssessment.Applicability.Status == "missing" && initialAssessment.State == "attention-required",
+            "Typed Initiative entry read preserves exact missing classification/applicability truth");
+        var classificationInput = InitiativeClassificationFixture();
+        await ExpectAsync<ArgumentException>(
+            () => client.ClassifyInitiativeAsync(
+                InitiativeId,
+                initiative.Revision,
+                classificationInput with { Sensitivities = ["none", "security"] },
+                "founder.review"),
+            "Initiative classification rejects contradictory sensitivities before transport");
+        var classified = await client.ClassifyInitiativeAsync(
+            InitiativeId,
+            initiative.Revision,
+            classificationInput,
+            "founder.review");
+        Check(classified.Revision == 4 && classified.Classification is not null &&
+              classified.Classification.PrimaryType == "feature" &&
+              classified.Classification.ProductRevision == product.Revision &&
+              classified.Classification.ProductDigest == product.Digest &&
+              classified.Classification.ClassifiedBy == "founder.review" && classified.Applicability is null,
+            "Initiative classification response is bound to exact content, actor, Product, and next revision");
+        var applicabilityInput = InitiativeApplicabilityFixture();
+        var invalidDecision = applicabilityInput.Decisions.Single() with
+        {
+            Status = "conditionally-required",
+            Conditions = Array.Empty<string>(),
+        };
+        await ExpectAsync<ArgumentException>(
+            () => client.ResolveInitiativeApplicabilityAsync(
+                InitiativeId,
+                classified.Revision,
+                applicabilityInput with { Decisions = [invalidDecision] },
+                "founder.review"),
+            "Initiative applicability rejects conditional decisions without conditions before transport");
+        var resolved = await client.ResolveInitiativeApplicabilityAsync(
+            InitiativeId,
+            classified.Revision,
+            applicabilityInput,
+            "founder.review");
+        Check(resolved.Revision == 5 && resolved.Applicability is not null &&
+              resolved.Applicability.State == "current" && resolved.Applicability.InitiativeRevision == 5 &&
+              resolved.Applicability.DecisionCount == 1 && resolved.Applicability.UnresolvedSubjectCount == 0 &&
+              resolved.Applicability.EvaluatedBy == "founder.review" &&
+              resolved.Applicability.ClassificationDigest == resolved.Classification?.Digest,
+            "Initiative applicability response is bound to exact content, actor, classification, and next revision");
+        var initiativeController = new ProductWorkflowController(client);
+        var initiativeContext = await initiativeController.ReadInitiativeEntryContextAsync(InitiativeId);
+        var initiativeOutput = ProductWorkflowController.RenderInitiativeEntry(initiativeContext);
+        Check(initiativeContext.Assessment.State == "ready" &&
+              initiativeContext.Assessment.Classification.Status == "current" &&
+              initiativeContext.Assessment.Applicability.Status == "current" &&
+              initiativeOutput.Contains("GAEP Initiative entry assessment", StringComparison.Ordinal) &&
+              initiativeOutput.Contains("grants no approval, readiness, not-applicable inference", StringComparison.Ordinal) &&
+              !initiativeOutput.Contains("Private Initiative title", StringComparison.Ordinal) &&
+              !initiativeOutput.Contains("founder.review", StringComparison.Ordinal) &&
+              !initiativeOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !initiativeOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Initiative entry controller revalidates exact Product context and renders privacy-minimal no-authority truth");
+
+        await using (var hostileClient = new EngineClient(badInitiativePrivateRoot, executable))
+        {
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadInitiativeAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" && !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Initiative read rejects excess private response fields");
+        }
+        await using (var hostileClient = new EngineClient(badInitiativeAssessmentAuthorityRoot, executable))
+        {
+            var invalid = await CaptureHostErrorAsync(() =>
+                new ProductWorkflowController(hostileClient).ReadInitiativeEntryContextAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID",
+                "Initiative entry rejects forged assessment authority");
+        }
+        await using (var hostileClient = new EngineClient(badInitiativeAssessmentBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadInitiativeEntryContextAsync(InitiativeId),
+                "Initiative entry rejects an assessment bound to a different Product digest");
+        }
+        await using (var hostileClient = new EngineClient(badInitiativeClassificationBindingRoot, executable))
+        {
+            var hostileInitiative = await hostileClient.ReadInitiativeAsync(InitiativeId);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ClassifyInitiativeAsync(
+                InitiativeId,
+                hostileInitiative.Revision,
+                classificationInput,
+                "founder.review"));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID",
+                "Initiative classification rejects actor/content substitution");
+        }
+        await using (var hostileClient = new EngineClient(badInitiativeApplicabilityBindingRoot, executable))
+        {
+            var hostileInitiative = await hostileClient.ReadInitiativeAsync(InitiativeId);
+            var hostileClassified = await hostileClient.ClassifyInitiativeAsync(
+                InitiativeId,
+                hostileInitiative.Revision,
+                classificationInput,
+                "founder.review");
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ResolveInitiativeApplicabilityAsync(
+                InitiativeId,
+                hostileClassified.Revision,
+                applicabilityInput,
+                "founder.review"));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID",
+                "Initiative applicability rejects actor/content substitution");
+        }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
@@ -1324,12 +1446,63 @@ internal static class Program
         }
     }
 
+    private static InitiativeClassificationInput InitiativeClassificationFixture() => new(
+        PrimaryType: "feature",
+        SecondaryTypes: ["integration"],
+        SystemState: "brownfield",
+        ChangePosture: "existing",
+        Motivations: ["business-driven", "technical"],
+        Characteristics: new InitiativeClassificationCharacteristics(
+            "ui-bearing",
+            "data-bearing",
+            "integration-heavy",
+            ["interactive", "asynchronous"],
+            "internal"),
+        Regulated: false,
+        PolicyDomains: ["governance"],
+        Sensitivities: ["security", "privacy"],
+        ExpectedLifetime: "long-lived",
+        MaintenanceHorizon: "Maintained across the supported Founder lifecycle",
+        Risk: new InitiativeClassificationRisk("multi-unit", "partially-reversible", "normal", "high"),
+        Dependencies: ["Shared engine protocol"],
+        AffectedAssets: ["Visual Studio Product Studio"],
+        Owner: "Founder product owner",
+        AccountableAuthority: "Founder product owner",
+        Confidence: new InitiativeClassificationConfidence("high", "Current strict contract and host evidence"),
+        Evidence: [new InitiativeEntrySource("requirement", "P1-02 and P1-03")],
+        UnresolvedQuestions: Array.Empty<string>(),
+        Rationale: "This Initiative adds a governed product workflow through the shared engine.");
+
+    private static InitiativeApplicabilityMatrixInput InitiativeApplicabilityFixture() => new(
+        Decisions:
+        [
+            new InitiativeApplicabilityDecisionInput(
+                Subject: new InitiativeApplicabilitySubject("activity", "initiative-entry-review", "Initiative entry review"),
+                Status: "required",
+                Rationale: "The Initiative requires an exact governed entry review before later lifecycle work.",
+                Sources: [new InitiativeEntrySource("requirement", "P1-02 and P1-03")],
+                Owner: "Founder product owner",
+                AccountableApprover: null,
+                Dependencies: ["shared-engine"],
+                Conditions: Array.Empty<string>(),
+                ReviewTriggers: ["Initiative or Product revision changes"],
+                Approval: new InitiativeApplicabilityApproval("not-required", Array.Empty<string>()),
+                RelatedRecords: Array.Empty<InitiativeRelatedRecord>(),
+                RelatedImplementationUnits: ["visual-studio-product-studio"]),
+        ],
+        UnresolvedSubjects: Array.Empty<InitiativeUnresolvedSubject>());
+
     private static async Task RunFakeHostAsync(string workspace)
     {
         var productReadCount = 0;
         var changeProductContext = Path.GetFileName(workspace) == "product-change";
         var badReadiness = Path.GetFileName(workspace) == "bad-readiness";
         var badSelection = Path.GetFileName(workspace) == "bad-selection";
+        var badInitiativePrivate = Path.GetFileName(workspace) == "bad-initiative-private";
+        var badInitiativeAssessmentAuthority = Path.GetFileName(workspace) == "bad-initiative-assessment-authority";
+        var badInitiativeAssessmentBinding = Path.GetFileName(workspace) == "bad-initiative-assessment-binding";
+        var badInitiativeClassificationBinding = Path.GetFileName(workspace) == "bad-initiative-classification-binding";
+        var badInitiativeApplicabilityBinding = Path.GetFileName(workspace) == "bad-initiative-applicability-binding";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -1375,6 +1548,9 @@ internal static class Program
         var badManagedTransitionPrivate = Path.GetFileName(workspace) == "bad-managed-transition-private";
         var staleManagedReview = Path.GetFileName(workspace) == "stale-managed-review";
         Dictionary<string, object?>? selectedAgent = null;
+        Dictionary<string, object?>? initiativeClassification = null;
+        Dictionary<string, object?>? initiativeApplicability = null;
+        var initiativeRevision = 3L;
         while (await Console.In.ReadLineAsync() is { } line)
         {
             using var request = JsonDocument.Parse(line);
@@ -1403,6 +1579,46 @@ internal static class Program
                     break;
                 case "probeAgents":
                     await HandleProbeAgentsAsync(id, parameters, badReadiness);
+                    break;
+                case "readInitiative":
+                    await HandleReadInitiativeAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badInitiativePrivate);
+                    break;
+                case "assessInitiativeEntry":
+                    await HandleAssessInitiativeEntryAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badInitiativeAssessmentAuthority,
+                        badInitiativeAssessmentBinding);
+                    break;
+                case "classifyInitiative":
+                    initiativeClassification = await HandleClassifyInitiativeAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        badInitiativeClassificationBinding);
+                    if (initiativeClassification is not null)
+                    {
+                        initiativeRevision++;
+                        initiativeApplicability = null;
+                    }
+                    break;
+                case "resolveInitiativeApplicability":
+                    initiativeApplicability = await HandleResolveInitiativeApplicabilityAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        badInitiativeApplicabilityBinding);
+                    if (initiativeApplicability is not null) initiativeRevision++;
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -1567,6 +1783,220 @@ internal static class Program
             }
         }
     }
+
+    private static async Task HandleReadInitiativeAsync(
+        long id,
+        JsonElement parameters,
+        long revision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID INITIATIVE READ");
+            return;
+        }
+        var result = InitiativeRecord(revision, classification, applicability);
+        if (includePrivateField) result["workspaceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleAssessInitiativeEntryAsync(
+        long id,
+        JsonElement parameters,
+        long revision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgedAuthority,
+        bool forgedProductBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID INITIATIVE ASSESSMENT");
+            return;
+        }
+        var classificationDigest = classification is null
+            ? null
+            : CanonicalDigest(JsonSerializer.SerializeToElement(classification));
+        var applicabilityDigest = applicability is null
+            ? null
+            : CanonicalDigest(JsonSerializer.SerializeToElement(applicability));
+        var decisions = applicability is null
+            ? Array.Empty<JsonElement>()
+            : JsonSerializer.SerializeToElement(applicability["decisions"]).EnumerateArray().ToArray();
+        var unresolvedCount = applicability is null
+            ? 0
+            : JsonSerializer.SerializeToElement(applicability["unresolvedSubjects"]).GetArrayLength();
+        var pendingHuman = decisions.Count(decision => decision.GetProperty("status").GetString() == "awaiting-human-decision");
+        var blocked = decisions.Count(decision => decision.GetProperty("status").GetString() == "blocked");
+        var pendingApproval = decisions.Count(decision => decision.GetProperty("approval").GetProperty("state").GetString() == "pending");
+        var rejectedApproval = decisions.Count(decision => decision.GetProperty("approval").GetProperty("state").GetString() == "rejected");
+        var reasons = new List<string>();
+        if (classification is null) reasons.Add("Initiative classification is missing");
+        if (applicability is null) reasons.Add("Initiative applicability is missing");
+        if (unresolvedCount > 0) reasons.Add("Initiative applicability has unresolved subjects");
+        if (pendingHuman > 0) reasons.Add("Initiative applicability awaits human decisions");
+        if (blocked > 0) reasons.Add("Initiative applicability contains blocked decisions");
+        if (pendingApproval > 0) reasons.Add("Initiative applicability has pending approvals");
+        if (rejectedApproval > 0) reasons.Add("Initiative applicability has rejected approvals");
+        await WriteResultAsync(id, new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "initiative-entry-assessment",
+            ["initiativeId"] = InitiativeId.ToString("D"),
+            ["initiativeRevision"] = revision,
+            ["productId"] = ProductId.ToString("D"),
+            ["productRevision"] = 7,
+            ["productDigest"] = forgedProductBinding
+                ? $"sha256:{new string('f', 64)}"
+                : CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7))),
+            ["classification"] = classification is null
+                ? new Dictionary<string, object?> { ["status"] = "missing" }
+                : new Dictionary<string, object?> { ["status"] = "current", ["digest"] = classificationDigest },
+            ["applicability"] = applicability is null
+                ? new Dictionary<string, object?>
+                {
+                    ["status"] = "missing",
+                    ["decisionCount"] = 0,
+                    ["unresolvedSubjectCount"] = 0,
+                    ["pendingHumanDecisionCount"] = 0,
+                    ["blockedDecisionCount"] = 0,
+                    ["pendingApprovalCount"] = 0,
+                    ["rejectedApprovalCount"] = 0,
+                }
+                : new Dictionary<string, object?>
+                {
+                    ["status"] = "current",
+                    ["matrixRevision"] = 1,
+                    ["digest"] = applicabilityDigest,
+                    ["decisionCount"] = decisions.Length,
+                    ["unresolvedSubjectCount"] = unresolvedCount,
+                    ["pendingHumanDecisionCount"] = pendingHuman,
+                    ["blockedDecisionCount"] = blocked,
+                    ["pendingApprovalCount"] = pendingApproval,
+                    ["rejectedApprovalCount"] = rejectedApproval,
+                },
+            ["state"] = reasons.Count == 0 ? "ready" : blocked > 0 || rejectedApproval > 0 ? "blocked" : "attention-required",
+            ["reasons"] = reasons,
+            ["assessedAt"] = "2026-07-25T01:05:00.000Z",
+            ["authorityBoundary"] = forgedAuthority
+                ? "assessment-grants-ready-authority"
+                : "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
+        });
+    }
+
+    private static async Task<Dictionary<string, object?>?> HandleClassifyInitiativeAsync(
+        long id,
+        JsonElement parameters,
+        long revision,
+        bool mismatchActor)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId", "expectedInitiativeRevision", "actorId", "classification") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D") ||
+            parameters.GetProperty("expectedInitiativeRevision").GetInt64() != revision ||
+            parameters.GetProperty("actorId").GetString() != "founder.review")
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID INITIATIVE CLASSIFICATION");
+            return null;
+        }
+        var classification = parameters.GetProperty("classification").EnumerateObject()
+            .ToDictionary(property => property.Name, property => (object?)property.Value.Clone(), StringComparer.Ordinal);
+        classification["productProfile"] = "software";
+        classification["productRevision"] = 7;
+        classification["productDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        classification["classifiedBy"] = HumanActor(mismatchActor ? "hostile.actor" : "founder.review");
+        classification["classifiedAt"] = "2026-07-25T01:01:00.000Z";
+        classification["authorityBoundary"] =
+            "classification-guides-profile-selection-and-does-not-grant-approval-or-action-authority";
+        await WriteResultAsync(id, InitiativeRecord(revision + 1, classification, null));
+        return classification;
+    }
+
+    private static async Task<Dictionary<string, object?>?> HandleResolveInitiativeApplicabilityAsync(
+        long id,
+        JsonElement parameters,
+        long revision,
+        Dictionary<string, object?>? classification,
+        bool mismatchActor)
+    {
+        if (classification is null ||
+            !HasOnlyProperties(parameters, "initiativeId", "expectedInitiativeRevision", "actorId", "applicability") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D") ||
+            parameters.GetProperty("expectedInitiativeRevision").GetInt64() != revision ||
+            parameters.GetProperty("actorId").GetString() != "founder.review")
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID INITIATIVE APPLICABILITY");
+            return null;
+        }
+        var actor = mismatchActor ? "hostile.actor" : "founder.review";
+        var input = parameters.GetProperty("applicability");
+        var decisions = input.GetProperty("decisions").EnumerateArray().Select((decision, index) =>
+        {
+            var value = decision.EnumerateObject()
+                .ToDictionary(property => property.Name, property => (object?)property.Value.Clone(), StringComparer.Ordinal);
+            value["id"] = index == 0 ? InitiativeDecisionId.ToString("D") : Guid.NewGuid().ToString("D");
+            value["revision"] = 1;
+            value["initiativeRevision"] = revision + 1;
+            value["decidedBy"] = HumanActor(actor);
+            value["decidedAt"] = "2026-07-25T01:03:00.000Z";
+            value["authorityBoundary"] =
+                "applicability-decision-does-not-grant-approval-readiness-or-action-authority";
+            return value;
+        }).ToArray();
+        var applicability = new Dictionary<string, object?>
+        {
+            ["decisions"] = decisions,
+            ["unresolvedSubjects"] = input.GetProperty("unresolvedSubjects").Clone(),
+            ["schemaVersion"] = 1,
+            ["kind"] = "initiative-applicability-matrix",
+            ["revision"] = 1,
+            ["initiativeId"] = InitiativeId.ToString("D"),
+            ["productId"] = ProductId.ToString("D"),
+            ["initiativeRevision"] = revision + 1,
+            ["classificationDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(classification)),
+            ["state"] = "current",
+            ["evaluatedBy"] = HumanActor(actor),
+            ["evaluatedAt"] = "2026-07-25T01:03:00.000Z",
+            ["authorityBoundary"] =
+                "applicability-matrix-does-not-grant-approval-readiness-or-action-authority",
+        };
+        await WriteResultAsync(id, InitiativeRecord(revision + 1, classification, applicability));
+        return applicability;
+    }
+
+    private static Dictionary<string, object?> InitiativeRecord(
+        long revision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability)
+    {
+        var value = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["id"] = InitiativeId.ToString("D"),
+            ["kind"] = "initiative",
+            ["revision"] = revision,
+            ["productId"] = ProductId.ToString("D"),
+            ["title"] = "Private Initiative title",
+            ["outcome"] = "Deliver governed Initiative entry truth",
+            ["scope"] = new[] { "Initiative classification" },
+            ["exclusions"] = Array.Empty<string>(),
+            ["state"] = "active",
+            ["createdAt"] = "2026-07-25T01:00:00.000Z",
+            ["updatedAt"] = "2026-07-25T01:04:00.000Z",
+        };
+        if (classification is not null) value["classification"] = classification;
+        if (applicability is not null) value["applicability"] = applicability;
+        return value;
+    }
+
+    private static Dictionary<string, object?> HumanActor(string id) => new()
+    {
+        ["kind"] = "human",
+        ["id"] = id,
+    };
 
     private static async Task<Dictionary<string, object?>?> HandleSelectAgentAsync(long id, JsonElement parameters)
     {
