@@ -38,7 +38,7 @@ const definitions = [
     path: "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
     maximumBytes: 64 * 1024 * 1024,
     requiredHere: true,
-    verification: "clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-native-startup-and-client-packaged-engine-empty-evidence-workflow",
+    verification: "clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-jetbrains-plugininstaller-install-removal-absence-reinstall-native-startup-and-client-packaged-engine-empty-evidence-workflow",
   },
   {
     host: "visual-studio",

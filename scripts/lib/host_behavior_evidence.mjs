@@ -66,7 +66,7 @@ const definitions = {
     packageId: "dev.gaep.productstudio@0.1.0",
     artifactPath: "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
     packagePlatforms: ["darwin", "linux", "win32"],
-    runtimeLevel: "native-plugin-code-activation-startup-and-packaged-engine-client-workflow-local",
+    runtimeLevel: "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
     gatePaths: [
       "apps/rider/build.gradle.kts",
       "apps/rider/test/archive-install-smoke.mjs",

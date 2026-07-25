@@ -17,8 +17,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/2026-07-25T003253Z-phase-0-local-kiro-dashboard-final.json",
-  conformance: "evidence/ide-conformance/2026-07-25T003302Z-phase-0-local-kiro-dashboard-final.json",
+  packages: "evidence/local-packages/2026-07-25T004902Z-phase-0-local-rider-install-final.json",
+  conformance: "evidence/ide-conformance/2026-07-25T004921Z-phase-0-local-rider-install-final.json",
   example: "evidence/examples/2026-07-24T233901Z-phase-0-inspectable-artifacts.json",
 }
 const gateDefinitions = [

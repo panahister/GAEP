@@ -19,6 +19,7 @@ const runtimeLevels = new Set([
   "native-startup-plugin-load-only",
   "native-startup-and-packaged-engine-client-workflow-local",
   "native-plugin-code-activation-startup-and-packaged-engine-client-workflow-local",
+  "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
   "cross-platform-compile-and-controller-only",
   "cross-platform-packaged-engine-client-workflow-local",
 ])
