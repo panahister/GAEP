@@ -39,10 +39,13 @@ const definitions = {
     packagePlatforms: ["darwin", "linux", "win32"],
     runtimeLevel: "compatible-host-packaged-engine-workflow-local",
     gatePaths: [
+      "apps/kiro/package.json",
       "apps/kiro/test/e2e/run.mjs",
       "apps/kiro/test/e2e/suite/index.cjs",
       "apps/kiro/test/e2e/harness/extension.cjs",
       "apps/kiro/test/e2e/harness/package.json",
+      "apps/kiro/test/verify-package.mjs",
+      "apps/kiro/test/package-contract.test.mjs",
     ],
     commands: [{
       id: "compatible-host-vsix-lifecycle-and-engine-workflow",
@@ -50,6 +53,7 @@ const definitions = {
       args: ["run", "test:kiro:extension-host"],
       timeoutMs: 240_000,
       requiredMarkers: [
+        "PASS exact bounded Kiro VSIX payload and built-byte parity",
         "PASS isolated compatible-host VSIX previous-version install/upgrade/reinstall/rollback/uninstall/absence/final install",
         "GAEP for Kiro exact installed VSIX activation smoke: PASS",
       ],
