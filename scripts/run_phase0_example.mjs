@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
 import { DeterministicManualAdapter, canonicalDigest, capabilityDigest } from "@gaep/agent-sdk"
+import { initiativeApplicabilitySubjectDefinitions } from "@gaep/contracts"
 import {
   composeAgentModelDashboard,
   composeChangeImpactChangeCatalog,
@@ -145,6 +146,69 @@ function exactReference(recordType, record) {
   }
 }
 
+function canonicalInitiativeClassification(scenario) {
+  return {
+    primaryType: "product-increment",
+    secondaryTypes: ["client-application"],
+    systemState: "greenfield",
+    changePosture: "new",
+    motivations: ["business-driven", "operational"],
+    characteristics: {
+      userInterface: "ui-bearing",
+      data: "data-bearing",
+      integration: "isolated",
+      interactionModes: ["interactive"],
+      exposure: "internal",
+    },
+    regulated: false,
+    policyDomains: [],
+    sensitivities: ["data"],
+    expectedLifetime: "long-lived",
+    maintenanceHorizon: "Maintain the local-first release review workflow through its supported product lifetime.",
+    risk: {
+      blastRadius: "localized",
+      reversibility: "reversible",
+      urgency: "normal",
+      costOfFailure: "medium",
+    },
+    dependencies: [],
+    affectedAssets: ["Atlas local release evidence workflow"],
+    owner: scenario.actorId,
+    accountableAuthority: scenario.actorId,
+    confidence: {
+      level: "high",
+      basis: "The checked-in canonical scenario completely defines this bounded offline example.",
+    },
+    evidence: [{ kind: "requirement", reference: scenario.id }],
+    unresolvedQuestions: [],
+    rationale: "The canonical example is a bounded software Product increment with an internal interactive workflow.",
+  }
+}
+
+function canonicalInitiativeApplicability(scenario, coverage) {
+  return {
+    subjectCatalog: {
+      catalogVersion: coverage.catalogVersion,
+      digest: coverage.catalogDigest,
+      subjectCount: coverage.subjectCount,
+    },
+    decisions: initiativeApplicabilitySubjectDefinitions.map((subject) => ({
+      subject: { ...subject },
+      status: "optional",
+      rationale: `The canonical offline example explicitly evaluates ${subject.label} without granting readiness or action authority.`,
+      sources: [{ kind: "requirement", reference: scenario.id }],
+      owner: scenario.actorId,
+      dependencies: [],
+      conditions: [],
+      reviewTriggers: ["The canonical scenario, classification, policy, or evidence changes"],
+      approval: { state: "not-required", conditions: [] },
+      relatedRecords: [],
+      relatedImplementationUnits: [],
+    })),
+    unresolvedSubjects: [],
+  }
+}
+
 async function createExample(workspace, scenario, expectedSummary) {
   const adapter = new DeterministicManualAdapter()
   const engine = new GaepEngine(workspace, [adapter])
@@ -158,7 +222,30 @@ async function createExample(workspace, scenario, expectedSummary) {
     expectedProductRevision: productRevision,
     expectedProductDigest: productDigest,
   }, "2026-07-24T00:00:00.000Z")
-  const initiative = await engine.createInitiative(scenario.initiative, actorId)
+  let initiative = await engine.createInitiative(scenario.initiative, actorId)
+  initiative = await engine.classifyInitiative(
+    initiative.id,
+    canonicalInitiativeClassification(scenario),
+    initiative.revision ?? 1,
+    actorId,
+  )
+  const classifiedAssessment = await engine.assessInitiativeEntry(initiative.id)
+  const coverage = classifiedAssessment.applicability.coverage
+  if (coverage.status !== "unavailable" &&
+      coverage.catalogVersion && coverage.catalogDigest && coverage.subjectCount > 0) {
+    initiative = await engine.resolveInitiativeApplicability(
+      initiative.id,
+      canonicalInitiativeApplicability(scenario, coverage),
+      initiative.revision ?? 1,
+      actorId,
+    )
+  } else {
+    throw new Error("Canonical Initiative applicability catalog is unavailable after classification")
+  }
+  const entryAssessment = await engine.assessInitiativeEntry(initiative.id)
+  if (entryAssessment.state !== "ready") {
+    throw new Error(`Canonical Initiative entry remains ${entryAssessment.state}: ${entryAssessment.reasons.join("; ")}`)
+  }
   await engine.updateInitiativeState(initiative.id, "active", "Begin the canonical offline evidence review", actorId)
 
   const change = await engine.productStudio.createChange({
