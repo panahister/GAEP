@@ -47,6 +47,7 @@ private val changeRiskId: UUID = UUID.fromString("34343434-3434-4434-8434-343434
 internal const val privateRoot = "/Users/private/design-bundle"
 internal const val privateCredential = "PRIVATE-OAUTH-TOKEN"
 private var selectedAgent: JsonObject? = null
+private var initiativeState: JsonObject = initiativeRecord()
 
 fun main(arguments: Array<String>) {
     val workspacePath = arguments.getOrNull(arguments.indexOf("--workspace") + 1).orEmpty()
@@ -68,6 +69,14 @@ fun main(arguments: Array<String>) {
         }
         when (method) {
             "readProduct" -> writeResult(id, productRecord())
+            "readInitiative" -> handleReadInitiative(id, request.getAsJsonObject("params"), workspacePath)
+            "assessInitiativeEntry" -> handleAssessInitiativeEntry(id, request.getAsJsonObject("params"), workspacePath)
+            "classifyInitiative" -> handleClassifyInitiative(id, request.getAsJsonObject("params"), workspacePath)
+            "resolveInitiativeApplicability" -> handleResolveInitiativeApplicability(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
             "dashboard.framework" -> handlePhaseDashboard(
                 id,
                 request.getAsJsonObject("params"),
@@ -169,6 +178,214 @@ private fun productRecord(): JsonObject = JsonObject().apply {
     addProperty("name", "Founder Product")
     addProperty("revision", 7)
     addProperty("lifecycleState", "active")
+}
+
+private fun initiativeRecord(): JsonObject = JsonObject().apply {
+    addProperty("schemaVersion", 1)
+    addProperty("id", initiativeId.toString())
+    addProperty("kind", "initiative")
+    addProperty("revision", 1)
+    addProperty("productId", productId.toString())
+    addProperty("title", "Governed Rider entry")
+    addProperty("outcome", "One exact Initiative entry can be reviewed safely.")
+    add("scope", JsonArray().apply { add("Rider host") })
+    add("exclusions", JsonArray().apply { add("No implicit approval") })
+    addProperty("state", "active")
+    addProperty("createdAt", "2026-07-25T00:00:00.000Z")
+    addProperty("updatedAt", "2026-07-25T00:00:00.000Z")
+}
+
+private fun handleReadInitiative(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INITIATIVE PARAMS")
+        return
+    }
+    val value = initiativeState.deepCopy()
+    if (workspacePath.endsWith("bad-initiative-private")) {
+        value.addProperty("privateRoot", "$privateRoot/$privateCredential")
+    }
+    writeResult(id, value)
+}
+
+private fun initiativeAssessment(): JsonObject {
+    val classification = initiativeState.get("classification")?.takeIf(JsonElement::isJsonObject)?.asJsonObject
+    val applicability = initiativeState.get("applicability")?.takeIf(JsonElement::isJsonObject)?.asJsonObject
+    val decisions = applicability?.getAsJsonArray("decisions") ?: JsonArray()
+    val unresolved = applicability?.getAsJsonArray("unresolvedSubjects") ?: JsonArray()
+    val pendingHuman = decisions.count { it.asJsonObject.get("status").asString == "awaiting-human-decision" }
+    val blocked = decisions.count { it.asJsonObject.get("status").asString == "blocked" }
+    val pendingApproval = decisions.count {
+        it.asJsonObject.getAsJsonObject("approval").get("state").asString == "pending"
+    }
+    val rejectedApproval = decisions.count {
+        it.asJsonObject.getAsJsonObject("approval").get("state").asString == "rejected"
+    }
+    val reasons = buildList {
+        if (classification == null) add("Initiative classification is missing")
+        if (applicability == null) add("Initiative applicability has not been resolved")
+        if (unresolved.size() > 0) add("Applicability subjects remain explicitly unresolved")
+        if (pendingHuman > 0) add("Applicability decisions await accountable human judgment")
+        if (blocked > 0) add("One or more required applicability decisions are blocked")
+        if (pendingApproval > 0) add("Applicability approvals remain pending")
+        if (rejectedApproval > 0) add("One or more applicability approvals were rejected")
+    }
+    return JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "initiative-entry-assessment")
+        addProperty("initiativeId", initiativeId.toString())
+        addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+        addProperty("productId", productId.toString())
+        addProperty("productRevision", 7)
+        addProperty("productDigest", canonicalDigest(productRecord()))
+        add("classification", JsonObject().apply {
+            if (classification == null) {
+                addProperty("status", "missing")
+            } else {
+                addProperty("status", "current")
+                addProperty("digest", canonicalDigest(classification))
+            }
+        })
+        add("applicability", JsonObject().apply {
+            if (applicability == null) {
+                addProperty("status", "missing")
+            } else {
+                addProperty("status", applicability.get("state").asString)
+                addProperty("matrixRevision", applicability.get("revision").asLong)
+                addProperty("digest", canonicalDigest(applicability))
+            }
+            addProperty("decisionCount", decisions.size())
+            addProperty("unresolvedSubjectCount", unresolved.size())
+            addProperty("pendingHumanDecisionCount", pendingHuman)
+            addProperty("blockedDecisionCount", blocked)
+            addProperty("pendingApprovalCount", pendingApproval)
+            addProperty("rejectedApprovalCount", rejectedApproval)
+        })
+        addProperty("state", if (blocked > 0 || rejectedApproval > 0) "blocked" else if (reasons.isEmpty()) "ready" else "attention-required")
+        add("reasons", JsonArray().apply { reasons.forEach(::add) })
+        addProperty("assessedAt", "2026-07-25T00:02:30.000Z")
+        addProperty(
+            "authorityBoundary",
+            "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
+        )
+    }
+}
+
+private fun handleAssessInitiativeEntry(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE ASSESSMENT PARAMS")
+        return
+    }
+    val value = initiativeAssessment()
+    if (workspacePath.endsWith("bad-entry-boundary")) value.addProperty("authorityBoundary", "approved")
+    if (workspacePath.endsWith("bad-entry-product")) value.addProperty("productDigest", "sha256:${"0".repeat(64)}")
+    writeResult(id, value)
+}
+
+private fun handleClassifyInitiative(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId", "expectedInitiativeRevision", "actorId", "classification") ||
+        params.get("initiativeId").asString != initiativeId.toString() ||
+        params.get("expectedInitiativeRevision").asLong != initiativeState.get("revision").asLong
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE CLASSIFICATION PARAMS")
+        return
+    }
+    val actorId = params.get("actorId").asString
+    val now = "2026-07-25T00:01:00.000Z"
+    val updated = initiativeState.deepCopy().apply {
+        addProperty("revision", get("revision").asLong + 1)
+        add("classification", params.getAsJsonObject("classification").deepCopy().apply {
+            addProperty("productProfile", "software")
+            addProperty("productRevision", 7)
+            addProperty("productDigest", canonicalDigest(productRecord()))
+            add("classifiedBy", JsonObject().apply {
+                addProperty("kind", "human")
+                addProperty("id", actorId)
+            })
+            addProperty("classifiedAt", now)
+            addProperty(
+                "authorityBoundary",
+                "classification-guides-profile-selection-and-does-not-grant-approval-or-action-authority",
+            )
+        })
+        get("applicability")?.takeIf(JsonElement::isJsonObject)?.asJsonObject?.let { applicability ->
+            applicability.addProperty("state", "stale")
+            applicability.addProperty("invalidatedAt", now)
+            applicability.addProperty("invalidationReason", "Initiative classification was superseded")
+        }
+        addProperty("updatedAt", now)
+    }
+    if (workspacePath.endsWith("bad-classification-binding")) updated.addProperty("revision", updated.get("revision").asLong + 1)
+    if (workspacePath.endsWith("bad-classification-content")) {
+        updated.getAsJsonObject("classification").addProperty("rationale", "Substituted classification content")
+    }
+    initiativeState = updated
+    writeResult(id, updated)
+}
+
+private fun handleResolveInitiativeApplicability(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId", "expectedInitiativeRevision", "actorId", "applicability") ||
+        params.get("initiativeId").asString != initiativeId.toString() ||
+        params.get("expectedInitiativeRevision").asLong != initiativeState.get("revision").asLong ||
+        !initiativeState.has("classification")
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE APPLICABILITY PARAMS")
+        return
+    }
+    val actorId = params.get("actorId").asString
+    val now = "2026-07-25T00:02:00.000Z"
+    val nextRevision = initiativeState.get("revision").asLong + 1
+    val input = params.getAsJsonObject("applicability")
+    val decisions = JsonArray().apply {
+        input.getAsJsonArray("decisions").forEachIndexed { index, value ->
+            add(value.asJsonObject.deepCopy().apply {
+                addProperty("id", "30303030-3030-4030-8030-${(index + 1).toString().padStart(12, '0')}")
+                addProperty("revision", 1)
+                addProperty("initiativeRevision", nextRevision)
+                add("decidedBy", JsonObject().apply {
+                    addProperty("kind", "human")
+                    addProperty("id", actorId)
+                })
+                addProperty("decidedAt", now)
+                addProperty(
+                    "authorityBoundary",
+                    "applicability-decision-does-not-grant-approval-readiness-or-action-authority",
+                )
+            })
+        }
+    }
+    val applicability = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "initiative-applicability-matrix")
+        add("decisions", decisions)
+        add("unresolvedSubjects", input.getAsJsonArray("unresolvedSubjects").deepCopy())
+        addProperty("revision", 1)
+        addProperty("initiativeId", initiativeId.toString())
+        addProperty("productId", productId.toString())
+        addProperty("initiativeRevision", nextRevision)
+        addProperty("classificationDigest", canonicalDigest(initiativeState.getAsJsonObject("classification")))
+        addProperty("state", "current")
+        add("evaluatedBy", JsonObject().apply {
+            addProperty("kind", "human")
+            addProperty("id", actorId)
+        })
+        addProperty("evaluatedAt", now)
+        addProperty(
+            "authorityBoundary",
+            "applicability-matrix-does-not-grant-approval-readiness-or-action-authority",
+        )
+    }
+    if (workspacePath.endsWith("bad-applicability-binding")) {
+        applicability.getAsJsonObject("evaluatedBy").addProperty("id", "other-actor")
+    }
+    if (workspacePath.endsWith("bad-applicability-content")) {
+        decisions[0].asJsonObject.addProperty("rationale", "Substituted applicability content")
+    }
+    initiativeState = initiativeState.deepCopy().apply {
+        addProperty("revision", nextRevision)
+        add("applicability", applicability)
+        addProperty("updatedAt", now)
+    }
+    writeResult(id, initiativeState)
 }
 
 private fun handlePhaseDashboard(id: Long, params: JsonObject, workspacePath: String) {

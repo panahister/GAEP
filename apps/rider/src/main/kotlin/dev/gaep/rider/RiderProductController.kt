@@ -23,6 +23,124 @@ internal data class ChangeImpactContext(
 internal class RiderProductController(private val client: GaepEngineClient) {
     fun readProduct(): String = renderProduct(client.readProductBinding())
 
+    fun readInitiativeEntryContext(initiativeId: UUID): InitiativeEntryContext {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val assessment = client.assessInitiativeEntry(initiativeId)
+        require(
+            assessment.initiativeRevision == initiative.revision && assessment.productId == initiative.productId &&
+                assessment.productId == product.id && assessment.productRevision == product.revision &&
+                assessment.productDigest == product.digest
+        ) {
+            "The Initiative changed while its entry assessment was read. Refresh the exact record."
+        }
+        val classification = initiative.classification
+        require(
+            when (assessment.classification.status) {
+                "missing" -> classification == null && assessment.classification.digest == null
+                "current" -> classification != null && assessment.classification.digest == classification.digest &&
+                    classification.productRevision == assessment.productRevision &&
+                    classification.productDigest == assessment.productDigest
+                "stale" -> classification != null && assessment.classification.digest == classification.digest &&
+                    (classification.productRevision != assessment.productRevision ||
+                        classification.productDigest != assessment.productDigest)
+                else -> false
+            },
+        ) { "The Initiative classification assessment is not bound to the exact current record." }
+        val applicability = initiative.applicability
+        require(
+            when (assessment.applicability.status) {
+                "missing" -> applicability == null && assessment.applicability.matrixRevision == null &&
+                    assessment.applicability.digest == null
+                "current", "stale" -> applicability != null &&
+                    assessment.applicability.status == applicability.state &&
+                    assessment.applicability.matrixRevision == applicability.revision &&
+                    assessment.applicability.digest == applicability.digest &&
+                    assessment.applicability.decisionCount == applicability.decisionCount &&
+                    assessment.applicability.unresolvedSubjectCount == applicability.unresolvedSubjectCount
+                else -> false
+            },
+        ) { "The Initiative applicability assessment is not bound to the exact current record." }
+        return InitiativeEntryContext(initiative, assessment)
+    }
+
+    fun renderInitiativeEntry(context: InitiativeEntryContext): String = buildString {
+        val initiative = context.initiative
+        val assessment = context.assessment
+        appendLine("GAEP Initiative entry assessment")
+        appendLine()
+        appendLine("Initiative ID: ${initiative.id}")
+        appendLine("Initiative revision: ${initiative.revision}")
+        appendLine("Lifecycle state: ${initiative.state}")
+        appendLine(
+            "Classification: ${assessment.classification.status}" +
+                initiative.classification?.let { " · ${it.primaryType} / ${it.productProfile}" }.orEmpty(),
+        )
+        appendLine(
+            "Applicability: ${assessment.applicability.status} · matrix revision " +
+                (assessment.applicability.matrixRevision ?: "not recorded"),
+        )
+        appendLine("Decisions: ${assessment.applicability.decisionCount}")
+        appendLine("Unresolved subjects: ${assessment.applicability.unresolvedSubjectCount}")
+        appendLine("Awaiting human decisions: ${assessment.applicability.pendingHumanDecisionCount}")
+        appendLine("Blocked decisions: ${assessment.applicability.blockedDecisionCount}")
+        appendLine("Pending approvals: ${assessment.applicability.pendingApprovalCount}")
+        appendLine("Rejected approvals: ${assessment.applicability.rejectedApprovalCount}")
+        appendLine("Assessment: ${assessment.state}")
+        assessment.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        appendLine(
+            "Boundary: entry assessment is read-only and grants no approval, readiness, not-applicable inference, " +
+                "or action authority.",
+        )
+        append(
+            "Product and Initiative narrative, evidence content, owners, local paths, credentials, and raw engine " +
+                "output are withheld from this compact view.",
+        )
+    }
+
+    fun classifyInitiative(
+        context: InitiativeEntryContext,
+        input: InitiativeClassificationInput,
+        actorId: String,
+    ): String {
+        require(context.initiative.state !in setOf("completed", "cancelled")) {
+            "Terminal Initiative ${context.initiative.state} entry records are immutable."
+        }
+        require(sameInitiativeEntryBinding(readInitiativeEntryContext(context.initiative.id), context)) {
+            "The Initiative changed while the classification form was open. Refresh and review the exact revision."
+        }
+        val updated = client.classifyInitiative(context.initiative.id, context.initiative.revision, input, actorId)
+        return renderInitiativeEntry(readInitiativeEntryContext(updated.id))
+    }
+
+    fun resolveInitiativeApplicability(
+        context: InitiativeEntryContext,
+        input: InitiativeApplicabilityMatrixInput,
+        actorId: String,
+    ): String {
+        require(context.initiative.state !in setOf("completed", "cancelled")) {
+            "Terminal Initiative ${context.initiative.state} entry records are immutable."
+        }
+        require(context.assessment.classification.status == "current") {
+            "Record a classification bound to the current Product revision before resolving applicability."
+        }
+        require(sameInitiativeEntryBinding(readInitiativeEntryContext(context.initiative.id), context)) {
+            "The Initiative changed while the applicability form was open. Refresh and review the exact revision."
+        }
+        val updated = client.resolveInitiativeApplicability(
+            context.initiative.id,
+            context.initiative.revision,
+            input,
+            actorId,
+        )
+        return renderInitiativeEntry(readInitiativeEntryContext(updated.id))
+    }
+
+    private fun sameInitiativeEntryBinding(left: InitiativeEntryContext, right: InitiativeEntryContext): Boolean =
+        left.initiative == right.initiative &&
+            left.assessment.copy(assessedAt = right.assessment.assessedAt) == right.assessment
+
     fun readPhaseDashboard(): String {
         val product = client.readProductBinding()
         return renderPhaseDashboard(client.readPhaseDashboard(product))

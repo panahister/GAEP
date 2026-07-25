@@ -802,6 +802,33 @@ internal object PortableDesignProtocol {
         "change-catalog-selection-does-not-approve-change-or-authorize-effects"
     private const val CHANGE_DASHBOARD_AUTHORITY_BOUNDARY =
         "change-impact-dashboard-does-not-approve-change-accept-risk-or-authorize-effects"
+    private const val INITIATIVE_CLASSIFICATION_BOUNDARY =
+        "classification-guides-profile-selection-and-does-not-grant-approval-or-action-authority"
+    private const val INITIATIVE_DECISION_BOUNDARY =
+        "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+    private const val INITIATIVE_MATRIX_BOUNDARY =
+        "applicability-matrix-does-not-grant-approval-readiness-or-action-authority"
+    private const val INITIATIVE_ASSESSMENT_BOUNDARY =
+        "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority"
+    private val initiativeTypes = setOf(
+        "product", "platform", "product-increment", "feature", "epic", "backlog-item", "service", "module",
+        "client-application", "mobile-application", "api", "integration", "migration", "modernization",
+        "refactoring", "technical-debt-remediation", "security-remediation", "infrastructure", "devops",
+        "observability", "library", "sdk", "cli", "worker", "event-processor", "defect-fix", "experiment",
+        "research", "data-capability", "ai-capability",
+    )
+    private val initiativeApplicabilityStatuses = setOf(
+        "required", "recommended", "optional", "not-applicable", "deferred", "conditionally-required",
+        "already-satisfied", "reused", "blocked", "awaiting-human-decision",
+    )
+    private val initiativeSubjectTypes = setOf(
+        "phase", "activity", "artifact", "capability", "test-method", "test-level", "approval",
+        "evidence-obligation",
+    )
+    private val initiativeSourceKinds = setOf(
+        "rule", "policy", "evidence", "requirement", "dependency", "human-decision",
+    )
+    private val initiativeIdentifierPattern = Regex("^[a-z][a-z0-9.-]{0,127}$")
     private val changeImpactEffects = setOf(
         "observe", "provisional", "reversible-change", "external-effect", "destructive-or-irreversible",
     )
@@ -1123,6 +1150,257 @@ internal object PortableDesignProtocol {
             throw invalidResponse()
         }
         return summary
+    }
+
+    fun initiativeClassificationInputToJson(input: InitiativeClassificationInput): JsonObject = JsonObject().apply {
+        addProperty("primaryType", input.primaryType)
+        add("secondaryTypes", input.secondaryTypes.toJsonArray())
+        addProperty("systemState", input.systemState)
+        addProperty("changePosture", input.changePosture)
+        add("motivations", input.motivations.toJsonArray())
+        add("characteristics", JsonObject().apply {
+            addProperty("userInterface", input.characteristics.userInterface)
+            addProperty("data", input.characteristics.data)
+            addProperty("integration", input.characteristics.integration)
+            add("interactionModes", input.characteristics.interactionModes.toJsonArray())
+            addProperty("exposure", input.characteristics.exposure)
+        })
+        addProperty("regulated", input.regulated)
+        add("policyDomains", input.policyDomains.toJsonArray())
+        add("sensitivities", input.sensitivities.toJsonArray())
+        addProperty("expectedLifetime", input.expectedLifetime)
+        addProperty("maintenanceHorizon", input.maintenanceHorizon)
+        add("risk", JsonObject().apply {
+            addProperty("blastRadius", input.risk.blastRadius)
+            addProperty("reversibility", input.risk.reversibility)
+            addProperty("urgency", input.risk.urgency)
+            addProperty("costOfFailure", input.risk.costOfFailure)
+        })
+        add("dependencies", input.dependencies.toJsonArray())
+        add("affectedAssets", input.affectedAssets.toJsonArray())
+        addProperty("owner", input.owner)
+        addProperty("accountableAuthority", input.accountableAuthority)
+        add("confidence", JsonObject().apply {
+            addProperty("level", input.confidence.level)
+            addProperty("basis", input.confidence.basis)
+        })
+        add("evidence", JsonArray().apply { input.evidence.forEach { add(initiativeSourceToJson(it)) } })
+        add("unresolvedQuestions", input.unresolvedQuestions.toJsonArray())
+        addProperty("rationale", input.rationale)
+    }.also { value ->
+        try {
+            validateInitiativeClassificationInput(value)
+        } catch (_: GaepHostException) {
+            throw IllegalArgumentException(
+                "Initiative classification must contain only strict portable, non-secret, internally consistent values",
+            )
+        }
+    }
+
+    fun initiativeApplicabilityInputToJson(input: InitiativeApplicabilityMatrixInput): JsonObject = JsonObject().apply {
+        add("decisions", JsonArray().apply {
+            input.decisions.forEach { decision ->
+                add(JsonObject().apply {
+                    add("subject", initiativeSubjectToJson(decision.subject))
+                    addProperty("status", decision.status)
+                    addProperty("rationale", decision.rationale)
+                    add("sources", JsonArray().apply { decision.sources.forEach { add(initiativeSourceToJson(it)) } })
+                    addProperty("owner", decision.owner)
+                    decision.accountableApprover?.let { addProperty("accountableApprover", it) }
+                    add("dependencies", decision.dependencies.toJsonArray())
+                    add("conditions", decision.conditions.toJsonArray())
+                    add("reviewTriggers", decision.reviewTriggers.toJsonArray())
+                    add("approval", JsonObject().apply {
+                        addProperty("state", decision.approval.state)
+                        decision.approval.decidedBy?.let { actor ->
+                            add("decidedBy", JsonObject().apply {
+                                addProperty("kind", "human")
+                                addProperty("id", actor)
+                            })
+                        }
+                        decision.approval.decidedAt?.let { addProperty("decidedAt", it.toString()) }
+                        add("conditions", decision.approval.conditions.toJsonArray())
+                    })
+                    add("relatedRecords", JsonArray().apply {
+                        decision.relatedRecords.forEach { record ->
+                            add(JsonObject().apply {
+                                addProperty("recordType", record.recordType)
+                                addProperty("recordId", record.recordId.toString())
+                                addProperty("revision", record.revision)
+                                addProperty("digest", record.digest)
+                            })
+                        }
+                    })
+                    add("relatedImplementationUnits", decision.relatedImplementationUnits.toJsonArray())
+                })
+            }
+        })
+        add("unresolvedSubjects", JsonArray().apply {
+            input.unresolvedSubjects.forEach { unresolved ->
+                add(JsonObject().apply {
+                    add("subject", initiativeSubjectToJson(unresolved.subject))
+                    addProperty("reason", unresolved.reason)
+                    addProperty("owner", unresolved.owner)
+                })
+            }
+        })
+    }.also { value ->
+        try {
+            validateInitiativeApplicabilityInput(value)
+        } catch (_: GaepHostException) {
+            throw IllegalArgumentException(
+                "Initiative applicability must contain only explicit portable, non-secret, internally consistent decisions",
+            )
+        }
+    }
+
+    fun parseInitiativeEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+        expectedRevision: Long? = null,
+        expectedActorId: String? = null,
+        expectedClassificationInput: JsonObject? = null,
+        expectedApplicabilityInput: JsonObject? = null,
+    ): InitiativeEntryRecord {
+        val initiative = readResult(envelope).requireObject()
+        initiative.requireKeys(
+            required = setOf(
+                "schemaVersion", "id", "kind", "revision", "productId", "title", "outcome", "scope",
+                "exclusions", "state", "createdAt", "updatedAt",
+            ),
+            optional = setOf("classification", "applicability"),
+        )
+        if (initiative.requireInt("schemaVersion") != 1 || initiative.requireString("kind") != "initiative") {
+            throw invalidResponse()
+        }
+        val id = initiative.requireNonEmptyUuid("id")
+        val revision = initiative.requireLong("revision")
+        val productId = initiative.requireNonEmptyUuid("productId")
+        if (id != expectedInitiativeId || revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        initiative.requirePortableText("title", minimum = 2).also { if (it.length > 240) throw invalidResponse() }
+        initiative.requirePortableText("outcome", minimum = 4).also { if (it.length > 5_000) throw invalidResponse() }
+        validateInitiativeTextArray(initiative.get("scope"), 1, 256)
+        validateInitiativeTextArray(initiative.get("exclusions"), 0, 256)
+        val state = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+        val createdAt = initiative.requireInstant("createdAt")
+        val updatedAt = initiative.requireInstant("updatedAt")
+        if (updatedAt.isBefore(createdAt)) throw invalidResponse()
+
+        val classification = initiative.get("classification")?.let {
+            parseInitiativeClassification(it.requireObject())
+        }
+        val applicability = initiative.get("applicability")?.let {
+            parseInitiativeApplicability(it.requireObject(), id, productId)
+        }
+        expectedRevision?.let { expected ->
+            if (revision != expected + 1) throw invalidResponse()
+        }
+        expectedClassificationInput?.let { expected ->
+            validateInitiativeClassificationInput(expected)
+            if (classification == null || classification.inputDigest != canonicalDigest(expected) ||
+                classification.classifiedBy != expectedActorId
+            ) {
+                throw invalidResponse()
+            }
+        }
+        expectedApplicabilityInput?.let { expected ->
+            validateInitiativeApplicabilityInput(expected)
+            if (classification == null || applicability == null || applicability.state != "current" ||
+                applicability.initiativeRevision != revision || applicability.inputDigest != canonicalDigest(expected) ||
+                applicability.evaluatedBy != expectedActorId ||
+                applicability.classificationDigest != classification.digest
+            ) {
+                throw invalidResponse()
+            }
+        }
+        return InitiativeEntryRecord(id, revision, productId, state, classification, applicability)
+    }
+
+    fun parseInitiativeEntryAssessmentEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): InitiativeEntryAssessment {
+        val assessment = readResult(envelope).requireObject()
+        assessment.requireExactKeys(
+            "schemaVersion", "kind", "initiativeId", "initiativeRevision", "productId", "productRevision",
+            "productDigest", "classification", "applicability", "state", "reasons", "assessedAt",
+            "authorityBoundary",
+        )
+        if (assessment.requireInt("schemaVersion") != 1 ||
+            assessment.requireString("kind") != "initiative-entry-assessment" ||
+            assessment.requireString("authorityBoundary") != INITIATIVE_ASSESSMENT_BOUNDARY
+        ) {
+            throw invalidResponse()
+        }
+        val initiativeId = assessment.requireNonEmptyUuid("initiativeId")
+        val initiativeRevision = assessment.requireLong("initiativeRevision")
+        val productRevision = assessment.requireLong("productRevision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+            productRevision !in 1..MAX_SAFE_PRODUCT_REVISION
+        ) {
+            throw invalidResponse()
+        }
+        val classification = assessment.get("classification").requireObject()
+        classification.requireKeys(setOf("status"), setOf("digest"))
+        val classificationStatus = classification.requireOneOf("status", setOf("missing", "current", "stale"))
+        val classificationDigest = classification.get("digest")?.let { classification.requireDigest("digest") }
+        if ((classificationStatus == "missing") != (classificationDigest == null)) throw invalidResponse()
+
+        val applicability = assessment.get("applicability").requireObject()
+        applicability.requireKeys(
+            required = setOf(
+                "status", "decisionCount", "unresolvedSubjectCount", "pendingHumanDecisionCount",
+                "blockedDecisionCount", "pendingApprovalCount", "rejectedApprovalCount",
+            ),
+            optional = setOf("matrixRevision", "digest"),
+        )
+        val applicabilityStatus = applicability.requireOneOf("status", setOf("missing", "current", "stale"))
+        val matrixRevision = applicability.get("matrixRevision")?.let { applicability.requireLong("matrixRevision") }
+        val applicabilityDigest = applicability.get("digest")?.let { applicability.requireDigest("digest") }
+        if ((matrixRevision == null) != (applicabilityDigest == null) ||
+            (applicabilityStatus == "missing") != (matrixRevision == null) ||
+            (matrixRevision != null && matrixRevision !in 1..MAX_SAFE_PRODUCT_REVISION)
+        ) {
+            throw invalidResponse()
+        }
+        val counts = (0 until 6).map { index ->
+            applicability.requireBoundedNonNegativeInt(
+                listOf(
+                    "decisionCount", "unresolvedSubjectCount", "pendingHumanDecisionCount", "blockedDecisionCount",
+                    "pendingApprovalCount", "rejectedApprovalCount",
+                )[index],
+                512,
+            )
+        }
+        val reasonsElement = assessment.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 256) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), minimum = 2, maximum = 2_000) }
+        val state = assessment.requireOneOf("state", setOf("ready", "attention-required", "blocked"))
+        if ((state == "ready") != reasons.isEmpty()) throw invalidResponse()
+        return InitiativeEntryAssessment(
+            initiativeId = initiativeId,
+            initiativeRevision = initiativeRevision,
+            productId = assessment.requireNonEmptyUuid("productId"),
+            productRevision = productRevision,
+            productDigest = assessment.requireDigest("productDigest"),
+            classification = InitiativeEntryAssessmentClassification(classificationStatus, classificationDigest),
+            applicability = InitiativeEntryAssessmentApplicability(
+                applicabilityStatus,
+                matrixRevision,
+                applicabilityDigest,
+                counts[0],
+                counts[1],
+                counts[2],
+                counts[3],
+                counts[4],
+                counts[5],
+            ),
+            state = state,
+            reasons = reasons,
+            assessedAt = assessment.requireInstant("assessedAt"),
+        )
     }
 
     fun parseProductBindingEnvelope(envelope: JsonObject): ProductBinding {
@@ -3097,6 +3375,348 @@ internal object PortableDesignProtocol {
         }
         return value
     }
+
+    private fun initiativeSourceToJson(source: InitiativeEntrySource): JsonObject = JsonObject().apply {
+        addProperty("kind", source.kind)
+        addProperty("reference", source.reference)
+        source.digest?.let { addProperty("digest", it) }
+    }
+
+    private fun initiativeSubjectToJson(subject: InitiativeApplicabilitySubject): JsonObject = JsonObject().apply {
+        addProperty("type", subject.type)
+        addProperty("key", subject.key)
+        addProperty("label", subject.label)
+    }
+
+    private fun validateInitiativeClassificationInput(input: JsonObject) {
+        input.requireExactKeys(
+            "primaryType", "secondaryTypes", "systemState", "changePosture", "motivations", "characteristics",
+            "regulated", "policyDomains", "sensitivities", "expectedLifetime", "maintenanceHorizon", "risk",
+            "dependencies", "affectedAssets", "owner", "accountableAuthority", "confidence", "evidence",
+            "unresolvedQuestions", "rationale",
+        )
+        val primaryType = input.requireOneOf("primaryType", initiativeTypes)
+        val secondaryTypes = initiativeStringArray(input.get("secondaryTypes"), 0, 29, initiativeTypes)
+        if (secondaryTypes.distinct().size != secondaryTypes.size || primaryType in secondaryTypes) throw invalidResponse()
+        input.requireOneOf("systemState", setOf("greenfield", "brownfield", "mixed", "unknown"))
+        input.requireOneOf(
+            "changePosture",
+            setOf("new", "existing", "replacement", "modernization", "migration", "retirement", "mixed"),
+        )
+        val motivations = initiativeStringArray(
+            input.get("motivations"),
+            1,
+            6,
+            setOf("business-driven", "technical", "regulatory", "operational", "security-driven", "mixed"),
+        )
+        if (motivations.distinct().size != motivations.size) throw invalidResponse()
+        val characteristics = input.get("characteristics").requireObject()
+        characteristics.requireExactKeys("userInterface", "data", "integration", "interactionModes", "exposure")
+        characteristics.requireOneOf("userInterface", setOf("ui-bearing", "non-ui", "unknown"))
+        characteristics.requireOneOf("data", setOf("data-bearing", "stateless", "unknown"))
+        characteristics.requireOneOf("integration", setOf("integration-heavy", "isolated", "mixed", "unknown"))
+        val interactionModes = initiativeStringArray(
+            characteristics.get("interactionModes"),
+            1,
+            6,
+            setOf("synchronous", "asynchronous", "batch", "streaming", "interactive", "mixed"),
+        )
+        if (interactionModes.distinct().size != interactionModes.size) throw invalidResponse()
+        characteristics.requireOneOf("exposure", setOf("internal", "partner", "public", "mixed", "unknown"))
+        input.requireBoolean("regulated")
+        val policyDomains = initiativeIdentifierArray(input.get("policyDomains"), 64)
+        if (policyDomains.distinct().size != policyDomains.size) throw invalidResponse()
+        val sensitivities = initiativeStringArray(
+            input.get("sensitivities"),
+            1,
+            8,
+            setOf("security", "privacy", "data", "safety", "financial", "operational", "none", "unknown"),
+        )
+        if (sensitivities.distinct().size != sensitivities.size || ("none" in sensitivities && sensitivities.size > 1)) {
+            throw invalidResponse()
+        }
+        input.requireOneOf("expectedLifetime", setOf("short-lived", "medium-term", "long-lived", "indefinite", "unknown"))
+        initiativeText(input.requireString("maintenanceHorizon"))
+        val risk = input.get("risk").requireObject()
+        risk.requireExactKeys("blastRadius", "reversibility", "urgency", "costOfFailure")
+        risk.requireOneOf("blastRadius", setOf("localized", "multi-unit", "organization", "external", "unknown"))
+        risk.requireOneOf("reversibility", setOf("reversible", "partially-reversible", "irreversible", "unknown"))
+        risk.requireOneOf("urgency", setOf("low", "normal", "high", "critical", "unknown"))
+        risk.requireOneOf("costOfFailure", setOf("low", "medium", "high", "critical", "unknown"))
+        listOf("dependencies", "affectedAssets").forEach { key ->
+            val values = initiativeTextArray(input.get(key), 0, 256)
+            if (values.distinct().size != values.size) throw invalidResponse()
+        }
+        initiativeText(input.requireString("owner"))
+        initiativeText(input.requireString("accountableAuthority"))
+        val confidence = input.get("confidence").requireObject()
+        confidence.requireExactKeys("level", "basis")
+        confidence.requireOneOf("level", setOf("low", "medium", "high"))
+        initiativeText(confidence.requireString("basis"))
+        val evidence = input.get("evidence")
+        if (evidence == null || !evidence.isJsonArray || evidence.asJsonArray.size() !in 1..256) throw invalidResponse()
+        val evidenceKeys = evidence.asJsonArray.map { validateInitiativeSource(it.requireObject()) }
+        if (evidenceKeys.distinct().size != evidenceKeys.size) throw invalidResponse()
+        initiativeTextArray(input.get("unresolvedQuestions"), 0, 256)
+        portableText(input.requireString("rationale"), minimum = 10, maximum = 10_000)
+    }
+
+    private fun validateInitiativeApplicabilityInput(input: JsonObject) {
+        input.requireExactKeys("decisions", "unresolvedSubjects")
+        val decisions = input.get("decisions")
+        if (decisions == null || !decisions.isJsonArray || decisions.asJsonArray.size() !in 1..512) {
+            throw invalidResponse()
+        }
+        val decisionKeys = decisions.asJsonArray.map { validateInitiativeDecisionInput(it.requireObject()) }
+        if (decisionKeys.distinct().size != decisionKeys.size) throw invalidResponse()
+        val unresolved = input.get("unresolvedSubjects")
+        if (unresolved == null || !unresolved.isJsonArray || unresolved.asJsonArray.size() > 512) throw invalidResponse()
+        val unresolvedKeys = unresolved.asJsonArray.map { value ->
+            val item = value.requireObject()
+            item.requireExactKeys("subject", "reason", "owner")
+            val key = validateInitiativeSubject(item.get("subject").requireObject())
+            initiativeText(item.requireString("reason"))
+            initiativeText(item.requireString("owner"))
+            key
+        }
+        if (unresolvedKeys.distinct().size != unresolvedKeys.size || unresolvedKeys.any(decisionKeys::contains)) {
+            throw invalidResponse()
+        }
+    }
+
+    private fun validateInitiativeDecisionInput(decision: JsonObject): String {
+        decision.requireKeys(
+            required = setOf(
+                "subject", "status", "rationale", "sources", "owner", "dependencies", "conditions",
+                "reviewTriggers", "approval", "relatedRecords", "relatedImplementationUnits",
+            ),
+            optional = setOf("accountableApprover"),
+        )
+        val subjectKey = validateInitiativeSubject(decision.get("subject").requireObject())
+        val status = decision.requireOneOf("status", initiativeApplicabilityStatuses)
+        portableText(decision.requireString("rationale"), minimum = 10, maximum = 10_000)
+        val sources = decision.get("sources")
+        if (sources == null || !sources.isJsonArray || sources.asJsonArray.size() !in 1..256) throw invalidResponse()
+        val sourceKeys = sources.asJsonArray.map { validateInitiativeSource(it.requireObject()) }
+        if (sourceKeys.distinct().size != sourceKeys.size) throw invalidResponse()
+        initiativeText(decision.requireString("owner"))
+        decision.get("accountableApprover")?.let { initiativeText(it.requireString()) }
+        val dependencies = initiativeIdentifierArray(decision.get("dependencies"), 256)
+        val conditions = initiativeTextArray(decision.get("conditions"), 0, 256)
+        val reviewTriggers = initiativeTextArray(decision.get("reviewTriggers"), 1, 256)
+        val implementationUnits = initiativeIdentifierArray(decision.get("relatedImplementationUnits"), 256)
+        if (dependencies.distinct().size != dependencies.size || conditions.distinct().size != conditions.size ||
+            reviewTriggers.distinct().size != reviewTriggers.size || implementationUnits.distinct().size != implementationUnits.size
+        ) {
+            throw invalidResponse()
+        }
+        if (status in setOf("deferred", "conditionally-required", "blocked") && conditions.isEmpty()) {
+            throw invalidResponse()
+        }
+        val approval = decision.get("approval").requireObject()
+        approval.requireKeys(setOf("state", "conditions"), setOf("decidedBy", "decidedAt"))
+        val approvalState = approval.requireOneOf("state", setOf("not-required", "pending", "approved", "rejected"))
+        initiativeTextArray(approval.get("conditions"), 0, 128)
+        val hasDecider = approval.has("decidedBy")
+        val hasDecisionTime = approval.has("decidedAt")
+        val decided = approvalState in setOf("approved", "rejected")
+        if (hasDecider != hasDecisionTime || decided != hasDecider) throw invalidResponse()
+        if (hasDecider) {
+            parseInitiativeHuman(approval.get("decidedBy").requireObject())
+            approval.requireInstant("decidedAt")
+        }
+        if (status == "awaiting-human-decision" && approvalState != "pending") throw invalidResponse()
+        val related = decision.get("relatedRecords")
+        if (related == null || !related.isJsonArray || related.asJsonArray.size() > 256) throw invalidResponse()
+        val relatedKeys = related.asJsonArray.map { value ->
+            val record = value.requireObject()
+            record.requireExactKeys("recordType", "recordId", "revision", "digest")
+            val recordType = initiativeIdentifier(record.requireString("recordType"))
+            val recordId = record.requireNonEmptyUuid("recordId")
+            val revision = record.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            record.requireDigest("digest")
+            "$recordType:$recordId:$revision"
+        }
+        if (relatedKeys.distinct().size != relatedKeys.size ||
+            (status in setOf("already-satisfied", "reused") && relatedKeys.isEmpty())
+        ) {
+            throw invalidResponse()
+        }
+        return subjectKey
+    }
+
+    private fun parseInitiativeClassification(classification: JsonObject): InitiativeClassificationView {
+        classification.requireExactKeys(
+            "primaryType", "secondaryTypes", "systemState", "changePosture", "motivations", "characteristics",
+            "regulated", "policyDomains", "sensitivities", "expectedLifetime", "maintenanceHorizon", "risk",
+            "dependencies", "affectedAssets", "owner", "accountableAuthority", "confidence", "evidence",
+            "unresolvedQuestions", "rationale", "productProfile", "productRevision", "productDigest", "classifiedBy",
+            "classifiedAt", "authorityBoundary",
+        )
+        val input = classification.deepCopy().apply {
+            listOf(
+                "productProfile", "productRevision", "productDigest", "classifiedBy", "classifiedAt", "authorityBoundary",
+            ).forEach(::remove)
+        }
+        validateInitiativeClassificationInput(input)
+        if (classification.requireString("authorityBoundary") != INITIATIVE_CLASSIFICATION_BOUNDARY) {
+            throw invalidResponse()
+        }
+        val productRevision = classification.requireLong("productRevision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        return InitiativeClassificationView(
+            primaryType = input.requireString("primaryType"),
+            productProfile = classification.requireOneOf(
+                "productProfile",
+                setOf("software", "saas", "ai-enabled", "integration", "security-sensitive", "data-sensitive", "internal-tool", "mobile"),
+            ),
+            productRevision = productRevision,
+            productDigest = classification.requireDigest("productDigest"),
+            classifiedBy = parseInitiativeHuman(classification.get("classifiedBy").requireObject()),
+            classifiedAt = classification.requireInstant("classifiedAt"),
+            digest = canonicalDigest(classification),
+            inputDigest = canonicalDigest(input),
+        )
+    }
+
+    private fun parseInitiativeApplicability(
+        matrix: JsonObject,
+        expectedInitiativeId: UUID,
+        expectedProductId: UUID,
+    ): InitiativeApplicabilityView {
+        matrix.requireKeys(
+            required = setOf(
+                "decisions", "unresolvedSubjects", "schemaVersion", "kind", "revision", "initiativeId", "productId",
+                "initiativeRevision", "classificationDigest", "state", "evaluatedBy", "evaluatedAt", "authorityBoundary",
+            ),
+            optional = setOf("invalidatedAt", "invalidationReason"),
+        )
+        if (matrix.requireInt("schemaVersion") != 1 ||
+            matrix.requireString("kind") != "initiative-applicability-matrix" ||
+            matrix.requireString("authorityBoundary") != INITIATIVE_MATRIX_BOUNDARY ||
+            matrix.requireNonEmptyUuid("initiativeId") != expectedInitiativeId ||
+            matrix.requireNonEmptyUuid("productId") != expectedProductId
+        ) {
+            throw invalidResponse()
+        }
+        val revision = matrix.requireLong("revision")
+        val initiativeRevision = matrix.requireLong("initiativeRevision")
+        if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val evaluatedBy = parseInitiativeHuman(matrix.get("evaluatedBy").requireObject())
+        val rawDecisions = matrix.get("decisions")
+        if (rawDecisions == null || !rawDecisions.isJsonArray || rawDecisions.asJsonArray.size() !in 1..512) {
+            throw invalidResponse()
+        }
+        val decisionInputs = JsonArray()
+        rawDecisions.asJsonArray.forEach { value ->
+            val decision = value.requireObject()
+            decision.requireKeys(
+                required = setOf(
+                    "subject", "status", "rationale", "sources", "owner", "dependencies", "conditions",
+                    "reviewTriggers", "approval", "relatedRecords", "relatedImplementationUnits", "id", "revision",
+                    "initiativeRevision", "decidedBy", "decidedAt", "authorityBoundary",
+                ),
+                optional = setOf("accountableApprover"),
+            )
+            val decisionRevision = decision.requireLong("revision")
+            if (decision.requireNonEmptyUuid("id") == UUID(0, 0) || decisionRevision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                decision.requireLong("initiativeRevision") != initiativeRevision ||
+                parseInitiativeHuman(decision.get("decidedBy").requireObject()) != evaluatedBy ||
+                decision.requireString("authorityBoundary") != INITIATIVE_DECISION_BOUNDARY
+            ) {
+                throw invalidResponse()
+            }
+            decision.requireInstant("decidedAt")
+            decisionInputs.add(decision.deepCopy().apply {
+                listOf("id", "revision", "initiativeRevision", "decidedBy", "decidedAt", "authorityBoundary").forEach(::remove)
+            })
+        }
+        val input = JsonObject().apply {
+            add("decisions", decisionInputs)
+            add("unresolvedSubjects", matrix.get("unresolvedSubjects").deepCopy())
+        }
+        validateInitiativeApplicabilityInput(input)
+        val state = matrix.requireOneOf("state", setOf("current", "stale"))
+        val invalidatedAt = matrix.get("invalidatedAt")?.let { matrix.requireInstant("invalidatedAt") }
+        val invalidationReason = matrix.get("invalidationReason")?.let { initiativeText(it.requireString()) }
+        if ((state == "stale") != (invalidatedAt != null && invalidationReason != null)) throw invalidResponse()
+        return InitiativeApplicabilityView(
+            revision = revision,
+            initiativeRevision = initiativeRevision,
+            state = state,
+            decisionCount = decisionInputs.size(),
+            unresolvedSubjectCount = input.getAsJsonArray("unresolvedSubjects").size(),
+            classificationDigest = matrix.requireDigest("classificationDigest"),
+            evaluatedBy = evaluatedBy,
+            evaluatedAt = matrix.requireInstant("evaluatedAt"),
+            digest = canonicalDigest(matrix),
+            inputDigest = canonicalDigest(input),
+        )
+    }
+
+    private fun parseInitiativeHuman(actor: JsonObject): String {
+        actor.requireExactKeys("kind", "id")
+        if (actor.requireString("kind") != "human") throw invalidResponse()
+        return initiativeText(actor.requireString("id"))
+    }
+
+    private fun validateInitiativeSource(source: JsonObject): String {
+        source.requireKeys(setOf("kind", "reference"), setOf("digest"))
+        val kind = source.requireOneOf("kind", initiativeSourceKinds)
+        val reference = initiativeText(source.requireString("reference"))
+        val digest = source.get("digest")?.let { source.requireDigest("digest") }.orEmpty()
+        return "$kind:$reference:$digest"
+    }
+
+    private fun validateInitiativeSubject(subject: JsonObject): String {
+        subject.requireExactKeys("type", "key", "label")
+        val type = subject.requireOneOf("type", initiativeSubjectTypes)
+        val key = initiativeIdentifier(subject.requireString("key"))
+        initiativeText(subject.requireString("label"))
+        return "$type:$key"
+    }
+
+    private fun initiativeIdentifier(value: String): String = value.takeIf(initiativeIdentifierPattern::matches)
+        ?: throw invalidResponse()
+
+    private fun initiativeText(value: String): String = portableText(value, minimum = 2, maximum = 2_000)
+
+    private fun initiativeStringArray(
+        value: JsonElement?,
+        minimum: Int,
+        maximum: Int,
+        allowed: Set<String>,
+    ): List<String> {
+        if (value == null || !value.isJsonArray || value.asJsonArray.size() !in minimum..maximum) {
+            throw invalidResponse()
+        }
+        return value.asJsonArray.map { it.requireString().takeIf(allowed::contains) ?: throw invalidResponse() }
+    }
+
+    private fun initiativeIdentifierArray(value: JsonElement?, maximum: Int): List<String> {
+        if (value == null || !value.isJsonArray || value.asJsonArray.size() > maximum) throw invalidResponse()
+        return value.asJsonArray.map { initiativeIdentifier(it.requireString()) }
+    }
+
+    private fun initiativeTextArray(
+        value: JsonElement?,
+        minimum: Int,
+        maximum: Int,
+    ): List<String> {
+        if (value == null || !value.isJsonArray || value.asJsonArray.size() !in minimum..maximum) {
+            throw invalidResponse()
+        }
+        return value.asJsonArray.map { initiativeText(it.requireString()) }
+    }
+
+    private fun validateInitiativeTextArray(value: JsonElement?, minimum: Int, maximum: Int) {
+        initiativeTextArray(value, minimum, maximum)
+    }
+
+    private fun List<String>.toJsonArray(): JsonArray = JsonArray().also { array -> forEach(array::add) }
 
     private fun workspaceRelativeScope(value: String): String = if (value == ".") value else workspaceRelativePath(value)
 

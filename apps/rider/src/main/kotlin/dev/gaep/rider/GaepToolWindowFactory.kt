@@ -17,6 +17,7 @@ import java.awt.BorderLayout
 import java.awt.GridLayout
 import java.awt.datatransfer.StringSelection
 import java.nio.file.Path
+import java.time.Instant
 import java.util.UUID
 import javax.swing.JButton
 import javax.swing.JPanel
@@ -38,6 +39,7 @@ private data class AgentHandoffDraft(
 )
 
 private class AgentSelectionCancelled : RuntimeException()
+private class InitiativeEntryCancelled : RuntimeException()
 
 class GaepToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
@@ -77,6 +79,25 @@ class GaepToolWindowFactory : ToolWindowFactory {
         }
 
         addAction("Refresh Product") { controller.readProduct() }
+
+        val initiativeEntryButton = JButton("Inspect Initiative entry…").apply {
+            addActionListener { beginInitiativeEntry(project, controller, status, output, buttons, "inspect") }
+        }
+        buttons += initiativeEntryButton
+        actions.add(initiativeEntryButton)
+
+        val classifyInitiativeButton = JButton("Classify Initiative…").apply {
+            addActionListener { beginInitiativeEntry(project, controller, status, output, buttons, "classify") }
+        }
+        buttons += classifyInitiativeButton
+        actions.add(classifyInitiativeButton)
+
+        val resolveApplicabilityButton = JButton("Resolve Initiative applicability…").apply {
+            addActionListener { beginInitiativeEntry(project, controller, status, output, buttons, "resolve") }
+        }
+        buttons += resolveApplicabilityButton
+        actions.add(resolveApplicabilityButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {
@@ -199,6 +220,9 @@ class GaepToolWindowFactory : ToolWindowFactory {
         actions.add(importButton)
 
         val governance = JTextArea(
+            "Initiative entry boundary: the exact assessment is read-only; classification and applicability require " +
+                "explicit human inputs and confirmation. Absence never means not applicable, and no entry action grants " +
+                "approval, readiness, or execution authority. " +
             "Change/Impact boundary: selection and projection are exact, audit-gated, read-only metadata views; " +
                 "they cannot approve a Change, accept a Risk, mutate records, or authorize effects. " +
             "Agent boundary: Codex and Claude readiness is observation-only; guarded selection and versioned handoff record portable configuration and history only. " +
@@ -236,6 +260,479 @@ class GaepToolWindowFactory : ToolWindowFactory {
         val content = ContentFactory.getInstance().createContent(panel, "Product", false)
         content.setDisposer(client)
         toolWindow.contentManager.addContent(content)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun beginInitiativeEntry(
+        project: Project,
+        controller: RiderProductController,
+        status: JBLabel,
+        output: JTextArea,
+        buttons: List<JButton>,
+        operation: String,
+    ) {
+        val initiativeId = promptManagedUuid(
+            project,
+            "Initiative ID",
+            "Enter one exact Initiative UUID. Narrative, evidence content, owners, local paths and credentials remain withheld.",
+            "GAEP Initiative Entry",
+        )?.let(UUID::fromString) ?: return
+        buttons.forEach { it.isEnabled = false }
+        status.text = "Loading exact Initiative entry assessment…"
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching { controller.readInitiativeEntryContext(initiativeId) }
+                .onSuccess { context ->
+                    ApplicationManager.getApplication().invokeLater {
+                        val current = controller.renderInitiativeEntry(context)
+                        output.text = current
+                        output.caretPosition = 0
+                        if (operation == "inspect") {
+                            finishRequest(status, output, buttons, "GAEP Initiative entry assessment ready", current)
+                            return@invokeLater
+                        }
+                        if (operation == "resolve" && context.assessment.classification.status != "current") {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "GAEP Initiative applicability stopped",
+                                "$current\n\nRecord a classification bound to the current Product revision before resolving applicability.",
+                            )
+                            return@invokeLater
+                        }
+                        val actorId = runCatching {
+                            PortableDesignProtocol.normalizeActorId(
+                                System.getenv("GAEP_ACTOR_ID") ?: "gaep.rider-local-human",
+                            )
+                        }.getOrElse { error ->
+                            finishRequest(status, output, buttons, "GAEP request stopped", safeError(error))
+                            return@invokeLater
+                        }
+                        val draft = runCatching {
+                            if (operation == "classify") {
+                                promptInitiativeClassification(project).also {
+                                    PortableDesignProtocol.initiativeClassificationInputToJson(it)
+                                }
+                            } else {
+                                promptInitiativeApplicability(project, actorId).also {
+                                    PortableDesignProtocol.initiativeApplicabilityInputToJson(it)
+                                }
+                            }
+                        }.getOrElse { error ->
+                            if (error is InitiativeEntryCancelled) {
+                                finishRequest(
+                                    status,
+                                    output,
+                                    buttons,
+                                    "GAEP Initiative entry unchanged",
+                                    "$current\n\nThe entry workflow was cancelled. No classification or applicability request was sent.",
+                                )
+                            } else {
+                                finishRequest(status, output, buttons, "GAEP Initiative entry stopped", safeError(error))
+                            }
+                            return@invokeLater
+                        }
+                        val classification = draft as? InitiativeClassificationInput
+                        val applicability = draft as? InitiativeApplicabilityMatrixInput
+                        val summary = if (classification != null) {
+                            "Record ${classification.primaryType} classification with " +
+                                "${classification.secondaryTypes.size} secondary type(s), " +
+                                "${classification.evidence.size} evidence reference(s), and " +
+                                "${classification.unresolvedQuestions.size} unresolved question(s)? " +
+                                "Classification guides profile selection only and grants no approval or action authority."
+                        } else {
+                            val matrix = applicability ?: throw IllegalArgumentException("Initiative applicability input is missing")
+                            "Record ${matrix.decisions.size} explicit applicability decision(s) and " +
+                                "${matrix.unresolvedSubjects.size} unresolved subject(s)? Absence is never treated as not applicable, " +
+                                "and this matrix grants no approval, readiness, or action authority."
+                        }
+                        val decision = Messages.showYesNoDialog(
+                            project,
+                            summary,
+                            if (classification != null) "Record Exact Initiative Classification" else "Record Exact Applicability Matrix",
+                            if (classification != null) "Record Exact Classification" else "Record Exact Applicability Matrix",
+                            "Cancel Without Changes",
+                            Messages.getWarningIcon(),
+                        )
+                        if (decision != Messages.YES) {
+                            finishRequest(
+                                status,
+                                output,
+                                buttons,
+                                "GAEP Initiative entry unchanged",
+                                "$current\n\nFinal confirmation was cancelled. No classification or applicability request was sent.",
+                            )
+                            return@invokeLater
+                        }
+                        status.text = if (classification != null) {
+                            "Recording exact Initiative classification…"
+                        } else {
+                            "Recording exact Initiative applicability matrix…"
+                        }
+                        ApplicationManager.getApplication().executeOnPooledThread {
+                            runCatching {
+                                if (classification != null) {
+                                    controller.classifyInitiative(context, classification, actorId)
+                                } else {
+                                    controller.resolveInitiativeApplicability(context, applicability!!, actorId)
+                                }
+                            }.onSuccess { rendered ->
+                                ApplicationManager.getApplication().invokeLater {
+                                    finishRequest(status, output, buttons, "GAEP Initiative entry updated and revalidated", rendered)
+                                }
+                            }.onFailure { error ->
+                                ApplicationManager.getApplication().invokeLater {
+                                    finishRequest(status, output, buttons, "GAEP Initiative entry stopped", safeError(error))
+                                }
+                            }
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    ApplicationManager.getApplication().invokeLater {
+                        finishRequest(status, output, buttons, "GAEP Initiative entry stopped", safeError(error))
+                    }
+                }
+        }
+    }
+
+    private fun promptInitiativeClassification(project: Project): InitiativeClassificationInput {
+        val initiativeTypes = listOf(
+            "product", "platform", "product-increment", "feature", "epic", "backlog-item", "service", "module",
+            "client-application", "mobile-application", "api", "integration", "migration", "modernization", "refactoring",
+            "technical-debt-remediation", "security-remediation", "infrastructure", "devops", "observability", "library",
+            "sdk", "cli", "worker", "event-processor", "defect-fix", "experiment", "research", "data-capability",
+            "ai-capability",
+        )
+        val primaryType = entryChoice(project, "Primary Initiative type", initiativeTypes)
+        val secondaryTypes = entryClosedList(
+            project,
+            "Secondary Initiative types",
+            initiativeTypes.filterNot(primaryType::equals),
+            required = false,
+        )
+        var sensitivities: List<String>
+        while (true) {
+            val selected = entryClosedList(
+                project,
+                "Sensitivities",
+                listOf("security", "privacy", "data", "safety", "financial", "operational", "none", "unknown"),
+                required = true,
+            )
+            if ("none" !in selected || selected.size == 1) {
+                sensitivities = selected
+                break
+            }
+            Messages.showErrorDialog(project, "Sensitivity 'none' cannot be combined with another value.", "Sensitivities")
+        }
+        return InitiativeClassificationInput(
+            primaryType = primaryType,
+            secondaryTypes = secondaryTypes,
+            systemState = entryChoice(project, "System state", listOf("greenfield", "brownfield", "mixed", "unknown")),
+            changePosture = entryChoice(
+                project,
+                "Change posture",
+                listOf("new", "existing", "replacement", "modernization", "migration", "retirement", "mixed"),
+            ),
+            motivations = entryClosedList(
+                project,
+                "Motivations",
+                listOf("business-driven", "technical", "regulatory", "operational", "security-driven", "mixed"),
+                required = true,
+            ),
+            characteristics = InitiativeClassificationCharacteristics(
+                userInterface = entryChoice(project, "User-interface characteristic", listOf("ui-bearing", "non-ui", "unknown")),
+                data = entryChoice(project, "Data characteristic", listOf("data-bearing", "stateless", "unknown")),
+                integration = entryChoice(
+                    project,
+                    "Integration characteristic",
+                    listOf("integration-heavy", "isolated", "mixed", "unknown"),
+                ),
+                interactionModes = entryClosedList(
+                    project,
+                    "Interaction modes",
+                    listOf("synchronous", "asynchronous", "batch", "streaming", "interactive", "mixed"),
+                    required = true,
+                ),
+                exposure = entryChoice(project, "Exposure", listOf("internal", "partner", "public", "mixed", "unknown")),
+            ),
+            regulated = entryChoice(project, "Is this Initiative regulated?", listOf("yes", "no")) == "yes",
+            policyDomains = entryIdentifierList(project, "Policy domains, separated by commas. Leave blank when none.", false),
+            sensitivities = sensitivities,
+            expectedLifetime = entryChoice(
+                project,
+                "Expected lifetime",
+                listOf("short-lived", "medium-term", "long-lived", "indefinite", "unknown"),
+            ),
+            maintenanceHorizon = entryText(project, "Maintenance horizon", true),
+            risk = InitiativeClassificationRisk(
+                blastRadius = entryChoice(project, "Risk: blast radius", listOf("localized", "multi-unit", "organization", "external", "unknown")),
+                reversibility = entryChoice(
+                    project,
+                    "Risk: reversibility",
+                    listOf("reversible", "partially-reversible", "irreversible", "unknown"),
+                ),
+                urgency = entryChoice(project, "Risk: urgency", listOf("low", "normal", "high", "critical", "unknown")),
+                costOfFailure = entryChoice(project, "Risk: cost of failure", listOf("low", "medium", "high", "critical", "unknown")),
+            ),
+            dependencies = entryTextList(project, "Dependencies, separated by commas. Leave blank when none.", false),
+            affectedAssets = entryTextList(project, "Affected assets, separated by commas. Leave blank when none.", false),
+            owner = entryText(project, "Initiative classification owner", true),
+            accountableAuthority = entryText(project, "Accountable human authority", true),
+            confidence = InitiativeClassificationConfidence(
+                level = entryChoice(project, "Classification confidence", listOf("low", "medium", "high")),
+                basis = entryText(project, "Evidence-based confidence rationale", true),
+            ),
+            evidence = listOf(
+                InitiativeEntrySource(
+                    entryChoice(
+                        project,
+                        "Primary classification evidence kind",
+                        listOf("rule", "policy", "evidence", "requirement", "dependency", "human-decision"),
+                    ),
+                    entryText(project, "Primary classification evidence reference", true),
+                ),
+            ),
+            unresolvedQuestions = entryTextList(
+                project,
+                "Unresolved classification questions, separated by commas. Leave blank when none.",
+                false,
+            ),
+            rationale = entryText(project, "Classification rationale", true, minimum = 10, maximum = 10_000),
+        )
+    }
+
+    private fun promptInitiativeApplicability(
+        project: Project,
+        actorId: String,
+    ): InitiativeApplicabilityMatrixInput {
+        val decisions = mutableListOf<InitiativeApplicabilityDecisionInput>()
+        do {
+            val index = decisions.size + 1
+            val subject = promptInitiativeSubject(project, "Decision $index")
+            val status = entryChoice(
+                project,
+                "Decision $index status",
+                listOf(
+                    "required", "recommended", "optional", "not-applicable", "deferred", "conditionally-required",
+                    "already-satisfied", "reused", "blocked", "awaiting-human-decision",
+                ),
+            )
+            val approvalState = if (status == "awaiting-human-decision") {
+                "pending"
+            } else {
+                entryChoice(project, "Decision $index approval state", listOf("not-required", "pending", "approved", "rejected"))
+            }
+            val conditionRequired = status in setOf("deferred", "conditionally-required", "blocked")
+            val relatedRecords = if (status in setOf("already-satisfied", "reused")) {
+                listOf(
+                    InitiativeRelatedRecord(
+                        recordType = entryIdentifier(project, "Decision $index related record type"),
+                        recordId = entryUuid(project, "Decision $index related record UUID"),
+                        revision = entryRevision(project, "Decision $index related record revision"),
+                        digest = entryDigest(project, "Decision $index related record SHA-256 digest"),
+                    ),
+                )
+            } else {
+                emptyList()
+            }
+            decisions += InitiativeApplicabilityDecisionInput(
+                subject = subject,
+                status = status,
+                rationale = entryText(project, "Decision $index rationale", true, minimum = 10, maximum = 10_000),
+                sources = listOf(
+                    InitiativeEntrySource(
+                        entryChoice(
+                            project,
+                            "Decision $index primary source kind",
+                            listOf("rule", "policy", "evidence", "requirement", "dependency", "human-decision"),
+                        ),
+                        entryText(project, "Decision $index primary source reference", true),
+                    ),
+                ),
+                owner = entryText(project, "Decision $index owner", true),
+                accountableApprover = if (approvalState != "not-required" || status == "awaiting-human-decision") {
+                    entryText(project, "Decision $index accountable approver", true)
+                } else {
+                    null
+                },
+                dependencies = entryIdentifierList(
+                    project,
+                    "Decision $index dependency keys, separated by commas. Leave blank when none.",
+                    false,
+                ),
+                conditions = entryTextList(
+                    project,
+                    "Decision $index conditions, separated by commas." + if (conditionRequired) " At least one is required." else " Leave blank when none.",
+                    conditionRequired,
+                ),
+                reviewTriggers = entryTextList(
+                    project,
+                    "Decision $index review triggers, separated by commas.",
+                    true,
+                ),
+                approval = InitiativeApplicabilityApproval(
+                    state = approvalState,
+                    conditions = entryTextList(
+                        project,
+                        "Decision $index approval conditions, separated by commas. Leave blank when none.",
+                        false,
+                    ),
+                    decidedBy = if (approvalState in setOf("approved", "rejected")) actorId else null,
+                    decidedAt = if (approvalState in setOf("approved", "rejected")) Instant.now() else null,
+                ),
+                relatedRecords = relatedRecords,
+                relatedImplementationUnits = entryIdentifierList(
+                    project,
+                    "Decision $index related implementation-unit keys, separated by commas. Leave blank when none.",
+                    false,
+                ),
+            )
+        } while (
+            Messages.showYesNoDialog(
+                project,
+                "Add another explicit applicability decision? Absence is not treated as not applicable.",
+                "Initiative Applicability Matrix",
+                "Add Another Decision",
+                "Continue to Unresolved Subjects",
+                Messages.getQuestionIcon(),
+            ) == Messages.YES
+        )
+        val unresolved = mutableListOf<InitiativeUnresolvedSubject>()
+        while (
+            Messages.showYesNoDialog(
+                project,
+                "Record an explicitly unresolved applicability subject?",
+                "Initiative Applicability Matrix",
+                "Add Unresolved Subject",
+                "Finish Matrix",
+                Messages.getQuestionIcon(),
+            ) == Messages.YES
+        ) {
+            val index = unresolved.size + 1
+            unresolved += InitiativeUnresolvedSubject(
+                subject = promptInitiativeSubject(project, "Unresolved subject $index"),
+                reason = entryText(project, "Unresolved subject $index reason", true),
+                owner = entryText(project, "Unresolved subject $index owner", true),
+            )
+        }
+        return InitiativeApplicabilityMatrixInput(decisions, unresolved)
+    }
+
+    private fun promptInitiativeSubject(project: Project, prefix: String) = InitiativeApplicabilitySubject(
+        type = entryChoice(
+            project,
+            "$prefix subject type",
+            listOf("phase", "activity", "artifact", "capability", "test-method", "test-level", "approval", "evidence-obligation"),
+        ),
+        key = entryIdentifier(project, "$prefix stable subject key"),
+        label = entryText(project, "$prefix human-readable subject label", true),
+    )
+
+    @Suppress("DEPRECATION")
+    private fun entryChoice(project: Project, title: String, options: List<String>): String {
+        val selected = Messages.showChooseDialog(
+            project,
+            "Choose one exact value.",
+            title,
+            Messages.getQuestionIcon(),
+            options.toTypedArray(),
+            options.first(),
+        )
+        return options.getOrNull(selected) ?: throw InitiativeEntryCancelled()
+    }
+
+    private fun entryClosedList(
+        project: Project,
+        title: String,
+        options: List<String>,
+        required: Boolean,
+    ): List<String> {
+        while (true) {
+            val entered = Messages.showInputDialog(
+                project,
+                "Enter comma-separated values from: ${options.joinToString()}." + if (required) " At least one is required." else " Leave blank when none.",
+                title,
+                Messages.getQuestionIcon(),
+            ) ?: throw InitiativeEntryCancelled()
+            val values = entered.split(',').map(String::trim).filter(String::isNotEmpty).distinct()
+            if ((!required || values.isNotEmpty()) && values.all(options::contains)) return values
+            Messages.showErrorDialog(project, "Use only the listed exact values${if (required) " and select at least one" else ""}.", title)
+        }
+    }
+
+    private fun entryText(
+        project: Project,
+        prompt: String,
+        required: Boolean,
+        minimum: Int = 2,
+        maximum: Int = 2_000,
+    ): String {
+        while (true) {
+            val entered = Messages.showInputDialog(project, prompt, "GAEP Initiative Entry", Messages.getQuestionIcon())
+                ?: throw InitiativeEntryCancelled()
+            if (!required && entered.isBlank()) return ""
+            val normalized = runCatching {
+                PortableDesignProtocol.normalizeHandoffText(entered, prompt, minimum, maximum)
+            }
+            if (normalized.isSuccess) return normalized.getOrThrow()
+            Messages.showErrorDialog(project, safeError(normalized.exceptionOrNull()!!), "GAEP Initiative Entry")
+        }
+    }
+
+    private fun entryTextList(project: Project, prompt: String, required: Boolean): List<String> {
+        while (true) {
+            val entered = entryText(project, prompt, required, minimum = if (required) 2 else 0, maximum = 10_000)
+            if (entered.isEmpty()) return emptyList()
+            val values = entered.split(',').map(String::trim).filter(String::isNotEmpty).distinct()
+            val validated = runCatching {
+                require(!required || values.isNotEmpty())
+                PortableDesignProtocol.normalizeHandoffTextList(values, prompt)
+            }
+            if (validated.isSuccess) return validated.getOrThrow()
+            Messages.showErrorDialog(project, safeError(validated.exceptionOrNull()!!), "GAEP Initiative Entry")
+        }
+    }
+
+    private fun entryIdentifierList(project: Project, prompt: String, required: Boolean): List<String> {
+        while (true) {
+            val values = entryTextList(project, prompt, required)
+            if (values.all { it.matches(Regex("^[a-z][a-z0-9.-]{0,127}$")) }) return values
+            Messages.showErrorDialog(
+                project,
+                "Identifiers must start with a lower-case letter and contain only lower-case letters, numbers, dots, or hyphens.",
+                "GAEP Initiative Entry",
+            )
+        }
+    }
+
+    private fun entryIdentifier(project: Project, prompt: String): String = entryIdentifierList(project, prompt, true).singleOrNull()
+        ?: throw IllegalArgumentException("$prompt requires one exact identifier without commas.")
+
+    private fun entryUuid(project: Project, prompt: String): UUID {
+        while (true) {
+            val value = entryText(project, prompt, true, minimum = 36, maximum = 36)
+            val parsed = runCatching { UUID.fromString(value).also { require(it != UUID(0, 0)) } }
+            if (parsed.isSuccess) return parsed.getOrThrow()
+            Messages.showErrorDialog(project, "$prompt must be a non-empty UUID.", "GAEP Initiative Entry")
+        }
+    }
+
+    private fun entryRevision(project: Project, prompt: String): Long {
+        while (true) {
+            val value = entryText(project, prompt, true, minimum = 1, maximum = 16)
+            val parsed = value.toLongOrNull()
+            if (parsed != null && parsed in 1..PortableDesignProtocol.MAX_SAFE_PRODUCT_REVISION) return parsed
+            Messages.showErrorDialog(project, "$prompt must be a positive protocol-safe integer.", "GAEP Initiative Entry")
+        }
+    }
+
+    private fun entryDigest(project: Project, prompt: String): String {
+        while (true) {
+            val value = entryText(project, prompt, true, minimum = 71, maximum = 71).lowercase()
+            if (value.matches(Regex("^sha256:[0-9a-f]{64}$"))) return value
+            Messages.showErrorDialog(project, "$prompt must use sha256 followed by 64 lower-case hexadecimal characters.", "GAEP Initiative Entry")
+        }
     }
 
     @Suppress("DEPRECATION")

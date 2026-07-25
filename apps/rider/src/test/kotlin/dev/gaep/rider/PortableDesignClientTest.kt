@@ -151,6 +151,131 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Initiative entry client preserves exact bindings and rejects hostile responses`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        assertFailsWith<IllegalArgumentException> {
+            PortableDesignProtocol.initiativeClassificationInputToJson(
+                initiativeClassificationInput().copy(sensitivities = listOf("none", "security")),
+            )
+        }
+        assertFailsWith<IllegalArgumentException> {
+            PortableDesignProtocol.initiativeClassificationInputToJson(
+                initiativeClassificationInput().copy(owner = "token=PRIVATE-OAUTH-TOKEN"),
+            )
+        }
+        assertFailsWith<IllegalArgumentException> {
+            PortableDesignProtocol.initiativeApplicabilityInputToJson(
+                initiativeApplicabilityInput().copy(
+                    decisions = listOf(
+                        initiativeApplicabilityInput().decisions.single().copy(
+                            status = "conditionally-required",
+                            conditions = emptyList(),
+                        ),
+                    ),
+                ),
+            )
+        }
+        val workspace = Files.createDirectory(temporaryRoot.resolve("initiative-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val controller = RiderProductController(client)
+            val initial = controller.readInitiativeEntryContext(entryId)
+            assertEquals(1, initial.initiative.revision)
+            assertEquals("missing", initial.assessment.classification.status)
+            assertEquals("missing", initial.assessment.applicability.status)
+            assertEquals("attention-required", initial.assessment.state)
+            assertTrue(controller.renderInitiativeEntry(initial).contains("grants no approval, readiness"))
+
+            val classified = client.classifyInitiative(entryId, 1, initiativeClassificationInput(), "founder.rider-entry")
+            assertEquals(2, classified.revision)
+            assertEquals("service", classified.classification?.primaryType)
+            assertEquals("founder.rider-entry", classified.classification?.classifiedBy)
+            val classifiedContext = controller.readInitiativeEntryContext(entryId)
+            assertEquals("current", classifiedContext.assessment.classification.status)
+            assertEquals("missing", classifiedContext.assessment.applicability.status)
+
+            val resolved = client.resolveInitiativeApplicability(
+                entryId,
+                2,
+                initiativeApplicabilityInput(),
+                "founder.rider-entry",
+            )
+            assertEquals(3, resolved.revision)
+            assertEquals(1, resolved.applicability?.decisionCount)
+            assertEquals("current", resolved.applicability?.state)
+            val finalContext = controller.readInitiativeEntryContext(entryId)
+            assertEquals("current", finalContext.assessment.applicability.status)
+            assertEquals(1, finalContext.assessment.applicability.pendingApprovalCount)
+            assertEquals("attention-required", finalContext.assessment.state)
+            val rendered = controller.renderInitiativeEntry(finalContext)
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            val reclassifiedView = controller.classifyInitiative(
+                finalContext,
+                initiativeClassificationInput().copy(
+                    rationale = "The reviewed service classification changed after the applicability matrix was recorded.",
+                ),
+                "founder.rider-entry",
+            )
+            assertTrue(reclassifiedView.contains("Applicability: stale"))
+            assertTrue(reclassifiedView.contains("Assessment: attention-required"))
+        }
+
+        listOf("bad-initiative-private", "bad-entry-boundary").forEachIndexed { index, name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = if (index == 0) {
+                    hostError { client.readInitiative(entryId) }
+                } else {
+                    hostError { client.assessInitiativeEntry(entryId) }
+                }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-entry-product")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readInitiativeEntryContext(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+        listOf("bad-classification-binding", "bad-classification-content").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError {
+                    client.classifyInitiative(entryId, 1, initiativeClassificationInput(), "founder.rider-entry")
+                }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf("bad-applicability-binding", "bad-applicability-content").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val classified = client.classifyInitiative(
+                    entryId,
+                    1,
+                    initiativeClassificationInput(),
+                    "founder.rider-entry",
+                )
+                val error = hostError {
+                    client.resolveInitiativeApplicability(
+                        entryId,
+                        classified.revision,
+                        initiativeApplicabilityInput(),
+                        "founder.rider-entry",
+                    )
+                }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
@@ -948,6 +1073,67 @@ class PortableDesignClientTest {
             assertEquals("FRAME_TOO_LARGE", oversizedRequest.kind)
         }
     }
+
+    private fun initiativeClassificationInput() = InitiativeClassificationInput(
+        primaryType = "service",
+        secondaryTypes = listOf("api", "modernization"),
+        systemState = "brownfield",
+        changePosture = "modernization",
+        motivations = listOf("business-driven", "technical"),
+        characteristics = InitiativeClassificationCharacteristics(
+            userInterface = "non-ui",
+            data = "data-bearing",
+            integration = "integration-heavy",
+            interactionModes = listOf("synchronous", "asynchronous"),
+            exposure = "partner",
+        ),
+        regulated = true,
+        policyDomains = listOf("payments", "privacy"),
+        sensitivities = listOf("security", "privacy", "data"),
+        expectedLifetime = "long-lived",
+        maintenanceHorizon = "Supported for at least five years after initial release",
+        risk = InitiativeClassificationRisk(
+            blastRadius = "multi-unit",
+            reversibility = "partially-reversible",
+            urgency = "high",
+            costOfFailure = "high",
+        ),
+        dependencies = listOf("Existing identity service", "Partner API consumers"),
+        affectedAssets = listOf("Payments API", "Settlement worker"),
+        owner = "Payments engineering owner",
+        accountableAuthority = "Payments Product Owner",
+        confidence = InitiativeClassificationConfidence(
+            "medium",
+            "Repository evidence is current but partner scope awaits confirmation",
+        ),
+        evidence = listOf(InitiativeEntrySource("evidence", "GAEP-EVD-001")),
+        unresolvedQuestions = listOf("Whether the legacy batch endpoint remains in scope"),
+        rationale = "The initiative changes a brownfield service and its independently deployed API consumers.",
+    )
+
+    private fun initiativeApplicabilityInput() = InitiativeApplicabilityMatrixInput(
+        decisions = listOf(
+            InitiativeApplicabilityDecisionInput(
+                subject = InitiativeApplicabilitySubject(
+                    "test-level",
+                    "consumer-contract-testing",
+                    "Consumer contract testing",
+                ),
+                status = "required",
+                rationale = "Independently deployed partner consumers require version-bound compatibility evidence.",
+                sources = listOf(InitiativeEntrySource("policy", "GAEP-POL-CONTRACT-001")),
+                owner = "Payments quality owner",
+                accountableApprover = "Payments Product Owner",
+                dependencies = listOf("partner-api-contract"),
+                conditions = emptyList(),
+                reviewTriggers = listOf("API contract or consumer inventory changes"),
+                approval = InitiativeApplicabilityApproval("pending", emptyList()),
+                relatedRecords = emptyList(),
+                relatedImplementationUnits = listOf("payments-api"),
+            ),
+        ),
+        unresolvedSubjects = emptyList(),
+    )
 
     private fun assertInvalidResponse(client: GaepEngineClient, id: UUID) {
         val error = hostError { client.readPortableDesignSnapshot(id) }

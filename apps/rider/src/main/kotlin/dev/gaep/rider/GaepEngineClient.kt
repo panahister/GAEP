@@ -78,6 +78,80 @@ class GaepEngineClient(
     ) { envelope -> PortableDesignProtocol.parseProductBindingEnvelope(envelope) }
 
     @Synchronized
+    fun readInitiative(initiativeId: UUID): InitiativeEntryRecord {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("readInitiative", params) { envelope ->
+            PortableDesignProtocol.parseInitiativeEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
+    fun assessInitiativeEntry(initiativeId: UUID): InitiativeEntryAssessment {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("assessInitiativeEntry", params) { envelope ->
+            PortableDesignProtocol.parseInitiativeEntryAssessmentEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
+    fun classifyInitiative(
+        initiativeId: UUID,
+        expectedInitiativeRevision: Long,
+        classification: InitiativeClassificationInput,
+        actorId: String,
+    ): InitiativeEntryRecord {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        PortableDesignProtocol.validateProductRevision(expectedInitiativeRevision)
+        val normalizedActorId = PortableDesignProtocol.normalizeActorId(actorId)
+        val classificationJson = PortableDesignProtocol.initiativeClassificationInputToJson(classification)
+        val params = JsonObject().apply {
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("expectedInitiativeRevision", expectedInitiativeRevision)
+            addProperty("actorId", normalizedActorId)
+            add("classification", classificationJson)
+        }
+        return portableRequest("classifyInitiative", params) { envelope ->
+            PortableDesignProtocol.parseInitiativeEnvelope(
+                envelope,
+                expectedInitiativeId = initiativeId,
+                expectedRevision = expectedInitiativeRevision,
+                expectedActorId = normalizedActorId,
+                expectedClassificationInput = classificationJson,
+            )
+        }
+    }
+
+    @Synchronized
+    fun resolveInitiativeApplicability(
+        initiativeId: UUID,
+        expectedInitiativeRevision: Long,
+        applicability: InitiativeApplicabilityMatrixInput,
+        actorId: String,
+    ): InitiativeEntryRecord {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        PortableDesignProtocol.validateProductRevision(expectedInitiativeRevision)
+        val normalizedActorId = PortableDesignProtocol.normalizeActorId(actorId)
+        val applicabilityJson = PortableDesignProtocol.initiativeApplicabilityInputToJson(applicability)
+        val params = JsonObject().apply {
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("expectedInitiativeRevision", expectedInitiativeRevision)
+            addProperty("actorId", normalizedActorId)
+            add("applicability", applicabilityJson)
+        }
+        return portableRequest("resolveInitiativeApplicability", params) { envelope ->
+            PortableDesignProtocol.parseInitiativeEnvelope(
+                envelope,
+                expectedInitiativeId = initiativeId,
+                expectedRevision = expectedInitiativeRevision,
+                expectedActorId = normalizedActorId,
+                expectedApplicabilityInput = applicabilityJson,
+            )
+        }
+    }
+
+    @Synchronized
     fun readPhaseDashboard(
         product: ProductBinding,
         phase: DeliveryPhaseId = DeliveryPhaseId.PHASE_0_1A_FOUNDATION,
