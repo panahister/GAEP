@@ -557,7 +557,11 @@ export class GaepEngine {
     const path = this.repository.resolve("initiatives", `${initiativeId}.json`)
     return this.repository.withLock(async () => {
       await this.assertAuditIntegrity()
-      const current = await this.repository.readJson(path, initiativeSchema)
+      const [current, product] = await Promise.all([
+        this.repository.readJson(path, initiativeSchema),
+        this.readProduct(),
+      ])
+      if (current.productId !== product.id) throw new Error("Initiative does not target this Product")
       if (revisionOf(current) !== expectedInitiativeRevision) {
         throw new Error("Initiative changed before applicability resolution; reload the exact revision")
       }
@@ -566,6 +570,11 @@ export class GaepEngine {
       }
       if (!current.classification) {
         throw new Error("Initiative applicability requires an exact current classification")
+      }
+      if (current.classification.productRevision !== revisionOf(product) ||
+          current.classification.productDigest !== sha256Digest(product) ||
+          current.classification.productProfile !== product.profile) {
+        throw new Error("Initiative classification does not bind the current Product; reclassify before applicability resolution")
       }
       const now = new Date().toISOString()
       const nextInitiativeRevision = revisionOf(current) + 1

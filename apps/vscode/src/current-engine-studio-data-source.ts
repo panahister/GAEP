@@ -15,6 +15,7 @@ import type {
   Handoff,
   InstructionPrivilegeGrant,
   Initiative,
+  InitiativeEntryAssessment,
   ManagedApplyDecisionReceipt,
   ManagedEvidenceEvent,
   ManagedRunEvidence,
@@ -97,6 +98,7 @@ export interface CurrentStudioEngineReader {
   readProduct(): Promise<Product>
   readSelection(): Promise<AgentSelection>
   readSelectionState?(): Promise<AgentSelectionState>
+  assessInitiativeEntry?(id: string): Promise<InitiativeEntryAssessment>
   listRuns(): Promise<Run[]>
   listManagedRuns?(): Promise<ManagedRunRecord[]>
   listManagedRunsPage?(input?: ManagedRunListPageInput): Promise<ManagedRunListPage>
@@ -113,6 +115,8 @@ export type ExistingStudioCommand =
   | "gaep.initializeProduct"
   | "gaep.selectWorkspaceRoot"
   | "gaep.createInitiative"
+  | "gaep.classifyInitiative"
+  | "gaep.resolveInitiativeApplicability"
   | "gaep.changeInitiativeState"
   | "gaep.selectAgent"
   | "gaep.prepareRun"
@@ -143,6 +147,7 @@ export interface CurrentEngineStudioContext {
 interface ObservedStudioState {
   product?: Product
   initiatives: Initiative[]
+  initiativeEntryAssessments: Map<string, InitiativeEntryAssessment>
   runs: Run[]
   runsObserved: boolean
   managedRuns: ManagedRunObservation[]
@@ -458,13 +463,18 @@ function sectionsFor(state: ObservedStudioState): OverviewSectionStatus[] {
   })
 }
 
-function selectedInitiativeEntries(initiatives: Initiative[]): StudioDefinitionEntry[] {
-  const selected = currentInitiative(initiatives)
+function selectedInitiativeEntries(state: ObservedStudioState): StudioDefinitionEntry[] {
+  const selected = currentInitiative(state.initiatives)
   if (!selected) return []
+  const assessment = state.initiativeEntryAssessments.get(selected.id)
   return [
     { term: "Initiative", value: selected.title, recordId: selected.id },
     { term: "State", value: selected.state, recordId: selected.id },
     { term: "Outcome", value: selected.outcome, recordId: selected.id },
+    { term: "Classification", value: assessment ? assessment.classification.status : "not assessed", recordId: selected.id },
+    { term: "Applicability", value: assessment ? assessment.applicability.status : "not assessed", recordId: selected.id },
+    { term: "Entry assessment", value: assessment?.state ?? "not assessed", recordId: selected.id },
+    { term: "Authority", value: "Entry assessment is read-only and grants no approval, readiness, or action authority.", recordId: selected.id },
   ]
 }
 
@@ -1006,7 +1016,7 @@ function overviewPage(state: ObservedStudioState): OverviewPageSnapshot {
     },
     ...(primary ? { primaryAction: primary } : {}),
     sections: sectionsFor(state),
-    currentInitiative: selectedInitiativeEntries(state.initiatives),
+    currentInitiative: selectedInitiativeEntries(state),
     latestRun: latestRunEntries(state.runs),
     blockers,
   }
@@ -1020,20 +1030,67 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
       { key: "title", label: "Initiative", identifier: true },
       { key: "outcome", label: "Outcome" },
       { key: "state", label: "State" },
+      { key: "classification", label: "Classification" },
+      { key: "applicability", label: "Applicability" },
+      { key: "entry", label: "Entry assessment" },
+      { key: "authority", label: "Authority boundary" },
       { key: "updated", label: "Updated" },
     ],
-    rows: state.initiatives.map((candidate) => ({
-      id: candidate.id,
-      cells: { title: candidate.title, outcome: candidate.outcome, state: candidate.state, updated: candidate.updatedAt },
-      state: candidate.state,
-      actions: [control("Change state", {
-        kind: "transition-record",
-        recordType: "initiative",
-        recordId: candidate.id,
-        toState: "native-picker",
-        reason: "Confirm in the native GAEP workflow",
-      })],
-    })),
+    rows: state.initiatives.map((candidate) => {
+      const assessment = state.initiativeEntryAssessments.get(candidate.id)
+      const mutable = !["completed", "cancelled"].includes(candidate.state)
+      const exactRevision = candidate.revision ?? 1
+      const canResolve = mutable && assessment?.classification.status === "current"
+      return {
+        id: candidate.id,
+        cells: {
+          title: candidate.title,
+          outcome: candidate.outcome,
+          state: candidate.state,
+          classification: assessment
+            ? `${assessment.classification.status}${candidate.classification ? ` · ${candidate.classification.primaryType} / ${candidate.classification.productProfile}` : ""}`
+            : "unavailable",
+          applicability: assessment
+            ? `${assessment.applicability.status} · ${assessment.applicability.decisionCount} decision(s) · ${assessment.applicability.unresolvedSubjectCount} unresolved`
+            : "unavailable",
+          entry: assessment
+            ? `${assessment.state}${assessment.reasons.length > 0 ? ` · ${assessment.reasons.join("; ")}` : " · no recorded entry gaps"}`
+            : "not assessed",
+          authority: "Entry assessment is read-only and grants no approval, readiness, or action authority.",
+          updated: candidate.updatedAt,
+        },
+        state: assessment?.state ?? candidate.state,
+        actions: [
+          control(
+            candidate.classification ? "Reclassify" : "Classify",
+            { kind: "classify-initiative", initiativeId: candidate.id, expectedRevision: exactRevision },
+            mutable && Boolean(assessment),
+            "secondary",
+            !mutable
+              ? `Terminal Initiative ${candidate.state} entry records are immutable.`
+              : assessment ? undefined : "Refresh after exact audit-bound entry assessment is available.",
+          ),
+          control(
+            candidate.applicability ? "Re-resolve applicability" : "Resolve applicability",
+            { kind: "resolve-initiative-applicability", initiativeId: candidate.id, expectedRevision: exactRevision },
+            canResolve,
+            "secondary",
+            !mutable
+              ? `Terminal Initiative ${candidate.state} entry records are immutable.`
+              : assessment?.classification.status === "current"
+                ? undefined
+                : "Record a classification bound to the current Product revision first.",
+          ),
+          control("Change state", {
+            kind: "transition-record",
+            recordType: "initiative",
+            recordId: candidate.id,
+            toState: "native-picker",
+            reason: "Confirm in the native GAEP workflow",
+          }),
+        ],
+      }
+    }),
     actions: [control("Create Initiative", { kind: "create-initiative" }, true, "primary")],
     ...(state.initiatives.length === 0 ? { emptyState: emptySurface("No Initiatives", "Create a bounded Initiative before preparing a run.", [control("Create Initiative", { kind: "create-initiative" }, true, "primary")]) } : {}),
   }
@@ -2246,6 +2303,16 @@ function commandFor(action: StudioAction): { command: ExistingStudioCommand; arg
     case "initialize-product": return { command: "gaep.initializeProduct", args: [], announcement: "Opened the native Product initialization workflow." }
     case "select-product-root": return { command: "gaep.selectWorkspaceRoot", args: [], announcement: "Opened the native Product-root picker." }
     case "create-initiative": return { command: "gaep.createInitiative", args: [], announcement: "Opened the native Initiative workflow." }
+    case "classify-initiative": return {
+      command: "gaep.classifyInitiative",
+      args: [action.initiativeId, action.expectedRevision],
+      announcement: "Completed the exact native Initiative classification workflow; classification grants no approval or action authority.",
+    }
+    case "resolve-initiative-applicability": return {
+      command: "gaep.resolveInitiativeApplicability",
+      args: [action.initiativeId, action.expectedRevision],
+      announcement: "Completed the exact native Initiative applicability workflow; the matrix grants no approval, readiness, or action authority.",
+    }
     case "prepare-run": return { command: "gaep.prepareRun", args: [], announcement: "Opened the native governed-run workflow." }
     case "verify-audit": return { command: "gaep.verifyAudit", args: [], announcement: "Audit verification completed in the extension host." }
     case "show-diagnostics": return { command: "gaep.showDiagnostics", args: [], announcement: "Opened GAEP diagnostics." }
@@ -2679,7 +2746,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
 
   private async observe(route: StudioRoute): Promise<ObservedStudioState> {
     const empty: ObservedStudioState = {
-      initiatives: [], runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
+      initiatives: [], initiativeEntryAssessments: new Map(), runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
       handoffSelectedFileCount: 0, handoffOmittedOutsideWindow: 0, handoffOmittedForResourceSafety: 0,
       handoffPlatformAttestationUnavailable: false,
@@ -2765,6 +2832,39 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     if (agents.status === "fulfilled") empty.agents = agents.value
     else this.recordObservationFailure(empty, "agent-probe", agents.reason)
     const auditSemanticsVerified = empty.audit?.valid === true
+    if (["overview", "delivery", "readiness"].includes(route) && engine.assessInitiativeEntry) {
+      if (auditSemanticsVerified) {
+        const assessments = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.assessInitiativeEntry!(initiative.id)),
+        )
+        assessments.forEach((assessment, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (assessment.status === "fulfilled" &&
+              assessment.value.initiativeId === initiative.id &&
+              assessment.value.initiativeRevision === (initiative.revision ?? 1)) {
+            empty.initiativeEntryAssessments.set(initiative.id, assessment.value)
+          } else {
+            this.context.logDiagnostic(
+              "Product Studio Initiative entry assessment was unavailable or did not bind the exact Initiative revision",
+              assessment.status === "rejected" ? assessment.reason : undefined,
+            )
+            empty.issues.push(issue(
+              `initiative-entry-${initiative.id}-unavailable`,
+              `${initiative.title}: exact entry classification/applicability assessment is unavailable. Refresh before relying on entry state.`,
+              "warning",
+              initiative.id,
+            ))
+          }
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "initiative-entry-assessments-unavailable",
+          "Initiative entry classification/applicability assessments are withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
     if (!auditSemanticsVerified && route === "runs-evidence") {
       empty.issues.push(issue(
         "managed-runs-unavailable",

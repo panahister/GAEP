@@ -43,6 +43,8 @@
     "onCommand:gaep.selectAgent",
     "onCommand:gaep.migrateLegacyAgentSelection",
     "onCommand:gaep.createInitiative",
+    "onCommand:gaep.classifyInitiative",
+    "onCommand:gaep.resolveInitiativeApplicability",
     "onCommand:gaep.changeInitiativeState",
     "onCommand:gaep.prepareRun",
     "onCommand:gaep.cancelActiveRun",
@@ -89,6 +91,14 @@
       {
         "command": "gaep.createInitiative",
         "title": "GAEP: Create Initiative"
+      },
+      {
+        "command": "gaep.classifyInitiative",
+        "title": "GAEP: Classify Initiative Entry"
+      },
+      {
+        "command": "gaep.resolveInitiativeApplicability",
+        "title": "GAEP: Resolve Initiative Applicability"
       },
       {
         "command": "gaep.changeInitiativeState",

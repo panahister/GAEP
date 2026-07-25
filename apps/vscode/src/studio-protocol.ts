@@ -419,6 +419,8 @@ export type StudioAction =
   | { kind: "initialize-product" }
   | { kind: "select-product-root" }
   | { kind: "create-initiative" }
+  | { kind: "classify-initiative"; initiativeId: string; expectedRevision: number }
+  | { kind: "resolve-initiative-applicability"; initiativeId: string; expectedRevision: number }
   | { kind: "prepare-run" }
   | { kind: "verify-audit" }
   | { kind: "show-diagnostics" }
@@ -1028,6 +1030,12 @@ export function isStudioAction(value: unknown): value is StudioAction {
     case "show-source":
     case "select-record":
       return hasOnlyKeys(value, ["kind", "recordId"]) && isNonEmptyString(value.recordId)
+    case "classify-initiative":
+    case "resolve-initiative-applicability":
+      return hasOnlyKeys(value, ["kind", "initiativeId", "expectedRevision"]) &&
+        typeof value.initiativeId === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value.initiativeId) &&
+        isNonNegativeInteger(value.expectedRevision) && value.expectedRevision > 0
     case "read-portable-design-snapshot":
       return hasOnlyKeys(value, ["kind", "bundleId"]) && typeof value.bundleId === "string" &&
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value.bundleId)

@@ -9,6 +9,7 @@ import {
   legacyAdapterCapabilitiesV1Schema,
   legacyAgentSelectionV1Schema,
   managedRunRecordSchema,
+  productSchema,
   type AdapterCapabilities,
   type AgentSelection,
   type ExecutionCharter,
@@ -385,6 +386,43 @@ describe("GAEP local engine", () => {
       classification: { status: "current" },
       applicability: { status: "current", unresolvedSubjectCount: 0, pendingApprovalCount: 0 },
     })
+  })
+
+  it("refuses to resolve applicability against a classification from an older Product revision", async () => {
+    const { product, initiative } = await initialize()
+    const classified = await engine.classifyInitiative(initiative.id, classificationInput, initiative.revision!, "founder")
+    const revisedProduct = productSchema.parse({
+      ...product,
+      revision: (product.revision ?? 1) + 1,
+      summary: "A governed product design workspace with a revised entry profile.",
+      updatedAt: new Date().toISOString(),
+    })
+    await engine.repository.withLock(async () => engine.repository.commitMutation({
+      writes: [{
+        path: engine.repository.resolve("product.json"),
+        value: revisedProduct,
+        schema: productSchema,
+        governed: true,
+      }],
+      audit: {
+        eventType: "test.product.revised",
+        actor: { kind: "human", id: "founder" },
+        subjectId: product.id,
+        payload: { revision: revisedProduct.revision, recordDigest: canonicalDigest(revisedProduct) },
+      },
+    }))
+
+    await expect(engine.assessInitiativeEntry(initiative.id)).resolves.toMatchObject({
+      classification: { status: "stale" },
+      applicability: { status: "missing" },
+    })
+    await expect(engine.resolveInitiativeApplicability(
+      initiative.id,
+      applicabilityInput,
+      classified.revision!,
+      "founder",
+    )).rejects.toThrow(/does not bind the current Product/i)
+    await expect(engine.repository.verifyAudit()).resolves.toMatchObject({ valid: true })
   })
 
   it("refuses Product reinitialization and preserves the original manifest identity", async () => {

@@ -11,6 +11,7 @@ import {
   type Decision,
   type Handoff,
   type Initiative,
+  type InitiativeEntryAssessment,
   type ManagedApplyDecisionReceipt,
   type ManagedRunEvidence,
   type ManagedRunRecord,
@@ -68,6 +69,35 @@ const initiative: Initiative = {
   state: "active",
   createdAt: "2026-07-21T00:00:00.000Z",
   updatedAt: "2026-07-21T00:00:00.000Z",
+}
+
+function entryAssessment(
+  overrides: Partial<InitiativeEntryAssessment> = {},
+): InitiativeEntryAssessment {
+  return {
+    schemaVersion: 1,
+    kind: "initiative-entry-assessment",
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    productDigest: canonicalDigest(product),
+    classification: { status: "current", digest: `sha256:${"c".repeat(64)}` },
+    applicability: {
+      status: "missing",
+      decisionCount: 0,
+      unresolvedSubjectCount: 0,
+      pendingHumanDecisionCount: 0,
+      blockedDecisionCount: 0,
+      pendingApprovalCount: 0,
+      rejectedApprovalCount: 0,
+    },
+    state: "attention-required",
+    reasons: ["Initiative applicability has not been resolved"],
+    assessedAt: "2026-07-25T00:00:00.000Z",
+    authorityBoundary: "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
+    ...overrides,
+  }
 }
 
 const selection: AgentSelection = {
@@ -602,6 +632,7 @@ interface HarnessOptions {
   selection?: AgentSelection | null
   selectionError?: Error
   initiatives?: Initiative[]
+  initiativeEntryAssessments?: Record<string, InitiativeEntryAssessment>
   runs?: Run[]
   managedRuns?: ManagedRunRecord[]
   managedRunTotal?: number
@@ -640,6 +671,33 @@ function harness(options: HarnessOptions = {}) {
       if (options.selectionError) throw options.selectionError
       if (!selectedAgent) throw new Error("missing selection")
       return selectedAgent
+    },
+    assessInitiativeEntry: async (id: string): Promise<InitiativeEntryAssessment> => {
+      const observed = (options.initiatives ?? [initiative]).find((candidate) => candidate.id === id)
+      if (!observed) throw new Error("missing Initiative")
+      return options.initiativeEntryAssessments?.[id] ?? {
+        schemaVersion: 1,
+        kind: "initiative-entry-assessment",
+        initiativeId: observed.id,
+        initiativeRevision: observed.revision ?? 1,
+        productId: product.id,
+        productRevision: product.revision ?? 1,
+        productDigest: canonicalDigest(product),
+        classification: { status: "missing" },
+        applicability: {
+          status: "missing",
+          decisionCount: 0,
+          unresolvedSubjectCount: 0,
+          pendingHumanDecisionCount: 0,
+          blockedDecisionCount: 0,
+          pendingApprovalCount: 0,
+          rejectedApprovalCount: 0,
+        },
+        state: "attention-required",
+        reasons: ["Initiative classification is missing", "Initiative applicability has not been resolved"],
+        assessedAt: "2026-07-25T00:00:00.000Z",
+        authorityBoundary: "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
+      }
     },
     listRuns: async () => options.runs ?? [run],
     listManagedRuns: async () => {
@@ -1071,6 +1129,46 @@ describe("current-engine Product Studio data source", () => {
       expectedSnapshotRevision: 0,
     })
     expect(stale.status).toBe("rejected")
+  })
+
+  it("presents exact Initiative entry truth and maps revision-bound native classification and applicability workflows", async () => {
+    const assessment = entryAssessment()
+    const { source, commands } = harness({
+      initiativeEntryAssessments: { [initiative.id]: assessment },
+    })
+    let snapshot = await source.readSnapshot("delivery")
+    if (snapshot.page.kind !== "delivery") throw new Error("Expected Delivery page")
+    const row = snapshot.page.initiatives.rows[0]
+    expect(row?.cells).toMatchObject({
+      classification: "current",
+      applicability: "missing · 0 decision(s) · 0 unresolved",
+      entry: "attention-required · Initiative applicability has not been resolved",
+    })
+    const classify = row?.actions.find((action) => action.action.kind === "classify-initiative")
+    const resolve = row?.actions.find((action) => action.action.kind === "resolve-initiative-applicability")
+    expect(classify).toMatchObject({ enabled: true, action: { initiativeId: initiative.id, expectedRevision: 1 } })
+    expect(resolve).toMatchObject({ enabled: true, action: { initiativeId: initiative.id, expectedRevision: 1 } })
+    if (!classify) throw new Error("Expected classification action")
+    await source.execute(classify.action, {
+      requestId: "classify-entry",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })
+    expect(commands.at(-1)).toEqual({ command: "gaep.classifyInitiative", args: [initiative.id, 1] })
+
+    snapshot = await source.readSnapshot("delivery")
+    if (snapshot.page.kind !== "delivery") throw new Error("Expected Delivery page")
+    const currentResolve = snapshot.page.initiatives.rows[0]?.actions.find(
+      (action) => action.action.kind === "resolve-initiative-applicability",
+    )
+    if (!currentResolve) throw new Error("Expected applicability action")
+    await source.execute(currentResolve.action, {
+      requestId: "resolve-entry",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })
+    expect(commands.at(-1)).toEqual({ command: "gaep.resolveInitiativeApplicability", args: [initiative.id, 1] })
+    expect(JSON.stringify(snapshot)).toContain("grants no approval, readiness, or action authority")
   })
 
   it("rejects an otherwise-current action after the opaque root context changes", async () => {

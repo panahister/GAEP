@@ -460,6 +460,26 @@ describe("Product Studio protocol", () => {
   it("allows only typed semantic actions and never arbitrary commands or paths", () => {
     expect(isStudioAction({ kind: "select-product-root" })).toBe(true)
     expect(isStudioAction({ kind: "create-initiative" })).toBe(true)
+    expect(isStudioAction({
+      kind: "classify-initiative",
+      initiativeId: "22222222-2222-4222-8222-222222222222",
+      expectedRevision: 3,
+    })).toBe(true)
+    expect(isStudioAction({
+      kind: "resolve-initiative-applicability",
+      initiativeId: "22222222-2222-4222-8222-222222222222",
+      expectedRevision: 3,
+    })).toBe(true)
+    expect(isStudioAction({
+      kind: "classify-initiative",
+      initiativeId: "/tmp/private",
+      expectedRevision: 3,
+    })).toBe(false)
+    expect(isStudioAction({
+      kind: "resolve-initiative-applicability",
+      initiativeId: "22222222-2222-4222-8222-222222222222",
+      expectedRevision: 0,
+    })).toBe(false)
     expect(isStudioAction({ kind: "prepare-run", command: "workbench.action.terminal.new" })).toBe(false)
     expect(isStudioAction({ kind: "select-product-root", path: "/tmp/untrusted" })).toBe(false)
     expect(isStudioAction({ kind: "open-record", recordId: "record-1" })).toBe(true)

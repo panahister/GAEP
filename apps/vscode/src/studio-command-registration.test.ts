@@ -22,6 +22,8 @@ describe("Product Studio Command Palette coverage", () => {
     }
 
     for (const command of [
+      "gaep.classifyInitiative",
+      "gaep.resolveInitiativeApplicability",
       "gaep.productStudio.startDesignDraft",
       "gaep.productStudio.editDesignSection",
       "gaep.productStudio.evaluateDesignReadiness",

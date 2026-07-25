@@ -31,6 +31,12 @@ import * as vscode from "vscode"
 import { ActiveRunRegistry } from "./run-registry.js"
 import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-source.js"
 import { observePortableHandoffs } from "./handoff-observation.js"
+import {
+  collectInitiativeApplicability,
+  collectInitiativeClassification,
+  InitiativeEntryWorkflowCancelled,
+  type InitiativeEntryWorkflowUi,
+} from "./initiative-entry-workflow.js"
 import { resolveLocalActorPrincipal } from "./local-actor.js"
 import { readVerifiedManagedArtifacts } from "./managed-evidence-verifier.js"
 import {
@@ -108,6 +114,41 @@ async function requiredInput(prompt: string, options: vscode.InputBoxOptions = {
   const value = await vscode.window.showInputBox({ prompt, ignoreFocusOut: true, ...options })
   if (!value?.trim()) throw new WorkflowCancelled()
   return value.trim()
+}
+
+function initiativeEntryUi(): InitiativeEntryWorkflowUi {
+  return {
+    pick: async <T extends string>(title: string, options: readonly T[]): Promise<T | undefined> => {
+      const selected = await vscode.window.showQuickPick(
+        options.map((value) => ({ label: value, value })),
+        { title, ignoreFocusOut: true },
+      )
+      return selected?.value
+    },
+    pickMany: async <T extends string>(title: string, options: readonly T[], minimum = 0): Promise<T[] | undefined> => {
+      const selected = await vscode.window.showQuickPick(
+        options.map((value) => ({ label: value, value, picked: false })),
+        { title, ignoreFocusOut: true, canPickMany: true, placeHolder: minimum > 0 ? `Select at least ${minimum}` : "Optional" },
+      )
+      if (!selected) return undefined
+      if (selected.length < minimum) throw new Error(`${title} requires at least ${minimum} selection${minimum === 1 ? "" : "s"}`)
+      return selected.map((entry) => entry.value)
+    },
+    input: async (prompt, options = {}) => vscode.window.showInputBox({
+      prompt,
+      ignoreFocusOut: true,
+      value: options.value,
+      password: options.secret,
+      validateInput: options.required === false
+        ? undefined
+        : (value) => value.trim() ? undefined : "This governed value is required",
+    }),
+    confirm: async (message, acceptLabel) => (await vscode.window.showWarningMessage(
+      message,
+      { modal: true },
+      acceptLabel,
+    )) === acceptLabel,
+  }
 }
 
 async function collectSetting(setting: AgentSetting): Promise<unknown> {
@@ -562,7 +603,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     try {
       return await operation(...args)
     } catch (error) {
-      if (error instanceof WorkflowCancelled) return
+      if (error instanceof WorkflowCancelled || error instanceof InitiativeEntryWorkflowCancelled) return
       const message = error instanceof Error ? error.message : "Unknown GAEP failure"
       logDiagnostic("Command failed", error)
       await vscode.window.showErrorMessage(message, "Show Diagnostics").then((selected) => {
@@ -1897,6 +1938,88 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await vscode.window.showInformationMessage(`Initiative activated: ${initiative.title}`)
     }
   })))
+
+  const selectInitiativeForEntry = async (
+    runtime: { engine: GaepEngine; path: string },
+    initiativeId?: string,
+    expectedRevision?: number,
+  ): Promise<Initiative> => {
+    let initiative: Initiative | undefined
+    if (initiativeId) initiative = await runtime.engine.readInitiative(initiativeId)
+    if (!initiative) {
+      const initiativeFiles = (await readdir(join(runtime.path, ".gaep", "initiatives")))
+        .filter((name) => name.endsWith(".json"))
+      const initiatives = await Promise.all(
+        initiativeFiles.map((name) => runtime.engine.readInitiative(name.replace(/\.json$/u, ""))),
+      )
+      const selected = await vscode.window.showQuickPick(
+        initiatives.map((candidate) => ({
+          label: candidate.title,
+          description: `${candidate.classification?.primaryType ?? "unclassified"} · ${candidate.applicability?.state ?? "applicability missing"}`,
+          detail: `${candidate.state} · revision ${candidate.revision ?? 1}`,
+          initiative: candidate,
+        })),
+        { title: "Select the exact Initiative entry record", ignoreFocusOut: true },
+      )
+      if (!selected) throw new WorkflowCancelled()
+      initiative = selected.initiative
+    }
+    const revision = initiative.revision ?? 1
+    if (expectedRevision !== undefined && revision !== expectedRevision) {
+      throw new Error("The Initiative changed since Product Studio offered this entry workflow. Refresh and review the exact current revision.")
+    }
+    return initiative
+  }
+
+  context.subscriptions.push(vscode.commands.registerCommand(
+    "gaep.classifyInitiative",
+    (initiativeId?: string, expectedRevision?: number) => safely(async () => {
+      const runtime = await requireRuntime()
+      const initiative = await selectInitiativeForEntry(runtime, initiativeId, expectedRevision)
+      const classification = await collectInitiativeClassification(initiativeEntryUi())
+      if (containsSecretShapedValue(classification)) {
+        throw new Error("The Initiative classification contains a secret-shaped value and was not persisted.")
+      }
+      const updated = await runtime.engine.classifyInitiative(
+        initiative.id,
+        classification,
+        initiative.revision ?? 1,
+        actorId,
+      )
+      refresh()
+      const assessment = await runtime.engine.assessInitiativeEntry(updated.id)
+      await vscode.window.showInformationMessage(
+        `${updated.title} is classified as ${updated.classification?.primaryType}. Entry assessment: ${assessment.state}. Classification grants no approval or action authority.`,
+      )
+    })(),
+  ))
+
+  context.subscriptions.push(vscode.commands.registerCommand(
+    "gaep.resolveInitiativeApplicability",
+    (initiativeId?: string, expectedRevision?: number) => safely(async () => {
+      const runtime = await requireRuntime()
+      const initiative = await selectInitiativeForEntry(runtime, initiativeId, expectedRevision)
+      const before = await runtime.engine.assessInitiativeEntry(initiative.id)
+      if (before.classification.status !== "current") {
+        throw new Error("Record a classification bound to the current Product revision before resolving applicability.")
+      }
+      const applicability = await collectInitiativeApplicability(initiativeEntryUi(), actorId)
+      if (containsSecretShapedValue(applicability)) {
+        throw new Error("The Initiative applicability matrix contains a secret-shaped value and was not persisted.")
+      }
+      const updated = await runtime.engine.resolveInitiativeApplicability(
+        initiative.id,
+        applicability,
+        initiative.revision ?? 1,
+        actorId,
+      )
+      refresh()
+      const assessment = await runtime.engine.assessInitiativeEntry(updated.id)
+      await vscode.window.showInformationMessage(
+        `${updated.title} now has ${updated.applicability?.decisions.length ?? 0} explicit applicability decision(s) and ${updated.applicability?.unresolvedSubjects.length ?? 0} unresolved subject(s). Entry assessment: ${assessment.state}. The matrix grants no approval, readiness, or action authority.`,
+      )
+    })(),
+  ))
 
   context.subscriptions.push(vscode.commands.registerCommand(
     "gaep.changeInitiativeState",
