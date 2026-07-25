@@ -39,6 +39,11 @@ internal static class Program
     private static readonly Guid ChangeDecisionId = Guid.Parse("32323232-3232-4232-8232-323232323232");
     private static readonly Guid ChangeRiskId = Guid.Parse("34343434-3434-4434-8434-343434343434");
     private static readonly Guid InitiativeDecisionId = Guid.Parse("35353535-3535-4535-8535-353535353535");
+    private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
+    private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
+    private const int SubjectCatalogCount = 49;
+    private static readonly string CompletenessPolicyDigest = $"sha256:{new string('e', 64)}";
+    private static readonly string SubjectCatalogDigest = $"sha256:{new string('f', 64)}";
     private const string PrivateRoot = "/Users/private/design-bundle";
     private const string PrivateCredential = "PRIVATE-OAUTH-TOKEN";
     private static int passed;
@@ -88,6 +93,8 @@ internal static class Program
         var badInitiativePrivateRoot = Path.Combine(temporaryRoot, "bad-initiative-private");
         var badInitiativeAssessmentAuthorityRoot = Path.Combine(temporaryRoot, "bad-initiative-assessment-authority");
         var badInitiativeAssessmentBindingRoot = Path.Combine(temporaryRoot, "bad-initiative-assessment-binding");
+        var badInitiativeAssessmentPolicyRoot = Path.Combine(temporaryRoot, "bad-initiative-assessment-policy");
+        var badInitiativeAssessmentCoverageRoot = Path.Combine(temporaryRoot, "bad-initiative-assessment-coverage");
         var badInitiativeClassificationBindingRoot = Path.Combine(temporaryRoot, "bad-initiative-classification-binding");
         var badInitiativeApplicabilityBindingRoot = Path.Combine(temporaryRoot, "bad-initiative-applicability-binding");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
@@ -141,6 +148,8 @@ internal static class Program
         Directory.CreateDirectory(badInitiativePrivateRoot);
         Directory.CreateDirectory(badInitiativeAssessmentAuthorityRoot);
         Directory.CreateDirectory(badInitiativeAssessmentBindingRoot);
+        Directory.CreateDirectory(badInitiativeAssessmentPolicyRoot);
+        Directory.CreateDirectory(badInitiativeAssessmentCoverageRoot);
         Directory.CreateDirectory(badInitiativeClassificationBindingRoot);
         Directory.CreateDirectory(badInitiativeApplicabilityBindingRoot);
         Directory.CreateDirectory(badRunsRoot);
@@ -328,7 +337,10 @@ internal static class Program
         Check(initiative.Revision == 3 && initiative.ProductId == ProductId && initiative.Classification is null &&
               initiative.Applicability is null && initialAssessment.InitiativeRevision == 3 &&
               initialAssessment.Classification.Status == "missing" &&
-              initialAssessment.Applicability.Status == "missing" && initialAssessment.State == "attention-required",
+              initialAssessment.Classification.Completeness.Status == "missing" &&
+              initialAssessment.Applicability.Status == "missing" &&
+              initialAssessment.Applicability.Coverage.Status == "unavailable" &&
+              initialAssessment.State == "attention-required",
             "Typed Initiative entry read preserves exact missing classification/applicability truth");
         var classificationInput = InitiativeClassificationFixture();
         await ExpectAsync<ArgumentException>(
@@ -371,15 +383,22 @@ internal static class Program
               resolved.Applicability.State == "current" && resolved.Applicability.InitiativeRevision == 5 &&
               resolved.Applicability.DecisionCount == 1 && resolved.Applicability.UnresolvedSubjectCount == 0 &&
               resolved.Applicability.EvaluatedBy == "founder.review" &&
+              resolved.Applicability.SubjectCatalog == applicabilityInput.SubjectCatalog &&
               resolved.Applicability.ClassificationDigest == resolved.Classification?.Digest,
             "Initiative applicability response is bound to exact content, actor, classification, and next revision");
         var initiativeController = new ProductWorkflowController(client);
         var initiativeContext = await initiativeController.ReadInitiativeEntryContextAsync(InitiativeId);
         var initiativeOutput = ProductWorkflowController.RenderInitiativeEntry(initiativeContext);
-        Check(initiativeContext.Assessment.State == "ready" &&
+        Check(initiativeContext.Assessment.State == "attention-required" &&
               initiativeContext.Assessment.Classification.Status == "current" &&
+              initiativeContext.Assessment.Classification.Completeness.Status == "complete" &&
               initiativeContext.Assessment.Applicability.Status == "current" &&
+              initiativeContext.Assessment.Applicability.Coverage.Status == "incomplete" &&
+              initiativeContext.Assessment.Applicability.Coverage.CoveredSubjectCount == 1 &&
+              initiativeContext.Assessment.Applicability.Coverage.MissingSubjectCount == 48 &&
               initiativeOutput.Contains("GAEP Initiative entry assessment", StringComparison.Ordinal) &&
+              initiativeOutput.Contains("Classification completeness: complete", StringComparison.Ordinal) &&
+              initiativeOutput.Contains("Canonical subject coverage: 1/49", StringComparison.Ordinal) &&
               initiativeOutput.Contains("grants no approval, readiness, not-applicable inference", StringComparison.Ordinal) &&
               !initiativeOutput.Contains("Private Initiative title", StringComparison.Ordinal) &&
               !initiativeOutput.Contains("founder.review", StringComparison.Ordinal) &&
@@ -399,6 +418,20 @@ internal static class Program
                 new ProductWorkflowController(hostileClient).ReadInitiativeEntryContextAsync(InitiativeId));
             Check(invalid.Kind == "HOST_RESPONSE_INVALID",
                 "Initiative entry rejects forged assessment authority");
+        }
+        await using (var hostileClient = new EngineClient(badInitiativeAssessmentPolicyRoot, executable))
+        {
+            var invalid = await CaptureHostErrorAsync(() =>
+                new ProductWorkflowController(hostileClient).ReadInitiativeEntryContextAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID",
+                "Initiative entry rejects an assessment without exact classification policy truth");
+        }
+        await using (var hostileClient = new EngineClient(badInitiativeAssessmentCoverageRoot, executable))
+        {
+            var invalid = await CaptureHostErrorAsync(() =>
+                new ProductWorkflowController(hostileClient).ReadInitiativeEntryContextAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID",
+                "Initiative entry rejects an assessment without exact applicability coverage truth");
         }
         await using (var hostileClient = new EngineClient(badInitiativeAssessmentBindingRoot, executable))
         {
@@ -1477,7 +1510,10 @@ internal static class Program
         Decisions:
         [
             new InitiativeApplicabilityDecisionInput(
-                Subject: new InitiativeApplicabilitySubject("activity", "initiative-entry-review", "Initiative entry review"),
+                Subject: new InitiativeApplicabilitySubject(
+                    "test-method",
+                    "consumer-contract-testing",
+                    "Consumer contract testing"),
                 Status: "required",
                 Rationale: "The Initiative requires an exact governed entry review before later lifecycle work.",
                 Sources: [new InitiativeEntrySource("requirement", "P1-02 and P1-03")],
@@ -1490,7 +1526,11 @@ internal static class Program
                 RelatedRecords: Array.Empty<InitiativeRelatedRecord>(),
                 RelatedImplementationUnits: ["visual-studio-product-studio"]),
         ],
-        UnresolvedSubjects: Array.Empty<InitiativeUnresolvedSubject>());
+        UnresolvedSubjects: Array.Empty<InitiativeUnresolvedSubject>(),
+        SubjectCatalog: new InitiativeApplicabilitySubjectCatalogBinding(
+            SubjectCatalogVersion,
+            SubjectCatalogDigest,
+            SubjectCatalogCount));
 
     private static async Task RunFakeHostAsync(string workspace)
     {
@@ -1501,6 +1541,8 @@ internal static class Program
         var badInitiativePrivate = Path.GetFileName(workspace) == "bad-initiative-private";
         var badInitiativeAssessmentAuthority = Path.GetFileName(workspace) == "bad-initiative-assessment-authority";
         var badInitiativeAssessmentBinding = Path.GetFileName(workspace) == "bad-initiative-assessment-binding";
+        var badInitiativeAssessmentPolicy = Path.GetFileName(workspace) == "bad-initiative-assessment-policy";
+        var badInitiativeAssessmentCoverage = Path.GetFileName(workspace) == "bad-initiative-assessment-coverage";
         var badInitiativeClassificationBinding = Path.GetFileName(workspace) == "bad-initiative-classification-binding";
         var badInitiativeApplicabilityBinding = Path.GetFileName(workspace) == "bad-initiative-applicability-binding";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
@@ -1597,7 +1639,9 @@ internal static class Program
                         initiativeClassification,
                         initiativeApplicability,
                         badInitiativeAssessmentAuthority,
-                        badInitiativeAssessmentBinding);
+                        badInitiativeAssessmentBinding,
+                        badInitiativeAssessmentPolicy,
+                        badInitiativeAssessmentCoverage);
                     break;
                 case "classifyInitiative":
                     initiativeClassification = await HandleClassifyInitiativeAsync(
@@ -1810,7 +1854,9 @@ internal static class Program
         Dictionary<string, object?>? classification,
         Dictionary<string, object?>? applicability,
         bool forgedAuthority,
-        bool forgedProductBinding)
+        bool forgedProductBinding,
+        bool omitCompleteness,
+        bool omitCoverage)
     {
         if (!HasOnlyProperties(parameters, "initiativeId") ||
             parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
@@ -1834,15 +1880,19 @@ internal static class Program
         var blocked = decisions.Count(decision => decision.GetProperty("status").GetString() == "blocked");
         var pendingApproval = decisions.Count(decision => decision.GetProperty("approval").GetProperty("state").GetString() == "pending");
         var rejectedApproval = decisions.Count(decision => decision.GetProperty("approval").GetProperty("state").GetString() == "rejected");
+        var coveredSubjects = Math.Min(decisions.Length + unresolvedCount, SubjectCatalogCount);
+        var missingSubjects = classification is null ? 0 : SubjectCatalogCount - coveredSubjects;
         var reasons = new List<string>();
         if (classification is null) reasons.Add("Initiative classification is missing");
         if (applicability is null) reasons.Add("Initiative applicability is missing");
+        if (applicability is not null && missingSubjects > 0)
+            reasons.Add("Initiative applicability does not cover every canonical subject");
         if (unresolvedCount > 0) reasons.Add("Initiative applicability has unresolved subjects");
         if (pendingHuman > 0) reasons.Add("Initiative applicability awaits human decisions");
         if (blocked > 0) reasons.Add("Initiative applicability contains blocked decisions");
         if (pendingApproval > 0) reasons.Add("Initiative applicability has pending approvals");
         if (rejectedApproval > 0) reasons.Add("Initiative applicability has rejected approvals");
-        await WriteResultAsync(id, new Dictionary<string, object?>
+        var result = new Dictionary<string, object?>
         {
             ["schemaVersion"] = 1,
             ["kind"] = "initiative-entry-assessment",
@@ -1854,8 +1904,35 @@ internal static class Program
                 ? $"sha256:{new string('f', 64)}"
                 : CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7))),
             ["classification"] = classification is null
-                ? new Dictionary<string, object?> { ["status"] = "missing" }
-                : new Dictionary<string, object?> { ["status"] = "current", ["digest"] = classificationDigest },
+                ? new Dictionary<string, object?>
+                {
+                    ["status"] = "missing",
+                    ["completeness"] = new Dictionary<string, object?>
+                    {
+                        ["status"] = "missing",
+                        ["policyVersion"] = CompletenessPolicyVersion,
+                        ["policyDigest"] = CompletenessPolicyDigest,
+                        ["unknownDimensionCount"] = 0,
+                        ["unresolvedQuestionCount"] = 0,
+                        ["missingConditionalDimensionCount"] = 0,
+                        ["confidenceSufficient"] = false,
+                    },
+                }
+                : new Dictionary<string, object?>
+                {
+                    ["status"] = "current",
+                    ["digest"] = classificationDigest,
+                    ["completeness"] = new Dictionary<string, object?>
+                    {
+                        ["status"] = "complete",
+                        ["policyVersion"] = CompletenessPolicyVersion,
+                        ["policyDigest"] = CompletenessPolicyDigest,
+                        ["unknownDimensionCount"] = 0,
+                        ["unresolvedQuestionCount"] = 0,
+                        ["missingConditionalDimensionCount"] = 0,
+                        ["confidenceSufficient"] = true,
+                    },
+                },
             ["applicability"] = applicability is null
                 ? new Dictionary<string, object?>
                 {
@@ -1866,6 +1943,27 @@ internal static class Program
                     ["blockedDecisionCount"] = 0,
                     ["pendingApprovalCount"] = 0,
                     ["rejectedApprovalCount"] = 0,
+                    ["coverage"] = classification is null
+                        ? new Dictionary<string, object?>
+                        {
+                            ["status"] = "unavailable",
+                            ["subjectCount"] = 0,
+                            ["coveredSubjectCount"] = 0,
+                            ["missingSubjectCount"] = 0,
+                            ["unexpectedSubjectCount"] = 0,
+                            ["mismatchedSubjectCount"] = 0,
+                        }
+                        : new Dictionary<string, object?>
+                        {
+                            ["status"] = "missing",
+                            ["catalogVersion"] = SubjectCatalogVersion,
+                            ["catalogDigest"] = SubjectCatalogDigest,
+                            ["subjectCount"] = SubjectCatalogCount,
+                            ["coveredSubjectCount"] = 0,
+                            ["missingSubjectCount"] = SubjectCatalogCount,
+                            ["unexpectedSubjectCount"] = 0,
+                            ["mismatchedSubjectCount"] = 0,
+                        },
                 }
                 : new Dictionary<string, object?>
                 {
@@ -1878,6 +1976,17 @@ internal static class Program
                     ["blockedDecisionCount"] = blocked,
                     ["pendingApprovalCount"] = pendingApproval,
                     ["rejectedApprovalCount"] = rejectedApproval,
+                    ["coverage"] = new Dictionary<string, object?>
+                    {
+                        ["status"] = missingSubjects == 0 ? "complete" : "incomplete",
+                        ["catalogVersion"] = SubjectCatalogVersion,
+                        ["catalogDigest"] = SubjectCatalogDigest,
+                        ["subjectCount"] = SubjectCatalogCount,
+                        ["coveredSubjectCount"] = coveredSubjects,
+                        ["missingSubjectCount"] = missingSubjects,
+                        ["unexpectedSubjectCount"] = 0,
+                        ["mismatchedSubjectCount"] = 0,
+                    },
                 },
             ["state"] = reasons.Count == 0 ? "ready" : blocked > 0 || rejectedApproval > 0 ? "blocked" : "attention-required",
             ["reasons"] = reasons,
@@ -1885,7 +1994,12 @@ internal static class Program
             ["authorityBoundary"] = forgedAuthority
                 ? "assessment-grants-ready-authority"
                 : "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
-        });
+        };
+        if (omitCompleteness && result["classification"] is Dictionary<string, object?> classificationAssessment)
+            classificationAssessment.Remove("completeness");
+        if (omitCoverage && result["applicability"] is Dictionary<string, object?> applicabilityAssessment)
+            applicabilityAssessment.Remove("coverage");
+        await WriteResultAsync(id, result);
     }
 
     private static async Task<Dictionary<string, object?>?> HandleClassifyInitiativeAsync(
@@ -1907,6 +2021,8 @@ internal static class Program
         classification["productProfile"] = "software";
         classification["productRevision"] = 7;
         classification["productDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        classification["completenessPolicyVersion"] = CompletenessPolicyVersion;
+        classification["completenessPolicyDigest"] = CompletenessPolicyDigest;
         classification["classifiedBy"] = HumanActor(mismatchActor ? "hostile.actor" : "founder.review");
         classification["classifiedAt"] = "2026-07-25T01:01:00.000Z";
         classification["authorityBoundary"] =
@@ -1957,6 +2073,7 @@ internal static class Program
             ["productId"] = ProductId.ToString("D"),
             ["initiativeRevision"] = revision + 1,
             ["classificationDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(classification)),
+            ["subjectCatalog"] = input.GetProperty("subjectCatalog").Clone(),
             ["state"] = "current",
             ["evaluatedBy"] = HumanActor(actor),
             ["evaluatedAt"] = "2026-07-25T01:03:00.000Z",

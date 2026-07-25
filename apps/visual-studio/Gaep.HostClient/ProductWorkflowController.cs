@@ -35,29 +35,42 @@ public sealed class ProductWorkflowController(EngineClient client)
         {
             throw new ArgumentException("The Initiative changed while its entry assessment was read. Refresh the exact record.");
         }
+        var completeness = assessment.Classification.Completeness;
         var classificationValid = assessment.Classification.Status switch
         {
             "missing" => initiative.Classification is null && assessment.Classification.Digest is null,
             "current" => initiative.Classification is not null &&
                 assessment.Classification.Digest == initiative.Classification.Digest &&
                 initiative.Classification.ProductRevision == assessment.ProductRevision &&
-                initiative.Classification.ProductDigest == assessment.ProductDigest,
+                initiative.Classification.ProductDigest == assessment.ProductDigest &&
+                initiative.Classification.CompletenessPolicyVersion == completeness.PolicyVersion &&
+                initiative.Classification.CompletenessPolicyDigest == completeness.PolicyDigest,
             "stale" => initiative.Classification is not null &&
                 assessment.Classification.Digest == initiative.Classification.Digest &&
                 (initiative.Classification.ProductRevision != assessment.ProductRevision ||
-                 initiative.Classification.ProductDigest != assessment.ProductDigest),
+                 initiative.Classification.ProductDigest != assessment.ProductDigest ||
+                 initiative.Classification.CompletenessPolicyVersion != completeness.PolicyVersion ||
+                 initiative.Classification.CompletenessPolicyDigest != completeness.PolicyDigest),
             _ => false,
         };
         if (!classificationValid)
         {
             throw new ArgumentException("The Initiative classification assessment is not bound to the exact current record.");
         }
+        var coverage = assessment.Applicability.Coverage;
         var applicabilityValid = assessment.Applicability.Status switch
         {
             "missing" => initiative.Applicability is null && assessment.Applicability.MatrixRevision is null &&
                 assessment.Applicability.Digest is null,
-            "current" or "stale" => initiative.Applicability is not null &&
-                assessment.Applicability.Status == initiative.Applicability.State &&
+            "current" => initiative.Applicability is not null && initiative.Applicability.State == "current" &&
+                assessment.Applicability.MatrixRevision == initiative.Applicability.Revision &&
+                assessment.Applicability.Digest == initiative.Applicability.Digest &&
+                assessment.Applicability.DecisionCount == initiative.Applicability.DecisionCount &&
+                assessment.Applicability.UnresolvedSubjectCount == initiative.Applicability.UnresolvedSubjectCount &&
+                initiative.Applicability.SubjectCatalog?.CatalogVersion == coverage.CatalogVersion &&
+                initiative.Applicability.SubjectCatalog?.Digest == coverage.CatalogDigest &&
+                initiative.Applicability.SubjectCatalog?.SubjectCount == coverage.SubjectCount,
+            "stale" => initiative.Applicability is not null &&
                 assessment.Applicability.MatrixRevision == initiative.Applicability.Revision &&
                 assessment.Applicability.Digest == initiative.Applicability.Digest &&
                 assessment.Applicability.DecisionCount == initiative.Applicability.DecisionCount &&
@@ -67,6 +80,23 @@ public sealed class ProductWorkflowController(EngineClient client)
         if (!applicabilityValid)
         {
             throw new ArgumentException("The Initiative applicability assessment is not bound to the exact current record.");
+        }
+        var coverageValid = coverage.Status switch
+        {
+            "unavailable" => coverage.CatalogVersion is null && coverage.CatalogDigest is null &&
+                coverage.SubjectCount == 0 && assessment.Classification.Status == "missing",
+            "missing" => initiative.Applicability is null &&
+                coverage.CatalogVersion is not null && coverage.CatalogDigest is not null,
+            "complete" or "incomplete" => assessment.Applicability.Status == "current" &&
+                coverage.CatalogVersion is not null && coverage.CatalogDigest is not null,
+            "stale" => assessment.Applicability.Status == "stale" &&
+                coverage.CatalogVersion is not null && coverage.CatalogDigest is not null,
+            _ => false,
+        };
+        if (!coverageValid)
+        {
+            throw new ArgumentException(
+                "The Initiative applicability coverage is not bound to the exact current catalog.");
         }
         return new InitiativeEntryContext(initiative, assessment);
     }
@@ -124,10 +154,24 @@ public sealed class ProductWorkflowController(EngineClient client)
             throw new ArgumentException(
                 "The Initiative changed while the applicability form was open. Refresh and review the exact revision.");
         }
+        var coverage = context.Assessment.Applicability.Coverage;
+        if (coverage.CatalogVersion is null || coverage.CatalogDigest is null || coverage.SubjectCount < 1)
+        {
+            throw new ArgumentException("The canonical applicability subject catalog is unavailable.");
+        }
+        var subjectCatalog = new InitiativeApplicabilitySubjectCatalogBinding(
+            coverage.CatalogVersion,
+            coverage.CatalogDigest,
+            coverage.SubjectCount);
+        if (input.SubjectCatalog is not null && input.SubjectCatalog != subjectCatalog)
+        {
+            throw new ArgumentException(
+                "The applicability form targets a stale subject catalog. Refresh and review the exact catalog.");
+        }
         var updated = await client.ResolveInitiativeApplicabilityAsync(
             context.Initiative.Id,
             context.Initiative.Revision,
-            input,
+            input with { SubjectCatalog = subjectCatalog },
             actorId,
             cancellationToken);
         return RenderInitiativeEntry(await ReadInitiativeEntryContextAsync(updated.Id, cancellationToken));
@@ -149,9 +193,25 @@ public sealed class ProductWorkflowController(EngineClient client)
                 (initiative.Classification is null
                     ? string.Empty
                     : $" · {initiative.Classification.PrimaryType} / {initiative.Classification.ProductProfile}"))
+            .AppendLine($"Classification completeness: {assessment.Classification.Completeness.Status}")
+            .AppendLine($"Completeness policy: {assessment.Classification.Completeness.PolicyVersion}")
+            .AppendLine(
+                $"Classification gaps: {assessment.Classification.Completeness.UnknownDimensionCount} unknown · " +
+                $"{assessment.Classification.Completeness.UnresolvedQuestionCount} unresolved question(s) · " +
+                $"{assessment.Classification.Completeness.MissingConditionalDimensionCount} missing conditional dimension(s)")
+            .AppendLine(
+                $"Classification confidence sufficient: {assessment.Classification.Completeness.ConfidenceSufficient}")
             .AppendLine(
                 $"Applicability: {assessment.Applicability.Status} · matrix revision " +
                 (assessment.Applicability.MatrixRevision?.ToString(CultureInfo.InvariantCulture) ?? "not recorded"))
+            .AppendLine($"Applicability coverage: {assessment.Applicability.Coverage.Status}")
+            .AppendLine(
+                $"Canonical subject coverage: {assessment.Applicability.Coverage.CoveredSubjectCount}/" +
+                assessment.Applicability.Coverage.SubjectCount)
+            .AppendLine(
+                $"Coverage gaps: {assessment.Applicability.Coverage.MissingSubjectCount} missing · " +
+                $"{assessment.Applicability.Coverage.UnexpectedSubjectCount} unexpected · " +
+                $"{assessment.Applicability.Coverage.MismatchedSubjectCount} mismatched")
             .AppendLine($"Decisions: {assessment.Applicability.DecisionCount}")
             .AppendLine($"Unresolved subjects: {assessment.Applicability.UnresolvedSubjectCount}")
             .AppendLine($"Awaiting human decisions: {assessment.Applicability.PendingHumanDecisionCount}")

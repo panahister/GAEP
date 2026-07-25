@@ -41,6 +41,11 @@ public sealed record InitiativeClassificationInput(
 
 public sealed record InitiativeApplicabilitySubject(string Type, string Key, string Label);
 
+public sealed record InitiativeApplicabilitySubjectCatalogBinding(
+    string CatalogVersion,
+    string Digest,
+    int SubjectCount);
+
 public sealed record InitiativeApplicabilityApproval(
     string State,
     IReadOnlyList<string> Conditions,
@@ -74,13 +79,16 @@ public sealed record InitiativeUnresolvedSubject(
 
 public sealed record InitiativeApplicabilityMatrixInput(
     IReadOnlyList<InitiativeApplicabilityDecisionInput> Decisions,
-    IReadOnlyList<InitiativeUnresolvedSubject> UnresolvedSubjects);
+    IReadOnlyList<InitiativeUnresolvedSubject> UnresolvedSubjects,
+    InitiativeApplicabilitySubjectCatalogBinding? SubjectCatalog = null);
 
 public sealed record InitiativeClassificationView(
     string PrimaryType,
     string ProductProfile,
     long ProductRevision,
     string ProductDigest,
+    string? CompletenessPolicyVersion,
+    string? CompletenessPolicyDigest,
     string ClassifiedBy,
     DateTimeOffset ClassifiedAt,
     string Digest,
@@ -93,6 +101,7 @@ public sealed record InitiativeApplicabilityView(
     int DecisionCount,
     int UnresolvedSubjectCount,
     string ClassificationDigest,
+    InitiativeApplicabilitySubjectCatalogBinding? SubjectCatalog,
     string EvaluatedBy,
     DateTimeOffset EvaluatedAt,
     string Digest,
@@ -106,7 +115,29 @@ public sealed record InitiativeEntryRecord(
     InitiativeClassificationView? Classification,
     InitiativeApplicabilityView? Applicability);
 
-public sealed record InitiativeEntryAssessmentClassification(string Status, string? Digest);
+public sealed record InitiativeClassificationCompletenessAssessment(
+    string Status,
+    string PolicyVersion,
+    string PolicyDigest,
+    int UnknownDimensionCount,
+    int UnresolvedQuestionCount,
+    int MissingConditionalDimensionCount,
+    bool ConfidenceSufficient);
+
+public sealed record InitiativeEntryAssessmentClassification(
+    string Status,
+    string? Digest,
+    InitiativeClassificationCompletenessAssessment Completeness);
+
+public sealed record InitiativeApplicabilityCoverageAssessment(
+    string Status,
+    string? CatalogVersion,
+    string? CatalogDigest,
+    int SubjectCount,
+    int CoveredSubjectCount,
+    int MissingSubjectCount,
+    int UnexpectedSubjectCount,
+    int MismatchedSubjectCount);
 
 public sealed record InitiativeEntryAssessmentApplicability(
     string Status,
@@ -117,7 +148,8 @@ public sealed record InitiativeEntryAssessmentApplicability(
     int PendingHumanDecisionCount,
     int BlockedDecisionCount,
     int PendingApprovalCount,
-    int RejectedApprovalCount);
+    int RejectedApprovalCount,
+    InitiativeApplicabilityCoverageAssessment Coverage);
 
 public sealed record InitiativeEntryAssessment(
     Guid InitiativeId,

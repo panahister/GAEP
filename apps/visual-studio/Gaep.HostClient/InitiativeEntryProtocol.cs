@@ -154,6 +154,15 @@ internal static partial class PortableDesignProtocol
                     ["owner"] = unresolved.Owner,
                 }).ToArray(),
         };
+        if (input.SubjectCatalog is not null)
+        {
+            value["subjectCatalog"] = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["catalogVersion"] = input.SubjectCatalog.CatalogVersion,
+                ["digest"] = input.SubjectCatalog.Digest,
+                ["subjectCount"] = input.SubjectCatalog.SubjectCount,
+            };
+        }
         try
         {
             ValidateInitiativeApplicabilityInput(JsonSerializer.SerializeToElement(value, StrictJson));
@@ -255,17 +264,49 @@ internal static partial class PortableDesignProtocol
         if (initiativeId != expectedInitiativeId) throw InvalidResponse();
 
         var classification = assessment.GetProperty("classification");
-        if (!HasRequiredAndAllowedProperties(classification, ["status"], ["digest"])) throw InvalidResponse();
+        if (!HasRequiredAndAllowedProperties(classification, ["status", "completeness"], ["digest"])) throw InvalidResponse();
         var classificationStatus = ParseRequiredEnum(classification, "status", "missing", "current", "stale");
         var classificationDigest = ParseOptionalDigest(classification, "digest");
         if ((classificationStatus == "missing") != (classificationDigest is null)) throw InvalidResponse();
+        var completeness = classification.GetProperty("completeness");
+        if (!HasOnlyProperties(
+                completeness,
+                "status", "policyVersion", "policyDigest", "unknownDimensionCount", "unresolvedQuestionCount",
+                "missingConditionalDimensionCount", "confidenceSufficient"))
+        {
+            throw InvalidResponse();
+        }
+        var completenessStatus = ParseRequiredEnum(
+            completeness,
+            "status",
+            "missing",
+            "complete",
+            "incomplete",
+            "stale");
+        var policyVersion = ParseRequiredEnum(
+            completeness,
+            "policyVersion",
+            "gaep-initiative-classification-completeness-v1");
+        if ((classificationStatus == "missing" && completenessStatus != "missing") ||
+            (classificationStatus == "stale" && completenessStatus != "stale"))
+        {
+            throw InvalidResponse();
+        }
+        var parsedCompleteness = new InitiativeClassificationCompletenessAssessment(
+            completenessStatus,
+            policyVersion,
+            ParseRequiredDigest(completeness, "policyDigest"),
+            ParseBoundedNonNegativeInt(completeness, "unknownDimensionCount", 512),
+            ParseBoundedNonNegativeInt(completeness, "unresolvedQuestionCount", 512),
+            ParseBoundedNonNegativeInt(completeness, "missingConditionalDimensionCount", 512),
+            ParseRequiredBoolean(completeness, "confidenceSufficient"));
 
         var applicability = assessment.GetProperty("applicability");
         if (!HasRequiredAndAllowedProperties(
                 applicability,
                 [
                     "status", "decisionCount", "unresolvedSubjectCount", "pendingHumanDecisionCount",
-                    "blockedDecisionCount", "pendingApprovalCount", "rejectedApprovalCount",
+                    "blockedDecisionCount", "pendingApprovalCount", "rejectedApprovalCount", "coverage",
                 ],
                 ["matrixRevision", "digest"]))
         {
@@ -279,6 +320,54 @@ internal static partial class PortableDesignProtocol
         {
             throw InvalidResponse();
         }
+        var coverage = applicability.GetProperty("coverage");
+        if (!HasRequiredAndAllowedProperties(
+                coverage,
+                [
+                    "status", "subjectCount", "coveredSubjectCount", "missingSubjectCount",
+                    "unexpectedSubjectCount", "mismatchedSubjectCount",
+                ],
+                ["catalogVersion", "catalogDigest"]))
+        {
+            throw InvalidResponse();
+        }
+        var coverageStatus = ParseRequiredEnum(
+            coverage,
+            "status",
+            "unavailable",
+            "missing",
+            "complete",
+            "incomplete",
+            "stale");
+        var catalogVersion = coverage.TryGetProperty("catalogVersion", out _)
+            ? ParseRequiredEnum(coverage, "catalogVersion", "gaep-initiative-applicability-subjects-v1")
+            : null;
+        var catalogDigest = ParseOptionalDigest(coverage, "catalogDigest");
+        if ((catalogVersion is null) != (catalogDigest is null) ||
+            (coverageStatus == "unavailable") != (catalogVersion is null))
+        {
+            throw InvalidResponse();
+        }
+        var subjectCount = ParseBoundedNonNegativeInt(coverage, "subjectCount", 512);
+        var coveredSubjectCount = ParseBoundedNonNegativeInt(coverage, "coveredSubjectCount", 512);
+        var missingSubjectCount = ParseBoundedNonNegativeInt(coverage, "missingSubjectCount", 512);
+        var unexpectedSubjectCount = ParseBoundedNonNegativeInt(coverage, "unexpectedSubjectCount", 512);
+        var mismatchedSubjectCount = ParseBoundedNonNegativeInt(coverage, "mismatchedSubjectCount", 512);
+        if (coveredSubjectCount + missingSubjectCount + mismatchedSubjectCount != subjectCount ||
+            (coverageStatus == "complete" &&
+             (missingSubjectCount > 0 || unexpectedSubjectCount > 0 || mismatchedSubjectCount > 0)))
+        {
+            throw InvalidResponse();
+        }
+        var parsedCoverage = new InitiativeApplicabilityCoverageAssessment(
+            coverageStatus,
+            catalogVersion,
+            catalogDigest,
+            subjectCount,
+            coveredSubjectCount,
+            missingSubjectCount,
+            unexpectedSubjectCount,
+            mismatchedSubjectCount);
         var parsedApplicability = new InitiativeEntryAssessmentApplicability(
             applicabilityStatus,
             matrixRevision,
@@ -288,7 +377,8 @@ internal static partial class PortableDesignProtocol
             ParseBoundedNonNegativeInt(applicability, "pendingHumanDecisionCount", 512),
             ParseBoundedNonNegativeInt(applicability, "blockedDecisionCount", 512),
             ParseBoundedNonNegativeInt(applicability, "pendingApprovalCount", 512),
-            ParseBoundedNonNegativeInt(applicability, "rejectedApprovalCount", 512));
+            ParseBoundedNonNegativeInt(applicability, "rejectedApprovalCount", 512),
+            parsedCoverage);
         var reasons = assessment.GetProperty("reasons");
         var parsedReasons = ParseInitiativeTextArray(reasons, 0, 256);
         var state = ParseRequiredEnum(assessment, "state", "ready", "attention-required", "blocked");
@@ -299,7 +389,7 @@ internal static partial class PortableDesignProtocol
             ParseRequiredGuid(assessment, "productId"),
             productRevision,
             ParseRequiredDigest(assessment, "productDigest"),
-            new InitiativeEntryAssessmentClassification(classificationStatus, classificationDigest),
+            new InitiativeEntryAssessmentClassification(classificationStatus, classificationDigest, parsedCompleteness),
             parsedApplicability,
             state,
             parsedReasons,
@@ -399,7 +489,22 @@ internal static partial class PortableDesignProtocol
 
     private static void ValidateInitiativeApplicabilityInput(JsonElement input)
     {
-        if (!HasOnlyProperties(input, "decisions", "unresolvedSubjects")) throw InvalidResponse();
+        if (!HasRequiredAndAllowedProperties(input, ["decisions", "unresolvedSubjects"], ["subjectCatalog"]))
+            throw InvalidResponse();
+        if (input.TryGetProperty("subjectCatalog", out var catalog))
+        {
+            if (!HasOnlyProperties(catalog, "catalogVersion", "digest", "subjectCount") ||
+                ParseRequiredEnum(
+                    catalog,
+                    "catalogVersion",
+                    "gaep-initiative-applicability-subjects-v1") !=
+                "gaep-initiative-applicability-subjects-v1" ||
+                ParseBoundedNonNegativeInt(catalog, "subjectCount", 512) is < 1 or > 512)
+            {
+                throw InvalidResponse();
+            }
+            ParseRequiredDigest(catalog, "digest");
+        }
         var decisions = input.GetProperty("decisions");
         if (decisions.ValueKind != JsonValueKind.Array || decisions.GetArrayLength() is < 1 or > 512) throw InvalidResponse();
         var decisionKeys = decisions.EnumerateArray().Select(ValidateInitiativeDecisionInput).ToArray();
@@ -488,13 +593,14 @@ internal static partial class PortableDesignProtocol
             "dependencies", "affectedAssets", "owner", "accountableAuthority", "confidence", "evidence",
             "unresolvedQuestions", "rationale",
         ];
-        if (!HasOnlyProperties(
+        if (!HasRequiredAndAllowedProperties(
                 classification,
                 [
                     .. inputNames,
                     "productProfile", "productRevision", "productDigest", "classifiedBy", "classifiedAt",
                     "authorityBoundary",
-                ]))
+                ],
+                ["completenessPolicyVersion", "completenessPolicyDigest"]))
         {
             throw InvalidResponse();
         }
@@ -502,6 +608,14 @@ internal static partial class PortableDesignProtocol
         ValidateInitiativeClassificationInput(input);
         if (ParseRequiredEnum(classification, "authorityBoundary", InitiativeClassificationBoundary) !=
             InitiativeClassificationBoundary) throw InvalidResponse();
+        var completenessPolicyVersion = classification.TryGetProperty("completenessPolicyVersion", out _)
+            ? ParseRequiredEnum(
+                classification,
+                "completenessPolicyVersion",
+                "gaep-initiative-classification-completeness-v1")
+            : null;
+        var completenessPolicyDigest = ParseOptionalDigest(classification, "completenessPolicyDigest");
+        if ((completenessPolicyVersion is null) != (completenessPolicyDigest is null)) throw InvalidResponse();
         return new InitiativeClassificationView(
             ParseInitiativeEnum(input, "primaryType", InitiativeTypes),
             ParseRequiredEnum(
@@ -511,6 +625,8 @@ internal static partial class PortableDesignProtocol
                 "internal-tool", "mobile"),
             ParsePositiveLong(classification, "productRevision"),
             ParseRequiredDigest(classification, "productDigest"),
+            completenessPolicyVersion,
+            completenessPolicyDigest,
             ParseInitiativeHuman(classification.GetProperty("classifiedBy")),
             ParseRequiredTimestamp(classification, "classifiedAt"),
             CanonicalDigest(classification),
@@ -529,7 +645,7 @@ internal static partial class PortableDesignProtocol
                     "productId", "initiativeRevision", "classificationDigest", "state", "evaluatedBy", "evaluatedAt",
                     "authorityBoundary",
                 ],
-                ["invalidatedAt", "invalidationReason"]) ||
+                ["subjectCatalog", "invalidatedAt", "invalidationReason"]) ||
             ParseBoundedNonNegativeInt(matrix, "schemaVersion", 1) != 1 ||
             ParseRequiredEnum(matrix, "kind", "initiative-applicability-matrix") != "initiative-applicability-matrix" ||
             ParseRequiredEnum(matrix, "authorityBoundary", InitiativeMatrixBoundary) != InitiativeMatrixBoundary ||
@@ -575,11 +691,30 @@ internal static partial class PortableDesignProtocol
                 : decisionInputNames;
             decisionInputs.Add(CopyInitiativePropertiesDictionary(decision, names));
         }
+        InitiativeApplicabilitySubjectCatalogBinding? subjectCatalog = null;
+        JsonElement? subjectCatalogElement = null;
+        if (matrix.TryGetProperty("subjectCatalog", out var rawSubjectCatalog))
+        {
+            if (!HasOnlyProperties(rawSubjectCatalog, "catalogVersion", "digest", "subjectCount"))
+                throw InvalidResponse();
+            var catalogVersion = ParseRequiredEnum(
+                rawSubjectCatalog,
+                "catalogVersion",
+                "gaep-initiative-applicability-subjects-v1");
+            var subjectCount = ParseBoundedNonNegativeInt(rawSubjectCatalog, "subjectCount", 512);
+            if (subjectCount is < 1 or > 512) throw InvalidResponse();
+            subjectCatalog = new InitiativeApplicabilitySubjectCatalogBinding(
+                catalogVersion,
+                ParseRequiredDigest(rawSubjectCatalog, "digest"),
+                subjectCount);
+            subjectCatalogElement = rawSubjectCatalog.Clone();
+        }
         var inputDictionary = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["decisions"] = decisionInputs,
             ["unresolvedSubjects"] = matrix.GetProperty("unresolvedSubjects").Clone(),
         };
+        if (subjectCatalogElement.HasValue) inputDictionary["subjectCatalog"] = subjectCatalogElement.Value;
         var input = JsonSerializer.SerializeToElement(inputDictionary, StrictJson);
         ValidateInitiativeApplicabilityInput(input);
         var state = ParseRequiredEnum(matrix, "state", "current", "stale");
@@ -595,6 +730,7 @@ internal static partial class PortableDesignProtocol
             decisionInputs.Count,
             matrix.GetProperty("unresolvedSubjects").GetArrayLength(),
             ParseRequiredDigest(matrix, "classificationDigest"),
+            subjectCatalog,
             evaluatedBy,
             ParseRequiredTimestamp(matrix, "evaluatedAt"),
             CanonicalDigest(matrix),

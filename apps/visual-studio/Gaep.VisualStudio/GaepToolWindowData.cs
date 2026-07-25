@@ -656,9 +656,11 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         try
         {
             var candidate = BuildInitiativeDecisionInput();
+            var subjectCatalog = LoadedInitiativeSubjectCatalog();
             var matrix = new InitiativeApplicabilityMatrixInput(
                 [.. initiativeDraftDecisions, candidate],
-                initiativeDraftUnresolved.ToArray());
+                initiativeDraftUnresolved.ToArray(),
+                subjectCatalog);
             ProductWorkflowController.ValidateInitiativeApplicabilityInput(matrix);
             initiativeDraftDecisions.Add(candidate);
             RefreshInitiativeDraftSummary();
@@ -683,9 +685,11 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
                 throw new ArgumentException("Add at least one explicit applicability decision before staging unresolved subjects.");
             }
             var candidate = BuildInitiativeUnresolvedSubject();
+            var subjectCatalog = LoadedInitiativeSubjectCatalog();
             var matrix = new InitiativeApplicabilityMatrixInput(
                 initiativeDraftDecisions.ToArray(),
-                [.. initiativeDraftUnresolved, candidate]);
+                [.. initiativeDraftUnresolved, candidate],
+                subjectCatalog);
             ProductWorkflowController.ValidateInitiativeApplicabilityInput(matrix);
             initiativeDraftUnresolved.Add(candidate);
             RefreshInitiativeDraftSummary();
@@ -723,10 +727,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         InitiativeApplicabilityMatrixInput matrix;
         try
         {
+            var subjectCatalog = LoadedInitiativeSubjectCatalog();
             matrix = ProductWorkflowController.ValidateInitiativeApplicabilityInput(
                 new InitiativeApplicabilityMatrixInput(
                     initiativeDraftDecisions.ToArray(),
-                    initiativeDraftUnresolved.ToArray()));
+                    initiativeDraftUnresolved.ToArray(),
+                    subjectCatalog));
         }
         catch (Exception error)
         {
@@ -754,7 +760,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
             confirmationMessage:
                 $"Record the exact staged applicability matrix against Initiative revision {context.Initiative.Revision}? " +
                 $"It contains {matrix.Decisions.Count} explicit decision(s) and {matrix.UnresolvedSubjects.Count} explicit " +
-                "unresolved subject(s). Absence never means not applicable. The engine will re-read the exact current " +
+                $"unresolved subject(s), bound to catalog {matrix.SubjectCatalog!.CatalogVersion} with " +
+                $"{matrix.SubjectCatalog.SubjectCount} canonical subjects. Absence never means not applicable. " +
+                "The engine will re-read the exact current " +
                 "Product, Initiative, classification, actors, and input content. This grants no approval, readiness, " +
                 "implementation, execution, or release authority.");
     }
@@ -1383,16 +1391,37 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     private void RefreshInitiativeDraftSummary()
     {
+        var coverage = initiativeEntryContext?.Assessment.Applicability.Coverage;
         var summary = new List<string>
         {
             $"Local applicability draft: {initiativeDraftDecisions.Count} decision(s), " +
             $"{initiativeDraftUnresolved.Count} unresolved subject(s). No governed state has changed.",
         };
+        if (coverage?.CatalogVersion is not null)
+        {
+            summary.Add(
+                $"Catalog binding: {coverage.CatalogVersion}; {coverage.SubjectCount} canonical subject(s); " +
+                $"{coverage.CoveredSubjectCount} currently covered.");
+        }
         summary.AddRange(initiativeDraftDecisions.Select((decision, index) =>
             $"Decision {index + 1}: {decision.Subject.Type}/{decision.Subject.Key} — {decision.Status}"));
         summary.AddRange(initiativeDraftUnresolved.Select((unresolved, index) =>
             $"Unresolved {index + 1}: {unresolved.Subject.Type}/{unresolved.Subject.Key}"));
         InitiativeDraftSummary = string.Join(Environment.NewLine, summary);
+    }
+
+    private InitiativeApplicabilitySubjectCatalogBinding LoadedInitiativeSubjectCatalog()
+    {
+        var coverage = initiativeEntryContext?.Assessment.Applicability.Coverage;
+        if (coverage?.CatalogVersion is null || coverage.CatalogDigest is null || coverage.SubjectCount < 1)
+        {
+            throw new ArgumentException(
+                "Load an exact Initiative entry with a current applicability subject catalog before editing the matrix.");
+        }
+        return new InitiativeApplicabilitySubjectCatalogBinding(
+            coverage.CatalogVersion,
+            coverage.CatalogDigest,
+            coverage.SubjectCount);
     }
 
     private static Guid ParseInitiativeId(string value)
