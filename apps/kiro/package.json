@@ -51,6 +51,7 @@
     "onCommand:gaepKiro.initiativeEntry.resolveApplicability",
     "onCommand:gaepKiro.sourceGovernance.inspect",
     "onCommand:gaepKiro.businessUnderstanding.inspect",
+    "onCommand:gaepKiro.businessCapabilityMap.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -132,6 +133,10 @@
       {
         "command": "gaepKiro.businessUnderstanding.inspect",
         "title": "GAEP for Kiro: Inspect Governed Business Understanding"
+      },
+      {
+        "command": "gaepKiro.businessCapabilityMap.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Business Capability Map"
       },
       {
         "command": "gaepKiro.portableDesign.import",

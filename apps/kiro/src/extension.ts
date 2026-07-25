@@ -8,6 +8,7 @@ import {
   collectInitiativeClassification,
   containsSecretShapedValue,
   InitiativeEntryWorkflowCancelled,
+  type BusinessCapabilityMapProjection,
   type BusinessUnderstandingProjection,
   type Initiative,
   type InitiativeEntryAssessment,
@@ -73,6 +74,7 @@ const commandIds = {
   resolveApplicability: "gaepKiro.initiativeEntry.resolveApplicability",
   sourceGovernance: "gaepKiro.sourceGovernance.inspect",
   businessUnderstanding: "gaepKiro.businessUnderstanding.inspect",
+  businessCapabilityMap: "gaepKiro.businessCapabilityMap.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -164,6 +166,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.resolveApplicability, (input?: unknown) => runUserCommand(() => resolveInitiativeApplicability(pool, input))),
     vscode.commands.registerCommand(commandIds.sourceGovernance, (input?: unknown) => runUserCommand(() => showSourceGovernance(pool, input))),
     vscode.commands.registerCommand(commandIds.businessUnderstanding, (input?: unknown) => runUserCommand(() => showBusinessUnderstanding(pool, input))),
+    vscode.commands.registerCommand(commandIds.businessCapabilityMap, (input?: unknown) => runUserCommand(() => showBusinessCapabilityMap(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -537,6 +540,47 @@ async function showBusinessUnderstanding(
       : "not recorded"}`,
     ...(outcomes ? [
       `Outcome counts: ${outcomes.outcomeCount} outcomes · ${outcomes.measureCount} measures · ${outcomes.countermetricCount} countermetrics · ${outcomes.burdenMeasureCount} burden measures · ${outcomes.observedBaselineCount} observed baselines`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showBusinessCapabilityMap(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<BusinessCapabilityMapProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Business Capability Map", "Initiative ID")
+  const projection = await client.readBusinessCapabilityMap(initiativeId)
+  const map = projection.capabilityMap
+  const lines = [
+    "GAEP governed Business Capability Map",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${projection.assessment.state}`,
+    `Assessment counts: ${projection.assessment.capabilityCount} capabilities · ${projection.assessment.ownedCapabilityCount} owned · ${projection.assessment.unownedCapabilityCount} unowned · ${projection.assessment.objectiveCoverageCount} objectives covered · ${projection.assessment.outcomeCoverageCount} outcomes covered`,
+    `Gaps and uncertainty: ${projection.assessment.openGapCount} open gaps · ${projection.assessment.criticalGapCount} critical gaps · ${projection.assessment.unknownCurrentMaturityCount} unknown current maturity · ${projection.assessment.unassessedPriorityCount} unassessed priority · ${projection.assessment.staleBindingCount} stale bindings · ${projection.assessment.staleSourceReferenceCount} stale Source references`,
+    ...projection.assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Business Capability Map: ${map
+      ? `${map.id}@${map.revision} · ${map.state} · ${map.digest}`
+      : "not recorded"}`,
+    ...(map ? [
+      `Map counts: ${map.capabilityCount} capabilities · ${map.ownedCapabilityCount} owned · ${map.openGapCount} open gaps · ${map.criticalGapCount} critical gaps · ${map.candidatePriorityCount} candidate priorities`,
+      `Updated: ${map.updatedAt}`,
     ] : []),
     "",
     `Snapshot digest: ${projection.snapshotDigest}`,

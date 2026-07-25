@@ -30,6 +30,7 @@ const sourceProvenanceId = "32323232-3232-4232-8232-323232323232"
 const businessUnderstandingId = "33333333-3333-4333-8333-333333333333"
 const stakeholderModelId = "34343434-3434-4434-8434-343434343434"
 const outcomeModelId = "35353535-3535-4535-8535-353535353535"
+const businessCapabilityMapId = "36363636-3636-4636-8636-363636363636"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -71,6 +72,8 @@ input.on("line", (line) => {
       return readSourceGovernance(id, request.params)
     case "business.snapshot":
       return readBusinessUnderstanding(id, request.params)
+    case "business.capabilities.snapshot":
+      return readBusinessCapabilityMap(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -346,6 +349,71 @@ function readBusinessUnderstanding(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-business-snapshot-digest")) value.outcomeModel.measureCount = 5
   if (workspacePath.endsWith("bad-business-snapshot-private")) value.personalAssignment = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readBusinessCapabilityMap(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE CAPABILITY PARAMS")
+  }
+  const mapDigest = `sha256:${"6".repeat(64)}`
+  const assessment = {
+    schemaVersion: 1,
+    kind: "business-capability-map-assessment",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    capabilityMap: { recordId: businessCapabilityMapId, revision: 2, digest: mapDigest },
+    capabilityCount: 7,
+    ownedCapabilityCount: 6,
+    unownedCapabilityCount: 1,
+    objectiveCoverageCount: 3,
+    outcomeCoverageCount: 2,
+    openGapCount: 2,
+    criticalGapCount: 1,
+    unknownCurrentMaturityCount: 1,
+    unassessedPriorityCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more capabilities do not have a candidate owner"],
+    assessedAt: "2026-07-25T04:10:00.000Z",
+    authorityBoundary: "business-capability-map-assessment-reports-recorded-candidate-coverage-and-gaps-and-does-not-approve-priority-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "business-capability-map-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: {
+      id: initiativeId,
+      revision: initiativeState.revision,
+      digest: canonicalDigest(initiativeState),
+      state: initiativeState.state,
+    },
+    assessment,
+    capabilityMap: {
+      id: businessCapabilityMapId,
+      revision: 2,
+      digest: mapDigest,
+      state: "candidate",
+      capabilityCount: 7,
+      ownedCapabilityCount: 6,
+      openGapCount: 2,
+      criticalGapCount: 1,
+      candidatePriorityCount: 6,
+      updatedAt: "2026-07-25T04:09:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-capability-narrative-personal-data-source-content-locators-or-credentials",
+    authorityBoundary: "business-capability-map-projection-does-not-approve-prioritize-baseline-designate-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-capability-snapshot-binding")) content.initiative.id = businessCapabilityMapId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-capability-snapshot-digest")) value.capabilityMap.openGapCount = 3
+  if (workspacePath.endsWith("bad-capability-snapshot-private")) {
+    value.capabilityNarrative = `${privateRoot}/${privateCredential}`
+  }
   return writeResult(id, value)
 }
 
