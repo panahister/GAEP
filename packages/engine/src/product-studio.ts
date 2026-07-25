@@ -45,6 +45,7 @@ import {
   sourceRecordRevisionSchema,
   sourceRecordSchema,
   stakeholderModelSchema,
+  valueStreamModelSchema,
   traceImpactSchema,
   traceLinkSchema,
   toolDefinitionSchema,
@@ -83,6 +84,7 @@ import {
   type SourceBaseline,
   type SourceRecordRevision,
   type StakeholderModel,
+  type ValueStreamModel,
   type TraceEndpoint,
   type TraceImpact,
   type TraceLink,
@@ -1920,6 +1922,16 @@ export class ProductStudioService {
       /^business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       businessCapabilityMapSchema,
     )
+    const valueStreamModels = await this.listRecords(
+      "value-stream-models",
+      /^[0-9a-f-]+\.json$/i,
+      valueStreamModelSchema,
+    )
+    const valueStreamModelHistory = await this.listRecords(
+      "value-stream-model-history",
+      /^value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      valueStreamModelSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -1951,6 +1963,8 @@ export class ProductStudioService {
       ...businessUnderstandingHistory,
       ...businessCapabilityMaps,
       ...businessCapabilityMapHistory,
+      ...valueStreamModels,
+      ...valueStreamModelHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -1968,6 +1982,7 @@ export class ProductStudioService {
           sources.find((source) => source.id === id)?.informationClassification ??
           businessUnderstanding.find((record) => record.id === id)?.informationClassification ??
           businessCapabilityMaps.find((record) => record.id === id)?.informationClassification ??
+          valueStreamModels.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2028,6 +2043,13 @@ export class ProductStudioService {
       "business-capability-map",
       businessCapabilityMapHistory,
       (record) => `business-capability-map-history/business-capability-map-${record.id}-r${record.revision}.json`,
+    )
+    append("value-stream-models", "value-stream-model", valueStreamModels)
+    append(
+      "value-stream-model-history",
+      "value-stream-model",
+      valueStreamModelHistory,
+      (record) => `value-stream-model-history/value-stream-model-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2236,6 +2258,14 @@ export class ProductStudioService {
           `business-capability-map-history/business-capability-map-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Business Capability Map history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("value-stream-model-history/")) {
+        const record = validated as ValueStreamModel
+        const expectedHistoryPath =
+          `value-stream-model-history/value-stream-model-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Value Stream Model history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3362,7 +3392,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3394,7 +3424,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -3527,7 +3557,7 @@ export class ProductStudioService {
     const capabilityMapHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("business-capability-map-history/"))
       .map(([, record]) => businessCapabilityMapSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactCapabilityMaps = validateVersionedBusinessRecords(
       capabilityMaps,
       capabilityMapHistory,
       "Business Capability Map",
@@ -3554,6 +3584,68 @@ export class ProductStudioService {
         ]
         if (roleKeys.some((key) => !stakeholderKeys.has(key))) {
           throw new Error(`Import Business Capability Map ${map.id} references an unknown bound stakeholder`)
+        }
+      }
+    }
+
+    const resolveCapabilityMap = (
+      reference: ValueStreamModel["capabilityMap"],
+      initiativeId: string,
+    ): BusinessCapabilityMap => {
+      const record = exactCapabilityMaps.get(
+        `${reference.recordId}:${reference.revision}:${reference.digest}`,
+      )
+      if (!record || record.initiativeId !== initiativeId) {
+        throw new Error("Import exact Business Capability Map reference is unresolved")
+      }
+      return record
+    }
+    const valueStreamModels = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("value-stream-models/"))
+      .map(([, record]) => valueStreamModelSchema.parse(record))
+    const valueStreamModelHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("value-stream-model-history/"))
+      .map(([, record]) => valueStreamModelSchema.parse(record))
+    validateVersionedBusinessRecords(
+      valueStreamModels,
+      valueStreamModelHistory,
+      "Value Stream Model",
+    )
+    for (const model of [...valueStreamModels, ...valueStreamModelHistory]) {
+      const business = resolveBusinessUnderstanding(model.businessUnderstanding, model.initiativeId)
+      const stakeholder = resolveStakeholderModel(model.stakeholderModel, model.initiativeId)
+      const outcome = resolveOutcomeModel(model.outcomeModel, model.initiativeId)
+      const capabilityMap = resolveCapabilityMap(model.capabilityMap, model.initiativeId)
+      const objectiveIds = new Set(business.objectives.map((objective) => objective.id))
+      const stakeholderKeys = new Set(stakeholder.stakeholders.map((entry) => entry.key))
+      const outcomeIds = new Set(outcome.outcomes.map((entry) => entry.id))
+      const capabilityKeys = new Set(capabilityMap.capabilities.map((entry) => entry.key))
+      for (const stream of model.valueStreams) {
+        if (stream.objectiveIds.some((id) => !objectiveIds.has(id))) {
+          throw new Error(`Import Value Stream Model ${model.id} references an unknown bound objective`)
+        }
+        if (
+          stream.outcomeIds.some((id) => !outcomeIds.has(id)) ||
+          stream.stages.some((stage) => stage.outcomeIds.some((id) => !outcomeIds.has(id)))
+        ) {
+          throw new Error(`Import Value Stream Model ${model.id} references an unknown bound outcome`)
+        }
+        if (
+          stream.capabilityKeys.some((key) => !capabilityKeys.has(key)) ||
+          stream.stages.some((stage) => stage.capabilityKeys.some((key) => !capabilityKeys.has(key)))
+        ) {
+          throw new Error(`Import Value Stream Model ${model.id} references an unknown bound capability`)
+        }
+        const roleKeys = [
+          ...(stream.ownerStakeholderKey ? [stream.ownerStakeholderKey] : []),
+          ...stream.beneficiaryStakeholderKeys,
+          ...stream.participatingStakeholderKeys,
+          ...stream.stages.flatMap((stage) => stage.participatingStakeholderKeys),
+          ...stream.bottlenecks.flatMap((bottleneck) =>
+            bottleneck.ownerStakeholderKey ? [bottleneck.ownerStakeholderKey] : []),
+        ]
+        if (roleKeys.some((key) => !stakeholderKeys.has(key))) {
+          throw new Error(`Import Value Stream Model ${model.id} references an unknown bound stakeholder`)
         }
       }
     }
@@ -4163,6 +4255,10 @@ export class ProductStudioService {
         /^business-capability-map-history\/business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "business-capability-map"
     }
+    if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "value-stream-model"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -4215,6 +4311,10 @@ export class ProductStudioService {
     if (/^business-capability-maps\/[0-9a-f-]+\.json$/i.test(path) ||
         /^business-capability-map-history\/business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return businessCapabilityMapSchema
+    }
+    if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return valueStreamModelSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

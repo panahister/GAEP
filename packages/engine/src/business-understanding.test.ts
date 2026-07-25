@@ -819,12 +819,18 @@ describe("Business understanding governance", () => {
       capabilityMapInput(business, stakeholder, outcome),
       actorId,
     )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
       `business-understanding-history/business-understanding-${business.id}-r1.json`,
       `business-capability-maps/${capabilityMap.id}.json`,
       `business-capability-map-history/business-capability-map-${capabilityMap.id}-r1.json`,
+      `value-stream-models/${valueStreamModel.id}.json`,
+      `value-stream-model-history/value-stream-model-${valueStreamModel.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -868,6 +874,30 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedCapabilityTrace))
       .rejects.toThrow(/unknown bound objective/)
+
+    const forgeUnknownCapability = (content: unknown) => ({
+      ...(content as Awaited<ReturnType<typeof engine.valueStreamModel.read>>),
+      valueStreams: [{
+        ...(content as Awaited<ReturnType<typeof engine.valueStreamModel.read>>).valueStreams[0]!,
+        capabilityKeys: ["invented-capability"],
+        stages: [{
+          ...(content as Awaited<ReturnType<typeof engine.valueStreamModel.read>>).valueStreams[0]!.stages[0]!,
+          capabilityKeys: ["invented-capability"],
+        }],
+      }],
+    })
+    let forgedValueStreamTrace = replacePortableRecord(
+      bundle,
+      `value-stream-models/${valueStreamModel.id}.json`,
+      forgeUnknownCapability,
+    )
+    forgedValueStreamTrace = replacePortableRecord(
+      forgedValueStreamTrace,
+      `value-stream-model-history/value-stream-model-${valueStreamModel.id}-r1.json`,
+      forgeUnknownCapability,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedValueStreamTrace))
+      .rejects.toThrow(/unknown bound capability/)
   })
 
   it("requires explicit human disclosure review for confidential business records", async () => {
