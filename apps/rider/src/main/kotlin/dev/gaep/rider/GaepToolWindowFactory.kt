@@ -130,6 +130,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += businessUnderstandingButton
         actions.add(businessUnderstandingButton)
 
+        val businessCapabilityMapButton = JButton("Inspect Business Capability Map…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Capability narrative, personal assignments, Source content, local paths, credentials, and authority are withheld.",
+                    "GAEP Business Capability Map",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Business Capability Map", status, output, buttons) {
+                    controller.readBusinessCapabilityMap(initiativeId)
+                }
+            }
+        }
+        buttons += businessCapabilityMapButton
+        actions.add(businessCapabilityMapButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

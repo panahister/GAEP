@@ -858,6 +858,42 @@ data class BusinessUnderstandingProjection(
     val snapshotDigest: String,
 )
 
+data class BusinessCapabilityMapRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val capabilityCount: Int,
+    val ownedCapabilityCount: Int,
+    val openGapCount: Int,
+    val criticalGapCount: Int,
+    val candidatePriorityCount: Int,
+)
+
+data class BusinessCapabilityMapProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val capabilityCount: Int,
+    val ownedCapabilityCount: Int,
+    val unownedCapabilityCount: Int,
+    val objectiveCoverageCount: Int,
+    val outcomeCoverageCount: Int,
+    val openGapCount: Int,
+    val criticalGapCount: Int,
+    val unknownCurrentMaturityCount: Int,
+    val unassessedPriorityCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val capabilityMap: BusinessCapabilityMapRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -895,6 +931,12 @@ internal object PortableDesignProtocol {
         "business-understanding-projection-does-not-approve-appoint-decide-designate-readiness-or-authorize-action"
     private const val BUSINESS_ASSESSMENT_AUTHORITY_BOUNDARY =
         "business-understanding-assessment-reports-recorded-candidate-evidence-and-does-not-approve-decide-designate-readiness-or-authorize-action"
+    private const val CAPABILITY_MAP_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-capability-narrative-personal-data-source-content-locators-or-credentials"
+    private const val CAPABILITY_MAP_PROJECTION_AUTHORITY_BOUNDARY =
+        "business-capability-map-projection-does-not-approve-prioritize-baseline-designate-readiness-or-authorize-action"
+    private const val CAPABILITY_MAP_ASSESSMENT_AUTHORITY_BOUNDARY =
+        "business-capability-map-assessment-reports-recorded-candidate-coverage-and-gaps-and-does-not-approve-priority-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -2070,6 +2112,162 @@ internal object PortableDesignProtocol {
             business,
             stakeholders,
             outcomes,
+            snapshotDigest,
+        )
+    }
+
+    fun parseBusinessCapabilityMapEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): BusinessCapabilityMapProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "assessment", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("capabilityMap"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "business-capability-map-projection" ||
+            projection.requireString("privacyBoundary") != CAPABILITY_MAP_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != CAPABILITY_MAP_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val assessment = projection.get("assessment").requireObject()
+        assessment.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "capabilityCount", "ownedCapabilityCount", "unownedCapabilityCount", "objectiveCoverageCount",
+                "outcomeCoverageCount", "openGapCount", "criticalGapCount", "unknownCurrentMaturityCount",
+                "unassessedPriorityCount", "staleBindingCount", "staleSourceReferenceCount", "state", "reasons",
+                "assessedAt", "authorityBoundary",
+            ),
+            setOf("capabilityMap"),
+        )
+        if (assessment.requireInt("schemaVersion") != 1 ||
+            assessment.requireString("kind") != "business-capability-map-assessment" ||
+            assessment.requireNonEmptyUuid("productId") != productId ||
+            assessment.requireLong("productRevision") != productRevision ||
+            assessment.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            assessment.requireLong("initiativeRevision") != initiativeRevision ||
+            assessment.requireString("authorityBoundary") != CAPABILITY_MAP_ASSESSMENT_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = assessment.get("capabilityMap")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val capabilityCount = assessment.requireBoundedNonNegativeInt("capabilityCount", 512)
+        val ownedCapabilityCount = assessment.requireBoundedNonNegativeInt("ownedCapabilityCount", capabilityCount)
+        val unownedCapabilityCount = assessment.requireBoundedNonNegativeInt("unownedCapabilityCount", capabilityCount)
+        val objectiveCoverageCount = assessment.requireBoundedNonNegativeInt("objectiveCoverageCount", 256)
+        val outcomeCoverageCount = assessment.requireBoundedNonNegativeInt("outcomeCoverageCount", 256)
+        val openGapCount = assessment.requireBoundedNonNegativeInt("openGapCount", 131_072)
+        val criticalGapCount = assessment.requireBoundedNonNegativeInt("criticalGapCount", openGapCount)
+        val unknownCurrentMaturityCount =
+            assessment.requireBoundedNonNegativeInt("unknownCurrentMaturityCount", capabilityCount)
+        val unassessedPriorityCount =
+            assessment.requireBoundedNonNegativeInt("unassessedPriorityCount", capabilityCount)
+        val staleBindingCount = assessment.requireBoundedNonNegativeInt("staleBindingCount", 4)
+        val staleSourceReferenceCount =
+            assessment.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        if (ownedCapabilityCount + unownedCapabilityCount != capabilityCount) throw invalidResponse()
+        val assessmentState = assessment.requireOneOf(
+            "state",
+            setOf("complete-for-review", "attention-required"),
+        )
+        val reasonsElement = assessment.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = assessment.requireInstant("assessedAt")
+
+        val map = projection.get("capabilityMap")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "capabilityCount", "ownedCapabilityCount",
+                "openGapCount", "criticalGapCount", "candidatePriorityCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val recordCapabilityCount = value.requireBoundedNonNegativeInt("capabilityCount", 512)
+            val record = BusinessCapabilityMapRecordView(
+                id,
+                revision,
+                digest,
+                recordCapabilityCount,
+                value.requireBoundedNonNegativeInt("ownedCapabilityCount", recordCapabilityCount),
+                value.requireBoundedNonNegativeInt("openGapCount", 131_072),
+                value.requireBoundedNonNegativeInt("criticalGapCount", 131_072),
+                value.requireBoundedNonNegativeInt("candidatePriorityCount", recordCapabilityCount),
+            )
+            if (record.criticalGapCount > record.openGapCount) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (map == null) ||
+            (map?.capabilityCount ?: 0) != capabilityCount ||
+            (map?.ownedCapabilityCount ?: 0) != ownedCapabilityCount ||
+            (map?.openGapCount ?: 0) != openGapCount ||
+            (map?.criticalGapCount ?: 0) != criticalGapCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return BusinessCapabilityMapProjection(
+            productId,
+            productRevision,
+            productDigest,
+            initiativeId,
+            initiativeRevision,
+            initiativeDigest,
+            initiativeState,
+            assessmentState,
+            reasons,
+            capabilityCount,
+            ownedCapabilityCount,
+            unownedCapabilityCount,
+            objectiveCoverageCount,
+            outcomeCoverageCount,
+            openGapCount,
+            criticalGapCount,
+            unknownCurrentMaturityCount,
+            unassessedPriorityCount,
+            staleBindingCount,
+            staleSourceReferenceCount,
+            map,
             snapshotDigest,
         )
     }

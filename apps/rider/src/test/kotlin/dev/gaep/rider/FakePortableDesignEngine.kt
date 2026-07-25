@@ -16,6 +16,7 @@ private val sourceProvenanceId = UUID.fromString("38383838-3838-4838-8838-383838
 private val businessUnderstandingId = UUID.fromString("39393939-3939-4939-8939-393939393939")
 private val stakeholderModelId = UUID.fromString("40404040-4040-4040-8040-404040404040")
 private val outcomeModelId = UUID.fromString("41414141-4141-4141-8141-414141414141")
+private val businessCapabilityMapId = UUID.fromString("42424242-4242-4242-8242-424242424242")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -94,6 +95,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "business.snapshot" -> handleBusinessUnderstanding(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "business.capabilities.snapshot" -> handleBusinessCapabilityMap(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -480,6 +486,93 @@ private fun handleBusinessUnderstanding(id: Long, params: JsonObject, workspaceP
         }
         workspacePath.endsWith("bad-business-snapshot-private") -> {
             value.addProperty("personalAssignment", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleBusinessCapabilityMap(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BUSINESS CAPABILITY MAP PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-capability-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-25T00:04:10.000Z"
+    val mapDigest = "sha256:${"6".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "business-capability-map-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("assessment", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "business-capability-map-assessment")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("capabilityMap", JsonObject().apply {
+                addProperty("recordId", businessCapabilityMapId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", mapDigest)
+            })
+            addProperty("capabilityCount", 7)
+            addProperty("ownedCapabilityCount", 6)
+            addProperty("unownedCapabilityCount", 1)
+            addProperty("objectiveCoverageCount", 3)
+            addProperty("outcomeCoverageCount", 2)
+            addProperty("openGapCount", 2)
+            addProperty("criticalGapCount", 1)
+            addProperty("unknownCurrentMaturityCount", 1)
+            addProperty("unassessedPriorityCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more capabilities do not have a candidate owner") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "business-capability-map-assessment-reports-recorded-candidate-coverage-and-gaps-and-does-not-approve-priority-readiness-or-authorize-action",
+            )
+        })
+        add("capabilityMap", JsonObject().apply {
+            addProperty("id", businessCapabilityMapId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", mapDigest)
+            addProperty("state", "candidate")
+            addProperty("capabilityCount", 7)
+            addProperty("ownedCapabilityCount", 6)
+            addProperty("openGapCount", 2)
+            addProperty("criticalGapCount", 1)
+            addProperty("candidatePriorityCount", 6)
+            addProperty("updatedAt", "2026-07-25T00:04:09.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-capability-narrative-personal-data-source-content-locators-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "business-capability-map-projection-does-not-approve-prioritize-baseline-designate-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-capability-snapshot-digest") -> {
+            value.getAsJsonObject("capabilityMap").addProperty("openGapCount", 3)
+        }
+        workspacePath.endsWith("bad-capability-snapshot-private") -> {
+            value.addProperty("capabilityNarrative", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

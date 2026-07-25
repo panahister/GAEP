@@ -387,6 +387,46 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Business Capability Map projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("business-capability-map-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readBusinessCapabilityMap(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(7, projection.capabilityMap?.capabilityCount)
+            assertEquals(6, projection.capabilityMap?.ownedCapabilityCount)
+            assertEquals(1, projection.capabilityMap?.criticalGapCount)
+
+            val rendered = RiderProductController(client).readBusinessCapabilityMap(entryId)
+            assertTrue(rendered.contains("GAEP governed Business Capability Map"))
+            assertTrue(rendered.contains("7 capabilities · 6 owned · 2 open gaps"))
+            assertTrue(rendered.contains("grants no priority approval, baseline, readiness, or action authority"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("capabilityNarrative"))
+        }
+
+        listOf("bad-capability-snapshot-digest", "bad-capability-snapshot-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readBusinessCapabilityMap(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-capability-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readBusinessCapabilityMap(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

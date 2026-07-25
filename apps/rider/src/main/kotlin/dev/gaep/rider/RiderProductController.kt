@@ -282,6 +282,60 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readBusinessCapabilityMap(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readBusinessCapabilityMap(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) {
+            "The Product or Initiative changed while the Business Capability Map was read. Refresh the exact records."
+        }
+        return renderBusinessCapabilityMap(projection)
+    }
+
+    fun renderBusinessCapabilityMap(projection: BusinessCapabilityMapProjection): String = buildString {
+        appendLine("GAEP governed Business Capability Map")
+        appendLine()
+        appendLine(
+            "Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · " +
+                projection.initiativeState,
+        )
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Assessment counts: ${projection.capabilityCount} capabilities · ${projection.ownedCapabilityCount} owned · " +
+                "${projection.unownedCapabilityCount} unowned · ${projection.objectiveCoverageCount} objectives covered · " +
+                "${projection.outcomeCoverageCount} outcomes covered",
+        )
+        appendLine(
+            "Gaps and uncertainty: ${projection.openGapCount} open gaps · ${projection.criticalGapCount} critical gaps · " +
+                "${projection.unknownCurrentMaturityCount} unknown current maturity · " +
+                "${projection.unassessedPriorityCount} unassessed priority · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.capabilityMap?.let { record ->
+            appendLine("Business Capability Map: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine(
+                "Map counts: ${record.capabilityCount} capabilities · ${record.ownedCapabilityCount} owned · " +
+                    "${record.openGapCount} open gaps · ${record.criticalGapCount} critical gaps · " +
+                    "${record.candidatePriorityCount} candidate priorities",
+            )
+        } ?: appendLine("Business Capability Map: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view contains record identities, revisions, digests, states, counts, and " +
+                "assessment status only. It exposes no capability narrative, personal assignments, Source content, locators, " +
+                "local paths, or credentials and grants no priority approval, baseline, readiness, or action authority.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,
