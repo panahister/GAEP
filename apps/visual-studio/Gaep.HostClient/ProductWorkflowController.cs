@@ -269,6 +269,65 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadBusinessCapabilityMapAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadBusinessCapabilityMapAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException(
+                "The Product or Initiative changed while the Business Capability Map was read. Refresh the exact records.");
+        }
+        return RenderBusinessCapabilityMap(projection);
+    }
+
+    public static string RenderBusinessCapabilityMap(BusinessCapabilityMapProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Business Capability Map")
+            .AppendLine()
+            .AppendLine(
+                $"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · " +
+                projection.InitiativeState)
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Assessment counts: {projection.CapabilityCount} capabilities · {projection.OwnedCapabilityCount} owned · " +
+                $"{projection.UnownedCapabilityCount} unowned · {projection.ObjectiveCoverageCount} objectives covered · " +
+                $"{projection.OutcomeCoverageCount} outcomes covered")
+            .AppendLine(
+                $"Gaps and uncertainty: {projection.OpenGapCount} open gaps · {projection.CriticalGapCount} critical gaps · " +
+                $"{projection.UnknownCurrentMaturityCount} unknown current maturity · " +
+                $"{projection.UnassessedPriorityCount} unassessed priority · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.CapabilityMap is { } map)
+        {
+            output.AppendLine($"Business Capability Map: {map.Id:D}@{map.Revision} · candidate · {map.Digest}")
+                .AppendLine(
+                    $"Map counts: {map.CapabilityCount} capabilities · {map.OwnedCapabilityCount} owned · " +
+                    $"{map.OpenGapCount} open gaps · {map.CriticalGapCount} critical gaps · " +
+                    $"{map.CandidatePriorityCount} candidate priorities");
+        }
+        else output.AppendLine("Business Capability Map: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view contains record identities, revisions, digests, states, counts, and " +
+                "assessment status only. It exposes no capability narrative, personal assignments, Source content, locators, " +
+                "local paths, or credentials and grants no priority approval, baseline, readiness, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

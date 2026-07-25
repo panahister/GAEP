@@ -45,6 +45,7 @@ internal static class Program
     private static readonly Guid BusinessUnderstandingId = Guid.Parse("39393939-3939-4939-8939-393939393939");
     private static readonly Guid StakeholderModelId = Guid.Parse("40404040-4040-4040-8040-404040404040");
     private static readonly Guid OutcomeModelId = Guid.Parse("41414141-4141-4141-8141-414141414141");
+    private static readonly Guid BusinessCapabilityMapId = Guid.Parse("42424242-4242-4242-8242-424242424242");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -109,6 +110,9 @@ internal static class Program
         var badBusinessSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-business-snapshot-binding");
         var badBusinessSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-business-snapshot-digest");
         var badBusinessSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-business-snapshot-private");
+        var badCapabilitySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-capability-snapshot-binding");
+        var badCapabilitySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-capability-snapshot-digest");
+        var badCapabilitySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-capability-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -170,6 +174,9 @@ internal static class Program
         Directory.CreateDirectory(badBusinessSnapshotBindingRoot);
         Directory.CreateDirectory(badBusinessSnapshotDigestRoot);
         Directory.CreateDirectory(badBusinessSnapshotPrivateRoot);
+        Directory.CreateDirectory(badCapabilitySnapshotBindingRoot);
+        Directory.CreateDirectory(badCapabilitySnapshotDigestRoot);
+        Directory.CreateDirectory(badCapabilitySnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -573,6 +580,44 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadBusinessUnderstandingAsync(InitiativeId),
                 "Business Understanding rejects a projection rebound to a substituted Product revision");
+        }
+
+        var capabilityProjection = await client.ReadBusinessCapabilityMapAsync(InitiativeId);
+        Check(capabilityProjection.ProductId == product.Id &&
+              capabilityProjection.ProductRevision == product.Revision &&
+              capabilityProjection.ProductDigest == product.Digest &&
+              capabilityProjection.InitiativeId == resolved.Id &&
+              capabilityProjection.InitiativeRevision == resolved.Revision &&
+              capabilityProjection.InitiativeDigest == resolved.Digest &&
+              capabilityProjection.AssessmentState == "attention-required" &&
+              capabilityProjection.CapabilityMap?.CapabilityCount == 7 &&
+              capabilityProjection.CapabilityMap?.OwnedCapabilityCount == 6 &&
+              capabilityProjection.CapabilityMap?.CriticalGapCount == 1,
+            "Typed Business Capability Map preserves exact Product, Initiative, assessment, and count metadata");
+        var capabilityOutput = await initiativeController.ReadBusinessCapabilityMapAsync(InitiativeId);
+        Check(capabilityOutput.Contains("GAEP governed Business Capability Map", StringComparison.Ordinal) &&
+              capabilityOutput.Contains("7 capabilities · 6 owned · 2 open gaps", StringComparison.Ordinal) &&
+              capabilityOutput.Contains(
+                  "grants no priority approval, baseline, readiness, or action authority",
+                  StringComparison.Ordinal) &&
+              !capabilityOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !capabilityOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !capabilityOutput.Contains("capabilityNarrative", StringComparison.Ordinal),
+            "Business Capability Map workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badCapabilitySnapshotDigestRoot, badCapabilitySnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadBusinessCapabilityMapAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Business Capability Map rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badCapabilitySnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadBusinessCapabilityMapAsync(InitiativeId),
+                "Business Capability Map rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -1659,6 +1704,9 @@ internal static class Program
         var badBusinessSnapshotBinding = Path.GetFileName(workspace) == "bad-business-snapshot-binding";
         var badBusinessSnapshotDigest = Path.GetFileName(workspace) == "bad-business-snapshot-digest";
         var badBusinessSnapshotPrivate = Path.GetFileName(workspace) == "bad-business-snapshot-private";
+        var badCapabilitySnapshotBinding = Path.GetFileName(workspace) == "bad-capability-snapshot-binding";
+        var badCapabilitySnapshotDigest = Path.GetFileName(workspace) == "bad-capability-snapshot-digest";
+        var badCapabilitySnapshotPrivate = Path.GetFileName(workspace) == "bad-capability-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -1799,6 +1847,17 @@ internal static class Program
                         badBusinessSnapshotBinding,
                         badBusinessSnapshotDigest,
                         badBusinessSnapshotPrivate);
+                    break;
+                case "business.capabilities.snapshot":
+                    await HandleBusinessCapabilityMapAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badCapabilitySnapshotBinding,
+                        badCapabilitySnapshotDigest,
+                        badCapabilitySnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -2265,6 +2324,100 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) outcome["measureCount"] = 5;
         if (includePrivateField) result["personalAssignment"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleBusinessCapabilityMapAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID BUSINESS CAPABILITY MAP");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-25T00:04:10.000Z";
+        var mapDigest = $"sha256:{new string('6', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var map = new Dictionary<string, object?>
+        {
+            ["id"] = BusinessCapabilityMapId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = mapDigest,
+            ["state"] = "candidate",
+            ["capabilityCount"] = 7,
+            ["ownedCapabilityCount"] = 6,
+            ["openGapCount"] = 2,
+            ["criticalGapCount"] = 1,
+            ["candidatePriorityCount"] = 6,
+            ["updatedAt"] = "2026-07-25T00:04:09.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "business-capability-map-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["assessment"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "business-capability-map-assessment",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["capabilityMap"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BusinessCapabilityMapId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = mapDigest,
+                },
+                ["capabilityCount"] = 7,
+                ["ownedCapabilityCount"] = 6,
+                ["unownedCapabilityCount"] = 1,
+                ["objectiveCoverageCount"] = 3,
+                ["outcomeCoverageCount"] = 2,
+                ["openGapCount"] = 2,
+                ["criticalGapCount"] = 1,
+                ["unknownCurrentMaturityCount"] = 1,
+                ["unassessedPriorityCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more capabilities do not have a candidate owner" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "business-capability-map-assessment-reports-recorded-candidate-coverage-and-gaps-and-does-not-approve-priority-readiness-or-authorize-action",
+            },
+            ["capabilityMap"] = map,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-capability-narrative-personal-data-source-content-locators-or-credentials",
+            ["authorityBoundary"] =
+                "business-capability-map-projection-does-not-approve-prioritize-baseline-designate-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) map["openGapCount"] = 3;
+        if (includePrivateField) result["capabilityNarrative"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
