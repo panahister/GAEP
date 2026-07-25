@@ -10,6 +10,11 @@ import {
   executionCharterSchema,
   executionManagedIntentSchema,
   handoffSchema,
+  initiativeApplicabilityMatrixInputSchema,
+  initiativeApplicabilityMatrixSchema,
+  initiativeClassificationInputSchema,
+  initiativeClassificationSchema,
+  initiativeEntryAssessmentSchema,
   initiativeSchema,
   productSchema,
   productRevisionSchema,
@@ -24,6 +29,9 @@ import {
   type ExecutionManagedIntent,
   type Handoff,
   type Initiative,
+  type InitiativeApplicabilityMatrixInput,
+  type InitiativeClassificationInput,
+  type InitiativeEntryAssessment,
   type ManagedApplyDecisionReceipt,
   type ManagedRunEvidence,
   type ManagedRunRecord,
@@ -387,6 +395,241 @@ export class GaepEngine {
     const product = await this.readProduct()
     if (initiative.productId !== product.id) throw new Error("Initiative does not target this Product")
     return initiative
+  }
+
+  async assessInitiativeEntry(id: string): Promise<InitiativeEntryAssessment> {
+    const [initiative, product] = await Promise.all([
+      this.readInitiative(id),
+      this.readProduct(),
+    ])
+    const productDigest = sha256Digest(product)
+    const classificationDigest = initiative.classification
+      ? sha256Digest(initiative.classification)
+      : undefined
+    const classificationStatus = !initiative.classification
+      ? "missing" as const
+      : initiative.classification.productRevision !== revisionOf(product) ||
+          initiative.classification.productDigest !== productDigest ||
+          initiative.classification.productProfile !== product.profile
+        ? "stale" as const
+        : "current" as const
+    const matrix = initiative.applicability
+    const applicabilityStatus = !matrix
+      ? "missing" as const
+      : matrix.state !== "current" || classificationStatus !== "current" ||
+          matrix.classificationDigest !== classificationDigest
+        ? "stale" as const
+        : "current" as const
+    const pendingHumanDecisionCount = matrix?.decisions
+      .filter((decision) => decision.status === "awaiting-human-decision").length ?? 0
+    const blockedDecisionCount = matrix?.decisions
+      .filter((decision) => decision.status === "blocked").length ?? 0
+    const pendingApprovalCount = matrix?.decisions
+      .filter((decision) => decision.approval.state === "pending").length ?? 0
+    const rejectedApprovalCount = matrix?.decisions
+      .filter((decision) => decision.approval.state === "rejected").length ?? 0
+    const reasons: string[] = []
+    if (classificationStatus === "missing") reasons.push("Initiative classification is missing")
+    if (classificationStatus === "stale") reasons.push("Initiative classification does not bind the current Product revision")
+    if (applicabilityStatus === "missing") reasons.push("Initiative applicability has not been resolved")
+    if (applicabilityStatus === "stale") reasons.push("Initiative applicability does not bind the current classification")
+    if ((matrix?.unresolvedSubjects.length ?? 0) > 0) reasons.push("Applicability subjects remain explicitly unresolved")
+    if (pendingHumanDecisionCount > 0) reasons.push("Applicability decisions await accountable human judgment")
+    if (blockedDecisionCount > 0) reasons.push("One or more required applicability decisions are blocked")
+    if (pendingApprovalCount > 0) reasons.push("Applicability approvals remain pending")
+    if (rejectedApprovalCount > 0) reasons.push("One or more applicability approvals were rejected")
+    const state = blockedDecisionCount > 0 || rejectedApprovalCount > 0
+      ? "blocked" as const
+      : reasons.length > 0
+        ? "attention-required" as const
+        : "ready" as const
+    return initiativeEntryAssessmentSchema.parse({
+      schemaVersion: 1,
+      kind: "initiative-entry-assessment",
+      initiativeId: initiative.id,
+      initiativeRevision: revisionOf(initiative),
+      productId: product.id,
+      productRevision: revisionOf(product),
+      productDigest,
+      classification: {
+        status: classificationStatus,
+        digest: classificationDigest,
+      },
+      applicability: {
+        status: applicabilityStatus,
+        matrixRevision: matrix?.revision,
+        digest: matrix ? sha256Digest(matrix) : undefined,
+        decisionCount: matrix?.decisions.length ?? 0,
+        unresolvedSubjectCount: matrix?.unresolvedSubjects.length ?? 0,
+        pendingHumanDecisionCount,
+        blockedDecisionCount,
+        pendingApprovalCount,
+        rejectedApprovalCount,
+      },
+      state,
+      reasons,
+      assessedAt: new Date().toISOString(),
+      authorityBoundary: "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
+    })
+  }
+
+  async classifyInitiative(
+    id: string,
+    input: InitiativeClassificationInput,
+    expectedInitiativeRevision: number,
+    actorId: string,
+  ): Promise<Initiative> {
+    const initiativeId = requireUuid(id, "Initiative ID")
+    const validatedInput = initiativeClassificationInputSchema.parse(input)
+    const path = this.repository.resolve("initiatives", `${initiativeId}.json`)
+    return this.repository.withLock(async () => {
+      await this.assertAuditIntegrity()
+      const [current, product] = await Promise.all([
+        this.repository.readJson(path, initiativeSchema),
+        this.readProduct(),
+      ])
+      if (current.productId !== product.id) throw new Error("Initiative does not target this Product")
+      if (revisionOf(current) !== expectedInitiativeRevision) {
+        throw new Error("Initiative changed before classification; reload the exact revision")
+      }
+      if (["completed", "cancelled"].includes(current.state)) {
+        throw new Error(`Terminal Initiative ${current.state} classification is immutable`)
+      }
+      const now = new Date().toISOString()
+      const previousClassificationDigest = current.classification
+        ? sha256Digest(current.classification)
+        : undefined
+      const classification = initiativeClassificationSchema.parse({
+        ...validatedInput,
+        productProfile: product.profile,
+        productRevision: revisionOf(product),
+        productDigest: sha256Digest(product),
+        classifiedBy: { kind: "human", id: actorId },
+        classifiedAt: now,
+        authorityBoundary: "classification-guides-profile-selection-and-does-not-grant-approval-or-action-authority",
+      })
+      const classificationDigest = sha256Digest(classification)
+      const applicability = current.applicability?.state === "current"
+        ? initiativeApplicabilityMatrixSchema.parse({
+            ...current.applicability,
+            state: "stale",
+            invalidatedAt: now,
+            invalidationReason: "Initiative classification was superseded",
+          })
+        : current.applicability
+      const updated = initiativeSchema.parse({
+        ...current,
+        revision: revisionOf(current) + 1,
+        classification,
+        applicability,
+        updatedAt: now,
+      })
+      await this.repository.commitMutation({
+        writes: [{ path, value: updated, schema: initiativeSchema, governed: true }],
+        audit: {
+          eventType: "initiative.classified",
+          actor: { kind: "human", id: actorId },
+          subjectId: initiativeId,
+          payload: {
+            productId: product.id,
+            primaryType: classification.primaryType,
+            secondaryTypeCount: classification.secondaryTypes.length,
+            classificationDigest,
+            previousClassificationDigest,
+            applicabilityInvalidated: current.applicability?.state === "current",
+            revision: revisionOf(updated),
+            recordDigest: sha256Digest(updated),
+          },
+        },
+      })
+      return updated
+    })
+  }
+
+  async resolveInitiativeApplicability(
+    id: string,
+    input: InitiativeApplicabilityMatrixInput,
+    expectedInitiativeRevision: number,
+    actorId: string,
+  ): Promise<Initiative> {
+    const initiativeId = requireUuid(id, "Initiative ID")
+    const validatedInput = initiativeApplicabilityMatrixInputSchema.parse(input)
+    const path = this.repository.resolve("initiatives", `${initiativeId}.json`)
+    return this.repository.withLock(async () => {
+      await this.assertAuditIntegrity()
+      const current = await this.repository.readJson(path, initiativeSchema)
+      if (revisionOf(current) !== expectedInitiativeRevision) {
+        throw new Error("Initiative changed before applicability resolution; reload the exact revision")
+      }
+      if (["completed", "cancelled"].includes(current.state)) {
+        throw new Error(`Terminal Initiative ${current.state} applicability is immutable`)
+      }
+      if (!current.classification) {
+        throw new Error("Initiative applicability requires an exact current classification")
+      }
+      const now = new Date().toISOString()
+      const nextInitiativeRevision = revisionOf(current) + 1
+      const previousDecisions = new Map((current.applicability?.decisions ?? []).map((decision) => [
+        `${decision.subject.type}:${decision.subject.key}`,
+        decision,
+      ]))
+      const decisions = validatedInput.decisions.map((decision) => {
+        const previous = previousDecisions.get(`${decision.subject.type}:${decision.subject.key}`)
+        return {
+          ...decision,
+          id: previous?.id ?? randomUUID(),
+          revision: (previous?.revision ?? 0) + 1,
+          initiativeRevision: nextInitiativeRevision,
+          decidedBy: { kind: "human" as const, id: actorId },
+          decidedAt: now,
+          authorityBoundary: "applicability-decision-does-not-grant-approval-readiness-or-action-authority" as const,
+        }
+      })
+      const matrix = initiativeApplicabilityMatrixSchema.parse({
+        schemaVersion: 1,
+        kind: "initiative-applicability-matrix",
+        revision: (current.applicability?.revision ?? 0) + 1,
+        initiativeId: current.id,
+        productId: current.productId,
+        initiativeRevision: nextInitiativeRevision,
+        classificationDigest: sha256Digest(current.classification),
+        state: "current",
+        decisions,
+        unresolvedSubjects: validatedInput.unresolvedSubjects,
+        evaluatedBy: { kind: "human", id: actorId },
+        evaluatedAt: now,
+        authorityBoundary: "applicability-matrix-does-not-grant-approval-readiness-or-action-authority",
+      })
+      const updated = initiativeSchema.parse({
+        ...current,
+        revision: nextInitiativeRevision,
+        applicability: matrix,
+        updatedAt: now,
+      })
+      const statusCounts = Object.fromEntries([...new Set(matrix.decisions.map((decision) => decision.status))]
+        .sort()
+        .map((status) => [status, matrix.decisions.filter((decision) => decision.status === status).length]))
+      await this.repository.commitMutation({
+        writes: [{ path, value: updated, schema: initiativeSchema, governed: true }],
+        audit: {
+          eventType: "initiative.applicability.resolved",
+          actor: { kind: "human", id: actorId },
+          subjectId: initiativeId,
+          payload: {
+            productId: current.productId,
+            classificationDigest: matrix.classificationDigest,
+            matrixRevision: matrix.revision,
+            matrixDigest: sha256Digest(matrix),
+            decisionCount: matrix.decisions.length,
+            unresolvedSubjectCount: matrix.unresolvedSubjects.length,
+            statusCounts,
+            revision: revisionOf(updated),
+            recordDigest: sha256Digest(updated),
+          },
+        },
+      })
+      return updated
+    })
   }
 
   async updateInitiativeState(

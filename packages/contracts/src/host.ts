@@ -8,7 +8,12 @@ import {
   phaseDashboardCompositionRequestSchema,
 } from "./dashboard.js"
 import { effectDescriptorSchema, toolPermissionSchema } from "./execution.js"
-import { initiativeSchema, productSchema } from "./product.js"
+import {
+  initiativeApplicabilityMatrixInputSchema,
+  initiativeClassificationInputSchema,
+  initiativeSchema,
+  productSchema,
+} from "./product.js"
 import { productDomainRecordKindSchema, productExportBundleSchema } from "./product-studio.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
@@ -34,6 +39,24 @@ export const hostInitiativeInputSchema = initiativeSchema.pick({
   outcome: true,
   scope: true,
   exclusions: true,
+}).strict()
+
+export const hostReadInitiativeParamsSchema = z.object({
+  initiativeId: z.string().uuid(),
+}).strict()
+
+export const hostClassifyInitiativeParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  initiativeId: z.string().uuid(),
+  expectedInitiativeRevision: z.number().int().positive(),
+  classification: initiativeClassificationInputSchema,
+}).strict()
+
+export const hostResolveInitiativeApplicabilityParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  initiativeId: z.string().uuid(),
+  expectedInitiativeRevision: z.number().int().positive(),
+  applicability: initiativeApplicabilityMatrixInputSchema,
 }).strict()
 
 export const hostSelectAgentParamsSchema = z.object({
@@ -144,6 +167,10 @@ export const hostMethodSchema = z.enum([
   "readProduct",
   "createProduct",
   "createInitiative",
+  "readInitiative",
+  "assessInitiativeEntry",
+  "classifyInitiative",
+  "resolveInitiativeApplicability",
   "selectAgent",
   "migrateLegacySelection",
   "createCharter",
@@ -192,6 +219,10 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("readProduct", hostNoParamsSchema.default({})),
   requestVariant("createProduct", z.object({ actorId: hostActorIdSchema, product: hostProductInputSchema }).strict()),
   requestVariant("createInitiative", z.object({ actorId: hostActorIdSchema, initiative: hostInitiativeInputSchema }).strict()),
+  requestVariant("readInitiative", hostReadInitiativeParamsSchema),
+  requestVariant("assessInitiativeEntry", hostReadInitiativeParamsSchema),
+  requestVariant("classifyInitiative", hostClassifyInitiativeParamsSchema),
+  requestVariant("resolveInitiativeApplicability", hostResolveInitiativeApplicabilityParamsSchema),
   requestVariant("selectAgent", hostSelectAgentParamsSchema),
   requestVariant("migrateLegacySelection", hostMigrateLegacySelectionParamsSchema),
   requestVariant("createCharter", hostCreateCharterParamsSchema),

@@ -59,6 +59,10 @@ type EngineHostMethod = EngineHostRequest["method"]
 const v2OnlyMethods = new Set<EngineHostMethod>([
   "workspaceHealth",
   "readAgentSelection",
+  "readInitiative",
+  "assessInitiativeEntry",
+  "classifyInitiative",
+  "resolveInitiativeApplicability",
   "migrateLegacySelection",
   "managed.readonly.preview",
   "managed.readonly.execute",
@@ -204,6 +208,24 @@ export class EngineHost {
         return this.engine.createProduct(request.params.product, actorId(request.params.actorId))
       case "createInitiative":
         return this.engine.createInitiative(request.params.initiative, actorId(request.params.actorId))
+      case "readInitiative":
+        return this.engine.readInitiative(request.params.initiativeId)
+      case "assessInitiativeEntry":
+        return this.engine.assessInitiativeEntry(request.params.initiativeId)
+      case "classifyInitiative":
+        return this.engine.classifyInitiative(
+          request.params.initiativeId,
+          request.params.classification,
+          request.params.expectedInitiativeRevision,
+          actorId(request.params.actorId),
+        )
+      case "resolveInitiativeApplicability":
+        return this.engine.resolveInitiativeApplicability(
+          request.params.initiativeId,
+          request.params.applicability,
+          request.params.expectedInitiativeRevision,
+          actorId(request.params.actorId),
+        )
       case "selectAgent": {
         const snapshot = await this.observeAdapter(request.params.adapterId)
         const result = await this.engine.selectAgentGoverned(

@@ -243,6 +243,115 @@ describe("engine host protocol", () => {
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
   })
 
+  it("exposes exact revision-bound Initiative classification and applicability only through protocol v2", async () => {
+    const { initiativeId } = await createProductAndInitiative()
+    const initial = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "initiative-read",
+      protocolVersion: 2,
+      method: "readInitiative",
+      params: { initiativeId },
+    }) as { revision: number }
+    const classified = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "initiative-classify",
+      protocolVersion: 2,
+      method: "classifyInitiative",
+      params: {
+        actorId: "gaep.host-test",
+        initiativeId,
+        expectedInitiativeRevision: initial.revision,
+        classification: {
+          primaryType: "service",
+          secondaryTypes: ["api"],
+          systemState: "brownfield",
+          changePosture: "modernization",
+          motivations: ["technical"],
+          characteristics: {
+            userInterface: "non-ui",
+            data: "data-bearing",
+            integration: "integration-heavy",
+            interactionModes: ["synchronous"],
+            exposure: "internal",
+          },
+          regulated: false,
+          policyDomains: [],
+          sensitivities: ["security", "data"],
+          expectedLifetime: "long-lived",
+          maintenanceHorizon: "Supported through the current Product lifetime",
+          risk: {
+            blastRadius: "multi-unit",
+            reversibility: "partially-reversible",
+            urgency: "normal",
+            costOfFailure: "high",
+          },
+          dependencies: ["Identity service"],
+          affectedAssets: ["Host API"],
+          owner: "Host engineering owner",
+          accountableAuthority: "Host Product Owner",
+          confidence: { level: "high", basis: "The current host contract and Product scope are exact" },
+          evidence: [{ kind: "evidence", reference: "host-contract-test" }],
+          unresolvedQuestions: [],
+          rationale: "The host workflow changes a brownfield service and its internal API boundary.",
+        },
+      },
+    }) as { revision: number; classification: { classifiedBy: { id: string } } }
+    expect(classified.classification.classifiedBy.id).toBe("gaep.host-test")
+
+    const resolved = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "initiative-applicability",
+      protocolVersion: 2,
+      method: "resolveInitiativeApplicability",
+      params: {
+        actorId: "gaep.host-test",
+        initiativeId,
+        expectedInitiativeRevision: classified.revision,
+        applicability: {
+          decisions: [{
+            subject: { type: "test-level", key: "contract-tests", label: "Host contract tests" },
+            status: "required",
+            rationale: "The cross-process protocol requires exact compatibility and hostile-input evidence.",
+            sources: [{ kind: "policy", reference: "host-protocol-v2" }],
+            owner: "Host engineering owner",
+            accountableApprover: "Host Product Owner",
+            dependencies: ["engine-host-protocol"],
+            conditions: [],
+            reviewTriggers: ["Protocol or Initiative classification changes"],
+            approval: { state: "pending", conditions: [] },
+            relatedRecords: [],
+            relatedImplementationUnits: ["engine-host"],
+          }],
+          unresolvedSubjects: [],
+        },
+      },
+    }) as { applicability: { state: string; decisions: Array<{ decidedBy: { id: string } }> } }
+    expect(resolved.applicability).toMatchObject({
+      state: "current",
+      decisions: [{ decidedBy: { id: "gaep.host-test" } }],
+    })
+    const assessment = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "initiative-entry-assessment",
+      protocolVersion: 2,
+      method: "assessInitiativeEntry",
+      params: { initiativeId },
+    })
+    expect(assessment).toMatchObject({
+      state: "attention-required",
+      classification: { status: "current" },
+      applicability: { status: "current", pendingApprovalCount: 1 },
+      authorityBoundary: "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
+    })
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "initiative-v1-block",
+      method: "readInitiative",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+  })
+
   it("rejects unknown methods, malformed params, caller capability injection, and oversized direct requests", async () => {
     await expect(host.dispatch({ jsonrpc: "2.0", id: 1, method: "eraseEverything", params: {} })).rejects.toMatchObject({
       code: -32_601,

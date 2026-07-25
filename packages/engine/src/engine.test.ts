@@ -12,6 +12,8 @@ import {
   type AdapterCapabilities,
   type AgentSelection,
   type ExecutionCharter,
+  type InitiativeApplicabilityMatrixInput,
+  type InitiativeClassificationInput,
 } from "@gaep/contracts"
 import {
   capabilityDigest,
@@ -140,6 +142,62 @@ describe("GAEP local engine", () => {
     return { product, initiative }
   }
 
+  const classificationInput: InitiativeClassificationInput = {
+    primaryType: "service",
+    secondaryTypes: ["api", "modernization"],
+    systemState: "brownfield",
+    changePosture: "modernization",
+    motivations: ["business-driven", "technical"],
+    characteristics: {
+      userInterface: "non-ui",
+      data: "data-bearing",
+      integration: "integration-heavy",
+      interactionModes: ["synchronous", "asynchronous"],
+      exposure: "partner",
+    },
+    regulated: true,
+    policyDomains: ["payments", "privacy"],
+    sensitivities: ["security", "privacy", "data"],
+    expectedLifetime: "long-lived",
+    maintenanceHorizon: "Supported for at least five years after initial release",
+    risk: {
+      blastRadius: "multi-unit",
+      reversibility: "partially-reversible",
+      urgency: "high",
+      costOfFailure: "high",
+    },
+    dependencies: ["Existing identity service", "Partner API consumers"],
+    affectedAssets: ["Payments API", "Settlement worker"],
+    owner: "Payments engineering owner",
+    accountableAuthority: "Payments Product Owner",
+    confidence: { level: "medium", basis: "Repository evidence is current but partner scope awaits confirmation" },
+    evidence: [{ kind: "evidence", reference: "GAEP-EVD-001" }],
+    unresolvedQuestions: ["Whether the legacy batch endpoint remains in scope"],
+    rationale: "The initiative changes a brownfield service and its independently deployed API consumers.",
+  }
+
+  const applicabilityInput: InitiativeApplicabilityMatrixInput = {
+    decisions: [{
+      subject: { type: "test-level", key: "consumer-contract-testing", label: "Consumer contract testing" },
+      status: "required",
+      rationale: "Independently deployed partner consumers require version-bound compatibility evidence.",
+      sources: [{ kind: "policy", reference: "GAEP-POL-CONTRACT-001" }],
+      owner: "Payments quality owner",
+      accountableApprover: "Payments Product Owner",
+      dependencies: ["partner-api-contract"],
+      conditions: [],
+      reviewTriggers: ["API contract or consumer inventory changes"],
+      approval: { state: "pending", conditions: [] },
+      relatedRecords: [],
+      relatedImplementationUnits: ["payments-api"],
+    }],
+    unresolvedSubjects: [{
+      subject: { type: "activity", key: "figma", label: "Figma design workflow" },
+      reason: "User-interface applicability remains unresolved",
+      owner: "Product design owner",
+    }],
+  }
+
   async function persistLegacyAgentRuntime(executablePath = "/opt/legacy/bin/fake-agent") {
     const selection = await engine.readSelection()
     const capabilityName = (await readdir(join(workspace, ".gaep", "runtime")))
@@ -193,6 +251,140 @@ describe("GAEP local engine", () => {
     expect(initiative.productId).toBe(product.id)
     expect(productAfter).toBe(productBefore)
     expect((await engine.readProduct()).lifecycleState).toBe("active")
+  })
+
+  it("records exact human-attributed Initiative classification and applicability without manufacturing authority", async () => {
+    const { product, initiative } = await initialize()
+    await expect(engine.assessInitiativeEntry(initiative.id)).resolves.toMatchObject({
+      state: "attention-required",
+      classification: { status: "missing" },
+      applicability: { status: "missing" },
+    })
+    const classified = await engine.classifyInitiative(
+      initiative.id,
+      classificationInput,
+      initiative.revision!,
+      "founder",
+    )
+    expect(classified).toMatchObject({
+      revision: 2,
+      classification: {
+        primaryType: "service",
+        secondaryTypes: ["api", "modernization"],
+        productProfile: product.profile,
+        productRevision: product.revision,
+        classifiedBy: { kind: "human", id: "founder" },
+        authorityBoundary: "classification-guides-profile-selection-and-does-not-grant-approval-or-action-authority",
+      },
+    })
+    expect(classified.classification?.productDigest).toBe(canonicalDigest(product))
+    await expect(engine.assessInitiativeEntry(initiative.id)).resolves.toMatchObject({
+      state: "attention-required",
+      classification: { status: "current" },
+      applicability: { status: "missing" },
+    })
+
+    const resolved = await engine.resolveInitiativeApplicability(
+      initiative.id,
+      applicabilityInput,
+      classified.revision!,
+      "founder",
+    )
+    expect(resolved).toMatchObject({
+      revision: 3,
+      applicability: {
+        revision: 1,
+        initiativeRevision: 3,
+        state: "current",
+        evaluatedBy: { kind: "human", id: "founder" },
+        authorityBoundary: "applicability-matrix-does-not-grant-approval-readiness-or-action-authority",
+        decisions: [{
+          revision: 1,
+          initiativeRevision: 3,
+          status: "required",
+          approval: { state: "pending" },
+          decidedBy: { kind: "human", id: "founder" },
+          authorityBoundary: "applicability-decision-does-not-grant-approval-readiness-or-action-authority",
+        }],
+        unresolvedSubjects: [{ subject: { key: "figma" } }],
+      },
+    })
+    expect(resolved.applicability?.classificationDigest).toBe(canonicalDigest(resolved.classification))
+    await expect(engine.assessInitiativeEntry(initiative.id)).resolves.toMatchObject({
+      state: "attention-required",
+      classification: { status: "current" },
+      applicability: {
+        status: "current",
+        unresolvedSubjectCount: 1,
+        pendingApprovalCount: 1,
+      },
+      authorityBoundary: "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
+    })
+    await expect(engine.resolveInitiativeApplicability(
+      initiative.id,
+      applicabilityInput,
+      classified.revision!,
+      "founder",
+    )).rejects.toThrow(/changed before applicability resolution/i)
+    await expect(engine.repository.verifyAudit()).resolves.toMatchObject({ valid: true })
+  })
+
+  it("marks applicability stale when Initiative classification is superseded and preserves decision lineage on re-resolution", async () => {
+    const { initiative } = await initialize()
+    const classified = await engine.classifyInitiative(initiative.id, classificationInput, initiative.revision!, "founder")
+    const firstResolution = await engine.resolveInitiativeApplicability(
+      initiative.id,
+      applicabilityInput,
+      classified.revision!,
+      "founder",
+    )
+    const reclassified = await engine.classifyInitiative(
+      initiative.id,
+      { ...classificationInput, confidence: { level: "high", basis: "Partner scope was confirmed against the current contract inventory" } },
+      firstResolution.revision!,
+      "founder",
+    )
+    expect(reclassified.applicability).toMatchObject({
+      state: "stale",
+      invalidationReason: "Initiative classification was superseded",
+    })
+    await expect(engine.assessInitiativeEntry(initiative.id)).resolves.toMatchObject({
+      state: "attention-required",
+      classification: { status: "current" },
+      applicability: { status: "stale" },
+    })
+    const refreshed = await engine.resolveInitiativeApplicability(
+      initiative.id,
+      applicabilityInput,
+      reclassified.revision!,
+      "founder",
+    )
+    expect(refreshed.applicability).toMatchObject({ revision: 2, state: "current" })
+    expect(refreshed.applicability?.decisions[0]?.id).toBe(firstResolution.applicability?.decisions[0]?.id)
+    expect(refreshed.applicability?.decisions[0]?.revision).toBe(2)
+    expect(refreshed.applicability?.decisions[0]?.initiativeRevision).toBe(refreshed.revision)
+
+    const readyInput: InitiativeApplicabilityMatrixInput = {
+      decisions: [{
+        ...applicabilityInput.decisions[0]!,
+        accountableApprover: undefined,
+        approval: { state: "not-required", conditions: [] },
+      }],
+      unresolvedSubjects: [],
+    }
+    const ready = await engine.resolveInitiativeApplicability(
+      initiative.id,
+      readyInput,
+      refreshed.revision!,
+      "founder",
+    )
+    await expect(engine.assessInitiativeEntry(initiative.id)).resolves.toMatchObject({
+      initiativeRevision: ready.revision,
+      state: "ready",
+      reasons: [],
+      classification: { status: "current" },
+      applicability: { status: "current", unresolvedSubjectCount: 0, pendingApprovalCount: 0 },
+    })
   })
 
   it("refuses Product reinitialization and preserves the original manifest identity", async () => {
