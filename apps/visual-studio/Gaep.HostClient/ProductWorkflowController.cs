@@ -328,6 +328,65 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadValueStreamModelAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadValueStreamModelAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException(
+                "The Product or Initiative changed while the Value Stream Model was read. Refresh the exact records.");
+        }
+        return RenderValueStreamModel(projection);
+    }
+
+    public static string RenderValueStreamModel(ValueStreamModelProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Value Stream Model")
+            .AppendLine()
+            .AppendLine(
+                $"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · " +
+                projection.InitiativeState)
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Assessment counts: {projection.ValueStreamCount} value streams · {projection.OwnedValueStreamCount} owned · " +
+                $"{projection.UnownedValueStreamCount} unowned · {projection.StageCount} stages · " +
+                $"{projection.DependencyCount} dependencies · {projection.CapabilityCoverageCount} capabilities covered · " +
+                $"{projection.OutcomeCoverageCount} outcomes covered")
+            .AppendLine(
+                $"Flow gaps: {projection.AbsentFlowEvidenceCount} stages without evidence · " +
+                $"{projection.OpenBottleneckCount} open bottlenecks · {projection.CriticalBottleneckCount} critical bottlenecks · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.ValueStreamModel is { } model)
+        {
+            output.AppendLine($"Value Stream Model: {model.Id:D}@{model.Revision} · candidate · {model.Digest}")
+                .AppendLine(
+                    $"Model counts: {model.ValueStreamCount} value streams · {model.OwnedValueStreamCount} owned · " +
+                    $"{model.StageCount} stages · {model.DependencyCount} dependencies · " +
+                    $"{model.OpenBottleneckCount} open bottlenecks · {model.CriticalBottleneckCount} critical bottlenecks");
+        }
+        else output.AppendLine("Value Stream Model: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view contains record identities, revisions, digests, states, counts, and " +
+                "assessment status only. It exposes no value-stream narrative, personal assignments, Source content, locators, " +
+                "local paths, or credentials and grants no baseline, priority, readiness, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

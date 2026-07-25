@@ -61,6 +61,7 @@ for (const binding of [
   "LoadSourceGovernanceCommand",
   "LoadBusinessUnderstandingCommand",
   "LoadBusinessCapabilityMapCommand",
+  "LoadValueStreamModelCommand",
   "InitiativeTypes",
   "InitiativeClassification",
   "ClassifyInitiativeCommand",

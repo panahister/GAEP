@@ -46,6 +46,7 @@ internal static class Program
     private static readonly Guid StakeholderModelId = Guid.Parse("40404040-4040-4040-8040-404040404040");
     private static readonly Guid OutcomeModelId = Guid.Parse("41414141-4141-4141-8141-414141414141");
     private static readonly Guid BusinessCapabilityMapId = Guid.Parse("42424242-4242-4242-8242-424242424242");
+    private static readonly Guid ValueStreamModelId = Guid.Parse("43434343-4343-4343-8343-434343434343");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -113,6 +114,9 @@ internal static class Program
         var badCapabilitySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-capability-snapshot-binding");
         var badCapabilitySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-capability-snapshot-digest");
         var badCapabilitySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-capability-snapshot-private");
+        var badValueStreamSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-value-stream-snapshot-binding");
+        var badValueStreamSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-value-stream-snapshot-digest");
+        var badValueStreamSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-value-stream-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -177,6 +181,9 @@ internal static class Program
         Directory.CreateDirectory(badCapabilitySnapshotBindingRoot);
         Directory.CreateDirectory(badCapabilitySnapshotDigestRoot);
         Directory.CreateDirectory(badCapabilitySnapshotPrivateRoot);
+        Directory.CreateDirectory(badValueStreamSnapshotBindingRoot);
+        Directory.CreateDirectory(badValueStreamSnapshotDigestRoot);
+        Directory.CreateDirectory(badValueStreamSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -618,6 +625,44 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadBusinessCapabilityMapAsync(InitiativeId),
                 "Business Capability Map rejects a projection rebound to a substituted Product revision");
+        }
+
+        var valueStreamProjection = await client.ReadValueStreamModelAsync(InitiativeId);
+        Check(valueStreamProjection.ProductId == product.Id &&
+              valueStreamProjection.ProductRevision == product.Revision &&
+              valueStreamProjection.ProductDigest == product.Digest &&
+              valueStreamProjection.InitiativeId == resolved.Id &&
+              valueStreamProjection.InitiativeRevision == resolved.Revision &&
+              valueStreamProjection.InitiativeDigest == resolved.Digest &&
+              valueStreamProjection.AssessmentState == "attention-required" &&
+              valueStreamProjection.ValueStreamModel?.ValueStreamCount == 3 &&
+              valueStreamProjection.ValueStreamModel?.OwnedValueStreamCount == 2 &&
+              valueStreamProjection.ValueStreamModel?.CriticalBottleneckCount == 1,
+            "Typed Value Stream Model preserves exact Product, Initiative, assessment, and count metadata");
+        var valueStreamOutput = await initiativeController.ReadValueStreamModelAsync(InitiativeId);
+        Check(valueStreamOutput.Contains("GAEP governed Value Stream Model", StringComparison.Ordinal) &&
+              valueStreamOutput.Contains("3 value streams · 2 owned · 9 stages", StringComparison.Ordinal) &&
+              valueStreamOutput.Contains(
+                  "grants no baseline, priority, readiness, or action authority",
+                  StringComparison.Ordinal) &&
+              !valueStreamOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !valueStreamOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !valueStreamOutput.Contains("valueStreamNarrative", StringComparison.Ordinal),
+            "Value Stream Model workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badValueStreamSnapshotDigestRoot, badValueStreamSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadValueStreamModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Value Stream Model rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badValueStreamSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadValueStreamModelAsync(InitiativeId),
+                "Value Stream Model rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -1707,6 +1752,9 @@ internal static class Program
         var badCapabilitySnapshotBinding = Path.GetFileName(workspace) == "bad-capability-snapshot-binding";
         var badCapabilitySnapshotDigest = Path.GetFileName(workspace) == "bad-capability-snapshot-digest";
         var badCapabilitySnapshotPrivate = Path.GetFileName(workspace) == "bad-capability-snapshot-private";
+        var badValueStreamSnapshotBinding = Path.GetFileName(workspace) == "bad-value-stream-snapshot-binding";
+        var badValueStreamSnapshotDigest = Path.GetFileName(workspace) == "bad-value-stream-snapshot-digest";
+        var badValueStreamSnapshotPrivate = Path.GetFileName(workspace) == "bad-value-stream-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -1858,6 +1906,17 @@ internal static class Program
                         badCapabilitySnapshotBinding,
                         badCapabilitySnapshotDigest,
                         badCapabilitySnapshotPrivate);
+                    break;
+                case "business.valueStreams.snapshot":
+                    await HandleValueStreamModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badValueStreamSnapshotBinding,
+                        badValueStreamSnapshotDigest,
+                        badValueStreamSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -2418,6 +2477,102 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) map["openGapCount"] = 3;
         if (includePrivateField) result["capabilityNarrative"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleValueStreamModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID VALUE STREAM MODEL");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-25T00:05:00.000Z";
+        var modelDigest = $"sha256:{new string('7', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var model = new Dictionary<string, object?>
+        {
+            ["id"] = ValueStreamModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = modelDigest,
+            ["state"] = "candidate",
+            ["valueStreamCount"] = 3,
+            ["ownedValueStreamCount"] = 2,
+            ["stageCount"] = 9,
+            ["dependencyCount"] = 2,
+            ["openBottleneckCount"] = 2,
+            ["criticalBottleneckCount"] = 1,
+            ["updatedAt"] = "2026-07-25T00:04:59.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "value-stream-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["assessment"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "value-stream-model-assessment",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["valueStreamModel"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = ValueStreamModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = modelDigest,
+                },
+                ["valueStreamCount"] = 3,
+                ["ownedValueStreamCount"] = 2,
+                ["unownedValueStreamCount"] = 1,
+                ["stageCount"] = 9,
+                ["dependencyCount"] = 2,
+                ["capabilityCoverageCount"] = 6,
+                ["outcomeCoverageCount"] = 2,
+                ["absentFlowEvidenceCount"] = 1,
+                ["openBottleneckCount"] = 2,
+                ["criticalBottleneckCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more value streams do not have a candidate owner" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "value-stream-model-assessment-reports-recorded-candidate-flow-coverage-and-gaps-and-does-not-approve-baseline-readiness-or-authorize-action",
+            },
+            ["valueStreamModel"] = model,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-value-stream-narrative-personal-data-source-content-locators-or-credentials",
+            ["authorityBoundary"] =
+                "value-stream-model-projection-does-not-approve-baseline-priority-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) model["openBottleneckCount"] = 3;
+        if (includePrivateField) result["valueStreamNarrative"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
