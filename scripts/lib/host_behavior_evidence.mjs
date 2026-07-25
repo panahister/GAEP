@@ -69,6 +69,7 @@ const definitions = {
     runtimeLevel: "native-plugin-code-activation-startup-and-packaged-engine-client-workflow-local",
     gatePaths: [
       "apps/rider/build.gradle.kts",
+      "apps/rider/test/archive-install-smoke.mjs",
       "apps/rider/test/startup-smoke.mjs",
       "apps/rider/src/main/resources/META-INF/plugin.xml",
       "apps/rider/src/main/kotlin/dev/gaep/rider/GaepApplicationInitializedListener.kt",
@@ -81,7 +82,10 @@ const definitions = {
         executable: "npm",
         args: ["run", "test:rider:package"],
         timeoutMs: 300_000,
-        requiredMarkers: ["BUILD SUCCESSFUL"],
+        requiredMarkers: [
+          "BUILD SUCCESSFUL",
+          "PASS exact Rider PluginInstaller archive install/removal/absence/reinstall: dev.gaep.productstudio@0.1.0",
+        ],
       },
       {
         id: "bounded-native-rider-startup",
