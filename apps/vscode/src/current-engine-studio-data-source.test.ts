@@ -20,6 +20,7 @@ import {
   type ProductDesignDraft,
   type Risk,
   type Run,
+  type SourceGovernanceProjection,
   type TraceImpact,
   type TraceLink,
   type WorkItem,
@@ -120,6 +121,95 @@ function entryAssessment(
     authorityBoundary: "entry-assessment-is-read-only-and-does-not-grant-approval-readiness-or-action-authority",
     ...overrides,
   }
+}
+
+function sourceGovernanceProjection(): SourceGovernanceProjection {
+  const assessment = {
+    schemaVersion: 1 as const,
+    kind: "source-governance-assessment" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    sourceCount: 1,
+    baselineCount: 1,
+    provenanceCount: 1,
+    currentBaseline: {
+      id: "77777777-7777-4777-8777-777777777777",
+      revision: 1,
+      digest: `sha256:${"7".repeat(64)}` as const,
+      membershipDigest: `sha256:${"8".repeat(64)}` as const,
+      status: "current" as const,
+      memberCount: 1,
+    },
+    staleSourceCount: 0,
+    unknownAuthorityCount: 0,
+    unbaselinedSourceCount: 0,
+    unprovenancedSourceCount: 0,
+    state: "ready" as const,
+    reasons: [],
+    assessedAt: "2026-07-25T03:00:00.000Z",
+    authorityBoundary: "source-governance-assessment-reports-recorded-evidence-and-does-not-designate-a-baseline-approve-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "source-governance-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    assessment,
+    sources: [{
+      id: "66666666-6666-4666-8666-666666666666",
+      revision: 1,
+      title: "Reviewed requirements source",
+      sourceType: "requirements" as const,
+      owner: { kind: "human" as const, id: "local-actor-test" },
+      semanticAuthority: {
+        standing: "authoritative" as const,
+        domain: "VS Code Source workflow",
+        scope: ["P0 source intake"],
+      },
+      knowledgeDisposition: "confirmed" as const,
+      informationClassification: "internal" as const,
+      freshness: "fresh" as const,
+      availability: "available" as const,
+      contentDigest: `sha256:${"6".repeat(64)}` as const,
+      recordDigest: `sha256:${"5".repeat(64)}` as const,
+      updatedAt: "2026-07-25T02:58:00.000Z",
+    }],
+    baselines: [{
+      id: assessment.currentBaseline.id,
+      revision: 1,
+      title: "P0 exact source candidate",
+      state: "candidate" as const,
+      membershipDigest: assessment.currentBaseline.membershipDigest,
+      memberCount: 1,
+      assessmentStatus: "current" as const,
+      updatedAt: "2026-07-25T02:59:00.000Z",
+    }],
+    provenance: [{
+      id: "88888888-8888-4888-8888-888888888888",
+      targetKind: "claim" as const,
+      targetDigest: `sha256:${"6".repeat(64)}` as const,
+      disposition: "confirmed" as const,
+      sourceCount: 1,
+      transformationCount: 0,
+      recordedAt: "2026-07-25T03:00:00.000Z",
+    }],
+    limits: {
+      sources: { shown: 1, total: 1, omitted: 0 },
+      baselines: { shown: 1, total: 1, omitted: 0 },
+      provenance: { shown: 1, total: 1, omitted: 0 },
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-portable-governance-metadata-and-digests-only-not-source-bytes-locators-local-paths-or-credentials" as const,
+    authorityBoundary: "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
 const selection: AgentSelection = {
@@ -673,6 +763,7 @@ interface HarnessOptions {
   runtimeBindings?: Record<string, unknown>
   rotateContextDuringObservation?: boolean
   productStudio?: ProductStudioService
+  sourceGovernanceProjection?: SourceGovernanceProjection
   commandResult?: unknown
 }
 
@@ -763,6 +854,11 @@ function harness(options: HarnessOptions = {}) {
     },
     repository: { verifyAudit: async () => options.audit ?? ({ valid: true, events: 8 }) },
     productStudio: options.productStudio ?? productStudioStub(),
+    ...(options.sourceGovernanceProjection ? {
+      sourceGovernance: {
+        project: async () => options.sourceGovernanceProjection!,
+      },
+    } : {}),
   }
   const context: CurrentEngineStudioContext = {
     contextGeneration: () => contextGeneration,
@@ -879,6 +975,46 @@ describe("current-engine Product Studio data source", () => {
     const { snapshotDigest, ...agentModelContent } = agentModel
     expect(snapshotDigest).toBe(canonicalDigest(agentModelContent))
     expect(JSON.stringify(agentModel)).not.toContain("must-redact")
+  })
+
+  it("projects exact privacy-safe Source, candidate Baseline, and Provenance metadata on Delivery", async () => {
+    const projection = sourceGovernanceProjection()
+    const { source } = harness({ sourceGovernanceProjection: projection })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page).toMatchObject({
+      kind: "delivery",
+      sources: {
+        rows: [{
+          id: projection.sources[0]?.id,
+          cells: {
+            title: "Reviewed requirements source",
+            owner: "human:local-actor-test",
+            authority: "authoritative · VS Code Source workflow",
+          },
+        }],
+      },
+      sourceBaselines: {
+        rows: [{
+          id: projection.baselines[0]?.id,
+          cells: {
+            status: "current",
+            boundary: "Candidate snapshot only; no approval, designation, authorization, or supersession.",
+          },
+        }],
+      },
+      sourceProvenance: {
+        rows: [{
+          id: projection.provenance[0]?.id,
+          cells: {
+            target: "claim",
+            boundary: "Attributed lineage only; no approval, validation, authorization, or authority transfer.",
+          },
+        }],
+      },
+    })
+    expect(JSON.stringify(snapshot)).not.toContain("sourceLocator")
   })
 
   it("withholds the Agent/Model projection when exact history sources are incomplete", async () => {

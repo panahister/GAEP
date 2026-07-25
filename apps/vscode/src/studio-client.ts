@@ -581,7 +581,14 @@ class StudioShell {
     const container = element("div")
     container.append(this.renderPageHeader(page))
     if (page.design) container.append(this.renderDesignSection(page.design, page.route))
-    for (const table of [page.initiatives, page.changes, page.workItems]) container.append(this.renderTable(table))
+    for (const table of [
+      page.initiatives,
+      page.sources,
+      page.sourceBaselines,
+      page.sourceProvenance,
+      page.changes,
+      page.workItems,
+    ]) container.append(this.renderTable(table))
     if (page.transitionPreview) {
       const preview = element("section", "section grouped-section")
       preview.append(element("h3", undefined, page.transitionPreview.currentState))

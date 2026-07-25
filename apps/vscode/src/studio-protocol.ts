@@ -276,6 +276,9 @@ export interface DeliveryPageSnapshot extends StudioPageBase {
   kind: "delivery"
   route: "delivery"
   initiatives: StudioTableSnapshot
+  sources: StudioTableSnapshot
+  sourceBaselines: StudioTableSnapshot
+  sourceProvenance: StudioTableSnapshot
   changes: StudioTableSnapshot
   workItems: StudioTableSnapshot
   transitionPreview?: {
@@ -1282,9 +1285,12 @@ function isRecordFormPage(page: Record<string, unknown>, route: RecordFormRoute)
 
 function isDeliveryPage(page: Record<string, unknown>): boolean {
   if (!hasOnlyKeys(page, [
-    "kind", "route", "title", "purpose", "source", "actions", "design", "initiatives", "changes", "workItems", "transitionPreview",
+    "kind", "route", "title", "purpose", "source", "actions", "design", "initiatives", "sources",
+    "sourceBaselines", "sourceProvenance", "changes", "workItems", "transitionPreview",
   ]) || !isPageBase(page, "delivery") || page.kind !== "delivery" || !isTableSnapshot(page.initiatives) ||
-    !isTableSnapshot(page.changes) || !isTableSnapshot(page.workItems)) return false
+    !isTableSnapshot(page.sources) || !isTableSnapshot(page.sourceBaselines) ||
+    !isTableSnapshot(page.sourceProvenance) || !isTableSnapshot(page.changes) ||
+    !isTableSnapshot(page.workItems)) return false
   if (page.transitionPreview === undefined) return true
   return isRecord(page.transitionPreview) && hasOnlyKeys(page.transitionPreview, [
     "recordType", "recordId", "currentState", "allowedNextStates",

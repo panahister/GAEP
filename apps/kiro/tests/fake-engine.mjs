@@ -24,6 +24,9 @@ const workItemId = "24242424-2424-4424-8424-242424242424"
 const traceId = "25252525-2525-4525-8525-252525252525"
 const decisionId = "26262626-2626-4626-8626-262626262626"
 const riskId = "27272727-2727-4727-8727-272727272727"
+const sourceId = "30303030-3030-4030-8030-303030303030"
+const sourceBaselineId = "31313131-3131-4131-8131-313131313131"
+const sourceProvenanceId = "32323232-3232-4232-8232-323232323232"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -61,6 +64,8 @@ input.on("line", (line) => {
       return classifyInitiative(id, request.params)
     case "resolveInitiativeApplicability":
       return resolveInitiativeApplicability(id, request.params)
+    case "source.snapshot":
+      return readSourceGovernance(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -145,6 +150,106 @@ function readInitiative(id, params) {
   }
   const value = structuredClone(initiativeState)
   if (workspacePath.endsWith("bad-initiative-private")) value.privateRoot = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readSourceGovernance(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE SOURCE PARAMS")
+  }
+  const sourceContentDigest = `sha256:${"a".repeat(64)}`
+  const sourceRecordDigest = `sha256:${"b".repeat(64)}`
+  const membershipDigest = `sha256:${"c".repeat(64)}`
+  const baselineDigest = `sha256:${"d".repeat(64)}`
+  const assessment = {
+    schemaVersion: 1,
+    kind: "source-governance-assessment",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    sourceCount: 1,
+    baselineCount: 1,
+    provenanceCount: 1,
+    currentBaseline: {
+      id: sourceBaselineId,
+      revision: 1,
+      digest: baselineDigest,
+      membershipDigest,
+      status: "current",
+      memberCount: 1,
+    },
+    staleSourceCount: 0,
+    unknownAuthorityCount: 0,
+    unbaselinedSourceCount: 0,
+    unprovenancedSourceCount: 0,
+    state: "ready",
+    reasons: [],
+    assessedAt: "2026-07-25T03:00:00.000Z",
+    authorityBoundary: "source-governance-assessment-reports-recorded-evidence-and-does-not-designate-a-baseline-approve-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "source-governance-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: {
+      id: initiativeId,
+      revision: initiativeState.revision,
+      digest: canonicalDigest(initiativeState),
+      state: initiativeState.state,
+    },
+    assessment,
+    sources: [{
+      id: sourceId,
+      revision: 1,
+      title: "Reviewed requirements source",
+      sourceType: "requirements",
+      owner: { kind: "human", id: "founder.kiro-review" },
+      semanticAuthority: {
+        standing: "authoritative",
+        domain: "Kiro Source workflow",
+        scope: ["P0 source intake"],
+      },
+      knowledgeDisposition: "confirmed",
+      informationClassification: "internal",
+      freshness: "fresh",
+      availability: "available",
+      contentDigest: sourceContentDigest,
+      recordDigest: sourceRecordDigest,
+      updatedAt: "2026-07-25T02:58:00.000Z",
+    }],
+    baselines: [{
+      id: sourceBaselineId,
+      revision: 1,
+      title: "P0 exact source candidate",
+      state: "candidate",
+      membershipDigest,
+      memberCount: 1,
+      assessmentStatus: "current",
+      updatedAt: "2026-07-25T02:59:00.000Z",
+    }],
+    provenance: [{
+      id: sourceProvenanceId,
+      targetKind: "claim",
+      targetDigest: sourceContentDigest,
+      disposition: "confirmed",
+      sourceCount: 1,
+      transformationCount: 0,
+      recordedAt: "2026-07-25T03:00:00.000Z",
+    }],
+    limits: {
+      sources: { shown: 1, total: 1, omitted: 0 },
+      baselines: { shown: 1, total: 1, omitted: 0 },
+      provenance: { shown: 1, total: 1, omitted: 0 },
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-portable-governance-metadata-and-digests-only-not-source-bytes-locators-local-paths-or-credentials",
+    authorityBoundary: "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-source-snapshot-binding")) content.initiative.id = sourceId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-source-snapshot-digest")) value.sources[0].freshness = "stale"
+  if (workspacePath.endsWith("bad-source-snapshot-private")) value.sourceLocator = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

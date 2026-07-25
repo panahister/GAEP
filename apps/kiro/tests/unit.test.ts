@@ -337,6 +337,54 @@ test("protocol-v2 Initiative entry client preserves exact request binding and re
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Source governance projection is exact, bounded, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-source-governance-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-source-snapshot-binding",
+    "bad-source-snapshot-digest",
+    "bad-source-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readSourceGovernance(initiativeId)
+    assert.equal(projection.assessment.state, "ready")
+    assert.equal(projection.sources.length, 1)
+    assert.equal(projection.sources[0]?.semanticAuthority.standing, "authoritative")
+    assert.equal(projection.baselines[0]?.state, "candidate")
+    assert.equal(projection.baselines[0]?.assessmentStatus, "current")
+    assert.equal(projection.provenance[0]?.targetKind, "claim")
+    assert.equal(
+      projection.authorityBoundary,
+      "source-governance-projection-does-not-designate-a-baseline-approve-readiness-transfer-authority-or-authorize-action",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes("sourceLocator"), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readSourceGovernance(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

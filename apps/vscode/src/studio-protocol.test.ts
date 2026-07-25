@@ -55,7 +55,16 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         draft: { state: "clean", materialChange: false, validation: "not-validated" },
       }
     case "delivery":
-      return { ...baseFor(route), kind: "delivery", initiatives: table("initiatives"), changes: table("changes"), workItems: table("work-items") }
+      return {
+        ...baseFor(route),
+        kind: "delivery",
+        initiatives: table("initiatives"),
+        sources: table("sources"),
+        sourceBaselines: table("source-baselines"),
+        sourceProvenance: table("source-provenance"),
+        changes: table("changes"),
+        workItems: table("work-items"),
+      }
     case "risks-decisions":
       return { ...baseFor(route), kind: "risks-decisions", risks: table("risks"), recommendations: table("recommendations"), decisions: table("decisions") }
     case "trace":

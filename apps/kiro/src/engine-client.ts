@@ -11,10 +11,12 @@ import {
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
   initiativeSchema,
+  sourceGovernanceProjectionSchema,
   type Initiative,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
+  type SourceGovernanceProjection,
 } from "@gaep/contracts"
 
 import {
@@ -183,6 +185,23 @@ export class GaepEngineClient {
         throw invalidHostResponse()
       }
       return assessment
+    })
+  }
+
+  readSourceGovernance(initiativeValue: string): Promise<SourceGovernanceProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = sourceGovernanceProjectionSchema.safeParse(
+        await this.request("source.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
     })
   }
 

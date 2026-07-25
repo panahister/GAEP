@@ -366,7 +366,7 @@ const sourceProjectionLimitSchema = z.object({
   "Source projection shown and omitted counts must reconcile to the total",
 )
 
-export const sourceGovernanceProjectionSchema = z.object({
+export const sourceGovernanceProjectionSchema = rejectSecrets(z.object({
   schemaVersion: z.literal(1),
   kind: z.literal("source-governance-projection"),
   product: z.object({
@@ -455,7 +455,7 @@ export const sourceGovernanceProjectionSchema = z.object({
       })
     }
   }
-})
+}))
 
 export type SourceRecordInput = z.infer<typeof sourceRecordInputSchema>
 export type SourceRecord = z.infer<typeof sourceRecordSchema>

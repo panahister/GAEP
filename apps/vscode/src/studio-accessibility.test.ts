@@ -123,6 +123,9 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         ...baseFor(route),
         kind: "delivery",
         initiatives: table("initiatives"),
+        sources: table("sources"),
+        sourceBaselines: table("source-baselines"),
+        sourceProvenance: table("source-provenance"),
         changes: {
           ...table("changes"),
           pagination: { offset: 0, limit: 50, total: 75, hasPrevious: false, hasNext: true },

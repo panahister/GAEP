@@ -31,6 +31,7 @@ import type {
   Risk,
   Run,
   RunToolSelection,
+  SourceGovernanceProjection,
   ToolDefinition,
   TraceImpact,
   TraceLink,
@@ -109,6 +110,9 @@ export interface CurrentStudioEngineReader {
     verifyAudit(): Promise<{ valid: boolean; events: number; error?: string; warning?: string }>
   }
   productStudio?: ProductStudioService
+  sourceGovernance?: {
+    project(initiativeId: string): Promise<SourceGovernanceProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -148,6 +152,7 @@ interface ObservedStudioState {
   product?: Product
   initiatives: Initiative[]
   initiativeEntryAssessments: Map<string, InitiativeEntryAssessment>
+  sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
   managedRuns: ManagedRunObservation[]
@@ -1096,6 +1101,112 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     actions: [control("Create Initiative", { kind: "create-initiative" }, true, "primary")],
     ...(state.initiatives.length === 0 ? { emptyState: emptySurface("No Initiatives", "Create a bounded Initiative before preparing a run.", [control("Create Initiative", { kind: "create-initiative" }, true, "primary")]) } : {}),
   }
+  const projections = [...state.sourceGovernanceProjections.values()]
+  const sourceTotal = projections.reduce((total, projection) => total + projection.limits.sources.total, 0)
+  const baselineTotal = projections.reduce((total, projection) => total + projection.limits.baselines.total, 0)
+  const provenanceTotal = projections.reduce((total, projection) => total + projection.limits.provenance.total, 0)
+  const sources: StudioTableSnapshot = {
+    id: "sources",
+    title: "Governed Sources",
+    columns: [
+      { key: "title", label: "Source", identifier: true },
+      { key: "initiative", label: "Initiative" },
+      { key: "revision", label: "Revision" },
+      { key: "owner", label: "Owner" },
+      { key: "authority", label: "Semantic authority" },
+      { key: "disposition", label: "Knowledge status" },
+      { key: "freshness", label: "Freshness" },
+      { key: "availability", label: "Availability" },
+    ],
+    rows: projections.flatMap((projection) => projection.sources.map((record) => ({
+      id: record.id,
+      cells: {
+        title: record.title,
+        initiative: projection.initiative.id,
+        revision: String(record.revision),
+        owner: `${record.owner.kind}:${record.owner.id ?? "unassigned"}`,
+        authority: `${record.semanticAuthority.standing} · ${record.semanticAuthority.domain}`,
+        disposition: record.knowledgeDisposition,
+        freshness: record.freshness,
+        availability: record.availability,
+      },
+      state: record.freshness === "fresh" && record.availability === "available" ? "current" : "attention-required",
+      actions: [],
+    }))),
+    actions: [],
+    ...(sourceTotal === 0 ? {
+      emptyState: emptySurface(
+        "No governed Sources",
+        "Record an exact Source with owner, semantic-authority standing, revision identity, content digest, trust, rights, freshness, and availability.",
+      ),
+    } : {}),
+  }
+  const sourceBaselines: StudioTableSnapshot = {
+    id: "source-baselines",
+    title: "Candidate Source Baselines",
+    columns: [
+      { key: "title", label: "Candidate Baseline", identifier: true },
+      { key: "initiative", label: "Initiative" },
+      { key: "revision", label: "Revision" },
+      { key: "members", label: "Exact Sources" },
+      { key: "status", label: "Binding status" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows: projections.flatMap((projection) => projection.baselines.map((record) => ({
+      id: record.id,
+      cells: {
+        title: record.title,
+        initiative: projection.initiative.id,
+        revision: String(record.revision),
+        members: String(record.memberCount),
+        status: record.assessmentStatus,
+        boundary: "Candidate snapshot only; no approval, designation, authorization, or supersession.",
+      },
+      state: record.assessmentStatus,
+      actions: [],
+    }))),
+    actions: [],
+    ...(baselineTotal === 0 ? {
+      emptyState: emptySurface(
+        "No candidate Source Baseline",
+        "Create a versioned candidate snapshot from exact Source revisions. Candidate membership does not designate an approved Baseline Set.",
+      ),
+    } : {}),
+  }
+  const sourceProvenance: StudioTableSnapshot = {
+    id: "source-provenance",
+    title: "Source Provenance",
+    columns: [
+      { key: "record", label: "Provenance", identifier: true },
+      { key: "initiative", label: "Initiative" },
+      { key: "target", label: "Target" },
+      { key: "disposition", label: "Knowledge status" },
+      { key: "sources", label: "Exact Sources" },
+      { key: "transformations", label: "Transformations" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows: projections.flatMap((projection) => projection.provenance.map((record) => ({
+      id: record.id,
+      cells: {
+        record: record.id,
+        initiative: projection.initiative.id,
+        target: record.targetKind,
+        disposition: record.disposition,
+        sources: String(record.sourceCount),
+        transformations: String(record.transformationCount),
+        boundary: "Attributed lineage only; no approval, validation, authorization, or authority transfer.",
+      },
+      state: record.disposition,
+      actions: [],
+    }))),
+    actions: [],
+    ...(provenanceTotal === 0 ? {
+      emptyState: emptySurface(
+        "No Source Provenance",
+        "Record exact Source-to-claim, Source-to-artifact, or Source-to-governed-record lineage.",
+      ),
+    } : {}),
+  }
   return {
     ...base("delivery", state.product),
     ...(designPanel("delivery", state) ? { design: designPanel("delivery", state) } : {}),
@@ -1106,6 +1217,9 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
       domainControl("Create Work Item", "create-work-item"),
     ],
     initiatives,
+    sources,
+    sourceBaselines,
+    sourceProvenance,
     changes: changesTable(state.changes, state.product),
     workItems: workItemsTable(state.workItems),
   }
@@ -2038,7 +2152,15 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
   switch (page.kind) {
     case "overview": return page
     case "record-form": return { ...page, ...(page.relatedRecords ? { relatedRecords: page.relatedRecords.map(capTable) } : {}) }
-    case "delivery": return { ...page, initiatives: capTable(page.initiatives), changes: capTable(page.changes), workItems: capTable(page.workItems) }
+    case "delivery": return {
+      ...page,
+      initiatives: capTable(page.initiatives),
+      sources: capTable(page.sources),
+      sourceBaselines: capTable(page.sourceBaselines),
+      sourceProvenance: capTable(page.sourceProvenance),
+      changes: capTable(page.changes),
+      workItems: capTable(page.workItems),
+    }
     case "risks-decisions": return { ...page, risks: capTable(page.risks), recommendations: capTable(page.recommendations), decisions: capTable(page.decisions) }
     case "trace": return { ...page, relationships: capTable(page.relationships), searchResults: capTable(page.searchResults) }
     case "agents-tools": return {
@@ -2748,7 +2870,8 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
 
   private async observe(route: StudioRoute): Promise<ObservedStudioState> {
     const empty: ObservedStudioState = {
-      initiatives: [], initiativeEntryAssessments: new Map(), runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
+      initiatives: [], initiativeEntryAssessments: new Map(), sourceGovernanceProjections: new Map(),
+      runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
       handoffSelectedFileCount: 0, handoffOmittedOutsideWindow: 0, handoffOmittedForResourceSafety: 0,
       handoffPlatformAttestationUnavailable: false,
@@ -2863,6 +2986,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "initiative-entry-assessments-unavailable",
           "Initiative entry classification/applicability assessments are withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.sourceGovernance) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.sourceGovernance!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.sourceGovernanceProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Source governance projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `source-governance-${initiative.id}-unavailable`,
+            `${initiative.title}: exact bounded Source, candidate Baseline, and Provenance projection is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "source-governance-unavailable",
+          "Source governance metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

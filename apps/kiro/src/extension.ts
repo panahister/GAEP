@@ -11,6 +11,7 @@ import {
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
+  type SourceGovernanceProjection,
 } from "@gaep/contracts"
 
 import {
@@ -69,6 +70,7 @@ const commandIds = {
   initiativeEntry: "gaepKiro.initiativeEntry.inspect",
   classifyInitiative: "gaepKiro.initiativeEntry.classify",
   resolveApplicability: "gaepKiro.initiativeEntry.resolveApplicability",
+  sourceGovernance: "gaepKiro.sourceGovernance.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -158,6 +160,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.initiativeEntry, (input?: unknown) => runUserCommand(() => showInitiativeEntry(pool, input))),
     vscode.commands.registerCommand(commandIds.classifyInitiative, (input?: unknown) => runUserCommand(() => classifyInitiative(pool, input))),
     vscode.commands.registerCommand(commandIds.resolveApplicability, (input?: unknown) => runUserCommand(() => resolveInitiativeApplicability(pool, input))),
+    vscode.commands.registerCommand(commandIds.sourceGovernance, (input?: unknown) => runUserCommand(() => showSourceGovernance(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -438,6 +441,56 @@ async function showInitiativeEntryDocument(
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })
+}
+
+async function showSourceGovernance(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<SourceGovernanceProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Source governance", "Initiative ID")
+  const projection = await client.readSourceGovernance(initiativeId)
+  const renderLimit = 50
+  const lines = [
+    "GAEP Source governance",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${projection.assessment.state}`,
+    `Sources: ${projection.assessment.sourceCount}`,
+    `Candidate Baselines: ${projection.assessment.baselineCount}`,
+    `Provenance records: ${projection.assessment.provenanceCount}`,
+    `Current candidate Baseline: ${projection.assessment.currentBaseline
+      ? `${projection.assessment.currentBaseline.id}@${projection.assessment.currentBaseline.revision} · ${projection.assessment.currentBaseline.status}`
+      : "not recorded"}`,
+    `Source gaps: ${projection.assessment.staleSourceCount} stale · ${projection.assessment.unknownAuthorityCount} unknown authority · ${projection.assessment.unbaselinedSourceCount} unbaselined · ${projection.assessment.unprovenancedSourceCount} unprovenanced`,
+    ...projection.assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Source records (showing ${Math.min(projection.sources.length, renderLimit)} of ${projection.limits.sources.total})`,
+    ...projection.sources.slice(0, renderLimit).map((source) =>
+      `  - ${source.title} · ${source.id}@${source.revision} · owner ${source.owner.kind}:${source.owner.id ?? "unassigned"} · authority ${source.semanticAuthority.standing} · ${source.knowledgeDisposition} · ${source.freshness}/${source.availability}`),
+    "",
+    `Candidate Baselines (showing ${Math.min(projection.baselines.length, renderLimit)} of ${projection.limits.baselines.total})`,
+    ...projection.baselines.slice(0, renderLimit).map((baseline) =>
+      `  - ${baseline.title} · ${baseline.id}@${baseline.revision} · ${baseline.memberCount} member(s) · ${baseline.assessmentStatus}`),
+    "",
+    `Provenance (showing ${Math.min(projection.provenance.length, renderLimit)} of ${projection.limits.provenance.total})`,
+    ...projection.provenance.slice(0, renderLimit).map((record) =>
+      `  - ${record.id} · ${record.targetKind} · ${record.disposition} · ${record.sourceCount} source(s) · ${record.transformationCount} transformation(s)`),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
 }
 
 async function importPortableDesign(pool: EngineClientPool): Promise<PortableDesignSnapshotSummary> {
