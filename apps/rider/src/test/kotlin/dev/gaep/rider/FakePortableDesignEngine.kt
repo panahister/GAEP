@@ -21,6 +21,7 @@ private val valueStreamModelId = UUID.fromString("43434343-4343-4343-8343-434343
 private val operatingModelId = UUID.fromString("44444444-4444-4444-8444-444444444444")
 private val businessRuleCatalogId = UUID.fromString("45454545-4545-4545-8545-454545454545")
 private val businessArchitectureBaselineId = UUID.fromString("46464646-4646-4646-8646-464646464646")
+private val systemSolutionArchitectureId = UUID.fromString("47474747-4747-4747-8747-474747474747")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -124,6 +125,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "business.architectureBaselines.snapshot" -> handleBusinessArchitectureBaseline(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "architecture.systemSolution.snapshot" -> handleSystemSolutionArchitecture(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -942,6 +948,98 @@ private fun handleBusinessArchitectureBaseline(id: Long, params: JsonObject, wor
             value.getAsJsonObject("baseline").addProperty("coveredElementCount", 28)
         }
         workspacePath.endsWith("bad-business-architecture-baseline-snapshot-private") -> {
+            value.addProperty("architectureNarrative", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleSystemSolutionArchitecture(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE SYSTEM SOLUTION ARCHITECTURE PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-system-solution-architecture-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T10:30:00.000Z"
+    val architectureDigest = "sha256:${"b".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "system-solution-architecture-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("assessment", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "system-solution-architecture-assessment")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("architecture", JsonObject().apply {
+                addProperty("recordId", systemSolutionArchitectureId.toString())
+                addProperty("revision", 3)
+                addProperty("digest", architectureDigest)
+            })
+            addProperty("concernCount", 4)
+            addProperty("viewCount", 3)
+            addProperty("elementCount", 9)
+            addProperty("relationCount", 12)
+            addProperty("qualityAttributeCount", 5)
+            addProperty("unresolvedQualityAttributeCount", 1)
+            addProperty("decisionCount", 4)
+            addProperty("unresolvedDecisionCount", 2)
+            addProperty("conformanceCriterionCount", 6)
+            addProperty("unresolvedConformanceCriterionCount", 1)
+            addProperty("lifecycleGapCount", 1)
+            addProperty("inconsistencyCount", 0)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more architecture decisions remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "system-solution-architecture-assessment-reports-candidate-coverage-and-gaps-and-does-not-approve-baseline-readiness-conformance-technology-or-action",
+            )
+        })
+        add("architecture", JsonObject().apply {
+            addProperty("id", systemSolutionArchitectureId.toString())
+            addProperty("revision", 3)
+            addProperty("digest", architectureDigest)
+            addProperty("membershipDigest", "sha256:${"e".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("concernCount", 4)
+            addProperty("viewCount", 3)
+            addProperty("elementCount", 9)
+            addProperty("qualityAttributeCount", 5)
+            addProperty("decisionCount", 4)
+            addProperty("updatedAt", "2026-07-26T10:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-architecture-narrative-source-content-personal-data-locators-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "system-solution-architecture-projection-does-not-approve-or-designate-an-architecture-baseline-establish-readiness-prove-conformance-mandate-technology-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-system-solution-architecture-snapshot-digest") -> {
+            value.getAsJsonObject("architecture").addProperty("elementCount", 10)
+        }
+        workspacePath.endsWith("bad-system-solution-architecture-snapshot-private") -> {
             value.addProperty("architectureNarrative", "$privateRoot/$privateCredential")
         }
     }

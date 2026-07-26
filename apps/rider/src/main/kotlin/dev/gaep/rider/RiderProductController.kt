@@ -529,6 +529,56 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readSystemSolutionArchitecture(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readSystemSolutionArchitecture(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the System/Solution Architecture was read. Refresh the exact records." }
+        return renderSystemSolutionArchitecture(projection)
+    }
+
+    fun renderSystemSolutionArchitecture(projection: SystemSolutionArchitectureProjection): String = buildString {
+        appendLine("GAEP governed System/Solution Architecture candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.concernCount} concerns · ${projection.viewCount} views · " +
+                "${projection.elementCount} elements · ${projection.relationCount} relations · " +
+                "${projection.qualityAttributeCount} quality scenarios · ${projection.decisionCount} decisions · " +
+                "${projection.conformanceCriterionCount} conformance criteria",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedQualityAttributeCount} quality scenarios · " +
+                "${projection.unresolvedDecisionCount} decisions · ${projection.unresolvedConformanceCriterionCount} conformance criteria · " +
+                "${projection.lifecycleGapCount} lifecycle consequences · ${projection.inconsistencyCount} inconsistencies · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.architecture?.let { record ->
+            appendLine("Architecture candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate counts: ${record.concernCount} concerns · ${record.viewCount} views · ${record.elementCount} elements · " +
+                    "${record.qualityAttributeCount} quality scenarios · ${record.decisionCount} decisions",
+            )
+        } ?: appendLine("Architecture candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no architecture narrative, Source content, personal data, locators, " +
+                "local paths, or credentials and does not designate or approve an architecture baseline, establish readiness, " +
+                "prove conformance, mandate technology, or authorize action.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

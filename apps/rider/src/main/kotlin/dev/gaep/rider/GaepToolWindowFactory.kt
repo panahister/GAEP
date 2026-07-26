@@ -210,6 +210,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += businessArchitectureBaselineButton
         actions.add(businessArchitectureBaselineButton)
 
+        val systemSolutionArchitectureButton = JButton("Inspect System/Solution Architecture…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Architecture narrative, Source content, personal data, local paths, credentials, and authority are withheld.",
+                    "GAEP System/Solution Architecture",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect System/Solution Architecture", status, output, buttons) {
+                    controller.readSystemSolutionArchitecture(initiativeId)
+                }
+            }
+        }
+        buttons += systemSolutionArchitectureButton
+        actions.add(systemSolutionArchitectureButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

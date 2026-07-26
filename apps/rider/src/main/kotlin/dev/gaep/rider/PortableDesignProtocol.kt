@@ -1036,6 +1036,47 @@ data class BusinessArchitectureBaselineProjection(
     val snapshotDigest: String,
 )
 
+data class SystemSolutionArchitectureRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val concernCount: Int,
+    val viewCount: Int,
+    val elementCount: Int,
+    val qualityAttributeCount: Int,
+    val decisionCount: Int,
+)
+
+data class SystemSolutionArchitectureProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val concernCount: Int,
+    val viewCount: Int,
+    val elementCount: Int,
+    val relationCount: Int,
+    val qualityAttributeCount: Int,
+    val unresolvedQualityAttributeCount: Int,
+    val decisionCount: Int,
+    val unresolvedDecisionCount: Int,
+    val conformanceCriterionCount: Int,
+    val unresolvedConformanceCriterionCount: Int,
+    val lifecycleGapCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val architecture: SystemSolutionArchitectureRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1103,6 +1144,12 @@ internal object PortableDesignProtocol {
         "business-architecture-baseline-projection-does-not-designate-or-approve-a-baseline-establish-readiness-grant-exceptions-deploy-enforcement-or-authorize-action"
     private const val BUSINESS_ARCHITECTURE_BASELINE_ASSESSMENT_AUTHORITY_BOUNDARY =
         "business-architecture-baseline-assessment-reports-candidate-coherence-and-gaps-and-does-not-designate-or-approve-a-baseline-establish-readiness-or-authorize-action"
+    private const val SYSTEM_SOLUTION_ARCHITECTURE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-architecture-narrative-source-content-personal-data-locators-or-credentials"
+    private const val SYSTEM_SOLUTION_ARCHITECTURE_PROJECTION_AUTHORITY_BOUNDARY =
+        "system-solution-architecture-projection-does-not-approve-or-designate-an-architecture-baseline-establish-readiness-prove-conformance-mandate-technology-or-authorize-action"
+    private const val SYSTEM_SOLUTION_ARCHITECTURE_ASSESSMENT_AUTHORITY_BOUNDARY =
+        "system-solution-architecture-assessment-reports-candidate-coverage-and-gaps-and-does-not-approve-baseline-readiness-conformance-technology-or-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -2996,6 +3043,151 @@ internal object PortableDesignProtocol {
             initiativeState, assessmentState, reasons, coveredElementCount, includedElementCount,
             excludedElementCount, unresolvedElementCount, integrationClaimCount, consistencyCheckCount,
             consistencyGapCount, staleBindingCount, staleSourceReferenceCount, baseline, snapshotDigest,
+        )
+    }
+
+    fun parseSystemSolutionArchitectureEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): SystemSolutionArchitectureProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "assessment", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("architecture"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "system-solution-architecture-projection" ||
+            projection.requireString("privacyBoundary") != SYSTEM_SOLUTION_ARCHITECTURE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != SYSTEM_SOLUTION_ARCHITECTURE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val assessment = projection.get("assessment").requireObject()
+        assessment.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "concernCount", "viewCount", "elementCount", "relationCount", "qualityAttributeCount",
+                "unresolvedQualityAttributeCount", "decisionCount", "unresolvedDecisionCount",
+                "conformanceCriterionCount", "unresolvedConformanceCriterionCount", "lifecycleGapCount",
+                "inconsistencyCount", "unresolvedQuestionCount", "staleBindingCount", "staleSourceReferenceCount",
+                "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("architecture"),
+        )
+        if (assessment.requireInt("schemaVersion") != 1 ||
+            assessment.requireString("kind") != "system-solution-architecture-assessment" ||
+            assessment.requireNonEmptyUuid("productId") != productId ||
+            assessment.requireLong("productRevision") != productRevision ||
+            assessment.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            assessment.requireLong("initiativeRevision") != initiativeRevision ||
+            assessment.requireString("authorityBoundary") != SYSTEM_SOLUTION_ARCHITECTURE_ASSESSMENT_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = assessment.get("architecture")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val concernCount = assessment.requireBoundedNonNegativeInt("concernCount", 1_024)
+        val viewCount = assessment.requireBoundedNonNegativeInt("viewCount", 1_024)
+        val elementCount = assessment.requireBoundedNonNegativeInt("elementCount", 2_048)
+        val relationCount = assessment.requireBoundedNonNegativeInt("relationCount", 4_096)
+        val qualityAttributeCount = assessment.requireBoundedNonNegativeInt("qualityAttributeCount", 1_024)
+        val unresolvedQualityAttributeCount = assessment.requireBoundedNonNegativeInt(
+            "unresolvedQualityAttributeCount",
+            qualityAttributeCount,
+        )
+        val decisionCount = assessment.requireBoundedNonNegativeInt("decisionCount", 1_024)
+        val unresolvedDecisionCount = assessment.requireBoundedNonNegativeInt(
+            "unresolvedDecisionCount",
+            decisionCount,
+        )
+        val conformanceCriterionCount = assessment.requireBoundedNonNegativeInt("conformanceCriterionCount", 2_048)
+        val unresolvedConformanceCriterionCount = assessment.requireBoundedNonNegativeInt(
+            "unresolvedConformanceCriterionCount",
+            conformanceCriterionCount,
+        )
+        val lifecycleGapCount = assessment.requireBoundedNonNegativeInt("lifecycleGapCount", 5)
+        val inconsistencyCount = assessment.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = assessment.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val staleBindingCount = assessment.requireBoundedNonNegativeInt("staleBindingCount", 16)
+        val staleSourceReferenceCount = assessment.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val assessmentState = assessment.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = assessment.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = assessment.requireInstant("assessedAt")
+
+        val architecture = projection.get("architecture")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "concernCount", "viewCount",
+                "elementCount", "qualityAttributeCount", "decisionCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val record = SystemSolutionArchitectureRecordView(
+                id,
+                revision,
+                digest,
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("concernCount", 1_024),
+                value.requireBoundedNonNegativeInt("viewCount", 1_024),
+                value.requireBoundedNonNegativeInt("elementCount", 2_048),
+                value.requireBoundedNonNegativeInt("qualityAttributeCount", 1_024),
+                value.requireBoundedNonNegativeInt("decisionCount", 1_024),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (architecture == null) ||
+            (architecture?.concernCount ?: 0) != concernCount ||
+            (architecture?.viewCount ?: 0) != viewCount ||
+            (architecture?.elementCount ?: 0) != elementCount ||
+            (architecture?.qualityAttributeCount ?: 0) != qualityAttributeCount ||
+            (architecture?.decisionCount ?: 0) != decisionCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return SystemSolutionArchitectureProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, concernCount, viewCount, elementCount, relationCount,
+            qualityAttributeCount, unresolvedQualityAttributeCount, decisionCount, unresolvedDecisionCount,
+            conformanceCriterionCount, unresolvedConformanceCriterionCount, lifecycleGapCount, inconsistencyCount,
+            unresolvedQuestionCount, staleBindingCount, staleSourceReferenceCount, architecture, snapshotDigest,
         )
     }
 
