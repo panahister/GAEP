@@ -20,6 +20,10 @@ coverage/
 **/bin/
 **/obj/
 
+# Local, shareable GAEP release bundles. These binaries and machine-specific
+# test kits are generated beside the repository and must never be committed.
+/local-release-bundles/
+
 # GAEP-P0-CS02 release binaries (provenance is tracked via manifest + checksums)
 dist/phase0/cs02/*.vsix
 dist/phase0/cs02/*.zip

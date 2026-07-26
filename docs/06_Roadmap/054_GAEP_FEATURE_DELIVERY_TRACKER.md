@@ -2,7 +2,7 @@
 
 **Governed AI Engineering Platform (GAEP)**  
 **Document ID:** GAEP-RDM-054  
-**Version:** 1.0.3  
+**Version:** 1.0.4  
 **Status:** Active Delivery Control  
 **Last Updated:** 2026-07-26  
 **Authority:** Feature delivery status and phase acceptance  
@@ -88,7 +88,41 @@ The standard delivery loop is:
 3. build, install, and manually smoke VS Code, Kiro, and Rider on the Product Owner's macOS environment when applicable;
 4. run the same commit through automated macOS, Windows, and Linux build/package/launch/protocol/workflow smoke lanes;
 5. correct only the failing platform adapter or lane; do not fork or reimplement the Feature;
-6. perform a full manual operating-system matrix only for a release candidate or a platform-specific defect that automation cannot validate.
+6. collect every stable release's verified packages into the Git-ignored local release bundle defined in Section 3.2;
+7. perform a full manual operating-system matrix only for a release candidate or a platform-specific defect that automation cannot validate.
+
+### 3.2 Local shareable release-bundle contract
+
+The canonical local output root is:
+
+```text
+local-release-bundles/<change-set-id>/<version>/
+```
+
+The entire `local-release-bundles/` tree must remain Git-ignored. It is a local distribution cache that the Product Owner can copy to other machines; it is not a source-control artifact.
+
+For GAEP-P0-CS02 version 0.2.0, the expected root is:
+
+```text
+local-release-bundles/GAEP-P0-CS02/0.2.0/
+```
+
+It must contain:
+
+- `bundle-manifest.json` binding every package to IDE, OS/architecture, version, source commit, SHA-256, build origin, build state, install-test state, and workflow-test state;
+- `SHA256SUMS.txt` for every file distributed from the bundle;
+- `macos-arm64/{vscode,kiro,rider}/`;
+- `windows-x64/{vscode,kiro,rider,visual-studio}/`;
+- `linux-x64/{vscode,kiro,rider}/`;
+- `test-kits/` with target-local, non-interactive verification plus documented installation/workflow smoke commands.
+
+The repository must expose three stable command contracts:
+
+1. `npm run release:matrix -- --target <current|macos-arm64|windows-x64|linux-x64>` builds every applicable IDE package that can truthfully be built on the selected host;
+2. `npm run release:collect -- --change-set <id> --version <version>` collects verified local and downloaded GitHub Actions artifacts into the canonical bundle without committing them;
+3. `npm run release:verify -- --bundle <path>` recomputes every digest, checks source/version/target consistency, verifies package membership, and runs the applicable non-interactive smoke tests.
+
+An unsupported native cross-build must remain `not-built` until a matching local machine or GitHub Actions VM produces it. A command must never fabricate or relabel a package for another operating system.
 
 ## 4. Mandatory Deliverable Contract for Every Phase
 
@@ -103,7 +137,8 @@ No phase is complete merely because the Core Engine or VS Code implementation is
 7. build results, automated tests, install smoke tests, workflow smoke tests, and a conformance report;
 8. upgrade and rollback tests appropriate to that phase's package;
 9. installation and execution documentation, limitations, and known gaps; and
-10. explicit Product Owner acceptance before the phase is set to `✅ Done`.
+10. a verified, Git-ignored local release bundle that can be copied to the applicable target machines; and
+11. explicit Product Owner acceptance before the phase is set to `✅ Done`.
 
 ## 5. Status Summary
 
@@ -372,7 +407,8 @@ Claude Code must not report a phase as Done unless:
 5. the phase dashboards display real data;
 6. the Product Owner has reviewed the phase's realistic example;
 7. the Product Owner has explicitly accepted phase completion; and
-8. the Feature Registry, Status Summary, and Change Log are updated in a single change.
+8. the verified local release bundle contains every applicable IDE/OS artifact for the accepted source revision; and
+9. the Feature Registry, Status Summary, and Change Log are updated in a single change.
 
 For operating-system coverage, automated same-commit matrix evidence is sufficient for Phase acceptance unless a host workflow cannot be exercised automatically or the Product Owner explicitly requests manual validation. Manual Product Owner acceptance may be performed on the primary macOS environment for VS Code, Kiro, and Rider. Visual Studio acceptance is performed on Windows.
 
@@ -453,6 +489,7 @@ Every status change must add a new row. Previous rows must not be deleted or rew
 
 | Date | Actor | Phase | Feature IDs | Status changes | Evidence / test path | Product Owner acceptance | Notes |
 |---|---|---|---|---|---|---|---|
+| 2026-07-26 | Codex (recording Product Owner direction) | All phases | PLT-03, PLT-04, PLT-05, PLT-20, PLT-29, PLT-31, PLT-32, PLT-33, PLT-34, PLT-35 | None — statuses unchanged | Manifest 0.4.4 and Tracker Section 3.2 | Product Owner required every stable release to expose verified, shareable packages outside Git while retaining GitHub Actions VM validation | Added the canonical `local-release-bundles/<change-set-id>/<version>/` contract, macOS installation/smoke requirement for VS Code/Kiro/Rider, target-machine test kits, and build/collect/verify command contracts. GitHub Actions remain enabled and unchanged. |
 | 2026-07-26 | Codex (recording Product Owner direction) | Phase 0 / 1A | PLT-03, PLT-04, PLT-05, PLT-20, PLT-31, PLT-32, PLT-33, PLT-34, PLT-35 | None — statuses unchanged | `docs/GAEP_PLATFORM_PRODUCT_IDENTITY_MANIFEST.md` operating-system matrix and this tracker Sections 2.3/3.1 | Product Owner explicitly clarified that VS Code, Kiro, and Rider must run on macOS, Windows, and Linux; Visual Studio is Windows-only | Established one shared implementation plus thin platform adapters, macOS primary manual acceptance, same-commit automated OS matrix, and a no-new-report rule for in-scope defects/CI failures. This clarification supersedes narrower CS02 platform assumptions without reopening Stage A. |
 | 2026-07-24 | Codex (recording Product Owner acceptance) | Phase 0 / 1A | PLT-28 | PLT-28 `🧪 Ready for Test -> ✅ Done` | Product Owner installed the GAEP VSIX and manually executed `GAEP: Show Platform Readiness`; the visible output contained computed provider/workspace readiness and all four host rows. Automated evidence: `examples/phase0-readiness/acceptance/GAEP-P0-CS01_READINESS_REPORT.json` + `examples/phase0-readiness/acceptance/GAEP-P0-CS01_EVIDENCE_MANIFEST.md`; verified report digest `sha256:158853a9e822ccd9b86dafe5f691aa0ae42b4a4f302e01c55611515ecf5d5b3a`. | Accepted by Product Owner after the 2026-07-24 manual installation and command test; Codex assessed the displayed result as PASS. | GAEP-P0-CS01-C1 is accepted. The visible raw `ENOENT` for `.gaep/manifest.json` came from a Product-dependent command on an uninitialized workspace, not from Platform Readiness; friendly prerequisite handling is carried into GAEP-P0-CS02. PLT-27 and PLT-29 remain `🟡 In Progress`; Phase 0 remains open. |
 | 2026-07-24 | Codex | All | PLT-01..35, P1-01..36, P2-01..26, P3A-01..24, P3B-01..30, P4-01..17 | Initial baseline recorded | Codebase and Manifest assessment | Baseline structure requested by Product Owner; feature completion not newly accepted | Initial 168-feature delivery tracker created |

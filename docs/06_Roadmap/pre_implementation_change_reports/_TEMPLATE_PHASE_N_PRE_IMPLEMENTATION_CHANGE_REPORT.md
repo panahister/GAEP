@@ -117,6 +117,8 @@ For every generated artifact, state who creates it, when it is created, whether 
 
 For host-facing work, map the same source revision to the canonical operating-system matrix in the Manifest and Feature Delivery Tracker. Do not propose separate Product implementations per operating system. Put OS-specific behavior only in thin launch, path, process, native-host, packaging, or CI adapters.
 
+Define the ignored local release output at `local-release-bundles/<change-set-id>/<version>/`, including per-target IDE packages, target-local test kits, a bundle manifest, SHA-256 checksums, collection from GitHub Actions, and local verification commands. Release binaries and downloaded workflow artifacts must never be committed.
+
 > Do not claim four-IDE support when a host only has a scaffold or was not executed.
 
 ### Artifact and evidence contract

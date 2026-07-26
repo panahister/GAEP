@@ -2,7 +2,7 @@
 
 **Product:** Governed AI Engineering Platform (GAEP)  
 **Document ID:** GAEP-PID-001  
-**Version:** 0.4.3<br>
+**Version:** 0.4.4<br>
 **Status:** Draft — Shareable Product Identity  
 **Last updated:** 2026-07-26  
 **Intended audience:** Executives, product leaders, engineering leaders, architects, designers, quality and security leaders, software engineers, operators, governance participants, AI-platform evaluators, and AI agents  
@@ -455,6 +455,32 @@ This matrix is a validation matrix over one Product implementation, not permissi
 The minimum release-validation matrix for the first credible cross-platform release is macOS Apple silicon, Windows x64, and Linux x64, using the same source revision and versioned protocol. Additional architectures may be added when supported by the relevant IDE vendor and declared in the package manifest. IDE discovery must inspect standard application installations and configured locations as well as `PATH`; an installed macOS application bundle must not be reported absent solely because its command is not on `PATH`.
 
 The Product Owner's primary manual acceptance environment may be macOS. Windows and Linux parity may be established by automated build, package-content, launch, protocol-conformance, and workflow smoke lanes for the same commit. Full manual testing on every operating system is a release-candidate activity, not a requirement for every Feature implementation pass. Visual Studio remains Windows-only.
+
+Every stable phase or Change Set release must also be collectable into a local, shareable, Git-ignored release bundle beside the repository:
+
+```text
+local-release-bundles/<change-set-id>/<version>/
+├── bundle-manifest.json
+├── SHA256SUMS.txt
+├── macos-arm64/
+│   ├── vscode/
+│   ├── kiro/
+│   └── rider/
+├── windows-x64/
+│   ├── vscode/
+│   ├── kiro/
+│   ├── rider/
+│   └── visual-studio/
+├── linux-x64/
+│   ├── vscode/
+│   ├── kiro/
+│   └── rider/
+└── test-kits/
+```
+
+The bundle is a distributable test handoff, not authoritative source and not a tracked repository artifact. It must be excluded by `.gitignore`, contain only verified packages and target-local install/test runners, identify the exact source commit and workflow or local build evidence, and fail verification when an artifact is missing, stale, or digest-mismatched. Platform-neutral packages may be copied into each applicable operating-system directory for a self-contained handoff. Visual Studio is present only in the Windows directory.
+
+The macOS release gate must install and smoke-test VS Code, Kiro, and Rider in isolated profiles or sandboxes before asking the Product Owner for manual acceptance. GitHub Actions may build and test Windows/Linux artifacts in hosted VMs, but their outputs become shareable only after they are downloaded or collected into the local release bundle and its manifest/checksums are verified.
 
 Every phase release must produce installable, version-aligned artifacts for all four IDEs, exercise the applicable phase dashboard and example in each host, and prove Codex and Claude Code selection, Model selection, switching, handoff, capability truth, and evidence behavior. Platform-specific limitations must be visible and must fail closed; an inert command, hook, or view must not be reported as supported.
 
