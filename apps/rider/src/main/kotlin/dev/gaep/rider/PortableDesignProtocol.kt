@@ -1430,6 +1430,39 @@ data class DecisionRegisterProjection(
     val snapshotDigest: String,
 )
 
+data class RiskRegisterRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val riskCount: Int,
+)
+
+data class RiskRegisterProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val riskCount: Int,
+    val notAssessedRiskCount: Int,
+    val unresolvedResidualRiskCount: Int,
+    val proposedTreatmentCount: Int,
+    val unassignedOwnerCount: Int,
+    val unverifiedControlCount: Int,
+    val unresolvedRequirementCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val register: RiskRegisterRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1557,6 +1590,12 @@ internal object PortableDesignProtocol {
         "decision-register-projection-does-not-establish-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority"
     private const val DECISION_REGISTER_STATUS_AUTHORITY_BOUNDARY =
         "decision-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority"
+    private const val RISK_REGISTER_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-risk-statements-assessments-controls-treatments-residual-risk-evidence-related-record-content-personal-data-secrets-or-credentials"
+    private const val RISK_REGISTER_PROJECTION_AUTHORITY_BOUNDARY =
+        "risk-register-projection-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority"
+    private const val RISK_REGISTER_STATUS_AUTHORITY_BOUNDARY =
+        "risk-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -4796,6 +4835,120 @@ internal object PortableDesignProtocol {
             initiativeState, assessmentState, reasons, decisionCount, unresolvedDecisionCount,
             selectedPendingDecisionCount, deferredDecisionCount, unresolvedRequirementCount, inconsistencyCount,
             unresolvedQuestionCount, staleBindingCount, staleSourceReferenceCount, register, snapshotDigest,
+        )
+    }
+
+    fun parseRiskRegisterEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): RiskRegisterProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("register"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "risk-register-projection" ||
+            projection.requireString("privacyBoundary") != RISK_REGISTER_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != RISK_REGISTER_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "riskCount", "notAssessedRiskCount", "unresolvedResidualRiskCount", "proposedTreatmentCount",
+                "unassignedOwnerCount", "unverifiedControlCount", "unresolvedRequirementCount", "staleBindingCount",
+                "staleSourceReferenceCount", "inconsistencyCount", "unresolvedQuestionCount", "state", "reasons",
+                "assessedAt", "authorityBoundary",
+            ),
+            setOf("register"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "risk-register-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != RISK_REGISTER_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("register")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val riskCount = status.requireBoundedNonNegativeInt("riskCount", 4_096)
+        val notAssessedRiskCount = status.requireBoundedNonNegativeInt("notAssessedRiskCount", 4_096)
+        val unresolvedResidualRiskCount = status.requireBoundedNonNegativeInt("unresolvedResidualRiskCount", 4_096)
+        val proposedTreatmentCount = status.requireBoundedNonNegativeInt("proposedTreatmentCount", 4_096)
+        val unassignedOwnerCount = status.requireBoundedNonNegativeInt("unassignedOwnerCount", 4_096)
+        if (listOf(notAssessedRiskCount, unresolvedResidualRiskCount, proposedTreatmentCount, unassignedOwnerCount)
+                .any { it > riskCount }
+        ) throw invalidResponse()
+        val unverifiedControlCount = status.requireBoundedNonNegativeInt("unverifiedControlCount", 2_097_152)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 15)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val inconsistencyCount = status.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val assessmentState = status.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val register = projection.get("register")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("id", "revision", "digest", "membershipDigest", "state", "riskCount", "updatedAt")
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = RiskRegisterRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("riskCount", 4_096),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (register == null) ||
+            (register?.riskCount ?: 0) != riskCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return RiskRegisterProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, riskCount, notAssessedRiskCount,
+            unresolvedResidualRiskCount, proposedTreatmentCount, unassignedOwnerCount, unverifiedControlCount,
+            unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount, staleBindingCount,
+            staleSourceReferenceCount, register, snapshotDigest,
         )
     }
 

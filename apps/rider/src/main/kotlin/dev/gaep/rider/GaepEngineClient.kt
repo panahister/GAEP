@@ -249,6 +249,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readRiskRegister(initiativeId: UUID): RiskRegisterProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("risk.registers.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseRiskRegisterEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

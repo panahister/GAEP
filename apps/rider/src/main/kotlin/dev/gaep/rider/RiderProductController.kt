@@ -981,6 +981,51 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readRiskRegister(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readRiskRegister(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Risk Register was read. Refresh the exact records." }
+        return renderRiskRegister(projection)
+    }
+
+    fun renderRiskRegister(projection: RiskRegisterProjection): String = buildString {
+        appendLine("GAEP governed Risk Register candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.riskCount} risks · ${projection.proposedTreatmentCount} proposed treatments · " +
+                "${projection.unassignedOwnerCount} owner assignments not established",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.notAssessedRiskCount} not assessed · " +
+                "${projection.unresolvedResidualRiskCount} residual risks · ${projection.unverifiedControlCount} control effectiveness gaps · " +
+                "${projection.unresolvedRequirementCount} requirements · ${projection.inconsistencyCount} inconsistencies · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.register?.let { record ->
+            appendLine("Risk Register candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+        } ?: appendLine("Risk Register candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no risk statements, assessments, controls, treatments, residual risk, " +
+                "evidence, related-record content, personal data, local paths, secrets, or credentials and does not establish " +
+                "assessment fact, owner assignment, control effectiveness, risk acceptance, approval, exception, baseline promotion, " +
+                "operational readiness, or action authority.",
+        )
+    }
+
     fun renderFailureRecoveryModel(projection: FailureRecoveryModelProjection): String = buildString {
         appendLine("GAEP governed Failure and Recovery Model candidate")
         appendLine()

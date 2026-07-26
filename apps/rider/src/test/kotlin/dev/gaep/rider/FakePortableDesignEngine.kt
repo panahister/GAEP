@@ -31,6 +31,7 @@ private val eventIntegrationModelId = UUID.fromString("53535353-5353-4353-8353-5
 private val failureRecoveryModelId = UUID.fromString("54545454-5454-4454-8454-545454545454")
 private val architectureChallengeModelId = UUID.fromString("56565656-5656-4656-8656-565656565656")
 private val decisionRegisterId = UUID.fromString("57575757-5757-4757-8757-575757575757")
+private val riskRegisterId = UUID.fromString("58585858-5858-4858-8858-585858585858")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -184,6 +185,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "decision.registers.snapshot" -> handleDecisionRegister(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "risk.registers.snapshot" -> handleRiskRegister(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -1907,6 +1913,90 @@ private fun handleDecisionRegister(id: Long, params: JsonObject, workspacePath: 
         }
         workspacePath.endsWith("bad-decision-register-snapshot-private") -> {
             value.addProperty("decisionQuestion", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleRiskRegister(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE RISK REGISTER PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-risk-register-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T18:00:00.000Z"
+    val registerDigest = "sha256:${"e".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "risk-register-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "risk-register-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("register", JsonObject().apply {
+                addProperty("recordId", riskRegisterId.toString())
+                addProperty("revision", 3)
+                addProperty("digest", registerDigest)
+            })
+            addProperty("riskCount", 9)
+            addProperty("notAssessedRiskCount", 2)
+            addProperty("unresolvedResidualRiskCount", 3)
+            addProperty("proposedTreatmentCount", 9)
+            addProperty("unassignedOwnerCount", 9)
+            addProperty("unverifiedControlCount", 4)
+            addProperty("unresolvedRequirementCount", 1)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("inconsistencyCount", 0)
+            addProperty("unresolvedQuestionCount", 1)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Risk Assessments remain explicitly not assessed") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "risk-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority",
+            )
+        })
+        add("register", JsonObject().apply {
+            addProperty("id", riskRegisterId.toString())
+            addProperty("revision", 3)
+            addProperty("digest", registerDigest)
+            addProperty("membershipDigest", "sha256:${"b".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("riskCount", 9)
+            addProperty("updatedAt", "2026-07-26T17:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-risk-statements-assessments-controls-treatments-residual-risk-evidence-related-record-content-personal-data-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "risk-register-projection-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-risk-register-snapshot-digest") -> {
+            value.getAsJsonObject("register").addProperty("riskCount", 10)
+        }
+        workspacePath.endsWith("bad-risk-register-snapshot-private") -> {
+            value.addProperty("riskStatement", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)
