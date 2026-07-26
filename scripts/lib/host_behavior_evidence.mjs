@@ -105,6 +105,8 @@ const definitions = {
       "apps/visual-studio/verify-shell.mjs",
       "apps/visual-studio/Gaep.HostClient/ArchitectureChallengeModelModels.cs",
       "apps/visual-studio/Gaep.HostClient/ArchitectureChallengeModelProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/DecisionRegisterModels.cs",
+      "apps/visual-studio/Gaep.HostClient/DecisionRegisterProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -121,7 +123,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (361)",
+        "GAEP Visual Studio host-client tests: PASS (368)",
       ],
     }],
   },
