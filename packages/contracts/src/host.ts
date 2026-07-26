@@ -39,6 +39,7 @@ import { authorizationModelInputSchema } from "./authorization-model.js"
 import { eventIntegrationModelInputSchema } from "./event-integration-model.js"
 import { failureRecoveryModelInputSchema } from "./failure-recovery-model.js"
 import { architectureChallengeModelInputSchema } from "./architecture-challenge-model.js"
+import { decisionRegisterInputSchema } from "./decision-register.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -419,6 +420,18 @@ export const hostArchitectureChallengeModelReviseParamsSchema = z.object({
   record: architectureChallengeModelInputSchema,
 }).strict()
 
+export const hostDecisionRegisterCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: decisionRegisterInputSchema,
+}).strict()
+
+export const hostDecisionRegisterReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: decisionRegisterInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -550,6 +563,11 @@ export const hostMethodSchema = z.enum([
   "challenge.models.revise",
   "challenge.models.assess",
   "challenge.models.snapshot",
+  "decision.registers.read",
+  "decision.registers.create",
+  "decision.registers.revise",
+  "decision.registers.assess",
+  "decision.registers.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -693,6 +711,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("challenge.models.revise", hostArchitectureChallengeModelReviseParamsSchema),
   requestVariant("challenge.models.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("challenge.models.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("decision.registers.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("decision.registers.create", hostDecisionRegisterCreateParamsSchema),
+  requestVariant("decision.registers.revise", hostDecisionRegisterReviseParamsSchema),
+  requestVariant("decision.registers.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("decision.registers.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

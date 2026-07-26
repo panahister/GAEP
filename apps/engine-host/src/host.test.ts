@@ -1141,8 +1141,47 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "decision-register-read-empty",
+      protocolVersion: 2,
+      method: "decision.registers.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "decision-register-assess-empty",
+      protocolVersion: 2,
+      method: "decision.registers.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      decisionCount: 0,
+      unresolvedDecisionCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-decision-effectiveness"),
+    })
+    const decisionRegisterProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "decision-register-snapshot-empty",
+      protocolVersion: 2,
+      method: "decision.registers.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: decisionRegisterSnapshotDigest, ...decisionRegisterProjectionBody } =
+      decisionRegisterProjection
+    expect(decisionRegisterSnapshotDigest).toBe(canonicalDigest(decisionRegisterProjectionBody))
+    expect(decisionRegisterProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-decision-questions-options-recommendations"),
+      authorityBoundary: expect.stringContaining("does-not-establish-decision-effectiveness"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "decision-register-v1-block",
+      method: "decision.registers.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
@@ -1255,6 +1294,24 @@ describe("engine host protocol", () => {
           riskAccepted: true,
           architectureApproved: true,
           operationallyReady: true,
+          actionAuthorized: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "decision-register-extra-authority",
+      protocolVersion: 2,
+      method: "decision.registers.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          decisionEffective: true,
+          approved: true,
+          riskAccepted: true,
+          baselinePromoted: true,
+          ready: true,
           actionAuthorized: true,
         },
       },
