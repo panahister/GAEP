@@ -66,6 +66,7 @@
     "onCommand:gaepKiro.failureRecoveryModel.inspect",
     "onCommand:gaepKiro.architectureChallengeModel.inspect",
     "onCommand:gaepKiro.decisionRegister.inspect",
+    "onCommand:gaepKiro.riskRegister.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -207,6 +208,10 @@
       {
         "command": "gaepKiro.decisionRegister.inspect",
         "title": "GAEP for Kiro: Inspect Governed Decision Register Candidate"
+      },
+      {
+        "command": "gaepKiro.riskRegister.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Risk Register Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

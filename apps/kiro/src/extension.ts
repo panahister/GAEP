@@ -19,6 +19,7 @@ import {
   type FailureRecoveryModelProjection,
   type ArchitectureChallengeModelProjection,
   type DecisionRegisterProjection,
+  type RiskRegisterProjection,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -103,6 +104,7 @@ const commandIds = {
   failureRecoveryModel: "gaepKiro.failureRecoveryModel.inspect",
   architectureChallengeModel: "gaepKiro.architectureChallengeModel.inspect",
   decisionRegister: "gaepKiro.decisionRegister.inspect",
+  riskRegister: "gaepKiro.riskRegister.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -209,6 +211,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.failureRecoveryModel, (input?: unknown) => runUserCommand(() => showFailureRecoveryModel(pool, input))),
     vscode.commands.registerCommand(commandIds.architectureChallengeModel, (input?: unknown) => runUserCommand(() => showArchitectureChallengeModel(pool, input))),
     vscode.commands.registerCommand(commandIds.decisionRegister, (input?: unknown) => runUserCommand(() => showDecisionRegister(pool, input))),
+    vscode.commands.registerCommand(commandIds.riskRegister, (input?: unknown) => runUserCommand(() => showRiskRegister(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1186,6 +1189,44 @@ async function showDecisionRegister(
     ...(record ? [
       `Membership digest: ${record.membershipDigest}`,
       `Candidate counts: ${record.decisionCount} decisions`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showRiskRegister(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<RiskRegisterProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Risk Register candidate", "Initiative ID")
+  const projection = await client.readRiskRegister(initiativeId)
+  const status = projection.status
+  const record = projection.register
+  const lines = [
+    "GAEP governed Risk Register candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${status.state}`,
+    `Coverage: ${status.riskCount} risks · ${status.proposedTreatmentCount} proposed treatments · ${status.unassignedOwnerCount} owner assignments not established`,
+    `Candidate gaps: ${status.notAssessedRiskCount} not assessed · ${status.unresolvedResidualRiskCount} residual risks · ${status.unverifiedControlCount} control effectiveness gaps · ${status.unresolvedRequirementCount} requirements · ${status.inconsistencyCount} inconsistencies · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate counts: ${record.riskCount} risks`,
       `Updated: ${record.updatedAt}`,
     ] : []),
     "",

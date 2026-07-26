@@ -45,6 +45,7 @@ const eventIntegrationModelId = "47474747-4747-4747-8747-474747474747"
 const failureRecoveryModelId = "48484848-4848-4848-8848-484848484848"
 const architectureChallengeModelId = "49494949-4949-4949-8949-494949494949"
 const decisionRegisterId = "50505050-5050-4050-8050-505050505050"
+const riskRegisterId = "51515151-5151-4151-8151-515151515151"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -116,6 +117,8 @@ input.on("line", (line) => {
       return readArchitectureChallengeModel(id, request.params)
     case "decision.registers.snapshot":
       return readDecisionRegister(id, request.params)
+    case "risk.registers.snapshot":
+      return readRiskRegister(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -1336,6 +1339,63 @@ function readDecisionRegister(id, params) {
   if (workspacePath.endsWith("bad-decision-register-snapshot-digest")) value.register.decisionCount = 8
   if (workspacePath.endsWith("bad-decision-register-snapshot-private")) {
     value.decisionQuestion = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readRiskRegister(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE RISK REGISTER PARAMS")
+  }
+  const registerDigest = `sha256:${"e".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "risk-register-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    register: { recordId: riskRegisterId, revision: 3, digest: registerDigest },
+    riskCount: 9,
+    notAssessedRiskCount: 2,
+    unresolvedResidualRiskCount: 3,
+    proposedTreatmentCount: 9,
+    unassignedOwnerCount: 9,
+    unverifiedControlCount: 4,
+    unresolvedRequirementCount: 1,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 1,
+    state: "attention-required",
+    reasons: ["One or more Risk Assessments remain explicitly not assessed"],
+    assessedAt: "2026-07-26T18:00:00.000Z",
+    authorityBoundary: "risk-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "risk-register-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    register: {
+      id: riskRegisterId,
+      revision: 3,
+      digest: registerDigest,
+      membershipDigest: `sha256:${"c".repeat(64)}`,
+      state: "candidate",
+      riskCount: 9,
+      updatedAt: "2026-07-26T17:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-risk-statements-assessments-controls-treatments-residual-risk-evidence-related-record-content-personal-data-secrets-or-credentials",
+    authorityBoundary: "risk-register-projection-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-risk-register-snapshot-binding")) content.initiative.id = riskRegisterId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-risk-register-snapshot-digest")) value.register.riskCount = 10
+  if (workspacePath.endsWith("bad-risk-register-snapshot-private")) {
+    value.riskStatement = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
