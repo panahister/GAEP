@@ -103,9 +103,15 @@ const definitions = {
     runtimeLevel: "cross-platform-packaged-engine-client-workflow-local",
     gatePaths: [
       "apps/visual-studio/verify-shell.mjs",
+      "apps/visual-studio/Gaep.HostClient/ArchitectureChallengeModelModels.cs",
+      "apps/visual-studio/Gaep.HostClient/ArchitectureChallengeModelProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
+      "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
       "apps/visual-studio/Gaep.HostClient.Tests/Program.cs",
       "apps/visual-studio/Gaep.VisualStudio/Gaep.VisualStudio.csproj",
+      "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml",
+      "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs",
     ],
     commands: [{
       id: "cross-platform-hostclient-remote-ui-and-embedded-engine",
@@ -115,7 +121,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (354)",
+        "GAEP Visual Studio host-client tests: PASS (361)",
       ],
     }],
   },

@@ -58,6 +58,7 @@ internal static class Program
     private static readonly Guid AuthorizationModelId = Guid.Parse("52525252-5252-4252-8252-525252525252");
     private static readonly Guid EventIntegrationModelId = Guid.Parse("53535353-5353-4353-8353-535353535353");
     private static readonly Guid FailureRecoveryModelId = Guid.Parse("54545454-5454-4454-8454-545454545454");
+    private static readonly Guid ArchitectureChallengeModelId = Guid.Parse("56565656-5656-4656-8656-565656565656");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -161,6 +162,9 @@ internal static class Program
         var badFailureRecoveryModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-failure-recovery-model-snapshot-binding");
         var badFailureRecoveryModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-failure-recovery-model-snapshot-digest");
         var badFailureRecoveryModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-failure-recovery-model-snapshot-private");
+        var badArchitectureChallengeSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-architecture-challenge-snapshot-binding");
+        var badArchitectureChallengeSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-architecture-challenge-snapshot-digest");
+        var badArchitectureChallengeSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-architecture-challenge-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -261,6 +265,9 @@ internal static class Program
         Directory.CreateDirectory(badFailureRecoveryModelSnapshotBindingRoot);
         Directory.CreateDirectory(badFailureRecoveryModelSnapshotDigestRoot);
         Directory.CreateDirectory(badFailureRecoveryModelSnapshotPrivateRoot);
+        Directory.CreateDirectory(badArchitectureChallengeSnapshotBindingRoot);
+        Directory.CreateDirectory(badArchitectureChallengeSnapshotDigestRoot);
+        Directory.CreateDirectory(badArchitectureChallengeSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1210,6 +1217,44 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadFailureRecoveryModelAsync(InitiativeId),
                 "Failure and Recovery Model rejects a projection rebound to a substituted Product revision");
+        }
+
+        var architectureChallengeProjection = await client.ReadArchitectureChallengeModelAsync(InitiativeId);
+        Check(architectureChallengeProjection.ProductId == product.Id &&
+              architectureChallengeProjection.ProductRevision == product.Revision &&
+              architectureChallengeProjection.ProductDigest == product.Digest &&
+              architectureChallengeProjection.InitiativeId == resolved.Id &&
+              architectureChallengeProjection.InitiativeRevision == resolved.Revision &&
+              architectureChallengeProjection.InitiativeDigest == resolved.Digest &&
+              architectureChallengeProjection.AssessmentState == "attention-required" &&
+              architectureChallengeProjection.Model?.ChallengeSubjectCount == 9 &&
+              architectureChallengeProjection.Model?.FindingCount == 6 &&
+              architectureChallengeProjection.UnrespondedFindingCount == 1,
+            "Typed Architecture Challenge preserves exact Product, Initiative, status, and candidate metadata");
+        var architectureChallengeOutput = await initiativeController.ReadArchitectureChallengeModelAsync(InitiativeId);
+        Check(architectureChallengeOutput.Contains("GAEP governed Architecture Challenge candidate", StringComparison.Ordinal) &&
+              architectureChallengeOutput.Contains(
+                  "9 challenge subjects · 7 assumptions · 4 alternatives · 6 findings · 5 responses",
+                  StringComparison.Ordinal) &&
+              architectureChallengeOutput.Contains("does not complete independent review", StringComparison.Ordinal) &&
+              !architectureChallengeOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !architectureChallengeOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !architectureChallengeOutput.Contains("challengeContent", StringComparison.Ordinal),
+            "Architecture Challenge workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badArchitectureChallengeSnapshotDigestRoot, badArchitectureChallengeSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadArchitectureChallengeModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Architecture Challenge rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badArchitectureChallengeSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadArchitectureChallengeModelAsync(InitiativeId),
+                "Architecture Challenge rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2362,6 +2407,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-failure-recovery-model-snapshot-digest";
         var badFailureRecoveryModelSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-failure-recovery-model-snapshot-private";
+        var badArchitectureChallengeSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-architecture-challenge-snapshot-binding";
+        var badArchitectureChallengeSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-architecture-challenge-snapshot-digest";
+        var badArchitectureChallengeSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-architecture-challenge-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2645,6 +2696,17 @@ internal static class Program
                         badFailureRecoveryModelSnapshotBinding,
                         badFailureRecoveryModelSnapshotDigest,
                         badFailureRecoveryModelSnapshotPrivate);
+                    break;
+                case "challenge.models.snapshot":
+                    await HandleArchitectureChallengeModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badArchitectureChallengeSnapshotBinding,
+                        badArchitectureChallengeSnapshotDigest,
+                        badArchitectureChallengeSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -4368,6 +4430,102 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) model["recoveryPlanCount"] = 5;
         if (includePrivateField) result["recoveryEvidence"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleArchitectureChallengeModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID ARCHITECTURE CHALLENGE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T16:00:00.000Z";
+        var modelDigest = $"sha256:{new string('d', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var model = new Dictionary<string, object?>
+        {
+            ["id"] = ArchitectureChallengeModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = modelDigest,
+            ["membershipDigest"] = $"sha256:{new string('a', 64)}",
+            ["state"] = "candidate",
+            ["challengeSubjectCount"] = 9,
+            ["assumptionCount"] = 7,
+            ["alternativeCount"] = 4,
+            ["findingCount"] = 6,
+            ["responseCount"] = 5,
+            ["updatedAt"] = "2026-07-26T15:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "architecture-challenge-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "architecture-challenge-model-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["model"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = ArchitectureChallengeModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = modelDigest,
+                },
+                ["challengeSubjectCount"] = 9,
+                ["assumptionCount"] = 7,
+                ["alternativeCount"] = 4,
+                ["findingCount"] = 6,
+                ["responseCount"] = 5,
+                ["unrespondedFindingCount"] = 1,
+                ["unresolvedAssumptionCount"] = 2,
+                ["unresolvedRequirementCount"] = 3,
+                ["inconsistencyCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more challenge findings remain unresponded" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "architecture-challenge-status-reports-candidate-coverage-and-gaps-and-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action",
+            },
+            ["model"] = model,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-challenge-content-assumptions-evidence-findings-responses-source-content-personal-data-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "architecture-challenge-projection-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) model["responseCount"] = 6;
+        if (includePrivateField) result["challengeContent"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

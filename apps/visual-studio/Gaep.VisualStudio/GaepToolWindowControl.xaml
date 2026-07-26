@@ -81,6 +81,10 @@
         <Button x:Name="LoadFailureRecoveryModelButton" Content="Inspect governed Failure and Recovery Model"
                 Command="{Binding LoadFailureRecoveryModelCommand}" MinHeight="28" Margin="0,0,0,10"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadArchitectureChallengeModelButton" Content="Inspect governed Architecture Challenge"
+                Command="{Binding LoadArchitectureChallengeModelCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate coverage and gaps only; it does not complete independent review, establish assurance, accept risk, approve architecture, establish readiness, or authorize action."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

@@ -1018,6 +1018,59 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadArchitectureChallengeModelAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadArchitectureChallengeModelAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while the Architecture Challenge was read. Refresh the exact records.");
+        }
+        return RenderArchitectureChallengeModel(projection);
+    }
+
+    public static string RenderArchitectureChallengeModel(ArchitectureChallengeModelProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Architecture Challenge candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Coverage: {projection.ChallengeSubjectCount} challenge subjects · {projection.AssumptionCount} assumptions · " +
+                $"{projection.AlternativeCount} alternatives · {projection.FindingCount} findings · {projection.ResponseCount} responses")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnrespondedFindingCount} unresponded findings · " +
+                $"{projection.UnresolvedAssumptionCount} unresolved assumptions · {projection.UnresolvedRequirementCount} requirements · " +
+                $"{projection.InconsistencyCount} inconsistencies · {projection.UnresolvedQuestionCount} questions · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Model is { } model)
+        {
+            output.AppendLine($"Architecture challenge candidate: {model.Id:D}@{model.Revision} · candidate · {model.Digest}")
+                .AppendLine($"Membership digest: {model.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate counts: {model.ChallengeSubjectCount} challenge subjects · {model.AssumptionCount} assumptions · " +
+                    $"{model.AlternativeCount} alternatives · {model.FindingCount} findings · {model.ResponseCount} responses");
+        }
+        else output.AppendLine("Architecture challenge candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view exposes no challenge content, assumptions, evidence, findings, responses, " +
+                "Source content, personal data, local paths, secrets, or credentials and does not complete independent review, " +
+                "establish assurance, accept risk, approve architecture, establish operational readiness, promote a baseline, or authorize action.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,
