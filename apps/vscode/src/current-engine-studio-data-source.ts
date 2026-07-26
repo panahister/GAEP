@@ -37,6 +37,7 @@ import type {
   ToolDefinition,
   TraceImpact,
   TraceLink,
+  OperatingModelProjection,
   ValueStreamModelProjection,
   WorkItem,
   WorkflowPlan,
@@ -125,6 +126,9 @@ export interface CurrentStudioEngineReader {
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
+  operatingModel?: {
+    project(initiativeId: string): Promise<OperatingModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -167,6 +171,7 @@ interface ObservedStudioState {
   businessUnderstandingProjections: Map<string, BusinessUnderstandingProjection>
   businessCapabilityMapProjections: Map<string, BusinessCapabilityMapProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
+  operatingModelProjections: Map<string, OperatingModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -604,6 +609,52 @@ function valueStreamModelTable(state: ObservedStudioState): StudioTableSnapshot 
   }
 }
 
+function operatingModelTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.operatingModelProjections.values()].flatMap((projection) => {
+    const record = projection.operatingModel
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        state: record.state,
+        counts: `${record.roleCount} roles · ${record.decisionRightCount} decision rights · ${record.forumCount} forums · ${record.cycleCount} cycles`,
+        assessment: projection.assessment.state,
+        gaps: `${projection.assessment.unassignedAppointingAuthorityCount} appointing · ${projection.assessment.insufficientCapacityCount} capacity · ${projection.assessment.unfundedCapacityCount} funding · ${projection.assessment.unassignedDecisionAuthorityCount} decision authority`,
+        boundary: "Candidate operating structure only; no appointment, funding, baseline, readiness, or action authority.",
+      },
+      state: projection.assessment.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "operating-model",
+    title: "Governed Operating Model",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Operating Model" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Operating Model",
+        "Create the candidate model through the governed engine workflow. This view does not infer appointments, funding, approvals, readiness, or authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -614,7 +665,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -626,6 +677,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     relatedRecords.push(
       businessCapabilityMapTable(state),
       valueStreamModelTable(state),
+      operatingModelTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3072,6 +3124,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       initiatives: [], initiativeEntryAssessments: new Map(), businessUnderstandingProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
+      operatingModelProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -3359,6 +3412,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "value-stream-model-unavailable",
           "Value Stream Model metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.operatingModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.operatingModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.operatingModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Operating Model projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `operating-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Operating Model metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "operating-model-unavailable",
+          "Operating Model metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

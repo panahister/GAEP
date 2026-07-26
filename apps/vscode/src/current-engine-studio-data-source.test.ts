@@ -18,6 +18,7 @@ import {
   type ManagedRunEvidence,
   type ManagedRunRecord,
   type ManagedRunResult,
+  type OperatingModelProjection,
   type Product,
   type ProductDesignDraft,
   type Risk,
@@ -424,6 +425,66 @@ function valueStreamModelProjection(): ValueStreamModelProjection {
     observedAt: assessment.assessedAt,
     privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-value-stream-narrative-personal-data-source-content-locators-or-credentials" as const,
     authorityBoundary: "value-stream-model-projection-does-not-approve-baseline-priority-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
+function operatingModelProjection(): OperatingModelProjection {
+  const assessment = {
+    schemaVersion: 1 as const,
+    kind: "operating-model-assessment" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    operatingModel: {
+      recordId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+      revision: 2,
+      digest: `sha256:${"f".repeat(64)}` as const,
+    },
+    roleCount: 6,
+    governanceSystemCount: 2,
+    unassignedAppointingAuthorityCount: 1,
+    insufficientCapacityCount: 2,
+    unfundedCapacityCount: 3,
+    decisionRightCount: 8,
+    unassignedDecisionAuthorityCount: 1,
+    forumCount: 2,
+    cycleCount: 3,
+    supportCapacityGapCount: 1,
+    emergencyAuthorityGapCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more candidate roles have no candidate appointing authority"],
+    assessedAt: "2026-07-26T07:00:00.000Z",
+    authorityBoundary: "operating-model-assessment-reports-candidate-structural-coverage-and-gaps-and-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "operating-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    assessment,
+    operatingModel: {
+      id: assessment.operatingModel.recordId,
+      revision: assessment.operatingModel.revision,
+      digest: assessment.operatingModel.digest,
+      state: "candidate" as const,
+      roleCount: 6,
+      decisionRightCount: 8,
+      forumCount: 2,
+      cycleCount: 3,
+      updatedAt: "2026-07-26T06:59:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-operating-narrative-personal-data-source-content-locators-or-credentials" as const,
+    authorityBoundary: "operating-model-projection-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action" as const,
   }
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
@@ -983,6 +1044,7 @@ interface HarnessOptions {
   businessUnderstandingProjection?: BusinessUnderstandingProjection
   businessCapabilityMapProjection?: BusinessCapabilityMapProjection
   valueStreamModelProjection?: ValueStreamModelProjection
+  operatingModelProjection?: OperatingModelProjection
   commandResult?: unknown
 }
 
@@ -1091,6 +1153,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.valueStreamModelProjection ? {
       valueStreamModel: {
         project: async () => options.valueStreamModelProjection!,
+      },
+    } : {}),
+    ...(options.operatingModelProjection ? {
+      operatingModel: {
+        project: async () => options.operatingModelProjection!,
       },
     } : {}),
   }
@@ -1335,6 +1402,29 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /value-stream narrative|personal assignment|source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed operating-model metadata on the native architecture page", async () => {
+    const projection = operatingModelProjection()
+    const { source } = harness({ operatingModelProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[2]).toMatchObject({
+      id: "operating-model",
+      rows: [{
+        id: projection.operatingModel?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          counts: "6 roles · 8 decision rights · 2 forums · 3 cycles",
+          assessment: "attention-required",
+          gaps: "1 appointing · 2 capacity · 3 funding · 1 decision authority",
+          boundary: "Candidate operating structure only; no appointment, funding, baseline, readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /operating narrative|personal assignment|source content|customer@example\.com|api_key/iu,
     )
   })
 
