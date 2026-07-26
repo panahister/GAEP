@@ -161,6 +161,20 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseOperatingModelResponse(envelope, initiativeId));
     }
 
+    public async Task<BusinessRuleCatalogProjection> ReadBusinessRuleCatalogAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync(
+            "business.businessRules.snapshot",
+            new Dictionary<string, object?> { ["initiativeId"] = initiativeId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseBusinessRuleCatalogResponse(envelope, initiativeId));
+    }
+
     public async Task<InitiativeEntryRecord> ClassifyInitiativeAsync(
         Guid initiativeId,
         long expectedInitiativeRevision,

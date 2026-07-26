@@ -48,6 +48,7 @@ internal static class Program
     private static readonly Guid BusinessCapabilityMapId = Guid.Parse("42424242-4242-4242-8242-424242424242");
     private static readonly Guid ValueStreamModelId = Guid.Parse("43434343-4343-4343-8343-434343434343");
     private static readonly Guid OperatingModelId = Guid.Parse("44444444-4444-4444-8444-444444444444");
+    private static readonly Guid BusinessRuleCatalogId = Guid.Parse("45454545-4545-4545-8545-454545454545");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -121,6 +122,9 @@ internal static class Program
         var badOperatingModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-operating-model-snapshot-binding");
         var badOperatingModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-operating-model-snapshot-digest");
         var badOperatingModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-operating-model-snapshot-private");
+        var badBusinessRuleSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-business-rule-snapshot-binding");
+        var badBusinessRuleSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-business-rule-snapshot-digest");
+        var badBusinessRuleSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-business-rule-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -191,6 +195,9 @@ internal static class Program
         Directory.CreateDirectory(badOperatingModelSnapshotBindingRoot);
         Directory.CreateDirectory(badOperatingModelSnapshotDigestRoot);
         Directory.CreateDirectory(badOperatingModelSnapshotPrivateRoot);
+        Directory.CreateDirectory(badBusinessRuleSnapshotBindingRoot);
+        Directory.CreateDirectory(badBusinessRuleSnapshotDigestRoot);
+        Directory.CreateDirectory(badBusinessRuleSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -708,6 +715,44 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadOperatingModelAsync(InitiativeId),
                 "Operating Model rejects a projection rebound to a substituted Product revision");
+        }
+
+        var businessRuleProjection = await client.ReadBusinessRuleCatalogAsync(InitiativeId);
+        Check(businessRuleProjection.ProductId == product.Id &&
+              businessRuleProjection.ProductRevision == product.Revision &&
+              businessRuleProjection.ProductDigest == product.Digest &&
+              businessRuleProjection.InitiativeId == resolved.Id &&
+              businessRuleProjection.InitiativeRevision == resolved.Revision &&
+              businessRuleProjection.InitiativeDigest == resolved.Digest &&
+              businessRuleProjection.AssessmentState == "attention-required" &&
+              businessRuleProjection.BusinessRuleCatalog?.RuleCount == 7 &&
+              businessRuleProjection.BusinessRuleCatalog?.ExceptionCount == 2 &&
+              businessRuleProjection.UnverifiedEnforcementTargetCount == 2,
+            "Typed Business Rule Catalog preserves exact Product, Initiative, assessment, and candidate-rule metadata");
+        var businessRuleOutput = await initiativeController.ReadBusinessRuleCatalogAsync(InitiativeId);
+        Check(businessRuleOutput.Contains("GAEP governed Business Rule Catalog", StringComparison.Ordinal) &&
+              businessRuleOutput.Contains("7 rules · 7 source-backed · 3 non-exceptionable", StringComparison.Ordinal) &&
+              businessRuleOutput.Contains(
+                  "does not evaluate policy, grant exceptions, deploy enforcement",
+                  StringComparison.Ordinal) &&
+              !businessRuleOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !businessRuleOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !businessRuleOutput.Contains("ruleNarrative", StringComparison.Ordinal),
+            "Business Rule Catalog workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badBusinessRuleSnapshotDigestRoot, badBusinessRuleSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadBusinessRuleCatalogAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Business Rule Catalog rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badBusinessRuleSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadBusinessRuleCatalogAsync(InitiativeId),
+                "Business Rule Catalog rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -1803,6 +1848,9 @@ internal static class Program
         var badOperatingModelSnapshotBinding = Path.GetFileName(workspace) == "bad-operating-model-snapshot-binding";
         var badOperatingModelSnapshotDigest = Path.GetFileName(workspace) == "bad-operating-model-snapshot-digest";
         var badOperatingModelSnapshotPrivate = Path.GetFileName(workspace) == "bad-operating-model-snapshot-private";
+        var badBusinessRuleSnapshotBinding = Path.GetFileName(workspace) == "bad-business-rule-snapshot-binding";
+        var badBusinessRuleSnapshotDigest = Path.GetFileName(workspace) == "bad-business-rule-snapshot-digest";
+        var badBusinessRuleSnapshotPrivate = Path.GetFileName(workspace) == "bad-business-rule-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -1976,6 +2024,17 @@ internal static class Program
                         badOperatingModelSnapshotBinding,
                         badOperatingModelSnapshotDigest,
                         badOperatingModelSnapshotPrivate);
+                    break;
+                case "business.businessRules.snapshot":
+                    await HandleBusinessRuleCatalogAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badBusinessRuleSnapshotBinding,
+                        badBusinessRuleSnapshotDigest,
+                        badBusinessRuleSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -2727,6 +2786,98 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) model["roleCount"] = 7;
         if (includePrivateField) result["operatingNarrative"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleBusinessRuleCatalogAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID BUSINESS RULE CATALOG");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T08:30:00.000Z";
+        var catalogDigest = $"sha256:{new string('9', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var catalog = new Dictionary<string, object?>
+        {
+            ["id"] = BusinessRuleCatalogId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = catalogDigest,
+            ["state"] = "candidate",
+            ["ruleCount"] = 7,
+            ["enforcementTargetCount"] = 4,
+            ["exceptionCount"] = 2,
+            ["nonExceptionableRuleCount"] = 3,
+            ["updatedAt"] = "2026-07-26T08:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "business-rule-catalog-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["assessment"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "business-rule-catalog-assessment",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["businessRuleCatalog"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BusinessRuleCatalogId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = catalogDigest,
+                },
+                ["ruleCount"] = 7,
+                ["sourceBackedRuleCount"] = 7,
+                ["nonExceptionableRuleCount"] = 3,
+                ["enforcementTargetCount"] = 4,
+                ["unassignedEnforcementTargetCount"] = 1,
+                ["unverifiedEnforcementTargetCount"] = 2,
+                ["exceptionCount"] = 2,
+                ["unassignedExceptionAuthorityCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more enforcement targets have no candidate assignment" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "business-rule-catalog-assessment-reports-candidate-coverage-and-gaps-and-does-not-evaluate-policy-grant-exceptions-deploy-enforcement-approve-baseline-readiness-or-authorize-action",
+            },
+            ["businessRuleCatalog"] = catalog,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-rule-narrative-source-content-personal-data-locators-or-credentials",
+            ["authorityBoundary"] =
+                "business-rule-catalog-projection-does-not-evaluate-policy-grant-exceptions-deploy-enforcement-approve-baseline-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) catalog["ruleCount"] = 8;
+        if (includePrivateField) result["ruleNarrative"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

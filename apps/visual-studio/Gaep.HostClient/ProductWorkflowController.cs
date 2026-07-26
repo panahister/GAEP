@@ -442,6 +442,62 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadBusinessRuleCatalogAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadBusinessRuleCatalogAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException(
+                "The Product or Initiative changed while the Business Rule Catalog was read. Refresh the exact records.");
+        }
+        return RenderBusinessRuleCatalog(projection);
+    }
+
+    public static string RenderBusinessRuleCatalog(BusinessRuleCatalogProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Business Rule Catalog")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Rule counts: {projection.RuleCount} rules · {projection.SourceBackedRuleCount} source-backed · " +
+                $"{projection.NonExceptionableRuleCount} non-exceptionable · {projection.EnforcementTargetCount} enforcement targets · " +
+                $"{projection.ExceptionCount} exceptions")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnassignedEnforcementTargetCount} unassigned targets · " +
+                $"{projection.UnverifiedEnforcementTargetCount} unverified targets · " +
+                $"{projection.UnassignedExceptionAuthorityCount} unassigned exception authorities · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.BusinessRuleCatalog is { } catalog)
+        {
+            output.AppendLine($"Business Rule Catalog: {catalog.Id:D}@{catalog.Revision} · candidate · {catalog.Digest}")
+                .AppendLine(
+                    $"Catalog counts: {catalog.RuleCount} rules · {catalog.EnforcementTargetCount} enforcement targets · " +
+                    $"{catalog.ExceptionCount} exceptions · {catalog.NonExceptionableRuleCount} non-exceptionable");
+        }
+        else output.AppendLine("Business Rule Catalog: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view exposes no rule narrative, Source content, personal data, locators, local paths, " +
+                "or credentials and does not evaluate policy, grant exceptions, deploy enforcement, approve a baseline, " +
+                "establish readiness, or authorize action.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,
