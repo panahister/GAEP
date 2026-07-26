@@ -168,6 +168,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readBoundedContextModel(initiativeId: UUID): BoundedContextModelProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("architecture.boundedContexts.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseBoundedContextModelEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

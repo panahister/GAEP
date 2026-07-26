@@ -633,6 +633,49 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Bounded Context projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("bounded-context-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readBoundedContextModel(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(3, projection.model?.boundedContextCount)
+            assertEquals(4, projection.model?.contractCount)
+            assertEquals(2, projection.unmappedCrossContextRelationCount)
+
+            val rendered = RiderProductController(client).readBoundedContextModel(entryId)
+            assertTrue(rendered.contains("GAEP governed Bounded Context and Ownership candidate"))
+            assertTrue(rendered.contains("3 contexts · 1 core contexts · 11 language terms · 4 contracts · 3 relationships"))
+            assertTrue(rendered.contains("does not appoint owners, accept ownership, approve boundaries or contracts"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("ubiquitousLanguage"))
+        }
+
+        listOf(
+            "bad-bounded-context-snapshot-digest",
+            "bad-bounded-context-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readBoundedContextModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-bounded-context-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readBoundedContextModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

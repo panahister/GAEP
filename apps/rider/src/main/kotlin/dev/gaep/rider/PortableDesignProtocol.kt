@@ -1077,6 +1077,44 @@ data class SystemSolutionArchitectureProjection(
     val snapshotDigest: String,
 )
 
+data class BoundedContextModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val boundedContextCount: Int,
+    val contractCount: Int,
+    val relationshipCount: Int,
+)
+
+data class BoundedContextModelProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val boundedContextCount: Int,
+    val coreContextCount: Int,
+    val languageTermCount: Int,
+    val contractCount: Int,
+    val unresolvedContractCount: Int,
+    val relationshipCount: Int,
+    val unresolvedRelationshipCount: Int,
+    val unassignedArchitectureElementCount: Int,
+    val unownedDataAssetCount: Int,
+    val unmappedCrossContextRelationCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val model: BoundedContextModelRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1150,6 +1188,12 @@ internal object PortableDesignProtocol {
         "system-solution-architecture-projection-does-not-approve-or-designate-an-architecture-baseline-establish-readiness-prove-conformance-mandate-technology-or-authorize-action"
     private const val SYSTEM_SOLUTION_ARCHITECTURE_ASSESSMENT_AUTHORITY_BOUNDARY =
         "system-solution-architecture-assessment-reports-candidate-coverage-and-gaps-and-does-not-approve-baseline-readiness-conformance-technology-or-action"
+    private const val BOUNDED_CONTEXT_MODEL_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-boundary-language-contract-source-content-personal-data-locators-or-credentials"
+    private const val BOUNDED_CONTEXT_MODEL_PROJECTION_AUTHORITY_BOUNDARY =
+        "bounded-context-model-projection-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action"
+    private const val BOUNDED_CONTEXT_MODEL_ASSESSMENT_AUTHORITY_BOUNDARY =
+        "bounded-context-model-assessment-reports-candidate-coverage-and-gaps-and-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -3188,6 +3232,150 @@ internal object PortableDesignProtocol {
             qualityAttributeCount, unresolvedQualityAttributeCount, decisionCount, unresolvedDecisionCount,
             conformanceCriterionCount, unresolvedConformanceCriterionCount, lifecycleGapCount, inconsistencyCount,
             unresolvedQuestionCount, staleBindingCount, staleSourceReferenceCount, architecture, snapshotDigest,
+        )
+    }
+
+    fun parseBoundedContextModelEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): BoundedContextModelProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "assessment", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("model"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "bounded-context-ownership-projection" ||
+            projection.requireString("privacyBoundary") != BOUNDED_CONTEXT_MODEL_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != BOUNDED_CONTEXT_MODEL_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val assessment = projection.get("assessment").requireObject()
+        assessment.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "boundedContextCount", "coreContextCount", "languageTermCount", "contractCount",
+                "unresolvedContractCount", "relationshipCount", "unresolvedRelationshipCount",
+                "unassignedArchitectureElementCount", "unownedDataAssetCount", "unmappedCrossContextRelationCount",
+                "inconsistencyCount", "unresolvedQuestionCount", "staleBindingCount", "staleSourceReferenceCount",
+                "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("model"),
+        )
+        if (assessment.requireInt("schemaVersion") != 1 ||
+            assessment.requireString("kind") != "bounded-context-ownership-assessment" ||
+            assessment.requireNonEmptyUuid("productId") != productId ||
+            assessment.requireLong("productRevision") != productRevision ||
+            assessment.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            assessment.requireLong("initiativeRevision") != initiativeRevision ||
+            assessment.requireString("authorityBoundary") != BOUNDED_CONTEXT_MODEL_ASSESSMENT_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = assessment.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val boundedContextCount = assessment.requireBoundedNonNegativeInt("boundedContextCount", 1_024)
+        val coreContextCount = assessment.requireBoundedNonNegativeInt("coreContextCount", boundedContextCount)
+        val languageTermCount = assessment.requireBoundedNonNegativeInt("languageTermCount", 1_048_576)
+        val contractCount = assessment.requireBoundedNonNegativeInt("contractCount", 4_096)
+        val unresolvedContractCount = assessment.requireBoundedNonNegativeInt(
+            "unresolvedContractCount",
+            contractCount,
+        )
+        val relationshipCount = assessment.requireBoundedNonNegativeInt("relationshipCount", 4_096)
+        val unresolvedRelationshipCount = assessment.requireBoundedNonNegativeInt(
+            "unresolvedRelationshipCount",
+            relationshipCount,
+        )
+        val unassignedArchitectureElementCount = assessment.requireBoundedNonNegativeInt(
+            "unassignedArchitectureElementCount",
+            2_048,
+        )
+        val unownedDataAssetCount = assessment.requireBoundedNonNegativeInt("unownedDataAssetCount", 2_048)
+        val unmappedCrossContextRelationCount = assessment.requireBoundedNonNegativeInt(
+            "unmappedCrossContextRelationCount",
+            4_096,
+        )
+        val inconsistencyCount = assessment.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = assessment.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val staleBindingCount = assessment.requireBoundedNonNegativeInt("staleBindingCount", 16)
+        val staleSourceReferenceCount = assessment.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val assessmentState = assessment.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = assessment.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = assessment.requireInstant("assessedAt")
+
+        val model = projection.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "boundedContextCount",
+                "contractCount", "relationshipCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val record = BoundedContextModelRecordView(
+                id,
+                revision,
+                digest,
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("boundedContextCount", 1_024),
+                value.requireBoundedNonNegativeInt("contractCount", 4_096),
+                value.requireBoundedNonNegativeInt("relationshipCount", 4_096),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (model == null) ||
+            (model?.boundedContextCount ?: 0) != boundedContextCount ||
+            (model?.contractCount ?: 0) != contractCount ||
+            (model?.relationshipCount ?: 0) != relationshipCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return BoundedContextModelProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, boundedContextCount, coreContextCount, languageTermCount,
+            contractCount, unresolvedContractCount, relationshipCount, unresolvedRelationshipCount,
+            unassignedArchitectureElementCount, unownedDataAssetCount, unmappedCrossContextRelationCount,
+            inconsistencyCount, unresolvedQuestionCount, staleBindingCount, staleSourceReferenceCount, model,
+            snapshotDigest,
         )
     }
 

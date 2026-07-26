@@ -579,6 +579,55 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readBoundedContextModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readBoundedContextModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Bounded Context Model was read. Refresh the exact records." }
+        return renderBoundedContextModel(projection)
+    }
+
+    fun renderBoundedContextModel(projection: BoundedContextModelProjection): String = buildString {
+        appendLine("GAEP governed Bounded Context and Ownership candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.boundedContextCount} contexts · ${projection.coreContextCount} core contexts · " +
+                "${projection.languageTermCount} language terms · ${projection.contractCount} contracts · " +
+                "${projection.relationshipCount} relationships",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedContractCount} contracts · ${projection.unresolvedRelationshipCount} relationships · " +
+                "${projection.unassignedArchitectureElementCount} unassigned elements · ${projection.unownedDataAssetCount} unowned data assets · " +
+                "${projection.unmappedCrossContextRelationCount} unmapped relations · ${projection.inconsistencyCount} inconsistencies · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.model?.let { record ->
+            appendLine("Boundary candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate counts: ${record.boundedContextCount} contexts · ${record.contractCount} contracts · " +
+                    "${record.relationshipCount} relationships",
+            )
+        } ?: appendLine("Boundary candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no boundary language, contract narrative, Source content, " +
+                "personal data, locators, local paths, or credentials and does not appoint owners, accept ownership, " +
+                "approve boundaries or contracts, establish readiness, or authorize action.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

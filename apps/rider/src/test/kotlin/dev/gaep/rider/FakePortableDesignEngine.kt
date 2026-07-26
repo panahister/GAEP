@@ -22,6 +22,7 @@ private val operatingModelId = UUID.fromString("44444444-4444-4444-8444-44444444
 private val businessRuleCatalogId = UUID.fromString("45454545-4545-4545-8545-454545454545")
 private val businessArchitectureBaselineId = UUID.fromString("46464646-4646-4646-8646-464646464646")
 private val systemSolutionArchitectureId = UUID.fromString("47474747-4747-4747-8747-474747474747")
+private val boundedContextModelId = UUID.fromString("48484848-4848-4848-8848-484848484848")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -130,6 +131,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "architecture.systemSolution.snapshot" -> handleSystemSolutionArchitecture(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "architecture.boundedContexts.snapshot" -> handleBoundedContextModel(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -1041,6 +1047,95 @@ private fun handleSystemSolutionArchitecture(id: Long, params: JsonObject, works
         }
         workspacePath.endsWith("bad-system-solution-architecture-snapshot-private") -> {
             value.addProperty("architectureNarrative", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleBoundedContextModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BOUNDED CONTEXT PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-bounded-context-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T11:00:00.000Z"
+    val modelDigest = "sha256:${"3".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "bounded-context-ownership-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("assessment", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "bounded-context-ownership-assessment")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("model", JsonObject().apply {
+                addProperty("recordId", boundedContextModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", modelDigest)
+            })
+            addProperty("boundedContextCount", 3)
+            addProperty("coreContextCount", 1)
+            addProperty("languageTermCount", 11)
+            addProperty("contractCount", 4)
+            addProperty("unresolvedContractCount", 1)
+            addProperty("relationshipCount", 3)
+            addProperty("unresolvedRelationshipCount", 1)
+            addProperty("unassignedArchitectureElementCount", 2)
+            addProperty("unownedDataAssetCount", 1)
+            addProperty("unmappedCrossContextRelationCount", 2)
+            addProperty("inconsistencyCount", 0)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more cross-context contracts remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "bounded-context-model-assessment-reports-candidate-coverage-and-gaps-and-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action",
+            )
+        })
+        add("model", JsonObject().apply {
+            addProperty("id", boundedContextModelId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", modelDigest)
+            addProperty("membershipDigest", "sha256:${"4".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("boundedContextCount", 3)
+            addProperty("contractCount", 4)
+            addProperty("relationshipCount", 3)
+            addProperty("updatedAt", "2026-07-26T10:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-boundary-language-contract-source-content-personal-data-locators-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "bounded-context-model-projection-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-bounded-context-snapshot-digest") -> {
+            value.getAsJsonObject("model").addProperty("boundedContextCount", 4)
+        }
+        workspacePath.endsWith("bad-bounded-context-snapshot-private") -> {
+            value.addProperty("ubiquitousLanguage", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

@@ -226,6 +226,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += systemSolutionArchitectureButton
         actions.add(systemSolutionArchitectureButton)
 
+        val boundedContextModelButton = JButton("Inspect Bounded Context Ownership…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Boundary language, contract narrative, Source content, personal data, local paths, credentials, and authority are withheld.",
+                    "GAEP Bounded Context and Ownership",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Bounded Context Ownership", status, output, buttons) {
+                    controller.readBoundedContextModel(initiativeId)
+                }
+            }
+        }
+        buttons += boundedContextModelButton
+        actions.add(boundedContextModelButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {
