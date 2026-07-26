@@ -5,6 +5,8 @@ import { join } from "node:path"
 import {
   authorizationModelInputSchema,
   authorizationModelRequirementIds,
+  eventIntegrationModelInputSchema,
+  eventIntegrationRequirementIds,
   boundedContextModelInputSchema,
   securityPrivacyAssessmentInputSchema,
   securityPrivacyRequirementIds,
@@ -23,6 +25,8 @@ import {
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
+  type EventIntegrationModel,
+  type EventIntegrationModelInput,
   type SecurityPrivacyAssessment,
   type SecurityPrivacyAssessmentInput,
   type ProcessModelInput,
@@ -1943,6 +1947,348 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function eventIntegrationModelInput(
+    architecture: SystemSolutionArchitecture,
+    boundedContextModel: BoundedContextModel,
+    operatingModel: OperatingModel,
+    securityPrivacyAssessment: SecurityPrivacyAssessment,
+    processModel: ProcessModel,
+    dataModel: DataModel,
+    authorizationModel: AuthorizationModel,
+    overrides: Partial<EventIntegrationModelInput> = {},
+  ): EventIntegrationModelInput {
+    const eventTypeKeys = ["candidate-finalized-event", "review-requested-event"]
+    const commandKeys = ["assess-candidate-command", "revise-candidate-command"]
+    const adapterKeys = ["governed-context-adapter"]
+    const externalContractKeys = ["governed-context-contract"]
+    const mappingKeys = ["governed-context-mapping"]
+    const routeKeys = ["governed-context-route"]
+    const requirementCoverage = [...eventIntegrationRequirementIds]
+      .sort((left, right) => left.localeCompare(right))
+      .map((requirementId) => ({
+        requirementId,
+        state: "covered-candidate" as const,
+        eventTypeKeys,
+        commandKeys,
+        adapterKeys,
+        externalContractKeys,
+        mappingKeys,
+        routeKeys,
+        basis: "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+        evidence: [reference()],
+      }))
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Event and Integration Model",
+      scope: "Model exact candidate Event Types, Commands, Adapter definitions, External Contracts, authority-aware mappings, and integration routes without representing an event occurrence, sent or delivered command, accepted external contract, active adapter, completed effect, readiness state, or action authority.",
+      systemSolutionArchitecture: {
+        recordId: architecture.id,
+        revision: architecture.revision,
+        digest: canonicalDigest(architecture),
+      },
+      boundedContextModel: {
+        recordId: boundedContextModel.id,
+        revision: boundedContextModel.revision,
+        digest: canonicalDigest(boundedContextModel),
+      },
+      operatingModel: {
+        recordId: operatingModel.id,
+        revision: operatingModel.revision,
+        digest: canonicalDigest(operatingModel),
+      },
+      securityPrivacyAssessment: {
+        recordId: securityPrivacyAssessment.id,
+        revision: securityPrivacyAssessment.revision,
+        digest: canonicalDigest(securityPrivacyAssessment),
+      },
+      processModel: {
+        recordId: processModel.id,
+        revision: processModel.revision,
+        digest: canonicalDigest(processModel),
+      },
+      dataModel: {
+        recordId: dataModel.id,
+        revision: dataModel.revision,
+        digest: canonicalDigest(dataModel),
+      },
+      authorizationModel: {
+        recordId: authorizationModel.id,
+        revision: authorizationModel.revision,
+        digest: canonicalDigest(authorizationModel),
+      },
+      eventTypes: [{
+        key: "candidate-finalized-event",
+        name: "Candidate finalized event definition",
+        category: "integration",
+        schemaVersion: 1,
+        processEventKeys: ["process-finalized"],
+        producerBoundedContextKey: "governance-core",
+        producerRoleKeys: ["gaep-steward", "initiative-owner"],
+        subjectKind: "process",
+        subjectKeys: ["governed-context-review"],
+        payloadDataEntityKeys: ["governed-record"],
+        envelope: {
+          eventIdentity: "required",
+          typeAndSchemaVersion: "required",
+          subjectAndExactRevision: "required",
+          occurrenceTime: "required-when-observed",
+          recordedTime: "required-when-observed",
+          producerAndActor: "required",
+          accountableScope: "required",
+          causationAndCorrelation: "required",
+          ordering: "subject-sequence",
+          classificationAndHandling: "required",
+          provenanceAndIntegrity: "required",
+          correctionLink: "required-when-applicable",
+        },
+        payloadContract: "Bind the exact candidate Process, transition, prior and resulting state versions, actor, authority references, evidence, causation, correlation, classification, provenance, integrity, and correction lineage.",
+        orderingScope: "Ordering is defined only within the exact governed Process subject sequence; no global ordering or cross-system delivery order is claimed.",
+        correctionSemantics: "The original event remains immutable; a correction is a separately attributable linked event or compensating domain action with explicit residual effects.",
+        classification: "internal",
+        occurrenceState: "definition-only-not-observed",
+        sources: [reference()],
+      }, {
+        key: "review-requested-event",
+        name: "Review requested event definition",
+        category: "integration",
+        schemaVersion: 1,
+        processEventKeys: ["process-review-requested"],
+        producerBoundedContextKey: "product-studio",
+        producerRoleKeys: ["initiative-owner"],
+        subjectKind: "process",
+        subjectKeys: ["governed-context-review"],
+        payloadDataEntityKeys: ["product-studio-projection"],
+        envelope: {
+          eventIdentity: "required",
+          typeAndSchemaVersion: "required",
+          subjectAndExactRevision: "required",
+          occurrenceTime: "required-when-observed",
+          recordedTime: "required-when-observed",
+          producerAndActor: "required",
+          accountableScope: "required",
+          causationAndCorrelation: "required",
+          ordering: "subject-sequence",
+          classificationAndHandling: "required",
+          provenanceAndIntegrity: "required",
+          correctionLink: "required-when-applicable",
+        },
+        payloadContract: "Bind the exact candidate review request separately from any committed transition, delivery result, approval response, execution result, or external acceptance.",
+        orderingScope: "Ordering is defined only within the exact governed Process subject sequence; external consumers must preserve any unsupported or absent ordering guarantee explicitly.",
+        correctionSemantics: "Correction never overwrites the original definition or occurrence; a separately attributable linked correction preserves causation and correlation.",
+        classification: "internal",
+        occurrenceState: "definition-only-not-observed",
+        sources: [reference()],
+      }],
+      commands: [{
+        key: "assess-candidate-command",
+        name: "assess-candidate",
+        semanticVersion: "1.0.0",
+        purpose: "Request a bounded read-only assessment of exact candidate coverage and gaps without changing governed state or implying successful execution.",
+        mode: "analyze",
+        processKeys: ["governed-context-review"],
+        actorRoleKeys: ["gaep-steward", "initiative-owner"],
+        targetBoundedContextKeys: ["governance-core", "product-studio"],
+        inputDataEntityKeys: ["governed-record", "product-studio-projection"],
+        outputDataEntityKeys: ["product-studio-projection"],
+        authorizationActionKeys: ["assess-candidate"],
+        authorizationRuleKeys: ["candidate-review-rule"],
+        preconditions: ["Exact Product, Initiative, upstream records, Source evidence, audit integrity, candidate policy references, and expected versions are current"],
+        contextRequirements: ["Bounded privacy-safe current records and exact digests are sufficient for candidate assessment without external effect"],
+        outputContract: "Return a strict candidate status with counts, gaps, exact record identity, digests, fixed privacy boundary, and fixed no-authority boundary.",
+        evidenceRequirements: ["Attributable request and deterministic result evidence preserve requested intent separately from actual execution and effect truth"],
+        effectDescriptors: ["read-derived-status"],
+        idempotencyRule: "The exact command version, actor scope, target records, expected revisions, and input digest define the idempotency identity; replay cannot create a material effect.",
+        timeoutRetryCancellation: "Timeout, retry, cancellation, partial result, and unknown result remain distinct; no timeout is interpreted as success or as proof that no external effect occurred.",
+        deliveryState: "not-sent",
+        executionState: "not-executed",
+        authorizationState: "not-granted",
+        sources: [reference()],
+      }, {
+        key: "revise-candidate-command",
+        name: "revise-candidate",
+        semanticVersion: "1.0.0",
+        purpose: "Request preparation of a superseding candidate revision under exact expected-version, approval, confirmation, evidence, and authorization constraints.",
+        mode: "modify",
+        processKeys: ["governed-context-review"],
+        actorRoleKeys: ["gaep-steward", "initiative-owner"],
+        targetBoundedContextKeys: ["governance-core", "product-studio"],
+        inputDataEntityKeys: ["governed-record", "product-studio-projection"],
+        outputDataEntityKeys: ["governed-record", "product-studio-projection"],
+        authorizationActionKeys: ["revise-candidate"],
+        authorizationRuleKeys: ["candidate-review-rule"],
+        preconditions: ["Exact expected revision, actor, authority, approval, confirmation, policy, evidence, upstream bindings, target state, and idempotency identity are revalidated before commitment"],
+        contextRequirements: ["Only bounded exact current records and Source evidence required by the candidate revision contract are selected"],
+        outputContract: "Return either a validated immutable candidate revision and authoritative governed-store receipt or an explicit denied, blocked, failed, partial, cancelled, uncertain, or unverified result.",
+        evidenceRequirements: ["Requested, attempted, committed, verified, failed, compensated, and unknown effect states remain separate and attributable"],
+        effectDescriptors: ["governed-candidate-mutation"],
+        idempotencyRule: "The command version, actor scope, canonical target, expected revision, exact payload digest, authorization scope, and validity interval define the idempotency identity.",
+        timeoutRetryCancellation: "Retry requires a valid idempotency guarantee or proof that the prior attempt did not commit; cancellation does not claim an in-flight effect stopped.",
+        deliveryState: "not-sent",
+        executionState: "not-executed",
+        authorizationState: "not-granted",
+        sources: [reference()],
+      }],
+      adapters: [{
+        key: "governed-context-adapter",
+        name: "Governed context external boundary adapter",
+        semanticVersion: "1.0.0",
+        kind: "external-system",
+        boundedContextKeys: ["governance-core", "product-studio"],
+        supportedEventTypeKeys: eventTypeKeys,
+        supportedCommandKeys: commandKeys,
+        supportedContractVersions: ["GAEP candidate contracts 0.1.0 and governed-context external contract 1.0.0"],
+        capabilityLimits: ["Candidate mapping and deterministic validation only; no external connection, credential use, delivery, execution, reconciliation, or activation is represented"],
+        semanticLosses: ["External identity, time, ordering, transaction, retention, correction, authority, delivery, receipt, and recovery guarantees remain unevaluated"],
+        dataHandling: "The definition permits only declared internal candidate metadata under exact classification and minimization constraints; no payload disclosure or provider processing is authorized.",
+        effectSemantics: "Requested, attempted, observed, committed, failed, compensated, uncertain, and unverified effects remain distinct and require authoritative receipts and postcondition verification.",
+        failureSemantics: "Unsupported identity, authority, data, evidence, effect, ordering, correction, or recovery semantics fail closed or remain explicitly unknown.",
+        idempotencyAndRetry: "The adapter must expose actual duplicate-detection and retry guarantees; absent evidence remains unknown and blocks side-effecting retry.",
+        evidenceContract: "Any future evaluation must bind exact adapter, environment, external schema, capability, scenario, evaluator, time, limitations, expiry, and invalidating changes.",
+        compatibilityState: "unknown",
+        evaluationState: "not-established",
+        activationState: "not-granted",
+        credentialBindingState: "external-reference-only",
+        sources: [reference()],
+      }],
+      externalContracts: [{
+        key: "governed-context-contract",
+        name: "Governed context external exchange contract",
+        semanticVersion: "1.0.0",
+        externalSystem: "Candidate external review system",
+        namespace: "candidate-governed-context",
+        authorityDomain: "Independent external authority domain with no automatic GAEP authority mapping",
+        producerBoundedContextKeys: ["governance-core", "product-studio"],
+        consumerBoundedContextKeys: ["governance-core", "product-studio"],
+        eventTypeKeys,
+        commandKeys,
+        schemaAndRepresentation: "Strict versioned JSON-compatible candidate representations preserve exact identities, revisions, classification, provenance, ordering limits, mapping fidelity, unsupported semantics, and correction lineage.",
+        versioningAndMigration: "Breaking semantics require a new major version plus compatibility, coexistence, migration, rollback, exit, consumer, and historical-interpretation evidence.",
+        classification: "internal",
+        compatibilityState: "unknown",
+        consumerAcceptanceState: "not-established",
+        sources: [reference()],
+      }],
+      mappings: [{
+        key: "governed-context-mapping",
+        adapterKey: "governed-context-adapter",
+        externalContractKey: "governed-context-contract",
+        namespaceBinding: "Candidate external review namespace without credentials, tenant activation, or authority transfer",
+        rows: [{
+          key: "assess-command-map",
+          gaepSubjectKey: "assess-candidate-command",
+          externalSubject: "candidate.assess.request.v1",
+          authority: "gaep",
+          direction: "export",
+          fidelity: "narrowed",
+          conflictRule: "GAEP remains authoritative for exact candidate command identity and payload digest; any conflicting external representation is preserved and escalated without overwrite.",
+          timeAndVersionRule: "Bind exact command and schema versions, observation time, recorded time, expected subject revisions, and explicit absence of global ordering.",
+          deletionAndRetentionRule: "External deletion, retention, hold, source unavailability, or inaccessible history remains explicit and cannot silently delete or validate GAEP history.",
+          effectAndAuthorizationRule: "Export is a material external communication only after a separately current Authorization Grant binds the exact subject, direction, payload, destination, classification, and validity.",
+          evidenceRule: "Future evidence must prove exact request mapping and authoritative receipt separately from execution or business outcome.",
+          truthClass: "observed",
+          sources: [reference()],
+        }, {
+          key: "finalized-event-map",
+          gaepSubjectKey: "candidate-finalized-event",
+          externalSubject: "candidate.finalized.event.v1",
+          authority: "gaep",
+          direction: "export",
+          fidelity: "narrowed",
+          conflictRule: "The exact GAEP occurrence, when one exists, remains authoritative; external acknowledgement cannot modify or replace it.",
+          timeAndVersionRule: "Preserve exact event schema, subject revision, occurrence and recorded times, subject sequence, and declared ordering limitations.",
+          deletionAndRetentionRule: "Deletion, redaction, hold, retention, archive, correction, and unavailable-source behavior remain independently governed and visible.",
+          effectAndAuthorizationRule: "The definition grants no publication, delivery, disclosure, external effect, or action authority.",
+          evidenceRule: "Future delivery evidence must bind exact event identity and recipient receipt without converting transport success into business acceptance.",
+          truthClass: "observed",
+          sources: [reference()],
+        }, {
+          key: "review-event-map",
+          gaepSubjectKey: "review-requested-event",
+          externalSubject: "candidate.review-requested.event.v1",
+          authority: "gaep",
+          direction: "export",
+          fidelity: "narrowed",
+          conflictRule: "An external response is a separately attributable assertion and never overwrites the source event, state, approval, or authority record.",
+          timeAndVersionRule: "Preserve exact event, subject, cause, correlation, recorded-time, sequence, and ordering-limit semantics.",
+          deletionAndRetentionRule: "Retention and deletion divergence creates an explicit reconciliation finding and downstream validity consequence.",
+          effectAndAuthorizationRule: "No external communication or approval request is sent by this candidate mapping definition.",
+          evidenceRule: "Future evidence distinguishes request occurrence, delivery attempt, receipt, consumer processing, response, and authoritative GAEP disposition.",
+          truthClass: "observed",
+          sources: [reference()],
+        }, {
+          key: "revise-command-map",
+          gaepSubjectKey: "revise-candidate-command",
+          externalSubject: "candidate.revise.request.v1",
+          authority: "conditional",
+          direction: "bidirectional",
+          fidelity: "transformed",
+          conflictRule: "Concurrent, divergent, ambiguous, reordered, or partially applied revisions stop for exact conflict preservation and accountable resolution; bidirectional does not imply shared authority.",
+          timeAndVersionRule: "Compare exact expected GAEP revision and external version token; stale or missing versions fail closed before any write.",
+          deletionAndRetentionRule: "Tombstone, deletion, retention, hold, inaccessible-source, and exit semantics remain explicit and preserve interpretable provenance.",
+          effectAndAuthorizationRule: "Any import, export, or synchronization write requires a current exact Authorization Grant and action-time revalidation; source access grants no GAEP authority.",
+          evidenceRule: "Future evidence must cover request, actual write, authoritative result, verified postconditions, divergence, duplicate delivery, partial application, replay, and unknown final state.",
+          truthClass: "observed",
+          sources: [reference()],
+        }],
+        synchronizationTriggers: ["No trigger is active; any future schedule, event, manual request, or reconciliation trigger requires a separately approved activation record"],
+        reconciliationOwnerRoleKey: "initiative-owner",
+        divergenceBehavior: "Preserve both exact versions, authority claims, times, mappings, losses, and evidence; stop dependent success and escalate without inventing convergence.",
+        duplicateDeliveryBehavior: "Detect by exact idempotency and event identities; retain duplicate evidence and never repeat a material effect without valid guarantees.",
+        reorderingBehavior: "Use only declared subject ordering; buffer, reject, or reconcile out-of-order input explicitly without assuming global chronology.",
+        partialApplicationBehavior: "Record every applied, unapplied, uncertain, and compensated element separately and block aggregate success until authoritative reconciliation.",
+        retryAndReplayBehavior: "Retry or replay requires exact duplicate-safety evidence and bounded policy; repeated identical failure stops rather than fabricating progress.",
+        unknownFinalStateBehavior: "Create a reconciliation, containment, or escalation obligation and preserve unknown outcome until an authoritative result and verified postconditions resolve it.",
+        credentialBindingState: "not-included",
+        evaluationState: "not-established",
+        activationState: "not-granted",
+        sources: [reference()],
+      }],
+      routes: [{
+        key: "governed-context-route",
+        eventTypeKeys,
+        commandKeys,
+        adapterKey: "governed-context-adapter",
+        externalContractKey: "governed-context-contract",
+        mappingKey: "governed-context-mapping",
+        producerBoundedContextKeys: ["governance-core", "product-studio"],
+        consumerBoundedContextKeys: ["governance-core", "product-studio"],
+        deliveryGuarantee: "none-declared",
+        orderingAndConcurrency: "Only exact subject sequence and expected revisions are declared; cross-system ordering, concurrency, and atomicity remain unknown until evaluated.",
+        idempotencyAndDuplicateDetection: "Every future operation must bind exact event or command identity, actor scope, canonical target, payload digest, and validity; unsupported duplicate detection blocks material retry.",
+        authoritativeReceiptContract: "Transport acknowledgement is not an authoritative business result; any success requires a version-bound external receipt and verified GAEP postconditions appropriate to the exact contract.",
+        timeoutAndUncertainResult: "A timeout after a possible external effect remains uncertain and creates an explicit reconciliation obligation; it is never interpreted as failure, success, or absence of effect.",
+        failureAndDegradedBehavior: "Missing authority, identity, compatibility, classification, fidelity, evidence, credential, external service, or control preconditions fail closed or enter an explicitly approved bounded degraded path.",
+        deliveryState: "not-attempted",
+        externalAcceptanceState: "not-established",
+        executionState: "not-executed",
+        sources: [reference()],
+      }],
+      requirementCoverage,
+      governance: {
+        integrationStewardRoleKeys: ["gaep-steward", "initiative-owner"],
+        eventStewardRoleKeys: ["gaep-steward", "initiative-owner"],
+        contractReviewerRoleKeys: ["gaep-steward", "initiative-owner"],
+        reviewState: "under-challenge",
+        eventRegistryApprovalState: "not-granted",
+        commandRegistryApprovalState: "not-granted",
+        adapterEvaluationState: "not-established",
+        externalContractAcceptanceState: "not-established",
+        activationState: "not-granted",
+        operationalReadinessState: "not-established",
+        executionAuthorityState: "not-granted",
+        basis: "Named candidate roles may prepare and challenge definitions, but only separately verified eligible human authorities and exact current records can approve registries, accept contracts, evaluate or activate adapters, establish readiness, grant authorization, or authorize execution.",
+        sources: [reference()],
+      },
+      assumptions: ["The selected local Product, Initiative, upstream model revisions, and Source records remain the exact bounded Event and Integration Model scope"],
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      limitations: ["No event occurrence, command send or delivery, external contract acceptance, adapter evaluation or activation, credential binding, Authorization Grant, executed effect, operational readiness, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   async function createArchitectureAndBoundedContext() {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const capabilityMap = await engine.businessCapabilityMap.create(
@@ -2009,6 +2355,22 @@ describe("Business understanding governance", () => {
       actorId,
     )
     return { ...upstream, securityPrivacyAssessment, processModel, dataModel }
+  }
+
+  async function createEventIntegrationUpstream() {
+    const upstream = await createAuthorizationUpstream()
+    const authorizationModel = await engine.authorizationModel.create(
+      authorizationModelInput(
+        upstream.architecture,
+        upstream.boundedContextModel,
+        upstream.operatingModel,
+        upstream.securityPrivacyAssessment,
+        upstream.processModel,
+        upstream.dataModel,
+      ),
+      actorId,
+    )
+    return { ...upstream, authorizationModel }
   }
 
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
@@ -3847,6 +4209,211 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("persists exact versioned Event and Integration Model candidates and privacy-safe status", async () => {
+    const upstream = await createEventIntegrationUpstream()
+    const input = eventIntegrationModelInput(
+      upstream.architecture,
+      upstream.boundedContextModel,
+      upstream.operatingModel,
+      upstream.securityPrivacyAssessment,
+      upstream.processModel,
+      upstream.dataModel,
+      upstream.authorizationModel,
+    )
+    const model = await engine.eventIntegrationModel.create(input, actorId)
+
+    expect(model).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      membershipDigest: canonicalDigest({
+        systemSolutionArchitecture: input.systemSolutionArchitecture,
+        boundedContextModel: input.boundedContextModel,
+        operatingModel: input.operatingModel,
+        securityPrivacyAssessment: input.securityPrivacyAssessment,
+        processModel: input.processModel,
+        dataModel: input.dataModel,
+        authorizationModel: input.authorizationModel,
+      }),
+      governance: {
+        eventRegistryApprovalState: "not-granted",
+        commandRegistryApprovalState: "not-granted",
+        adapterEvaluationState: "not-established",
+        externalContractAcceptanceState: "not-established",
+        activationState: "not-granted",
+        operationalReadinessState: "not-established",
+        executionAuthorityState: "not-granted",
+        reviewState: "under-challenge",
+      },
+      authorityBoundary: expect.stringContaining("does-not-prove-event-occurrence"),
+    })
+    expect(await engine.eventIntegrationModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id, revision: 1, digest: canonicalDigest(model) },
+      eventTypeCount: 2,
+      commandCount: 2,
+      adapterCount: 1,
+      externalContractCount: 1,
+      mappingCount: 1,
+      routeCount: 1,
+      uncoveredProcessEventCount: 0,
+      uncoveredProcessCount: 0,
+      uncoveredBoundedContextCount: 0,
+      uncoveredDataEntityCount: 0,
+      uncoveredAuthorizationActionCount: 0,
+      unknownMappingTruthCount: 0,
+      unresolvedRequirementCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      authorityBoundary: expect.stringContaining("does-not-prove-event-occurrence"),
+    })
+    const projection = await engine.eventIntegrationModel.project(initiative.id)
+    expect(projection).toMatchObject({
+      model: {
+        id: model.id,
+        eventTypeCount: 2,
+        commandCount: 2,
+        adapterCount: 1,
+        externalContractCount: 1,
+        mappingCount: 1,
+        routeCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-event-payloads"),
+      authorityBoundary: expect.stringContaining("does-not-prove-event-occurrence"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Candidate external review system")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.eventIntegrationModel.revise(
+      model.id,
+      model.revision,
+      eventIntegrationModelInput(
+        upstream.architecture,
+        upstream.boundedContextModel,
+        upstream.operatingModel,
+        upstream.securityPrivacyAssessment,
+        upstream.processModel,
+        upstream.dataModel,
+        upstream.authorizationModel,
+        { limitations: [
+          "No event occurrence, command send or delivery, external contract acceptance, adapter evaluation or activation, credential binding, Authorization Grant, executed effect, operational readiness, release, deployment, or action authority is represented",
+          "The candidate remains subject to independent event, integration, authority, privacy, reliability, native-host, and Product Owner challenge",
+        ] },
+      ),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: model.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(model),
+      governance: {
+        eventRegistryApprovalState: "not-granted",
+        commandRegistryApprovalState: "not-granted",
+        adapterEvaluationState: "not-established",
+        externalContractAcceptanceState: "not-established",
+        activationState: "not-granted",
+        operationalReadinessState: "not-established",
+        executionAuthorityState: "not-granted",
+      },
+    })
+    expect((await engine.eventIntegrationModel.listHistory(model.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "event.integration-model.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(model),
+        state: "candidate",
+        eventRegistryApprovalState: "not-granted",
+        commandRegistryApprovalState: "not-granted",
+        adapterEvaluationState: "not-established",
+        externalContractAcceptanceState: "not-established",
+        activationState: "not-granted",
+        operationalReadinessState: "not-established",
+        executionAuthorityState: "not-granted",
+        reviewState: "under-challenge",
+      },
+    })
+  })
+
+  it("rejects forged Event and Integration occurrence, authority, graph, roles, bindings, and secrets", async () => {
+    const upstream = await createEventIntegrationUpstream()
+    const base = eventIntegrationModelInput(
+      upstream.architecture,
+      upstream.boundedContextModel,
+      upstream.operatingModel,
+      upstream.securityPrivacyAssessment,
+      upstream.processModel,
+      upstream.dataModel,
+      upstream.authorizationModel,
+    )
+    expect(() => eventIntegrationModelInputSchema.parse({
+      ...base,
+      governance: { ...base.governance, activationState: "granted" },
+    })).toThrow()
+    expect(() => eventIntegrationModelInputSchema.parse({
+      ...base,
+      eventTypes: base.eventTypes.map((entry) => ({ ...entry, occurrenceState: "occurred" })),
+    })).toThrow()
+    expect(() => eventIntegrationModelInputSchema.parse({
+      ...base,
+      routes: base.routes.map((entry) => ({ ...entry, adapterKey: "invented-adapter" })),
+    })).toThrow(/declared Events, Commands, Adapters/)
+    await expect(engine.eventIntegrationModel.create({
+      ...base,
+      governance: { ...base.governance, integrationStewardRoleKeys: ["invented-role"] },
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.eventIntegrationModel.create({
+      ...base,
+      eventTypes: base.eventTypes.map((entry) => entry.key === "review-requested-event"
+        ? { ...entry, processEventKeys: ["invented-process-event"] }
+        : entry),
+    }, actorId)).rejects.toThrow(/exact bound Process Events/)
+    await expect(engine.eventIntegrationModel.create({
+      ...base,
+      commands: base.commands.map((entry) => entry.key === "revise-candidate-command"
+        ? { ...entry, authorizationActionKeys: ["invented-action"] }
+        : entry),
+    }, actorId)).rejects.toThrow(/Authorization subjects/)
+    await expect(engine.eventIntegrationModel.create({
+      ...base,
+      authorizationModel: { ...base.authorizationModel, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Authorization Model/)
+    await expect(engine.eventIntegrationModel.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable integration context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const model = await engine.eventIntegrationModel.create(base, actorId)
+    await engine.authorizationModel.revise(
+      upstream.authorizationModel.id,
+      upstream.authorizationModel.revision,
+      authorizationModelInput(
+        upstream.architecture,
+        upstream.boundedContextModel,
+        upstream.operatingModel,
+        upstream.securityPrivacyAssessment,
+        upstream.processModel,
+        upstream.dataModel,
+        { limitations: [
+          "No verified identity, effective role assignment, standing authority, authorization grant, enforcement decision, approved model, operational readiness, release, deployment, or action authority is represented",
+          "The exact Authorization Model changed after Event and Integration Model capture",
+        ] },
+      ),
+      actorId,
+    )
+    expect(await engine.eventIntegrationModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -3961,6 +4528,18 @@ describe("Business understanding governance", () => {
       ),
       actorId,
     )
+    const eventIntegrationModel = await engine.eventIntegrationModel.create(
+      eventIntegrationModelInput(
+        systemSolutionArchitecture,
+        boundedContextModel,
+        operatingModel,
+        securityPrivacyAssessment,
+        processModel,
+        dataModel,
+        authorizationModel,
+      ),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -3987,6 +4566,8 @@ describe("Business understanding governance", () => {
       `data-model-history/data-model-${dataModel.id}-r1.json`,
       `authorization-models/${authorizationModel.id}.json`,
       `authorization-model-history/authorization-model-${authorizationModel.id}-r1.json`,
+      `event-integration-models/${eventIntegrationModel.id}.json`,
+      `event-integration-model-history/event-integration-model-${eventIntegrationModel.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -4081,6 +4662,36 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedAuthorizationBinding))
       .rejects.toThrow(/Authorization Model .* Data Model reference is unresolved/)
+
+    const forgeEventAuthorization = (content: unknown) => {
+      const record = content as EventIntegrationModel
+      const authorizationModelReference = { ...record.authorizationModel, digest: digest("a") }
+      return {
+        ...record,
+        authorizationModel: authorizationModelReference,
+        membershipDigest: canonicalDigest({
+          systemSolutionArchitecture: record.systemSolutionArchitecture,
+          boundedContextModel: record.boundedContextModel,
+          operatingModel: record.operatingModel,
+          securityPrivacyAssessment: record.securityPrivacyAssessment,
+          processModel: record.processModel,
+          dataModel: record.dataModel,
+          authorizationModel: authorizationModelReference,
+        }),
+      }
+    }
+    let forgedEventBinding = replacePortableRecord(
+      bundle,
+      `event-integration-models/${eventIntegrationModel.id}.json`,
+      forgeEventAuthorization,
+    )
+    forgedEventBinding = replacePortableRecord(
+      forgedEventBinding,
+      `event-integration-model-history/event-integration-model-${eventIntegrationModel.id}-r1.json`,
+      forgeEventAuthorization,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedEventBinding))
+      .rejects.toThrow(/Event and Integration Model .* Authorization Model reference is unresolved/)
 
     const rebound = replacePortableRecord(
       bundle,

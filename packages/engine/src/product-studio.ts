@@ -10,6 +10,7 @@ import {
   processModelSchema,
   dataModelSchema,
   authorizationModelSchema,
+  eventIntegrationModelSchema,
   businessArchitectureBaselineSchema,
   businessCapabilityMapSchema,
   businessRuleCatalogSchema,
@@ -67,6 +68,7 @@ import {
   type ProcessModel,
   type DataModel,
   type AuthorizationModel,
+  type EventIntegrationModel,
   type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
   type BusinessRuleCatalog,
@@ -2040,6 +2042,16 @@ export class ProductStudioService {
       /^authorization-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       authorizationModelSchema,
     )
+    const eventIntegrationModels = await this.listRecords(
+      "event-integration-models",
+      /^[0-9a-f-]+\.json$/i,
+      eventIntegrationModelSchema,
+    )
+    const eventIntegrationModelHistory = await this.listRecords(
+      "event-integration-model-history",
+      /^event-integration-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      eventIntegrationModelSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2238,6 +2250,13 @@ export class ProductStudioService {
       "authorization-model-candidate",
       authorizationModelHistory,
       (record) => `authorization-model-history/authorization-model-${record.id}-r${record.revision}.json`,
+    )
+    append("event-integration-models", "event-integration-model-candidate", eventIntegrationModels)
+    append(
+      "event-integration-model-history",
+      "event-integration-model-candidate",
+      eventIntegrationModelHistory,
+      (record) => `event-integration-model-history/event-integration-model-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2526,6 +2545,14 @@ export class ProductStudioService {
           `authorization-model-history/authorization-model-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Authorization Model history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("event-integration-model-history/")) {
+        const record = validated as EventIntegrationModel
+        const expectedHistoryPath =
+          `event-integration-model-history/event-integration-model-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Event and Integration Model history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3652,7 +3679,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3684,7 +3711,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -4607,6 +4634,135 @@ export class ProductStudioService {
       }
     }
 
+    const eventIntegrationModels = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("event-integration-models/"))
+      .map(([, record]) => eventIntegrationModelSchema.parse(record))
+    const eventIntegrationModelHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("event-integration-model-history/"))
+      .map(([, record]) => eventIntegrationModelSchema.parse(record))
+    validateVersionedBusinessRecords(
+      eventIntegrationModels,
+      eventIntegrationModelHistory,
+      "Event and Integration Model",
+    )
+    const exactAuthorizationModels = new Map(
+      [...authorizationModels, ...authorizationModelHistory].map((record) => [
+        `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+        record,
+      ]),
+    )
+    for (const model of [...eventIntegrationModels, ...eventIntegrationModelHistory]) {
+      const resolveBound = <T extends { id: string; revision: number; initiativeId: string }>(
+        reference: { recordId: string; revision: number; digest: string },
+        exact: Map<string, T>,
+        label: string,
+      ): T => {
+        const record = exact.get(`${reference.recordId}:${reference.revision}:${reference.digest}`)
+        if (!record || record.initiativeId !== model.initiativeId) {
+          throw new Error(`Import Event and Integration Model ${model.id} exact ${label} reference is unresolved`)
+        }
+        return record
+      }
+      const architecture = resolveBound(
+        model.systemSolutionArchitecture,
+        exactSystemSolutionArchitectures,
+        "System/Solution Architecture",
+      )
+      const boundedContexts = resolveBound(model.boundedContextModel, exactBoundedContextModels, "Bounded Context Model")
+      const operatingModel = resolveBound(model.operatingModel, exactOperatingModels, "Operating Model")
+      resolveBound(
+        model.securityPrivacyAssessment,
+        exactSecurityPrivacyAssessments,
+        "Security, Privacy, and Threat Assessment",
+      )
+      const processModel = resolveBound(model.processModel, exactProcessModels, "Process Model")
+      const dataModel = resolveBound(model.dataModel, exactDataModels, "Data Model")
+      const authorizationModel = resolveBound(
+        model.authorizationModel,
+        exactAuthorizationModels,
+        "Authorization Model",
+      )
+      if (model.membershipDigest !== canonicalDigest({
+        systemSolutionArchitecture: model.systemSolutionArchitecture,
+        boundedContextModel: model.boundedContextModel,
+        operatingModel: model.operatingModel,
+        securityPrivacyAssessment: model.securityPrivacyAssessment,
+        processModel: model.processModel,
+        dataModel: model.dataModel,
+        authorizationModel: model.authorizationModel,
+      })) {
+        throw new Error(`Import Event and Integration Model ${model.id} membership digest is invalid`)
+      }
+      const architectureElementKeys = new Set(architecture.elements.map((entry) => entry.key))
+      const boundedContextKeys = new Set(boundedContexts.boundedContexts.map((entry) => entry.key))
+      const roleKeys = new Set(operatingModel.roles.map((entry) => entry.key))
+      const processKeys = new Set(processModel.processes.map((entry) => entry.key))
+      const processEventKeys = new Set(processModel.processes.flatMap((entry) => entry.events.map((event) => event.key)))
+      const dataEntityKeys = new Set(dataModel.entities.map((entry) => entry.key))
+      const authorizationActionKeys = new Set(authorizationModel.actions.map((entry) => entry.key))
+      const authorizationRuleKeys = new Set(authorizationModel.rules.map((entry) => entry.key))
+      const eventKeys = new Set(model.eventTypes.map((entry) => entry.key))
+      const commandKeys = new Set(model.commands.map((entry) => entry.key))
+      const referencedRoleKeys = [
+        ...model.eventTypes.flatMap((entry) => entry.producerRoleKeys),
+        ...model.commands.flatMap((entry) => entry.actorRoleKeys),
+        ...model.mappings.map((entry) => entry.reconciliationOwnerRoleKey),
+        ...model.governance.integrationStewardRoleKeys,
+        ...model.governance.eventStewardRoleKeys,
+        ...model.governance.contractReviewerRoleKeys,
+      ]
+      if (referencedRoleKeys.some((key) => !roleKeys.has(key))) {
+        throw new Error(`Import Event and Integration Model ${model.id} references an unknown bound Operating Model role`)
+      }
+      for (const eventType of model.eventTypes) {
+        if (eventType.processEventKeys.some((key) => !processEventKeys.has(key)) ||
+            !boundedContextKeys.has(eventType.producerBoundedContextKey) ||
+            eventType.payloadDataEntityKeys.some((key) => !dataEntityKeys.has(key))) {
+          throw new Error(`Import Event and Integration Model ${model.id} Event Type trace is unresolved`)
+        }
+        const validSubjects = eventType.subjectKind === "architecture-element"
+          ? architectureElementKeys
+          : eventType.subjectKind === "bounded-context"
+            ? boundedContextKeys
+            : eventType.subjectKind === "data-entity"
+              ? dataEntityKeys
+              : processKeys
+        if (eventType.subjectKeys.some((key) => !validSubjects.has(key))) {
+          throw new Error(`Import Event and Integration Model ${model.id} Event Type subject is unresolved`)
+        }
+      }
+      for (const command of model.commands) {
+        if (command.processKeys.some((key) => !processKeys.has(key)) ||
+            command.targetBoundedContextKeys.some((key) => !boundedContextKeys.has(key)) ||
+            [...command.inputDataEntityKeys, ...command.outputDataEntityKeys]
+              .some((key) => !dataEntityKeys.has(key)) ||
+            command.authorizationActionKeys.some((key) => !authorizationActionKeys.has(key)) ||
+            command.authorizationRuleKeys.some((key) => !authorizationRuleKeys.has(key))) {
+          throw new Error(`Import Event and Integration Model ${model.id} Command trace is unresolved`)
+        }
+      }
+      const referencedContexts = [
+        ...model.adapters.flatMap((entry) => entry.boundedContextKeys),
+        ...model.externalContracts.flatMap((entry) => [
+          ...entry.producerBoundedContextKeys, ...entry.consumerBoundedContextKeys,
+        ]),
+        ...model.routes.flatMap((entry) => [
+          ...entry.producerBoundedContextKeys, ...entry.consumerBoundedContextKeys,
+        ]),
+      ]
+      if (referencedContexts.some((key) => !boundedContextKeys.has(key))) {
+        throw new Error(`Import Event and Integration Model ${model.id} Bounded Context trace is unresolved`)
+      }
+      const validMappingSubjects = new Set([
+        ...eventKeys, ...commandKeys, ...architectureElementKeys, ...boundedContextKeys,
+        ...processKeys, ...dataEntityKeys, ...authorizationActionKeys,
+      ])
+      if (model.mappings.some((mapping) =>
+        mapping.rows.some((row) => !validMappingSubjects.has(row.gaepSubjectKey)))) {
+        throw new Error(`Import Event and Integration Model ${model.id} mapping subject is unresolved`)
+      }
+    }
+
     for (const change of changes) {
       if (!initiativesById.has(change.initiativeId)) throw new Error(`Import Change ${change.id} has no Initiative`)
       if (change.baseline.kind === "exact") {
@@ -5252,6 +5408,10 @@ export class ProductStudioService {
         /^authorization-model-history\/authorization-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "authorization-model-candidate"
     }
+    if (/^event-integration-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^event-integration-model-history\/event-integration-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "event-integration-model-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -5344,6 +5504,10 @@ export class ProductStudioService {
     if (/^authorization-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^authorization-model-history\/authorization-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return authorizationModelSchema
+    }
+    if (/^event-integration-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^event-integration-model-history\/event-integration-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return eventIntegrationModelSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

@@ -83,6 +83,7 @@ import { SecurityPrivacyAssessmentService } from "./security-privacy-assessment.
 import { ProcessModelService } from "./process-model.js"
 import { DataModelService } from "./data-model.js"
 import { AuthorizationModelService } from "./authorization-model.js"
+import { EventIntegrationModelService } from "./event-integration-model.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -255,6 +256,7 @@ export class GaepEngine {
   readonly processModel: ProcessModelService
   readonly dataModel: DataModelService
   readonly authorizationModel: AuthorizationModelService
+  readonly eventIntegrationModel: EventIntegrationModelService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -388,6 +390,19 @@ export class GaepEngine {
       this.processModel,
       this.dataModel,
     )
+    this.eventIntegrationModel = new EventIntegrationModelService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      this.systemSolutionArchitecture,
+      this.boundedContextModel,
+      this.operatingModel,
+      this.securityPrivacyAssessment,
+      this.processModel,
+      this.dataModel,
+      this.authorizationModel,
+    )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
@@ -481,7 +496,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
@@ -495,6 +510,8 @@ export class GaepEngine {
         this.securityPrivacyAssessment.healthIssues(),
         this.processModel.healthIssues(),
         this.dataModel.healthIssues(),
+        this.authorizationModel.healthIssues(),
+        this.eventIntegrationModel.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,
@@ -510,6 +527,8 @@ export class GaepEngine {
         ...securityPrivacyAssessmentIssues,
         ...processModelIssues,
         ...dataModelIssues,
+        ...authorizationModelIssues,
+        ...eventIntegrationModelIssues,
       ]
     } catch (error) {
       domainIssues = [{
