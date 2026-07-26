@@ -5,6 +5,7 @@ import { join } from "node:path"
 import {
   architectureChallengeModelInputSchema,
   architectureChallengeRequirementIds,
+  decisionRegisterRequirementIds,
   authorizationModelInputSchema,
   authorizationModelRequirementIds,
   eventIntegrationModelInputSchema,
@@ -28,6 +29,7 @@ import {
   type BoundedContextModelInput,
   type ArchitectureChallengeModelInput,
   type ArchitectureChallengeModel,
+  type DecisionRegisterInput,
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
@@ -2773,6 +2775,151 @@ describe("Business understanding governance", () => {
     return { ...upstream, failureRecoveryModel }
   }
 
+  async function createDecisionRegisterUpstream() {
+    const upstream = await createArchitectureChallengeUpstream()
+    const architectureChallengeModel = await engine.architectureChallengeModel.create(
+      architectureChallengeModelInput(
+        upstream.architecture, upstream.boundedContextModel, upstream.operatingModel,
+        upstream.securityPrivacyAssessment, upstream.processModel, upstream.dataModel,
+        upstream.authorizationModel, upstream.eventIntegrationModel, upstream.failureRecoveryModel,
+      ),
+      actorId,
+    )
+    return { ...upstream, architectureChallengeModel }
+  }
+
+  function decisionRegisterInput(
+    operatingModel: OperatingModel,
+    architectureChallengeModel: ArchitectureChallengeModel,
+    overrides: Partial<DecisionRegisterInput> = {},
+  ): DecisionRegisterInput {
+    const decisionKeys = ["shared-engine-boundary"]
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Product Decision Register",
+      scope: "Record one exact cross-step Product decision with alternatives, recommendation, attributable human selection, consequences, authority gaps, and review triggers without treating the selection as effective, approved, baselined, ready, or authorized.",
+      operatingModel: {
+        recordId: operatingModel.id,
+        revision: operatingModel.revision,
+        digest: canonicalDigest(operatingModel),
+      },
+      architectureChallengeModel: {
+        recordId: architectureChallengeModel.id,
+        revision: architectureChallengeModel.revision,
+        digest: canonicalDigest(architectureChallengeModel),
+      },
+      decisions: [{
+        key: "shared-engine-boundary",
+        question: "Should every native Product Studio host delegate governed Product semantics and persistence to one shared local engine?",
+        scope: {
+          included: ["Four native Product Studio hosts", "Shared local governed engine"],
+          excluded: ["Deployment authorization", "Production release"],
+        },
+        ownerRoleKey: "initiative-owner",
+        decisionAuthorityRoleKeys: ["initiative-owner"],
+        decisionRightKeys: ["govern-initiative-outcome"],
+        ownerAssignmentState: "not-established",
+        authorityAssignmentState: "not-established",
+        subjects: [{
+          recordKind: "architecture-challenge-model",
+          recordId: architectureChallengeModel.id,
+          revision: architectureChallengeModel.revision,
+          digest: canonicalDigest(architectureChallengeModel),
+          relationship: "answers-for",
+          elementKeys: ["shared-engine-decision"],
+        }],
+        options: [{
+          key: "host-local-semantics",
+          name: "Host-local semantics",
+          description: "Each native host implements and persists governed Product semantics independently.",
+          noAction: false,
+          consequences: ["Each host requires independent semantic-parity and migration evidence"],
+          constraints: ["Four authority-bearing implementations must remain compatible"],
+          risks: ["Host-local governance semantics may silently diverge"],
+          evidence: [reference()],
+        }, {
+          key: "shared-governed-engine",
+          name: "Shared governed engine",
+          description: "Every native host delegates governed Product semantics and persistence to one shared strict engine contract.",
+          noAction: false,
+          consequences: ["All hosts depend on one strict protocol and governed-store boundary"],
+          constraints: ["Packaging and compatibility must work in every supported host"],
+          risks: ["A shared engine defect can affect every native host"],
+          evidence: [reference()],
+        }],
+        criteria: [{
+          key: "authority-integrity",
+          statement: "The selected boundary must preserve one inspectable and fail-closed authority model across every host.",
+          importance: "critical",
+          evidence: [reference()],
+        }],
+        recommendations: [{
+          key: "shared-engine-candidate",
+          preference: "option",
+          optionKey: "shared-governed-engine",
+          rationale: "One strict governed engine minimizes host-specific semantic drift while preserving a single inspectable audit boundary.",
+          assumptions: ["Every supported host can launch or connect to the exact packaged engine"],
+          uncertainty: ["Native supported-platform acceptance remains incomplete"],
+          proposedBy: { kind: "agent", id: "gaep-product-analysis" },
+          proposedAt: "2026-07-27T00:00:00.000Z",
+          evidence: [reference()],
+          authorityBoundary: "recommendation-is-advisory-and-does-not-establish-a-decision-outcome-approval-risk-acceptance-or-action-authority",
+        }],
+        outcome: {
+          state: "option-selected",
+          optionKey: "shared-governed-engine",
+          rationale: "The named human selected the shared candidate while authority eligibility and decision effectiveness remain unestablished and pending.",
+          selectedBy: { kind: "human", id: actorId },
+          selectedAt: "2026-07-27T01:00:00.000Z",
+          evidence: [reference()],
+          authorityEligibilityState: "not-established",
+          effectivenessState: "pending",
+          approvalState: "not-established",
+          riskAcceptanceState: "not-granted",
+          baselinePromotionState: "not-granted",
+          actionAuthorityState: "not-granted",
+          authorityBoundary: "recorded-outcome-does-not-establish-authority-eligibility-approval-risk-acceptance-baseline-promotion-or-action-authority",
+        },
+        authoringLifecycle: "draft",
+        revisionDisposition: "candidate",
+        operationalEligibilityState: "not-established",
+        assumptions: ["The exact Architecture Challenge revision remains the current decision-support input"],
+        uncertainty: ["Independent human challenge and supported-host evidence remain incomplete"],
+        dissent: [],
+        conflicts: [],
+        consequences: ["The selected boundary shapes every native host integration and portability contract"],
+        risks: ["A wrong boundary selection could create systemic cross-host governance drift or correlated failure"],
+        obligations: ["Re-open the question on material protocol, authority, or host changes"],
+        implementationBoundary: "The recorded selection guides candidate implementation only; separate Approval Determinations and an exact Authorization Grant remain required for any governed effect that needs them.",
+        reviewTriggers: ["Architecture Challenge, supported-host evidence, operating authority, or protocol compatibility changes"],
+        relationships: [{
+          recordKind: "architecture-challenge-model",
+          recordId: architectureChallengeModel.id,
+          revision: architectureChallengeModel.revision,
+          digest: canonicalDigest(architectureChallengeModel),
+          relationship: "depends-on",
+          elementKeys: ["shared-engine-decision"],
+        }],
+        sources: [reference()],
+      }],
+      requirementCoverage: [...decisionRegisterRequirementIds]
+        .sort((left, right) => left.localeCompare(right))
+        .map((requirementId) => ({
+          requirementId,
+          state: "covered-candidate" as const,
+          decisionKeys,
+          basis: "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+          evidence: [reference()],
+        })),
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      limitations: ["No owner appointment, authority eligibility, effective Decision, Approval Determination, risk acceptance, baseline promotion, readiness conclusion, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -5196,6 +5343,163 @@ describe("Business understanding governance", () => {
       staleBindingCount: 1,
       state: "attention-required",
     })
+  })
+
+  it("persists exact versioned Decision Registers without synthesizing effectiveness or authority", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const input = decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel)
+    const register = await engine.decisionRegister.create(input, actorId)
+
+    expect(register).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      decisions: [{
+        outcome: {
+          state: "option-selected",
+          selectedBy: { kind: "human", id: actorId },
+          authorityEligibilityState: "not-established",
+          effectivenessState: "pending",
+          approvalState: "not-established",
+          riskAcceptanceState: "not-granted",
+          baselinePromotionState: "not-granted",
+          actionAuthorityState: "not-granted",
+        },
+      }],
+      authorityBoundary: expect.stringContaining("does-not-establish-owner-or-authority-assignments"),
+    })
+    expect(register.membershipDigest).toBe(canonicalDigest({
+      operatingModel: input.operatingModel,
+      architectureChallengeModel: input.architectureChallengeModel,
+      decisions: input.decisions.map((decision) => ({
+        key: decision.key,
+        subjects: decision.subjects,
+        relationships: decision.relationships,
+        sourceReferences: [reference()],
+      })),
+    }))
+    expect(await engine.decisionRegister.assess(initiative.id)).toMatchObject({
+      register: { recordId: register.id, revision: 1, digest: canonicalDigest(register) },
+      decisionCount: 1,
+      unresolvedDecisionCount: 0,
+      selectedPendingDecisionCount: 1,
+      deferredDecisionCount: 0,
+      unresolvedRequirementCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      authorityBoundary: expect.stringContaining("does-not-establish-decision-effectiveness"),
+    })
+    const projection = await engine.decisionRegister.project(initiative.id)
+    expect(projection).toMatchObject({
+      register: { id: register.id, revision: 1, decisionCount: 1 },
+      status: { selectedPendingDecisionCount: 1 },
+      privacyBoundary: expect.stringContaining("not-decision-questions"),
+      authorityBoundary: expect.stringContaining("does-not-establish-decision-effectiveness"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Should every native Product Studio host")
+    expect(JSON.stringify(projection)).not.toContain("shared-governed-engine")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.decisionRegister.revise(
+      register.id,
+      register.revision,
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel, {
+        limitations: [
+          "Independent human review of the exact selection, alternatives, evidence, and authority chain remains incomplete",
+          "No owner appointment, authority eligibility, effective Decision, Approval Determination, risk acceptance, baseline promotion, readiness conclusion, release, deployment, or action authority is represented",
+        ],
+      }),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: register.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(register),
+      decisions: [{ outcome: { effectivenessState: "pending", actionAuthorityState: "not-granted" } }],
+    })
+    expect((await engine.decisionRegister.listHistory(register.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "decision.register.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(register),
+        decisionCount: 1,
+        unresolvedDecisionCount: 0,
+        selectedPendingDecisionCount: 1,
+        deferredDecisionCount: 0,
+        authorityEligibilityState: "not-established",
+        decisionEffectivenessState: "pending",
+        approvalState: "not-established",
+        riskAcceptanceState: "not-granted",
+        baselinePromotionState: "not-granted",
+        readinessState: "not-established",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("rejects forged Decision Register roles, rights, subjects, bindings, secrets, and duplicate current records", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const base = decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel)
+    await expect(engine.decisionRegister.create({
+      ...base,
+      decisions: base.decisions.map((decision) => ({ ...decision, ownerRoleKey: "invented-owner" })),
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.decisionRegister.create({
+      ...base,
+      decisions: base.decisions.map((decision) => ({ ...decision, decisionRightKeys: ["invented-right"] })),
+    }, actorId)).rejects.toThrow(/exact bound Operating Model decision rights/)
+    await expect(engine.decisionRegister.create({
+      ...base,
+      decisions: base.decisions.map((decision) => ({
+        ...decision,
+        subjects: decision.subjects.map((subject) => ({ ...subject, digest: digest("e") })),
+      })),
+    }, actorId)).rejects.toThrow(/exact current governed records/)
+    await expect(engine.decisionRegister.create({
+      ...base,
+      architectureChallengeModel: { ...base.architectureChallengeModel, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Architecture Challenge/)
+    await expect(engine.decisionRegister.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable decision context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+    await engine.decisionRegister.create(base, actorId)
+    await expect(engine.decisionRegister.create(base, actorId)).rejects.toThrow(/only one current Decision Register/)
+  })
+
+  it("reports Decision Register staleness after its exact Architecture Challenge changes", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const register = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel),
+      actorId,
+    )
+    await engine.architectureChallengeModel.revise(
+      upstream.architectureChallengeModel.id,
+      upstream.architectureChallengeModel.revision,
+      architectureChallengeModelInput(
+        upstream.architecture, upstream.boundedContextModel, upstream.operatingModel,
+        upstream.securityPrivacyAssessment, upstream.processModel, upstream.dataModel,
+        upstream.authorizationModel, upstream.eventIntegrationModel, upstream.failureRecoveryModel,
+        { limitations: [
+          "No completed independent challenge, assurance conclusion, risk acceptance, architecture approval, native-host acceptance, operational readiness, release, deployment, or action authority is represented",
+          "The exact Architecture Challenge changed after Decision Register capture",
+        ] },
+      ),
+      actorId,
+    )
+    expect(await engine.decisionRegister.assess(initiative.id)).toMatchObject({
+      register: { recordId: register.id },
+      state: "attention-required",
+    })
+    expect((await engine.decisionRegister.assess(initiative.id)).staleBindingCount).toBeGreaterThanOrEqual(1)
   })
 
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {

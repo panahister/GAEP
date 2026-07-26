@@ -81,6 +81,7 @@ export const decisionRegisterRequirementIds = [
 
 export const decisionSubjectKindSchema = z.enum([
   "architecture-challenge-model",
+  "architecture-record",
   "authorization-model",
   "bounded-context-model",
   "business-architecture-baseline",
@@ -90,14 +91,17 @@ export const decisionSubjectKindSchema = z.enum([
   "change",
   "data-model",
   "event-integration-model",
-  "external-governed-record",
+  "decision-record",
+  "evidence-record",
   "failure-recovery-model",
   "initiative",
   "operating-model",
+  "outcome-model",
   "process-model",
   "product",
   "product-design-revision",
   "requirement",
+  "risk-record",
   "security-privacy-assessment",
   "source-record",
   "stakeholder-model",
@@ -417,5 +421,6 @@ export const decisionRegisterProjectionSchema = z.object({
 export type DecisionRegisterInput = z.infer<typeof decisionRegisterInputSchema>
 export type DecisionRegister = z.infer<typeof decisionRegisterSchema>
 export type ExactDecisionRegisterReference = z.infer<typeof exactDecisionRegisterReferenceSchema>
+export type ExactDecisionSubjectReference = z.infer<typeof exactDecisionSubjectReferenceSchema>
 export type DecisionRegisterStatus = z.infer<typeof decisionRegisterStatusSchema>
 export type DecisionRegisterProjection = z.infer<typeof decisionRegisterProjectionSchema>
