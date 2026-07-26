@@ -934,6 +934,49 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Architecture Challenge projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("architecture-challenge-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readArchitectureChallengeModel(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(9, projection.model?.challengeSubjectCount)
+            assertEquals(6, projection.model?.findingCount)
+            assertEquals(1, projection.unrespondedFindingCount)
+
+            val rendered = RiderProductController(client).readArchitectureChallengeModel(entryId)
+            assertTrue(rendered.contains("GAEP governed Architecture Challenge candidate"))
+            assertTrue(rendered.contains("9 challenge subjects · 7 assumptions · 4 alternatives · 6 findings · 5 responses"))
+            assertTrue(rendered.contains("does not complete independent review"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("challengeContent"))
+        }
+
+        listOf(
+            "bad-architecture-challenge-snapshot-digest",
+            "bad-architecture-challenge-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readArchitectureChallengeModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-architecture-challenge-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readArchitectureChallengeModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

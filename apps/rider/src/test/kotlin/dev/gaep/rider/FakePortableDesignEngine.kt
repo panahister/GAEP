@@ -29,6 +29,7 @@ private val dataModelId = UUID.fromString("51515151-5151-4151-8151-515151515151"
 private val authorizationModelId = UUID.fromString("52525252-5252-4252-8252-525252525252")
 private val eventIntegrationModelId = UUID.fromString("53535353-5353-4353-8353-535353535353")
 private val failureRecoveryModelId = UUID.fromString("54545454-5454-4454-8454-545454545454")
+private val architectureChallengeModelId = UUID.fromString("56565656-5656-4656-8656-565656565656")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -173,6 +174,11 @@ fun main(arguments: Array<String>) {
             )
             "recovery.models.snapshot" -> handleFailureRecoveryModel(
                 request.get("id").asLong,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "challenge.models.snapshot" -> handleArchitectureChallengeModel(
+                id,
                 request.getAsJsonObject("params"),
                 workspacePath,
             )
@@ -1724,6 +1730,95 @@ private fun handleFailureRecoveryModel(id: Long, params: JsonObject, workspacePa
         }
         workspacePath.endsWith("bad-failure-recovery-model-snapshot-private") -> {
             value.addProperty("recoveryEvidence", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleArchitectureChallengeModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE ARCHITECTURE CHALLENGE PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-architecture-challenge-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T16:00:00.000Z"
+    val modelDigest = "sha256:${"d".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "architecture-challenge-model-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "architecture-challenge-model-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("model", JsonObject().apply {
+                addProperty("recordId", architectureChallengeModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", modelDigest)
+            })
+            addProperty("challengeSubjectCount", 9)
+            addProperty("assumptionCount", 7)
+            addProperty("alternativeCount", 4)
+            addProperty("findingCount", 6)
+            addProperty("responseCount", 5)
+            addProperty("unrespondedFindingCount", 1)
+            addProperty("unresolvedAssumptionCount", 2)
+            addProperty("unresolvedRequirementCount", 3)
+            addProperty("inconsistencyCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more challenge findings remain unresponded") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "architecture-challenge-status-reports-candidate-coverage-and-gaps-and-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action",
+            )
+        })
+        add("model", JsonObject().apply {
+            addProperty("id", architectureChallengeModelId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", modelDigest)
+            addProperty("membershipDigest", "sha256:${"a".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("challengeSubjectCount", 9)
+            addProperty("assumptionCount", 7)
+            addProperty("alternativeCount", 4)
+            addProperty("findingCount", 6)
+            addProperty("responseCount", 5)
+            addProperty("updatedAt", "2026-07-26T15:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-challenge-content-assumptions-evidence-findings-responses-source-content-personal-data-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "architecture-challenge-projection-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-architecture-challenge-snapshot-digest") -> {
+            value.getAsJsonObject("model").addProperty("responseCount", 6)
+        }
+        workspacePath.endsWith("bad-architecture-challenge-snapshot-private") -> {
+            value.addProperty("challengeContent", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)
