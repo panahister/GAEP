@@ -354,6 +354,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += architectureChallengeButton
         actions.add(architectureChallengeButton)
 
+        val decisionRegisterButton = JButton("Inspect Decision Register…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Decision questions, options, recommendations, outcomes, rationale, evidence, subject content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Decision Register",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Decision Register", status, output, buttons) {
+                    controller.readDecisionRegister(initiativeId)
+                }
+            }
+        }
+        buttons += decisionRegisterButton
+        actions.add(decisionRegisterButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

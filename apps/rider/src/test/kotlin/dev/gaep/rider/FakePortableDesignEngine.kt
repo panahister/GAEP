@@ -30,6 +30,7 @@ private val authorizationModelId = UUID.fromString("52525252-5252-4252-8252-5252
 private val eventIntegrationModelId = UUID.fromString("53535353-5353-4353-8353-535353535353")
 private val failureRecoveryModelId = UUID.fromString("54545454-5454-4454-8454-545454545454")
 private val architectureChallengeModelId = UUID.fromString("56565656-5656-4656-8656-565656565656")
+private val decisionRegisterId = UUID.fromString("57575757-5757-4757-8757-575757575757")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -178,6 +179,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "challenge.models.snapshot" -> handleArchitectureChallengeModel(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "decision.registers.snapshot" -> handleDecisionRegister(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -1819,6 +1825,88 @@ private fun handleArchitectureChallengeModel(id: Long, params: JsonObject, works
         }
         workspacePath.endsWith("bad-architecture-challenge-snapshot-private") -> {
             value.addProperty("challengeContent", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDecisionRegister(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DECISION REGISTER PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-decision-register-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T17:00:00.000Z"
+    val registerDigest = "sha256:${"d".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "decision-register-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "decision-register-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("register", JsonObject().apply {
+                addProperty("recordId", decisionRegisterId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", registerDigest)
+            })
+            addProperty("decisionCount", 7)
+            addProperty("unresolvedDecisionCount", 2)
+            addProperty("selectedPendingDecisionCount", 3)
+            addProperty("deferredDecisionCount", 1)
+            addProperty("unresolvedRequirementCount", 1)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("inconsistencyCount", 0)
+            addProperty("unresolvedQuestionCount", 1)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Decision Questions remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "decision-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority",
+            )
+        })
+        add("register", JsonObject().apply {
+            addProperty("id", decisionRegisterId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", registerDigest)
+            addProperty("membershipDigest", "sha256:${"a".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("decisionCount", 7)
+            addProperty("updatedAt", "2026-07-26T16:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-decision-questions-options-recommendations-outcomes-rationale-evidence-subject-content-personal-data-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "decision-register-projection-does-not-establish-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-decision-register-snapshot-digest") -> {
+            value.getAsJsonObject("register").addProperty("decisionCount", 8)
+        }
+        workspacePath.endsWith("bad-decision-register-snapshot-private") -> {
+            value.addProperty("decisionQuestion", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

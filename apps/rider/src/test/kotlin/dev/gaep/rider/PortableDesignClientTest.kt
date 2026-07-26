@@ -977,6 +977,49 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Decision Register projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("decision-register-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDecisionRegister(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(7, projection.register?.decisionCount)
+            assertEquals(2, projection.unresolvedDecisionCount)
+            assertEquals(3, projection.selectedPendingDecisionCount)
+
+            val rendered = RiderProductController(client).readDecisionRegister(entryId)
+            assertTrue(rendered.contains("GAEP governed Decision Register candidate"))
+            assertTrue(rendered.contains("2 unresolved decisions · 3 selected pending decisions · 1 deferred decisions"))
+            assertTrue(rendered.contains("does not establish decision effectiveness"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("decisionQuestion"))
+        }
+
+        listOf(
+            "bad-decision-register-snapshot-digest",
+            "bad-decision-register-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDecisionRegister(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-decision-register-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDecisionRegister(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
