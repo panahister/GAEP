@@ -36,6 +36,7 @@ import { securityPrivacyAssessmentInputSchema } from "./security-privacy-assessm
 import { processModelInputSchema } from "./process-model.js"
 import { dataModelInputSchema } from "./data-model.js"
 import { authorizationModelInputSchema } from "./authorization-model.js"
+import { eventIntegrationModelInputSchema } from "./event-integration-model.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -380,6 +381,18 @@ export const hostAuthorizationModelReviseParamsSchema = z.object({
   record: authorizationModelInputSchema,
 }).strict()
 
+export const hostEventIntegrationModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: eventIntegrationModelInputSchema,
+}).strict()
+
+export const hostEventIntegrationModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: eventIntegrationModelInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -496,6 +509,11 @@ export const hostMethodSchema = z.enum([
   "authorization.models.revise",
   "authorization.models.assess",
   "authorization.models.snapshot",
+  "integration.models.read",
+  "integration.models.create",
+  "integration.models.revise",
+  "integration.models.assess",
+  "integration.models.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -624,6 +642,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("authorization.models.revise", hostAuthorizationModelReviseParamsSchema),
   requestVariant("authorization.models.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("authorization.models.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("integration.models.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("integration.models.create", hostEventIntegrationModelCreateParamsSchema),
+  requestVariant("integration.models.revise", hostEventIntegrationModelReviseParamsSchema),
+  requestVariant("integration.models.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("integration.models.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

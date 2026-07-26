@@ -1,0 +1,43 @@
+namespace Gaep.HostClient;
+
+public sealed record EventIntegrationModelRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int EventTypeCount,
+    int CommandCount,
+    int AdapterCount,
+    int ExternalContractCount,
+    int MappingCount,
+    int RouteCount);
+
+public sealed record EventIntegrationModelProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    IReadOnlyList<string> Reasons,
+    int EventTypeCount,
+    int CommandCount,
+    int AdapterCount,
+    int ExternalContractCount,
+    int MappingCount,
+    int RouteCount,
+    int UncoveredProcessEventCount,
+    int UncoveredProcessCount,
+    int UncoveredBoundedContextCount,
+    int UncoveredDataEntityCount,
+    int UncoveredAuthorizationActionCount,
+    int UnknownMappingTruthCount,
+    int UnresolvedRequirementCount,
+    int InconsistencyCount,
+    int UnresolvedQuestionCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    EventIntegrationModelRecordView? Model,
+    string SnapshotDigest);

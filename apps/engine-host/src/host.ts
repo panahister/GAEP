@@ -155,6 +155,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "authorization.models.revise",
   "authorization.models.assess",
   "authorization.models.snapshot",
+  "integration.models.read",
+  "integration.models.create",
+  "integration.models.revise",
+  "integration.models.assess",
+  "integration.models.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1023,6 +1028,21 @@ export class EngineHost {
         return this.engine.authorizationModel.assess(request.params.initiativeId)
       case "authorization.models.snapshot":
         return this.engine.authorizationModel.project(request.params.initiativeId)
+      case "integration.models.read":
+        return await this.engine.eventIntegrationModel.readCurrent(request.params.initiativeId) ?? null
+      case "integration.models.create":
+        return this.engine.eventIntegrationModel.create(request.params.record, actorId(request.params.actorId))
+      case "integration.models.revise":
+        return this.engine.eventIntegrationModel.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "integration.models.assess":
+        return this.engine.eventIntegrationModel.assess(request.params.initiativeId)
+      case "integration.models.snapshot":
+        return this.engine.eventIntegrationModel.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

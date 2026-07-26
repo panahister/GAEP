@@ -56,6 +56,7 @@ internal static class Program
     private static readonly Guid ProcessModelId = Guid.Parse("50505050-5050-4050-8050-505050505050");
     private static readonly Guid DataModelId = Guid.Parse("51515151-5151-4151-8151-515151515151");
     private static readonly Guid AuthorizationModelId = Guid.Parse("52525252-5252-4252-8252-525252525252");
+    private static readonly Guid EventIntegrationModelId = Guid.Parse("53535353-5353-4353-8353-535353535353");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -153,6 +154,9 @@ internal static class Program
         var badAuthorizationModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-authorization-model-snapshot-binding");
         var badAuthorizationModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-authorization-model-snapshot-digest");
         var badAuthorizationModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-authorization-model-snapshot-private");
+        var badEventIntegrationModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-event-integration-model-snapshot-binding");
+        var badEventIntegrationModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-event-integration-model-snapshot-digest");
+        var badEventIntegrationModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-event-integration-model-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -247,6 +251,9 @@ internal static class Program
         Directory.CreateDirectory(badAuthorizationModelSnapshotBindingRoot);
         Directory.CreateDirectory(badAuthorizationModelSnapshotDigestRoot);
         Directory.CreateDirectory(badAuthorizationModelSnapshotPrivateRoot);
+        Directory.CreateDirectory(badEventIntegrationModelSnapshotBindingRoot);
+        Directory.CreateDirectory(badEventIntegrationModelSnapshotDigestRoot);
+        Directory.CreateDirectory(badEventIntegrationModelSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1116,6 +1123,46 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadAuthorizationModelAsync(InitiativeId),
                 "Authorization Model rejects a projection rebound to a substituted Product revision");
+        }
+
+        var eventIntegrationModelProjection = await client.ReadEventIntegrationModelAsync(InitiativeId);
+        Check(eventIntegrationModelProjection.ProductId == product.Id &&
+              eventIntegrationModelProjection.ProductRevision == product.Revision &&
+              eventIntegrationModelProjection.ProductDigest == product.Digest &&
+              eventIntegrationModelProjection.InitiativeId == resolved.Id &&
+              eventIntegrationModelProjection.InitiativeRevision == resolved.Revision &&
+              eventIntegrationModelProjection.InitiativeDigest == resolved.Digest &&
+              eventIntegrationModelProjection.AssessmentState == "attention-required" &&
+              eventIntegrationModelProjection.Model?.EventTypeCount == 10 &&
+              eventIntegrationModelProjection.Model?.RouteCount == 7 &&
+              eventIntegrationModelProjection.UnresolvedRequirementCount == 7,
+            "Typed Event and Integration Model preserves exact Product, Initiative, status, and candidate metadata");
+        var eventIntegrationModelOutput = await initiativeController.ReadEventIntegrationModelAsync(InitiativeId);
+        Check(eventIntegrationModelOutput.Contains("GAEP governed Event and Integration Model candidate", StringComparison.Ordinal) &&
+              eventIntegrationModelOutput.Contains(
+                  "10 event types · 11 commands · 4 adapters · 5 external contracts · 6 mappings · 7 routes",
+                  StringComparison.Ordinal) &&
+              eventIntegrationModelOutput.Contains(
+                  "does not prove event occurrence, send or deliver commands",
+                  StringComparison.Ordinal) &&
+              !eventIntegrationModelOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !eventIntegrationModelOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !eventIntegrationModelOutput.Contains("eventPayload", StringComparison.Ordinal),
+            "Event and Integration Model workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badEventIntegrationModelSnapshotDigestRoot, badEventIntegrationModelSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadEventIntegrationModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Event and Integration Model rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badEventIntegrationModelSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadEventIntegrationModelAsync(InitiativeId),
+                "Event and Integration Model rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2256,6 +2303,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-authorization-model-snapshot-digest";
         var badAuthorizationModelSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-authorization-model-snapshot-private";
+        var badEventIntegrationModelSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-event-integration-model-snapshot-binding";
+        var badEventIntegrationModelSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-event-integration-model-snapshot-digest";
+        var badEventIntegrationModelSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-event-integration-model-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2517,6 +2570,17 @@ internal static class Program
                         badAuthorizationModelSnapshotBinding,
                         badAuthorizationModelSnapshotDigest,
                         badAuthorizationModelSnapshotPrivate);
+                    break;
+                case "integration.models.snapshot":
+                    await HandleEventIntegrationModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badEventIntegrationModelSnapshotBinding,
+                        badEventIntegrationModelSnapshotDigest,
+                        badEventIntegrationModelSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -4039,6 +4103,108 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) model["principalCount"] = 6;
         if (includePrivateField) result["principalIdentifier"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleEventIntegrationModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID EVENT INTEGRATION MODEL");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T14:00:00.000Z";
+        var modelDigest = $"sha256:{new string('d', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var model = new Dictionary<string, object?>
+        {
+            ["id"] = EventIntegrationModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = modelDigest,
+            ["membershipDigest"] = $"sha256:{new string('e', 64)}",
+            ["state"] = "candidate",
+            ["eventTypeCount"] = 10,
+            ["commandCount"] = 11,
+            ["adapterCount"] = 4,
+            ["externalContractCount"] = 5,
+            ["mappingCount"] = 6,
+            ["routeCount"] = 7,
+            ["updatedAt"] = "2026-07-26T13:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "event-integration-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "event-integration-model-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["model"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = EventIntegrationModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = modelDigest,
+                },
+                ["eventTypeCount"] = 10,
+                ["commandCount"] = 11,
+                ["adapterCount"] = 4,
+                ["externalContractCount"] = 5,
+                ["mappingCount"] = 6,
+                ["routeCount"] = 7,
+                ["uncoveredProcessEventCount"] = 1,
+                ["uncoveredProcessCount"] = 2,
+                ["uncoveredBoundedContextCount"] = 3,
+                ["uncoveredDataEntityCount"] = 4,
+                ["uncoveredAuthorizationActionCount"] = 5,
+                ["unknownMappingTruthCount"] = 6,
+                ["unresolvedRequirementCount"] = 7,
+                ["inconsistencyCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more integration mappings remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "event-integration-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action",
+            },
+            ["model"] = model,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-event-payloads-command-inputs-mapping-content-external-locators-source-content-personal-data-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "event-integration-model-projection-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) model["routeCount"] = 8;
+        if (includePrivateField) result["eventPayload"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

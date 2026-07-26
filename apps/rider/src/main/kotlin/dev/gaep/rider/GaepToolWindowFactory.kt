@@ -306,6 +306,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += authorizationModelButton
         actions.add(authorizationModelButton)
 
+        val eventIntegrationModelButton = JButton("Inspect Event and Integration Model…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Event payloads, command inputs, mapping content, external locators, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Event and Integration Model",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Event and Integration Model", status, output, buttons) {
+                    controller.readEventIntegrationModel(initiativeId)
+                }
+            }
+        }
+        buttons += eventIntegrationModelButton
+        actions.add(eventIntegrationModelButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

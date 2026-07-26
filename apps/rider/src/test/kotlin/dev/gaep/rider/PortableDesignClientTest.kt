@@ -848,6 +848,49 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Event and Integration Model projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("event-integration-model-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readEventIntegrationModel(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(10, projection.model?.eventTypeCount)
+            assertEquals(7, projection.model?.routeCount)
+            assertEquals(7, projection.unresolvedRequirementCount)
+
+            val rendered = RiderProductController(client).readEventIntegrationModel(entryId)
+            assertTrue(rendered.contains("GAEP governed Event and Integration Model candidate"))
+            assertTrue(rendered.contains("10 event types · 11 commands · 4 adapters · 5 external contracts · 6 mappings · 7 routes"))
+            assertTrue(rendered.contains("does not prove event occurrence, send or deliver commands"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("eventPayload"))
+        }
+
+        listOf(
+            "bad-event-integration-model-snapshot-digest",
+            "bad-event-integration-model-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readEventIntegrationModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-event-integration-model-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readEventIntegrationModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

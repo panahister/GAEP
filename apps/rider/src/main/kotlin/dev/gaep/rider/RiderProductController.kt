@@ -831,6 +831,59 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readEventIntegrationModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readEventIntegrationModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Event and Integration Model was read. Refresh the exact records." }
+        return renderEventIntegrationModel(projection)
+    }
+
+    fun renderEventIntegrationModel(projection: EventIntegrationModelProjection): String = buildString {
+        appendLine("GAEP governed Event and Integration Model candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.eventTypeCount} event types · ${projection.commandCount} commands · " +
+                "${projection.adapterCount} adapters · ${projection.externalContractCount} external contracts · " +
+                "${projection.mappingCount} mappings · ${projection.routeCount} routes",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.uncoveredProcessEventCount} process events · " +
+                "${projection.uncoveredProcessCount} processes · ${projection.uncoveredBoundedContextCount} bounded contexts · " +
+                "${projection.uncoveredDataEntityCount} data entities · " +
+                "${projection.uncoveredAuthorizationActionCount} authorization actions · " +
+                "${projection.unknownMappingTruthCount} mapping truths · ${projection.unresolvedRequirementCount} requirements · " +
+                "${projection.inconsistencyCount} inconsistencies · ${projection.unresolvedQuestionCount} questions · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.model?.let { record ->
+            appendLine("Event and integration candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate counts: ${record.eventTypeCount} event types · ${record.commandCount} commands · " +
+                    "${record.adapterCount} adapters · ${record.externalContractCount} external contracts · " +
+                    "${record.mappingCount} mappings · ${record.routeCount} routes",
+            )
+        } ?: appendLine("Event and integration candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no event payloads, command inputs, mapping content, external " +
+                "locators, Source content, personal data, local paths, secrets, or credentials and does not prove " +
+                "event occurrence, send or deliver commands, accept external contracts, activate adapters, create " +
+                "authorization grants, execute effects, establish operational readiness, promote a baseline, or authorize action.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

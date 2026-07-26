@@ -41,6 +41,7 @@ const securityPrivacyAssessmentId = "43434343-4343-4343-8343-434343434343"
 const processModelId = "44444444-4444-4444-8444-444444444444"
 const dataModelId = "45454545-4545-4545-8545-454545454545"
 const authorizationModelId = "46464646-4646-4646-8646-464646464646"
+const eventIntegrationModelId = "47474747-4747-4747-8747-474747474747"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -104,6 +105,8 @@ input.on("line", (line) => {
       return readDataModel(id, request.params)
     case "authorization.models.snapshot":
       return readAuthorizationModel(id, request.params)
+    case "integration.models.snapshot":
+      return readEventIntegrationModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -1074,6 +1077,74 @@ function readAuthorizationModel(id, params) {
   if (workspacePath.endsWith("bad-authorization-model-snapshot-digest")) value.model.principalCount = 6
   if (workspacePath.endsWith("bad-authorization-model-snapshot-private")) {
     value.principalIdentifier = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readEventIntegrationModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE EVENT INTEGRATION MODEL PARAMS")
+  }
+  const modelDigest = `sha256:${"d".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "event-integration-model-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    model: { recordId: eventIntegrationModelId, revision: 2, digest: modelDigest },
+    eventTypeCount: 10,
+    commandCount: 11,
+    adapterCount: 4,
+    externalContractCount: 5,
+    mappingCount: 6,
+    routeCount: 7,
+    uncoveredProcessEventCount: 1,
+    uncoveredProcessCount: 2,
+    uncoveredBoundedContextCount: 3,
+    uncoveredDataEntityCount: 4,
+    uncoveredAuthorizationActionCount: 5,
+    unknownMappingTruthCount: 6,
+    unresolvedRequirementCount: 7,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more integration mappings remain unresolved"],
+    assessedAt: "2026-07-26T14:00:00.000Z",
+    authorityBoundary: "event-integration-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "event-integration-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    model: {
+      id: eventIntegrationModelId,
+      revision: 2,
+      digest: modelDigest,
+      membershipDigest: `sha256:${"e".repeat(64)}`,
+      state: "candidate",
+      eventTypeCount: 10,
+      commandCount: 11,
+      adapterCount: 4,
+      externalContractCount: 5,
+      mappingCount: 6,
+      routeCount: 7,
+      updatedAt: "2026-07-26T13:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-event-payloads-command-inputs-mapping-content-external-locators-source-content-personal-data-secrets-or-credentials",
+    authorityBoundary: "event-integration-model-projection-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-event-integration-model-snapshot-binding")) content.initiative.id = eventIntegrationModelId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-event-integration-model-snapshot-digest")) value.model.routeCount = 8
+  if (workspacePath.endsWith("bad-event-integration-model-snapshot-private")) {
+    value.eventPayload = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

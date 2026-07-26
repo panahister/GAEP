@@ -1038,6 +1038,41 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "event-integration-model-read-empty",
+      protocolVersion: 2,
+      method: "integration.models.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "event-integration-model-assess-empty",
+      protocolVersion: 2,
+      method: "integration.models.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      eventTypeCount: 0,
+      commandCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-prove-event-occurrence"),
+    })
+    const eventIntegrationModelProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "event-integration-model-snapshot-empty",
+      protocolVersion: 2,
+      method: "integration.models.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: eventIntegrationModelSnapshotDigest,
+      ...eventIntegrationModelProjectionBody
+    } = eventIntegrationModelProjection
+    expect(eventIntegrationModelSnapshotDigest).toBe(canonicalDigest(eventIntegrationModelProjectionBody))
+    expect(eventIntegrationModelProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-event-payloads-command-inputs-mapping-content"),
+      authorityBoundary: expect.stringContaining("does-not-prove-event-occurrence"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1231,6 +1266,23 @@ describe("engine host protocol", () => {
           ownershipAccepted: true,
           migrationAuthorized: true,
           operationallyReady: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "event-integration-model-extra-authority",
+      protocolVersion: 2,
+      method: "integration.models.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          eventOccurred: true,
+          commandDelivered: true,
+          contractAccepted: true,
+          adapterActivated: true,
+          executionAuthorized: true,
         },
       },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })

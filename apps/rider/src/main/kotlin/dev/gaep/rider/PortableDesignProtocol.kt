@@ -1276,6 +1276,50 @@ data class AuthorizationModelProjection(
     val snapshotDigest: String,
 )
 
+data class EventIntegrationModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val eventTypeCount: Int,
+    val commandCount: Int,
+    val adapterCount: Int,
+    val externalContractCount: Int,
+    val mappingCount: Int,
+    val routeCount: Int,
+)
+
+data class EventIntegrationModelProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val eventTypeCount: Int,
+    val commandCount: Int,
+    val adapterCount: Int,
+    val externalContractCount: Int,
+    val mappingCount: Int,
+    val routeCount: Int,
+    val uncoveredProcessEventCount: Int,
+    val uncoveredProcessCount: Int,
+    val uncoveredBoundedContextCount: Int,
+    val uncoveredDataEntityCount: Int,
+    val uncoveredAuthorizationActionCount: Int,
+    val unknownMappingTruthCount: Int,
+    val unresolvedRequirementCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val model: EventIntegrationModelRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1379,6 +1423,12 @@ internal object PortableDesignProtocol {
         "authorization-model-projection-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action"
     private const val AUTHORIZATION_MODEL_STATUS_AUTHORITY_BOUNDARY =
         "authorization-model-status-reports-candidate-coverage-and-gaps-and-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action"
+    private const val EVENT_INTEGRATION_MODEL_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-event-payloads-command-inputs-mapping-content-external-locators-source-content-personal-data-secrets-or-credentials"
+    private const val EVENT_INTEGRATION_MODEL_PROJECTION_AUTHORITY_BOUNDARY =
+        "event-integration-model-projection-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action"
+    private const val EVENT_INTEGRATION_MODEL_STATUS_AUTHORITY_BOUNDARY =
+        "event-integration-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -4110,6 +4160,147 @@ internal object PortableDesignProtocol {
             uncoveredDataEntityCount, unresolvedIdentityCount, unresolvedRuleCount, unresolvedRequirementCount,
             inconsistencyCount, unresolvedQuestionCount, staleBindingCount, staleSourceReferenceCount, model,
             snapshotDigest,
+        )
+    }
+
+    fun parseEventIntegrationModelEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): EventIntegrationModelProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("model"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "event-integration-model-projection" ||
+            projection.requireString("privacyBoundary") != EVENT_INTEGRATION_MODEL_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != EVENT_INTEGRATION_MODEL_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "eventTypeCount", "commandCount", "adapterCount", "externalContractCount", "mappingCount", "routeCount",
+                "uncoveredProcessEventCount", "uncoveredProcessCount", "uncoveredBoundedContextCount",
+                "uncoveredDataEntityCount", "uncoveredAuthorizationActionCount", "unknownMappingTruthCount",
+                "unresolvedRequirementCount", "inconsistencyCount", "unresolvedQuestionCount", "staleBindingCount",
+                "staleSourceReferenceCount", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("model"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "event-integration-model-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != EVENT_INTEGRATION_MODEL_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val eventTypeCount = status.requireBoundedNonNegativeInt("eventTypeCount", 8_192)
+        val commandCount = status.requireBoundedNonNegativeInt("commandCount", 8_192)
+        val adapterCount = status.requireBoundedNonNegativeInt("adapterCount", 4_096)
+        val externalContractCount = status.requireBoundedNonNegativeInt("externalContractCount", 8_192)
+        val mappingCount = status.requireBoundedNonNegativeInt("mappingCount", 8_192)
+        val routeCount = status.requireBoundedNonNegativeInt("routeCount", 8_192)
+        val uncoveredProcessEventCount = status.requireBoundedNonNegativeInt("uncoveredProcessEventCount", 65_536)
+        val uncoveredProcessCount = status.requireBoundedNonNegativeInt("uncoveredProcessCount", 512)
+        val uncoveredBoundedContextCount = status.requireBoundedNonNegativeInt("uncoveredBoundedContextCount", 2_048)
+        val uncoveredDataEntityCount = status.requireBoundedNonNegativeInt("uncoveredDataEntityCount", 2_048)
+        val uncoveredAuthorizationActionCount = status.requireBoundedNonNegativeInt("uncoveredAuthorizationActionCount", 4_096)
+        val unknownMappingTruthCount = status.requireBoundedNonNegativeInt("unknownMappingTruthCount", 131_072)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 71)
+        val inconsistencyCount = status.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val assessmentState = status.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val model = projection.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "eventTypeCount", "commandCount",
+                "adapterCount", "externalContractCount", "mappingCount", "routeCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val record = EventIntegrationModelRecordView(
+                id,
+                revision,
+                digest,
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("eventTypeCount", 8_192),
+                value.requireBoundedNonNegativeInt("commandCount", 8_192),
+                value.requireBoundedNonNegativeInt("adapterCount", 4_096),
+                value.requireBoundedNonNegativeInt("externalContractCount", 8_192),
+                value.requireBoundedNonNegativeInt("mappingCount", 8_192),
+                value.requireBoundedNonNegativeInt("routeCount", 8_192),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (model == null) ||
+            (model?.eventTypeCount ?: 0) != eventTypeCount ||
+            (model?.commandCount ?: 0) != commandCount ||
+            (model?.adapterCount ?: 0) != adapterCount ||
+            (model?.externalContractCount ?: 0) != externalContractCount ||
+            (model?.mappingCount ?: 0) != mappingCount ||
+            (model?.routeCount ?: 0) != routeCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return EventIntegrationModelProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, eventTypeCount, commandCount, adapterCount,
+            externalContractCount, mappingCount, routeCount, uncoveredProcessEventCount, uncoveredProcessCount,
+            uncoveredBoundedContextCount, uncoveredDataEntityCount, uncoveredAuthorizationActionCount,
+            unknownMappingTruthCount, unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount,
+            staleBindingCount, staleSourceReferenceCount, model, snapshotDigest,
         )
     }
 

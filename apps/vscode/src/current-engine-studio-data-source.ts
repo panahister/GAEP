@@ -40,6 +40,7 @@ import type {
   ProcessModelProjection,
   DataModelProjection,
   AuthorizationModelProjection,
+  EventIntegrationModelProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -161,6 +162,9 @@ export interface CurrentStudioEngineReader {
   authorizationModel?: {
     project(initiativeId: string): Promise<AuthorizationModelProjection>
   }
+  eventIntegrationModel?: {
+    project(initiativeId: string): Promise<EventIntegrationModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -212,6 +216,7 @@ interface ObservedStudioState {
   processModelProjections: Map<string, ProcessModelProjection>
   dataModelProjections: Map<string, DataModelProjection>
   authorizationModelProjections: Map<string, AuthorizationModelProjection>
+  eventIntegrationModelProjections: Map<string, EventIntegrationModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1077,6 +1082,54 @@ function authorizationModelTable(state: ObservedStudioState): StudioTableSnapsho
   }
 }
 
+function eventIntegrationModelTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.eventIntegrationModelProjections.values()].flatMap((projection) => {
+    const record = projection.model
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.eventTypeCount} event types · ${record.commandCount} commands · ${record.adapterCount} adapters · ${record.externalContractCount} external contracts · ${record.mappingCount} mappings · ${record.routeCount} routes`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.uncoveredProcessEventCount} uncovered process events · ${projection.status.uncoveredProcessCount} uncovered processes · ${projection.status.uncoveredBoundedContextCount} uncovered contexts · ${projection.status.uncoveredDataEntityCount} uncovered data entities · ${projection.status.uncoveredAuthorizationActionCount} uncovered authorization actions · ${projection.status.unknownMappingTruthCount} unknown mapping truths · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate event types, commands, adapters, contracts, mappings, and routes only; no event occurrence, command delivery, external acceptance, adapter activation, authorization grant, effect execution, operational readiness, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "event-integration-model",
+    title: "Governed Event and Integration Model Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Integration Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Event and Integration Model candidate",
+        "Create the candidate through the governed engine workflow. This view does not prove event occurrence, deliver commands, accept external contracts, activate adapters, grant authorization, execute effects, establish operational readiness, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1087,7 +1140,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), eventIntegrationModelTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -1108,6 +1161,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       processModelTable(state),
       dataModelTable(state),
       authorizationModelTable(state),
+      eventIntegrationModelTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3563,6 +3617,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       processModelProjections: new Map(),
       dataModelProjections: new Map(),
       authorizationModelProjections: new Map(),
+      eventIntegrationModelProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -4228,6 +4283,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "authorization-model-unavailable",
           "Authorization Model metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.eventIntegrationModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.eventIntegrationModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.eventIntegrationModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Event and Integration Model projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `event-integration-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Event and Integration Model metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "event-integration-model-unavailable",
+          "Event and Integration Model metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

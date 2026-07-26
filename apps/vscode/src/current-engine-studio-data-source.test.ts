@@ -13,6 +13,7 @@ import {
   type ProcessModelProjection,
   type DataModelProjection,
   type AuthorizationModelProjection,
+  type EventIntegrationModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -988,6 +989,73 @@ function authorizationModelProjection(): AuthorizationModelProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function eventIntegrationModelProjection(): EventIntegrationModelProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "event-integration-model-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    model: {
+      recordId: "b4b4b4b4-b4b4-44b4-84b4-b4b4b4b4b4b4",
+      revision: 2,
+      digest: `sha256:${"b".repeat(64)}` as const,
+    },
+    eventTypeCount: 10,
+    commandCount: 11,
+    adapterCount: 4,
+    externalContractCount: 5,
+    mappingCount: 6,
+    routeCount: 7,
+    uncoveredProcessEventCount: 1,
+    uncoveredProcessCount: 2,
+    uncoveredBoundedContextCount: 3,
+    uncoveredDataEntityCount: 4,
+    uncoveredAuthorizationActionCount: 5,
+    unknownMappingTruthCount: 6,
+    unresolvedRequirementCount: 7,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more integration mappings remain unresolved"],
+    assessedAt: "2026-07-26T14:00:00.000Z",
+    authorityBoundary: "event-integration-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "event-integration-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    model: {
+      id: status.model.recordId,
+      revision: status.model.revision,
+      digest: status.model.digest,
+      membershipDigest: `sha256:${"c".repeat(64)}` as const,
+      state: "candidate" as const,
+      eventTypeCount: 10,
+      commandCount: 11,
+      adapterCount: 4,
+      externalContractCount: 5,
+      mappingCount: 6,
+      routeCount: 7,
+      updatedAt: "2026-07-26T13:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-event-payloads-command-inputs-mapping-content-external-locators-source-content-personal-data-secrets-or-credentials" as const,
+    authorityBoundary: "event-integration-model-projection-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1552,6 +1620,7 @@ interface HarnessOptions {
   processModelProjection?: ProcessModelProjection
   dataModelProjection?: DataModelProjection
   authorizationModelProjection?: AuthorizationModelProjection
+  eventIntegrationModelProjection?: EventIntegrationModelProjection
   commandResult?: unknown
 }
 
@@ -1705,6 +1774,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.authorizationModelProjection ? {
       authorizationModel: {
         project: async () => options.authorizationModelProjection!,
+      },
+    } : {}),
+    ...(options.eventIntegrationModelProjection ? {
+      eventIntegrationModel: {
+        project: async () => options.eventIntegrationModelProjection!,
       },
     } : {}),
   }
@@ -2163,6 +2237,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /principal@example\.com|private rule condition|private approval response|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Event and Integration Model metadata on the native architecture page", async () => {
+    const projection = eventIntegrationModelProjection()
+    const { source } = harness({ eventIntegrationModelProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[11]).toMatchObject({
+      id: "event-integration-model",
+      rows: [{
+        id: projection.model?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.model?.membershipDigest,
+          counts: "10 event types · 11 commands · 4 adapters · 5 external contracts · 6 mappings · 7 routes",
+          assessment: "attention-required",
+          gaps: "1 uncovered process events · 2 uncovered processes · 3 uncovered contexts · 4 uncovered data entities · 5 uncovered authorization actions · 6 unknown mapping truths · 7 requirement gaps · 1 stale bindings",
+          boundary: "Candidate event types, commands, adapters, contracts, mappings, and routes only; no event occurrence, command delivery, external acceptance, adapter activation, authorization grant, effect execution, operational readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private event payload|private command input|private mapping content|external locator|customer@example\.com|api_key/iu,
     )
   })
 

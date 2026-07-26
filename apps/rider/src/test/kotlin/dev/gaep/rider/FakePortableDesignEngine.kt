@@ -27,6 +27,7 @@ private val securityPrivacyAssessmentId = UUID.fromString("49494949-4949-4949-89
 private val processModelId = UUID.fromString("50505050-5050-4050-8050-505050505050")
 private val dataModelId = UUID.fromString("51515151-5151-4151-8151-515151515151")
 private val authorizationModelId = UUID.fromString("52525252-5252-4252-8252-525252525252")
+private val eventIntegrationModelId = UUID.fromString("53535353-5353-4353-8353-535353535353")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -160,6 +161,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "authorization.models.snapshot" -> handleAuthorizationModel(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "integration.models.snapshot" -> handleEventIntegrationModel(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -1525,6 +1531,101 @@ private fun handleAuthorizationModel(id: Long, params: JsonObject, workspacePath
         }
         workspacePath.endsWith("bad-authorization-model-snapshot-private") -> {
             value.addProperty("principalIdentifier", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleEventIntegrationModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE EVENT INTEGRATION MODEL PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-event-integration-model-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T14:00:00.000Z"
+    val modelDigest = "sha256:${"d".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "event-integration-model-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "event-integration-model-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("model", JsonObject().apply {
+                addProperty("recordId", eventIntegrationModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", modelDigest)
+            })
+            addProperty("eventTypeCount", 10)
+            addProperty("commandCount", 11)
+            addProperty("adapterCount", 4)
+            addProperty("externalContractCount", 5)
+            addProperty("mappingCount", 6)
+            addProperty("routeCount", 7)
+            addProperty("uncoveredProcessEventCount", 1)
+            addProperty("uncoveredProcessCount", 2)
+            addProperty("uncoveredBoundedContextCount", 3)
+            addProperty("uncoveredDataEntityCount", 4)
+            addProperty("uncoveredAuthorizationActionCount", 5)
+            addProperty("unknownMappingTruthCount", 6)
+            addProperty("unresolvedRequirementCount", 7)
+            addProperty("inconsistencyCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more integration mappings remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "event-integration-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action",
+            )
+        })
+        add("model", JsonObject().apply {
+            addProperty("id", eventIntegrationModelId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", modelDigest)
+            addProperty("membershipDigest", "sha256:${"e".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("eventTypeCount", 10)
+            addProperty("commandCount", 11)
+            addProperty("adapterCount", 4)
+            addProperty("externalContractCount", 5)
+            addProperty("mappingCount", 6)
+            addProperty("routeCount", 7)
+            addProperty("updatedAt", "2026-07-26T13:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-event-payloads-command-inputs-mapping-content-external-locators-source-content-personal-data-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "event-integration-model-projection-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-event-integration-model-snapshot-digest") -> {
+            value.getAsJsonObject("model").addProperty("routeCount", 8)
+        }
+        workspacePath.endsWith("bad-event-integration-model-snapshot-private") -> {
+            value.addProperty("eventPayload", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)
