@@ -5,6 +5,7 @@ import { isAbsolute } from "node:path"
 
 import {
   architectureChallengeModelSchema,
+  decisionRegisterSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -66,6 +67,7 @@ import {
   redactSecretShapedText,
   type ArchitectureRecord,
   type ArchitectureChallengeModel,
+  type DecisionRegister,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
   type ProcessModel,
@@ -2076,6 +2078,16 @@ export class ProductStudioService {
       /^architecture-challenge-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       architectureChallengeModelSchema,
     )
+    const decisionRegisters = await this.listRecords(
+      "decision-registers",
+      /^[0-9a-f-]+\.json$/i,
+      decisionRegisterSchema,
+    )
+    const decisionRegisterHistory = await this.listRecords(
+      "decision-register-history",
+      /^decision-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      decisionRegisterSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2121,6 +2133,8 @@ export class ProductStudioService {
       ...boundedContextModelHistory,
       ...securityPrivacyAssessments,
       ...securityPrivacyAssessmentHistory,
+      ...decisionRegisters,
+      ...decisionRegisterHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2144,6 +2158,7 @@ export class ProductStudioService {
           businessArchitectureBaselines.find((record) => record.id === id)?.informationClassification ??
           systemSolutionArchitectures.find((record) => record.id === id)?.informationClassification ??
           boundedContextModels.find((record) => record.id === id)?.informationClassification ??
+          decisionRegisters.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2295,6 +2310,13 @@ export class ProductStudioService {
       "architecture-challenge-model-candidate",
       architectureChallengeModelHistory,
       (record) => `architecture-challenge-model-history/architecture-challenge-model-${record.id}-r${record.revision}.json`,
+    )
+    append("decision-registers", "decision-register-candidate", decisionRegisters)
+    append(
+      "decision-register-history",
+      "decision-register-candidate",
+      decisionRegisterHistory,
+      (record) => `decision-register-history/decision-register-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2607,6 +2629,14 @@ export class ProductStudioService {
           `architecture-challenge-model-history/architecture-challenge-model-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Architecture Challenge history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("decision-register-history/")) {
+        const record = validated as DecisionRegister
+        const expectedHistoryPath =
+          `decision-register-history/decision-register-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Decision Register history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3733,7 +3763,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3765,7 +3795,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -4925,7 +4955,7 @@ export class ProductStudioService {
     const architectureChallengeModelHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("architecture-challenge-model-history/"))
       .map(([, record]) => architectureChallengeModelSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactArchitectureChallengeModels = validateVersionedBusinessRecords(
       architectureChallengeModels,
       architectureChallengeModelHistory,
       "Architecture Challenge",
@@ -5018,6 +5048,130 @@ export class ProductStudioService {
       ]
       if (governedRoles.some((key) => !roleKeys.has(key))) {
         throw new Error(`Import Architecture Challenge ${model.id} role trace is unresolved`)
+      }
+    }
+
+    const decisionRegisters = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("decision-registers/"))
+      .map(([, record]) => decisionRegisterSchema.parse(record))
+    const decisionRegisterHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("decision-register-history/"))
+      .map(([, record]) => decisionRegisterSchema.parse(record))
+    validateVersionedBusinessRecords(decisionRegisters, decisionRegisterHistory, "Decision Register")
+    const decisionSubjectPathKinds: Array<[RegExp, DecisionRegister["decisions"][number]["subjects"][number]["recordKind"]]> = [
+      [/^architecture-challenge-model(?:s|\-history)\//, "architecture-challenge-model"],
+      [/^architecture(?:\/|\-history\/)/, "architecture-record"],
+      [/^authorization-model(?:s|\-history)\//, "authorization-model"],
+      [/^bounded-context-model(?:s|\-history)\//, "bounded-context-model"],
+      [/^business-architecture-baseline(?:s|\-history)\//, "business-architecture-baseline"],
+      [/^business-capability-map(?:s|\-history)\//, "business-capability-map"],
+      [/^business-rule-catalog(?:s|\-history)\//, "business-rule-catalog"],
+      [/^business-understanding(?:\/|\-history\/)/, "business-understanding"],
+      [/^changes\//, "change"],
+      [/^data-model(?:s|\-history)\//, "data-model"],
+      [/^decisions\//, "decision-record"],
+      [/^evidence\//, "evidence-record"],
+      [/^event-integration-model(?:s|\-history)\//, "event-integration-model"],
+      [/^failure-recovery-model(?:s|\-history)\//, "failure-recovery-model"],
+      [/^initiatives\//, "initiative"],
+      [/^operating-model(?:s|\-history)\//, "operating-model"],
+      [/^outcome-model(?:s|\-history)\//, "outcome-model"],
+      [/^process-model(?:s|\-history)\//, "process-model"],
+      [/^design-revisions\//, "product-design-revision"],
+      [/^requirements\//, "requirement"],
+      [/^risks\//, "risk-record"],
+      [/^security-privacy-assessment(?:s|\-history)\//, "security-privacy-assessment"],
+      [/^sources\//, "source-record"],
+      [/^stakeholder-model(?:s|\-history)\//, "stakeholder-model"],
+      [/^system-solution-architecture(?:s|\-history)\//, "system-solution-architecture"],
+      [/^value-stream-model(?:s|\-history)\//, "value-stream-model"],
+      [/^work-items\//, "work-item"],
+    ]
+    const exactDecisionSubjects = new Map<string, { id: string; revision: number; productId?: string; initiativeId?: string }>()
+    const addDecisionSubject = (
+      kind: DecisionRegister["decisions"][number]["subjects"][number]["recordKind"],
+      record: unknown,
+    ) => {
+      const candidate = record as { id?: string; revision?: number; productId?: string; initiativeId?: string }
+      if (!candidate.id || !candidate.revision) return
+      exactDecisionSubjects.set(
+        `${kind}:${candidate.id}:${candidate.revision}:${canonicalDigest(record)}`,
+        candidate as { id: string; revision: number; productId?: string; initiativeId?: string },
+      )
+    }
+    addDecisionSubject("product", product)
+    for (const [path, record] of recordsByPath) {
+      const mapping = decisionSubjectPathKinds.find(([pattern]) => pattern.test(path))
+      if (mapping) addDecisionSubject(mapping[1], record)
+    }
+    for (const history of productHistory) addDecisionSubject("product", history.product)
+    for (const history of sourceHistory) addDecisionSubject("source-record", history.snapshot)
+    for (const history of histories) {
+      const kindByHistoryType: Partial<Record<ProductRecordRevision["recordType"], DecisionRegister["decisions"][number]["subjects"][number]["recordKind"]>> = {
+        change: "change",
+        "work-item": "work-item",
+        requirement: "requirement",
+        decision: "decision-record",
+        risk: "risk-record",
+        "architecture-record": "architecture-record",
+        evidence: "evidence-record",
+      }
+      const kind = kindByHistoryType[history.recordType]
+      if (kind) addDecisionSubject(kind, history.snapshot)
+    }
+    for (const register of [...decisionRegisters, ...decisionRegisterHistory]) {
+      const operatingModel = exactOperatingModels.get(
+        `${register.operatingModel.recordId}:${register.operatingModel.revision}:${register.operatingModel.digest}`,
+      )
+      const architectureChallengeModel = exactArchitectureChallengeModels.get(
+        `${register.architectureChallengeModel.recordId}:${register.architectureChallengeModel.revision}:${register.architectureChallengeModel.digest}`,
+      )
+      if (!operatingModel || operatingModel.initiativeId !== register.initiativeId) {
+        throw new Error(`Import Decision Register ${register.id} exact Operating Model reference is unresolved`)
+      }
+      if (!architectureChallengeModel || architectureChallengeModel.initiativeId !== register.initiativeId) {
+        throw new Error(`Import Decision Register ${register.id} exact Architecture Challenge reference is unresolved`)
+      }
+      const expectedMembership = {
+        operatingModel: register.operatingModel,
+        architectureChallengeModel: register.architectureChallengeModel,
+        decisions: register.decisions.map((decision) => {
+          const sourceReferences = new Map(collectBusinessSourceReferences(decision).map((reference) => [
+            `${reference.sourceId}:${reference.sourceRevision}:${reference.recordDigest}:${reference.contentDigest}`,
+            reference,
+          ]))
+          return {
+            key: decision.key,
+            subjects: decision.subjects,
+            relationships: decision.relationships,
+            sourceReferences: [...sourceReferences.values()].sort((left, right) =>
+              left.sourceId.localeCompare(right.sourceId) || left.sourceRevision - right.sourceRevision),
+          }
+        }),
+      }
+      if (register.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Decision Register ${register.id} membership digest is invalid`)
+      }
+      const roleKeys = new Set(operatingModel.roles.map((entry) => entry.key))
+      const rightByKey = new Map(operatingModel.decisionRights.map((entry) => [entry.key, entry]))
+      for (const decision of register.decisions) {
+        if ([decision.ownerRoleKey, ...decision.decisionAuthorityRoleKeys].some((key) => !roleKeys.has(key))) {
+          throw new Error(`Import Decision Register ${register.id} role trace is unresolved`)
+        }
+        const rights = decision.decisionRightKeys.map((key) => rightByKey.get(key))
+        if (rights.some((right) => !right) || rights.some((right) =>
+          right && !decision.decisionAuthorityRoleKeys.includes(right.accountableRoleKey))) {
+          throw new Error(`Import Decision Register ${register.id} decision-right trace is unresolved`)
+        }
+        for (const subject of [...decision.subjects, ...decision.relationships]) {
+          const resolved = exactDecisionSubjects.get(
+            `${subject.recordKind}:${subject.recordId}:${subject.revision}:${subject.digest}`,
+          )
+          if (!resolved || (resolved.productId !== undefined && resolved.productId !== register.productId) ||
+              (resolved.initiativeId !== undefined && resolved.initiativeId !== register.initiativeId)) {
+            throw new Error(`Import Decision Register ${register.id} exact governed subject reference is unresolved`)
+          }
+        }
       }
     }
 
@@ -5678,6 +5832,10 @@ export class ProductStudioService {
         /^architecture-challenge-model-history\/architecture-challenge-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "architecture-challenge-model-candidate"
     }
+    if (/^decision-registers\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^decision-register-history\/decision-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "decision-register-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -5782,6 +5940,10 @@ export class ProductStudioService {
     if (/^architecture-challenge-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^architecture-challenge-model-history\/architecture-challenge-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return architectureChallengeModelSchema
+    }
+    if (/^decision-registers\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^decision-register-history\/decision-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return decisionRegisterSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

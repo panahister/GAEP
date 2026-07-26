@@ -5655,6 +5655,10 @@ describe("Business understanding governance", () => {
       ),
       actorId,
     )
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(operatingModel, architectureChallengeModel),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -5687,6 +5691,8 @@ describe("Business understanding governance", () => {
       `failure-recovery-model-history/failure-recovery-model-${failureRecoveryModel.id}-r1.json`,
       `architecture-challenge-models/${architectureChallengeModel.id}.json`,
       `architecture-challenge-model-history/architecture-challenge-model-${architectureChallengeModel.id}-r1.json`,
+      `decision-registers/${decisionRegister.id}.json`,
+      `decision-register-history/decision-register-${decisionRegister.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -5874,6 +5880,60 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedChallengeBinding))
       .rejects.toThrow(/Architecture Challenge .* Failure and Recovery Model reference is unresolved/)
+
+    const forgeDecisionRegisterRole = (content: unknown) => ({
+      ...(content as Awaited<ReturnType<typeof engine.decisionRegister.read>>),
+      decisions: (content as Awaited<ReturnType<typeof engine.decisionRegister.read>>).decisions.map((decision) => ({
+        ...decision,
+        ownerRoleKey: "invented-owner",
+      })),
+    })
+    let forgedDecisionRole = replacePortableRecord(
+      bundle,
+      `decision-registers/${decisionRegister.id}.json`,
+      forgeDecisionRegisterRole,
+    )
+    forgedDecisionRole = replacePortableRecord(
+      forgedDecisionRole,
+      `decision-register-history/decision-register-${decisionRegister.id}-r1.json`,
+      forgeDecisionRegisterRole,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedDecisionRole))
+      .rejects.toThrow(/Decision Register .* role trace is unresolved/)
+
+    const forgeDecisionSubject = (content: unknown) => {
+      const record = content as Awaited<ReturnType<typeof engine.decisionRegister.read>>
+      const decisions = record.decisions.map((decision) => ({
+        ...decision,
+        subjects: decision.subjects.map((subject) => ({ ...subject, digest: digest("7") })),
+      }))
+      return {
+        ...record,
+        decisions,
+        membershipDigest: canonicalDigest({
+          operatingModel: record.operatingModel,
+          architectureChallengeModel: record.architectureChallengeModel,
+          decisions: decisions.map((decision) => ({
+            key: decision.key,
+            subjects: decision.subjects,
+            relationships: decision.relationships,
+            sourceReferences: [reference()],
+          })),
+        }),
+      }
+    }
+    let forgedDecisionSubject = replacePortableRecord(
+      bundle,
+      `decision-registers/${decisionRegister.id}.json`,
+      forgeDecisionSubject,
+    )
+    forgedDecisionSubject = replacePortableRecord(
+      forgedDecisionSubject,
+      `decision-register-history/decision-register-${decisionRegister.id}-r1.json`,
+      forgeDecisionSubject,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedDecisionSubject))
+      .rejects.toThrow(/Decision Register .* exact governed subject reference is unresolved/)
 
     const rebound = replacePortableRecord(
       bundle,
