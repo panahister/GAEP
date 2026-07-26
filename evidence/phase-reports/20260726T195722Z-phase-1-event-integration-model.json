@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-0-1a-foundation",
+  "evidenceScope": "phase-0-local",
+  "recordedAt": "2026-07-26T19:59:07Z",
+  "sourceCommit": "4ef88ab5e3f3816621c9fecbc10a9e5f0d2866c9",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 40,
+    "hostAssessments": 160,
+    "hostAssessmentsImplemented": 160,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:731ed4efc8e3d215af4cc0141dca1ef3814d32deca1767abc89fd5c9582868d0",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 95847,
+      "digest": "sha256:456b15a858888949fdf862a51311cd2a077507222353a24ba2d784ba150bd8d6",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/2026-07-26T195120Z-phase-1-event-integration-model.json",
+      "bytes": 2541,
+      "digest": "sha256:01ff796a93d6e6f4ac8f71d5d0d7a72505d807eb2c52c2cd91374246fe2ca902",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/2026-07-26T195120Z-phase-1-event-integration-model-host-behavior.json",
+      "bytes": 3574,
+      "digest": "sha256:529fc9940d2eb86f6aad2528b9eed4f9e014f82e2260c3390a831507c5366c2a",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-26T195120Z-phase-1-event-integration-model-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:320cc978fc3c2a3bf2de1dd49a8a063aeaa4e14f817fde29589799e9dc3cb239",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/2026-07-26T195120Z-phase-1-event-integration-model.json",
+      "bytes": 30681,
+      "digest": "sha256:c0eb7a30d093ea436c625021ad9f3bbec11545009b809132a7f23ba9d3ee2b52",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/2026-07-24T233901Z-phase-0-inspectable-artifacts.json",
+      "bytes": 22733,
+      "digest": "sha256:4a6f57c9fdaac2b5fb8489a671ce5b0d5d8dd2d81c26fcf2b193452b35b808a9",
+      "kind": "gaep-phase0-example-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 57,
+        "testsPassed": 615,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:3c30d0855ed25dfc68738603d6b65df7784bfd104d388a016142470e31bea8cd"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:e27ebb708848adab47e10c620259cd84bd751382da176e0fbd9590e6c060190e"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:2b9c0a3baff2027cfa40e5c921fec7c1ee2b58cb2caf60d93af30de1c65f66a2"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:1e9e63be2216cfe62d781a139aa049ac5fba8fd0fd22473e84f0ea6e95cc906a"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:a1fd3cb5ab0a467ad9ffe45f799dd76369f5a5fc504e0d9c7ff755778772084d"
+    }
+  ],
+  "testsDigest": "sha256:9ae8b4ef860495cca66b1349d7c1114c164cd35d2a0363b9c7af448f0a74a41b",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "later-phase-reports",
+      "state": "not-produced",
+      "basis": "this report covers Phase 0 / 1A local evidence only; later phases require separate revalidation"
+    }
+  ],
+  "knownGapsDigest": "sha256:10f0ec5000e4ca4acaffa7cb8858458a8891607c02d349f09adb6ddac0923ac3",
+  "claimBoundary": "This report binds current local Phase 0 / 1A package, test, host, provider, conformance and example evidence. It is not native-host or live-provider acceptance, Product readiness, security approval, release authorization, deployment approval, or a later-phase report."
+}
