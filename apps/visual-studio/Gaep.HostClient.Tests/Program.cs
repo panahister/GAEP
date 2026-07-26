@@ -51,6 +51,7 @@ internal static class Program
     private static readonly Guid BusinessRuleCatalogId = Guid.Parse("45454545-4545-4545-8545-454545454545");
     private static readonly Guid BusinessArchitectureBaselineId = Guid.Parse("46464646-4646-4646-8646-464646464646");
     private static readonly Guid SystemSolutionArchitectureId = Guid.Parse("47474747-4747-4747-8747-474747474747");
+    private static readonly Guid BoundedContextModelId = Guid.Parse("48484848-4848-4848-8848-484848484848");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -133,6 +134,9 @@ internal static class Program
         var badSystemSolutionArchitectureSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-system-solution-architecture-snapshot-binding");
         var badSystemSolutionArchitectureSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-system-solution-architecture-snapshot-digest");
         var badSystemSolutionArchitectureSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-system-solution-architecture-snapshot-private");
+        var badBoundedContextSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-bounded-context-snapshot-binding");
+        var badBoundedContextSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-bounded-context-snapshot-digest");
+        var badBoundedContextSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-bounded-context-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -212,6 +216,9 @@ internal static class Program
         Directory.CreateDirectory(badSystemSolutionArchitectureSnapshotBindingRoot);
         Directory.CreateDirectory(badSystemSolutionArchitectureSnapshotDigestRoot);
         Directory.CreateDirectory(badSystemSolutionArchitectureSnapshotPrivateRoot);
+        Directory.CreateDirectory(badBoundedContextSnapshotBindingRoot);
+        Directory.CreateDirectory(badBoundedContextSnapshotDigestRoot);
+        Directory.CreateDirectory(badBoundedContextSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -867,6 +874,53 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadSystemSolutionArchitectureAsync(InitiativeId),
                 "System/Solution Architecture rejects a projection rebound to a substituted Product revision");
+        }
+
+        var boundedContextProjection = await client.ReadBoundedContextModelAsync(InitiativeId);
+        Check(boundedContextProjection.ProductId == product.Id &&
+              boundedContextProjection.ProductRevision == product.Revision &&
+              boundedContextProjection.ProductDigest == product.Digest &&
+              boundedContextProjection.InitiativeId == resolved.Id &&
+              boundedContextProjection.InitiativeRevision == resolved.Revision &&
+              boundedContextProjection.InitiativeDigest == resolved.Digest &&
+              boundedContextProjection.AssessmentState == "attention-required" &&
+              boundedContextProjection.Model?.BoundedContextCount == 3 &&
+              boundedContextProjection.Model?.ContractCount == 4 &&
+              boundedContextProjection.UnmappedCrossContextRelationCount == 2,
+            "Typed Bounded Context Model preserves exact Product, Initiative, assessment, and candidate metadata");
+        var boundedContextOutput = await initiativeController.ReadBoundedContextModelAsync(InitiativeId);
+        Check(boundedContextOutput.Contains(
+                  "GAEP governed Bounded Context and Ownership candidate",
+                  StringComparison.Ordinal) &&
+              boundedContextOutput.Contains(
+                  "3 contexts · 1 core contexts · 11 language terms · 4 contracts · 3 relationships",
+                  StringComparison.Ordinal) &&
+              boundedContextOutput.Contains(
+                  "does not appoint owners, accept ownership, approve boundaries or contracts",
+                  StringComparison.Ordinal) &&
+              !boundedContextOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !boundedContextOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !boundedContextOutput.Contains("ubiquitousLanguage", StringComparison.Ordinal),
+            "Bounded Context workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[]
+                 {
+                     badBoundedContextSnapshotDigestRoot,
+                     badBoundedContextSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(
+                () => hostileClient.ReadBoundedContextModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Bounded Context Model rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badBoundedContextSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadBoundedContextModelAsync(InitiativeId),
+                "Bounded Context Model rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -1977,6 +2031,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-system-solution-architecture-snapshot-digest";
         var badSystemSolutionArchitectureSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-system-solution-architecture-snapshot-private";
+        var badBoundedContextSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-bounded-context-snapshot-binding";
+        var badBoundedContextSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-bounded-context-snapshot-digest";
+        var badBoundedContextSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-bounded-context-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2183,6 +2243,17 @@ internal static class Program
                         badSystemSolutionArchitectureSnapshotBinding,
                         badSystemSolutionArchitectureSnapshotDigest,
                         badSystemSolutionArchitectureSnapshotPrivate);
+                    break;
+                case "architecture.boundedContexts.snapshot":
+                    await HandleBoundedContextModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badBoundedContextSnapshotBinding,
+                        badBoundedContextSnapshotDigest,
+                        badBoundedContextSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -3216,6 +3287,102 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) architecture["elementCount"] = 10;
         if (includePrivateField) result["architectureNarrative"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleBoundedContextModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID BOUNDED CONTEXT MODEL");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T11:00:00.000Z";
+        var modelDigest = $"sha256:{new string('3', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var model = new Dictionary<string, object?>
+        {
+            ["id"] = BoundedContextModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = modelDigest,
+            ["membershipDigest"] = $"sha256:{new string('4', 64)}",
+            ["state"] = "candidate",
+            ["boundedContextCount"] = 3,
+            ["contractCount"] = 4,
+            ["relationshipCount"] = 3,
+            ["updatedAt"] = "2026-07-26T10:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "bounded-context-ownership-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["assessment"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "bounded-context-ownership-assessment",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["model"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BoundedContextModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = modelDigest,
+                },
+                ["boundedContextCount"] = 3,
+                ["coreContextCount"] = 1,
+                ["languageTermCount"] = 11,
+                ["contractCount"] = 4,
+                ["unresolvedContractCount"] = 1,
+                ["relationshipCount"] = 3,
+                ["unresolvedRelationshipCount"] = 1,
+                ["unassignedArchitectureElementCount"] = 2,
+                ["unownedDataAssetCount"] = 1,
+                ["unmappedCrossContextRelationCount"] = 2,
+                ["inconsistencyCount"] = 0,
+                ["unresolvedQuestionCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more cross-context contracts remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "bounded-context-model-assessment-reports-candidate-coverage-and-gaps-and-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action",
+            },
+            ["model"] = model,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-boundary-language-contract-source-content-personal-data-locators-or-credentials",
+            ["authorityBoundary"] =
+                "bounded-context-model-projection-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) model["boundedContextCount"] = 4;
+        if (includePrivateField) result["ubiquitousLanguage"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

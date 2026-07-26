@@ -210,6 +210,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadBusinessRulesCommand = new AsyncCommand(LoadBusinessRulesAsync);
         LoadBusinessArchitectureBaselineCommand = new AsyncCommand(LoadBusinessArchitectureBaselineAsync);
         LoadSystemSolutionArchitectureCommand = new AsyncCommand(LoadSystemSolutionArchitectureAsync);
+        LoadBoundedContextModelCommand = new AsyncCommand(LoadBoundedContextModelAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -280,6 +281,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadSystemSolutionArchitectureCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadBoundedContextModelCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -690,6 +694,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed System/Solution Architecture candidate",
             (controller, _, token) => controller.ReadSystemSolutionArchitectureAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadBoundedContextModelAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Bounded Context and Ownership candidate",
+            (controller, _, token) => controller.ReadBoundedContextModelAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)
