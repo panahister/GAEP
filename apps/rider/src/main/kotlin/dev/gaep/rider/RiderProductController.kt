@@ -483,6 +483,52 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readBusinessArchitectureBaseline(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readBusinessArchitectureBaseline(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Business Architecture Baseline was read. Refresh the exact records." }
+        return renderBusinessArchitectureBaseline(projection)
+    }
+
+    fun renderBusinessArchitectureBaseline(projection: BusinessArchitectureBaselineProjection): String = buildString {
+        appendLine("GAEP governed Business Architecture Baseline candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage counts: ${projection.coveredElementCount} covered · ${projection.includedElementCount} included · " +
+                "${projection.excludedElementCount} excluded · ${projection.unresolvedElementCount} unresolved",
+        )
+        appendLine(
+            "Coherence: ${projection.integrationClaimCount} integration claims · ${projection.consistencyCheckCount} consistency checks · " +
+                "${projection.consistencyGapCount} gaps · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.baseline?.let { record ->
+            appendLine("Baseline candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate counts: ${record.coveredElementCount} elements · ${record.integrationClaimCount} integration claims · " +
+                    "${record.consistencyGapCount} consistency gaps",
+            )
+        } ?: appendLine("Baseline candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no architecture narrative, Source content, personal data, locators, " +
+                "local paths, or credentials and does not designate or approve a baseline, establish readiness, grant " +
+                "exceptions, deploy enforcement, or authorize action.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

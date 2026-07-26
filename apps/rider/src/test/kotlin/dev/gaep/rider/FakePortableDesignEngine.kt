@@ -20,6 +20,7 @@ private val businessCapabilityMapId = UUID.fromString("42424242-4242-4242-8242-4
 private val valueStreamModelId = UUID.fromString("43434343-4343-4343-8343-434343434343")
 private val operatingModelId = UUID.fromString("44444444-4444-4444-8444-444444444444")
 private val businessRuleCatalogId = UUID.fromString("45454545-4545-4545-8545-454545454545")
+private val businessArchitectureBaselineId = UUID.fromString("46464646-4646-4646-8646-464646464646")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -118,6 +119,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "business.businessRules.snapshot" -> handleBusinessRuleCatalog(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "business.architectureBaselines.snapshot" -> handleBusinessArchitectureBaseline(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -853,6 +859,90 @@ private fun handleBusinessRuleCatalog(id: Long, params: JsonObject, workspacePat
         }
         workspacePath.endsWith("bad-business-rule-snapshot-private") -> {
             value.addProperty("ruleNarrative", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleBusinessArchitectureBaseline(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BUSINESS ARCHITECTURE BASELINE PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-business-architecture-baseline-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T09:30:00.000Z"
+    val baselineDigest = "sha256:${"a".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "business-architecture-baseline-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("assessment", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "business-architecture-baseline-assessment")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("baseline", JsonObject().apply {
+                addProperty("recordId", businessArchitectureBaselineId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", baselineDigest)
+            })
+            addProperty("coveredElementCount", 27)
+            addProperty("includedElementCount", 25)
+            addProperty("excludedElementCount", 1)
+            addProperty("unresolvedElementCount", 1)
+            addProperty("integrationClaimCount", 8)
+            addProperty("consistencyCheckCount", 6)
+            addProperty("consistencyGapCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more candidate architecture elements remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "business-architecture-baseline-assessment-reports-candidate-coherence-and-gaps-and-does-not-designate-or-approve-a-baseline-establish-readiness-or-authorize-action",
+            )
+        })
+        add("baseline", JsonObject().apply {
+            addProperty("id", businessArchitectureBaselineId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", baselineDigest)
+            addProperty("membershipDigest", "sha256:${"d".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("coveredElementCount", 27)
+            addProperty("integrationClaimCount", 8)
+            addProperty("consistencyGapCount", 2)
+            addProperty("updatedAt", "2026-07-26T09:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-architecture-narrative-source-content-personal-data-locators-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "business-architecture-baseline-projection-does-not-designate-or-approve-a-baseline-establish-readiness-grant-exceptions-deploy-enforcement-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-business-architecture-baseline-snapshot-digest") -> {
+            value.getAsJsonObject("baseline").addProperty("coveredElementCount", 28)
+        }
+        workspacePath.endsWith("bad-business-architecture-baseline-snapshot-private") -> {
+            value.addProperty("architectureNarrative", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)
