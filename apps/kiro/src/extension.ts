@@ -8,6 +8,7 @@ import {
   collectInitiativeClassification,
   containsSecretShapedValue,
   InitiativeEntryWorkflowCancelled,
+  type BusinessArchitectureBaselineProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -81,6 +82,7 @@ const commandIds = {
   valueStreamModel: "gaepKiro.valueStreamModel.inspect",
   operatingModel: "gaepKiro.operatingModel.inspect",
   businessRules: "gaepKiro.businessRules.inspect",
+  businessArchitectureBaseline: "gaepKiro.businessArchitectureBaseline.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -176,6 +178,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.valueStreamModel, (input?: unknown) => runUserCommand(() => showValueStreamModel(pool, input))),
     vscode.commands.registerCommand(commandIds.operatingModel, (input?: unknown) => runUserCommand(() => showOperatingModel(pool, input))),
     vscode.commands.registerCommand(commandIds.businessRules, (input?: unknown) => runUserCommand(() => showBusinessRuleCatalog(pool, input))),
+    vscode.commands.registerCommand(commandIds.businessArchitectureBaseline, (input?: unknown) => runUserCommand(() => showBusinessArchitectureBaseline(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -709,6 +712,46 @@ async function showBusinessRuleCatalog(
     ...(catalog ? [
       `Catalog counts: ${catalog.ruleCount} rules · ${catalog.enforcementTargetCount} enforcement targets · ${catalog.exceptionCount} exceptions · ${catalog.nonExceptionableRuleCount} non-exceptionable`,
       `Updated: ${catalog.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showBusinessArchitectureBaseline(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<BusinessArchitectureBaselineProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Business Architecture Baseline candidate", "Initiative ID")
+  const projection = await client.readBusinessArchitectureBaseline(initiativeId)
+  const baseline = projection.baseline
+  const lines = [
+    "GAEP governed Business Architecture Baseline candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${projection.assessment.state}`,
+    `Coverage counts: ${projection.assessment.coveredElementCount} covered · ${projection.assessment.includedElementCount} included · ${projection.assessment.excludedElementCount} excluded · ${projection.assessment.unresolvedElementCount} unresolved`,
+    `Coherence: ${projection.assessment.integrationClaimCount} integration claims · ${projection.assessment.consistencyCheckCount} consistency checks · ${projection.assessment.consistencyGapCount} gaps · ${projection.assessment.staleBindingCount} stale bindings · ${projection.assessment.staleSourceReferenceCount} stale Source references`,
+    ...projection.assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Baseline candidate: ${baseline ? `${baseline.id}@${baseline.revision} · ${baseline.state} · ${baseline.digest}` : "not recorded"}`,
+    ...(baseline ? [
+      `Membership digest: ${baseline.membershipDigest}`,
+      `Candidate counts: ${baseline.coveredElementCount} elements · ${baseline.integrationClaimCount} integration claims · ${baseline.consistencyGapCount} consistency gaps`,
+      `Updated: ${baseline.updatedAt}`,
     ] : []),
     "",
     `Snapshot digest: ${projection.snapshotDigest}`,

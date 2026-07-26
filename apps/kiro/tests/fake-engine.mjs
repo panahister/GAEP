@@ -34,6 +34,7 @@ const businessCapabilityMapId = "36363636-3636-4636-8636-363636363636"
 const valueStreamModelId = "37373737-3737-4737-8737-373737373737"
 const operatingModelId = "38383838-3838-4838-8838-383838383838"
 const businessRuleCatalogId = "39393939-3939-4939-8939-393939393939"
+const businessArchitectureBaselineId = "40404040-4040-4040-8040-404040404040"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -83,6 +84,8 @@ input.on("line", (line) => {
       return readOperatingModel(id, request.params)
     case "business.businessRules.snapshot":
       return readBusinessRuleCatalog(id, request.params)
+    case "business.architectureBaselines.snapshot":
+      return readBusinessArchitectureBaseline(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -596,6 +599,67 @@ function readBusinessRuleCatalog(id, params) {
   if (workspacePath.endsWith("bad-business-rule-snapshot-digest")) value.businessRuleCatalog.ruleCount = 8
   if (workspacePath.endsWith("bad-business-rule-snapshot-private")) {
     value.ruleNarrative = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readBusinessArchitectureBaseline(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BUSINESS ARCHITECTURE BASELINE PARAMS")
+  }
+  const baselineDigest = `sha256:${"a".repeat(64)}`
+  const assessment = {
+    schemaVersion: 1,
+    kind: "business-architecture-baseline-assessment",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    baseline: { recordId: businessArchitectureBaselineId, revision: 2, digest: baselineDigest },
+    coveredElementCount: 27,
+    includedElementCount: 25,
+    excludedElementCount: 1,
+    unresolvedElementCount: 1,
+    integrationClaimCount: 8,
+    consistencyCheckCount: 6,
+    consistencyGapCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more candidate architecture elements remain unresolved"],
+    assessedAt: "2026-07-26T09:30:00.000Z",
+    authorityBoundary: "business-architecture-baseline-assessment-reports-candidate-coherence-and-gaps-and-does-not-designate-or-approve-a-baseline-establish-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "business-architecture-baseline-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    assessment,
+    baseline: {
+      id: businessArchitectureBaselineId,
+      revision: 2,
+      digest: baselineDigest,
+      membershipDigest: `sha256:${"d".repeat(64)}`,
+      state: "candidate",
+      coveredElementCount: 27,
+      integrationClaimCount: 8,
+      consistencyGapCount: 2,
+      updatedAt: "2026-07-26T09:29:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-architecture-narrative-source-content-personal-data-locators-or-credentials",
+    authorityBoundary: "business-architecture-baseline-projection-does-not-designate-or-approve-a-baseline-establish-readiness-grant-exceptions-deploy-enforcement-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-business-architecture-baseline-snapshot-binding")) {
+    content.initiative.id = businessArchitectureBaselineId
+  }
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-business-architecture-baseline-snapshot-digest")) {
+    value.baseline.coveredElementCount = 28
+  }
+  if (workspacePath.endsWith("bad-business-architecture-baseline-snapshot-private")) {
+    value.architectureNarrative = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

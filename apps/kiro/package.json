@@ -55,6 +55,7 @@
     "onCommand:gaepKiro.valueStreamModel.inspect",
     "onCommand:gaepKiro.operatingModel.inspect",
     "onCommand:gaepKiro.businessRules.inspect",
+    "onCommand:gaepKiro.businessArchitectureBaseline.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -152,6 +153,10 @@
       {
         "command": "gaepKiro.businessRules.inspect",
         "title": "GAEP for Kiro: Inspect Governed Business Rules"
+      },
+      {
+        "command": "gaepKiro.businessArchitectureBaseline.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Business Architecture Baseline Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

@@ -7,6 +7,7 @@ import { once } from "node:events"
 
 import {
   completeInitiativeApplicabilityCoverage,
+  businessArchitectureBaselineProjectionSchema,
   businessCapabilityMapProjectionSchema,
   businessRuleCatalogProjectionSchema,
   businessUnderstandingProjectionSchema,
@@ -18,6 +19,7 @@ import {
   sourceGovernanceProjectionSchema,
   valueStreamModelProjectionSchema,
   type Initiative,
+  type BusinessArchitectureBaselineProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -288,6 +290,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = businessRuleCatalogProjectionSchema.safeParse(
         await this.request("business.businessRules.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readBusinessArchitectureBaseline(initiativeValue: string): Promise<BusinessArchitectureBaselineProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = businessArchitectureBaselineProjectionSchema.safeParse(
+        await this.request("business.architectureBaselines.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

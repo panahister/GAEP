@@ -615,6 +615,52 @@ test("protocol-v2 Business Rule Catalog projection is exact, private-safe, and n
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Business Architecture Baseline projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-business-architecture-baseline-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-business-architecture-baseline-snapshot-binding",
+    "bad-business-architecture-baseline-snapshot-digest",
+    "bad-business-architecture-baseline-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readBusinessArchitectureBaseline(initiativeId)
+    assert.equal(projection.assessment.state, "attention-required")
+    assert.equal(projection.baseline?.coveredElementCount, 27)
+    assert.equal(projection.baseline?.integrationClaimCount, 8)
+    assert.equal(projection.assessment.consistencyGapCount, 2)
+    assert.equal(
+      projection.authorityBoundary,
+      "business-architecture-baseline-projection-does-not-designate-or-approve-a-baseline-establish-readiness-grant-exceptions-deploy-enforcement-or-authorize-action",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes("architectureNarrative"), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readBusinessArchitectureBaseline(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")
