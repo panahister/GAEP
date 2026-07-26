@@ -40,6 +40,7 @@ import { eventIntegrationModelInputSchema } from "./event-integration-model.js"
 import { failureRecoveryModelInputSchema } from "./failure-recovery-model.js"
 import { architectureChallengeModelInputSchema } from "./architecture-challenge-model.js"
 import { decisionRegisterInputSchema } from "./decision-register.js"
+import { riskRegisterInputSchema } from "./risk-register.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -432,6 +433,18 @@ export const hostDecisionRegisterReviseParamsSchema = z.object({
   record: decisionRegisterInputSchema,
 }).strict()
 
+export const hostRiskRegisterCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: riskRegisterInputSchema,
+}).strict()
+
+export const hostRiskRegisterReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: riskRegisterInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -568,6 +581,11 @@ export const hostMethodSchema = z.enum([
   "decision.registers.revise",
   "decision.registers.assess",
   "decision.registers.snapshot",
+  "risk.registers.read",
+  "risk.registers.create",
+  "risk.registers.revise",
+  "risk.registers.assess",
+  "risk.registers.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -716,6 +734,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("decision.registers.revise", hostDecisionRegisterReviseParamsSchema),
   requestVariant("decision.registers.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("decision.registers.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("risk.registers.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("risk.registers.create", hostRiskRegisterCreateParamsSchema),
+  requestVariant("risk.registers.revise", hostRiskRegisterReviseParamsSchema),
+  requestVariant("risk.registers.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("risk.registers.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

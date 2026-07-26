@@ -1174,6 +1174,38 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "risk-register-read-empty",
+      protocolVersion: 2,
+      method: "risk.registers.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "risk-register-assess-empty",
+      protocolVersion: 2,
+      method: "risk.registers.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      riskCount: 0,
+      notAssessedRiskCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-assessment-fact"),
+    })
+    const riskRegisterProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "risk-register-snapshot-empty",
+      protocolVersion: 2,
+      method: "risk.registers.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: riskRegisterSnapshotDigest, ...riskRegisterProjectionBody } = riskRegisterProjection
+    expect(riskRegisterSnapshotDigest).toBe(canonicalDigest(riskRegisterProjectionBody))
+    expect(riskRegisterProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-risk-statements-assessments-controls"),
+      authorityBoundary: expect.stringContaining("does-not-establish-assessment-fact"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1182,6 +1214,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "decision-register-v1-block",
       method: "decision.registers.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "risk-register-v1-block",
+      method: "risk.registers.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
@@ -1310,6 +1348,27 @@ describe("engine host protocol", () => {
           decisionEffective: true,
           approved: true,
           riskAccepted: true,
+          baselinePromoted: true,
+          ready: true,
+          actionAuthorized: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "risk-register-extra-authority",
+      protocolVersion: 2,
+      method: "risk.registers.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          assessmentEstablished: true,
+          controlEffective: true,
+          ownerAssigned: true,
+          riskAccepted: true,
+          approved: true,
+          exceptionGranted: true,
           baselinePromoted: true,
           ready: true,
           actionAuthorized: true,
