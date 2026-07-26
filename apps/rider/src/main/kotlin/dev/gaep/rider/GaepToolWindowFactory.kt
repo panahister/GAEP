@@ -386,6 +386,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += riskRegisterButton
         actions.add(riskRegisterButton)
 
+        val evidenceRegistryButton = JButton("Inspect Evidence Registry…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Claim statements, evidence observations, methods, warrants, quality details, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Evidence Registry",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Evidence Registry", status, output, buttons) {
+                    controller.readEvidenceRegistry(initiativeId)
+                }
+            }
+        }
+        buttons += evidenceRegistryButton
+        actions.add(evidenceRegistryButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

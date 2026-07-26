@@ -32,6 +32,7 @@ private val failureRecoveryModelId = UUID.fromString("54545454-5454-4454-8454-54
 private val architectureChallengeModelId = UUID.fromString("56565656-5656-4656-8656-565656565656")
 private val decisionRegisterId = UUID.fromString("57575757-5757-4757-8757-575757575757")
 private val riskRegisterId = UUID.fromString("58585858-5858-4858-8858-585858585858")
+private val evidenceRegistryId = UUID.fromString("59595959-5959-4959-8959-595959595959")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -190,6 +191,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "risk.registers.snapshot" -> handleRiskRegister(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "evidence.registries.snapshot" -> handleEvidenceRegistry(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -1997,6 +2003,95 @@ private fun handleRiskRegister(id: Long, params: JsonObject, workspacePath: Stri
         }
         workspacePath.endsWith("bad-risk-register-snapshot-private") -> {
             value.addProperty("riskStatement", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleEvidenceRegistry(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE EVIDENCE REGISTRY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-evidence-registry-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-27T00:00:00.000Z"
+    val registryDigest = "sha256:${"f".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "evidence-registry-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "evidence-registry-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("registry", JsonObject().apply {
+                addProperty("recordId", evidenceRegistryId.toString())
+                addProperty("revision", 4)
+                addProperty("digest", registryDigest)
+            })
+            addProperty("claimCount", 12)
+            addProperty("evidenceItemCount", 18)
+            addProperty("linkCount", 21)
+            addProperty("notAssessedClaimCount", 2)
+            addProperty("notAssessedEvidenceCount", 3)
+            addProperty("adverseEvidencePendingDispositionCount", 1)
+            addProperty("staleOrUnknownEvidenceCount", 4)
+            addProperty("invalidatedEvidenceCount", 1)
+            addProperty("unresolvedLinkCount", 21)
+            addProperty("unresolvedRequirementCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("inconsistencyCount", 0)
+            addProperty("unresolvedQuestionCount", 1)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Claims remain explicitly not assessed") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "evidence-registry-status-reports-candidate-coverage-freshness-and-gaps-and-does-not-establish-claim-validation-evidence-sufficiency-assurance-approval-readiness-or-action-authority",
+            )
+        })
+        add("registry", JsonObject().apply {
+            addProperty("id", evidenceRegistryId.toString())
+            addProperty("revision", 4)
+            addProperty("digest", registryDigest)
+            addProperty("membershipDigest", "sha256:${"d".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("claimCount", 12)
+            addProperty("evidenceItemCount", 18)
+            addProperty("linkCount", 21)
+            addProperty("updatedAt", "2026-07-26T23:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-claim-statements-evidence-observations-methods-warrants-quality-details-source-content-personal-data-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "evidence-registry-projection-does-not-establish-claim-validation-evidence-sufficiency-assurance-review-approval-risk-acceptance-readiness-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-evidence-registry-snapshot-digest") -> {
+            value.getAsJsonObject("registry").addProperty("claimCount", 13)
+        }
+        workspacePath.endsWith("bad-evidence-registry-snapshot-private") -> {
+            value.addProperty("claimStatement", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

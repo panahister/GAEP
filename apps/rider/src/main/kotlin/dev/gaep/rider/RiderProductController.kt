@@ -1026,6 +1026,52 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readEvidenceRegistry(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readEvidenceRegistry(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Evidence Registry was read. Refresh the exact records." }
+        return renderEvidenceRegistry(projection)
+    }
+
+    fun renderEvidenceRegistry(projection: EvidenceRegistryProjection): String = buildString {
+        appendLine("GAEP governed Evidence Registry candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.claimCount} claims · ${projection.evidenceItemCount} evidence items · " +
+                "${projection.linkCount} claim/evidence links",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.notAssessedClaimCount} claims not assessed · " +
+                "${projection.notAssessedEvidenceCount} evidence items not assessed · " +
+                "${projection.adverseEvidencePendingDispositionCount} adverse dispositions pending · " +
+                "${projection.staleOrUnknownEvidenceCount} stale or unknown · ${projection.invalidatedEvidenceCount} invalidated · " +
+                "${projection.unresolvedLinkCount} unresolved links · ${projection.unresolvedRequirementCount} requirements · " +
+                "${projection.inconsistencyCount} inconsistencies · ${projection.unresolvedQuestionCount} questions · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.registry?.let { record ->
+            appendLine("Evidence Registry candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+        } ?: appendLine("Evidence Registry candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no claim statements, evidence observations, methods, warrants, " +
+                "quality details, Source content, personal data, local paths, secrets, or credentials and does not establish " +
+                "claim validation, evidence sufficiency, assurance, review, approval, risk acceptance, operational readiness, or action authority.",
+        )
+    }
+
     fun renderFailureRecoveryModel(projection: FailureRecoveryModelProjection): String = buildString {
         appendLine("GAEP governed Failure and Recovery Model candidate")
         appendLine()

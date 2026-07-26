@@ -258,6 +258,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readEvidenceRegistry(initiativeId: UUID): EvidenceRegistryProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("evidence.registries.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseEvidenceRegistryEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

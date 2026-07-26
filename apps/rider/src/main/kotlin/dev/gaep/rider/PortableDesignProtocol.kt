@@ -1463,6 +1463,44 @@ data class RiskRegisterProjection(
     val snapshotDigest: String,
 )
 
+data class EvidenceRegistryRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val claimCount: Int,
+    val evidenceItemCount: Int,
+    val linkCount: Int,
+)
+
+data class EvidenceRegistryProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val claimCount: Int,
+    val evidenceItemCount: Int,
+    val linkCount: Int,
+    val notAssessedClaimCount: Int,
+    val notAssessedEvidenceCount: Int,
+    val adverseEvidencePendingDispositionCount: Int,
+    val staleOrUnknownEvidenceCount: Int,
+    val invalidatedEvidenceCount: Int,
+    val unresolvedLinkCount: Int,
+    val unresolvedRequirementCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val registry: EvidenceRegistryRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1596,6 +1634,12 @@ internal object PortableDesignProtocol {
         "risk-register-projection-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority"
     private const val RISK_REGISTER_STATUS_AUTHORITY_BOUNDARY =
         "risk-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority"
+    private const val EVIDENCE_REGISTRY_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-claim-statements-evidence-observations-methods-warrants-quality-details-source-content-personal-data-secrets-or-credentials"
+    private const val EVIDENCE_REGISTRY_PROJECTION_AUTHORITY_BOUNDARY =
+        "evidence-registry-projection-does-not-establish-claim-validation-evidence-sufficiency-assurance-review-approval-risk-acceptance-readiness-or-action-authority"
+    private const val EVIDENCE_REGISTRY_STATUS_AUTHORITY_BOUNDARY =
+        "evidence-registry-status-reports-candidate-coverage-freshness-and-gaps-and-does-not-establish-claim-validation-evidence-sufficiency-assurance-approval-readiness-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -4949,6 +4993,132 @@ internal object PortableDesignProtocol {
             unresolvedResidualRiskCount, proposedTreatmentCount, unassignedOwnerCount, unverifiedControlCount,
             unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount, staleBindingCount,
             staleSourceReferenceCount, register, snapshotDigest,
+        )
+    }
+
+    fun parseEvidenceRegistryEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): EvidenceRegistryProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("registry"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "evidence-registry-projection" ||
+            projection.requireString("privacyBoundary") != EVIDENCE_REGISTRY_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != EVIDENCE_REGISTRY_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "claimCount", "evidenceItemCount", "linkCount", "notAssessedClaimCount", "notAssessedEvidenceCount",
+                "adverseEvidencePendingDispositionCount", "staleOrUnknownEvidenceCount", "invalidatedEvidenceCount",
+                "unresolvedLinkCount", "unresolvedRequirementCount", "staleBindingCount", "staleSourceReferenceCount",
+                "inconsistencyCount", "unresolvedQuestionCount", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("registry"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "evidence-registry-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != EVIDENCE_REGISTRY_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("registry")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val claimCount = status.requireBoundedNonNegativeInt("claimCount", 4_096)
+        val evidenceItemCount = status.requireBoundedNonNegativeInt("evidenceItemCount", 8_192)
+        val linkCount = status.requireBoundedNonNegativeInt("linkCount", 32_768)
+        val notAssessedClaimCount = status.requireBoundedNonNegativeInt("notAssessedClaimCount", 4_096)
+        val notAssessedEvidenceCount = status.requireBoundedNonNegativeInt("notAssessedEvidenceCount", 8_192)
+        val adverseEvidencePendingDispositionCount = status.requireBoundedNonNegativeInt("adverseEvidencePendingDispositionCount", 8_192)
+        val staleOrUnknownEvidenceCount = status.requireBoundedNonNegativeInt("staleOrUnknownEvidenceCount", 8_192)
+        val invalidatedEvidenceCount = status.requireBoundedNonNegativeInt("invalidatedEvidenceCount", 8_192)
+        val unresolvedLinkCount = status.requireBoundedNonNegativeInt("unresolvedLinkCount", 32_768)
+        if (notAssessedClaimCount > claimCount ||
+            listOf(notAssessedEvidenceCount, adverseEvidencePendingDispositionCount, staleOrUnknownEvidenceCount, invalidatedEvidenceCount)
+                .any { it > evidenceItemCount } || unresolvedLinkCount > linkCount
+        ) throw invalidResponse()
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 23)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val inconsistencyCount = status.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val assessmentState = status.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val registry = projection.get("registry")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "claimCount",
+                "evidenceItemCount", "linkCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = EvidenceRegistryRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("claimCount", 4_096),
+                value.requireBoundedNonNegativeInt("evidenceItemCount", 8_192),
+                value.requireBoundedNonNegativeInt("linkCount", 32_768),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (registry == null) ||
+            (registry?.claimCount ?: 0) != claimCount ||
+            (registry?.evidenceItemCount ?: 0) != evidenceItemCount ||
+            (registry?.linkCount ?: 0) != linkCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return EvidenceRegistryProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, claimCount, evidenceItemCount, linkCount,
+            notAssessedClaimCount, notAssessedEvidenceCount, adverseEvidencePendingDispositionCount,
+            staleOrUnknownEvidenceCount, invalidatedEvidenceCount, unresolvedLinkCount, unresolvedRequirementCount,
+            inconsistencyCount, unresolvedQuestionCount, staleBindingCount, staleSourceReferenceCount, registry,
+            snapshotDigest,
         )
     }
 
