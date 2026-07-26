@@ -12,7 +12,7 @@ import {
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const digestPattern = /^sha256:[0-9a-f]{64}$/u
-const receiptPath = resolve(repositoryRoot, "evidence/ide-smokes/2026-07-26T100407Z-phase-1-system-solution-architecture-provider-behavior.json")
+const receiptPath = resolve(repositoryRoot, "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-provider-behavior.json")
 
 test("binds exact distinct Codex and Claude deterministic contract sources", async () => {
   assert.match(providerBehaviorDefinitionDigest(), digestPattern)

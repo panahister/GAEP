@@ -36,7 +36,8 @@
     { "id": "operating-model", "label": "Exact governed Operating Model projection without appointment, funding, baseline, readiness, or action authority" },
     { "id": "business-rule-catalog", "label": "Exact governed Business Rule Catalog projection without policy-evaluation, exception-grant, enforcement, baseline, readiness, or action authority" },
     { "id": "business-architecture-baseline", "label": "Exact governed Business Architecture Baseline candidate projection without designation, approval, readiness, exception-grant, enforcement, or action authority" },
-    { "id": "system-solution-architecture", "label": "Exact governed System/Solution Architecture candidate projection without architecture-baseline designation, approval, readiness, proven conformance, technology mandate, or action authority" }
+    { "id": "system-solution-architecture", "label": "Exact governed System/Solution Architecture candidate projection without architecture-baseline designation, approval, readiness, proven conformance, technology mandate, or action authority" },
+    { "id": "bounded-context-ownership", "label": "Exact governed Bounded Context and Ownership candidate projection without owner appointment, boundary approval, contract acceptance, readiness, or action authority" }
   ],
   "hosts": [
     {
@@ -47,7 +48,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T100407Z-phase-1-system-solution-architecture-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -154,6 +155,9 @@
         ] },
         { "capabilityId": "system-solution-architecture", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["systemSolutionArchitecture?: {", "engine.systemSolutionArchitecture!.project(initiative.id)", "id: \"system-solution-architecture\"", "Candidate design only; no architecture-baseline designation, approval, readiness, proven conformance, technology mandate, or action authority."] }
+        ] },
+        { "capabilityId": "bounded-context-ownership", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["boundedContextModel?: {", "engine.boundedContextModel!.project(initiative.id)", "id: \"bounded-context-ownership\"", "Candidate boundaries and ownership traces only; no owner appointment, ownership acceptance, boundary approval, contract acceptance, readiness, or action authority."] }
         ] }
       ]
     },
@@ -165,7 +169,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T100407Z-phase-1-system-solution-architecture-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -277,6 +281,10 @@
         { "capabilityId": "system-solution-architecture", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readSystemSolutionArchitecture(", "this.request(\"architecture.systemSolution.snapshot\"", "systemSolutionArchitectureProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showSystemSolutionArchitecture", "GAEP governed System/Solution Architecture candidate", "Membership digest:"] }
+        ] },
+        { "capabilityId": "bounded-context-ownership", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readBoundedContextModel(", "this.request(\"architecture.boundedContexts.snapshot\"", "boundedContextModelProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showBoundedContextModel", "GAEP governed Bounded Context and Ownership candidate", "Membership digest:", "Authority boundary: ${projection.authorityBoundary}"] }
         ] }
       ]
     },
@@ -288,7 +296,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T100407Z-phase-1-system-solution-architecture-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -414,6 +422,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readSystemSolutionArchitecture(", "portableRequest(\"architecture.systemSolution.snapshot\"", "parseSystemSolutionArchitectureEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed System/Solution Architecture candidate", "Membership digest:", "does not designate or approve an architecture baseline, establish readiness"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["SystemSolutionArchitectureRecordView", "SYSTEM_SOLUTION_ARCHITECTURE_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "bounded-context-ownership", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readBoundedContextModel(", "portableRequest(\"architecture.boundedContexts.snapshot\"", "parseBoundedContextModelEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Bounded Context and Ownership candidate", "Membership digest:", "does not appoint owners, accept ownership", "approve boundaries or contracts, establish readiness, or authorize action"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["BoundedContextModelRecordView", "BOUNDED_CONTEXT_MODEL_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -425,7 +438,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T100407Z-phase-1-system-solution-architecture-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -560,13 +573,18 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadSystemSolutionArchitectureAsync(", "\"architecture.systemSolution.snapshot\"", "ParseSystemSolutionArchitectureResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed System/Solution Architecture candidate", "Membership digest:", "does not designate or approve an architecture baseline, establish readiness"] },
           { "path": "apps/visual-studio/Gaep.HostClient/SystemSolutionArchitectureProtocol.cs", "contains": ["SystemSolutionArchitectureRecordView", "SystemSolutionArchitectureProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "bounded-context-ownership", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadBoundedContextModelAsync(", "\"architecture.boundedContexts.snapshot\"", "ParseBoundedContextModelResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Bounded Context and Ownership candidate", "Membership digest:", "does not appoint owners, accept ownership", "approve boundaries or contracts, establish readiness, or authorize action"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/BoundedContextModelProtocol.cs", "contains": ["BoundedContextModelRecordView", "BoundedContextModelProjectionAuthorityBoundary"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-26T100407Z-phase-1-system-solution-architecture-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",
