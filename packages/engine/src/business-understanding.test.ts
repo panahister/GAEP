@@ -3,11 +3,14 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import {
+  businessArchitectureBaselineInputSchema,
   businessCapabilityMapInputSchema,
   businessRuleCatalogInputSchema,
   stakeholderCategoryValues,
   stakeholderModelInputSchema,
   valueStreamModelInputSchema,
+  type BusinessArchitectureBaselineInput,
+  type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
   type BusinessCapabilityMapInput,
   type BusinessRuleCatalogInput,
@@ -705,6 +708,102 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function businessArchitectureBaselineInput(
+    business: BusinessUnderstanding,
+    stakeholder: StakeholderModel,
+    outcome: Awaited<ReturnType<typeof engine.businessUnderstanding.createOutcomeModel>>,
+    capabilityMap: BusinessCapabilityMap,
+    valueStreamModel: ValueStreamModel,
+    operatingModel: OperatingModel,
+    businessRuleCatalog: BusinessRuleCatalog,
+    overrides: Partial<BusinessArchitectureBaselineInput> = {},
+  ): BusinessArchitectureBaselineInput {
+    const coverage = [
+      ["business-rule", "govern-context-eligibility"],
+      ["capability", "governed-context"],
+      ["decision-right", "govern-gaep-semantics"],
+      ["decision-right", "govern-initiative-outcome"],
+      ["enforcement-target", "context-entry"],
+      ["exception", "bounded-context-exception"],
+      ["operating-role", "gaep-steward"],
+      ["operating-role", "initiative-owner"],
+      ["value-stream", "governed-delivery"],
+    ] as const
+    const candidateCheck = (topic: BusinessArchitectureBaselineInput["consistencyChecks"][number]["topic"]) => ({
+      topic,
+      state: "candidate-satisfied" as const,
+      basis: "The exact bound candidate records provide a coherent attributable trace for accountable review without approval.",
+      accountableRoleKey: "initiative-owner",
+      sources: [reference()],
+    })
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed context Business Architecture Baseline",
+      purpose: "Integrate the exact candidate capability, value-stream, operating-model, and Business Rule records for accountable review.",
+      businessUnderstanding: businessReference(business),
+      stakeholderModel: stakeholderReference(stakeholder),
+      outcomeModel: { recordId: outcome.id, revision: outcome.revision, digest: canonicalDigest(outcome) },
+      capabilityMap: { recordId: capabilityMap.id, revision: capabilityMap.revision, digest: canonicalDigest(capabilityMap) },
+      valueStreamModel: { recordId: valueStreamModel.id, revision: valueStreamModel.revision, digest: canonicalDigest(valueStreamModel) },
+      operatingModel: { recordId: operatingModel.id, revision: operatingModel.revision, digest: canonicalDigest(operatingModel) },
+      businessRuleCatalog: {
+        recordId: businessRuleCatalog.id,
+        revision: businessRuleCatalog.revision,
+        digest: canonicalDigest(businessRuleCatalog),
+      },
+      scope: {
+        included: ["Candidate Business Architecture compound snapshot"],
+        excluded: ["Implementation, release, and operational execution"],
+        boundaries: ["No approval, baseline designation, readiness, exception, enforcement, or action authority"],
+      },
+      coverage: coverage.map(([elementKind, elementKey]) => ({
+        elementKind,
+        elementKey,
+        disposition: "included-candidate" as const,
+        rationale: "This exact candidate element is included so the compound architecture review does not silently omit governed scope.",
+        sources: [reference()],
+      })),
+      integrationClaims: [{
+        key: "governed-context-flow",
+        statement: "The governed-context capability, value stream, accountable roles, decision right, and eligibility rule form one candidate cross-model review path.",
+        capabilityKeys: ["governed-context"],
+        valueStreamKeys: ["governed-delivery"],
+        roleKeys: ["gaep-steward", "initiative-owner"],
+        decisionRightKeys: ["govern-initiative-outcome"],
+        ruleKeys: ["govern-context-eligibility"],
+        sources: [reference()],
+      }],
+      consistencyChecks: [
+        candidateCheck("capability-role-accountability"),
+        candidateCheck("capability-value-stream-trace"),
+        candidateCheck("exception-decision-authority"),
+        candidateCheck("outcome-capability-trace"),
+        candidateCheck("rule-capability-value-trace"),
+        candidateCheck("source-freshness"),
+      ],
+      governance: {
+        ownerRoleKey: "initiative-owner",
+        reviewerRoleKeys: ["gaep-steward", "initiative-owner"],
+        decisionRightKey: "govern-initiative-outcome",
+        approvalState: "not-granted",
+        basis: "The candidate owner and reviewers prepare an attributable review; this record cannot grant baseline approval.",
+        sources: [reference()],
+      },
+      changeControl: {
+        accountableRoleKey: "initiative-owner",
+        decisionRightKey: "govern-initiative-outcome",
+        triggers: ["Bound architecture member revision changes", "Candidate scope or coverage changes"],
+        requiredReviews: ["authority-review", "business-review", "impact-review", "source-review"],
+        dispositionRule: "Any trigger requires a superseding candidate revision and separate accountable review without silent baseline promotion.",
+        sources: [reference()],
+      },
+      limitations: ["No realistic Product Owner acceptance or approved Business Architecture Baseline is represented"],
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -1246,6 +1345,183 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("governs an exact immutable Business Architecture Baseline candidate without granting baseline authority", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+    const operatingModel = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
+      actorId,
+    )
+    const businessRuleCatalog = await engine.businessRuleCatalog.create(
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel),
+      actorId,
+    )
+    const input = businessArchitectureBaselineInput(
+      business,
+      stakeholder,
+      outcome,
+      capabilityMap,
+      valueStreamModel,
+      operatingModel,
+      businessRuleCatalog,
+    )
+    const baseline = await engine.businessArchitectureBaseline.create(input, actorId)
+    expect(baseline).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      membershipDigest: canonicalDigest({
+        businessUnderstanding: input.businessUnderstanding,
+        stakeholderModel: input.stakeholderModel,
+        outcomeModel: input.outcomeModel,
+        capabilityMap: input.capabilityMap,
+        valueStreamModel: input.valueStreamModel,
+        operatingModel: input.operatingModel,
+        businessRuleCatalog: input.businessRuleCatalog,
+      }),
+      governance: { approvalState: "not-granted" },
+      authorityBoundary: expect.stringContaining("does-not-designate-or-approve-a-baseline"),
+    })
+    expect(await engine.businessArchitectureBaseline.assess(initiative.id)).toMatchObject({
+      baseline: { recordId: baseline.id, revision: 1, digest: canonicalDigest(baseline) },
+      coveredElementCount: 9,
+      includedElementCount: 9,
+      excludedElementCount: 0,
+      unresolvedElementCount: 0,
+      integrationClaimCount: 1,
+      consistencyCheckCount: 6,
+      consistencyGapCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.businessArchitectureBaseline.project(initiative.id)
+    expect(projection).toMatchObject({
+      baseline: {
+        id: baseline.id,
+        coveredElementCount: 9,
+        integrationClaimCount: 1,
+        consistencyGapCount: 0,
+      },
+      privacyBoundary: expect.stringContaining("not-architecture-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-designate-or-approve-a-baseline"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("The governed-context capability")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.businessArchitectureBaseline.revise(
+      baseline.id,
+      baseline.revision,
+      businessArchitectureBaselineInput(
+        business,
+        stakeholder,
+        outcome,
+        capabilityMap,
+        valueStreamModel,
+        operatingModel,
+        businessRuleCatalog,
+        { limitations: ["A realistic Product Owner baseline decision remains outstanding"] },
+      ),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: baseline.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(baseline),
+      governance: { approvalState: "not-granted" },
+    })
+    expect((await engine.businessArchitectureBaseline.listHistory(baseline.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "business.architecture-baseline.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(baseline),
+        state: "candidate",
+        approvalState: "not-granted",
+        authorityBoundary: expect.stringContaining("does-not-designate-or-approve-a-baseline"),
+      },
+    })
+  })
+
+  it("rejects hostile Business Architecture coverage, governance, trace, and secret-shaped input", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+    const operatingModel = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
+      actorId,
+    )
+    const businessRuleCatalog = await engine.businessRuleCatalog.create(
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel),
+      actorId,
+    )
+    const base = businessArchitectureBaselineInput(
+      business,
+      stakeholder,
+      outcome,
+      capabilityMap,
+      valueStreamModel,
+      operatingModel,
+      businessRuleCatalog,
+    )
+    expect(() => businessArchitectureBaselineInputSchema.parse({
+      ...base,
+      governance: { ...base.governance, approvalState: "approved" },
+    })).toThrow()
+    await expect(engine.businessArchitectureBaseline.create({
+      ...base,
+      coverage: base.coverage.slice(1),
+    }, actorId)).rejects.toThrow(/enumerate every exact bound architecture element/)
+    await expect(engine.businessArchitectureBaseline.create({
+      ...base,
+      integrationClaims: [{ ...base.integrationClaims[0]!, roleKeys: ["invented-owner"] }],
+    }, actorId)).rejects.toThrow(/exact bound element keys/)
+    await expect(engine.businessArchitectureBaseline.create({
+      ...base,
+      governance: { ...base.governance, ownerRoleKey: "gaep-steward" },
+    }, actorId)).rejects.toThrow(/accountable decision rights/)
+    await expect(engine.businessArchitectureBaseline.create({
+      ...base,
+      changeControl: {
+        ...base.changeControl,
+        dispositionRule: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable baseline context",
+      },
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const baseline = await engine.businessArchitectureBaseline.create(base, actorId)
+    await engine.businessRuleCatalog.revise(
+      businessRuleCatalog.id,
+      businessRuleCatalog.revision,
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel, {
+        limitations: ["The exact Business Rule Catalog changed after baseline capture"],
+      }),
+      actorId,
+    )
+    expect(await engine.businessArchitectureBaseline.assess(initiative.id)).toMatchObject({
+      baseline: { recordId: baseline.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -1305,6 +1581,18 @@ describe("Business understanding governance", () => {
       businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel),
       actorId,
     )
+    const businessArchitectureBaseline = await engine.businessArchitectureBaseline.create(
+      businessArchitectureBaselineInput(
+        business,
+        stakeholder,
+        outcome,
+        capabilityMap,
+        valueStreamModel,
+        operatingModel,
+        businessRuleCatalog,
+      ),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -1317,6 +1605,8 @@ describe("Business understanding governance", () => {
       `operating-model-history/operating-model-${operatingModel.id}-r1.json`,
       `business-rule-catalogs/${businessRuleCatalog.id}.json`,
       `business-rule-catalog-history/business-rule-catalog-${businessRuleCatalog.id}-r1.json`,
+      `business-architecture-baselines/${businessArchitectureBaseline.id}.json`,
+      `business-architecture-baseline-history/business-architecture-baseline-${businessArchitectureBaseline.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -1419,6 +1709,23 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedRuleTrace))
       .rejects.toThrow(/unknown bound owner role/)
+
+    const forgeBaselineCoverage = (content: unknown) => ({
+      ...(content as BusinessArchitectureBaseline),
+      coverage: (content as BusinessArchitectureBaseline).coverage.slice(1),
+    })
+    let forgedBaseline = replacePortableRecord(
+      bundle,
+      `business-architecture-baselines/${businessArchitectureBaseline.id}.json`,
+      forgeBaselineCoverage,
+    )
+    forgedBaseline = replacePortableRecord(
+      forgedBaseline,
+      `business-architecture-baseline-history/business-architecture-baseline-${businessArchitectureBaseline.id}-r1.json`,
+      forgeBaselineCoverage,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedBaseline))
+      .rejects.toThrow(/coverage differs from exact bound records/)
   })
 
   it("requires explicit human disclosure review for confidential business records", async () => {

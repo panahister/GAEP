@@ -5,6 +5,7 @@ import { isAbsolute } from "node:path"
 
 import {
   architectureRecordSchema,
+  businessArchitectureBaselineSchema,
   businessCapabilityMapSchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
@@ -55,6 +56,7 @@ import {
   workflowPlanSchema,
   redactSecretShapedText,
   type ArchitectureRecord,
+  type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
   type BusinessRuleCatalog,
   type BusinessUnderstanding,
@@ -1956,6 +1958,16 @@ export class ProductStudioService {
       /^business-rule-catalog-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       businessRuleCatalogSchema,
     )
+    const businessArchitectureBaselines = await this.listRecords(
+      "business-architecture-baselines",
+      /^[0-9a-f-]+\.json$/i,
+      businessArchitectureBaselineSchema,
+    )
+    const businessArchitectureBaselineHistory = await this.listRecords(
+      "business-architecture-baseline-history",
+      /^business-architecture-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      businessArchitectureBaselineSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -1993,6 +2005,8 @@ export class ProductStudioService {
       ...operatingModelHistory,
       ...businessRuleCatalogs,
       ...businessRuleCatalogHistory,
+      ...businessArchitectureBaselines,
+      ...businessArchitectureBaselineHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2013,6 +2027,7 @@ export class ProductStudioService {
           valueStreamModels.find((record) => record.id === id)?.informationClassification ??
           operatingModels.find((record) => record.id === id)?.informationClassification ??
           businessRuleCatalogs.find((record) => record.id === id)?.informationClassification ??
+          businessArchitectureBaselines.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2094,6 +2109,13 @@ export class ProductStudioService {
       "business-rule-catalog",
       businessRuleCatalogHistory,
       (record) => `business-rule-catalog-history/business-rule-catalog-${record.id}-r${record.revision}.json`,
+    )
+    append("business-architecture-baselines", "business-architecture-baseline-candidate", businessArchitectureBaselines)
+    append(
+      "business-architecture-baseline-history",
+      "business-architecture-baseline-candidate",
+      businessArchitectureBaselineHistory,
+      (record) => `business-architecture-baseline-history/business-architecture-baseline-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2326,6 +2348,14 @@ export class ProductStudioService {
           `business-rule-catalog-history/business-rule-catalog-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Business Rule Catalog history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("business-architecture-baseline-history/")) {
+        const record = validated as BusinessArchitectureBaseline
+        const expectedHistoryPath =
+          `business-architecture-baseline-history/business-architecture-baseline-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Business Architecture Baseline history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3452,7 +3482,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3484,7 +3514,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -3782,7 +3812,7 @@ export class ProductStudioService {
     const businessRuleCatalogHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("business-rule-catalog-history/"))
       .map(([, record]) => businessRuleCatalogSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactBusinessRuleCatalogs = validateVersionedBusinessRecords(
       businessRuleCatalogs,
       businessRuleCatalogHistory,
       "Business Rule Catalog",
@@ -3828,6 +3858,104 @@ export class ProductStudioService {
       }
       if (!roleByKey.has(catalog.conflictModel.ownerRoleKey)) {
         throw new Error(`Import Business Rule Catalog ${catalog.id} conflict owner is unresolved`)
+      }
+    }
+
+    const resolveBusinessRuleCatalog = (
+      reference: BusinessArchitectureBaseline["businessRuleCatalog"],
+      initiativeId: string,
+    ): BusinessRuleCatalog => {
+      const record = exactBusinessRuleCatalogs.get(
+        `${reference.recordId}:${reference.revision}:${reference.digest}`,
+      )
+      if (!record || record.initiativeId !== initiativeId) {
+        throw new Error("Import exact Business Rule Catalog reference is unresolved")
+      }
+      return record
+    }
+    const businessArchitectureBaselines = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("business-architecture-baselines/"))
+      .map(([, record]) => businessArchitectureBaselineSchema.parse(record))
+    const businessArchitectureBaselineHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("business-architecture-baseline-history/"))
+      .map(([, record]) => businessArchitectureBaselineSchema.parse(record))
+    validateVersionedBusinessRecords(
+      businessArchitectureBaselines,
+      businessArchitectureBaselineHistory,
+      "Business Architecture Baseline",
+    )
+    for (const baseline of [...businessArchitectureBaselines, ...businessArchitectureBaselineHistory]) {
+      resolveBusinessUnderstanding(baseline.businessUnderstanding, baseline.initiativeId)
+      resolveStakeholderModel(baseline.stakeholderModel, baseline.initiativeId)
+      resolveOutcomeModel(baseline.outcomeModel, baseline.initiativeId)
+      const capabilityMap = resolveCapabilityMap(baseline.capabilityMap, baseline.initiativeId)
+      const valueStream = resolveValueStreamModel(baseline.valueStreamModel, baseline.initiativeId)
+      const operatingModel = resolveOperatingModel(baseline.operatingModel, baseline.initiativeId)
+      const catalog = resolveBusinessRuleCatalog(baseline.businessRuleCatalog, baseline.initiativeId)
+      const membership = {
+        businessUnderstanding: baseline.businessUnderstanding,
+        stakeholderModel: baseline.stakeholderModel,
+        outcomeModel: baseline.outcomeModel,
+        capabilityMap: baseline.capabilityMap,
+        valueStreamModel: baseline.valueStreamModel,
+        operatingModel: baseline.operatingModel,
+        businessRuleCatalog: baseline.businessRuleCatalog,
+      }
+      if (baseline.membershipDigest !== canonicalDigest(membership)) {
+        throw new Error(`Import Business Architecture Baseline ${baseline.id} membership digest is invalid`)
+      }
+      const expectedCoverage = [
+        ...capabilityMap.capabilities.map((entry) => `capability:${entry.key}`),
+        ...valueStream.valueStreams.map((entry) => `value-stream:${entry.key}`),
+        ...operatingModel.roles.map((entry) => `operating-role:${entry.key}`),
+        ...operatingModel.decisionRights.map((entry) => `decision-right:${entry.key}`),
+        ...catalog.rules.map((entry) => `business-rule:${entry.key}`),
+        ...catalog.enforcementTargets.map((entry) => `enforcement-target:${entry.key}`),
+        ...catalog.exceptions.map((entry) => `exception:${entry.key}`),
+      ].sort((left, right) => left.localeCompare(right))
+      const actualCoverage = baseline.coverage.map((entry) => `${entry.elementKind}:${entry.elementKey}`)
+      if (canonicalDigest(actualCoverage) !== canonicalDigest(expectedCoverage)) {
+        throw new Error(`Import Business Architecture Baseline ${baseline.id} coverage differs from exact bound records`)
+      }
+      const capabilityKeys = new Set(capabilityMap.capabilities.map((entry) => entry.key))
+      const valueStreamKeys = new Set(valueStream.valueStreams.map((entry) => entry.key))
+      const roleKeys = new Set(operatingModel.roles.map((entry) => entry.key))
+      const decisionRightByKey = new Map(operatingModel.decisionRights.map((entry) => [entry.key, entry]))
+      const ruleKeys = new Set(catalog.rules.map((entry) => entry.key))
+      for (const claim of baseline.integrationClaims) {
+        if (claim.capabilityKeys.some((key) => !capabilityKeys.has(key)) ||
+            claim.valueStreamKeys.some((key) => !valueStreamKeys.has(key)) ||
+            claim.roleKeys.some((key) => !roleKeys.has(key)) ||
+            claim.decisionRightKeys.some((key) => !decisionRightByKey.has(key)) ||
+            claim.ruleKeys.some((key) => !ruleKeys.has(key))) {
+          throw new Error(`Import Business Architecture Baseline ${baseline.id} integration claim is unresolved`)
+        }
+      }
+      const integrated = new Set(baseline.integrationClaims.flatMap((claim) => [
+        ...claim.capabilityKeys.map((key) => `capability:${key}`),
+        ...claim.valueStreamKeys.map((key) => `value-stream:${key}`),
+        ...claim.ruleKeys.map((key) => `business-rule:${key}`),
+      ]))
+      if (baseline.coverage.some((entry) =>
+        entry.disposition === "included-candidate" &&
+        ["capability", "value-stream", "business-rule"].includes(entry.elementKind) &&
+        !integrated.has(`${entry.elementKind}:${entry.elementKey}`))) {
+        throw new Error(`Import Business Architecture Baseline ${baseline.id} lacks required cross-model integration`)
+      }
+      const governedRoles = [
+        baseline.governance.ownerRoleKey,
+        ...baseline.governance.reviewerRoleKeys,
+        baseline.changeControl.accountableRoleKey,
+        ...baseline.consistencyChecks.map((check) => check.accountableRoleKey),
+      ]
+      if (governedRoles.some((key) => !roleKeys.has(key))) {
+        throw new Error(`Import Business Architecture Baseline ${baseline.id} governance role is unresolved`)
+      }
+      const governanceRight = decisionRightByKey.get(baseline.governance.decisionRightKey)
+      const changeRight = decisionRightByKey.get(baseline.changeControl.decisionRightKey)
+      if (!governanceRight || governanceRight.accountableRoleKey !== baseline.governance.ownerRoleKey ||
+          !changeRight || changeRight.accountableRoleKey !== baseline.changeControl.accountableRoleKey) {
+        throw new Error(`Import Business Architecture Baseline ${baseline.id} crosses a decision-right authority boundary`)
       }
     }
 
@@ -4448,6 +4576,10 @@ export class ProductStudioService {
         /^business-rule-catalog-history\/business-rule-catalog-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "business-rule-catalog"
     }
+    if (/^business-architecture-baselines\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^business-architecture-baseline-history\/business-architecture-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "business-architecture-baseline-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -4512,6 +4644,10 @@ export class ProductStudioService {
     if (/^business-rule-catalogs\/[0-9a-f-]+\.json$/i.test(path) ||
         /^business-rule-catalog-history\/business-rule-catalog-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return businessRuleCatalogSchema
+    }
+    if (/^business-architecture-baselines\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^business-architecture-baseline-history\/business-architecture-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return businessArchitectureBaselineSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
