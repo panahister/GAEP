@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import { portableSelectionSettingsSchema } from "./agent.js"
 import { businessCapabilityMapInputSchema } from "./business-capability-map.js"
+import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
   businessUnderstandingInputSchema,
@@ -289,6 +290,18 @@ export const hostBusinessRuleCatalogReviseParamsSchema = z.object({
   record: businessRuleCatalogInputSchema,
 }).strict()
 
+export const hostBusinessArchitectureBaselineCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: businessArchitectureBaselineInputSchema,
+}).strict()
+
+export const hostBusinessArchitectureBaselineReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: businessArchitectureBaselineInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -370,6 +383,11 @@ export const hostMethodSchema = z.enum([
   "business.businessRules.revise",
   "business.businessRules.assess",
   "business.businessRules.snapshot",
+  "business.architectureBaselines.read",
+  "business.architectureBaselines.create",
+  "business.architectureBaselines.revise",
+  "business.architectureBaselines.assess",
+  "business.architectureBaselines.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -463,6 +481,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("business.businessRules.revise", hostBusinessRuleCatalogReviseParamsSchema),
   requestVariant("business.businessRules.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("business.businessRules.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.architectureBaselines.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.architectureBaselines.create", hostBusinessArchitectureBaselineCreateParamsSchema),
+  requestVariant("business.architectureBaselines.revise", hostBusinessArchitectureBaselineReviseParamsSchema),
+  requestVariant("business.architectureBaselines.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.architectureBaselines.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
