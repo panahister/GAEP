@@ -86,7 +86,7 @@ The standard delivery loop is:
 1. implement the Feature once in shared code and cover it with platform-neutral tests;
 2. connect it through thin IDE adapters;
 3. build, install, and manually smoke VS Code, Kiro, and Rider on the Product Owner's macOS environment when applicable;
-4. run the same commit through automated macOS, Windows, and Linux build/package/launch/protocol/workflow smoke lanes;
+4. run the same commit through local macOS build/package/install/workflow smoke and GitHub Actions Windows/Linux build/package/launch/protocol/workflow smoke lanes;
 5. correct only the failing platform adapter or lane; do not fork or reimplement the Feature;
 6. collect every stable release's verified packages into the Git-ignored local release bundle defined in Section 3.2;
 7. perform a full manual operating-system matrix only for a release candidate or a platform-specific defect that automation cannot validate.
