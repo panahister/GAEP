@@ -42,7 +42,8 @@
     { "id": "process-model", "label": "Exact governed Process Model candidate projection without workflow approval, transition or execution authority, operational readiness, baseline promotion, or action authority" },
     { "id": "data-model", "label": "Exact governed Data Model candidate projection without model or classification approval, ownership appointment, migration authority, operational readiness, baseline promotion, or action authority" },
     { "id": "authorization-model", "label": "Exact governed Authorization Model candidate projection without identity verification, effective role assignment, standing authority, authorization grant, enforcement decision, operational readiness, baseline promotion, or action authority" },
-    { "id": "event-integration-model", "label": "Exact governed Event and Integration Model candidate projection without event occurrence, command delivery, external acceptance, adapter activation, authorization grant, effect execution, operational readiness, baseline promotion, or action authority" }
+    { "id": "event-integration-model", "label": "Exact governed Event and Integration Model candidate projection without event occurrence, command delivery, external acceptance, adapter activation, authorization grant, effect execution, operational readiness, baseline promotion, or action authority" },
+    { "id": "failure-recovery-model", "label": "Exact governed Failure and Recovery Model candidate projection without failure occurrence, retry safety, compensation or restoration, recovery success, return-to-service authority, operational readiness, baseline promotion, or action authority" }
   ],
   "hosts": [
     {
@@ -53,7 +54,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T195120Z-phase-1-event-integration-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T203321Z-phase-1-failure-recovery-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -178,6 +179,9 @@
         ] },
         { "capabilityId": "event-integration-model", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["eventIntegrationModel?: {", "engine.eventIntegrationModel!.project(initiative.id)", "id: \"event-integration-model\"", "Candidate event types, commands, adapters, contracts, mappings, and routes only; no event occurrence, command delivery, external acceptance, adapter activation, authorization grant, effect execution, operational readiness, or action authority."] }
+        ] },
+        { "capabilityId": "failure-recovery-model", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["failureRecoveryModel?: {", "engine.failureRecoveryModel!.project(initiative.id)", "id: \"failure-recovery-model\"", "Candidate failure modes, retry policies, compensation plans, recovery plans, and evidence definitions only; no failure occurrence, retry safety, compensation or restoration, recovery success, return-to-service authority, operational readiness, or action authority."] }
         ] }
       ]
     },
@@ -189,7 +193,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T195120Z-phase-1-event-integration-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T203321Z-phase-1-failure-recovery-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -325,6 +329,10 @@
         { "capabilityId": "event-integration-model", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readEventIntegrationModel(", "this.request(\"integration.models.snapshot\"", "eventIntegrationModelProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showEventIntegrationModel", "GAEP governed Event and Integration Model candidate", "Candidate counts:", "Authority boundary: ${projection.authorityBoundary}"] }
+        ] },
+        { "capabilityId": "failure-recovery-model", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readFailureRecoveryModel(", "this.request(\"recovery.models.snapshot\"", "failureRecoveryModelProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showFailureRecoveryModel", "GAEP governed Failure and Recovery Model candidate", "Candidate counts:", "Authority boundary: ${projection.authorityBoundary}"] }
         ] }
       ]
     },
@@ -336,7 +344,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T195120Z-phase-1-event-integration-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T203321Z-phase-1-failure-recovery-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -492,6 +500,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readEventIntegrationModel(", "portableRequest(\"integration.models.snapshot\"", "parseEventIntegrationModelEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Event and Integration Model candidate", "Membership digest:", "event occurrence, send or deliver commands"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["EventIntegrationModelRecordView", "EVENT_INTEGRATION_MODEL_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "failure-recovery-model", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readFailureRecoveryModel(", "portableRequest(\"recovery.models.snapshot\"", "parseFailureRecoveryModelEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Failure and Recovery Model candidate", "Membership digest:", "does not prove failure occurrence, establish retry safety"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["FailureRecoveryModelRecordView", "FAILURE_RECOVERY_MODEL_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -503,7 +516,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T195120Z-phase-1-event-integration-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T203321Z-phase-1-failure-recovery-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -668,13 +681,18 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadEventIntegrationModelAsync(", "\"integration.models.snapshot\"", "ParseEventIntegrationModelResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Event and Integration Model candidate", "Membership digest:", "occurrence, send or deliver commands"] },
           { "path": "apps/visual-studio/Gaep.HostClient/EventIntegrationModelProtocol.cs", "contains": ["EventIntegrationModelRecordView", "EventIntegrationModelProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "failure-recovery-model", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadFailureRecoveryModelAsync(", "\"recovery.models.snapshot\"", "ParseFailureRecoveryModelResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Failure and Recovery Model candidate", "Membership digest:", "does not prove failure occurrence, establish retry safety"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/FailureRecoveryModelProtocol.cs", "contains": ["FailureRecoveryModelRecordView", "FailureRecoveryModelProjectionAuthorityBoundary"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-26T195120Z-phase-1-event-integration-model-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-26T203321Z-phase-1-failure-recovery-model-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",
