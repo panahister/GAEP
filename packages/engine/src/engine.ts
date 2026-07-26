@@ -82,6 +82,7 @@ import { BoundedContextModelService } from "./bounded-context-model.js"
 import { SecurityPrivacyAssessmentService } from "./security-privacy-assessment.js"
 import { ProcessModelService } from "./process-model.js"
 import { DataModelService } from "./data-model.js"
+import { AuthorizationModelService } from "./authorization-model.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -253,6 +254,7 @@ export class GaepEngine {
   readonly securityPrivacyAssessment: SecurityPrivacyAssessmentService
   readonly processModel: ProcessModelService
   readonly dataModel: DataModelService
+  readonly authorizationModel: AuthorizationModelService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -373,6 +375,18 @@ export class GaepEngine {
       this.operatingModel,
       this.securityPrivacyAssessment,
       this.processModel,
+    )
+    this.authorizationModel = new AuthorizationModelService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      this.systemSolutionArchitecture,
+      this.boundedContextModel,
+      this.operatingModel,
+      this.securityPrivacyAssessment,
+      this.processModel,
+      this.dataModel,
     )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)

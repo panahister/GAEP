@@ -3,6 +3,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import {
+  authorizationModelInputSchema,
+  authorizationModelRequirementIds,
   boundedContextModelInputSchema,
   securityPrivacyAssessmentInputSchema,
   securityPrivacyRequirementIds,
@@ -19,6 +21,8 @@ import {
   valueStreamModelInputSchema,
   type BoundedContextModelInput,
   type BoundedContextModel,
+  type AuthorizationModel,
+  type AuthorizationModelInput,
   type SecurityPrivacyAssessment,
   type SecurityPrivacyAssessmentInput,
   type ProcessModelInput,
@@ -1731,6 +1735,214 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function authorizationModelInput(
+    architecture: SystemSolutionArchitecture,
+    boundedContextModel: BoundedContextModel,
+    operatingModel: OperatingModel,
+    securityPrivacyAssessment: SecurityPrivacyAssessment,
+    processModel: ProcessModel,
+    dataModel: DataModel,
+    overrides: Partial<AuthorizationModelInput> = {},
+  ): AuthorizationModelInput {
+    const principalKeys = ["gaep-steward-principal", "initiative-owner-principal"]
+    const actionKeys = ["assess-candidate", "revise-candidate"]
+    const resourceKeys = [
+      "architecture-engine",
+      "context-product-studio",
+      "data-governed-record",
+      "data-product-studio-projection",
+      "process-governed-context-review",
+    ]
+    const ruleKeys = ["candidate-review-rule"]
+    const approvalBindingKeys = ["candidate-baseline-approval"]
+    const requirementCoverage = [...authorizationModelRequirementIds]
+      .sort((left, right) => left.localeCompare(right))
+      .map((requirementId) => ({
+        requirementId,
+        state: "covered-candidate" as const,
+        principalKeys,
+        actionKeys,
+        resourceKeys,
+        ruleKeys,
+        approvalBindingKeys,
+        basis: "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+        evidence: [reference()],
+      }))
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Authorization Model",
+      scope: "Model candidate principals, role assignments, resources, actions, approval bindings, and authorization rules for exact governed Product records without creating an effective identity, appointment, approval, grant, enforcement decision, readiness state, or action authority.",
+      systemSolutionArchitecture: { recordId: architecture.id, revision: architecture.revision, digest: canonicalDigest(architecture) },
+      boundedContextModel: { recordId: boundedContextModel.id, revision: boundedContextModel.revision, digest: canonicalDigest(boundedContextModel) },
+      operatingModel: { recordId: operatingModel.id, revision: operatingModel.revision, digest: canonicalDigest(operatingModel) },
+      securityPrivacyAssessment: {
+        recordId: securityPrivacyAssessment.id,
+        revision: securityPrivacyAssessment.revision,
+        digest: canonicalDigest(securityPrivacyAssessment),
+      },
+      processModel: { recordId: processModel.id, revision: processModel.revision, digest: canonicalDigest(processModel) },
+      dataModel: { recordId: dataModel.id, revision: dataModel.revision, digest: canonicalDigest(dataModel) },
+      principals: [{
+        key: "gaep-steward-principal",
+        name: "Candidate GAEP steward principal",
+        kind: "human",
+        operatingRoleKeys: ["gaep-steward"],
+        identitySourceState: "candidate-declared",
+        identityAssuranceState: "not-verified",
+        limitations: ["The candidate principal identity is not verified and establishes no appointment, standing authority, delegation, or authorization grant"],
+        sources: [reference()],
+      }, {
+        key: "initiative-owner-principal",
+        name: "Candidate Initiative owner principal",
+        kind: "human",
+        operatingRoleKeys: ["initiative-owner"],
+        identitySourceState: "candidate-declared",
+        identityAssuranceState: "not-verified",
+        limitations: ["The candidate principal identity is not verified and establishes no appointment, standing authority, delegation, or authorization grant"],
+        sources: [reference()],
+      }],
+      roleAssignments: [{
+        key: "assign-gaep-steward",
+        principalKey: "gaep-steward-principal",
+        operatingRoleKey: "gaep-steward",
+        scopeKeys: ["governance-core", "product-studio"],
+        assigningAuthorityRoleKey: "initiative-owner",
+        effectiveFrom: "2026-07-26T00:00:00.000Z",
+        expiryOrReviewCondition: "The candidate assignment requires independent identity, competence, conflict, scope, validity, and appointing-authority review before it could become effective.",
+        validityState: "candidate-not-effective",
+        delegationState: "not-granted",
+        limitations: ["No effective role assignment, standing authority, delegation, or action authorization is represented"],
+        sources: [reference()],
+      }, {
+        key: "assign-initiative-owner",
+        principalKey: "initiative-owner-principal",
+        operatingRoleKey: "initiative-owner",
+        scopeKeys: ["governance-core", "product-studio"],
+        assigningAuthorityRoleKey: "gaep-steward",
+        effectiveFrom: "2026-07-26T00:00:00.000Z",
+        expiryOrReviewCondition: "The candidate assignment requires independent identity, competence, conflict, scope, validity, and appointing-authority review before it could become effective.",
+        validityState: "candidate-not-effective",
+        delegationState: "not-granted",
+        limitations: ["No effective role assignment, standing authority, delegation, or action authorization is represented"],
+        sources: [reference()],
+      }],
+      resources: [{
+        key: "architecture-engine",
+        name: "Shared engine architecture element",
+        kind: "architecture-element",
+        subjectKey: "gaep-engine",
+        scopeKeys: ["governance-core"],
+        classification: "internal",
+        effectBoundary: "The resource represents candidate review scope only and grants no mutation, execution, deployment, or release capability.",
+        sources: [reference()],
+      }, {
+        key: "context-product-studio",
+        name: "Product Studio bounded context",
+        kind: "bounded-context",
+        subjectKey: "product-studio",
+        scopeKeys: ["product-studio"],
+        classification: "internal",
+        effectBoundary: "The resource represents privacy-safe native presentation scope only and grants no governed-store, approval, or execution capability.",
+        sources: [reference()],
+      }, {
+        key: "data-governed-record",
+        name: "Governed candidate record data entity",
+        kind: "data-entity",
+        subjectKey: "governed-record",
+        scopeKeys: ["governance-core"],
+        classification: "internal",
+        effectBoundary: "The resource identifies one conceptual data entity for candidate policy review and grants no read, write, processing, retention, deletion, or disclosure authority.",
+        sources: [reference()],
+      }, {
+        key: "data-product-studio-projection",
+        name: "Product Studio projection data entity",
+        kind: "data-entity",
+        subjectKey: "product-studio-projection",
+        scopeKeys: ["product-studio"],
+        classification: "internal",
+        effectBoundary: "The resource identifies one privacy-safe projection for candidate policy review and grants no access, disclosure, persistence, or downstream-use authority.",
+        sources: [reference()],
+      }, {
+        key: "process-governed-context-review",
+        name: "Governed context review process",
+        kind: "process",
+        subjectKey: "governed-context-review",
+        scopeKeys: ["governance-core", "product-studio"],
+        classification: "internal",
+        effectBoundary: "The resource represents an exact candidate process and grants no transition, approval, baseline, readiness, execution, or action authority.",
+        sources: [reference()],
+      }],
+      actions: [{
+        key: "assess-candidate",
+        name: "Assess candidate coverage",
+        purpose: "Read exact governed records and derive a bounded candidate coverage status without changing state or making an authorization decision.",
+        processKeys: ["governed-context-review"],
+        effectKinds: ["read-derived-status"],
+        requiredState: "The exact Product, Initiative, upstream records, Source evidence, and audit chain must remain internally consistent and current.",
+        approvalRequirementKeys: [],
+        confirmationRequired: false,
+        sources: [reference()],
+      }, {
+        key: "revise-candidate",
+        name: "Revise candidate record",
+        purpose: "Prepare a superseding immutable candidate revision with exact predecessor, context, evidence, and audit identity without approving or executing it.",
+        processKeys: ["governed-context-review"],
+        effectKinds: ["governed-candidate-mutation"],
+        requiredState: "The Initiative must be mutable and the exact expected revision, context, upstream records, Source evidence, and audit chain must validate.",
+        approvalRequirementKeys: ["process-baseline-approval"],
+        confirmationRequired: true,
+        sources: [reference()],
+      }],
+      approvalBindings: [{
+        key: "candidate-baseline-approval",
+        processApprovalRequirementKeys: ["process-baseline-approval"],
+        actionKeys: ["revise-candidate"],
+        resourceKeys,
+        approverRoleKeys: ["initiative-owner"],
+        segregation: "The generator, reviewer, and candidate principal cannot synthesize the accountable human approval response or its identity, eligibility, independence, scope, or validity.",
+        aggregation: "The exact Process requirement remains separately evaluated; missing, ambiguous, conflicted, expired, revoked, or stale responses remain incomplete.",
+        validity: "Any future determination would remain valid only for the unchanged exact subject, authority, policy, evidence, conditions, and effective interval.",
+        determinationState: "not-established",
+        sources: [reference()],
+      }],
+      rules: [{
+        key: "candidate-review-rule",
+        principalKeys,
+        roleKeys: ["gaep-steward", "initiative-owner"],
+        actionKeys,
+        resourceKeys,
+        approvalBindingKeys,
+        decision: "candidate-eligible",
+        conditions: ["Eligibility is descriptive candidate policy coverage only and never an effective permission, approval response, authorization grant, enforcement result, or action authority"],
+        invalidationTriggers: ["Any identity, appointment, authority, scope, role, policy, evidence, approval, resource, action, Product, Initiative, or upstream record changes materially"],
+        delegationState: "not-granted",
+        sources: [reference()],
+      }],
+      requirementCoverage,
+      assumptions: ["The selected local Product and Initiative records remain the exact bounded Authorization Model scope"],
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      governance: {
+        securityAuthorityRoleKeys: ["gaep-steward"],
+        identityAuthorityRoleKeys: ["initiative-owner"],
+        modelReviewerRoleKeys: ["gaep-steward", "initiative-owner"],
+        modelApprovalState: "not-granted",
+        identityVerificationState: "not-established",
+        roleAssignmentApprovalState: "not-granted",
+        standingAuthorityState: "not-granted",
+        authorizationGrantState: "not-granted",
+        enforcementState: "not-established",
+        reviewState: "under-challenge",
+        basis: "Named candidate principals and roles may prepare and challenge the model, but only separately verified and eligible humans with exact effective appointments and authorization records could approve identity, assignments, standing authority, grants, enforcement, readiness, or action.",
+        sources: [reference()],
+      },
+      limitations: ["No verified identity, effective role assignment, standing authority, authorization grant, enforcement decision, approved model, operational readiness, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   async function createArchitectureAndBoundedContext() {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const capabilityMap = await engine.businessCapabilityMap.create(
@@ -1769,6 +1981,34 @@ describe("Business understanding governance", () => {
       architecture,
       boundedContextModel,
     }
+  }
+
+  async function createAuthorizationUpstream() {
+    const upstream = await createArchitectureAndBoundedContext()
+    const securityPrivacyAssessment = await engine.securityPrivacyAssessment.create(
+      securityPrivacyAssessmentInput(upstream.boundedContextModel), actorId,
+    )
+    const processModel = await engine.processModel.create(
+      processModelInput(
+        upstream.valueStreamModel,
+        upstream.operatingModel,
+        upstream.businessRuleCatalog,
+        upstream.boundedContextModel,
+        securityPrivacyAssessment,
+      ),
+      actorId,
+    )
+    const dataModel = await engine.dataModel.create(
+      dataModelInput(
+        upstream.architecture,
+        upstream.boundedContextModel,
+        upstream.operatingModel,
+        securityPrivacyAssessment,
+        processModel,
+      ),
+      actorId,
+    )
+    return { ...upstream, securityPrivacyAssessment, processModel, dataModel }
   }
 
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
@@ -3418,6 +3658,195 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("persists exact versioned Authorization Model candidates and privacy-safe status", async () => {
+    const upstream = await createAuthorizationUpstream()
+    const input = authorizationModelInput(
+      upstream.architecture,
+      upstream.boundedContextModel,
+      upstream.operatingModel,
+      upstream.securityPrivacyAssessment,
+      upstream.processModel,
+      upstream.dataModel,
+    )
+    const model = await engine.authorizationModel.create(input, actorId)
+
+    expect(model).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      membershipDigest: canonicalDigest({
+        systemSolutionArchitecture: input.systemSolutionArchitecture,
+        boundedContextModel: input.boundedContextModel,
+        operatingModel: input.operatingModel,
+        securityPrivacyAssessment: input.securityPrivacyAssessment,
+        processModel: input.processModel,
+        dataModel: input.dataModel,
+      }),
+      governance: {
+        modelApprovalState: "not-granted",
+        identityVerificationState: "not-established",
+        roleAssignmentApprovalState: "not-granted",
+        standingAuthorityState: "not-granted",
+        authorizationGrantState: "not-granted",
+        enforcementState: "not-established",
+        reviewState: "under-challenge",
+      },
+      authorityBoundary: expect.stringContaining("does-not-verify-identity"),
+    })
+    expect(await engine.authorizationModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id, revision: 1, digest: canonicalDigest(model) },
+      principalCount: 2,
+      roleAssignmentCount: 2,
+      resourceCount: 5,
+      actionCount: 2,
+      approvalBindingCount: 1,
+      ruleCount: 1,
+      uncoveredOperatingRoleCount: 0,
+      uncoveredProcessCount: 0,
+      uncoveredDataEntityCount: 0,
+      unresolvedIdentityCount: 0,
+      unresolvedRuleCount: 0,
+      unresolvedRequirementCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      authorityBoundary: expect.stringContaining("does-not-verify-identity"),
+    })
+    const projection = await engine.authorizationModel.project(initiative.id)
+    expect(projection).toMatchObject({
+      model: {
+        id: model.id,
+        principalCount: 2,
+        actionCount: 2,
+        ruleCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-principal-identifiers"),
+      authorityBoundary: expect.stringContaining("does-not-verify-identity"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Candidate GAEP steward principal")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.authorizationModel.revise(
+      model.id,
+      model.revision,
+      authorizationModelInput(
+        upstream.architecture,
+        upstream.boundedContextModel,
+        upstream.operatingModel,
+        upstream.securityPrivacyAssessment,
+        upstream.processModel,
+        upstream.dataModel,
+        { limitations: [
+          "No verified identity, effective role assignment, standing authority, authorization grant, enforcement decision, approved model, operational readiness, release, deployment, or action authority is represented",
+          "The candidate remains subject to independent identity, authority, security, privacy, native-host, and Product Owner challenge",
+        ] },
+      ),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: model.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(model),
+      governance: {
+        modelApprovalState: "not-granted",
+        identityVerificationState: "not-established",
+        roleAssignmentApprovalState: "not-granted",
+        standingAuthorityState: "not-granted",
+        authorizationGrantState: "not-granted",
+        enforcementState: "not-established",
+      },
+    })
+    expect((await engine.authorizationModel.listHistory(model.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "authorization.model.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(model),
+        state: "candidate",
+        modelApprovalState: "not-granted",
+        identityVerificationState: "not-established",
+        roleAssignmentApprovalState: "not-granted",
+        standingAuthorityState: "not-granted",
+        authorizationGrantState: "not-granted",
+        enforcementState: "not-established",
+        reviewState: "under-challenge",
+      },
+    })
+  })
+
+  it("rejects forged Authorization Model authority, graph, roles, bindings, and secrets", async () => {
+    const upstream = await createAuthorizationUpstream()
+    const base = authorizationModelInput(
+      upstream.architecture,
+      upstream.boundedContextModel,
+      upstream.operatingModel,
+      upstream.securityPrivacyAssessment,
+      upstream.processModel,
+      upstream.dataModel,
+    )
+    expect(() => authorizationModelInputSchema.parse({
+      ...base,
+      governance: { ...base.governance, authorizationGrantState: "granted" },
+    })).toThrow()
+    expect(() => authorizationModelInputSchema.parse({
+      ...base,
+      roleAssignments: base.roleAssignments.map((entry) => ({ ...entry, principalKey: "invented-principal" })),
+    })).toThrow(/declared Principals/)
+    await expect(engine.authorizationModel.create({
+      ...base,
+      principals: base.principals.map((entry) => ({ ...entry, operatingRoleKeys: ["invented-role"] })),
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.authorizationModel.create({
+      ...base,
+      resources: base.resources.map((entry) => entry.key === "data-governed-record"
+        ? { ...entry, subjectKey: "invented-data-entity" }
+        : entry),
+    }, actorId)).rejects.toThrow(/exact bound upstream subjects/)
+    await expect(engine.authorizationModel.create({
+      ...base,
+      actions: base.actions.map((entry) => entry.key === "revise-candidate"
+        ? { ...entry, approvalRequirementKeys: ["invented-approval"] }
+        : entry),
+    }, actorId)).rejects.toThrow(/exact bound Process approval requirements/)
+    await expect(engine.authorizationModel.create({
+      ...base,
+      dataModel: { ...base.dataModel, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Data Model/)
+    await expect(engine.authorizationModel.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable authorization context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const model = await engine.authorizationModel.create(base, actorId)
+    await engine.dataModel.revise(
+      upstream.dataModel.id,
+      upstream.dataModel.revision,
+      dataModelInput(
+        upstream.architecture,
+        upstream.boundedContextModel,
+        upstream.operatingModel,
+        upstream.securityPrivacyAssessment,
+        upstream.processModel,
+        { limitations: [
+          "No approved Data Model baseline, classification approval, accepted ownership, migration authority, operational readiness, release, deployment, or action authority is represented",
+          "The exact Data Model changed after Authorization Model capture",
+        ] },
+      ),
+      actorId,
+    )
+    expect(await engine.authorizationModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -3521,6 +3950,17 @@ describe("Business understanding governance", () => {
       ),
       actorId,
     )
+    const authorizationModel = await engine.authorizationModel.create(
+      authorizationModelInput(
+        systemSolutionArchitecture,
+        boundedContextModel,
+        operatingModel,
+        securityPrivacyAssessment,
+        processModel,
+        dataModel,
+      ),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -3545,6 +3985,8 @@ describe("Business understanding governance", () => {
       `process-model-history/process-model-${processModel.id}-r1.json`,
       `data-models/${dataModel.id}.json`,
       `data-model-history/data-model-${dataModel.id}-r1.json`,
+      `authorization-models/${authorizationModel.id}.json`,
+      `authorization-model-history/authorization-model-${authorizationModel.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -3610,6 +4052,35 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedDataBinding))
       .rejects.toThrow(/Data Model .* Process Model reference is unresolved/)
+
+    const forgeAuthorizationData = (content: unknown) => {
+      const record = content as AuthorizationModel
+      const dataModelReference = { ...record.dataModel, digest: digest("b") }
+      return {
+        ...record,
+        dataModel: dataModelReference,
+        membershipDigest: canonicalDigest({
+          systemSolutionArchitecture: record.systemSolutionArchitecture,
+          boundedContextModel: record.boundedContextModel,
+          operatingModel: record.operatingModel,
+          securityPrivacyAssessment: record.securityPrivacyAssessment,
+          processModel: record.processModel,
+          dataModel: dataModelReference,
+        }),
+      }
+    }
+    let forgedAuthorizationBinding = replacePortableRecord(
+      bundle,
+      `authorization-models/${authorizationModel.id}.json`,
+      forgeAuthorizationData,
+    )
+    forgedAuthorizationBinding = replacePortableRecord(
+      forgedAuthorizationBinding,
+      `authorization-model-history/authorization-model-${authorizationModel.id}-r1.json`,
+      forgeAuthorizationData,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedAuthorizationBinding))
+      .rejects.toThrow(/Authorization Model .* Data Model reference is unresolved/)
 
     const rebound = replacePortableRecord(
       bundle,

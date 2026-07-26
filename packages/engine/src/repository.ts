@@ -15,6 +15,7 @@ import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from "node
 
 import {
   architectureRecordSchema,
+  authorizationModelSchema,
   auditCheckpointSchema,
   auditEventSchema,
   businessArchitectureBaselineSchema,
@@ -113,6 +114,8 @@ const directoryNames = [
   "process-model-history",
   "data-models",
   "data-model-history",
+  "authorization-models",
+  "authorization-model-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -900,6 +903,8 @@ export class GaepRepository {
       ["process-model-history", /^process-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["data-models", /^[0-9a-f-]+\.json$/i],
       ["data-model-history", /^data-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["authorization-models", /^[0-9a-f-]+\.json$/i],
+      ["authorization-model-history", /^authorization-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1027,6 +1032,10 @@ export class GaepRepository {
     if (/^data-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^data-model-history\/data-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, dataModelSchema)
+    }
+    if (/^authorization-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^authorization-model-history\/authorization-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, authorizationModelSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
