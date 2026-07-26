@@ -390,6 +390,52 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readOperatingModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readOperatingModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Operating Model was read. Refresh the exact records." }
+        return renderOperatingModel(projection)
+    }
+
+    fun renderOperatingModel(projection: OperatingModelProjection): String = buildString {
+        appendLine("GAEP governed Operating Model")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Structural counts: ${projection.roleCount} roles · ${projection.governanceSystemCount} governance systems · " +
+                "${projection.decisionRightCount} decision rights · ${projection.forumCount} forums · ${projection.cycleCount} cycles",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unassignedAppointingAuthorityCount} appointing authorities · " +
+                "${projection.insufficientCapacityCount} capacity · ${projection.unfundedCapacityCount} funding · " +
+                "${projection.unassignedDecisionAuthorityCount} decision authorities · ${projection.supportCapacityGapCount} support capacity · " +
+                "${projection.emergencyAuthorityGapCount} emergency authority · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.operatingModel?.let { record ->
+            appendLine("Operating Model: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine(
+                "Model counts: ${record.roleCount} roles · ${record.decisionRightCount} decision rights · " +
+                    "${record.forumCount} forums · ${record.cycleCount} cycles",
+            )
+        } ?: appendLine("Operating Model: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no operating narrative, personal assignments, Source content, " +
+                "locators, local paths, or credentials and grants no appointment, funding, baseline, readiness, or action authority.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

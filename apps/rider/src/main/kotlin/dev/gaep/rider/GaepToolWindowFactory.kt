@@ -162,6 +162,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += valueStreamModelButton
         actions.add(valueStreamModelButton)
 
+        val operatingModelButton = JButton("Inspect Operating Model…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Operating narrative, personal assignments, Source content, local paths, credentials, and authority are withheld.",
+                    "GAEP Operating Model",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Operating Model", status, output, buttons) {
+                    controller.readOperatingModel(initiativeId)
+                }
+            }
+        }
+        buttons += operatingModelButton
+        actions.add(operatingModelButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

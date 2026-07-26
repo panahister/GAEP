@@ -932,6 +932,43 @@ data class ValueStreamModelProjection(
     val snapshotDigest: String,
 )
 
+data class OperatingModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val roleCount: Int,
+    val decisionRightCount: Int,
+    val forumCount: Int,
+    val cycleCount: Int,
+)
+
+data class OperatingModelProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val roleCount: Int,
+    val governanceSystemCount: Int,
+    val unassignedAppointingAuthorityCount: Int,
+    val insufficientCapacityCount: Int,
+    val unfundedCapacityCount: Int,
+    val decisionRightCount: Int,
+    val unassignedDecisionAuthorityCount: Int,
+    val forumCount: Int,
+    val cycleCount: Int,
+    val supportCapacityGapCount: Int,
+    val emergencyAuthorityGapCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val operatingModel: OperatingModelRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -981,6 +1018,12 @@ internal object PortableDesignProtocol {
         "value-stream-model-projection-does-not-approve-baseline-priority-readiness-or-authorize-action"
     private const val VALUE_STREAM_ASSESSMENT_AUTHORITY_BOUNDARY =
         "value-stream-model-assessment-reports-recorded-candidate-flow-coverage-and-gaps-and-does-not-approve-baseline-readiness-or-authorize-action"
+    private const val OPERATING_MODEL_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-operating-narrative-personal-data-source-content-locators-or-credentials"
+    private const val OPERATING_MODEL_PROJECTION_AUTHORITY_BOUNDARY =
+        "operating-model-projection-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action"
+    private const val OPERATING_MODEL_ASSESSMENT_AUTHORITY_BOUNDARY =
+        "operating-model-assessment-reports-candidate-structural-coverage-and-gaps-and-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -2476,6 +2519,144 @@ internal object PortableDesignProtocol {
             staleSourceReferenceCount,
             model,
             snapshotDigest,
+        )
+    }
+
+    fun parseOperatingModelEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): OperatingModelProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "assessment", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("operatingModel"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "operating-model-projection" ||
+            projection.requireString("privacyBoundary") != OPERATING_MODEL_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != OPERATING_MODEL_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val assessment = projection.get("assessment").requireObject()
+        assessment.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "roleCount", "governanceSystemCount", "unassignedAppointingAuthorityCount",
+                "insufficientCapacityCount", "unfundedCapacityCount", "decisionRightCount",
+                "unassignedDecisionAuthorityCount", "forumCount", "cycleCount", "supportCapacityGapCount",
+                "emergencyAuthorityGapCount", "staleBindingCount", "staleSourceReferenceCount", "state",
+                "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("operatingModel"),
+        )
+        if (assessment.requireInt("schemaVersion") != 1 ||
+            assessment.requireString("kind") != "operating-model-assessment" ||
+            assessment.requireNonEmptyUuid("productId") != productId ||
+            assessment.requireLong("productRevision") != productRevision ||
+            assessment.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            assessment.requireLong("initiativeRevision") != initiativeRevision ||
+            assessment.requireString("authorityBoundary") != OPERATING_MODEL_ASSESSMENT_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = assessment.get("operatingModel")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val roleCount = assessment.requireBoundedNonNegativeInt("roleCount", 256)
+        val governanceSystemCount = assessment.requireBoundedNonNegativeInt("governanceSystemCount", 2)
+        val unassignedAppointingAuthorityCount =
+            assessment.requireBoundedNonNegativeInt("unassignedAppointingAuthorityCount", roleCount)
+        val insufficientCapacityCount =
+            assessment.requireBoundedNonNegativeInt("insufficientCapacityCount", roleCount)
+        val unfundedCapacityCount = assessment.requireBoundedNonNegativeInt("unfundedCapacityCount", roleCount)
+        val decisionRightCount = assessment.requireBoundedNonNegativeInt("decisionRightCount", 512)
+        val unassignedDecisionAuthorityCount =
+            assessment.requireBoundedNonNegativeInt("unassignedDecisionAuthorityCount", decisionRightCount)
+        val forumCount = assessment.requireBoundedNonNegativeInt("forumCount", 128)
+        val cycleCount = assessment.requireBoundedNonNegativeInt("cycleCount", 128)
+        val supportCapacityGapCount = assessment.requireBoundedNonNegativeInt("supportCapacityGapCount", 1)
+        val emergencyAuthorityGapCount = assessment.requireBoundedNonNegativeInt("emergencyAuthorityGapCount", 1)
+        val staleBindingCount = assessment.requireBoundedNonNegativeInt("staleBindingCount", 6)
+        val staleSourceReferenceCount =
+            assessment.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val assessmentState = assessment.requireOneOf(
+            "state",
+            setOf("complete-for-review", "attention-required"),
+        )
+        val reasonsElement = assessment.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = assessment.requireInstant("assessedAt")
+
+        val model = projection.get("operatingModel")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "roleCount", "decisionRightCount",
+                "forumCount", "cycleCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val record = OperatingModelRecordView(
+                id,
+                revision,
+                digest,
+                value.requireBoundedNonNegativeInt("roleCount", 256),
+                value.requireBoundedNonNegativeInt("decisionRightCount", 512),
+                value.requireBoundedNonNegativeInt("forumCount", 128),
+                value.requireBoundedNonNegativeInt("cycleCount", 128),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (model == null) ||
+            (model?.roleCount ?: 0) != roleCount ||
+            (model?.decisionRightCount ?: 0) != decisionRightCount ||
+            (model?.forumCount ?: 0) != forumCount ||
+            (model?.cycleCount ?: 0) != cycleCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return OperatingModelProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, roleCount, governanceSystemCount,
+            unassignedAppointingAuthorityCount, insufficientCapacityCount, unfundedCapacityCount,
+            decisionRightCount, unassignedDecisionAuthorityCount, forumCount, cycleCount, supportCapacityGapCount,
+            emergencyAuthorityGapCount, staleBindingCount, staleSourceReferenceCount, model, snapshotDigest,
         )
     }
 

@@ -467,6 +467,46 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Operating Model projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("operating-model-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readOperatingModel(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(6, projection.operatingModel?.roleCount)
+            assertEquals(8, projection.operatingModel?.decisionRightCount)
+            assertEquals(3, projection.unfundedCapacityCount)
+
+            val rendered = RiderProductController(client).readOperatingModel(entryId)
+            assertTrue(rendered.contains("GAEP governed Operating Model"))
+            assertTrue(rendered.contains("6 roles · 2 governance systems · 8 decision rights"))
+            assertTrue(rendered.contains("grants no appointment, funding, baseline, readiness, or action authority"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("operatingNarrative"))
+        }
+
+        listOf("bad-operating-model-snapshot-digest", "bad-operating-model-snapshot-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readOperatingModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-operating-model-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readOperatingModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

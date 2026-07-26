@@ -132,6 +132,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readOperatingModel(initiativeId: UUID): OperatingModelProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("business.operatingModels.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseOperatingModelEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

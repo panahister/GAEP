@@ -18,6 +18,7 @@ private val stakeholderModelId = UUID.fromString("40404040-4040-4040-8040-404040
 private val outcomeModelId = UUID.fromString("41414141-4141-4141-8141-414141414141")
 private val businessCapabilityMapId = UUID.fromString("42424242-4242-4242-8242-424242424242")
 private val valueStreamModelId = UUID.fromString("43434343-4343-4343-8343-434343434343")
+private val operatingModelId = UUID.fromString("44444444-4444-4444-8444-444444444444")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -106,6 +107,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "business.valueStreams.snapshot" -> handleValueStreamModel(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "business.operatingModels.snapshot" -> handleOperatingModel(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -668,6 +674,94 @@ private fun handleValueStreamModel(id: Long, params: JsonObject, workspacePath: 
         }
         workspacePath.endsWith("bad-value-stream-snapshot-private") -> {
             value.addProperty("valueStreamNarrative", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleOperatingModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE OPERATING MODEL PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-operating-model-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T07:00:00.000Z"
+    val modelDigest = "sha256:${"8".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "operating-model-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("assessment", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "operating-model-assessment")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("operatingModel", JsonObject().apply {
+                addProperty("recordId", operatingModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", modelDigest)
+            })
+            addProperty("roleCount", 6)
+            addProperty("governanceSystemCount", 2)
+            addProperty("unassignedAppointingAuthorityCount", 1)
+            addProperty("insufficientCapacityCount", 2)
+            addProperty("unfundedCapacityCount", 3)
+            addProperty("decisionRightCount", 8)
+            addProperty("unassignedDecisionAuthorityCount", 1)
+            addProperty("forumCount", 2)
+            addProperty("cycleCount", 3)
+            addProperty("supportCapacityGapCount", 1)
+            addProperty("emergencyAuthorityGapCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more candidate roles have no candidate appointing authority") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "operating-model-assessment-reports-candidate-structural-coverage-and-gaps-and-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action",
+            )
+        })
+        add("operatingModel", JsonObject().apply {
+            addProperty("id", operatingModelId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", modelDigest)
+            addProperty("state", "candidate")
+            addProperty("roleCount", 6)
+            addProperty("decisionRightCount", 8)
+            addProperty("forumCount", 2)
+            addProperty("cycleCount", 3)
+            addProperty("updatedAt", "2026-07-26T06:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-operating-narrative-personal-data-source-content-locators-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "operating-model-projection-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-operating-model-snapshot-digest") -> {
+            value.getAsJsonObject("operatingModel").addProperty("roleCount", 7)
+        }
+        workspacePath.endsWith("bad-operating-model-snapshot-private") -> {
+            value.addProperty("operatingNarrative", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)
