@@ -38,7 +38,8 @@
     { "id": "business-architecture-baseline", "label": "Exact governed Business Architecture Baseline candidate projection without designation, approval, readiness, exception-grant, enforcement, or action authority" },
     { "id": "system-solution-architecture", "label": "Exact governed System/Solution Architecture candidate projection without architecture-baseline designation, approval, readiness, proven conformance, technology mandate, or action authority" },
     { "id": "bounded-context-ownership", "label": "Exact governed Bounded Context and Ownership candidate projection without owner appointment, boundary approval, contract acceptance, readiness, or action authority" },
-    { "id": "security-privacy-threat-assessment", "label": "Exact governed Security, Privacy, and Threat Assessment candidate projection without threat-model approval, control-effectiveness attestation, risk acceptance, processing approval, security readiness, or action authority" }
+    { "id": "security-privacy-threat-assessment", "label": "Exact governed Security, Privacy, and Threat Assessment candidate projection without threat-model approval, control-effectiveness attestation, risk acceptance, processing approval, security readiness, or action authority" },
+    { "id": "process-model", "label": "Exact governed Process Model candidate projection without workflow approval, transition or execution authority, operational readiness, baseline promotion, or action authority" }
   ],
   "hosts": [
     {
@@ -49,7 +50,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T112856Z-phase-1-security-privacy-threat-assessment-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T121443Z-phase-1-process-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -162,6 +163,9 @@
         ] },
         { "capabilityId": "security-privacy-threat-assessment", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["securityPrivacyAssessment?: {", "engine.securityPrivacyAssessment!.project(initiative.id)", "id: \"security-privacy-threat-assessment\"", "Candidate security, privacy, and threat coverage only; no threat-model approval, control-effectiveness attestation, risk acceptance, processing approval, security readiness, or action authority."] }
+        ] },
+        { "capabilityId": "process-model", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["processModel?: {", "engine.processModel!.project(initiative.id)", "id: \"process-model\"", "Candidate workflows, states, transitions, events, and approval requirements only; no workflow approval, transition or execution authority, operational readiness, baseline promotion, or action authority."] }
         ] }
       ]
     },
@@ -173,7 +177,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T112856Z-phase-1-security-privacy-threat-assessment-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T121443Z-phase-1-process-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -293,6 +297,10 @@
         { "capabilityId": "security-privacy-threat-assessment", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readSecurityPrivacyAssessment(", "this.request(\"security.privacyThreat.snapshot\"", "securityPrivacyAssessmentProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showSecurityPrivacyAssessment", "GAEP governed Security, Privacy, and Threat Assessment candidate", "Candidate counts:", "Authority boundary: ${projection.authorityBoundary}"] }
+        ] },
+        { "capabilityId": "process-model", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readProcessModel(", "this.request(\"process.models.snapshot\"", "processModelProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showProcessModel", "GAEP governed Process Model candidate", "Candidate counts:", "Authority boundary: ${projection.authorityBoundary}"] }
         ] }
       ]
     },
@@ -304,7 +312,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T112856Z-phase-1-security-privacy-threat-assessment-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T121443Z-phase-1-process-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -440,6 +448,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readSecurityPrivacyAssessment(", "portableRequest(\"security.privacyThreat.snapshot\"", "parseSecurityPrivacyAssessmentEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Security, Privacy, and Threat Assessment candidate", "Membership digest:", "does not approve a threat model, attest", "control effectiveness, accept risk, approve processing, establish security readiness, or authorize action"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["SecurityPrivacyAssessmentRecordView", "SECURITY_PRIVACY_ASSESSMENT_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "process-model", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readProcessModel(", "portableRequest(\"process.models.snapshot\"", "parseProcessModelEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Process Model candidate", "Membership digest:", "does not approve", "workflows, grant transition or execution authority, establish operational readiness, promote a baseline, or authorize action"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["ProcessModelRecordView", "PROCESS_MODEL_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -451,7 +464,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T112856Z-phase-1-security-privacy-threat-assessment-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T121443Z-phase-1-process-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -596,13 +609,18 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadSecurityPrivacyAssessmentAsync(", "\"security.privacyThreat.snapshot\"", "ParseSecurityPrivacyAssessmentResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Security, Privacy, and Threat Assessment candidate", "Membership digest:", "does not approve a threat model, attest", "control effectiveness, accept risk, approve processing, establish security readiness, or authorize action"] },
           { "path": "apps/visual-studio/Gaep.HostClient/SecurityPrivacyAssessmentProtocol.cs", "contains": ["SecurityPrivacyAssessmentRecordView", "SecurityPrivacyAssessmentProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "process-model", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadProcessModelAsync(", "\"process.models.snapshot\"", "ParseProcessModelResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Process Model candidate", "Membership digest:", "does not approve", "workflows, grant transition or execution authority, establish operational readiness, promote a baseline, or authorize action"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProcessModelProtocol.cs", "contains": ["ProcessModelRecordView", "ProcessModelProjectionAuthorityBoundary"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-26T112856Z-phase-1-security-privacy-threat-assessment-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-26T121443Z-phase-1-process-model-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",
