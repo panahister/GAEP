@@ -145,9 +145,9 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 33 ||
+  if (!Array.isArray(commands) || commands.length !== 34 ||
       new Set(commands.map((command) => command.command)).size !== commands.length) {
-    fail("package command inventory must contain 33 unique commands")
+    fail("package command inventory must contain 34 unique commands")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))

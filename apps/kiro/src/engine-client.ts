@@ -17,6 +17,7 @@ import {
   eventIntegrationModelProjectionSchema,
   failureRecoveryModelProjectionSchema,
   architectureChallengeModelProjectionSchema,
+  decisionRegisterProjectionSchema,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
@@ -38,6 +39,7 @@ import {
   type EventIntegrationModelProjection,
   type FailureRecoveryModelProjection,
   type ArchitectureChallengeModelProjection,
+  type DecisionRegisterProjection,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
@@ -478,6 +480,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = architectureChallengeModelProjectionSchema.safeParse(
         await this.request("challenge.models.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readDecisionRegister(initiativeValue: string): Promise<DecisionRegisterProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = decisionRegisterProjectionSchema.safeParse(
+        await this.request("decision.registers.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

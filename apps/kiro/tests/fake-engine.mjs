@@ -44,6 +44,7 @@ const authorizationModelId = "46464646-4646-4646-8646-464646464646"
 const eventIntegrationModelId = "47474747-4747-4747-8747-474747474747"
 const failureRecoveryModelId = "48484848-4848-4848-8848-484848484848"
 const architectureChallengeModelId = "49494949-4949-4949-8949-494949494949"
+const decisionRegisterId = "50505050-5050-4050-8050-505050505050"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -113,6 +114,8 @@ input.on("line", (line) => {
       return readFailureRecoveryModel(id, request.params)
     case "challenge.models.snapshot":
       return readArchitectureChallengeModel(id, request.params)
+    case "decision.registers.snapshot":
+      return readDecisionRegister(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -1278,6 +1281,61 @@ function readArchitectureChallengeModel(id, params) {
   if (workspacePath.endsWith("bad-architecture-challenge-snapshot-digest")) value.model.findingCount = 7
   if (workspacePath.endsWith("bad-architecture-challenge-snapshot-private")) {
     value.challengeEvidence = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readDecisionRegister(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DECISION REGISTER PARAMS")
+  }
+  const registerDigest = `sha256:${"d".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "decision-register-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    register: { recordId: decisionRegisterId, revision: 2, digest: registerDigest },
+    decisionCount: 7,
+    unresolvedDecisionCount: 2,
+    selectedPendingDecisionCount: 3,
+    deferredDecisionCount: 1,
+    unresolvedRequirementCount: 1,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 1,
+    state: "attention-required",
+    reasons: ["One or more Decision Questions remain unresolved"],
+    assessedAt: "2026-07-26T17:00:00.000Z",
+    authorityBoundary: "decision-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "decision-register-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    register: {
+      id: decisionRegisterId,
+      revision: 2,
+      digest: registerDigest,
+      membershipDigest: `sha256:${"b".repeat(64)}`,
+      state: "candidate",
+      decisionCount: 7,
+      updatedAt: "2026-07-26T16:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-decision-questions-options-recommendations-outcomes-rationale-evidence-subject-content-personal-data-secrets-or-credentials",
+    authorityBoundary: "decision-register-projection-does-not-establish-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-decision-register-snapshot-binding")) content.initiative.id = decisionRegisterId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-decision-register-snapshot-digest")) value.register.decisionCount = 8
+  if (workspacePath.endsWith("bad-decision-register-snapshot-private")) {
+    value.decisionQuestion = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

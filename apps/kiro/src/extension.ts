@@ -18,6 +18,7 @@ import {
   type EventIntegrationModelProjection,
   type FailureRecoveryModelProjection,
   type ArchitectureChallengeModelProjection,
+  type DecisionRegisterProjection,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -101,6 +102,7 @@ const commandIds = {
   eventIntegrationModel: "gaepKiro.eventIntegrationModel.inspect",
   failureRecoveryModel: "gaepKiro.failureRecoveryModel.inspect",
   architectureChallengeModel: "gaepKiro.architectureChallengeModel.inspect",
+  decisionRegister: "gaepKiro.decisionRegister.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -206,6 +208,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.eventIntegrationModel, (input?: unknown) => runUserCommand(() => showEventIntegrationModel(pool, input))),
     vscode.commands.registerCommand(commandIds.failureRecoveryModel, (input?: unknown) => runUserCommand(() => showFailureRecoveryModel(pool, input))),
     vscode.commands.registerCommand(commandIds.architectureChallengeModel, (input?: unknown) => runUserCommand(() => showArchitectureChallengeModel(pool, input))),
+    vscode.commands.registerCommand(commandIds.decisionRegister, (input?: unknown) => runUserCommand(() => showDecisionRegister(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1145,6 +1148,44 @@ async function showArchitectureChallengeModel(
     ...(record ? [
       `Membership digest: ${record.membershipDigest}`,
       `Candidate counts: ${record.challengeSubjectCount} challenge subjects · ${record.assumptionCount} assumptions · ${record.alternativeCount} alternatives · ${record.findingCount} findings · ${record.responseCount} responses`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDecisionRegister(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DecisionRegisterProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Decision Register candidate", "Initiative ID")
+  const projection = await client.readDecisionRegister(initiativeId)
+  const status = projection.status
+  const record = projection.register
+  const lines = [
+    "GAEP governed Decision Register candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${status.state}`,
+    `Coverage: ${status.decisionCount} decisions`,
+    `Candidate gaps: ${status.unresolvedDecisionCount} unresolved decisions · ${status.selectedPendingDecisionCount} selected pending decisions · ${status.deferredDecisionCount} deferred decisions · ${status.unresolvedRequirementCount} requirements · ${status.inconsistencyCount} inconsistencies · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate counts: ${record.decisionCount} decisions`,
       `Updated: ${record.updatedAt}`,
     ] : []),
     "",
