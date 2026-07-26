@@ -65,6 +65,7 @@ for (const binding of [
   "LoadOperatingModelCommand",
   "LoadBusinessRulesCommand",
   "LoadArchitectureChallengeModelCommand",
+  "LoadDecisionRegisterCommand",
   "InitiativeTypes",
   "InitiativeClassification",
   "ClassifyInitiativeCommand",
@@ -148,6 +149,10 @@ requireText(remoteUi, /Inspect governed Architecture Challenge/u,
   "Visual Studio Product Studio does not expose governed Architecture Challenge")
 requireText(remoteUi, /does not complete independent review, establish assurance, accept risk, approve architecture, establish readiness, or authorize action/u,
   "Visual Studio Architecture Challenge action does not communicate its no-authority boundary")
+requireText(remoteUi, /Inspect governed Decision Register/u,
+  "Visual Studio Product Studio does not expose governed Decision Register")
+requireText(remoteUi, /does not establish decision effectiveness, approval, risk acceptance, baseline promotion, readiness, or action authority/u,
+  "Visual Studio Decision Register action does not communicate its no-authority boundary")
 requireText(remoteUi, /Classify or reclassify exact Initiative/u,
   "Visual Studio Product Studio does not expose governed Initiative classification")
 requireText(remoteUi, /Resolve or re-resolve exact applicability/u,

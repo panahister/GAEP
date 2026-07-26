@@ -59,6 +59,7 @@ internal static class Program
     private static readonly Guid EventIntegrationModelId = Guid.Parse("53535353-5353-4353-8353-535353535353");
     private static readonly Guid FailureRecoveryModelId = Guid.Parse("54545454-5454-4454-8454-545454545454");
     private static readonly Guid ArchitectureChallengeModelId = Guid.Parse("56565656-5656-4656-8656-565656565656");
+    private static readonly Guid DecisionRegisterId = Guid.Parse("57575757-5757-4757-8757-575757575757");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -165,6 +166,9 @@ internal static class Program
         var badArchitectureChallengeSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-architecture-challenge-snapshot-binding");
         var badArchitectureChallengeSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-architecture-challenge-snapshot-digest");
         var badArchitectureChallengeSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-architecture-challenge-snapshot-private");
+        var badDecisionRegisterSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-decision-register-snapshot-binding");
+        var badDecisionRegisterSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-decision-register-snapshot-digest");
+        var badDecisionRegisterSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-decision-register-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -268,6 +272,9 @@ internal static class Program
         Directory.CreateDirectory(badArchitectureChallengeSnapshotBindingRoot);
         Directory.CreateDirectory(badArchitectureChallengeSnapshotDigestRoot);
         Directory.CreateDirectory(badArchitectureChallengeSnapshotPrivateRoot);
+        Directory.CreateDirectory(badDecisionRegisterSnapshotBindingRoot);
+        Directory.CreateDirectory(badDecisionRegisterSnapshotDigestRoot);
+        Directory.CreateDirectory(badDecisionRegisterSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1255,6 +1262,44 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadArchitectureChallengeModelAsync(InitiativeId),
                 "Architecture Challenge rejects a projection rebound to a substituted Product revision");
+        }
+
+        var decisionRegisterProjection = await client.ReadDecisionRegisterAsync(InitiativeId);
+        Check(decisionRegisterProjection.ProductId == product.Id &&
+              decisionRegisterProjection.ProductRevision == product.Revision &&
+              decisionRegisterProjection.ProductDigest == product.Digest &&
+              decisionRegisterProjection.InitiativeId == resolved.Id &&
+              decisionRegisterProjection.InitiativeRevision == resolved.Revision &&
+              decisionRegisterProjection.InitiativeDigest == resolved.Digest &&
+              decisionRegisterProjection.AssessmentState == "attention-required" &&
+              decisionRegisterProjection.Register?.DecisionCount == 7 &&
+              decisionRegisterProjection.UnresolvedDecisionCount == 2 &&
+              decisionRegisterProjection.SelectedPendingDecisionCount == 3,
+            "Typed Decision Register preserves exact Product, Initiative, status, and candidate metadata");
+        var decisionRegisterOutput = await initiativeController.ReadDecisionRegisterAsync(InitiativeId);
+        Check(decisionRegisterOutput.Contains("GAEP governed Decision Register candidate", StringComparison.Ordinal) &&
+              decisionRegisterOutput.Contains(
+                  "2 unresolved decisions · 3 selected pending decisions · 1 deferred decisions",
+                  StringComparison.Ordinal) &&
+              decisionRegisterOutput.Contains("does not establish decision effectiveness", StringComparison.Ordinal) &&
+              !decisionRegisterOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !decisionRegisterOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !decisionRegisterOutput.Contains("decisionQuestion", StringComparison.Ordinal),
+            "Decision Register workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badDecisionRegisterSnapshotDigestRoot, badDecisionRegisterSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDecisionRegisterAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Decision Register rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDecisionRegisterSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDecisionRegisterAsync(InitiativeId),
+                "Decision Register rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2413,6 +2458,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-architecture-challenge-snapshot-digest";
         var badArchitectureChallengeSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-architecture-challenge-snapshot-private";
+        var badDecisionRegisterSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-decision-register-snapshot-binding";
+        var badDecisionRegisterSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-decision-register-snapshot-digest";
+        var badDecisionRegisterSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-decision-register-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2707,6 +2758,17 @@ internal static class Program
                         badArchitectureChallengeSnapshotBinding,
                         badArchitectureChallengeSnapshotDigest,
                         badArchitectureChallengeSnapshotPrivate);
+                    break;
+                case "decision.registers.snapshot":
+                    await HandleDecisionRegisterAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDecisionRegisterSnapshotBinding,
+                        badDecisionRegisterSnapshotDigest,
+                        badDecisionRegisterSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -4526,6 +4588,95 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) model["responseCount"] = 6;
         if (includePrivateField) result["challengeContent"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDecisionRegisterAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DECISION REGISTER");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T17:00:00.000Z";
+        var registerDigest = $"sha256:{new string('d', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var register = new Dictionary<string, object?>
+        {
+            ["id"] = DecisionRegisterId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = registerDigest,
+            ["membershipDigest"] = $"sha256:{new string('a', 64)}",
+            ["state"] = "candidate",
+            ["decisionCount"] = 7,
+            ["updatedAt"] = "2026-07-26T16:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "decision-register-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "decision-register-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["register"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DecisionRegisterId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = registerDigest,
+                },
+                ["decisionCount"] = 7,
+                ["unresolvedDecisionCount"] = 2,
+                ["selectedPendingDecisionCount"] = 3,
+                ["deferredDecisionCount"] = 1,
+                ["unresolvedRequirementCount"] = 1,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["inconsistencyCount"] = 0,
+                ["unresolvedQuestionCount"] = 1,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Decision Questions remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "decision-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority",
+            },
+            ["register"] = register,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-decision-questions-options-recommendations-outcomes-rationale-evidence-subject-content-personal-data-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "decision-register-projection-does-not-establish-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) register["decisionCount"] = 8;
+        if (includePrivateField) result["decisionQuestion"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

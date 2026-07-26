@@ -85,6 +85,10 @@
                 Command="{Binding LoadArchitectureChallengeModelCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate coverage and gaps only; it does not complete independent review, establish assurance, accept risk, approve architecture, establish readiness, or authorize action."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadDecisionRegisterButton" Content="Inspect governed Decision Register"
+                Command="{Binding LoadDecisionRegisterCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate counts and gaps only; it does not establish decision effectiveness, approval, risk acceptance, baseline promotion, readiness, or action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />
