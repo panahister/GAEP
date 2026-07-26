@@ -33,7 +33,7 @@ class GaepToolWindowFactory : ToolWindowFactory {
             Messages.showErrorDialog(project, "Open a project before using GAEP.", "GAEP")
             return
         }
-        val pluginPath = PluginManagerCore.getPlugin(PluginId.getId("dev.gaep.rider"))?.pluginPath
+        val pluginPath = PluginManagerCore.getPlugin(PluginId.getId("dev.gaep.platform"))?.pluginPath
         if (pluginPath == null) {
             Messages.showErrorDialog(project, "The installed GAEP plugin path could not be resolved.", "GAEP")
             return

@@ -7,6 +7,8 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { npxExecutable } from "./npx-resolver.mjs"
+
 const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(here, "..", "..")
 const vscodeRoot = join(repoRoot, "apps", "vscode")
@@ -46,6 +48,6 @@ kiroManifest.files = runtimeFiles.filter((rel) => existsSync(join(stage, rel)))
 writeFileSync(join(stage, "package.json"), `${JSON.stringify(kiroManifest, null, 2)}\n`)
 
 mkdirSync(dirname(outVsix), { recursive: true })
-execFileSync("npx", ["--no-install", "vsce", "package", "--no-dependencies", "--allow-missing-repository", "-o", outVsix], { cwd: stage, stdio: "inherit" })
+execFileSync(npxExecutable(), ["--no-install", "vsce", "package", "--no-dependencies", "--allow-missing-repository", "-o", outVsix], { cwd: stage, stdio: "inherit" })
 rmSync(stage, { recursive: true, force: true })
 process.stdout.write(`Built gaep-kiro-0.2.0.vsix\n`)

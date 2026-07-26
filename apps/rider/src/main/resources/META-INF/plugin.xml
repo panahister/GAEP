@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>dev.gaep.rider</id>
+    <id>dev.gaep.platform</id>
     <name>GAEP</name>
     <vendor>GAEP</vendor>
     <description>Governed product design and multi-agent execution for Rider.</description>

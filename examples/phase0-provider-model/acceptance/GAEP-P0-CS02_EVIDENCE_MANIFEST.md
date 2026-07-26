@@ -1,9 +1,9 @@
 # GAEP Evidence Manifest — GAEP-P0-CS02
 
 **Change Set ID:** GAEP-P0-CS02
-**Generated at:** 2026-07-26T07:10:11.750Z
-**Source tree digest:** sha256:d060104c9490cff74b1a442843877c0d929047031dce74aa255dd860286f0617
-**Base commit / dirty (provenance only):** 964dc8b5a126e6dd100cafa8603f937f3fb0d100 / true
+**Generated at:** 2026-07-26T11:31:48.990Z
+**Source tree digest:** sha256:d42db791994d9e388570fe10f1f0e250ca6fe7e21aca75c994be4c3e96185861
+**Base commit / dirty (provenance only):** a4b3381e8027a97e2ffbb380a7c96d47202c7276 / true
 
 ## Commands
 
@@ -20,7 +20,7 @@
 ## Read-only analysis (protocol v3 RPC)
 
 - Provider/model: gaep.claude-code-cli / sonnet
-- Context Pack: `69fa35b6-6f12-4ac3-8307-89db25018a52` (governed)
+- Context Pack: `765b0a6c-c4b7-4027-8adf-5dad9dc9adf5` (governed)
 - Terminal state: **failed** (auth-unavailable)
 - Persisted: selection=yes, run=yes, pre-run evidence=yes, result evidence=no
 - Product source mutated: **no**; unauthorized `.gaep` write: **none**
@@ -40,9 +40,9 @@
 
 ## Hashed artifacts (this manifest does NOT hash itself)
 
-- `acceptance/GAEP-P0-CS02_ACCEPTANCE_REPORT.json`: sha256:c7575ae1acf52781a8d033b38c8c6df9090aa10404acdf1939afc5cb8f934bd3
-- `dist/phase0/cs02/package-manifest.json`: sha256:e3996fff51af5cf3f403ba99d47c572d541d5f8ecddb07bc6576b2fded98aa58
-- `dist/phase0/cs02/SHA256SUMS.txt`: sha256:8c1dadee2c549c5179d52a169eac4e6b6b16a01348bfe715c8e2a60da08ac36b
+- `acceptance/GAEP-P0-CS02_ACCEPTANCE_REPORT.json`: sha256:c165a9ed68b826971b4e65b38c13807d2c14b251a80c79724f1ebe4e515fc3b7
+- `dist/phase0/cs02/package-manifest.json`: sha256:fa13f1daa0904dfce9d6e80142d2ddca012f8c4d71e5224f89271c662fbc1797
+- `dist/phase0/cs02/SHA256SUMS.txt`: sha256:7c72a5a2854e4be2e2d89906c6ee6bd4ab83de24acf618e1889fb34cb521ed1c
 
 ## Trust boundary
 
