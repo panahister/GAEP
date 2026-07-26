@@ -36,6 +36,7 @@ import type {
   Run,
   RunToolSelection,
   SourceGovernanceProjection,
+  SystemSolutionArchitectureProjection,
   ToolDefinition,
   TraceImpact,
   TraceLink,
@@ -137,6 +138,9 @@ export interface CurrentStudioEngineReader {
   businessArchitectureBaseline?: {
     project(initiativeId: string): Promise<BusinessArchitectureBaselineProjection>
   }
+  systemSolutionArchitecture?: {
+    project(initiativeId: string): Promise<SystemSolutionArchitectureProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -182,6 +186,7 @@ interface ObservedStudioState {
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
   businessArchitectureBaselineProjections: Map<string, BusinessArchitectureBaselineProjection>
+  systemSolutionArchitectureProjections: Map<string, SystemSolutionArchitectureProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -759,6 +764,54 @@ function businessArchitectureBaselineTable(state: ObservedStudioState): StudioTa
   }
 }
 
+function systemSolutionArchitectureTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.systemSolutionArchitectureProjections.values()].flatMap((projection) => {
+    const record = projection.architecture
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.concernCount} concerns · ${record.viewCount} views · ${record.elementCount} elements · ${record.qualityAttributeCount} quality scenarios · ${record.decisionCount} decisions`,
+        assessment: projection.assessment.state,
+        gaps: `${projection.assessment.unresolvedQualityAttributeCount} quality gaps · ${projection.assessment.unresolvedDecisionCount} unresolved decisions · ${projection.assessment.unresolvedConformanceCriterionCount} conformance gaps · ${projection.assessment.lifecycleGapCount} lifecycle gaps · ${projection.assessment.staleBindingCount} stale bindings`,
+        boundary: "Candidate design only; no architecture-baseline designation, approval, readiness, proven conformance, technology mandate, or action authority.",
+      },
+      state: projection.assessment.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "system-solution-architecture",
+    title: "Governed System/Solution Architecture Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Architecture Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed System/Solution Architecture candidate",
+        "Create the candidate through the governed engine workflow. This view does not designate or approve an architecture baseline, establish readiness, prove conformance, mandate technology, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -769,7 +822,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -784,6 +837,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       operatingModelTable(state),
       businessRuleCatalogTable(state),
       businessArchitectureBaselineTable(state),
+      systemSolutionArchitectureTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3233,6 +3287,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       operatingModelProjections: new Map(),
       businessRuleCatalogProjections: new Map(),
       businessArchitectureBaselineProjections: new Map(),
+      systemSolutionArchitectureProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -3646,6 +3701,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "business-architecture-baseline-unavailable",
           "Business Architecture Baseline metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.systemSolutionArchitecture) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.systemSolutionArchitecture!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.systemSolutionArchitectureProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio System/Solution Architecture projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `system-solution-architecture-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe System/Solution Architecture metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "system-solution-architecture-unavailable",
+          "System/Solution Architecture metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

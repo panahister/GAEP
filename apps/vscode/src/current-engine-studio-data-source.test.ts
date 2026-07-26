@@ -26,6 +26,7 @@ import {
   type Risk,
   type Run,
   type SourceGovernanceProjection,
+  type SystemSolutionArchitectureProjection,
   type TraceImpact,
   type TraceLink,
   type ValueStreamModelProjection,
@@ -604,6 +605,70 @@ function businessArchitectureBaselineProjection(): BusinessArchitectureBaselineP
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function systemSolutionArchitectureProjection(): SystemSolutionArchitectureProjection {
+  const assessment = {
+    schemaVersion: 1 as const,
+    kind: "system-solution-architecture-assessment" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    architecture: {
+      recordId: "dededede-dede-4ede-8ede-dededededede",
+      revision: 3,
+      digest: `sha256:${"e".repeat(64)}` as const,
+    },
+    concernCount: 4,
+    viewCount: 3,
+    elementCount: 9,
+    relationCount: 12,
+    qualityAttributeCount: 5,
+    unresolvedQualityAttributeCount: 1,
+    decisionCount: 4,
+    unresolvedDecisionCount: 2,
+    conformanceCriterionCount: 6,
+    unresolvedConformanceCriterionCount: 1,
+    lifecycleGapCount: 1,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more architecture decisions remain unresolved"],
+    assessedAt: "2026-07-26T10:30:00.000Z",
+    authorityBoundary: "system-solution-architecture-assessment-reports-candidate-coverage-and-gaps-and-does-not-approve-baseline-readiness-conformance-technology-or-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "system-solution-architecture-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    assessment,
+    architecture: {
+      id: assessment.architecture.recordId,
+      revision: assessment.architecture.revision,
+      digest: assessment.architecture.digest,
+      membershipDigest: `sha256:${"f".repeat(64)}` as const,
+      state: "candidate" as const,
+      concernCount: 4,
+      viewCount: 3,
+      elementCount: 9,
+      qualityAttributeCount: 5,
+      decisionCount: 4,
+      updatedAt: "2026-07-26T10:29:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-architecture-narrative-source-content-personal-data-locators-or-credentials" as const,
+    authorityBoundary: "system-solution-architecture-projection-does-not-approve-or-designate-an-architecture-baseline-establish-readiness-prove-conformance-mandate-technology-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1162,6 +1227,7 @@ interface HarnessOptions {
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
   businessArchitectureBaselineProjection?: BusinessArchitectureBaselineProjection
+  systemSolutionArchitectureProjection?: SystemSolutionArchitectureProjection
   commandResult?: unknown
 }
 
@@ -1285,6 +1351,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.businessArchitectureBaselineProjection ? {
       businessArchitectureBaseline: {
         project: async () => options.businessArchitectureBaselineProjection!,
+      },
+    } : {}),
+    ...(options.systemSolutionArchitectureProjection ? {
+      systemSolutionArchitecture: {
+        project: async () => options.systemSolutionArchitectureProjection!,
       },
     } : {}),
   }
@@ -1594,6 +1665,30 @@ describe("current-engine Product Studio data source", () => {
           assessment: "attention-required",
           gaps: "1 unresolved · 2 consistency gaps · 1 stale bindings",
           boundary: "Candidate compound snapshot only; no baseline designation, approval, readiness, exception grant, enforcement, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /architecture narrative|source content|personal data|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed System/Solution Architecture metadata on the native architecture page", async () => {
+    const projection = systemSolutionArchitectureProjection()
+    const { source } = harness({ systemSolutionArchitectureProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[5]).toMatchObject({
+      id: "system-solution-architecture",
+      rows: [{
+        id: projection.architecture?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "3",
+          membership: projection.architecture?.membershipDigest,
+          counts: "4 concerns · 3 views · 9 elements · 5 quality scenarios · 4 decisions",
+          assessment: "attention-required",
+          gaps: "1 quality gaps · 2 unresolved decisions · 1 conformance gaps · 1 lifecycle gaps · 1 stale bindings",
+          boundary: "Candidate design only; no architecture-baseline designation, approval, readiness, proven conformance, technology mandate, or action authority.",
         },
       }],
     })
