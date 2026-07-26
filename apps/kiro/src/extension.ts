@@ -9,6 +9,7 @@ import {
   containsSecretShapedValue,
   InitiativeEntryWorkflowCancelled,
   type BusinessCapabilityMapProjection,
+  type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Initiative,
   type InitiativeEntryAssessment,
@@ -79,6 +80,7 @@ const commandIds = {
   businessCapabilityMap: "gaepKiro.businessCapabilityMap.inspect",
   valueStreamModel: "gaepKiro.valueStreamModel.inspect",
   operatingModel: "gaepKiro.operatingModel.inspect",
+  businessRules: "gaepKiro.businessRules.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -173,6 +175,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.businessCapabilityMap, (input?: unknown) => runUserCommand(() => showBusinessCapabilityMap(pool, input))),
     vscode.commands.registerCommand(commandIds.valueStreamModel, (input?: unknown) => runUserCommand(() => showValueStreamModel(pool, input))),
     vscode.commands.registerCommand(commandIds.operatingModel, (input?: unknown) => runUserCommand(() => showOperatingModel(pool, input))),
+    vscode.commands.registerCommand(commandIds.businessRules, (input?: unknown) => runUserCommand(() => showBusinessRuleCatalog(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -667,6 +670,45 @@ async function showOperatingModel(
     ...(model ? [
       `Model counts: ${model.roleCount} roles · ${model.decisionRightCount} decision rights · ${model.forumCount} forums · ${model.cycleCount} cycles`,
       `Updated: ${model.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showBusinessRuleCatalog(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<BusinessRuleCatalogProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Business Rule Catalog", "Initiative ID")
+  const projection = await client.readBusinessRuleCatalog(initiativeId)
+  const catalog = projection.businessRuleCatalog
+  const lines = [
+    "GAEP governed Business Rule Catalog",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${projection.assessment.state}`,
+    `Rule counts: ${projection.assessment.ruleCount} rules · ${projection.assessment.sourceBackedRuleCount} source-backed · ${projection.assessment.nonExceptionableRuleCount} non-exceptionable · ${projection.assessment.enforcementTargetCount} enforcement targets · ${projection.assessment.exceptionCount} exceptions`,
+    `Candidate gaps: ${projection.assessment.unassignedEnforcementTargetCount} unassigned targets · ${projection.assessment.unverifiedEnforcementTargetCount} unverified targets · ${projection.assessment.unassignedExceptionAuthorityCount} unassigned exception authorities · ${projection.assessment.staleBindingCount} stale bindings · ${projection.assessment.staleSourceReferenceCount} stale Source references`,
+    ...projection.assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Business Rule Catalog: ${catalog ? `${catalog.id}@${catalog.revision} · ${catalog.state} · ${catalog.digest}` : "not recorded"}`,
+    ...(catalog ? [
+      `Catalog counts: ${catalog.ruleCount} rules · ${catalog.enforcementTargetCount} enforcement targets · ${catalog.exceptionCount} exceptions · ${catalog.nonExceptionableRuleCount} non-exceptionable`,
+      `Updated: ${catalog.updatedAt}`,
     ] : []),
     "",
     `Snapshot digest: ${projection.snapshotDigest}`,

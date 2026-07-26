@@ -27,6 +27,7 @@ const commands = [
   "gaepKiro.businessCapabilityMap.inspect",
   "gaepKiro.valueStreamModel.inspect",
   "gaepKiro.operatingModel.inspect",
+  "gaepKiro.businessRules.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",
