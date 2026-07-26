@@ -23,6 +23,7 @@ private val businessRuleCatalogId = UUID.fromString("45454545-4545-4545-8545-454
 private val businessArchitectureBaselineId = UUID.fromString("46464646-4646-4646-8646-464646464646")
 private val systemSolutionArchitectureId = UUID.fromString("47474747-4747-4747-8747-474747474747")
 private val boundedContextModelId = UUID.fromString("48484848-4848-4848-8848-484848484848")
+private val securityPrivacyAssessmentId = UUID.fromString("49494949-4949-4949-8949-494949494949")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -136,6 +137,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "architecture.boundedContexts.snapshot" -> handleBoundedContextModel(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "security.privacyThreat.snapshot" -> handleSecurityPrivacyAssessment(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -1136,6 +1142,100 @@ private fun handleBoundedContextModel(id: Long, params: JsonObject, workspacePat
         }
         workspacePath.endsWith("bad-bounded-context-snapshot-private") -> {
             value.addProperty("ubiquitousLanguage", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleSecurityPrivacyAssessment(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE SECURITY PRIVACY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-security-privacy-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T11:15:00.000Z"
+    val assessmentDigest = "sha256:${"5".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "security-privacy-threat-assessment-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "security-privacy-threat-assessment-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("assessment", JsonObject().apply {
+                addProperty("recordId", securityPrivacyAssessmentId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", assessmentDigest)
+            })
+            addProperty("assetCount", 4)
+            addProperty("actorCount", 5)
+            addProperty("trustBoundaryCount", 3)
+            addProperty("dataClassCount", 2)
+            addProperty("dataFlowCount", 4)
+            addProperty("controlCount", 6)
+            addProperty("threatCount", 7)
+            addProperty("unresolvedThreatCount", 2)
+            addProperty("unverifiedControlCount", 1)
+            addProperty("unresolvedProcessingAuthorityCount", 1)
+            addProperty("uncoveredArchitectureElementCount", 0)
+            addProperty("unmappedArchitectureRelationCount", 1)
+            addProperty("unresolvedRequirementCount", 3)
+            addProperty("inconsistencyCount", 0)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Security or Data Profile requirements remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "security-privacy-threat-status-reports-candidate-coverage-and-gaps-and-does-not-approve-threats-attest-controls-accept-risk-approve-processing-establish-security-readiness-or-authorize-action",
+            )
+        })
+        add("assessment", JsonObject().apply {
+            addProperty("id", securityPrivacyAssessmentId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", assessmentDigest)
+            addProperty("membershipDigest", "sha256:${"6".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("assetCount", 4)
+            addProperty("trustBoundaryCount", 3)
+            addProperty("dataClassCount", 2)
+            addProperty("controlCount", 6)
+            addProperty("threatCount", 7)
+            addProperty("updatedAt", "2026-07-26T11:14:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-threat-scenarios-control-content-data-content-personal-data-locators-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "security-privacy-threat-projection-does-not-approve-a-threat-model-attest-control-effectiveness-accept-risk-approve-processing-establish-security-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-security-privacy-snapshot-digest") -> {
+            value.getAsJsonObject("assessment").addProperty("assetCount", 5)
+        }
+        workspacePath.endsWith("bad-security-privacy-snapshot-private") -> {
+            value.addProperty("threatScenario", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

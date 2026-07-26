@@ -37,6 +37,7 @@ const businessRuleCatalogId = "39393939-3939-4939-8939-393939393939"
 const businessArchitectureBaselineId = "40404040-4040-4040-8040-404040404040"
 const systemSolutionArchitectureId = "41414141-4141-4141-8141-414141414141"
 const boundedContextModelId = "42424242-4242-4242-8242-424242424242"
+const securityPrivacyAssessmentId = "43434343-4343-4343-8343-434343434343"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -92,6 +93,8 @@ input.on("line", (line) => {
       return readSystemSolutionArchitecture(id, request.params)
     case "architecture.boundedContexts.snapshot":
       return readBoundedContextModel(id, request.params)
+    case "security.privacyThreat.snapshot":
+      return readSecurityPrivacyAssessment(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -801,6 +804,77 @@ function readBoundedContextModel(id, params) {
   }
   if (workspacePath.endsWith("bad-bounded-context-snapshot-private")) {
     value.ubiquitousLanguage = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readSecurityPrivacyAssessment(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE SECURITY PRIVACY PARAMS")
+  }
+  const assessmentDigest = `sha256:${"5".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "security-privacy-threat-assessment-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    assessment: { recordId: securityPrivacyAssessmentId, revision: 2, digest: assessmentDigest },
+    assetCount: 4,
+    actorCount: 5,
+    trustBoundaryCount: 3,
+    dataClassCount: 2,
+    dataFlowCount: 4,
+    controlCount: 6,
+    threatCount: 7,
+    unresolvedThreatCount: 2,
+    unverifiedControlCount: 1,
+    unresolvedProcessingAuthorityCount: 1,
+    uncoveredArchitectureElementCount: 0,
+    unmappedArchitectureRelationCount: 1,
+    unresolvedRequirementCount: 3,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more Security or Data Profile requirements remain unresolved"],
+    assessedAt: "2026-07-26T11:15:00.000Z",
+    authorityBoundary: "security-privacy-threat-status-reports-candidate-coverage-and-gaps-and-does-not-approve-threats-attest-controls-accept-risk-approve-processing-establish-security-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "security-privacy-threat-assessment-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    assessment: {
+      id: securityPrivacyAssessmentId,
+      revision: 2,
+      digest: assessmentDigest,
+      membershipDigest: `sha256:${"6".repeat(64)}`,
+      state: "candidate",
+      assetCount: 4,
+      trustBoundaryCount: 3,
+      dataClassCount: 2,
+      controlCount: 6,
+      threatCount: 7,
+      updatedAt: "2026-07-26T11:14:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-threat-scenarios-control-content-data-content-personal-data-locators-secrets-or-credentials",
+    authorityBoundary: "security-privacy-threat-projection-does-not-approve-a-threat-model-attest-control-effectiveness-accept-risk-approve-processing-establish-security-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-security-privacy-snapshot-binding")) {
+    content.initiative.id = securityPrivacyAssessmentId
+  }
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-security-privacy-snapshot-digest")) {
+    value.assessment.assetCount = 5
+  }
+  if (workspacePath.endsWith("bad-security-privacy-snapshot-private")) {
+    value.threatScenario = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

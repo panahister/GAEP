@@ -242,6 +242,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += boundedContextModelButton
         actions.add(boundedContextModelButton)
 
+        val securityPrivacyAssessmentButton = JButton("Inspect Security, Privacy, and Threat Assessment…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Threat scenarios, control and data content, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Security, Privacy, and Threat Assessment",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Security, Privacy, and Threat Assessment", status, output, buttons) {
+                    controller.readSecurityPrivacyAssessment(initiativeId)
+                }
+            }
+        }
+        buttons += securityPrivacyAssessmentButton
+        actions.add(securityPrivacyAssessmentButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

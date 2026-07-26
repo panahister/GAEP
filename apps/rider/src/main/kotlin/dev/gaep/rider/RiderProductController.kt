@@ -628,6 +628,57 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readSecurityPrivacyAssessment(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readSecurityPrivacyAssessment(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Security, Privacy, and Threat Assessment was read. Refresh the exact records." }
+        return renderSecurityPrivacyAssessment(projection)
+    }
+
+    fun renderSecurityPrivacyAssessment(projection: SecurityPrivacyAssessmentProjection): String = buildString {
+        appendLine("GAEP governed Security, Privacy, and Threat Assessment candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.assetCount} assets · ${projection.actorCount} actors · " +
+                "${projection.trustBoundaryCount} trust boundaries · ${projection.dataClassCount} data classes · " +
+                "${projection.dataFlowCount} data flows · ${projection.controlCount} controls · ${projection.threatCount} threats",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedThreatCount} threats · ${projection.unverifiedControlCount} controls · " +
+                "${projection.unresolvedProcessingAuthorityCount} processing authorities · " +
+                "${projection.uncoveredArchitectureElementCount} uncovered elements · " +
+                "${projection.unmappedArchitectureRelationCount} unmapped relations · " +
+                "${projection.unresolvedRequirementCount} profile requirements · ${projection.inconsistencyCount} inconsistencies · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.assessment?.let { record ->
+            appendLine("Assessment candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate counts: ${record.assetCount} assets · ${record.trustBoundaryCount} trust boundaries · " +
+                    "${record.dataClassCount} data classes · ${record.controlCount} controls · ${record.threatCount} threats",
+            )
+        } ?: appendLine("Assessment candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no threat scenarios, control content, data content, Source content, " +
+                "personal data, locators, local paths, secrets, or credentials and does not approve a threat model, attest " +
+                "control effectiveness, accept risk, approve processing, establish security readiness, or authorize action.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

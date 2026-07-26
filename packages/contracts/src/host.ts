@@ -32,6 +32,7 @@ import { valueStreamModelInputSchema } from "./value-stream-model.js"
 import { operatingModelInputSchema } from "./operating-model.js"
 import { systemSolutionArchitectureInputSchema } from "./system-solution-architecture.js"
 import { boundedContextModelInputSchema } from "./bounded-context-model.js"
+import { securityPrivacyAssessmentInputSchema } from "./security-privacy-assessment.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -328,6 +329,18 @@ export const hostBoundedContextModelReviseParamsSchema = z.object({
   record: boundedContextModelInputSchema,
 }).strict()
 
+export const hostSecurityPrivacyAssessmentCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: securityPrivacyAssessmentInputSchema,
+}).strict()
+
+export const hostSecurityPrivacyAssessmentReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: securityPrivacyAssessmentInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -424,6 +437,11 @@ export const hostMethodSchema = z.enum([
   "architecture.boundedContexts.revise",
   "architecture.boundedContexts.assess",
   "architecture.boundedContexts.snapshot",
+  "security.privacyThreat.read",
+  "security.privacyThreat.create",
+  "security.privacyThreat.revise",
+  "security.privacyThreat.assess",
+  "security.privacyThreat.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -532,6 +550,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("architecture.boundedContexts.revise", hostBoundedContextModelReviseParamsSchema),
   requestVariant("architecture.boundedContexts.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("architecture.boundedContexts.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("security.privacyThreat.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("security.privacyThreat.create", hostSecurityPrivacyAssessmentCreateParamsSchema),
+  requestVariant("security.privacyThreat.revise", hostSecurityPrivacyAssessmentReviseParamsSchema),
+  requestVariant("security.privacyThreat.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("security.privacyThreat.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

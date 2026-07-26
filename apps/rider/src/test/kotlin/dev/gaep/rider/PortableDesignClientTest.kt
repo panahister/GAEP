@@ -676,6 +676,49 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Security Privacy and Threat projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("security-privacy-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readSecurityPrivacyAssessment(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(4, projection.assessment?.assetCount)
+            assertEquals(6, projection.assessment?.controlCount)
+            assertEquals(3, projection.unresolvedRequirementCount)
+
+            val rendered = RiderProductController(client).readSecurityPrivacyAssessment(entryId)
+            assertTrue(rendered.contains("GAEP governed Security, Privacy, and Threat Assessment candidate"))
+            assertTrue(rendered.contains("4 assets · 5 actors · 3 trust boundaries · 2 data classes · 4 data flows · 6 controls · 7 threats"))
+            assertTrue(rendered.contains("does not approve a threat model, attest control effectiveness, accept risk"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("threatScenario"))
+        }
+
+        listOf(
+            "bad-security-privacy-snapshot-digest",
+            "bad-security-privacy-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readSecurityPrivacyAssessment(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-security-privacy-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readSecurityPrivacyAssessment(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

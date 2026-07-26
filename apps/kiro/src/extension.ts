@@ -17,6 +17,7 @@ import {
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
   type OperatingModelProjection,
+  type SecurityPrivacyAssessmentProjection,
   type SourceGovernanceProjection,
   type SystemSolutionArchitectureProjection,
   type ValueStreamModelProjection,
@@ -87,6 +88,7 @@ const commandIds = {
   businessArchitectureBaseline: "gaepKiro.businessArchitectureBaseline.inspect",
   systemSolutionArchitecture: "gaepKiro.systemSolutionArchitecture.inspect",
   boundedContextModel: "gaepKiro.boundedContextModel.inspect",
+  securityPrivacyAssessment: "gaepKiro.securityPrivacyAssessment.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -185,6 +187,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.businessArchitectureBaseline, (input?: unknown) => runUserCommand(() => showBusinessArchitectureBaseline(pool, input))),
     vscode.commands.registerCommand(commandIds.systemSolutionArchitecture, (input?: unknown) => runUserCommand(() => showSystemSolutionArchitecture(pool, input))),
     vscode.commands.registerCommand(commandIds.boundedContextModel, (input?: unknown) => runUserCommand(() => showBoundedContextModel(pool, input))),
+    vscode.commands.registerCommand(commandIds.securityPrivacyAssessment, (input?: unknown) => runUserCommand(() => showSecurityPrivacyAssessment(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -838,6 +841,47 @@ async function showBoundedContextModel(
       `Membership digest: ${model.membershipDigest}`,
       `Candidate counts: ${model.boundedContextCount} contexts · ${model.contractCount} contracts · ${model.relationshipCount} relationships`,
       `Updated: ${model.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showSecurityPrivacyAssessment(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<SecurityPrivacyAssessmentProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Security, Privacy, and Threat Assessment candidate", "Initiative ID")
+  const projection = await client.readSecurityPrivacyAssessment(initiativeId)
+  const assessment = projection.status
+  const record = projection.assessment
+  const lines = [
+    "GAEP governed Security, Privacy, and Threat Assessment candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${assessment.state}`,
+    `Coverage: ${assessment.assetCount} assets · ${assessment.actorCount} actors · ${assessment.trustBoundaryCount} trust boundaries · ${assessment.dataClassCount} data classes · ${assessment.dataFlowCount} data flows · ${assessment.controlCount} controls · ${assessment.threatCount} threats`,
+    `Candidate gaps: ${assessment.unresolvedThreatCount} threats · ${assessment.unverifiedControlCount} controls · ${assessment.unresolvedProcessingAuthorityCount} processing authorities · ${assessment.uncoveredArchitectureElementCount} architecture elements · ${assessment.unmappedArchitectureRelationCount} architecture relations · ${assessment.unresolvedRequirementCount} profile requirements · ${assessment.inconsistencyCount} inconsistencies · ${assessment.unresolvedQuestionCount} questions · ${assessment.staleBindingCount} stale bindings · ${assessment.staleSourceReferenceCount} stale Source references`,
+    ...assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate counts: ${record.assetCount} assets · ${record.trustBoundaryCount} trust boundaries · ${record.dataClassCount} data classes · ${record.controlCount} controls · ${record.threatCount} threats`,
+      `Updated: ${record.updatedAt}`,
     ] : []),
     "",
     `Snapshot digest: ${projection.snapshotDigest}`,

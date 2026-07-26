@@ -52,6 +52,7 @@ internal static class Program
     private static readonly Guid BusinessArchitectureBaselineId = Guid.Parse("46464646-4646-4646-8646-464646464646");
     private static readonly Guid SystemSolutionArchitectureId = Guid.Parse("47474747-4747-4747-8747-474747474747");
     private static readonly Guid BoundedContextModelId = Guid.Parse("48484848-4848-4848-8848-484848484848");
+    private static readonly Guid SecurityPrivacyAssessmentId = Guid.Parse("49494949-4949-4949-8949-494949494949");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -137,6 +138,9 @@ internal static class Program
         var badBoundedContextSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-bounded-context-snapshot-binding");
         var badBoundedContextSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-bounded-context-snapshot-digest");
         var badBoundedContextSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-bounded-context-snapshot-private");
+        var badSecurityPrivacySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-security-privacy-snapshot-binding");
+        var badSecurityPrivacySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-security-privacy-snapshot-digest");
+        var badSecurityPrivacySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-security-privacy-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -219,6 +223,9 @@ internal static class Program
         Directory.CreateDirectory(badBoundedContextSnapshotBindingRoot);
         Directory.CreateDirectory(badBoundedContextSnapshotDigestRoot);
         Directory.CreateDirectory(badBoundedContextSnapshotPrivateRoot);
+        Directory.CreateDirectory(badSecurityPrivacySnapshotBindingRoot);
+        Directory.CreateDirectory(badSecurityPrivacySnapshotDigestRoot);
+        Directory.CreateDirectory(badSecurityPrivacySnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -921,6 +928,53 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadBoundedContextModelAsync(InitiativeId),
                 "Bounded Context Model rejects a projection rebound to a substituted Product revision");
+        }
+
+        var securityPrivacyProjection = await client.ReadSecurityPrivacyAssessmentAsync(InitiativeId);
+        Check(securityPrivacyProjection.ProductId == product.Id &&
+              securityPrivacyProjection.ProductRevision == product.Revision &&
+              securityPrivacyProjection.ProductDigest == product.Digest &&
+              securityPrivacyProjection.InitiativeId == resolved.Id &&
+              securityPrivacyProjection.InitiativeRevision == resolved.Revision &&
+              securityPrivacyProjection.InitiativeDigest == resolved.Digest &&
+              securityPrivacyProjection.AssessmentState == "attention-required" &&
+              securityPrivacyProjection.Assessment?.AssetCount == 4 &&
+              securityPrivacyProjection.Assessment?.ControlCount == 6 &&
+              securityPrivacyProjection.UnresolvedRequirementCount == 3,
+            "Typed Security, Privacy, and Threat Assessment preserves exact Product, Initiative, status, and candidate metadata");
+        var securityPrivacyOutput = await initiativeController.ReadSecurityPrivacyAssessmentAsync(InitiativeId);
+        Check(securityPrivacyOutput.Contains(
+                  "GAEP governed Security, Privacy, and Threat Assessment candidate",
+                  StringComparison.Ordinal) &&
+              securityPrivacyOutput.Contains(
+                  "4 assets · 5 actors · 3 trust boundaries · 2 data classes · 4 data flows · 6 controls · 7 threats",
+                  StringComparison.Ordinal) &&
+              securityPrivacyOutput.Contains(
+                  "does not approve a threat model, attest control effectiveness, accept risk",
+                  StringComparison.Ordinal) &&
+              !securityPrivacyOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !securityPrivacyOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !securityPrivacyOutput.Contains("threatScenario", StringComparison.Ordinal),
+            "Security, Privacy, and Threat workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[]
+                 {
+                     badSecurityPrivacySnapshotDigestRoot,
+                     badSecurityPrivacySnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(
+                () => hostileClient.ReadSecurityPrivacyAssessmentAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Security, Privacy, and Threat Assessment rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badSecurityPrivacySnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadSecurityPrivacyAssessmentAsync(InitiativeId),
+                "Security, Privacy, and Threat Assessment rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2037,6 +2091,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-bounded-context-snapshot-digest";
         var badBoundedContextSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-bounded-context-snapshot-private";
+        var badSecurityPrivacySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-security-privacy-snapshot-binding";
+        var badSecurityPrivacySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-security-privacy-snapshot-digest";
+        var badSecurityPrivacySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-security-privacy-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2254,6 +2314,17 @@ internal static class Program
                         badBoundedContextSnapshotBinding,
                         badBoundedContextSnapshotDigest,
                         badBoundedContextSnapshotPrivate);
+                    break;
+                case "security.privacyThreat.snapshot":
+                    await HandleSecurityPrivacyAssessmentAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badSecurityPrivacySnapshotBinding,
+                        badSecurityPrivacySnapshotDigest,
+                        badSecurityPrivacySnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -3383,6 +3454,107 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) model["boundedContextCount"] = 4;
         if (includePrivateField) result["ubiquitousLanguage"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleSecurityPrivacyAssessmentAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID SECURITY PRIVACY ASSESSMENT");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T11:15:00.000Z";
+        var assessmentDigest = $"sha256:{new string('5', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var assessment = new Dictionary<string, object?>
+        {
+            ["id"] = SecurityPrivacyAssessmentId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = assessmentDigest,
+            ["membershipDigest"] = $"sha256:{new string('6', 64)}",
+            ["state"] = "candidate",
+            ["assetCount"] = 4,
+            ["trustBoundaryCount"] = 3,
+            ["dataClassCount"] = 2,
+            ["controlCount"] = 6,
+            ["threatCount"] = 7,
+            ["updatedAt"] = "2026-07-26T11:14:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "security-privacy-threat-assessment-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "security-privacy-threat-assessment-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["assessment"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = SecurityPrivacyAssessmentId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = assessmentDigest,
+                },
+                ["assetCount"] = 4,
+                ["actorCount"] = 5,
+                ["trustBoundaryCount"] = 3,
+                ["dataClassCount"] = 2,
+                ["dataFlowCount"] = 4,
+                ["controlCount"] = 6,
+                ["threatCount"] = 7,
+                ["unresolvedThreatCount"] = 2,
+                ["unverifiedControlCount"] = 1,
+                ["unresolvedProcessingAuthorityCount"] = 1,
+                ["uncoveredArchitectureElementCount"] = 0,
+                ["unmappedArchitectureRelationCount"] = 1,
+                ["unresolvedRequirementCount"] = 3,
+                ["inconsistencyCount"] = 0,
+                ["unresolvedQuestionCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Security or Data Profile requirements remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "security-privacy-threat-status-reports-candidate-coverage-and-gaps-and-does-not-approve-threats-attest-controls-accept-risk-approve-processing-establish-security-readiness-or-authorize-action",
+            },
+            ["assessment"] = assessment,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-threat-scenarios-control-content-data-content-personal-data-locators-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "security-privacy-threat-projection-does-not-approve-a-threat-model-attest-control-effectiveness-accept-risk-approve-processing-establish-security-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) assessment["assetCount"] = 5;
+        if (includePrivateField) result["threatScenario"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

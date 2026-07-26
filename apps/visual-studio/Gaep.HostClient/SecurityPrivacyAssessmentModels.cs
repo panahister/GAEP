@@ -1,0 +1,42 @@
+namespace Gaep.HostClient;
+
+public sealed record SecurityPrivacyAssessmentRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int AssetCount,
+    int TrustBoundaryCount,
+    int DataClassCount,
+    int ControlCount,
+    int ThreatCount);
+
+public sealed record SecurityPrivacyAssessmentProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    IReadOnlyList<string> Reasons,
+    int AssetCount,
+    int ActorCount,
+    int TrustBoundaryCount,
+    int DataClassCount,
+    int DataFlowCount,
+    int ControlCount,
+    int ThreatCount,
+    int UnresolvedThreatCount,
+    int UnverifiedControlCount,
+    int UnresolvedProcessingAuthorityCount,
+    int UncoveredArchitectureElementCount,
+    int UnmappedArchitectureRelationCount,
+    int UnresolvedRequirementCount,
+    int InconsistencyCount,
+    int UnresolvedQuestionCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    SecurityPrivacyAssessmentRecordView? Assessment,
+    string SnapshotDigest);

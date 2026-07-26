@@ -58,6 +58,7 @@
     "onCommand:gaepKiro.businessArchitectureBaseline.inspect",
     "onCommand:gaepKiro.systemSolutionArchitecture.inspect",
     "onCommand:gaepKiro.boundedContextModel.inspect",
+    "onCommand:gaepKiro.securityPrivacyAssessment.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -167,6 +168,10 @@
       {
         "command": "gaepKiro.boundedContextModel.inspect",
         "title": "GAEP for Kiro: Inspect Governed Bounded Context and Ownership Candidate"
+      },
+      {
+        "command": "gaepKiro.securityPrivacyAssessment.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Security, Privacy, and Threat Assessment Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

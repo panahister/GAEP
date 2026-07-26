@@ -135,6 +135,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "architecture.boundedContexts.revise",
   "architecture.boundedContexts.assess",
   "architecture.boundedContexts.snapshot",
+  "security.privacyThreat.read",
+  "security.privacyThreat.create",
+  "security.privacyThreat.revise",
+  "security.privacyThreat.assess",
+  "security.privacyThreat.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -940,6 +945,24 @@ export class EngineHost {
         return this.engine.boundedContextModel.assess(request.params.initiativeId)
       case "architecture.boundedContexts.snapshot":
         return this.engine.boundedContextModel.project(request.params.initiativeId)
+      case "security.privacyThreat.read":
+        return await this.engine.securityPrivacyAssessment.readCurrent(request.params.initiativeId) ?? null
+      case "security.privacyThreat.create":
+        return this.engine.securityPrivacyAssessment.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "security.privacyThreat.revise":
+        return this.engine.securityPrivacyAssessment.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "security.privacyThreat.assess":
+        return this.engine.securityPrivacyAssessment.assess(request.params.initiativeId)
+      case "security.privacyThreat.snapshot":
+        return this.engine.securityPrivacyAssessment.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

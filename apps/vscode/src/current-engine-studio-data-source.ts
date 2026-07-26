@@ -36,6 +36,7 @@ import type {
   Risk,
   Run,
   RunToolSelection,
+  SecurityPrivacyAssessmentProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -145,6 +146,9 @@ export interface CurrentStudioEngineReader {
   boundedContextModel?: {
     project(initiativeId: string): Promise<BoundedContextModelProjection>
   }
+  securityPrivacyAssessment?: {
+    project(initiativeId: string): Promise<SecurityPrivacyAssessmentProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -192,6 +196,7 @@ interface ObservedStudioState {
   businessArchitectureBaselineProjections: Map<string, BusinessArchitectureBaselineProjection>
   systemSolutionArchitectureProjections: Map<string, SystemSolutionArchitectureProjection>
   boundedContextModelProjections: Map<string, BoundedContextModelProjection>
+  securityPrivacyAssessmentProjections: Map<string, SecurityPrivacyAssessmentProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -865,6 +870,54 @@ function boundedContextModelTable(state: ObservedStudioState): StudioTableSnapsh
   }
 }
 
+function securityPrivacyAssessmentTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.securityPrivacyAssessmentProjections.values()].flatMap((projection) => {
+    const record = projection.assessment
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.assetCount} assets · ${record.trustBoundaryCount} trust boundaries · ${record.dataClassCount} data classes · ${record.controlCount} controls · ${record.threatCount} threats`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.unresolvedThreatCount} unresolved threats · ${projection.status.unverifiedControlCount} unverified controls · ${projection.status.unresolvedProcessingAuthorityCount} processing-authority gaps · ${projection.status.uncoveredArchitectureElementCount} uncovered elements · ${projection.status.unmappedArchitectureRelationCount} unmapped relations · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate security, privacy, and threat coverage only; no threat-model approval, control-effectiveness attestation, risk acceptance, processing approval, security readiness, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "security-privacy-threat-assessment",
+    title: "Governed Security, Privacy, and Threat Assessment Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Assessment Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Security, Privacy, and Threat Assessment candidate",
+        "Create the candidate through the governed engine workflow. This view does not approve a threat model, attest control effectiveness, accept risk, approve processing, establish security readiness, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -875,7 +928,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -892,6 +945,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       businessArchitectureBaselineTable(state),
       systemSolutionArchitectureTable(state),
       boundedContextModelTable(state),
+      securityPrivacyAssessmentTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3343,6 +3397,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       businessArchitectureBaselineProjections: new Map(),
       systemSolutionArchitectureProjections: new Map(),
       boundedContextModelProjections: new Map(),
+      securityPrivacyAssessmentProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -3840,6 +3895,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "bounded-context-model-unavailable",
           "Bounded Context and Ownership metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.securityPrivacyAssessment) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.securityPrivacyAssessment!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.securityPrivacyAssessmentProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Security, Privacy, and Threat Assessment projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `security-privacy-assessment-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Security, Privacy, and Threat Assessment metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "security-privacy-assessment-unavailable",
+          "Security, Privacy, and Threat Assessment metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

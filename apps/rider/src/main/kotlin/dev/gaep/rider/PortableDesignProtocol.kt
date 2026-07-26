@@ -1115,6 +1115,49 @@ data class BoundedContextModelProjection(
     val snapshotDigest: String,
 )
 
+data class SecurityPrivacyAssessmentRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val assetCount: Int,
+    val trustBoundaryCount: Int,
+    val dataClassCount: Int,
+    val controlCount: Int,
+    val threatCount: Int,
+)
+
+data class SecurityPrivacyAssessmentProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val assetCount: Int,
+    val actorCount: Int,
+    val trustBoundaryCount: Int,
+    val dataClassCount: Int,
+    val dataFlowCount: Int,
+    val controlCount: Int,
+    val threatCount: Int,
+    val unresolvedThreatCount: Int,
+    val unverifiedControlCount: Int,
+    val unresolvedProcessingAuthorityCount: Int,
+    val uncoveredArchitectureElementCount: Int,
+    val unmappedArchitectureRelationCount: Int,
+    val unresolvedRequirementCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val assessment: SecurityPrivacyAssessmentRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1194,6 +1237,12 @@ internal object PortableDesignProtocol {
         "bounded-context-model-projection-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action"
     private const val BOUNDED_CONTEXT_MODEL_ASSESSMENT_AUTHORITY_BOUNDARY =
         "bounded-context-model-assessment-reports-candidate-coverage-and-gaps-and-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action"
+    private const val SECURITY_PRIVACY_ASSESSMENT_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-threat-scenarios-control-content-data-content-personal-data-locators-secrets-or-credentials"
+    private const val SECURITY_PRIVACY_ASSESSMENT_PROJECTION_AUTHORITY_BOUNDARY =
+        "security-privacy-threat-projection-does-not-approve-a-threat-model-attest-control-effectiveness-accept-risk-approve-processing-establish-security-readiness-or-authorize-action"
+    private const val SECURITY_PRIVACY_ASSESSMENT_STATUS_AUTHORITY_BOUNDARY =
+        "security-privacy-threat-status-reports-candidate-coverage-and-gaps-and-does-not-approve-threats-attest-controls-accept-risk-approve-processing-establish-security-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -3376,6 +3425,155 @@ internal object PortableDesignProtocol {
             unassignedArchitectureElementCount, unownedDataAssetCount, unmappedCrossContextRelationCount,
             inconsistencyCount, unresolvedQuestionCount, staleBindingCount, staleSourceReferenceCount, model,
             snapshotDigest,
+        )
+    }
+
+    fun parseSecurityPrivacyAssessmentEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): SecurityPrivacyAssessmentProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("assessment"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "security-privacy-threat-assessment-projection" ||
+            projection.requireString("privacyBoundary") != SECURITY_PRIVACY_ASSESSMENT_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != SECURITY_PRIVACY_ASSESSMENT_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "assetCount", "actorCount", "trustBoundaryCount", "dataClassCount", "dataFlowCount",
+                "controlCount", "threatCount", "unresolvedThreatCount", "unverifiedControlCount",
+                "unresolvedProcessingAuthorityCount", "uncoveredArchitectureElementCount",
+                "unmappedArchitectureRelationCount", "unresolvedRequirementCount", "inconsistencyCount",
+                "unresolvedQuestionCount", "staleBindingCount", "staleSourceReferenceCount", "state", "reasons",
+                "assessedAt", "authorityBoundary",
+            ),
+            setOf("assessment"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "security-privacy-threat-assessment-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != SECURITY_PRIVACY_ASSESSMENT_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("assessment")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val assetCount = status.requireBoundedNonNegativeInt("assetCount", 2_048)
+        val actorCount = status.requireBoundedNonNegativeInt("actorCount", 1_024)
+        val trustBoundaryCount = status.requireBoundedNonNegativeInt("trustBoundaryCount", 2_048)
+        val dataClassCount = status.requireBoundedNonNegativeInt("dataClassCount", 2_048)
+        val dataFlowCount = status.requireBoundedNonNegativeInt("dataFlowCount", 4_096)
+        val controlCount = status.requireBoundedNonNegativeInt("controlCount", 4_096)
+        val threatCount = status.requireBoundedNonNegativeInt("threatCount", 4_096)
+        val unresolvedThreatCount = status.requireBoundedNonNegativeInt("unresolvedThreatCount", threatCount)
+        val unverifiedControlCount = status.requireBoundedNonNegativeInt("unverifiedControlCount", controlCount)
+        val unresolvedProcessingAuthorityCount = status.requireBoundedNonNegativeInt(
+            "unresolvedProcessingAuthorityCount",
+            dataClassCount,
+        )
+        val uncoveredArchitectureElementCount = status.requireBoundedNonNegativeInt(
+            "uncoveredArchitectureElementCount",
+            2_048,
+        )
+        val unmappedArchitectureRelationCount = status.requireBoundedNonNegativeInt(
+            "unmappedArchitectureRelationCount",
+            4_096,
+        )
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 28)
+        val inconsistencyCount = status.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 16)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val assessmentState = status.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val assessment = projection.get("assessment")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "assetCount", "trustBoundaryCount",
+                "dataClassCount", "controlCount", "threatCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val record = SecurityPrivacyAssessmentRecordView(
+                id,
+                revision,
+                digest,
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("assetCount", 2_048),
+                value.requireBoundedNonNegativeInt("trustBoundaryCount", 2_048),
+                value.requireBoundedNonNegativeInt("dataClassCount", 2_048),
+                value.requireBoundedNonNegativeInt("controlCount", 4_096),
+                value.requireBoundedNonNegativeInt("threatCount", 4_096),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (assessment == null) ||
+            (assessment?.assetCount ?: 0) != assetCount ||
+            (assessment?.trustBoundaryCount ?: 0) != trustBoundaryCount ||
+            (assessment?.dataClassCount ?: 0) != dataClassCount ||
+            (assessment?.controlCount ?: 0) != controlCount ||
+            (assessment?.threatCount ?: 0) != threatCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return SecurityPrivacyAssessmentProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, assetCount, actorCount, trustBoundaryCount, dataClassCount,
+            dataFlowCount, controlCount, threatCount, unresolvedThreatCount, unverifiedControlCount,
+            unresolvedProcessingAuthorityCount, uncoveredArchitectureElementCount, unmappedArchitectureRelationCount,
+            unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount, staleBindingCount,
+            staleSourceReferenceCount, assessment, snapshotDigest,
         )
     }
 

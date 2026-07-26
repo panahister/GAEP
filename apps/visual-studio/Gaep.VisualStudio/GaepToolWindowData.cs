@@ -211,6 +211,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadBusinessArchitectureBaselineCommand = new AsyncCommand(LoadBusinessArchitectureBaselineAsync);
         LoadSystemSolutionArchitectureCommand = new AsyncCommand(LoadSystemSolutionArchitectureAsync);
         LoadBoundedContextModelCommand = new AsyncCommand(LoadBoundedContextModelAsync);
+        LoadSecurityPrivacyAssessmentCommand = new AsyncCommand(LoadSecurityPrivacyAssessmentAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -284,6 +285,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadBoundedContextModelCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadSecurityPrivacyAssessmentCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -700,6 +704,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Bounded Context and Ownership candidate",
             (controller, _, token) => controller.ReadBoundedContextModelAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadSecurityPrivacyAssessmentAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Security, Privacy, and Threat Assessment candidate",
+            (controller, _, token) => controller.ReadSecurityPrivacyAssessmentAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

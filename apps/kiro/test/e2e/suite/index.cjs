@@ -31,6 +31,7 @@ const commands = [
   "gaepKiro.businessArchitectureBaseline.inspect",
   "gaepKiro.systemSolutionArchitecture.inspect",
   "gaepKiro.boundedContextModel.inspect",
+  "gaepKiro.securityPrivacyAssessment.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",

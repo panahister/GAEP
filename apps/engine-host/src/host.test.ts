@@ -910,6 +910,38 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "security-privacy-read-empty",
+      protocolVersion: 2,
+      method: "security.privacyThreat.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "security-privacy-assess-empty",
+      protocolVersion: 2,
+      method: "security.privacyThreat.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      assetCount: 0,
+      threatCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-approve-threats-attest-controls-accept-risk"),
+    })
+    const securityPrivacyProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "security-privacy-snapshot-empty",
+      protocolVersion: 2,
+      method: "security.privacyThreat.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: securityPrivacySnapshotDigest, ...securityPrivacyProjectionBody } = securityPrivacyProjection
+    expect(securityPrivacySnapshotDigest).toBe(canonicalDigest(securityPrivacyProjectionBody))
+    expect(securityPrivacyProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-threat-scenarios-control-content-data-content"),
+      authorityBoundary: expect.stringContaining("does-not-approve-a-threat-model-attest-control-effectiveness"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -954,6 +986,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "bounded-context-v1-block",
       method: "architecture.boundedContexts.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "security-privacy-v1-block",
+      method: "security.privacyThreat.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
@@ -1030,6 +1068,23 @@ describe("engine host protocol", () => {
       params: {
         actorId: "gaep.host-test",
         record: { initiativeId, approvedBoundary: true, ownershipAccepted: true, releaseReady: true },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "security-privacy-extra-authority",
+      protocolVersion: 2,
+      method: "security.privacyThreat.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          approvedThreatModel: true,
+          controlEffective: true,
+          riskAccepted: true,
+          privacyApproved: true,
+          securityReady: true,
+        },
       },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
     await expect(host.dispatch({

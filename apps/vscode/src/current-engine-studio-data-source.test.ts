@@ -9,6 +9,7 @@ import {
   type AgentSelection,
   type BusinessArchitectureBaselineProjection,
   type BoundedContextModelProjection,
+  type SecurityPrivacyAssessmentProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -731,6 +732,72 @@ function boundedContextModelProjection(): BoundedContextModelProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function securityPrivacyAssessmentProjection(): SecurityPrivacyAssessmentProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "security-privacy-threat-assessment-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    assessment: {
+      recordId: "f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1",
+      revision: 2,
+      digest: `sha256:${"3".repeat(64)}` as const,
+    },
+    assetCount: 4,
+    actorCount: 5,
+    trustBoundaryCount: 3,
+    dataClassCount: 2,
+    dataFlowCount: 4,
+    controlCount: 6,
+    threatCount: 7,
+    unresolvedThreatCount: 2,
+    unverifiedControlCount: 1,
+    unresolvedProcessingAuthorityCount: 1,
+    uncoveredArchitectureElementCount: 0,
+    unmappedArchitectureRelationCount: 1,
+    unresolvedRequirementCount: 3,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more Security or Data Profile requirements remain unresolved"],
+    assessedAt: "2026-07-26T11:15:00.000Z",
+    authorityBoundary: "security-privacy-threat-status-reports-candidate-coverage-and-gaps-and-does-not-approve-threats-attest-controls-accept-risk-approve-processing-establish-security-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "security-privacy-threat-assessment-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    assessment: {
+      id: status.assessment.recordId,
+      revision: status.assessment.revision,
+      digest: status.assessment.digest,
+      membershipDigest: `sha256:${"4".repeat(64)}` as const,
+      state: "candidate" as const,
+      assetCount: 4,
+      trustBoundaryCount: 3,
+      dataClassCount: 2,
+      controlCount: 6,
+      threatCount: 7,
+      updatedAt: "2026-07-26T11:14:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-threat-scenarios-control-content-data-content-personal-data-locators-secrets-or-credentials" as const,
+    authorityBoundary: "security-privacy-threat-projection-does-not-approve-a-threat-model-attest-control-effectiveness-accept-risk-approve-processing-establish-security-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1291,6 +1358,7 @@ interface HarnessOptions {
   businessArchitectureBaselineProjection?: BusinessArchitectureBaselineProjection
   systemSolutionArchitectureProjection?: SystemSolutionArchitectureProjection
   boundedContextModelProjection?: BoundedContextModelProjection
+  securityPrivacyAssessmentProjection?: SecurityPrivacyAssessmentProjection
   commandResult?: unknown
 }
 
@@ -1424,6 +1492,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.boundedContextModelProjection ? {
       boundedContextModel: {
         project: async () => options.boundedContextModelProjection!,
+      },
+    } : {}),
+    ...(options.securityPrivacyAssessmentProjection ? {
+      securityPrivacyAssessment: {
+        project: async () => options.securityPrivacyAssessmentProjection!,
       },
     } : {}),
   }
@@ -1786,6 +1859,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /ubiquitous language|contract narrative|source content|personal data|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Security, Privacy, and Threat metadata on the native architecture page", async () => {
+    const projection = securityPrivacyAssessmentProjection()
+    const { source } = harness({ securityPrivacyAssessmentProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[7]).toMatchObject({
+      id: "security-privacy-threat-assessment",
+      rows: [{
+        id: projection.assessment?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.assessment?.membershipDigest,
+          counts: "4 assets · 3 trust boundaries · 2 data classes · 6 controls · 7 threats",
+          assessment: "attention-required",
+          gaps: "2 unresolved threats · 1 unverified controls · 1 processing-authority gaps · 0 uncovered elements · 1 unmapped relations · 3 requirement gaps · 1 stale bindings",
+          boundary: "Candidate security, privacy, and threat coverage only; no threat-model approval, control-effectiveness attestation, risk acceptance, processing approval, security readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /threat scenario|control statement|data content|source content|personal data|customer@example\.com|api_key/iu,
     )
   })
 
