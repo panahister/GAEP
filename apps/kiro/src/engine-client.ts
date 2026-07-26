@@ -8,6 +8,7 @@ import { once } from "node:events"
 import {
   completeInitiativeApplicabilityCoverage,
   businessArchitectureBaselineProjectionSchema,
+  boundedContextModelProjectionSchema,
   businessCapabilityMapProjectionSchema,
   businessRuleCatalogProjectionSchema,
   businessUnderstandingProjectionSchema,
@@ -21,6 +22,7 @@ import {
   valueStreamModelProjectionSchema,
   type Initiative,
   type BusinessArchitectureBaselineProjection,
+  type BoundedContextModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -326,6 +328,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = systemSolutionArchitectureProjectionSchema.safeParse(
         await this.request("architecture.systemSolution.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readBoundedContextModel(initiativeValue: string): Promise<BoundedContextModelProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = boundedContextModelProjectionSchema.safeParse(
+        await this.request("architecture.boundedContexts.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

@@ -9,6 +9,7 @@ import {
   containsSecretShapedValue,
   InitiativeEntryWorkflowCancelled,
   type BusinessArchitectureBaselineProjection,
+  type BoundedContextModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -85,6 +86,7 @@ const commandIds = {
   businessRules: "gaepKiro.businessRules.inspect",
   businessArchitectureBaseline: "gaepKiro.businessArchitectureBaseline.inspect",
   systemSolutionArchitecture: "gaepKiro.systemSolutionArchitecture.inspect",
+  boundedContextModel: "gaepKiro.boundedContextModel.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -182,6 +184,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.businessRules, (input?: unknown) => runUserCommand(() => showBusinessRuleCatalog(pool, input))),
     vscode.commands.registerCommand(commandIds.businessArchitectureBaseline, (input?: unknown) => runUserCommand(() => showBusinessArchitectureBaseline(pool, input))),
     vscode.commands.registerCommand(commandIds.systemSolutionArchitecture, (input?: unknown) => runUserCommand(() => showSystemSolutionArchitecture(pool, input))),
+    vscode.commands.registerCommand(commandIds.boundedContextModel, (input?: unknown) => runUserCommand(() => showBoundedContextModel(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -795,6 +798,46 @@ async function showSystemSolutionArchitecture(
       `Membership digest: ${architecture.membershipDigest}`,
       `Candidate counts: ${architecture.concernCount} concerns · ${architecture.viewCount} views · ${architecture.elementCount} elements · ${architecture.qualityAttributeCount} quality scenarios · ${architecture.decisionCount} decisions`,
       `Updated: ${architecture.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showBoundedContextModel(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<BoundedContextModelProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Bounded Context and Ownership candidate", "Initiative ID")
+  const projection = await client.readBoundedContextModel(initiativeId)
+  const model = projection.model
+  const lines = [
+    "GAEP governed Bounded Context and Ownership candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${projection.assessment.state}`,
+    `Coverage: ${projection.assessment.boundedContextCount} contexts · ${projection.assessment.coreContextCount} core contexts · ${projection.assessment.languageTermCount} language terms · ${projection.assessment.contractCount} contracts · ${projection.assessment.relationshipCount} relationships`,
+    `Candidate gaps: ${projection.assessment.unresolvedContractCount} contracts · ${projection.assessment.unresolvedRelationshipCount} relationships · ${projection.assessment.unassignedArchitectureElementCount} unassigned elements · ${projection.assessment.unownedDataAssetCount} unowned data assets · ${projection.assessment.unmappedCrossContextRelationCount} unmapped relations · ${projection.assessment.inconsistencyCount} inconsistencies · ${projection.assessment.unresolvedQuestionCount} questions · ${projection.assessment.staleBindingCount} stale bindings · ${projection.assessment.staleSourceReferenceCount} stale Source references`,
+    ...projection.assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Boundary candidate: ${model ? `${model.id}@${model.revision} · ${model.state} · ${model.digest}` : "not recorded"}`,
+    ...(model ? [
+      `Membership digest: ${model.membershipDigest}`,
+      `Candidate counts: ${model.boundedContextCount} contexts · ${model.contractCount} contracts · ${model.relationshipCount} relationships`,
+      `Updated: ${model.updatedAt}`,
     ] : []),
     "",
     `Snapshot digest: ${projection.snapshotDigest}`,

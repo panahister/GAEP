@@ -36,6 +36,7 @@ const operatingModelId = "38383838-3838-4838-8838-383838383838"
 const businessRuleCatalogId = "39393939-3939-4939-8939-393939393939"
 const businessArchitectureBaselineId = "40404040-4040-4040-8040-404040404040"
 const systemSolutionArchitectureId = "41414141-4141-4141-8141-414141414141"
+const boundedContextModelId = "42424242-4242-4242-8242-424242424242"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -89,6 +90,8 @@ input.on("line", (line) => {
       return readBusinessArchitectureBaseline(id, request.params)
     case "architecture.systemSolution.snapshot":
       return readSystemSolutionArchitecture(id, request.params)
+    case "architecture.boundedContexts.snapshot":
+      return readBoundedContextModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -732,6 +735,72 @@ function readSystemSolutionArchitecture(id, params) {
   }
   if (workspacePath.endsWith("bad-system-solution-architecture-snapshot-private")) {
     value.architectureNarrative = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readBoundedContextModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BOUNDED CONTEXT PARAMS")
+  }
+  const modelDigest = `sha256:${"3".repeat(64)}`
+  const assessment = {
+    schemaVersion: 1,
+    kind: "bounded-context-ownership-assessment",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    model: { recordId: boundedContextModelId, revision: 2, digest: modelDigest },
+    boundedContextCount: 3,
+    coreContextCount: 1,
+    languageTermCount: 11,
+    contractCount: 4,
+    unresolvedContractCount: 1,
+    relationshipCount: 3,
+    unresolvedRelationshipCount: 1,
+    unassignedArchitectureElementCount: 2,
+    unownedDataAssetCount: 1,
+    unmappedCrossContextRelationCount: 2,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more cross-context contracts remain unresolved"],
+    assessedAt: "2026-07-26T11:00:00.000Z",
+    authorityBoundary: "bounded-context-model-assessment-reports-candidate-coverage-and-gaps-and-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "bounded-context-ownership-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    assessment,
+    model: {
+      id: boundedContextModelId,
+      revision: 2,
+      digest: modelDigest,
+      membershipDigest: `sha256:${"4".repeat(64)}`,
+      state: "candidate",
+      boundedContextCount: 3,
+      contractCount: 4,
+      relationshipCount: 3,
+      updatedAt: "2026-07-26T10:59:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-boundary-language-contract-source-content-personal-data-locators-or-credentials",
+    authorityBoundary: "bounded-context-model-projection-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-bounded-context-snapshot-binding")) {
+    content.initiative.id = boundedContextModelId
+  }
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-bounded-context-snapshot-digest")) {
+    value.model.boundedContextCount = 4
+  }
+  if (workspacePath.endsWith("bad-bounded-context-snapshot-private")) {
+    value.ubiquitousLanguage = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
