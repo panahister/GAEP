@@ -18,6 +18,7 @@ import {
   auditCheckpointSchema,
   auditEventSchema,
   businessCapabilityMapSchema,
+  businessRuleCatalogSchema,
   businessUnderstandingSchema,
   changeSchema,
   contextPackSchema,
@@ -92,6 +93,8 @@ const directoryNames = [
   "value-stream-model-history",
   "operating-models",
   "operating-model-history",
+  "business-rule-catalogs",
+  "business-rule-catalog-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -865,6 +868,8 @@ export class GaepRepository {
       ["value-stream-model-history", /^value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["operating-models", /^[0-9a-f-]+\.json$/i],
       ["operating-model-history", /^operating-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["business-rule-catalogs", /^[0-9a-f-]+\.json$/i],
+      ["business-rule-catalog-history", /^business-rule-catalog-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -964,6 +969,10 @@ export class GaepRepository {
     if (/^operating-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^operating-model-history\/operating-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, operatingModelSchema)
+    }
+    if (/^business-rule-catalogs\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^business-rule-catalog-history\/business-rule-catalog-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, businessRuleCatalogSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

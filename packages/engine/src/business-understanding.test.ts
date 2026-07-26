@@ -4,11 +4,14 @@ import { join } from "node:path"
 
 import {
   businessCapabilityMapInputSchema,
+  businessRuleCatalogInputSchema,
   stakeholderCategoryValues,
   stakeholderModelInputSchema,
   valueStreamModelInputSchema,
   type BusinessCapabilityMap,
   type BusinessCapabilityMapInput,
+  type BusinessRuleCatalogInput,
+  type BusinessRuleCatalog,
   type BusinessUnderstanding,
   type BusinessUnderstandingInput,
   type ExactSourceReference,
@@ -617,6 +620,91 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function businessRuleCatalogInput(
+    business: BusinessUnderstanding,
+    stakeholder: StakeholderModel,
+    outcome: Awaited<ReturnType<typeof engine.businessUnderstanding.createOutcomeModel>>,
+    capabilityMap: BusinessCapabilityMap,
+    valueStreamModel: ValueStreamModel,
+    operatingModel: OperatingModel,
+    overrides: Partial<BusinessRuleCatalogInput> = {},
+  ): BusinessRuleCatalogInput {
+    const candidateAuthority = {
+      state: "candidate" as const,
+      basis: "The catalog identifies a candidate accountable path for review but does not grant exception or enforcement authority.",
+      sources: [reference()],
+    }
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      businessUnderstanding: businessReference(business),
+      stakeholderModel: stakeholderReference(stakeholder),
+      outcomeModel: { recordId: outcome.id, revision: outcome.revision, digest: canonicalDigest(outcome) },
+      capabilityMap: { recordId: capabilityMap.id, revision: capabilityMap.revision, digest: canonicalDigest(capabilityMap) },
+      valueStreamModel: { recordId: valueStreamModel.id, revision: valueStreamModel.revision, digest: canonicalDigest(valueStreamModel) },
+      operatingModel: { recordId: operatingModel.id, revision: operatingModel.revision, digest: canonicalDigest(operatingModel) },
+      rules: [{
+        key: "govern-context-eligibility",
+        name: "Governed context eligibility",
+        kind: "eligibility",
+        statement: "Candidate context is eligible for downstream review only when every exact upstream business binding is current.",
+        applicability: "Applies to the bounded Initiative whenever governed context is prepared for a downstream Product or engineering review.",
+        condition: "Every recorded Product, Initiative, Source, business, capability, value-stream, and operating-model reference matches its exact current revision and digest.",
+        outcome: "Produce an evidence-backed candidate eligibility result; otherwise return indeterminate and preserve every unresolved or stale binding.",
+        rationale: "Fail-closed candidate eligibility prevents incomplete or stale context from being mistaken for an approved rule, baseline, or authorization.",
+        ownerRoleKey: "initiative-owner",
+        capabilityKeys: ["governed-context"],
+        valueStreamKeys: ["governed-delivery"],
+        decisionRightKeys: ["govern-initiative-outcome"],
+        enforcementTargetKeys: ["context-entry"],
+        exceptionBehavior: "candidate-exception-path",
+        exceptionKeys: ["bounded-context-exception"],
+        examples: ["A stale Operating Model reference produces indeterminate and blocks candidate eligibility"],
+        unknownInputBehavior: "indeterminate",
+        sources: [reference()],
+      }],
+      enforcementTargets: [{
+        key: "context-entry",
+        name: "Governed context entry",
+        kind: "human-workflow",
+        target: "The candidate transition from business architecture context capture into downstream Product review.",
+        responsibleRoleKey: "initiative-owner",
+        mechanism: "A future implementation may evaluate exact recorded bindings and surface a candidate result for accountable human review.",
+        failureBehavior: "Missing, conflicting, stale, unsupported, or unavailable inputs return indeterminate without silently permitting progression.",
+        assignment: candidateAuthority,
+        verificationState: "candidate-defined",
+        verificationCriteria: ["Hostile stale-binding and unknown-input cases fail closed without granting action authority"],
+        sources: [reference()],
+      }],
+      exceptions: [{
+        key: "bounded-context-exception",
+        name: "Bounded governed-context exception candidate",
+        ruleKeys: ["govern-context-eligibility"],
+        scope: "One exact Initiative revision and one named downstream review scope only.",
+        rationaleRequirements: ["Explain why normal rule satisfaction is unavailable and why the bounded review remains necessary"],
+        approvingRoleKey: "initiative-owner",
+        decisionRightKey: "govern-initiative-outcome",
+        compensatingControls: ["Preserve the unresolved binding and require an explicit downstream hold"],
+        validityRule: "Any future approved exception must bind exact scope, evidence, start, expiry, and conditions.",
+        revocationRule: "Condition breach, source revision, or scope change invalidates the candidate exception path.",
+        closureRule: "Closure requires separately governed disposition and evidence; elapsed time is not closure.",
+        authority: candidateAuthority,
+        sources: [reference()],
+      }],
+      conflictModel: {
+        defaultOutcome: "indeterminate",
+        precedenceRule: "Rule precedence must be explicit, source-backed, and unable to weaken a higher applicable obligation by local ordering.",
+        conflictRule: "Conflicting rule outcomes remain visible and route to the candidate accountable role without selecting the more permissive result.",
+        unresolvedConflictRule: "An unresolved conflict produces indeterminate and cannot be consumed as approval, exception, enforcement, or authorization.",
+        ownerRoleKey: "initiative-owner",
+        sources: [reference()],
+      },
+      limitations: ["No policy evaluation, exception grant, deployed enforcement, approved baseline, readiness, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -1017,6 +1105,147 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("governs an exact immutable Business Rule Catalog and projects privacy-safe coverage counts", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+    const operatingModel = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
+      actorId,
+    )
+    const catalog = await engine.businessRuleCatalog.create(
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel),
+      actorId,
+    )
+
+    expect(await engine.businessRuleCatalog.assess(initiative.id)).toMatchObject({
+      businessRuleCatalog: { recordId: catalog.id, revision: 1, digest: canonicalDigest(catalog) },
+      ruleCount: 1,
+      sourceBackedRuleCount: 1,
+      nonExceptionableRuleCount: 0,
+      enforcementTargetCount: 1,
+      unassignedEnforcementTargetCount: 0,
+      unverifiedEnforcementTargetCount: 0,
+      exceptionCount: 1,
+      unassignedExceptionAuthorityCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.businessRuleCatalog.project(initiative.id)
+    expect(projection).toMatchObject({
+      businessRuleCatalog: {
+        id: catalog.id,
+        revision: 1,
+        ruleCount: 1,
+        enforcementTargetCount: 1,
+        exceptionCount: 1,
+        nonExceptionableRuleCount: 0,
+      },
+      privacyBoundary: expect.stringContaining("not-rule-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-evaluate-policy"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Candidate context is eligible")
+    expect(projection.snapshotDigest).toBe(canonicalDigest({ ...projection, snapshotDigest: undefined }))
+
+    const revised = await engine.businessRuleCatalog.revise(
+      catalog.id,
+      catalog.revision,
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel, {
+        limitations: ["A realistic domain-expert review and Product Owner acceptance remain outstanding"],
+      }),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: catalog.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(catalog),
+      state: "candidate",
+    })
+    expect((await engine.businessRuleCatalog.listHistory(catalog.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "business.rule-catalog.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(catalog),
+        state: "candidate",
+        authorityBoundary: expect.stringContaining("does-not-evaluate-policy"),
+      },
+    })
+  })
+
+  it("rejects hostile Business Rule authority and trace bindings and reports stale Operating Model bindings", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+    const operatingModel = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
+      actorId,
+    )
+    const base = businessRuleCatalogInput(
+      business,
+      stakeholder,
+      outcome,
+      capabilityMap,
+      valueStreamModel,
+      operatingModel,
+    )
+    expect(() => businessRuleCatalogInputSchema.parse({
+      ...base,
+      rules: [{ ...base.rules[0]!, enforcementTargetKeys: ["missing-target"] }],
+    })).toThrow(/recorded enforcement targets/)
+    expect(() => businessRuleCatalogInputSchema.parse({
+      ...base,
+      rules: [{ ...base.rules[0]!, exceptionBehavior: "not-exceptionable" }],
+    })).toThrow(/non-exceptionable/)
+    await expect(engine.businessRuleCatalog.create({
+      ...base,
+      rules: [{ ...base.rules[0]!, ownerRoleKey: "invented-owner" }],
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.businessRuleCatalog.create({
+      ...base,
+      exceptions: [{ ...base.exceptions[0]!, approvingRoleKey: "gaep-steward" }],
+    }, actorId)).rejects.toThrow(/accountable role/)
+    await expect(engine.businessRuleCatalog.create({
+      ...base,
+      conflictModel: {
+        ...base.conflictModel,
+        conflictRule: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable rule context",
+      },
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const catalog = await engine.businessRuleCatalog.create(base, actorId)
+    await engine.operatingModel.revise(
+      operatingModel.id,
+      operatingModel.revision,
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, {
+        limitations: ["The exact Operating Model changed after business-rule capture"],
+      }),
+      actorId,
+    )
+    expect(await engine.businessRuleCatalog.assess(initiative.id)).toMatchObject({
+      businessRuleCatalog: { recordId: catalog.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -1072,6 +1301,10 @@ describe("Business understanding governance", () => {
       operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
       actorId,
     )
+    const businessRuleCatalog = await engine.businessRuleCatalog.create(
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -1082,6 +1315,8 @@ describe("Business understanding governance", () => {
       `value-stream-model-history/value-stream-model-${valueStreamModel.id}-r1.json`,
       `operating-models/${operatingModel.id}.json`,
       `operating-model-history/operating-model-${operatingModel.id}-r1.json`,
+      `business-rule-catalogs/${businessRuleCatalog.id}.json`,
+      `business-rule-catalog-history/business-rule-catalog-${businessRuleCatalog.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -1167,6 +1402,23 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedOperatingTrace))
       .rejects.toThrow(/unknown bound stakeholder/)
+
+    const forgeUnknownRuleOwner = (content: unknown) => ({
+      ...(content as BusinessRuleCatalog),
+      rules: [{ ...(content as BusinessRuleCatalog).rules[0]!, ownerRoleKey: "invented-role" }],
+    })
+    let forgedRuleTrace = replacePortableRecord(
+      bundle,
+      `business-rule-catalogs/${businessRuleCatalog.id}.json`,
+      forgeUnknownRuleOwner,
+    )
+    forgedRuleTrace = replacePortableRecord(
+      forgedRuleTrace,
+      `business-rule-catalog-history/business-rule-catalog-${businessRuleCatalog.id}-r1.json`,
+      forgeUnknownRuleOwner,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedRuleTrace))
+      .rejects.toThrow(/unknown bound owner role/)
   })
 
   it("requires explicit human disclosure review for confidential business records", async () => {

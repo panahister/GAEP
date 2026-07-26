@@ -6,6 +6,7 @@ import { isAbsolute } from "node:path"
 import {
   architectureRecordSchema,
   businessCapabilityMapSchema,
+  businessRuleCatalogSchema,
   businessUnderstandingSchema,
   changeSchema,
   containsSecretShapedValue,
@@ -55,6 +56,7 @@ import {
   redactSecretShapedText,
   type ArchitectureRecord,
   type BusinessCapabilityMap,
+  type BusinessRuleCatalog,
   type BusinessUnderstanding,
   type Change,
   type ContextPack,
@@ -1944,6 +1946,16 @@ export class ProductStudioService {
       /^operating-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       operatingModelSchema,
     )
+    const businessRuleCatalogs = await this.listRecords(
+      "business-rule-catalogs",
+      /^[0-9a-f-]+\.json$/i,
+      businessRuleCatalogSchema,
+    )
+    const businessRuleCatalogHistory = await this.listRecords(
+      "business-rule-catalog-history",
+      /^business-rule-catalog-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      businessRuleCatalogSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -1979,6 +1991,8 @@ export class ProductStudioService {
       ...valueStreamModelHistory,
       ...operatingModels,
       ...operatingModelHistory,
+      ...businessRuleCatalogs,
+      ...businessRuleCatalogHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -1998,6 +2012,7 @@ export class ProductStudioService {
           businessCapabilityMaps.find((record) => record.id === id)?.informationClassification ??
           valueStreamModels.find((record) => record.id === id)?.informationClassification ??
           operatingModels.find((record) => record.id === id)?.informationClassification ??
+          businessRuleCatalogs.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2072,6 +2087,13 @@ export class ProductStudioService {
       "operating-model",
       operatingModelHistory,
       (record) => `operating-model-history/operating-model-${record.id}-r${record.revision}.json`,
+    )
+    append("business-rule-catalogs", "business-rule-catalog", businessRuleCatalogs)
+    append(
+      "business-rule-catalog-history",
+      "business-rule-catalog",
+      businessRuleCatalogHistory,
+      (record) => `business-rule-catalog-history/business-rule-catalog-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2296,6 +2318,14 @@ export class ProductStudioService {
           `operating-model-history/operating-model-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Operating Model history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("business-rule-catalog-history/")) {
+        const record = validated as BusinessRuleCatalog
+        const expectedHistoryPath =
+          `business-rule-catalog-history/business-rule-catalog-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Business Rule Catalog history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3422,7 +3452,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3454,7 +3484,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -3698,7 +3728,11 @@ export class ProductStudioService {
     const operatingModelHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("operating-model-history/"))
       .map(([, record]) => operatingModelSchema.parse(record))
-    validateVersionedBusinessRecords(operatingModels, operatingModelHistory, "Operating Model")
+    const exactOperatingModels = validateVersionedBusinessRecords(
+      operatingModels,
+      operatingModelHistory,
+      "Operating Model",
+    )
     for (const model of [...operatingModels, ...operatingModelHistory]) {
       resolveBusinessUnderstanding(model.businessUnderstanding, model.initiativeId)
       const stakeholder = resolveStakeholderModel(model.stakeholderModel, model.initiativeId)
@@ -3727,6 +3761,73 @@ export class ProductStudioService {
         if (roleByKey.get(right.accountableRoleKey)?.governanceSystem !== right.governanceSystem) {
           throw new Error(`Import Operating Model ${model.id} crosses a governance-system authority boundary`)
         }
+      }
+    }
+
+    const resolveOperatingModel = (
+      reference: BusinessRuleCatalog["operatingModel"],
+      initiativeId: string,
+    ): OperatingModel => {
+      const record = exactOperatingModels.get(
+        `${reference.recordId}:${reference.revision}:${reference.digest}`,
+      )
+      if (!record || record.initiativeId !== initiativeId) {
+        throw new Error("Import exact Operating Model reference is unresolved")
+      }
+      return record
+    }
+    const businessRuleCatalogs = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("business-rule-catalogs/"))
+      .map(([, record]) => businessRuleCatalogSchema.parse(record))
+    const businessRuleCatalogHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("business-rule-catalog-history/"))
+      .map(([, record]) => businessRuleCatalogSchema.parse(record))
+    validateVersionedBusinessRecords(
+      businessRuleCatalogs,
+      businessRuleCatalogHistory,
+      "Business Rule Catalog",
+    )
+    for (const catalog of [...businessRuleCatalogs, ...businessRuleCatalogHistory]) {
+      resolveBusinessUnderstanding(catalog.businessUnderstanding, catalog.initiativeId)
+      resolveStakeholderModel(catalog.stakeholderModel, catalog.initiativeId)
+      resolveOutcomeModel(catalog.outcomeModel, catalog.initiativeId)
+      const capabilityMap = resolveCapabilityMap(catalog.capabilityMap, catalog.initiativeId)
+      const valueStream = resolveValueStreamModel(catalog.valueStreamModel, catalog.initiativeId)
+      const operatingModel = resolveOperatingModel(catalog.operatingModel, catalog.initiativeId)
+      const capabilityKeys = new Set(capabilityMap.capabilities.map((entry) => entry.key))
+      const valueStreamKeys = new Set(valueStream.valueStreams.map((entry) => entry.key))
+      const roleByKey = new Map(operatingModel.roles.map((role) => [role.key, role]))
+      const decisionRightByKey = new Map(operatingModel.decisionRights.map((right) => [right.key, right]))
+      for (const rule of catalog.rules) {
+        if (!roleByKey.has(rule.ownerRoleKey)) {
+          throw new Error(`Import Business Rule Catalog ${catalog.id} references an unknown bound owner role`)
+        }
+        if (rule.capabilityKeys.some((key) => !capabilityKeys.has(key))) {
+          throw new Error(`Import Business Rule Catalog ${catalog.id} references an unknown bound capability`)
+        }
+        if (rule.valueStreamKeys.some((key) => !valueStreamKeys.has(key))) {
+          throw new Error(`Import Business Rule Catalog ${catalog.id} references an unknown bound value stream`)
+        }
+        if (rule.decisionRightKeys.some((key) => !decisionRightByKey.has(key))) {
+          throw new Error(`Import Business Rule Catalog ${catalog.id} references an unknown bound decision right`)
+        }
+      }
+      for (const target of catalog.enforcementTargets) {
+        if (!roleByKey.has(target.responsibleRoleKey)) {
+          throw new Error(`Import Business Rule Catalog ${catalog.id} enforcement target references an unknown bound role`)
+        }
+      }
+      for (const exception of catalog.exceptions) {
+        const decisionRight = decisionRightByKey.get(exception.decisionRightKey)
+        if (!roleByKey.has(exception.approvingRoleKey) || !decisionRight) {
+          throw new Error(`Import Business Rule Catalog ${catalog.id} exception authority is unresolved`)
+        }
+        if (decisionRight.accountableRoleKey !== exception.approvingRoleKey) {
+          throw new Error(`Import Business Rule Catalog ${catalog.id} exception crosses its decision-right authority boundary`)
+        }
+      }
+      if (!roleByKey.has(catalog.conflictModel.ownerRoleKey)) {
+        throw new Error(`Import Business Rule Catalog ${catalog.id} conflict owner is unresolved`)
       }
     }
 
@@ -4343,6 +4444,10 @@ export class ProductStudioService {
         /^operating-model-history\/operating-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "operating-model"
     }
+    if (/^business-rule-catalogs\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^business-rule-catalog-history\/business-rule-catalog-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "business-rule-catalog"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -4403,6 +4508,10 @@ export class ProductStudioService {
     if (/^operating-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^operating-model-history\/operating-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return operatingModelSchema
+    }
+    if (/^business-rule-catalogs\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^business-rule-catalog-history\/business-rule-catalog-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return businessRuleCatalogSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

@@ -1,5 +1,6 @@
 export * from "./agent-model-dashboard.js"
 export * from "./business-capability-map.js"
+export * from "./business-rule-catalog.js"
 export * from "./business-understanding.js"
 export * from "./change-impact-dashboard.js"
 export * from "./dashboard-framework.js"
