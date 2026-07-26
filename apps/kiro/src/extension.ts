@@ -13,6 +13,7 @@ import {
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
+  type OperatingModelProjection,
   type SourceGovernanceProjection,
   type ValueStreamModelProjection,
 } from "@gaep/contracts"
@@ -77,6 +78,7 @@ const commandIds = {
   businessUnderstanding: "gaepKiro.businessUnderstanding.inspect",
   businessCapabilityMap: "gaepKiro.businessCapabilityMap.inspect",
   valueStreamModel: "gaepKiro.valueStreamModel.inspect",
+  operatingModel: "gaepKiro.operatingModel.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -170,6 +172,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.businessUnderstanding, (input?: unknown) => runUserCommand(() => showBusinessUnderstanding(pool, input))),
     vscode.commands.registerCommand(commandIds.businessCapabilityMap, (input?: unknown) => runUserCommand(() => showBusinessCapabilityMap(pool, input))),
     vscode.commands.registerCommand(commandIds.valueStreamModel, (input?: unknown) => runUserCommand(() => showValueStreamModel(pool, input))),
+    vscode.commands.registerCommand(commandIds.operatingModel, (input?: unknown) => runUserCommand(() => showOperatingModel(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -624,6 +627,45 @@ async function showValueStreamModel(
       : "not recorded"}`,
     ...(model ? [
       `Model counts: ${model.valueStreamCount} value streams · ${model.ownedValueStreamCount} owned · ${model.stageCount} stages · ${model.dependencyCount} dependencies · ${model.openBottleneckCount} open bottlenecks · ${model.criticalBottleneckCount} critical bottlenecks`,
+      `Updated: ${model.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showOperatingModel(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<OperatingModelProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Operating Model", "Initiative ID")
+  const projection = await client.readOperatingModel(initiativeId)
+  const model = projection.operatingModel
+  const lines = [
+    "GAEP governed Operating Model",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${projection.assessment.state}`,
+    `Structural counts: ${projection.assessment.roleCount} roles · ${projection.assessment.governanceSystemCount} governance systems · ${projection.assessment.decisionRightCount} decision rights · ${projection.assessment.forumCount} forums · ${projection.assessment.cycleCount} cycles`,
+    `Candidate gaps: ${projection.assessment.unassignedAppointingAuthorityCount} appointing authorities · ${projection.assessment.insufficientCapacityCount} capacity · ${projection.assessment.unfundedCapacityCount} funding · ${projection.assessment.unassignedDecisionAuthorityCount} decision authorities · ${projection.assessment.supportCapacityGapCount} support capacity · ${projection.assessment.emergencyAuthorityGapCount} emergency authority · ${projection.assessment.staleBindingCount} stale bindings · ${projection.assessment.staleSourceReferenceCount} stale Source references`,
+    ...projection.assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Operating Model: ${model ? `${model.id}@${model.revision} · ${model.state} · ${model.digest}` : "not recorded"}`,
+    ...(model ? [
+      `Model counts: ${model.roleCount} roles · ${model.decisionRightCount} decision rights · ${model.forumCount} forums · ${model.cycleCount} cycles`,
       `Updated: ${model.updatedAt}`,
     ] : []),
     "",

@@ -32,6 +32,7 @@ const stakeholderModelId = "34343434-3434-4434-8434-343434343434"
 const outcomeModelId = "35353535-3535-4535-8535-353535353535"
 const businessCapabilityMapId = "36363636-3636-4636-8636-363636363636"
 const valueStreamModelId = "37373737-3737-4737-8737-373737373737"
+const operatingModelId = "38383838-3838-4838-8838-383838383838"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -77,6 +78,8 @@ input.on("line", (line) => {
       return readBusinessCapabilityMap(id, request.params)
     case "business.valueStreams.snapshot":
       return readValueStreamModel(id, request.params)
+    case "business.operatingModels.snapshot":
+      return readOperatingModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -483,6 +486,61 @@ function readValueStreamModel(id, params) {
   if (workspacePath.endsWith("bad-value-stream-snapshot-digest")) value.valueStreamModel.openBottleneckCount = 3
   if (workspacePath.endsWith("bad-value-stream-snapshot-private")) {
     value.valueStreamNarrative = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readOperatingModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE OPERATING MODEL PARAMS")
+  }
+  const modelDigest = `sha256:${"8".repeat(64)}`
+  const assessment = {
+    schemaVersion: 1,
+    kind: "operating-model-assessment",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    operatingModel: { recordId: operatingModelId, revision: 2, digest: modelDigest },
+    roleCount: 6,
+    governanceSystemCount: 2,
+    unassignedAppointingAuthorityCount: 1,
+    insufficientCapacityCount: 2,
+    unfundedCapacityCount: 3,
+    decisionRightCount: 8,
+    unassignedDecisionAuthorityCount: 1,
+    forumCount: 2,
+    cycleCount: 3,
+    supportCapacityGapCount: 1,
+    emergencyAuthorityGapCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more candidate roles have no candidate appointing authority"],
+    assessedAt: "2026-07-26T07:00:00.000Z",
+    authorityBoundary: "operating-model-assessment-reports-candidate-structural-coverage-and-gaps-and-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "operating-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    assessment,
+    operatingModel: {
+      id: operatingModelId, revision: 2, digest: modelDigest, state: "candidate",
+      roleCount: 6, decisionRightCount: 8, forumCount: 2, cycleCount: 3,
+      updatedAt: "2026-07-26T06:59:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-operating-narrative-personal-data-source-content-locators-or-credentials",
+    authorityBoundary: "operating-model-projection-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-operating-model-snapshot-binding")) content.initiative.id = operatingModelId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-operating-model-snapshot-digest")) value.operatingModel.roleCount = 7
+  if (workspacePath.endsWith("bad-operating-model-snapshot-private")) {
+    value.operatingNarrative = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
