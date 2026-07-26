@@ -6,6 +6,8 @@ import {
   boundedContextModelInputSchema,
   securityPrivacyAssessmentInputSchema,
   securityPrivacyRequirementIds,
+  processModelInputSchema,
+  processRequirementIds,
   businessArchitectureBaselineInputSchema,
   businessCapabilityMapInputSchema,
   businessRuleCatalogInputSchema,
@@ -17,6 +19,8 @@ import {
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
   type SecurityPrivacyAssessmentInput,
+  type ProcessModelInput,
+  type ProcessModel,
   type BusinessArchitectureBaselineInput,
   type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
@@ -1326,6 +1330,225 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function processModelInput(
+    valueStreamModel: ValueStreamModel,
+    operatingModel: OperatingModel,
+    businessRuleCatalog: BusinessRuleCatalog,
+    boundedContextModel: BoundedContextModel,
+    securityPrivacyAssessment: SecurityPrivacyAssessment,
+    overrides: Partial<ProcessModelInput> = {},
+  ): ProcessModelInput {
+    const requirementCoverage = [...processRequirementIds]
+      .sort((left, right) => left.localeCompare(right))
+      .map((requirementId) => ({
+        requirementId,
+        state: "covered-candidate" as const,
+        processKeys: ["governed-context-review"],
+        transitionKeys: ["draft-to-review", "review-to-finalized"],
+        basis: "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+        evidence: [reference()],
+      }))
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Process Model",
+      scope: "Model the exact governed context review workflow, orthogonal authoring state, attributable transitions, events, evidence, and human approval boundary for accountable review.",
+      valueStreamModel: { recordId: valueStreamModel.id, revision: valueStreamModel.revision, digest: canonicalDigest(valueStreamModel) },
+      operatingModel: { recordId: operatingModel.id, revision: operatingModel.revision, digest: canonicalDigest(operatingModel) },
+      businessRuleCatalog: { recordId: businessRuleCatalog.id, revision: businessRuleCatalog.revision, digest: canonicalDigest(businessRuleCatalog) },
+      boundedContextModel: { recordId: boundedContextModel.id, revision: boundedContextModel.revision, digest: canonicalDigest(boundedContextModel) },
+      securityPrivacyAssessment: {
+        recordId: securityPrivacyAssessment.id,
+        revision: securityPrivacyAssessment.revision,
+        digest: canonicalDigest(securityPrivacyAssessment),
+      },
+      processes: [{
+        key: "governed-context-review",
+        name: "Governed context review",
+        purpose: "Prepare, challenge, and present exact governed Product context for a separate accountable human decision without treating workflow completion as approval or authority.",
+        ownerRoleKey: "initiative-owner",
+        participantRoleKeys: ["gaep-steward", "initiative-owner"],
+        valueStreamKeys: ["governed-delivery"],
+        boundedContextKeys: ["governance-core", "product-studio"],
+        businessRuleKeys: ["govern-context-eligibility"],
+        trigger: "An exact active Product Initiative requires governed candidate context before downstream Product progression can be considered.",
+        inputs: ["Exact bound Product records and attributable Source evidence"],
+        outputs: ["Candidate Process Model and separate human approval request context"],
+        stateDimensions: [{
+          key: "authoring-lifecycle",
+          name: "Process authoring lifecycle",
+          family: "authoring-lifecycle",
+          statechartVersion: 1,
+          initialStateKey: "draft",
+          states: [{
+            key: "draft",
+            name: "Draft",
+            terminal: false,
+            meaning: "The candidate process is being prepared and has no approval, readiness, transition, execution, or action authority.",
+            sources: [reference()],
+          }, {
+            key: "finalized",
+            name: "Finalized candidate",
+            terminal: true,
+            meaning: "The exact candidate authoring revision is closed for review history but remains separate from approval, baseline, authorization, readiness, and execution.",
+            sources: [reference()],
+          }, {
+            key: "in-review",
+            name: "In review",
+            terminal: false,
+            meaning: "Named reviewers are challenging the exact candidate under declared evidence and limitations without granting human approval or authority.",
+            sources: [reference()],
+          }],
+          migrationAndCompatibility: "A changed statechart version requires an explicit migration, affected-instance review, compatibility statement, and re-evaluation before any dependent transition.",
+          sources: [reference()],
+        }],
+        approvalRequirements: [{
+          key: "process-baseline-approval",
+          level: "A2",
+          purpose: "Require a separately attributable accountable human decision before any exact Process Model candidate can become an approved Product baseline.",
+          exactSubject: "One exact immutable Process Model candidate revision and its five upstream membership bindings.",
+          approverRoleKeys: ["initiative-owner"],
+          segregationRules: ["The process generator cannot provide the accountable approval response"],
+          aggregationRule: "One valid exact-version response from an independently established eligible Initiative owner is required; absence, ambiguity, conflict, expiry, or revocation remains incomplete.",
+          allowedOutcomes: ["approved", "changes-requested", "deferred", "rejected"],
+          evidenceRequirements: ["Exact candidate digest, upstream membership, assessment gaps, unresolved matters, and reviewer limitations"],
+          validity: "Any future determination remains valid only for the unchanged exact subject, authority, policy, evidence, conditions, and effective interval.",
+          reopeningTriggers: ["Authority, policy, evidence, scope, Source, upstream record, statechart, process, step, transition, approval, or risk context changes materially"],
+          approvalState: "not-granted",
+          sources: [reference()],
+        }],
+        transitions: [{
+          key: "draft-to-review",
+          dimensionKey: "authoring-lifecycle",
+          sourceStateKey: "draft",
+          targetStateKey: "in-review",
+          trigger: "The candidate author requests accountable challenge of the exact draft revision.",
+          actorRoleKeys: ["initiative-owner"],
+          authorityBasis: "A future exact role assignment and applicable policy must independently authorize submission; this candidate records no such grant.",
+          guardCriteria: ["Exact upstream bindings and Source evidence are current", "Required process, step, event, transition, rule, context, role, and requirement coverage is explicit"],
+          evidenceRequirements: ["Candidate integrity, completeness, limitations, and unresolved-matter evidence"],
+          approvalRequirementKeys: [],
+          confirmationRequired: false,
+          idempotencyRequired: true,
+          concurrencyRule: "compare-and-swap",
+          effects: ["Create an immutable transition record and attributable governance and audit events"],
+          failureBehavior: "A stale, conflicting, missing, unsupported, unauthorized, or uncertain request is rejected without changing current state or inferring review entry.",
+          reopeningAndCompensation: "A material change creates a superseding candidate and explicit reopening record; history is never overwritten and rollback never erases prior facts.",
+          authorityState: "not-granted",
+          sources: [reference()],
+        }, {
+          key: "review-to-finalized",
+          dimensionKey: "authoring-lifecycle",
+          sourceStateKey: "in-review",
+          targetStateKey: "finalized",
+          trigger: "Reviewers conclude the exact candidate is sufficiently described for a separate accountable Product approval decision.",
+          actorRoleKeys: ["gaep-steward", "initiative-owner"],
+          authorityBasis: "Candidate review participation is not approval; any final transition requires separately valid exact human approval and authorization records at action time.",
+          guardCriteria: ["Every required contribution, finding, limitation, dissent, and evidence result is exact and attributable", "The approval requirement remains explicit and no response is synthesized"],
+          evidenceRequirements: ["Exact review conclusion, findings, limitations, requirement coverage, and approval-case context"],
+          approvalRequirementKeys: ["process-baseline-approval"],
+          confirmationRequired: true,
+          idempotencyRequired: true,
+          concurrencyRule: "explicit-re-evaluation",
+          effects: ["Create immutable candidate-finalization, transition, governance, and audit records without baseline promotion"],
+          failureBehavior: "Missing or invalid approval, authority, evidence, confirmation, or concurrency state fails closed and preserves the candidate in review.",
+          reopeningAndCompensation: "New material evidence reopens through a defined superseding revision and preserves the earlier review, approval, transition, and event history.",
+          authorityState: "not-granted",
+          sources: [reference()],
+        }],
+        steps: [{
+          key: "prepare-candidate",
+          sequence: 1,
+          objective: "Assemble the exact bounded Product process candidate and validate its source, graph, governance, state, approval, and authority boundaries.",
+          responsibility: "mixed",
+          dependencyKeys: [],
+          roleKeys: ["gaep-steward", "initiative-owner"],
+          boundedContextKeys: ["governance-core", "product-studio"],
+          transitionKeys: ["draft-to-review"],
+          approvalRequirementKeys: [],
+          inputs: ["Exact upstream records and Source evidence"],
+          outputs: ["Validated candidate ready for accountable challenge"],
+          evidenceRequirements: ["Schema, exact-binding, hostile-input, audit, history, health, and privacy-projection evidence"],
+          stopConditions: ["Any required identity, binding, role, rule, state, transition, evidence, Source, or authority input is stale, missing, conflicting, unsupported, or uncertain"],
+          recoveryExpectations: ["Preserve immutable history and resume only from revalidated exact inputs"],
+          proposedEffects: [],
+          authorizationState: "not-granted",
+          completionState: "not-assessed",
+          sources: [reference()],
+        }, {
+          key: "review-candidate",
+          sequence: 2,
+          objective: "Challenge the exact candidate, surface findings and limitations, and prepare a separate human approval case without treating review completion as permission.",
+          responsibility: "human",
+          dependencyKeys: ["prepare-candidate"],
+          roleKeys: ["gaep-steward", "initiative-owner"],
+          boundedContextKeys: ["governance-core", "product-studio"],
+          transitionKeys: ["review-to-finalized"],
+          approvalRequirementKeys: ["process-baseline-approval"],
+          inputs: ["Exact candidate, evaluation results, review contributions, findings, limitations, and unresolved matters"],
+          outputs: ["Attributable review conclusion and separately governed approval request"],
+          evidenceRequirements: ["Exact reviewer identities, roles, criteria, contributions, findings, conclusion, exclusions, and limitations"],
+          stopConditions: ["Approval, authority, evidence, independence, subject version, policy, state, or confirmation is absent, invalid, stale, conflicted, expired, revoked, or indeterminate"],
+          recoveryExpectations: ["Reopen or supersede explicitly after material change and preserve every prior review, approval, transition, and event record"],
+          proposedEffects: ["Candidate authoring finalization only after separate exact authorization"],
+          authorizationState: "not-granted",
+          completionState: "not-assessed",
+          sources: [reference()],
+        }],
+        events: [{
+          key: "process-finalized",
+          category: "governance",
+          schemaVersion: 1,
+          subject: "One exact candidate authoring-lifecycle transition from in-review to finalized without baseline promotion or action authority.",
+          producerRoleKeys: ["gaep-steward", "initiative-owner"],
+          transitionKeys: ["review-to-finalized"],
+          payloadContract: "Bind event identity, exact subject and state versions, actor, role, authority, approval, evidence, occurrence and recording time, cause, correlation, classification, provenance, and integrity.",
+          classification: "internal",
+          provenanceAndIntegrity: "The immutable event is transaction-bound to the exact transition record and audit chain; correction requires a linked corrective event.",
+          correctionSemantics: "Never overwrite the original event; record a linked correction or compensating action with residual effects and attributable authority.",
+          sources: [reference()],
+        }, {
+          key: "process-review-requested",
+          category: "governance",
+          schemaVersion: 1,
+          subject: "One exact candidate authoring-lifecycle transition request from draft to in-review and its independently committed result.",
+          producerRoleKeys: ["initiative-owner"],
+          transitionKeys: ["draft-to-review"],
+          payloadContract: "Bind request and committed transition separately with exact expected version, actor, role, authority basis, reason, evidence, idempotency, correlation, classification, provenance, and integrity.",
+          classification: "internal",
+          provenanceAndIntegrity: "The immutable event distinguishes requested and committed facts and remains transaction-bound to the governed audit chain.",
+          correctionSemantics: "An incorrect event remains preserved and is corrected only through an attributable linked event or defined compensating transition.",
+          sources: [reference()],
+        }],
+        assumptions: ["The exact local candidate records remain the declared bounded Process Model scope"],
+        inconsistencies: [],
+        unresolvedQuestions: [],
+        limitations: ["No human approval, transition execution, operational readiness, baseline designation, release, deployment, or action authority is represented"],
+        sources: [reference()],
+      }],
+      requirementCoverage,
+      governance: {
+        processOwnerRoleKey: "initiative-owner",
+        stateStewardRoleKey: "gaep-steward",
+        approvalCoordinatorRoleKey: "initiative-owner",
+        reviewerRoleKeys: ["gaep-steward", "initiative-owner"],
+        authoringLifecycle: "under-challenge",
+        transitionAuthorityState: "not-granted",
+        approvalState: "not-granted",
+        operationalReadinessState: "not-established",
+        executionAuthorityState: "not-granted",
+        basis: "Named candidate roles can prepare and challenge the process, but only separately established eligible humans and exact authorization records can approve or cause material transitions and effects.",
+        sources: [reference()],
+      },
+      assumptions: ["The selected candidate Process Model remains bounded to the exact current Product and Initiative"],
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      limitations: ["No approved Process baseline, valid human approval, transition execution, operational readiness, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   async function createArchitectureAndBoundedContext() {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const capabilityMap = await engine.businessCapabilityMap.create(
@@ -1352,7 +1575,18 @@ describe("Business understanding governance", () => {
     const boundedContextModel = await engine.boundedContextModel.create(
       boundedContextModelInput(architecture), actorId,
     )
-    return { architecture, boundedContextModel }
+    return {
+      business,
+      stakeholder,
+      outcome,
+      capabilityMap,
+      valueStreamModel,
+      operatingModel,
+      businessRuleCatalog,
+      baseline,
+      architecture,
+      boundedContextModel,
+    }
   }
 
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
@@ -2623,6 +2857,184 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("persists exact versioned Process Model candidates and privacy-safe status", async () => {
+    const upstream = await createArchitectureAndBoundedContext()
+    const securityPrivacyAssessment = await engine.securityPrivacyAssessment.create(
+      securityPrivacyAssessmentInput(upstream.boundedContextModel),
+      actorId,
+    )
+    const input = processModelInput(
+      upstream.valueStreamModel,
+      upstream.operatingModel,
+      upstream.businessRuleCatalog,
+      upstream.boundedContextModel,
+      securityPrivacyAssessment,
+    )
+    const model = await engine.processModel.create(input, actorId)
+
+    expect(model).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      membershipDigest: canonicalDigest({
+        valueStreamModel: input.valueStreamModel,
+        operatingModel: input.operatingModel,
+        businessRuleCatalog: input.businessRuleCatalog,
+        boundedContextModel: input.boundedContextModel,
+        securityPrivacyAssessment: input.securityPrivacyAssessment,
+      }),
+      governance: {
+        transitionAuthorityState: "not-granted",
+        approvalState: "not-granted",
+        operationalReadinessState: "not-established",
+        executionAuthorityState: "not-granted",
+        authoringLifecycle: "under-challenge",
+      },
+      authorityBoundary: expect.stringContaining("does-not-approve-a-workflow"),
+    })
+    expect(await engine.processModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id, revision: 1, digest: canonicalDigest(model) },
+      processCount: 1,
+      stepCount: 2,
+      stateDimensionCount: 1,
+      stateValueCount: 3,
+      transitionCount: 2,
+      eventDefinitionCount: 2,
+      approvalRequirementCount: 1,
+      uncoveredValueStreamCount: 0,
+      uncoveredBoundedContextCount: 0,
+      uncoveredBusinessRuleCount: 0,
+      unresolvedRequirementCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      authorityBoundary: expect.stringContaining("does-not-approve-workflows"),
+    })
+    const projection = await engine.processModel.project(initiative.id)
+    expect(projection).toMatchObject({
+      model: {
+        id: model.id,
+        processCount: 1,
+        transitionCount: 2,
+        approvalRequirementCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-process-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-approve-workflows"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("The process generator cannot provide")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.processModel.revise(
+      model.id,
+      model.revision,
+      processModelInput(
+        upstream.valueStreamModel,
+        upstream.operatingModel,
+        upstream.businessRuleCatalog,
+        upstream.boundedContextModel,
+        securityPrivacyAssessment,
+        { limitations: [
+          "No approved Process baseline, valid human approval, transition execution, operational readiness, release, deployment, or action authority is represented",
+          "The candidate remains subject to independent process, state, approval, native-host, and Product Owner challenge",
+        ] },
+      ),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: model.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(model),
+      governance: {
+        transitionAuthorityState: "not-granted",
+        approvalState: "not-granted",
+        operationalReadinessState: "not-established",
+        executionAuthorityState: "not-granted",
+      },
+    })
+    expect((await engine.processModel.listHistory(model.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "process.model.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(model),
+        state: "candidate",
+        transitionAuthorityState: "not-granted",
+        approvalState: "not-granted",
+        operationalReadinessState: "not-established",
+        executionAuthorityState: "not-granted",
+        authoringLifecycle: "under-challenge",
+      },
+    })
+  })
+
+  it("rejects forged Process Model authority, graph, roles, bindings, and secrets", async () => {
+    const upstream = await createArchitectureAndBoundedContext()
+    const securityPrivacyAssessment = await engine.securityPrivacyAssessment.create(
+      securityPrivacyAssessmentInput(upstream.boundedContextModel),
+      actorId,
+    )
+    const base = processModelInput(
+      upstream.valueStreamModel,
+      upstream.operatingModel,
+      upstream.businessRuleCatalog,
+      upstream.boundedContextModel,
+      securityPrivacyAssessment,
+    )
+    expect(() => processModelInputSchema.parse({
+      ...base,
+      governance: { ...base.governance, approvalState: "approved" },
+    })).toThrow()
+    expect(() => processModelInputSchema.parse({
+      ...base,
+      processes: base.processes.map((process) => ({
+        ...process,
+        transitions: process.transitions.map((transition) => transition.key === "draft-to-review"
+          ? { ...transition, targetStateKey: "invented-state" }
+          : transition),
+      })),
+    })).toThrow(/declared states/)
+    await expect(engine.processModel.create({
+      ...base,
+      governance: { ...base.governance, stateStewardRoleKey: "invented-state-steward" },
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.processModel.create({
+      ...base,
+      processes: base.processes.map((process) => ({ ...process, valueStreamKeys: ["invented-value-stream"] })),
+    }, actorId)).rejects.toThrow(/exact bound Value Streams/)
+    await expect(engine.processModel.create({
+      ...base,
+      boundedContextModel: { ...base.boundedContextModel, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Bounded Context/)
+    await expect(engine.processModel.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable process context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const model = await engine.processModel.create(base, actorId)
+    await engine.securityPrivacyAssessment.revise(
+      securityPrivacyAssessment.id,
+      securityPrivacyAssessment.revision,
+      securityPrivacyAssessmentInput(upstream.boundedContextModel, {
+        limitations: [
+          "No Codex Security scan, approved threat model, control-effectiveness attestation, risk acceptance, privacy approval, security readiness, release, deployment, or action authority is represented",
+          "The exact Security, Privacy, and Threat Assessment changed after Process Model capture",
+        ],
+      }),
+      actorId,
+    )
+    expect(await engine.processModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -2706,6 +3118,16 @@ describe("Business understanding governance", () => {
       securityPrivacyAssessmentInput(boundedContextModel),
       actorId,
     )
+    const processModel = await engine.processModel.create(
+      processModelInput(
+        valueStreamModel,
+        operatingModel,
+        businessRuleCatalog,
+        boundedContextModel,
+        securityPrivacyAssessment,
+      ),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -2726,6 +3148,8 @@ describe("Business understanding governance", () => {
       `bounded-context-model-history/bounded-context-model-${boundedContextModel.id}-r1.json`,
       `security-privacy-assessments/${securityPrivacyAssessment.id}.json`,
       `security-privacy-assessment-history/security-privacy-assessment-${securityPrivacyAssessment.id}-r1.json`,
+      `process-models/${processModel.id}.json`,
+      `process-model-history/process-model-${processModel.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -2735,6 +3159,34 @@ describe("Business understanding governance", () => {
       status: "compatible",
       importMutation: "not-performed",
     })
+
+    const forgeProcessValueStream = (content: unknown) => {
+      const record = content as ProcessModel
+      const valueStreamModelReference = { ...record.valueStreamModel, digest: digest("d") }
+      return {
+        ...record,
+        valueStreamModel: valueStreamModelReference,
+        membershipDigest: canonicalDigest({
+          valueStreamModel: valueStreamModelReference,
+          operatingModel: record.operatingModel,
+          businessRuleCatalog: record.businessRuleCatalog,
+          boundedContextModel: record.boundedContextModel,
+          securityPrivacyAssessment: record.securityPrivacyAssessment,
+        }),
+      }
+    }
+    let forgedProcessBinding = replacePortableRecord(
+      bundle,
+      `process-models/${processModel.id}.json`,
+      forgeProcessValueStream,
+    )
+    forgedProcessBinding = replacePortableRecord(
+      forgedProcessBinding,
+      `process-model-history/process-model-${processModel.id}-r1.json`,
+      forgeProcessValueStream,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedProcessBinding))
+      .rejects.toThrow(/Process Model .* Value Stream Model reference is unresolved/)
 
     const rebound = replacePortableRecord(
       bundle,
