@@ -30,6 +30,7 @@ import {
 } from "./source-governance.js"
 import { valueStreamModelInputSchema } from "./value-stream-model.js"
 import { operatingModelInputSchema } from "./operating-model.js"
+import { systemSolutionArchitectureInputSchema } from "./system-solution-architecture.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -302,6 +303,18 @@ export const hostBusinessArchitectureBaselineReviseParamsSchema = z.object({
   record: businessArchitectureBaselineInputSchema,
 }).strict()
 
+export const hostSystemSolutionArchitectureCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: systemSolutionArchitectureInputSchema,
+}).strict()
+
+export const hostSystemSolutionArchitectureReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: systemSolutionArchitectureInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -388,6 +401,11 @@ export const hostMethodSchema = z.enum([
   "business.architectureBaselines.revise",
   "business.architectureBaselines.assess",
   "business.architectureBaselines.snapshot",
+  "architecture.systemSolution.read",
+  "architecture.systemSolution.create",
+  "architecture.systemSolution.revise",
+  "architecture.systemSolution.assess",
+  "architecture.systemSolution.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -486,6 +504,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("business.architectureBaselines.revise", hostBusinessArchitectureBaselineReviseParamsSchema),
   requestVariant("business.architectureBaselines.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("business.architectureBaselines.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("architecture.systemSolution.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("architecture.systemSolution.create", hostSystemSolutionArchitectureCreateParamsSchema),
+  requestVariant("architecture.systemSolution.revise", hostSystemSolutionArchitectureReviseParamsSchema),
+  requestVariant("architecture.systemSolution.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("architecture.systemSolution.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

@@ -848,6 +848,37 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "system-solution-read-empty",
+      protocolVersion: 2,
+      method: "architecture.systemSolution.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "system-solution-assess-empty",
+      protocolVersion: 2,
+      method: "architecture.systemSolution.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      concernCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-approve-baseline-readiness-conformance-technology-or-action"),
+    })
+    const systemSolutionProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "system-solution-snapshot-empty",
+      protocolVersion: 2,
+      method: "architecture.systemSolution.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: systemSolutionSnapshotDigest, ...systemSolutionProjectionBody } = systemSolutionProjection
+    expect(systemSolutionSnapshotDigest).toBe(canonicalDigest(systemSolutionProjectionBody))
+    expect(systemSolutionProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-architecture-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-approve-or-designate-an-architecture-baseline"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -880,6 +911,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "architecture-baseline-v1-block",
       method: "business.architectureBaselines.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "system-solution-v1-block",
+      method: "architecture.systemSolution.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
@@ -936,6 +973,16 @@ describe("engine host protocol", () => {
       params: {
         actorId: "gaep.host-test",
         record: { initiativeId, approvedBaseline: true, releaseReady: true },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "system-solution-extra-authority",
+      protocolVersion: 2,
+      method: "architecture.systemSolution.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: { initiativeId, approvedArchitecture: true, releaseReady: true },
       },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
     await expect(host.dispatch({
