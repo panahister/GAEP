@@ -31,6 +31,7 @@ import {
 import { valueStreamModelInputSchema } from "./value-stream-model.js"
 import { operatingModelInputSchema } from "./operating-model.js"
 import { systemSolutionArchitectureInputSchema } from "./system-solution-architecture.js"
+import { boundedContextModelInputSchema } from "./bounded-context-model.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -315,6 +316,18 @@ export const hostSystemSolutionArchitectureReviseParamsSchema = z.object({
   record: systemSolutionArchitectureInputSchema,
 }).strict()
 
+export const hostBoundedContextModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: boundedContextModelInputSchema,
+}).strict()
+
+export const hostBoundedContextModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: boundedContextModelInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -406,6 +419,11 @@ export const hostMethodSchema = z.enum([
   "architecture.systemSolution.revise",
   "architecture.systemSolution.assess",
   "architecture.systemSolution.snapshot",
+  "architecture.boundedContexts.read",
+  "architecture.boundedContexts.create",
+  "architecture.boundedContexts.revise",
+  "architecture.boundedContexts.assess",
+  "architecture.boundedContexts.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -509,6 +527,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("architecture.systemSolution.revise", hostSystemSolutionArchitectureReviseParamsSchema),
   requestVariant("architecture.systemSolution.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("architecture.systemSolution.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("architecture.boundedContexts.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("architecture.boundedContexts.create", hostBoundedContextModelCreateParamsSchema),
+  requestVariant("architecture.boundedContexts.revise", hostBoundedContextModelReviseParamsSchema),
+  requestVariant("architecture.boundedContexts.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("architecture.boundedContexts.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

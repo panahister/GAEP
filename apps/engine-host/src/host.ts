@@ -130,6 +130,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "architecture.systemSolution.revise",
   "architecture.systemSolution.assess",
   "architecture.systemSolution.snapshot",
+  "architecture.boundedContexts.read",
+  "architecture.boundedContexts.create",
+  "architecture.boundedContexts.revise",
+  "architecture.boundedContexts.assess",
+  "architecture.boundedContexts.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -917,6 +922,24 @@ export class EngineHost {
         return this.engine.systemSolutionArchitecture.assess(request.params.initiativeId)
       case "architecture.systemSolution.snapshot":
         return this.engine.systemSolutionArchitecture.project(request.params.initiativeId)
+      case "architecture.boundedContexts.read":
+        return await this.engine.boundedContextModel.readCurrent(request.params.initiativeId) ?? null
+      case "architecture.boundedContexts.create":
+        return this.engine.boundedContextModel.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "architecture.boundedContexts.revise":
+        return this.engine.boundedContextModel.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "architecture.boundedContexts.assess":
+        return this.engine.boundedContextModel.assess(request.params.initiativeId)
+      case "architecture.boundedContexts.snapshot":
+        return this.engine.boundedContextModel.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

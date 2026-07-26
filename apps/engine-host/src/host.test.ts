@@ -879,6 +879,37 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "bounded-context-read-empty",
+      protocolVersion: 2,
+      method: "architecture.boundedContexts.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "bounded-context-assess-empty",
+      protocolVersion: 2,
+      method: "architecture.boundedContexts.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      boundedContextCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-appoint-owners-approve-boundaries-accept-contracts"),
+    })
+    const boundedContextProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "bounded-context-snapshot-empty",
+      protocolVersion: 2,
+      method: "architecture.boundedContexts.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: boundedContextSnapshotDigest, ...boundedContextProjectionBody } = boundedContextProjection
+    expect(boundedContextSnapshotDigest).toBe(canonicalDigest(boundedContextProjectionBody))
+    expect(boundedContextProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-boundary-language-contract"),
+      authorityBoundary: expect.stringContaining("does-not-appoint-owners-approve-boundaries-accept-contracts"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -917,6 +948,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "system-solution-v1-block",
       method: "architecture.systemSolution.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "bounded-context-v1-block",
+      method: "architecture.boundedContexts.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
@@ -983,6 +1020,16 @@ describe("engine host protocol", () => {
       params: {
         actorId: "gaep.host-test",
         record: { initiativeId, approvedArchitecture: true, releaseReady: true },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "bounded-context-extra-authority",
+      protocolVersion: 2,
+      method: "architecture.boundedContexts.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: { initiativeId, approvedBoundary: true, ownershipAccepted: true, releaseReady: true },
       },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
     await expect(host.dispatch({
