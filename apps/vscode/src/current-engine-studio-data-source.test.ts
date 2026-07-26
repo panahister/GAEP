@@ -18,6 +18,7 @@ import {
   type ArchitectureChallengeModelProjection,
   type DecisionRegisterProjection,
   type RiskRegisterProjection,
+  type EvidenceRegistryProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1295,6 +1296,67 @@ function riskRegisterProjection(): RiskRegisterProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function evidenceRegistryProjection(): EvidenceRegistryProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "evidence-registry-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    registry: {
+      recordId: "fafafafa-fafa-4afa-8afa-fafafafafafa",
+      revision: 4,
+      digest: `sha256:${"a".repeat(64)}` as const,
+    },
+    claimCount: 12,
+    evidenceItemCount: 18,
+    linkCount: 21,
+    notAssessedClaimCount: 2,
+    notAssessedEvidenceCount: 3,
+    adverseEvidencePendingDispositionCount: 1,
+    staleOrUnknownEvidenceCount: 4,
+    invalidatedEvidenceCount: 1,
+    unresolvedLinkCount: 21,
+    unresolvedRequirementCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 1,
+    state: "attention-required" as const,
+    reasons: ["One or more Claims remain explicitly not assessed"],
+    assessedAt: "2026-07-27T00:00:00.000Z",
+    authorityBoundary: "evidence-registry-status-reports-candidate-coverage-freshness-and-gaps-and-does-not-establish-claim-validation-evidence-sufficiency-assurance-approval-readiness-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "evidence-registry-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    registry: {
+      id: status.registry.recordId,
+      revision: status.registry.revision,
+      digest: status.registry.digest,
+      membershipDigest: `sha256:${"b".repeat(64)}` as const,
+      state: "candidate" as const,
+      claimCount: 12,
+      evidenceItemCount: 18,
+      linkCount: 21,
+      updatedAt: "2026-07-26T23:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-claim-statements-evidence-observations-methods-warrants-quality-details-source-content-personal-data-secrets-or-credentials" as const,
+    authorityBoundary: "evidence-registry-projection-does-not-establish-claim-validation-evidence-sufficiency-assurance-review-approval-risk-acceptance-readiness-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1864,6 +1926,7 @@ interface HarnessOptions {
   architectureChallengeModelProjection?: ArchitectureChallengeModelProjection
   decisionRegisterProjection?: DecisionRegisterProjection
   riskRegisterProjection?: RiskRegisterProjection
+  evidenceRegistryProjection?: EvidenceRegistryProjection
   commandResult?: unknown
 }
 
@@ -2042,6 +2105,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.riskRegisterProjection ? {
       riskRegister: {
         project: async () => options.riskRegisterProjection!,
+      },
+    } : {}),
+    ...(options.evidenceRegistryProjection ? {
+      evidenceRegistry: {
+        project: async () => options.evidenceRegistryProjection!,
       },
     } : {}),
   }
@@ -2620,6 +2688,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private risk statement|private assessment|private controls|private treatment|private residual risk|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Evidence Registry metadata on the native risks and decisions page", async () => {
+    const projection = evidenceRegistryProjection()
+    const { source } = harness({ evidenceRegistryProjection: projection })
+    const snapshot = await source.readSnapshot("risks-decisions")
+    expect(snapshot.page.kind === "risks-decisions" && snapshot.page.evidenceRegistries).toMatchObject({
+      id: "evidence-registry",
+      rows: [{
+        id: projection.registry?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "4",
+          membership: projection.registry?.membershipDigest,
+          counts: "12 claims · 18 evidence items · 21 links",
+          assessment: "attention-required",
+          gaps: "2 claims not assessed · 3 evidence items not assessed · 1 adverse dispositions pending · 4 stale or unknown · 1 invalidated · 2 requirement gaps · 1 stale bindings",
+          boundary: "Candidate claim-to-evidence metadata only; no claim validation, evidence sufficiency, assurance, review, approval, risk acceptance, readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private claim statement|private evidence observation|private method|private warrant|private quality detail|customer@example\.com|api_key/iu,
     )
   })
 

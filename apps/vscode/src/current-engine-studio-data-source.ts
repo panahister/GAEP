@@ -45,6 +45,7 @@ import type {
   ArchitectureChallengeModelProjection,
   DecisionRegisterProjection,
   RiskRegisterProjection,
+  EvidenceRegistryProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -181,6 +182,9 @@ export interface CurrentStudioEngineReader {
   riskRegister?: {
     project(initiativeId: string): Promise<RiskRegisterProjection>
   }
+  evidenceRegistry?: {
+    project(initiativeId: string): Promise<EvidenceRegistryProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -237,6 +241,7 @@ interface ObservedStudioState {
   architectureChallengeModelProjections: Map<string, ArchitectureChallengeModelProjection>
   decisionRegisterProjections: Map<string, DecisionRegisterProjection>
   riskRegisterProjections: Map<string, RiskRegisterProjection>
+  evidenceRegistryProjections: Map<string, EvidenceRegistryProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1342,6 +1347,54 @@ function riskRegisterTable(state: ObservedStudioState): StudioTableSnapshot {
   }
 }
 
+function evidenceRegistryTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.evidenceRegistryProjections.values()].flatMap((projection) => {
+    const record = projection.registry
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.claimCount} claims · ${record.evidenceItemCount} evidence items · ${record.linkCount} links`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.notAssessedClaimCount} claims not assessed · ${projection.status.notAssessedEvidenceCount} evidence items not assessed · ${projection.status.adverseEvidencePendingDispositionCount} adverse dispositions pending · ${projection.status.staleOrUnknownEvidenceCount} stale or unknown · ${projection.status.invalidatedEvidenceCount} invalidated · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate claim-to-evidence metadata only; no claim validation, evidence sufficiency, assurance, review, approval, risk acceptance, readiness, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "evidence-registry",
+    title: "Governed Evidence Registry Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Evidence Registry Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Evidence Registry candidate",
+        "Create the candidate through the governed engine workflow. This view does not validate claims, establish evidence sufficiency or assurance, complete review, grant approval, accept risk, establish readiness, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2395,6 +2448,7 @@ function risksPage(state: ObservedStudioState): RisksDecisionsPageSnapshot {
     decisions,
     decisionRegisters: decisionRegisterTable(state),
     riskRegisters: riskRegisterTable(state),
+    evidenceRegistries: evidenceRegistryTable(state),
   }
 }
 
@@ -3119,6 +3173,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       decisions: capTable(page.decisions),
       decisionRegisters: capTable(page.decisionRegisters),
       riskRegisters: capTable(page.riskRegisters),
+      evidenceRegistries: capTable(page.evidenceRegistries),
     }
     case "trace": return { ...page, relationships: capTable(page.relationships), searchResults: capTable(page.searchResults) }
     case "agents-tools": return {
@@ -3845,6 +3900,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       architectureChallengeModelProjections: new Map(),
       decisionRegisterProjections: new Map(),
       riskRegisterProjections: new Map(),
+      evidenceRegistryProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -4720,6 +4776,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "risk-register-unavailable",
           "Risk Register metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "risks-decisions" && engine.evidenceRegistry) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.evidenceRegistry!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.evidenceRegistryProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Evidence Registry projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `evidence-registry-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Evidence Registry metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "evidence-registry-unavailable",
+          "Evidence Registry metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

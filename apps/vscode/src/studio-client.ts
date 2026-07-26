@@ -648,7 +648,12 @@ class StudioShell {
       element("h3", undefined, "Governed Risk Register"),
       this.renderTable(page.riskRegisters, false),
     )
-    container.append(recommendations, decisions, decisionRegisters, riskRegisters)
+    const evidenceRegistries = element("section", "section")
+    evidenceRegistries.append(
+      element("h3", undefined, "Governed Evidence Registry"),
+      this.renderTable(page.evidenceRegistries, false),
+    )
+    container.append(recommendations, decisions, decisionRegisters, riskRegisters, evidenceRegistries)
     return container
   }
 

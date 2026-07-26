@@ -297,6 +297,7 @@ export interface RisksDecisionsPageSnapshot extends StudioPageBase {
   decisions: StudioTableSnapshot
   decisionRegisters: StudioTableSnapshot
   riskRegisters: StudioTableSnapshot
+  evidenceRegistries: StudioTableSnapshot
 }
 
 export interface TraceImpactGroup {
@@ -1305,10 +1306,11 @@ function isDeliveryPage(page: Record<string, unknown>): boolean {
 
 function isRisksDecisionsPage(page: Record<string, unknown>): boolean {
   return hasOnlyKeys(page, [
-    "kind", "route", "title", "purpose", "source", "actions", "design", "risks", "recommendations", "decisions", "decisionRegisters", "riskRegisters",
+    "kind", "route", "title", "purpose", "source", "actions", "design", "risks", "recommendations", "decisions", "decisionRegisters", "riskRegisters", "evidenceRegistries",
   ]) && isPageBase(page, "risks-decisions") && page.kind === "risks-decisions" &&
     isTableSnapshot(page.risks) && isTableSnapshot(page.recommendations) && isTableSnapshot(page.decisions) &&
-    isTableSnapshot(page.decisionRegisters) && isTableSnapshot(page.riskRegisters)
+    isTableSnapshot(page.decisionRegisters) && isTableSnapshot(page.riskRegisters) &&
+    isTableSnapshot(page.evidenceRegistries)
 }
 
 function isTracePage(page: Record<string, unknown>): boolean {
