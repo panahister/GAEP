@@ -17,6 +17,7 @@ import {
   type InitiativeEntryWorkflowUi,
   type OperatingModelProjection,
   type SourceGovernanceProjection,
+  type SystemSolutionArchitectureProjection,
   type ValueStreamModelProjection,
 } from "@gaep/contracts"
 
@@ -83,6 +84,7 @@ const commandIds = {
   operatingModel: "gaepKiro.operatingModel.inspect",
   businessRules: "gaepKiro.businessRules.inspect",
   businessArchitectureBaseline: "gaepKiro.businessArchitectureBaseline.inspect",
+  systemSolutionArchitecture: "gaepKiro.systemSolutionArchitecture.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -179,6 +181,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.operatingModel, (input?: unknown) => runUserCommand(() => showOperatingModel(pool, input))),
     vscode.commands.registerCommand(commandIds.businessRules, (input?: unknown) => runUserCommand(() => showBusinessRuleCatalog(pool, input))),
     vscode.commands.registerCommand(commandIds.businessArchitectureBaseline, (input?: unknown) => runUserCommand(() => showBusinessArchitectureBaseline(pool, input))),
+    vscode.commands.registerCommand(commandIds.systemSolutionArchitecture, (input?: unknown) => runUserCommand(() => showSystemSolutionArchitecture(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -752,6 +755,46 @@ async function showBusinessArchitectureBaseline(
       `Membership digest: ${baseline.membershipDigest}`,
       `Candidate counts: ${baseline.coveredElementCount} elements · ${baseline.integrationClaimCount} integration claims · ${baseline.consistencyGapCount} consistency gaps`,
       `Updated: ${baseline.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showSystemSolutionArchitecture(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<SystemSolutionArchitectureProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the System/Solution Architecture candidate", "Initiative ID")
+  const projection = await client.readSystemSolutionArchitecture(initiativeId)
+  const architecture = projection.architecture
+  const lines = [
+    "GAEP governed System/Solution Architecture candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${projection.assessment.state}`,
+    `Coverage: ${projection.assessment.concernCount} concerns · ${projection.assessment.viewCount} views · ${projection.assessment.elementCount} elements · ${projection.assessment.relationCount} relations · ${projection.assessment.qualityAttributeCount} quality scenarios · ${projection.assessment.decisionCount} decisions · ${projection.assessment.conformanceCriterionCount} conformance criteria`,
+    `Candidate gaps: ${projection.assessment.unresolvedQualityAttributeCount} quality scenarios · ${projection.assessment.unresolvedDecisionCount} decisions · ${projection.assessment.unresolvedConformanceCriterionCount} conformance criteria · ${projection.assessment.lifecycleGapCount} lifecycle consequences · ${projection.assessment.inconsistencyCount} inconsistencies · ${projection.assessment.unresolvedQuestionCount} questions · ${projection.assessment.staleBindingCount} stale bindings · ${projection.assessment.staleSourceReferenceCount} stale Source references`,
+    ...projection.assessment.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Architecture candidate: ${architecture ? `${architecture.id}@${architecture.revision} · ${architecture.state} · ${architecture.digest}` : "not recorded"}`,
+    ...(architecture ? [
+      `Membership digest: ${architecture.membershipDigest}`,
+      `Candidate counts: ${architecture.concernCount} concerns · ${architecture.viewCount} views · ${architecture.elementCount} elements · ${architecture.qualityAttributeCount} quality scenarios · ${architecture.decisionCount} decisions`,
+      `Updated: ${architecture.updatedAt}`,
     ] : []),
     "",
     `Snapshot digest: ${projection.snapshotDigest}`,

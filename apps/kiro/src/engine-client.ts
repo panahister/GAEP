@@ -17,6 +17,7 @@ import {
   initiativeSchema,
   operatingModelProjectionSchema,
   sourceGovernanceProjectionSchema,
+  systemSolutionArchitectureProjectionSchema,
   valueStreamModelProjectionSchema,
   type Initiative,
   type BusinessArchitectureBaselineProjection,
@@ -28,6 +29,7 @@ import {
   type InitiativeEntryAssessment,
   type OperatingModelProjection,
   type SourceGovernanceProjection,
+  type SystemSolutionArchitectureProjection,
   type ValueStreamModelProjection,
 } from "@gaep/contracts"
 
@@ -307,6 +309,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = businessArchitectureBaselineProjectionSchema.safeParse(
         await this.request("business.architectureBaselines.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readSystemSolutionArchitecture(initiativeValue: string): Promise<SystemSolutionArchitectureProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = systemSolutionArchitectureProjectionSchema.safeParse(
+        await this.request("architecture.systemSolution.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

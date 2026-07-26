@@ -35,6 +35,7 @@ const valueStreamModelId = "37373737-3737-4737-8737-373737373737"
 const operatingModelId = "38383838-3838-4838-8838-383838383838"
 const businessRuleCatalogId = "39393939-3939-4939-8939-393939393939"
 const businessArchitectureBaselineId = "40404040-4040-4040-8040-404040404040"
+const systemSolutionArchitectureId = "41414141-4141-4141-8141-414141414141"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -86,6 +87,8 @@ input.on("line", (line) => {
       return readBusinessRuleCatalog(id, request.params)
     case "business.architectureBaselines.snapshot":
       return readBusinessArchitectureBaseline(id, request.params)
+    case "architecture.systemSolution.snapshot":
+      return readSystemSolutionArchitecture(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -659,6 +662,75 @@ function readBusinessArchitectureBaseline(id, params) {
     value.baseline.coveredElementCount = 28
   }
   if (workspacePath.endsWith("bad-business-architecture-baseline-snapshot-private")) {
+    value.architectureNarrative = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readSystemSolutionArchitecture(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE SYSTEM SOLUTION ARCHITECTURE PARAMS")
+  }
+  const architectureDigest = `sha256:${"b".repeat(64)}`
+  const assessment = {
+    schemaVersion: 1,
+    kind: "system-solution-architecture-assessment",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    architecture: { recordId: systemSolutionArchitectureId, revision: 3, digest: architectureDigest },
+    concernCount: 4,
+    viewCount: 3,
+    elementCount: 9,
+    relationCount: 12,
+    qualityAttributeCount: 5,
+    unresolvedQualityAttributeCount: 1,
+    decisionCount: 4,
+    unresolvedDecisionCount: 2,
+    conformanceCriterionCount: 6,
+    unresolvedConformanceCriterionCount: 1,
+    lifecycleGapCount: 1,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more architecture decisions remain unresolved"],
+    assessedAt: "2026-07-26T10:30:00.000Z",
+    authorityBoundary: "system-solution-architecture-assessment-reports-candidate-coverage-and-gaps-and-does-not-approve-baseline-readiness-conformance-technology-or-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "system-solution-architecture-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    assessment,
+    architecture: {
+      id: systemSolutionArchitectureId,
+      revision: 3,
+      digest: architectureDigest,
+      membershipDigest: `sha256:${"e".repeat(64)}`,
+      state: "candidate",
+      concernCount: 4,
+      viewCount: 3,
+      elementCount: 9,
+      qualityAttributeCount: 5,
+      decisionCount: 4,
+      updatedAt: "2026-07-26T10:29:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-architecture-narrative-source-content-personal-data-locators-or-credentials",
+    authorityBoundary: "system-solution-architecture-projection-does-not-approve-or-designate-an-architecture-baseline-establish-readiness-prove-conformance-mandate-technology-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-system-solution-architecture-snapshot-binding")) {
+    content.initiative.id = systemSolutionArchitectureId
+  }
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-system-solution-architecture-snapshot-digest")) {
+    value.architecture.elementCount = 10
+  }
+  if (workspacePath.endsWith("bad-system-solution-architecture-snapshot-private")) {
     value.architectureNarrative = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
