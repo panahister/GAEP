@@ -1121,6 +1121,59 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadRiskRegisterAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadRiskRegisterAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while the Risk Register was read. Refresh the exact records.");
+        }
+        return RenderRiskRegister(projection);
+    }
+
+    public static string RenderRiskRegister(RiskRegisterProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Risk Register candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Coverage: {projection.RiskCount} risks · {projection.ProposedTreatmentCount} proposed treatments · " +
+                $"{projection.UnassignedOwnerCount} owner assignments not established")
+            .AppendLine(
+                $"Candidate gaps: {projection.NotAssessedRiskCount} not assessed · " +
+                $"{projection.UnresolvedResidualRiskCount} residual risks · {projection.UnverifiedControlCount} control effectiveness gaps · " +
+                $"{projection.UnresolvedRequirementCount} requirements · {projection.InconsistencyCount} inconsistencies · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Register is { } register)
+        {
+            output.AppendLine($"Risk Register candidate: {register.Id:D}@{register.Revision} · candidate · {register.Digest}")
+                .AppendLine($"Membership digest: {register.MembershipDigest}")
+                .AppendLine($"Candidate counts: {register.RiskCount} risks");
+        }
+        else output.AppendLine("Risk Register candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view exposes no risk statements, assessments, controls, treatments, residual risk, " +
+                "evidence, related-record content, personal data, local paths, secrets, or credentials and does not establish " +
+                "assessment fact, owner assignment, control effectiveness, risk acceptance, approval, exception, baseline promotion, " +
+                "operational readiness, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

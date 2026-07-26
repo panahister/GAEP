@@ -60,6 +60,7 @@ internal static class Program
     private static readonly Guid FailureRecoveryModelId = Guid.Parse("54545454-5454-4454-8454-545454545454");
     private static readonly Guid ArchitectureChallengeModelId = Guid.Parse("56565656-5656-4656-8656-565656565656");
     private static readonly Guid DecisionRegisterId = Guid.Parse("57575757-5757-4757-8757-575757575757");
+    private static readonly Guid RiskRegisterId = Guid.Parse("58585858-5858-4858-8858-585858585858");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -169,6 +170,9 @@ internal static class Program
         var badDecisionRegisterSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-decision-register-snapshot-binding");
         var badDecisionRegisterSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-decision-register-snapshot-digest");
         var badDecisionRegisterSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-decision-register-snapshot-private");
+        var badRiskRegisterSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-risk-register-snapshot-binding");
+        var badRiskRegisterSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-risk-register-snapshot-digest");
+        var badRiskRegisterSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-risk-register-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -275,6 +279,9 @@ internal static class Program
         Directory.CreateDirectory(badDecisionRegisterSnapshotBindingRoot);
         Directory.CreateDirectory(badDecisionRegisterSnapshotDigestRoot);
         Directory.CreateDirectory(badDecisionRegisterSnapshotPrivateRoot);
+        Directory.CreateDirectory(badRiskRegisterSnapshotBindingRoot);
+        Directory.CreateDirectory(badRiskRegisterSnapshotDigestRoot);
+        Directory.CreateDirectory(badRiskRegisterSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1300,6 +1307,45 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadDecisionRegisterAsync(InitiativeId),
                 "Decision Register rejects a projection rebound to a substituted Product revision");
+        }
+
+        var riskRegisterProjection = await client.ReadRiskRegisterAsync(InitiativeId);
+        Check(riskRegisterProjection.ProductId == product.Id &&
+              riskRegisterProjection.ProductRevision == product.Revision &&
+              riskRegisterProjection.ProductDigest == product.Digest &&
+              riskRegisterProjection.InitiativeId == resolved.Id &&
+              riskRegisterProjection.InitiativeRevision == resolved.Revision &&
+              riskRegisterProjection.InitiativeDigest == resolved.Digest &&
+              riskRegisterProjection.AssessmentState == "attention-required" &&
+              riskRegisterProjection.Register?.RiskCount == 9 &&
+              riskRegisterProjection.NotAssessedRiskCount == 2 &&
+              riskRegisterProjection.UnresolvedResidualRiskCount == 3 &&
+              riskRegisterProjection.UnverifiedControlCount == 4,
+            "Typed Risk Register preserves exact Product, Initiative, status, and candidate metadata");
+        var riskRegisterOutput = await initiativeController.ReadRiskRegisterAsync(InitiativeId);
+        Check(riskRegisterOutput.Contains("GAEP governed Risk Register candidate", StringComparison.Ordinal) &&
+              riskRegisterOutput.Contains(
+                  "2 not assessed · 3 residual risks · 4 control effectiveness gaps",
+                  StringComparison.Ordinal) &&
+              riskRegisterOutput.Contains("does not establish assessment fact", StringComparison.Ordinal) &&
+              !riskRegisterOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !riskRegisterOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !riskRegisterOutput.Contains("riskStatement", StringComparison.Ordinal),
+            "Risk Register workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badRiskRegisterSnapshotDigestRoot, badRiskRegisterSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadRiskRegisterAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Risk Register rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badRiskRegisterSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadRiskRegisterAsync(InitiativeId),
+                "Risk Register rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2464,6 +2510,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-decision-register-snapshot-digest";
         var badDecisionRegisterSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-decision-register-snapshot-private";
+        var badRiskRegisterSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-risk-register-snapshot-binding";
+        var badRiskRegisterSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-risk-register-snapshot-digest";
+        var badRiskRegisterSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-risk-register-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2769,6 +2821,17 @@ internal static class Program
                         badDecisionRegisterSnapshotBinding,
                         badDecisionRegisterSnapshotDigest,
                         badDecisionRegisterSnapshotPrivate);
+                    break;
+                case "risk.registers.snapshot":
+                    await HandleRiskRegisterAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badRiskRegisterSnapshotBinding,
+                        badRiskRegisterSnapshotDigest,
+                        badRiskRegisterSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -4677,6 +4740,97 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) register["decisionCount"] = 8;
         if (includePrivateField) result["decisionQuestion"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleRiskRegisterAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID RISK REGISTER");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T18:00:00.000Z";
+        var registerDigest = $"sha256:{new string('e', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var register = new Dictionary<string, object?>
+        {
+            ["id"] = RiskRegisterId.ToString("D"),
+            ["revision"] = 3,
+            ["digest"] = registerDigest,
+            ["membershipDigest"] = $"sha256:{new string('b', 64)}",
+            ["state"] = "candidate",
+            ["riskCount"] = 9,
+            ["updatedAt"] = "2026-07-26T17:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "risk-register-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "risk-register-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["register"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = RiskRegisterId.ToString("D"),
+                    ["revision"] = 3,
+                    ["digest"] = registerDigest,
+                },
+                ["riskCount"] = 9,
+                ["notAssessedRiskCount"] = 2,
+                ["unresolvedResidualRiskCount"] = 3,
+                ["proposedTreatmentCount"] = 9,
+                ["unassignedOwnerCount"] = 9,
+                ["unverifiedControlCount"] = 4,
+                ["unresolvedRequirementCount"] = 1,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["inconsistencyCount"] = 0,
+                ["unresolvedQuestionCount"] = 1,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Risk Assessments remain explicitly not assessed" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "risk-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority",
+            },
+            ["register"] = register,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-risk-statements-assessments-controls-treatments-residual-risk-evidence-related-record-content-personal-data-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "risk-register-projection-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) register["riskCount"] = 10;
+        if (includePrivateField) result["riskStatement"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
