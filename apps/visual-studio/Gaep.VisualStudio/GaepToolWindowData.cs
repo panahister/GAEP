@@ -220,6 +220,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadArchitectureChallengeModelCommand = new AsyncCommand(LoadArchitectureChallengeModelAsync);
         LoadDecisionRegisterCommand = new AsyncCommand(LoadDecisionRegisterAsync);
         LoadRiskRegisterCommand = new AsyncCommand(LoadRiskRegisterAsync);
+        LoadEvidenceRegistryCommand = new AsyncCommand(LoadEvidenceRegistryAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -320,6 +321,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadRiskRegisterCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadEvidenceRegistryCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -790,6 +794,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Risk Register candidate",
             (controller, _, token) => controller.ReadRiskRegisterAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadEvidenceRegistryAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Evidence Registry candidate",
+            (controller, _, token) => controller.ReadEvidenceRegistryAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

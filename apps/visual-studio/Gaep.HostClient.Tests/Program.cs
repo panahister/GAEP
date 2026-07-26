@@ -61,6 +61,7 @@ internal static class Program
     private static readonly Guid ArchitectureChallengeModelId = Guid.Parse("56565656-5656-4656-8656-565656565656");
     private static readonly Guid DecisionRegisterId = Guid.Parse("57575757-5757-4757-8757-575757575757");
     private static readonly Guid RiskRegisterId = Guid.Parse("58585858-5858-4858-8858-585858585858");
+    private static readonly Guid EvidenceRegistryId = Guid.Parse("59595959-5959-4959-8959-595959595959");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -173,6 +174,9 @@ internal static class Program
         var badRiskRegisterSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-risk-register-snapshot-binding");
         var badRiskRegisterSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-risk-register-snapshot-digest");
         var badRiskRegisterSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-risk-register-snapshot-private");
+        var badEvidenceRegistrySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-evidence-registry-snapshot-binding");
+        var badEvidenceRegistrySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-evidence-registry-snapshot-digest");
+        var badEvidenceRegistrySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-evidence-registry-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -282,6 +286,9 @@ internal static class Program
         Directory.CreateDirectory(badRiskRegisterSnapshotBindingRoot);
         Directory.CreateDirectory(badRiskRegisterSnapshotDigestRoot);
         Directory.CreateDirectory(badRiskRegisterSnapshotPrivateRoot);
+        Directory.CreateDirectory(badEvidenceRegistrySnapshotBindingRoot);
+        Directory.CreateDirectory(badEvidenceRegistrySnapshotDigestRoot);
+        Directory.CreateDirectory(badEvidenceRegistrySnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1346,6 +1353,45 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadRiskRegisterAsync(InitiativeId),
                 "Risk Register rejects a projection rebound to a substituted Product revision");
+        }
+
+        var evidenceRegistryProjection = await client.ReadEvidenceRegistryAsync(InitiativeId);
+        Check(evidenceRegistryProjection.ProductId == product.Id &&
+              evidenceRegistryProjection.ProductRevision == product.Revision &&
+              evidenceRegistryProjection.ProductDigest == product.Digest &&
+              evidenceRegistryProjection.InitiativeId == resolved.Id &&
+              evidenceRegistryProjection.InitiativeRevision == resolved.Revision &&
+              evidenceRegistryProjection.InitiativeDigest == resolved.Digest &&
+              evidenceRegistryProjection.AssessmentState == "attention-required" &&
+              evidenceRegistryProjection.Registry?.ClaimCount == 12 &&
+              evidenceRegistryProjection.Registry?.EvidenceItemCount == 18 &&
+              evidenceRegistryProjection.Registry?.LinkCount == 21 &&
+              evidenceRegistryProjection.StaleOrUnknownEvidenceCount == 4,
+            "Typed Evidence Registry preserves exact Product, Initiative, status, and candidate metadata");
+        var evidenceRegistryOutput = await initiativeController.ReadEvidenceRegistryAsync(InitiativeId);
+        Check(evidenceRegistryOutput.Contains("GAEP governed Evidence Registry candidate", StringComparison.Ordinal) &&
+              evidenceRegistryOutput.Contains(
+                  "2 claims not assessed · 3 evidence items not assessed · 1 adverse dispositions pending",
+                  StringComparison.Ordinal) &&
+              evidenceRegistryOutput.Contains("does not establish claim validation", StringComparison.Ordinal) &&
+              !evidenceRegistryOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !evidenceRegistryOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !evidenceRegistryOutput.Contains("claimStatement", StringComparison.Ordinal),
+            "Evidence Registry workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badEvidenceRegistrySnapshotDigestRoot, badEvidenceRegistrySnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadEvidenceRegistryAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Evidence Registry rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badEvidenceRegistrySnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadEvidenceRegistryAsync(InitiativeId),
+                "Evidence Registry rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2516,6 +2562,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-risk-register-snapshot-digest";
         var badRiskRegisterSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-risk-register-snapshot-private";
+        var badEvidenceRegistrySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-evidence-registry-snapshot-binding";
+        var badEvidenceRegistrySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-evidence-registry-snapshot-digest";
+        var badEvidenceRegistrySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-evidence-registry-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2832,6 +2884,17 @@ internal static class Program
                         badRiskRegisterSnapshotBinding,
                         badRiskRegisterSnapshotDigest,
                         badRiskRegisterSnapshotPrivate);
+                    break;
+                case "evidence.registries.snapshot":
+                    await HandleEvidenceRegistryAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badEvidenceRegistrySnapshotBinding,
+                        badEvidenceRegistrySnapshotDigest,
+                        badEvidenceRegistrySnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -4831,6 +4894,102 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) register["riskCount"] = 10;
         if (includePrivateField) result["riskStatement"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleEvidenceRegistryAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID EVIDENCE REGISTRY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-27T00:00:00.000Z";
+        var registryDigest = $"sha256:{new string('f', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var registry = new Dictionary<string, object?>
+        {
+            ["id"] = EvidenceRegistryId.ToString("D"),
+            ["revision"] = 4,
+            ["digest"] = registryDigest,
+            ["membershipDigest"] = $"sha256:{new string('d', 64)}",
+            ["state"] = "candidate",
+            ["claimCount"] = 12,
+            ["evidenceItemCount"] = 18,
+            ["linkCount"] = 21,
+            ["updatedAt"] = "2026-07-26T23:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "evidence-registry-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "evidence-registry-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["registry"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = EvidenceRegistryId.ToString("D"),
+                    ["revision"] = 4,
+                    ["digest"] = registryDigest,
+                },
+                ["claimCount"] = 12,
+                ["evidenceItemCount"] = 18,
+                ["linkCount"] = 21,
+                ["notAssessedClaimCount"] = 2,
+                ["notAssessedEvidenceCount"] = 3,
+                ["adverseEvidencePendingDispositionCount"] = 1,
+                ["staleOrUnknownEvidenceCount"] = 4,
+                ["invalidatedEvidenceCount"] = 1,
+                ["unresolvedLinkCount"] = 21,
+                ["unresolvedRequirementCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["inconsistencyCount"] = 0,
+                ["unresolvedQuestionCount"] = 1,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Claims remain explicitly not assessed" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "evidence-registry-status-reports-candidate-coverage-freshness-and-gaps-and-does-not-establish-claim-validation-evidence-sufficiency-assurance-approval-readiness-or-action-authority",
+            },
+            ["registry"] = registry,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-claim-statements-evidence-observations-methods-warrants-quality-details-source-content-personal-data-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "evidence-registry-projection-does-not-establish-claim-validation-evidence-sufficiency-assurance-review-approval-risk-acceptance-readiness-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) registry["claimCount"] = 13;
+        if (includePrivateField) result["claimStatement"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

@@ -67,6 +67,7 @@ for (const binding of [
   "LoadArchitectureChallengeModelCommand",
   "LoadDecisionRegisterCommand",
   "LoadRiskRegisterCommand",
+  "LoadEvidenceRegistryCommand",
   "InitiativeTypes",
   "InitiativeClassification",
   "ClassifyInitiativeCommand",

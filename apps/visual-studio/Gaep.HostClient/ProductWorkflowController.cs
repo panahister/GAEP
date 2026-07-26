@@ -1174,6 +1174,60 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadEvidenceRegistryAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadEvidenceRegistryAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while the Evidence Registry was read. Refresh the exact records.");
+        }
+        return RenderEvidenceRegistry(projection);
+    }
+
+    public static string RenderEvidenceRegistry(EvidenceRegistryProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Evidence Registry candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Coverage: {projection.ClaimCount} claims · {projection.EvidenceItemCount} evidence items · " +
+                $"{projection.LinkCount} claim/evidence links")
+            .AppendLine(
+                $"Candidate gaps: {projection.NotAssessedClaimCount} claims not assessed · " +
+                $"{projection.NotAssessedEvidenceCount} evidence items not assessed · " +
+                $"{projection.AdverseEvidencePendingDispositionCount} adverse dispositions pending · " +
+                $"{projection.StaleOrUnknownEvidenceCount} stale or unknown · {projection.InvalidatedEvidenceCount} invalidated · " +
+                $"{projection.UnresolvedLinkCount} unresolved links · {projection.UnresolvedRequirementCount} requirements · " +
+                $"{projection.InconsistencyCount} inconsistencies · {projection.UnresolvedQuestionCount} questions · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Registry is { } registry)
+        {
+            output.AppendLine($"Evidence Registry candidate: {registry.Id:D}@{registry.Revision} · candidate · {registry.Digest}")
+                .AppendLine($"Membership digest: {registry.MembershipDigest}")
+                .AppendLine($"Candidate counts: {registry.ClaimCount} claims · {registry.EvidenceItemCount} evidence items · {registry.LinkCount} links");
+        }
+        else output.AppendLine("Evidence Registry candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view exposes no claim statements, evidence observations, methods, warrants, " +
+                "quality details, Source content, personal data, local paths, secrets, or credentials and does not establish " +
+                "claim validation, evidence sufficiency, assurance, review, approval, risk acceptance, operational readiness, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,
