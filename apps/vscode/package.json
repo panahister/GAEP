@@ -2,7 +2,7 @@
   "name": "gaep-vscode",
   "displayName": "GAEP",
   "description": "Governed product design and multi-agent execution for VS Code.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "publisher": "gaep",
@@ -50,7 +50,12 @@
     "onCommand:gaep.showPlatformReadiness",
     "onCommand:gaep.retryRecovery",
     "onCommand:gaep.manageWorkspaceTrust",
-    "onCommand:gaep.refresh"
+    "onCommand:gaep.refresh",
+    "onCommand:gaep.selectProvider",
+    "onCommand:gaep.selectModel",
+    "onCommand:gaep.runReadOnlyAnalysis",
+    "onCommand:gaep.cancelAnalysis",
+    "onCommand:gaep.showAgentModelDashboard"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -264,6 +269,26 @@
       {
         "command": "gaep.productStudio.workspace.health",
         "title": "GAEP Product Studio: Inspect Workspace Health"
+      },
+      {
+        "command": "gaep.selectProvider",
+        "title": "GAEP: Select Provider"
+      },
+      {
+        "command": "gaep.selectModel",
+        "title": "GAEP: Select Model"
+      },
+      {
+        "command": "gaep.runReadOnlyAnalysis",
+        "title": "GAEP: Run Read-Only Analysis"
+      },
+      {
+        "command": "gaep.cancelAnalysis",
+        "title": "GAEP: Cancel Analysis"
+      },
+      {
+        "command": "gaep.showAgentModelDashboard",
+        "title": "GAEP: Show Agent and Model Dashboard"
       }
     ],
     "viewsContainers": {
@@ -339,7 +364,8 @@
     "test:dom": "vitest run --root ../.. apps/vscode/src/studio-document.test.ts apps/vscode/src/studio-accessibility.test.ts",
     "test:extension-host": "npm run build && node test/e2e/run.mjs",
     "typecheck": "tsc -b --pretty false",
-    "verify": "npm run typecheck && npm run build && npm run test:dom && npm run test:extension-host"
+    "verify": "npm run typecheck && npm run build && npm run test:dom && npm run test:extension-host",
+    "package:release": "npm run build && vsce package --no-dependencies --allow-missing-repository -o ../../dist/phase0/cs02/gaep-vscode-0.2.0.vsix"
   },
   "dependencies": {
     "@gaep/adapter-claude": "0.1.0",

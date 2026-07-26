@@ -20,6 +20,12 @@ process.stdin.on("end", () => {
   }
   const sessionId = `session-${mode}`
   process.stdout.write(`${JSON.stringify({ type: "system", subtype: "init", session_id: sessionId })}\n`)
+  if (mode === "auth-failure") {
+    // Model an unauthenticated Claude CLI: is_error with a "Not logged in" result and an exit code.
+    process.stdout.write(`${JSON.stringify({ type: "result", subtype: "success", is_error: true, terminal_reason: "api_error", result: "Not logged in · Please run /login", session_id: sessionId })}\n`)
+    process.exitCode = 1
+    return
+  }
   process.stdout.write(`${JSON.stringify({
     type: "assistant",
     session_id: sessionId,

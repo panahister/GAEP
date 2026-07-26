@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "dev.gaep"
-version = "0.1.0"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -21,6 +21,8 @@ dependencies {
         }
         jetbrainsRuntime()
     }
+    // Unit tests for the pure request/validation logic (GaepRequests); run via `gradlew test`.
+    testImplementation(kotlin("test"))
 }
 
 kotlin {
@@ -43,6 +45,19 @@ intellijPlatform {
     pluginVerification {
         ides {
             recommended()
+        }
+    }
+}
+
+// GAEP-P0-CS02 — embed the digest-verified linux-x64 Engine Host SEA into the plugin under
+// `engine-host/` so EngineHostLocator launches only the bundled runtime (INV-21/22). The SEA is
+// staged by CI into `build/gaep-engine-host/` (a `build` dir, excluded from source identity); it is
+// never committed to `src`.
+val gaepEngineHostDir = layout.buildDirectory.dir("gaep-engine-host")
+tasks {
+    prepareSandbox {
+        from(gaepEngineHostDir) {
+            into("${intellijPlatform.projectName.get()}/engine-host")
         }
     }
 }

@@ -33,14 +33,33 @@ import {
 import {
   canonicalDigest,
   capabilityDigest,
+  startManagedClaudeContextRun,
+  CodexAppServerSupervisor,
+  codexAppServerLaunchArgs,
+  WorkspaceStagingService,
   ManagedStageRegistry,
   type AdapterProbeOptions,
   type AdapterProbeResult,
   type AgentAdapter,
   type AgentInvocation,
+  type CodexAppServerOptions,
+  type WorkspaceStage,
 } from "@gaep/agent-sdk"
 
 import { computePlatformReadinessSnapshot } from "./platform-readiness.js"
+import {
+  CODEX_READ_ONLY_FLAGS,
+  providerRunnerKind,
+  runCodexReadOnlyTurn,
+  type CodexTurnDriver,
+} from "./provider-runner.js"
+import { ProviderCatalogService } from "./provider-catalog.js"
+import {
+  ReadOnlyAnalysisService,
+  type ProviderRunHandle,
+  type ProviderRunOutcome,
+  type ProviderRunRequest,
+} from "./read-only-analysis.js"
 import { GaepRepository, type GaepRepositoryOptions } from "./repository.js"
 import {
   ManagedExecutionService,
@@ -53,6 +72,134 @@ import {
 import { ProductStudioService } from "./product-studio.js"
 
 const execFileAsync = promisify(execFile)
+
+/**
+ * GAEP-P0-CS02 — adapt the real Codex app-server supervisor to the read-only CodexTurnDriver.
+ * Codex operates on a staged COPY of the Product workspace with file changes disabled, so it can
+ * read the workspace but can never write to it. Only invoked when a Codex runtime is installed.
+ */
+/** Minimal supervisor surface the read-only driver needs, so the boundary is fakeable in tests. */
+export interface CodexSupervisorLike {
+  start(): Promise<void>
+  startStagedThread(options: { stage: WorkspaceStage; model: string; developerInstructions?: string }): Promise<{ threadId: string }>
+  startStagedTurn(options: { stage: WorkspaceStage; threadId: string; prompt: string; model?: string }): Promise<{ threadId: string; turnId: string }>
+  cancelTurn(threadId: string, turnId: string): Promise<void>
+  buildResult(options: { stage: WorkspaceStage; providerThreadId: string; providerTurnId: string; terminalDisposition: "completed" | "failed" }): Promise<unknown>
+  stop(): Promise<void>
+  readonly events: AsyncIterable<unknown>
+}
+
+/** Minimal staging surface the read-only driver needs (create + cleanup). */
+export interface CodexStagingLike {
+  create(sourcePath: string): Promise<WorkspaceStage>
+  cleanup(stage: WorkspaceStage): Promise<void>
+}
+
+export interface CodexReadOnlyRuntime {
+  supervisor: CodexSupervisorLike
+  stagingService: CodexStagingLike
+}
+
+export interface CodexReadOnlyRuntimeOptions {
+  executable: string
+  runtimeVersion?: string
+  requestTimeoutMs: number
+  processCwd: string
+}
+
+/** Factory for the real Codex read-only runtime; the sole seam faked by the integration test. */
+export type CodexReadOnlyRuntimeFactory = (options: CodexReadOnlyRuntimeOptions) => CodexReadOnlyRuntime
+
+/**
+ * The production Codex read-only supervisor options. Read-only enforcement lives here: shell tool
+ * and file-change authority are disabled, which makes the supervisor open the thread `read-only`
+ * and the turn `{ type: "readOnly", networkAccess: false }` with no writable roots. Exported so a
+ * test asserts the real production configuration without spawning a Codex binary.
+ */
+export function buildCodexReadOnlySupervisorOptions(
+  options: CodexReadOnlyRuntimeOptions & { stagingService: WorkspaceStagingService },
+): CodexAppServerOptions {
+  return {
+    executable: options.executable,
+    stagingService: options.stagingService,
+    ...CODEX_READ_ONLY_FLAGS,
+    processCwd: options.processCwd,
+    args: codexAppServerLaunchArgs(false),
+    ...(options.runtimeVersion ? { runtimeVersion: options.runtimeVersion } : {}),
+    requestTimeoutMs: Math.min(options.requestTimeoutMs, 600_000),
+  }
+}
+
+/** Default production factory: real staging + real Codex app-server supervisor. */
+export const defaultCodexReadOnlyRuntimeFactory: CodexReadOnlyRuntimeFactory = (options) => {
+  const stagingService = new WorkspaceStagingService()
+  const supervisor = new CodexAppServerSupervisor(buildCodexReadOnlySupervisorOptions({ ...options, stagingService }))
+  return { supervisor, stagingService }
+}
+
+function createCodexTurnDriver(
+  supervisor: CodexSupervisorLike,
+  workspacePath: string,
+  stagingService: CodexStagingLike,
+): CodexTurnDriver {
+  let stage: WorkspaceStage | undefined
+  return {
+    allowShellTool: false,
+    allowFileChanges: false,
+    async start(): Promise<void> {
+      stage = await stagingService.create(workspacePath)
+      await supervisor.start()
+    },
+    async startReadOnlyThread(options): Promise<{ threadId: string }> {
+      if (!stage) throw new Error("Codex stage not created")
+      return supervisor.startStagedThread({ stage, model: options.model, developerInstructions: options.developerInstructions })
+    },
+    async startTurn(options): Promise<{ threadId: string; turnId: string }> {
+      if (!stage) throw new Error("Codex stage not created")
+      return supervisor.startStagedTurn({ stage, threadId: options.threadId, prompt: options.prompt, model: options.model })
+    },
+    async cancelTurn(threadId, turnId): Promise<void> {
+      await supervisor.cancelTurn(threadId, turnId)
+    },
+    async awaitResult(threadId, turnId): Promise<{ status: "completed" | "failed"; text?: string; failureDetail?: string }> {
+      if (!stage) throw new Error("Codex stage not created")
+      let failed = false
+      const texts: string[] = []
+      for await (const event of supervisor.events) {
+        const record = event as { type?: string; text?: string; error?: { message?: string } }
+        if (typeof record.text === "string") texts.push(record.text)
+        if (record.type && /error|failed/i.test(record.type)) failed = true
+        if (record.type && /turn[_.-]?(completed|finished|done)|task[_.-]?complete/i.test(record.type)) break
+      }
+      const result = await supervisor.buildResult({
+        stage,
+        providerThreadId: threadId,
+        providerTurnId: turnId,
+        terminalDisposition: failed ? "failed" : "completed",
+      })
+      const envelope = result as { status?: string; text?: string; failure?: { message?: string } }
+      return {
+        status: failed || envelope.status === "failed" ? "failed" : "completed",
+        text: envelope.text ?? texts.join("\n"),
+        failureDetail: envelope.failure?.message,
+      }
+    },
+    async stop(): Promise<void> {
+      // Stop the supervisor first (await provider termination), then always remove the staged copy
+      // so no temporary staged workspace is left behind after completion/failure/cancel/timeout.
+      try {
+        await supervisor.stop()
+      } finally {
+        if (stage) {
+          const staged = stage
+          stage = undefined
+          await stagingService.cleanup(staged).catch(() => undefined)
+        }
+      }
+    },
+  }
+}
+
 
 export const initiativeTransitions = {
   proposed: ["active", "cancelled"],
@@ -136,13 +283,21 @@ export class GaepEngine {
   readonly productStudio: ProductStudioService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
+  private providerCatalogService?: ProviderCatalogService
+  private readOnlyAnalysisService?: ReadOnlyAnalysisService
+
+  private readonly codexRuntimeFactory: CodexReadOnlyRuntimeFactory
 
   constructor(
     readonly workspacePath: string,
     adapters: AgentAdapter[],
     repositoryOptions: GaepRepositoryOptions = {},
     managedStageRegistry: ManagedStageRegistry = new ManagedStageRegistry(),
+    // The Codex read-only runtime seam. Production uses the real supervisor; the integration test
+    // fakes only this boundary while exercising the real dispatch through runReadOnlyProvider.
+    codexRuntimeFactory: CodexReadOnlyRuntimeFactory = defaultCodexReadOnlyRuntimeFactory,
   ) {
+    this.codexRuntimeFactory = codexRuntimeFactory
     this.repository = new GaepRepository(workspacePath, repositoryOptions)
     this.productStudio = new ProductStudioService(
       this.repository,
@@ -167,6 +322,123 @@ export class GaepEngine {
       [...this.adapters.values()].map((adapter) => this.probeAdapter(adapter, { refreshModels: true })),
     )
     return results.map((result) => result.capabilities)
+  }
+
+  /** GAEP-P0-CS02: provider catalog + server-derived model truth (INV-31). */
+  get providerCatalog(): ProviderCatalogService {
+    this.providerCatalogService ??= new ProviderCatalogService(() => this.probeAgents())
+    return this.providerCatalogService
+  }
+
+  /** GAEP-P0-CS02: the single owner of read-only provider execution (INV-02). */
+  get readOnlyAnalysis(): ReadOnlyAnalysisService {
+    this.readOnlyAnalysisService ??= new ReadOnlyAnalysisService(
+      this.workspacePath,
+      (request) => this.runReadOnlyProvider(request),
+      (adapterId, observation) => this.providerCatalog.recordAuthObservation(adapterId, observation),
+    )
+    return this.readOnlyAnalysisService
+  }
+
+  /**
+   * Execute one bounded read-only provider invocation (INV-03), returning a handle whose `completion`
+   * settles only AFTER the provider process terminates and whose `forceStop` hard-kills the real
+   * process/supervisor (Claude: escalated cancel → SIGKILL; Codex: supervisor stop unblocks the turn).
+   * Codex runs in a read-only sandbox; Claude runs tool-free from an empty temporary directory.
+   */
+  private runReadOnlyProvider(request: ProviderRunRequest): ProviderRunHandle {
+    // Cancellation state is owned by the handle BEFORE probing begins, so a cancel/timeout during
+    // adapter initialization prevents provider startup and forceStop is never a no-op race.
+    let forceStopped = false
+    let killer: (() => Promise<void>) | undefined
+    const cancelledBeforeStart = (): boolean => request.signal.aborted || forceStopped
+    const completion = (async (): Promise<ProviderRunOutcome> => {
+      if (cancelledBeforeStart()) return { kind: "cancelled" }
+      const adapter = this.adapters.get(request.adapterId)
+      if (!adapter) return { kind: "failed", failureCategory: "provider-unavailable" }
+      const probed = await adapter.probe({ refreshModels: false })
+      // Re-check cancellation AFTER probing and BEFORE creating/spawning any provider.
+      if (cancelledBeforeStart()) return { kind: "cancelled" }
+      if (!probed.capabilities.detected || probed.runtimeBinding.kind !== "executable") {
+        return { kind: "failed", failureCategory: "provider-unavailable" }
+      }
+      const kind = providerRunnerKind(probed.capabilities)
+      if (kind === "codex") {
+        // Real Codex read-only path: shell/tool + file-change authority disabled, Product
+        // workspace as the only read root, bounded governed Context Pack as the sole input.
+        try {
+          const { supervisor, stagingService } = this.codexRuntimeFactory({
+            executable: probed.runtimeBinding.executablePath,
+            processCwd: this.workspacePath,
+            requestTimeoutMs: request.timeoutMs,
+            ...(probed.capabilities.runtimeVersion ? { runtimeVersion: probed.capabilities.runtimeVersion } : {}),
+          })
+          const driver = createCodexTurnDriver(supervisor, this.workspacePath, stagingService)
+          // Force-stop kills the supervisor, which unblocks the turn's awaitResult and cleans staging.
+          killer = () => driver.stop()
+          // If cancellation raced factory construction, stop the supervisor + clean staging and abort
+          // before any turn starts, so nothing survives finalization.
+          if (cancelledBeforeStart()) { await driver.stop(); return { kind: "cancelled" } }
+          return await runCodexReadOnlyTurn(driver, {
+            model: request.modelId,
+            objective: request.objective,
+            contextText: request.contextText,
+            signal: request.signal,
+            timeoutMs: request.timeoutMs,
+          })
+        } catch {
+          return { kind: "failed", failureCategory: "provider-error" }
+        }
+      }
+      if (kind !== "claude") {
+        return { kind: "failed", failureCategory: "provider-unavailable" }
+      }
+      try {
+        const handle = await startManagedClaudeContextRun({
+          executable: probed.runtimeBinding.executablePath,
+          model: request.modelId,
+          objective: request.objective,
+          contextPack: request.contextText,
+          timeoutMs: request.timeoutMs,
+          runtimeVersion: probed.capabilities.runtimeVersion,
+        })
+        // Force-stop escalates the managed cancel (SIGTERM → SIGKILL); completion resolves on close.
+        killer = async () => { try { await handle.cancel("force-stop") } catch { /* already terminating */ } }
+        // If cancellation raced startup, cancel the managed run immediately.
+        if (cancelledBeforeStart()) { try { await handle.cancel("cancel-request") } catch { /* terminating */ } }
+        const abortListener = (): void => { void handle.cancel("cancel-request") }
+        request.signal.addEventListener("abort", abortListener, { once: true })
+        try {
+          const completion = await handle.completion
+          if (completion.terminationCause === "timeout") return { kind: "timed-out" }
+          if (completion.terminationCause === "cancel-request") return { kind: "cancelled" }
+          if (completion.terminationCause === "protocol-error") {
+            return { kind: "failed", failureCategory: "protocol-error" }
+          }
+          const analysis = completion.analysis
+          if (completion.terminationCause === "provider-failure" || analysis?.status === "failed") {
+            // Classify from the provider's own diagnostic (e.g. "Not logged in · Please run /login").
+            const detail = String(analysis?.failureDetail ?? "").toLowerCase()
+            const authFailure = detail.includes("unauthor") || detail.includes("authentication")
+              || detail.includes("not logged in") || detail.includes("please run /login") || detail.includes("/login")
+            return { kind: "failed", failureCategory: authFailure ? "auth-unavailable" : "provider-error" }
+          }
+          return { kind: "completed", text: String(analysis?.text ?? "") }
+        } finally {
+          request.signal.removeEventListener("abort", abortListener)
+        }
+      } catch {
+        return { kind: "failed", failureCategory: "provider-error" }
+      }
+    })()
+    const forceStop = async (): Promise<void> => {
+      forceStopped = true
+      // Terminate the provider if one started; then WAIT for initialization/completion to settle so
+      // forceStop never resolves while `completion` is still pending (no provider can start afterward).
+      try { await killer?.() } catch { /* best effort */ }
+      await completion.catch(() => undefined)
+    }
+    return { completion, forceStop }
   }
 
   /**

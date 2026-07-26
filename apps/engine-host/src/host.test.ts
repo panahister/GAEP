@@ -190,19 +190,22 @@ describe("engine host protocol", () => {
     return charter.id
   }
 
-  it("negotiates protocol v2 while retaining safe omitted-version v1 behavior", async () => {
+  it("negotiates protocol v3 while retaining safe omitted-version v1 behavior", async () => {
     await expect(host.dispatch({ jsonrpc: "2.0", id: 1, method: "ping", params: {} })).resolves.toEqual({
       engineVersion: "0.1.0",
-      protocolVersion: 2,
+      protocolVersion: 3,
       negotiatedProtocolVersion: 1,
-      supportedProtocolVersions: [1, 2],
+      supportedProtocolVersions: [1, 2, 3],
     })
     await expect(host.dispatch({ jsonrpc: "2.0", id: 2, protocolVersion: 2, method: "ping", params: {} })).resolves.toMatchObject({
-      protocolVersion: 2,
+      protocolVersion: 3,
       negotiatedProtocolVersion: 2,
     })
-    await expect(host.dispatch({ jsonrpc: "2.0", id: 3, protocolVersion: 3, method: "ping", params: {} })).rejects.toMatchObject({
+    await expect(host.dispatch({ jsonrpc: "2.0", id: 3, protocolVersion: 4, method: "ping", params: {} })).rejects.toMatchObject({
       kind: "UNSUPPORTED_PROTOCOL_VERSION",
+    })
+    await expect(host.dispatch({ jsonrpc: "2.0", id: 31, protocolVersion: 3, method: "ping", params: {} })).resolves.toMatchObject({
+      negotiatedProtocolVersion: 3,
     })
     await expect(host.dispatch({ jsonrpc: "2.0", id: 4, method: "workspaceHealth", params: {} })).rejects.toMatchObject({
       kind: "PROTOCOL_UPGRADE_REQUIRED",
@@ -220,6 +223,56 @@ describe("engine host protocol", () => {
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({ jsonrpc: "2.0", id: 6, method: "platformReadiness", params: {} }))
       .rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    // GAEP-P0-CS02: every v3 method is rejected below protocol 3 (INV-18).
+    for (const [index, method] of [
+      "providerCatalog", "readProviderSelection", "startReadOnlyAnalysis",
+      "readAnalysisRun", "listAnalysisRuns", "cancelAnalysisRun", "dashboardProjection",
+    ].entries()) {
+      await expect(host.dispatch({
+        jsonrpc: "2.0", id: 700 + index, protocolVersion: 2, method,
+        params: method === "readAnalysisRun" || method === "cancelAnalysisRun"
+          ? { analysisRunId: "44444444-4444-4444-8444-444444444444" }
+          : method === "startReadOnlyAnalysis"
+            ? { objective: "check", contextPackIds: ["44444444-4444-4444-8444-444444444444"], idempotencyKey: "55555555-5555-4555-8555-555555555555" }
+            : {},
+      })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    }
+  })
+
+  it("serves the v3 provider catalog and dashboard projection on an uninitialized workspace", async () => {
+    const catalog = await host.dispatch({ jsonrpc: "2.0", id: 1, protocolVersion: 3, method: "providerCatalog", params: {} }) as {
+      providers: Array<{ adapterId: string; authReadiness: string; detected: boolean }>
+    }
+    expect(catalog.providers.map((provider) => provider.adapterId).sort())
+      .toEqual(["gaep.claude-code-cli", "gaep.codex-cli"])
+    // Detection never implies authentication (INV-07).
+    for (const provider of catalog.providers) expect(provider.authReadiness).toBe("auth-unverified")
+
+    const projection = await host.dispatch({ jsonrpc: "2.0", id: 2, protocolVersion: 3, method: "dashboardProjection", params: {} }) as {
+      workspaceState: string
+      workspaceMessage: string
+      selection: unknown
+      latestRun: unknown
+      hostMatrix: Array<{ host: string; conformanceState: string }>
+    }
+    // INV-16: friendly prerequisite state, never a raw ENOENT.
+    expect(projection.workspaceState).toBe("product-uninitialized")
+    expect(projection.workspaceMessage).toContain("Initialize Product first")
+    expect(projection.selection).toBeNull()
+    expect(projection.latestRun).toBeNull()
+    expect(projection.hostMatrix.map((row) => row.host)).toEqual(["vscode", "visual-studio", "rider", "kiro"])
+    expect(projection.hostMatrix.find((row) => row.host === "vscode")?.conformanceState).toBe("not-run")
+  })
+
+  it("refuses to start an analysis before a provider/model selection exists", async () => {
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: 1, protocolVersion: 3, method: "startReadOnlyAnalysis",
+      params: {
+        objective: "Summarize the governed context",
+        contextPackIds: ["44444444-4444-4444-8444-444444444444"],
+        idempotencyKey: "55555555-5555-4555-8555-555555555555",
+      },
+    })).rejects.toMatchObject({ kind: "NO_SELECTION" })
   })
 
   it("returns a schema-valid Base Platform Readiness Snapshot over protocol v2", async () => {

@@ -6,7 +6,7 @@ import { initiativeSchema, productSchema } from "./product.js"
 import { productDomainRecordKindSchema, productExportBundleSchema } from "./product-studio.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
-export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
+export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2), z.literal(3)])
 export const hostRequestIdSchema = z.union([z.string().min(1).max(128), z.number().int().safe()])
 export const hostActorIdSchema = z.string().trim().min(1).max(256).optional()
 export const hostNoParamsSchema = z.object({}).strict()
@@ -102,7 +102,45 @@ export const hostMethodSchema = z.enum([
   "productStudio.search",
   "productStudio.exportBuild",
   "productStudio.importPreview",
+  // --- GAEP-P0-CS02 protocol v3 (v3-only) ---
+  "providerCatalog",
+  "readProviderSelection",
+  "selectProviderModel",
+  "startReadOnlyAnalysis",
+  "readAnalysisRun",
+  "listAnalysisRuns",
+  "cancelAnalysisRun",
+  "dashboardProjection",
 ])
+
+/** GAEP-P0-CS02 v3 request params. `truthClass` is server-derived and never accepted (INV-31). */
+export const hostSelectProviderModelParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  adapterId: z.string().trim().min(1).max(200),
+  modelId: z.string().trim().min(1).max(500),
+  settings: portableSelectionSettingsSchema.default({}),
+}).strict()
+
+export const hostStartReadOnlyAnalysisParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  objective: z.string().trim().min(4).max(4_000),
+  contextPackIds: z.array(z.string().uuid()).min(1).max(20),
+  timeoutMs: z.number().int().min(1_000).max(600_000).default(120_000),
+  idempotencyKey: z.string().uuid(),
+}).strict()
+
+export const hostAnalysisRunIdParamsSchema = z.object({
+  analysisRunId: z.string().uuid(),
+}).strict()
+
+export const hostCancelAnalysisParamsSchema = z.object({
+  analysisRunId: z.string().uuid(),
+  reason: z.string().trim().max(200).optional(),
+}).strict()
+
+export const hostListAnalysisRunsParamsSchema = z.object({
+  limit: z.number().int().min(1).max(100).default(20),
+}).strict()
 
 const requestEnvelopeFields = {
   jsonrpc: z.literal("2.0"),
@@ -139,6 +177,14 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("productStudio.search", hostSearchProductStudioParamsSchema),
   requestVariant("productStudio.exportBuild", hostNoParamsSchema.default({})),
   requestVariant("productStudio.importPreview", hostImportPreviewParamsSchema),
+  requestVariant("providerCatalog", hostNoParamsSchema.default({})),
+  requestVariant("readProviderSelection", hostNoParamsSchema.default({})),
+  requestVariant("selectProviderModel", hostSelectProviderModelParamsSchema),
+  requestVariant("startReadOnlyAnalysis", hostStartReadOnlyAnalysisParamsSchema),
+  requestVariant("readAnalysisRun", hostAnalysisRunIdParamsSchema),
+  requestVariant("listAnalysisRuns", hostListAnalysisRunsParamsSchema.default({ limit: 20 })),
+  requestVariant("cancelAnalysisRun", hostCancelAnalysisParamsSchema),
+  requestVariant("dashboardProjection", hostNoParamsSchema.default({})),
 ])
 
 export const hostSuccessSchema = z.object({

@@ -1,0 +1,14 @@
+{
+  "name": "gaep-kiro",
+  "displayName": "GAEP for Kiro",
+  "description": "Governed provider/model read-only analysis for Kiro.",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "publisher": "gaep",
+  "license": "UNLICENSED",
+  "engines": { "vscode": "^1.103.0" },
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}

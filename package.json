@@ -10,7 +10,8 @@
     "packages/conformance",
     "packages/adapters/*",
     "apps/engine-host",
-    "apps/vscode"
+    "apps/vscode",
+    "apps/kiro"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
@@ -26,7 +27,11 @@
     "test:vscode:extension-host": "npm run test:extension-host -w gaep-vscode",
     "test:watch": "vitest",
     "typecheck": "tsc -b",
-    "validate:docs": "ruby scripts/validate_next_docs.rb"
+    "validate:docs": "ruby scripts/validate_next_docs.rb",
+    "release:cs02": "node scripts/build_cs02_release.mjs",
+    "example:cs02": "node examples/phase0-provider-model/run.mjs",
+    "evidence:cs02": "node examples/phase0-provider-model/run.mjs --verify",
+    "verify:cs02:packages": "node scripts/verify_cs02_packages.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

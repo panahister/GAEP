@@ -39,3 +39,24 @@ describe("host contract — platformReadiness", () => {
     }).success).toBe(false)
   })
 })
+
+describe("host contract — CS02 v3 methods", () => {
+  for (const method of ["providerCatalog", "readProviderSelection", "dashboardProjection"]) {
+    it(`registers ${method}`, () => {
+      expect(hostMethodSchema.safeParse(method).success).toBe(true)
+      expect(hostRequestSchema.safeParse({ jsonrpc: "2.0", id: 1, protocolVersion: 3, method, params: {} }).success).toBe(true)
+    })
+  }
+
+  it("selectProviderModel rejects a caller-supplied truthClass (INV-31)", () => {
+    const ok = hostRequestSchema.safeParse({ jsonrpc: "2.0", id: 1, protocolVersion: 3, method: "selectProviderModel", params: { adapterId: "gaep.claude-code-cli", modelId: "sonnet" } })
+    expect(ok.success).toBe(true)
+    const withTruth = hostRequestSchema.safeParse({ jsonrpc: "2.0", id: 2, protocolVersion: 3, method: "selectProviderModel", params: { adapterId: "gaep.claude-code-cli", modelId: "sonnet", truthClass: "observed" } })
+    expect(withTruth.success).toBe(false)
+  })
+
+  it("startReadOnlyAnalysis requires bounded params", () => {
+    expect(hostRequestSchema.safeParse({ jsonrpc: "2.0", id: 1, protocolVersion: 3, method: "startReadOnlyAnalysis", params: { objective: "check the context", contextPackIds: ["11111111-1111-4111-8111-111111111111"], idempotencyKey: "22222222-2222-4222-8222-222222222222" } }).success).toBe(true)
+    expect(hostRequestSchema.safeParse({ jsonrpc: "2.0", id: 2, protocolVersion: 3, method: "startReadOnlyAnalysis", params: { objective: "x", contextPackIds: [], idempotencyKey: "not-a-uuid" } }).success).toBe(false)
+  })
+})

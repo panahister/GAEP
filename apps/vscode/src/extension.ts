@@ -24,6 +24,10 @@ import { GaepEngine, initiativeTransitions } from "@gaep/engine"
 import * as vscode from "vscode"
 
 import { formatPlatformReadinessLines } from "./platform-readiness-format.js"
+import { EngineHostClient, resolveEngineHostLaunch } from "./engine-host-client.js"
+import { EngineHostClientManager } from "./engine-host-manager.js"
+import { formatDashboardLines } from "./provider-model-view.js"
+import { findActiveRun, isTerminal, modelPickItems, providerPickItems, renderRunResult, type ProviderCatalogEntryLite } from "./provider-model-workflow.js"
 
 import { ActiveRunRegistry } from "./run-registry.js"
 import { CurrentEngineStudioDataSource } from "./current-engine-studio-data-source.js"
@@ -442,6 +446,52 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await stopActiveRuns("Changing the selected Product root will replace the current GAEP runtime context.", true)
     await configureRoot(picked.folder, true)
   }
+
+  // --- GAEP-P0-CS02: shared Engine Host RPC boundary for the provider/model slice (INV-01/02) ---
+  const cs02FriendlyMessage = (error: unknown): string => {
+    const raw = error instanceof Error ? error.message : "unknown error"
+    if (/product[_-\s]?uninitialized|PRODUCT_UNINITIALIZED/i.test(raw)) return "Initialize Product first."
+    if (/bundled Engine Host|digest/i.test(raw)) return "the packaged GAEP Engine Host is not available in this build"
+    // Never surface absolute paths or stack traces (INV-16/17).
+    return raw.replace(/(?:[A-Za-z]:\\[^\s]*|(?:\/[A-Za-z0-9._-]+){2,}\/?|~\/[^\s]*)/g, "[redacted-path]").split("\n")[0] ?? "unavailable"
+  }
+  // One persistent Engine Host per Product root, reused across every v3 command (INV-01/05). A second
+  // host is never spawned for Dashboard or Cancel, so it cannot reconcile a running analysis.
+  const engineHostManager = new EngineHostClientManager((rootPath) =>
+    new EngineHostClient(resolveEngineHostLaunch({
+      extensionRoot: context.extensionPath,
+      workspacePath: rootPath,
+      execPath: process.execPath,
+      env: process.env,
+    })))
+  context.subscriptions.push({ dispose: () => engineHostManager.dispose() })
+  const withCs02EngineHost = async <T,>(use: (client: EngineHostClient) => Promise<T>): Promise<T> => {
+    if (!selectedFolder) throw new Error("Select a GAEP Product root first")
+    return engineHostManager.with(selectedFolder.uri.fsPath, (client) => use(client as EngineHostClient)) as Promise<T>
+  }
+  const cs02Uuid = (): string => (globalThis.crypto?.randomUUID?.() ?? randomUUID())
+  const cs02Guarded = async (operation: () => Promise<void>): Promise<void> => {
+    try {
+      if (!vscode.workspace.isTrusted) throw new Error("Trust the workspace before running GAEP provider commands")
+      await operation()
+    } catch (error) {
+      const message = cs02FriendlyMessage(error)
+      diagnostics.info(`GAEP command unavailable: ${message}`)
+      await vscode.window.showErrorMessage(`GAEP: ${message}`, "Show Diagnostics").then((s) => { if (s === "Show Diagnostics") diagnostics.show(true) })
+    }
+  }
+  // Real protocol-v3 provider/model selection: providerCatalog -> Quick Pick -> selectProviderModel.
+  const cs02PickProviderModel = async (): Promise<{ adapterId: string; modelId: string; resolvedTruthClass: string } | undefined> =>
+    withCs02EngineHost(async (client) => {
+      const catalog = await client.request<{ providers: ProviderCatalogEntryLite[] }>("providerCatalog")
+      const providerItem = await vscode.window.showQuickPick(providerPickItems(catalog.providers), { title: "GAEP: Select Provider", ignoreFocusOut: true })
+      if (!providerItem) return undefined
+      const entry = catalog.providers.find((p) => p.adapterId === providerItem.value)!
+      const modelItem = await vscode.window.showQuickPick(modelPickItems(entry), { title: "GAEP: Select Model", ignoreFocusOut: true })
+      if (!modelItem) return undefined
+      const result = await client.request<{ resolvedTruthClass: string }>("selectProviderModel", { adapterId: entry.adapterId, modelId: modelItem.value })
+      return { adapterId: entry.adapterId, modelId: modelItem.value, resolvedTruthClass: result.resolvedTruthClass }
+    })
 
   const requireRuntime = async (): Promise<{ engine: GaepEngine; path: string }> => {
     if (!vscode.workspace.isTrusted) throw new Error("Trust the workspace before GAEP can inspect agents or change Product state")
@@ -1480,6 +1530,60 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return undefined
       }
     }),
+    vscode.commands.registerCommand("gaep.showAgentModelDashboard", async (): Promise<unknown> => {
+      // INV-01: read the projection over the shared Engine Host RPC boundary, never from a
+      // CS02 service on the in-process engine. If the packaged runtime is unavailable, degrade
+      // to a friendly message rather than a raw error (INV-16).
+      try {
+        if (!vscode.workspace.isTrusted) throw new Error("Trust the workspace before GAEP can show the Agent and Model dashboard")
+        const projection = await withCs02EngineHost(async (client) => client.request("dashboardProjection"))
+        diagnostics.info("=== GAEP Agent and Model dashboard (read-only) ===")
+        for (const line of formatDashboardLines(projection as never)) diagnostics.info(line)
+        diagnostics.show(true)
+        return projection
+      } catch (error) {
+        diagnostics.info(`GAEP Agent and Model dashboard is unavailable: ${cs02FriendlyMessage(error)}`)
+        diagnostics.show(true)
+        return undefined
+      }
+    }),
+    vscode.commands.registerCommand("gaep.selectProvider", () => cs02Guarded(async () => {
+      const picked = await cs02PickProviderModel()
+      if (picked) diagnostics.info(`GAEP: selected ${picked.adapterId} / ${picked.modelId} (${picked.resolvedTruthClass})`)
+    })),
+    vscode.commands.registerCommand("gaep.selectModel", () => cs02Guarded(async () => {
+      const picked = await cs02PickProviderModel()
+      if (picked) diagnostics.info(`GAEP: selected model ${picked.modelId} (${picked.resolvedTruthClass})`)
+    })),
+    vscode.commands.registerCommand("gaep.runReadOnlyAnalysis", () => cs02Guarded(async () => {
+      const objective = await vscode.window.showInputBox({ prompt: "GAEP read-only analysis objective", ignoreFocusOut: true, validateInput: (v) => v.trim().length < 4 ? "Enter at least 4 characters" : undefined })
+      if (objective === undefined) return
+      const contextPackId = await vscode.window.showInputBox({ prompt: "Governed Context Pack id (UUID) to analyze", ignoreFocusOut: true, validateInput: (v) => /^[0-9a-f-]{36}$/i.test(v.trim()) ? undefined : "Enter a Context Pack UUID" })
+      if (!contextPackId) return
+      await withCs02EngineHost(async (client) => {
+        const started = await client.request<{ analysisRunId: string; state: string }>("startReadOnlyAnalysis", {
+          objective: objective.trim(), contextPackIds: [contextPackId.trim()], idempotencyKey: cs02Uuid(),
+        })
+        diagnostics.info(`GAEP: analysis ${started.analysisRunId} ${started.state}`)
+        // Poll to terminal, then render the sanitized result truthfully.
+        for (let attempt = 0; attempt < 600; attempt += 1) {
+          const run = await client.request<{ state: string }>("readAnalysisRun", { analysisRunId: started.analysisRunId })
+          if (isTerminal(run.state)) { diagnostics.info(renderRunResult(run as never)); break }
+          await new Promise((r) => setTimeout(r, 1000))
+        }
+        diagnostics.show(true)
+      })
+    })),
+    vscode.commands.registerCommand("gaep.cancelAnalysis", () => cs02Guarded(async () => {
+      await withCs02EngineHost(async (client) => {
+        const { runs } = await client.request<{ runs: Array<{ analysisRunId: string; state: string }> }>("listAnalysisRuns", { limit: 20 })
+        const active = findActiveRun(runs as never)
+        if (!active) { diagnostics.info("GAEP: no active analysis to cancel"); return }
+        const result = await client.request<{ state: string }>("cancelAnalysisRun", { analysisRunId: active.analysisRunId })
+        diagnostics.info(`GAEP: analysis ${active.analysisRunId} ${result.state}`)
+        diagnostics.show(true)
+      })
+    })),
     vscode.commands.registerCommand("gaep.manageWorkspaceTrust", () => vscode.commands.executeCommand("workbench.trust.manage")),
     vscode.commands.registerCommand("gaep.migrateLegacyAgentSelection", () => vscode.commands.executeCommand("gaep.selectAgent")),
     vscode.commands.registerCommand("gaep.selectWorkspaceRoot", safely(selectWorkspaceRoot)),

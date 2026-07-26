@@ -77,3 +77,4 @@ export function conformanceMatrixJson(report: PlatformReadinessReport): string {
 export function sha256Hex(text: string): string {
   return `sha256:${createHash("sha256").update(text).digest("hex")}`
 }
+export * from "./host-conformance.js"

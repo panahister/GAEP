@@ -1,0 +1,41 @@
+# GAEP-P0-CS02 — Engine Host SEA build lane (INV-21/22/29). Downloads and verifies the pinned
+# official Node 22.11.0 archive, builds the digest-verified Single Executable Application Engine Host
+# for each non-Node target, and publishes build-only evidence (buildState only; install/workflow stay
+# not-run). No artifact is produced if any digest verification fails.
+name: cs02-sea-engine-host
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/gaep-founder-edition]
+jobs:
+  sea:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            runs-on: ubuntu-22.04
+            artifact: gaep-engine-host-0.2.0-linux-x64
+          - target: win32-x64
+            runs-on: windows-2022
+            artifact: gaep-engine-host-0.2.0-win32-x64.exe
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.11.0' }
+      - run: npm ci
+      - run: npm run build
+      - name: Download + verify pinned Node 22.11.0 archive (${{ matrix.target }})
+        shell: bash
+        run: echo "GAEP_SEA_NODE_BINARY=$(node scripts/fetch_cs02_node.mjs ${{ matrix.target }})" >> "$GITHUB_ENV"
+      - name: Build digest-verified SEA Engine Host (${{ matrix.target }})
+        run: node apps/engine-host/build-sea.mjs ${{ matrix.target }}
+      # The SEA is embedded and given build-only evidence by the consuming host lane (rider: linux-x64,
+      # visual-studio: win32-x64). This lane publishes the verified artifact + its digest sidecar.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cs02-sea-${{ matrix.target }}
+          path: |
+            dist/phase0/cs02/engine-host/${{ matrix.artifact }}
+            dist/phase0/cs02/engine-host/${{ matrix.artifact }}.sha256

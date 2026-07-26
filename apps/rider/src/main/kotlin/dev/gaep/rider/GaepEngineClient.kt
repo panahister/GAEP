@@ -12,7 +12,9 @@ import java.util.concurrent.atomic.AtomicLong
 
 class GaepEngineClient(
     private val workspace: Path,
-    private val engineExecutable: String = System.getenv("GAEP_ENGINE_EXECUTABLE") ?: "gaep-engine",
+    private val pluginPath: Path,
+    // GAEP-P0-CS02: launch only the digest-verified bundled runtime; no silent PATH fallback (INV-21/22).
+    private val engineExecutable: String = EngineHostLocator.resolveVerified(pluginPath),
 ) : Closeable, Disposable {
     private val log = Logger.getInstance(GaepEngineClient::class.java)
     private val ids = AtomicLong(0)
@@ -24,7 +26,8 @@ class GaepEngineClient(
     fun request(method: String, paramsJson: String = "{}"): String {
         ensureStarted()
         val id = ids.incrementAndGet()
-        val request = """{"jsonrpc":"2.0","id":$id,"method":"${escape(method)}","params":$paramsJson}"""
+        // GAEP-P0-CS02: every call uses the versioned protocol v3 over the shared boundary (INV-01/18).
+        val request = """{"jsonrpc":"2.0","id":$id,"protocolVersion":3,"method":"${escape(method)}","params":$paramsJson}"""
         writer!!.apply {
             write(request)
             newLine()

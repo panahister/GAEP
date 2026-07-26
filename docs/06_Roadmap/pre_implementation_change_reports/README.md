@@ -73,6 +73,7 @@ Newest first. Update this table whenever a report is created, approved, implemen
 
 | Change Set ID | Phase | Title | Report | Status | Approved on | Handoff |
 |---|---|---|---|---|---|---|
+| GAEP-P0-CS02 | 0 | First Installable Four-IDE Provider/Model Read-Only Vertical Slice | [report](PHASE_0_GAEP-P0-CS02_PRE_IMPLEMENTATION_CHANGE_REPORT.md) | In Implementation | 2026-07-26 | Defect-correction pass complete for all locally-executable work (real v3 RPC example, cancel/timeout mutation guard, atomic host lock + persistent VS Code client, real Node/SEA digests, Rider/VS Tool Window source). Only external-lane executions remain: Rider (JDK 21), Visual Studio (Windows + VS 2022), and a `completed` Claude run (authenticated runtime; currently `auth-unavailable`). |
 | GAEP-P0-CS01-C1 | 0 | Correction Set: contract rigor, evidence integrity, governance reconciliation, boundary strictness, VS Code evidence | [report](PHASE_0_GAEP-P0-CS01-C1_PRE_IMPLEMENTATION_CHANGE_REPORT.md) | Accepted | 2026-07-24 | Product Owner installed the VSIX and accepted the manual Platform Readiness result; PLT-28 is `✅ Done`, while PLT-27/29 and Phase 0 remain open |
 | GAEP-P0-CS01 | 0 | Platform Readiness Contract, Conformance Harness Skeleton, and Readiness Example | [report](PHASE_0_GAEP-P0-CS01_PRE_IMPLEMENTATION_CHANGE_REPORT.md) | Implemented — Ready for Test | 2026-07-24 | PLT-27/28/29 advanced; see tracker Change Log |
 

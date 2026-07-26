@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "changeSetId": "GAEP-P0-CS02",
+  "generatedAt": "2026-07-26T07:10:11.750Z",
+  "sourceIdentity": {
+    "sourceTreeDigest": "sha256:d060104c9490cff74b1a442843877c0d929047031dce74aa255dd860286f0617",
+    "baseCommit": "964dc8b5a126e6dd100cafa8603f937f3fb0d100",
+    "dirty": true
+  },
+  "workspaceState": "product-ready",
+  "providers": [
+    {
+      "adapterId": "gaep.codex-cli",
+      "detected": true,
+      "runtimeVersion": "0.146.0-alpha.3.1",
+      "authReadiness": "auth-unverified",
+      "models": [
+        {
+          "id": "gpt-5.6-sol",
+          "truthClass": "observed",
+          "alias": false
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "truthClass": "observed",
+          "alias": false
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "truthClass": "observed",
+          "alias": false
+        },
+        {
+          "id": "gpt-5.5",
+          "truthClass": "observed",
+          "alias": false
+        },
+        {
+          "id": "gpt-5.2",
+          "truthClass": "observed",
+          "alias": false
+        }
+      ],
+      "analysisState": "not-run"
+    },
+    {
+      "adapterId": "gaep.claude-code-cli",
+      "detected": true,
+      "runtimeVersion": "2.1.218",
+      "authReadiness": "auth-unverified",
+      "models": [
+        {
+          "id": "sonnet",
+          "truthClass": "provider-declared",
+          "alias": true
+        },
+        {
+          "id": "opus",
+          "truthClass": "provider-declared",
+          "alias": true
+        }
+      ],
+      "analysisState": "failed"
+    }
+  ],
+  "analysis": {
+    "adapterId": "gaep.claude-code-cli",
+    "modelId": "sonnet",
+    "state": "failed",
+    "failureCategory": "auth-unavailable",
+    "resultDigest": null,
+    "productSourceMutated": false,
+    "unauthorizedGaepWrite": null,
+    "contextPackId": "69fa35b6-6f12-4ac3-8307-89db25018a52",
+    "persisted": {
+      "selection": true,
+      "run": true,
+      "preRunEvidence": true,
+      "resultEvidence": false
+    },
+    "transport": "engine-host-protocol-v3-rpc",
+    "engineHostLockReleased": true
+  },
+  "hostMatrix": [
+    {
+      "host": "vscode",
+      "conformanceState": "not-run",
+      "evidenceState": "evidence-absent"
+    },
+    {
+      "host": "visual-studio",
+      "conformanceState": "pending-environment",
+      "evidenceState": "evidence-absent"
+    },
+    {
+      "host": "rider",
+      "conformanceState": "pending-environment",
+      "evidenceState": "evidence-absent"
+    },
+    {
+      "host": "kiro",
+      "conformanceState": "pending-environment",
+      "evidenceState": "evidence-absent"
+    }
+  ],
+  "packageManifestDigest": "sha256:e3996fff51af5cf3f403ba99d47c572d541d5f8ecddb07bc6576b2fded98aa58",
+  "packageArtifacts": [
+    {
+      "ideHost": "vscode",
+      "buildState": "built",
+      "installTestState": "not-run",
+      "workflowTestState": "not-run"
+    },
+    {
+      "ideHost": "kiro",
+      "buildState": "built",
+      "installTestState": "not-run",
+      "workflowTestState": "not-run"
+    },
+    {
+      "ideHost": "visual-studio",
+      "buildState": "not-built",
+      "installTestState": "pending-environment",
+      "workflowTestState": "pending-environment"
+    },
+    {
+      "ideHost": "rider",
+      "buildState": "not-built",
+      "installTestState": "pending-environment",
+      "workflowTestState": "pending-environment"
+    }
+  ],
+  "notes": [
+    "Provider catalog, selection, analysis start, and polling are driven entirely over the packaged Engine Host protocol v3 (no direct engine analysis).",
+    "The bounded context is a real governed Context Pack created through the governed GAEP APIs; the context id and text are never fabricated.",
+    "completed → PASS; a classified auth-unavailable → truthful environment blocker; provider-error/internal/protocol-error/timeout/source-mutation → verification FAIL."
+  ]
+}

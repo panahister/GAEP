@@ -212,3 +212,82 @@ describe("resolveFailureSummary", () => {
     expect(Object.values(FAILURE_SUMMARIES).every((entry) => !entry.failureSummary.includes("\n"))).toBe(true)
   })
 })
+
+// --- GAEP-P0-CS02 evidence (INV-14/15/30) ---
+import { computeSubjectDigest as _unusedCs02, verifyEvidenceBundleFor, writeCs02BuildOnlyBundle, chooseCurrentAttempt, type Cs02BundleSpec } from "./evidence.js"
+
+describe("CS02 evidence verification", () => {
+  const identity = { sourceTreeDigest: `sha256:${"f".repeat(64)}`, baseCommit: "1".repeat(40), dirty: false }
+  const subject = `sha256:${"d".repeat(64)}`
+  const spec: Cs02BundleSpec = { host: "vscode", checkId: "vscode.extension-host.e2e", packageVersion: "0.2.0", currentSubjectDigest: subject, currentSourceIdentity: identity }
+
+  function writeCs02(dir: string, outcome: "passed" | "not-run", overrides: { host?: string; sourceTreeDigest?: string; packageVersion?: string } = {}): void {
+    const observedAt = "2026-07-24T00:00:00.000Z"
+    const host = overrides.host ?? "vscode"
+    const srcId = { ...identity, sourceTreeDigest: overrides.sourceTreeDigest ?? identity.sourceTreeDigest }
+    const packageVersion = overrides.packageVersion ?? "0.2.0"
+    const common = { schemaVersion: 1, parentChangeSetId: "GAEP-P0-CS02", host, packageVersion, checkId: "vscode.extension-host.e2e", observedAt, subjectDigest: subject, sourceIdentity: srcId }
+    const envelope = outcome === "passed"
+      ? { ...common, executionResult: "executed", testOutcome: "passed" }
+      : { ...common, executionResult: "not-executed", testOutcome: "not-run", unavailabilityReason: "host not installed" }
+    const envelopeText = `${JSON.stringify(envelope, null, 2)}\n`
+    writeFileSync(join(dir, "readiness-evidence.json"), envelopeText)
+    const envDigest = sha256(envelopeText)
+    const observationResult = outcome === "passed"
+      ? { observation: { host, checkId: "vscode.extension-host.e2e", state: "passed", truthClass: "observed", observedAt, evidenceSource: "readiness-evidence.json", executionResult: "executed", evidenceDigest: envDigest } }
+      : { observation: null }
+    const obsText = `${JSON.stringify(observationResult, null, 2)}\n`
+    writeFileSync(join(dir, "observation.json"), obsText)
+    const manifest = { schemaVersion: 1, parentChangeSetId: "GAEP-P0-CS02", host, packageVersion, checkId: "vscode.extension-host.e2e", subjectDigest: subject, sourceIdentity: srcId, artifacts: [{ path: "readiness-evidence.json", digest: envDigest }, { path: "observation.json", digest: sha256(obsText) }] }
+    writeFileSync(join(dir, "evidence-manifest.json"), JSON.stringify(manifest, null, 2))
+  }
+
+  it("accepts a valid CS02 passed bundle", () => {
+    writeCs02(dir, "passed")
+    const result = verifyEvidenceBundleFor(spec, dir)
+    expect(result.kind === "observation" && result.observation.state).toBe("passed")
+  })
+
+  it("rejects a wrong host, wrong package version, and a mismatched source tree", () => {
+    writeCs02(dir, "passed", { host: "rider" })
+    expect(() => verifyEvidenceBundleFor(spec, dir)).toThrow()
+    writeCs02(dir, "passed", { packageVersion: "0.1.0" })
+    expect(() => verifyEvidenceBundleFor(spec, dir)).toThrow()
+    writeCs02(dir, "passed", { sourceTreeDigest: `sha256:${"9".repeat(64)}` })
+    expect(() => verifyEvidenceBundleFor(spec, dir)).toThrow()
+  })
+
+  it("rejects a C1 envelope substituted with CS02 strings (anti-forgery)", () => {
+    // A C1 envelope lacks host/packageVersion/sourceIdentity, so the CS02 schema rejects it.
+    const c1Envelope = { schemaVersion: 1, parentChangeSetId: "GAEP-P0-CS02", correctionSetId: "GAEP-P0-CS01-C1", checkId: "vscode.extension-host.e2e", observedAt: "2026-07-24T00:00:00.000Z", subjectDigest: subject, executionResult: "executed", testOutcome: "passed", snapshot: {} }
+    writeFileSync(join(dir, "readiness-evidence.json"), JSON.stringify(c1Envelope, null, 2))
+    writeFileSync(join(dir, "observation.json"), JSON.stringify({ observation: null }))
+    writeFileSync(join(dir, "evidence-manifest.json"), JSON.stringify({ schemaVersion: 1, parentChangeSetId: "GAEP-P0-CS02", host: "vscode", packageVersion: "0.2.0", checkId: "vscode.extension-host.e2e", subjectDigest: subject, sourceIdentity: identity, artifacts: [{ path: "readiness-evidence.json", digest: subject }, { path: "observation.json", digest: subject }] }))
+    expect(() => verifyEvidenceBundleFor(spec, dir)).toThrow()
+  })
+
+  it("import authority: a local not-run does not overwrite a valid current-subject passed (INV-30)", () => {
+    writeCs02(dir, "passed")
+    expect(chooseCurrentAttempt(spec, dir, true)).toBe("keep-on-disk")
+    writeCs02(dir, "not-run")
+    expect(chooseCurrentAttempt(spec, dir, true)).toBe("replace-with-local")
+    expect(chooseCurrentAttempt(spec, undefined, true)).toBe("replace-with-local")
+  })
+
+  it("writeCs02BuildOnlyBundle produces a self-verifying not-executed/not-run bundle (build lane)", () => {
+    const result = writeCs02BuildOnlyBundle(
+      { host: "rider", checkId: "rider.plugin.workflow", packageVersion: "0.2.0", subjectDigest: subject, sourceIdentity: identity, unavailabilityReason: "Build lane produced the artifact; interactive workflow not run." },
+      dir,
+    )
+    expect(result.kind).toBe("not-executed")
+    // The written bundle re-verifies against the same subject/source, and the outcome is never a pass.
+    const reverify = verifyEvidenceBundleFor(
+      { host: "rider", checkId: "rider.plugin.workflow", packageVersion: "0.2.0", currentSubjectDigest: subject, currentSourceIdentity: identity },
+      dir,
+    )
+    expect(reverify.kind).toBe("not-executed")
+    const envelope = JSON.parse(readFileSync(join(dir, "readiness-evidence.json"), "utf8"))
+    expect(envelope.testOutcome).toBe("not-run")
+    expect(envelope.executionResult).toBe("not-executed")
+  })
+})

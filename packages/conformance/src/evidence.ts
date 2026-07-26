@@ -1,13 +1,16 @@
 import { createHash } from "node:crypto"
-import { readFileSync } from "node:fs"
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { isAbsolute, join, normalize, resolve, sep } from "node:path"
 
 import {
+  cs02EvidenceEnvelopeSchema,
+  cs02EvidenceManifestSchema,
   evidenceManifestSchema,
   hostConformanceObservationSchema,
   observationResultSchema,
   readinessEvidenceEnvelopeSchema,
   type HostConformanceObservation,
+  type SourceIdentity,
 } from "@gaep/contracts"
 
 const PARENT_CHANGE_SET_ID = "GAEP-P0-CS01"
@@ -121,4 +124,145 @@ export function verifyEvidenceBundle(bundleDir: string, currentSubjectDigest: st
     throw new Error("observation evidenceDigest does not match the readiness-evidence.json manifest digest")
   }
   return { kind: "observation", observation }
+}
+
+// --- GAEP-P0-CS02: multi-host, source-identity-bound evidence verification (INV-14/15/30) ---
+
+export interface Cs02BundleSpec {
+  host: "vscode" | "visual-studio" | "rider" | "kiro"
+  checkId: string
+  packageVersion: string
+  currentSubjectDigest: string
+  currentSourceIdentity: SourceIdentity
+}
+
+/**
+ * Verify a CS02 host evidence bundle. Distinct from the C1 verifier: the CS02 envelope/manifest
+ * carry `host`, `packageVersion`, and `sourceIdentity`, so a C1 envelope with substituted strings
+ * fails schema validation. Equivalence/staleness is decided ONLY by `sourceTreeDigest` (INV-27).
+ */
+export function verifyEvidenceBundleFor(spec: Cs02BundleSpec, bundleDir: string): EvidenceBundleResult {
+  const readJson = (name: string): unknown => JSON.parse(readFileSync(join(bundleDir, name), "utf8"))
+
+  const envelope = cs02EvidenceEnvelopeSchema.parse(readJson("readiness-evidence.json"))
+  const observationResult = observationResultSchema.parse(readJson("observation.json"))
+  const manifest = cs02EvidenceManifestSchema.parse(readJson("evidence-manifest.json"))
+
+  if (envelope.host !== spec.host || manifest.host !== spec.host) throw new Error("evidence host does not match the expected host")
+  if (envelope.checkId !== spec.checkId || manifest.checkId !== spec.checkId) throw new Error("evidence checkId does not match the expected check")
+  if (envelope.packageVersion !== spec.packageVersion || manifest.packageVersion !== spec.packageVersion) {
+    throw new Error("evidence package version does not match")
+  }
+  if (envelope.subjectDigest !== spec.currentSubjectDigest || manifest.subjectDigest !== spec.currentSubjectDigest) {
+    throw new Error("evidence subject digest does not match the current subject")
+  }
+  // Provenance metadata (baseCommit/dirty) never rejects; only sourceTreeDigest is the identity.
+  if (envelope.sourceIdentity.sourceTreeDigest !== spec.currentSourceIdentity.sourceTreeDigest
+      || manifest.sourceIdentity.sourceTreeDigest !== spec.currentSourceIdentity.sourceTreeDigest) {
+    throw new Error("evidence source identity does not match the current source tree")
+  }
+
+  const paths = manifest.artifacts.map((artifact) => artifact.path)
+  if (paths.length !== 2 || new Set(paths).size !== 2) throw new Error("manifest must list exactly the two governed artifacts")
+  for (const artifact of manifest.artifacts) {
+    const abs = resolveEvidencePath(bundleDir, artifact.path)
+    if (sha256File(abs) !== artifact.digest) throw new Error(`evidence artifact digest mismatch: ${artifact.path}`)
+  }
+
+  if (envelope.executionResult === "not-executed") {
+    if (observationResult.observation !== null) throw new Error("not-executed bundle must have observation: null")
+    return { kind: "not-executed" }
+  }
+  if (observationResult.observation === null) throw new Error("executed bundle must contain an observation")
+  const observation = hostConformanceObservationSchema.parse(observationResult.observation)
+  const expectedState = envelope.testOutcome === "passed" ? "passed" : "failed"
+  if (observation.state !== expectedState) throw new Error("observation state does not match the envelope testOutcome")
+  if (observation.host !== spec.host || observation.host !== manifest.host) throw new Error("observation host mismatch")
+  if (observation.checkId !== envelope.checkId) throw new Error("observation checkId mismatch")
+  if (observation.observedAt !== envelope.observedAt) throw new Error("observation observedAt mismatch")
+  if (observation.evidenceSource !== EVIDENCE_FILE_NAME) throw new Error(`observation evidenceSource must be ${EVIDENCE_FILE_NAME}`)
+  const evidenceEntry = manifest.artifacts.find((artifact) => artifact.path === EVIDENCE_FILE_NAME)
+  if (!evidenceEntry || observation.evidenceDigest !== evidenceEntry.digest) {
+    throw new Error("observation evidenceDigest does not match the readiness-evidence.json manifest digest")
+  }
+  return { kind: "observation", observation }
+}
+
+export interface Cs02BuildOnlySpec {
+  host: "vscode" | "visual-studio" | "rider" | "kiro"
+  checkId: string
+  packageVersion: string
+  subjectDigest: string
+  sourceIdentity: SourceIdentity
+  unavailabilityReason: string
+  observedAt?: string
+}
+
+/**
+ * Write a schema-valid CS02 build-only evidence bundle: the artifact built, but the installed-host
+ * workflow was NOT executed (executionResult "not-executed", testOutcome "not-run"). The three
+ * governed files are written and then self-verified with {@link verifyEvidenceBundleFor}, so a
+ * malformed bundle is never published (INV-29/30). This can never read as a Ready-for-Test pass.
+ */
+export function writeCs02BuildOnlyBundle(spec: Cs02BuildOnlySpec, destDir: string): EvidenceBundleResult {
+  const observedAt = spec.observedAt ?? new Date().toISOString()
+  const envelope = cs02EvidenceEnvelopeSchema.parse({
+    schemaVersion: 1,
+    parentChangeSetId: "GAEP-P0-CS02",
+    host: spec.host,
+    packageVersion: spec.packageVersion,
+    checkId: spec.checkId,
+    observedAt,
+    subjectDigest: spec.subjectDigest,
+    sourceIdentity: spec.sourceIdentity,
+    executionResult: "not-executed",
+    testOutcome: "not-run",
+    unavailabilityReason: spec.unavailabilityReason,
+  })
+  const observation = observationResultSchema.parse({ observation: null })
+
+  mkdirSync(destDir, { recursive: true })
+  const writeJson = (name: string, value: unknown): void =>
+    writeFileSync(join(destDir, name), `${JSON.stringify(value, null, 2)}\n`, "utf8")
+  writeJson("readiness-evidence.json", envelope)
+  writeJson("observation.json", observation)
+  const manifest = cs02EvidenceManifestSchema.parse({
+    schemaVersion: 1,
+    parentChangeSetId: "GAEP-P0-CS02",
+    host: spec.host,
+    packageVersion: spec.packageVersion,
+    checkId: spec.checkId,
+    subjectDigest: spec.subjectDigest,
+    sourceIdentity: spec.sourceIdentity,
+    artifacts: [
+      { path: "readiness-evidence.json", digest: sha256File(join(destDir, "readiness-evidence.json")) },
+      { path: "observation.json", digest: sha256File(join(destDir, "observation.json")) },
+    ],
+  })
+  writeJson("evidence-manifest.json", manifest)
+
+  return verifyEvidenceBundleFor(
+    { host: spec.host, checkId: spec.checkId, packageVersion: spec.packageVersion, currentSubjectDigest: spec.subjectDigest, currentSourceIdentity: spec.sourceIdentity },
+    destDir,
+  )
+}
+
+/**
+ * Current-attempt authority (INV-30): a locally generated `not-run` result must NOT overwrite a
+ * valid external `passed`/`failed` bundle whose source identity matches the current subject.
+ * Returns the bundle that should remain effective.
+ */
+export function chooseCurrentAttempt(
+  spec: Cs02BundleSpec,
+  onDiskBundleDir: string | undefined,
+  localWouldBeNotExecuted: boolean,
+): "keep-on-disk" | "replace-with-local" {
+  if (!onDiskBundleDir) return "replace-with-local"
+  if (!localWouldBeNotExecuted) return "replace-with-local"
+  try {
+    const existing = verifyEvidenceBundleFor(spec, onDiskBundleDir)
+    return existing.kind === "observation" ? "keep-on-disk" : "replace-with-local"
+  } catch {
+    return "replace-with-local"
+  }
 }

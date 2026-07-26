@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "changeSetId": "GAEP-P0-CS02",
+  "version": "0.2.0",
+  "sourceIdentity": {
+    "sourceTreeDigest": "sha256:d060104c9490cff74b1a442843877c0d929047031dce74aa255dd860286f0617",
+    "baseCommit": "964dc8b5a126e6dd100cafa8603f937f3fb0d100",
+    "dirty": true
+  },
+  "artifacts": [
+    {
+      "changeSetId": "GAEP-P0-CS02",
+      "packageVersion": "0.2.0",
+      "ideHost": "vscode",
+      "targetIdeRange": "vscode ^1.103.0",
+      "sourceIdentity": {
+        "sourceTreeDigest": "sha256:d060104c9490cff74b1a442843877c0d929047031dce74aa255dd860286f0617",
+        "baseCommit": "964dc8b5a126e6dd100cafa8603f937f3fb0d100",
+        "dirty": true
+      },
+      "artifactPath": "dist/phase0/cs02/gaep-vscode-0.2.0.vsix",
+      "artifactSha256": "sha256:e8fc68dbc891f5bd9c7bab1e26db336951b41a4ce57758d40b5acacc24518d8d",
+      "buildState": "built",
+      "installTestState": "not-run",
+      "workflowTestState": "not-run",
+      "observedAt": "2026-07-26T07:09:58.188Z",
+      "evidenceSource": "scripts/build_cs02_release.mjs",
+      "knownLimitation": null
+    },
+    {
+      "changeSetId": "GAEP-P0-CS02",
+      "packageVersion": "0.2.0",
+      "ideHost": "kiro",
+      "targetIdeRange": "kiro compatible",
+      "sourceIdentity": {
+        "sourceTreeDigest": "sha256:d060104c9490cff74b1a442843877c0d929047031dce74aa255dd860286f0617",
+        "baseCommit": "964dc8b5a126e6dd100cafa8603f937f3fb0d100",
+        "dirty": true
+      },
+      "artifactPath": "dist/phase0/cs02/gaep-kiro-0.2.0.vsix",
+      "artifactSha256": "sha256:4a0e11f11b1e9601d2413ef8b625596b80c72853899a309acf18fb8420d54716",
+      "buildState": "built",
+      "installTestState": "not-run",
+      "workflowTestState": "not-run",
+      "observedAt": "2026-07-26T07:09:58.188Z",
+      "evidenceSource": "scripts/build_cs02_release.mjs",
+      "knownLimitation": "Kiro not installed in this environment; install/workflow remain not-run"
+    },
+    {
+      "changeSetId": "GAEP-P0-CS02",
+      "packageVersion": "0.2.0",
+      "ideHost": "visual-studio",
+      "targetIdeRange": "VS [17.8,18.0)",
+      "sourceIdentity": {
+        "sourceTreeDigest": "sha256:d060104c9490cff74b1a442843877c0d929047031dce74aa255dd860286f0617",
+        "baseCommit": "964dc8b5a126e6dd100cafa8603f937f3fb0d100",
+        "dirty": true
+      },
+      "artifactPath": "dist/phase0/cs02/Gaep.VisualStudio-0.2.0.vsix",
+      "artifactSha256": null,
+      "buildState": "not-built",
+      "installTestState": "pending-environment",
+      "workflowTestState": "pending-environment",
+      "observedAt": "2026-07-26T07:09:58.188Z",
+      "evidenceSource": "scripts/build_cs02_release.mjs",
+      "notBuiltReason": "requires-windows-visual-studio",
+      "knownLimitation": null
+    },
+    {
+      "changeSetId": "GAEP-P0-CS02",
+      "packageVersion": "0.2.0",
+      "ideHost": "rider",
+      "targetIdeRange": "Rider 2025.3 (linux-x64)",
+      "sourceIdentity": {
+        "sourceTreeDigest": "sha256:d060104c9490cff74b1a442843877c0d929047031dce74aa255dd860286f0617",
+        "baseCommit": "964dc8b5a126e6dd100cafa8603f937f3fb0d100",
+        "dirty": true
+      },
+      "artifactPath": "dist/phase0/cs02/gaep-rider-0.2.0.zip",
+      "artifactSha256": null,
+      "buildState": "not-built",
+      "installTestState": "pending-environment",
+      "workflowTestState": "pending-environment",
+      "observedAt": "2026-07-26T07:09:58.188Z",
+      "evidenceSource": "scripts/build_cs02_release.mjs",
+      "notBuiltReason": "requires-jdk21",
+      "knownLimitation": null
+    }
+  ]
+}

@@ -15,13 +15,22 @@ import {
   type HostRequest,
   type Run,
 } from "@gaep/contracts"
-import { GaepEngine } from "@gaep/engine"
+import {
+  AnalysisError,
+  GaepEngine,
+  MAX_CONTEXT_BYTES,
+  buildDashboardProjection,
+  computeSourceIdentity,
+} from "@gaep/engine"
 import { z, ZodError } from "zod"
+
+import { composeHostMatrix } from "@gaep/conformance"
 
 import { HostRpcError, invalidParamsError, MAX_RPC_FRAME_BYTES, normalizeRpcError } from "./rpc.js"
 
-const PROTOCOL_VERSION = 2
-const SUPPORTED_PROTOCOL_VERSIONS = [1, 2] as const
+const PROTOCOL_VERSION = 3
+const CS02_PACKAGE_VERSION = "0.2.0"
+const SUPPORTED_PROTOCOL_VERSIONS = [1, 2, 3] as const
 const v2OnlyMethods = new Set<HostRequest["method"]>([
   "platformReadiness",
   "workspaceHealth",
@@ -30,6 +39,18 @@ const v2OnlyMethods = new Set<HostRequest["method"]>([
   "productStudio.search",
   "productStudio.exportBuild",
   "productStudio.importPreview",
+])
+
+/** GAEP-P0-CS02 methods require protocol version 3 (INV-18). */
+const v3OnlyMethods = new Set<HostRequest["method"]>([
+  "providerCatalog",
+  "readProviderSelection",
+  "selectProviderModel",
+  "startReadOnlyAnalysis",
+  "readAnalysisRun",
+  "listAnalysisRuns",
+  "cancelAnalysisRun",
+  "dashboardProjection",
 ])
 
 const requestEnvelopeSchema = z.object({
@@ -106,7 +127,10 @@ export class EngineHost {
 
   constructor(workspacePath: string) {
     this.engine = new GaepEngine(workspacePath, [new CodexAdapter(), new ClaudeAdapter()])
-    this.recovery = this.engine.recoverInterruptedRuns("gaep.engine-host")
+    this.recovery = this.engine.recoverInterruptedRuns("gaep.engine-host").then(() => {
+      // GAEP-P0-CS02: reconcile any persisted orphaned read-only analysis runs after a restart.
+      try { this.engine.readOnlyAnalysis.reconcileOrphans() } catch { /* no runs directory yet */ }
+    })
   }
 
   async dispatch(rawRequest: unknown): Promise<unknown> {
@@ -121,11 +145,19 @@ export class EngineHost {
     await this.recovery
     const request = EngineHost.validateRequest(rawRequest)
     const requestProtocol = request.protocolVersion ?? 1
-    if (!SUPPORTED_PROTOCOL_VERSIONS.includes(requestProtocol as 1 | 2)) {
+    if (!SUPPORTED_PROTOCOL_VERSIONS.includes(requestProtocol as 1 | 2 | 3)) {
       throw new HostRpcError(
         -32_020,
         "UNSUPPORTED_PROTOCOL_VERSION",
         `GAEP engine protocol ${requestProtocol} is unsupported`,
+        { supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS] },
+      )
+    }
+    if (requestProtocol < 3 && v3OnlyMethods.has(request.method)) {
+      throw new HostRpcError(
+        -32_021,
+        "PROTOCOL_UPGRADE_REQUIRED",
+        "This GAEP engine method requires protocol version 3",
         { supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS] },
       )
     }
@@ -236,7 +268,167 @@ export class EngineHost {
         return this.engine.productStudio.buildPortableExport()
       case "productStudio.importPreview":
         return this.engine.productStudio.previewImportBundle(request.params.bundle)
+      // --- GAEP-P0-CS02 protocol v3 ---
+      case "providerCatalog":
+        return this.engine.providerCatalog.catalog()
+      case "readProviderSelection":
+        return this.readProviderSelection()
+      case "selectProviderModel": {
+        // INV-31: truth is server-derived. ProviderCatalogService delegates the write to
+        // GaepEngine.selectAgent(), keeping the single selection source of truth (INV-23).
+        try {
+          return await this.engine.providerCatalog.selectProviderModel(
+            {
+              adapterId: request.params.adapterId,
+              modelId: request.params.modelId,
+              settings: request.params.settings,
+              actorId: actorId(request.params.actorId),
+            },
+            async (adapterId, modelId, settings, actor) => {
+              const snapshot = await this.observeAdapter(adapterId)
+              const selection = await this.engine.selectAgent(
+                structuredClone(snapshot.capabilities), modelId, settings, actor,
+              )
+              this.selectedRuntimeBindings.set(adapterId, structuredClone(snapshot.runtimeBinding))
+              return selection
+            },
+          )
+        } catch (error) {
+          if (error instanceof Error && error.message.startsWith("MODEL_NOT_PERMITTED")) {
+            throw new HostRpcError(-32_011, "MODEL_NOT_PERMITTED", "No catalog entry exists for the requested adapter")
+          }
+          throw error
+        }
+      }
+      case "startReadOnlyAnalysis":
+        return this.startReadOnlyAnalysis(request.params)
+      case "readAnalysisRun":
+        return this.engine.readOnlyAnalysis.read(request.params.analysisRunId)
+      case "listAnalysisRuns":
+        return { runs: this.engine.readOnlyAnalysis.list(request.params.limit) }
+      case "cancelAnalysisRun": {
+        const record = await this.engine.readOnlyAnalysis.cancel(request.params.analysisRunId)
+        return { analysisRunId: record.analysisRunId, state: record.state }
+      }
+      case "dashboardProjection":
+        return this.buildDashboardProjection()
     }
+  }
+
+  private async readProviderSelection(): Promise<unknown> {
+    try {
+      const selection = await this.engine.readSelection()
+      return {
+        selection,
+        provenance: {
+          priorSelectionCount: 0,
+          priorRunIds: this.engine.readOnlyAnalysis.list(100).map((run) => run.analysisRunId),
+        },
+      }
+    } catch {
+      return { selection: null, provenance: { priorSelectionCount: 0, priorRunIds: [] } }
+    }
+  }
+
+  private async startReadOnlyAnalysis(params: {
+    actorId?: string
+    objective: string
+    contextPackIds: string[]
+    timeoutMs: number
+    idempotencyKey: string
+  }): Promise<unknown> {
+    let selection
+    try {
+      selection = await this.engine.readSelection()
+    } catch {
+      throw new HostRpcError(-32_030, "NO_SELECTION", "Select a provider and model before starting an analysis")
+    }
+    const entry = await this.engine.providerCatalog.entry(selection.adapterId)
+    if (!entry) {
+      throw new HostRpcError(-32_011, "CAPABILITIES_NOT_AVAILABLE", "No catalog entry exists for the selected adapter")
+    }
+    const contextText = await this.buildBoundedContext(params.contextPackIds)
+    const sourceIdentity = await computeSourceIdentity(this.engine.workspacePath)
+    try {
+      const record = await this.engine.readOnlyAnalysis.start({
+        adapterId: selection.adapterId,
+        modelId: selection.modelId,
+        objective: params.objective,
+        contextPackIds: params.contextPackIds,
+        contextText,
+        timeoutMs: params.timeoutMs,
+        idempotencyKey: params.idempotencyKey,
+        catalogEntry: entry,
+        sourceIdentity,
+      })
+      return { analysisRunId: record.analysisRunId, state: record.state, startedAt: record.startedAt, envelope: record.envelope }
+    } catch (error) {
+      if (error instanceof AnalysisError) {
+        throw new HostRpcError(-32_031, error.kind, error.message)
+      }
+      throw error
+    }
+  }
+
+  /** Build the bounded, normalized analysis context from governed Context Pack records (INV-24). */
+  private async buildBoundedContext(contextPackIds: string[]): Promise<string> {
+    const sections: string[] = []
+    for (const id of contextPackIds) {
+      try {
+        const record = await this.engine.productStudio.readContextPack(id)
+        const fields = record as unknown as Record<string, unknown>
+        const parts = ["name", "summary", "purpose", "objective", "content", "body"]
+          .map((key) => (typeof fields[key] === "string" ? String(fields[key]) : ""))
+          .filter((value) => value.length > 0)
+        // Include the governed Context Item contents, the substance of a real Context Pack.
+        const items = Array.isArray(fields.items) ? fields.items : []
+        for (const item of items) {
+          const content = (item as { content?: unknown }).content
+          if (typeof content === "string" && content.length > 0) parts.push(content)
+        }
+        sections.push([`# context-pack ${id}`, ...parts].join("\n"))
+      } catch {
+        throw new HostRpcError(-32_032, "CONTEXT_PACK_NOT_FOUND", "A requested Context Pack record was not found")
+      }
+    }
+    const text = sections.join("\n\n")
+    if (Buffer.byteLength(text, "utf8") > MAX_CONTEXT_BYTES) {
+      throw new HostRpcError(-32_033, "CONTEXT_TOO_LARGE", "The bounded analysis context exceeds its maximum size")
+    }
+    return text
+  }
+
+  private async buildDashboardProjection(): Promise<unknown> {
+    const health = await this.engine.workspaceHealth()
+    const workspaceState = !health.initialized
+      ? "product-uninitialized"
+      : health.status === "invalid"
+        ? "product-invalid"
+        : health.status === "degraded"
+          ? "product-degraded"
+          : "product-ready"
+    let catalog = null
+    try {
+      catalog = await this.engine.providerCatalog.catalog()
+    } catch { /* provider probe failure leaves an empty catalog */ }
+    let selection = null
+    try {
+      selection = await this.engine.readSelection()
+    } catch { /* no selection yet */ }
+    return buildDashboardProjection({
+      workspaceState,
+      catalog,
+      selection,
+      latestRun: this.engine.readOnlyAnalysis.latest() ?? null,
+      // Consume host-conformance composition (INV-13): no runtime evidence bundles are present,
+      // so every host stays at its base posture until its own lane publishes verified evidence.
+      hostMatrix: composeHostMatrix([
+        { host: "vscode", packageVersion: CS02_PACKAGE_VERSION },
+        { host: "visual-studio", packageVersion: CS02_PACKAGE_VERSION },
+        { host: "rider", packageVersion: CS02_PACKAGE_VERSION },
+        { host: "kiro", packageVersion: CS02_PACKAGE_VERSION },
+      ]),
+    })
   }
 
   private async refreshCapabilitySnapshots(): Promise<AdapterCapabilities[]> {

@@ -19,3 +19,25 @@ coverage/
 **/build/
 **/bin/
 **/obj/
+
+# GAEP-P0-CS02 release binaries (provenance is tracked via manifest + checksums)
+dist/phase0/cs02/*.vsix
+dist/phase0/cs02/*.zip
+dist/phase0/cs02/engine-host/*.cjs
+dist/phase0/cs02/engine-host/*.exe
+dist/phase0/cs02/engine-host/gaep-engine-host-*-linux-x64
+dist/phase0/cs02/sea-prep.blob
+examples/phase0-provider-model/evidence/
+
+# GAEP-P0-CS02 — track release provenance (manifest + checksums), never binaries
+!/dist/
+/dist/*
+!/dist/phase0/
+/dist/phase0/*
+!/dist/phase0/cs02/
+/dist/phase0/cs02/*
+!/dist/phase0/cs02/package-manifest.json
+!/dist/phase0/cs02/SHA256SUMS.txt
+!/dist/phase0/cs02/engine-host/
+/dist/phase0/cs02/engine-host/*
+!/dist/phase0/cs02/engine-host/engine-host.sha256

@@ -1,0 +1,53 @@
+# GAEP-P0-CS02 — Rider external build lane (INV-29). buildPlugin + verifyPlugin only; runIde and
+# installed-workflow evidence require an interactive Rider and are never published from this lane.
+name: cs02-rider
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/gaep-founder-edition]
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.11.0' }
+      - uses: actions/setup-java@v4
+        with: { distribution: 'temurin', java-version: '21' }
+      - run: npm ci
+      - run: npm run build
+      - name: Download + verify pinned Node 22.11.0 (linux-x64)
+        run: echo "GAEP_SEA_NODE_BINARY=$(node scripts/fetch_cs02_node.mjs linux-x64)" >> "$GITHUB_ENV"
+      - name: Build digest-verified linux-x64 SEA Engine Host
+        run: node apps/engine-host/build-sea.mjs linux-x64
+      # Stage the SEA + sidecar into the plugin build dir (excluded from source identity); gradle's
+      # prepareSandbox embeds it under `engine-host/` inside the plugin.
+      - name: Stage SEA into the Rider plugin build resources
+        run: node scripts/stage_engine_host_sea.mjs --target linux-x64 --dest apps/rider/build/gaep-engine-host
+      - run: ./gradlew test buildPlugin verifyPlugin
+        working-directory: apps/rider
+      - name: Locate the built plugin ZIP and copy it into the release directory
+        run: |
+          set -euo pipefail
+          plugin_zip="$(ls apps/rider/build/distributions/*.zip | head -1)"
+          mkdir -p dist/phase0/cs02
+          cp "$plugin_zip" dist/phase0/cs02/gaep-rider-0.2.0.zip
+      - name: Verify the plugin ZIP embeds the Engine Host SEA + sidecar
+        run: node scripts/verify_native_archive.mjs --archive dist/phase0/cs02/gaep-rider-0.2.0.zip --target linux-x64
+      # Regenerate the manifest + checksums so Rider is `built` with its REAL artifact digest, THEN
+      # (only now that the manifest says built) emit the schema-valid build-only evidence.
+      - name: Regenerate package manifest + checksums (Rider now built)
+        run: npm run release:cs02
+      - name: Emit build-only evidence (buildState only; install/workflow not-run)
+        run: node scripts/import_cs02_evidence.mjs --host rider --artifact dist/phase0/cs02 --build-only
+      - name: Compute embedded SEA digest for evidence
+        run: cat dist/phase0/cs02/engine-host/gaep-engine-host-0.2.0-linux-x64.sha256 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cs02-rider
+          path: |
+            dist/phase0/cs02/gaep-rider-0.2.0.zip
+            dist/phase0/cs02/package-manifest.json
+            dist/phase0/cs02/SHA256SUMS.txt
+            dist/phase0/cs02/engine-host/gaep-engine-host-0.2.0-linux-x64.sha256
+            examples/phase0-provider-model/acceptance/rider/

@@ -77,6 +77,7 @@ No legacy file is superseded by this map. The selected intent is to prepare a ve
 | `06_Roadmap/051_IMPLEMENTATION_STRATEGY.md` | Preserve unchanged; defer technology, retain only readiness and future slice-charter inputs, and replace its lossless Product-workspace upgrade assumption in candidate planning with staged dual-read, explicit loss, and unresolved-mapping behavior |
 | `06_Roadmap/052_ADOPTION_GUIDE.md` | Rebuild around first workflow, burden, behavior, support and trust |
 | `06_Roadmap/053_FUTURE_EVOLUTION.md` | Retain extension points; move deferred capabilities out of Core commitments |
+| `06_Roadmap/CS02_INSTALL_AND_RELEASE_GUIDE.md` | Operational GAEP-P0-CS02 install/release guide; retained as a delivery record alongside the pre-implementation change reports |
 | `06_Roadmap/054_GAEP_FEATURE_DELIVERY_TRACKER.md` | Preserve as an operational delivery-status register subordinate to the Product Manifest and approved specifications; do not treat tracker rows or implementation status as Core requirements or approval evidence |
 | `99_References/990_REFERENCES.md` | Rebuild as complete, versioned standards/reference crosswalk |
 | `99_References/991_GLOSSARY.md` | Preserve unchanged for historical interpretation; map its Product-as-Initiative definition to versioned candidate terminology without silent replacement |

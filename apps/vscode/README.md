@@ -36,3 +36,13 @@ Agent-native permissions are the technical control boundary for direct execution
 Provider processes receive a reduced environment. Common secret-bearing environment variables are not inherited; the installed CLI remains responsible for using its own authorized credential store.
 
 GAEP fingerprints the exact executable at selection and again immediately before launch. It tracks each provider process it starts; Product-root changes wait for confirmed process exit, configuration changes are deferred while a run is active, and extension deactivation attempts graceful termination followed by force escalation before unloading.
+
+## GAEP-P0-CS02 (provider/model read-only slice, 0.2.0)
+
+Installable 0.2.0 artifact with a native GAEP surface, provider detection (Codex/Claude Code),
+server-derived model truth, provider/model selection and switching, and one bounded read-only
+analysis over the shared Engine Host protocol (v3). The bundled Engine Host runtime is digest-
+verified before launch and never resolved from `PATH`. See
+[`docs/06_Roadmap/CS02_INSTALL_AND_RELEASE_GUIDE.md`](../../docs/06_Roadmap/CS02_INSTALL_AND_RELEASE_GUIDE.md)
+for install, provider prerequisites, model truth, uninitialized-Product behavior, execution
+limitations, test commands, upgrade, uninstall, and rollback.

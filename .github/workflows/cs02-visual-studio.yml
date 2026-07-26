@@ -1,0 +1,56 @@
+# GAEP-P0-CS02 — Visual Studio external build lane (INV-29). Build only; installation and
+# workflow evidence require a real VS 2022 install and are never published from this lane.
+name: cs02-visual-studio
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/gaep-founder-edition]
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.11.0' }
+      - run: npm ci
+      - run: npm run build
+      # Download + verify the pinned Node 22.11.0 archive, then build + digest-verify the win32-x64 SEA.
+      - name: Download + verify pinned Node 22.11.0 (win32-x64)
+        shell: pwsh
+        run: |
+          $exe = node scripts/fetch_cs02_node.mjs win32-x64
+          "GAEP_SEA_NODE_BINARY=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Build digest-verified win32-x64 SEA Engine Host
+        run: node apps/engine-host/build-sea.mjs win32-x64
+      - name: Unit-test the pure request/validation logic
+        run: dotnet test apps/visual-studio/Gaep.Tests/Gaep.Tests.csproj --configuration Release
+      # Stage the SEA + sidecar into an out-of-source `bin` staging dir (excluded from source identity);
+      # the csproj links it into EngineHost/ inside the VSIX via GaepEngineHostDir.
+      - name: Stage SEA into the VSIX build resources
+        run: node scripts/stage_engine_host_sea.mjs --target win32-x64 --dest apps/visual-studio/Gaep.VisualStudio/bin/gaep-engine-host
+      - name: Build + package the VSIX (embedding the SEA)
+        shell: pwsh
+        run: msbuild apps/visual-studio/Gaep.VisualStudio/Gaep.VisualStudio.csproj /p:Configuration=Release "/p:GaepEngineHostDir=$((Resolve-Path apps/visual-studio/Gaep.VisualStudio/bin/gaep-engine-host).Path)"
+      - name: Locate the built VSIX and copy it into the release directory
+        shell: pwsh
+        run: |
+          $vsix = Get-ChildItem -Recurse -Path apps/visual-studio -Filter *.vsix | Select-Object -First 1
+          New-Item -ItemType Directory -Force -Path dist/phase0/cs02 | Out-Null
+          Copy-Item $vsix.FullName dist/phase0/cs02/Gaep.VisualStudio-0.2.0.vsix
+      - name: Verify the VSIX embeds the Engine Host SEA + sidecar
+        run: node scripts/verify_native_archive.mjs --archive dist/phase0/cs02/Gaep.VisualStudio-0.2.0.vsix --target win32-x64
+      # Regenerate the manifest + checksums so Visual Studio is `built` with its REAL VSIX digest, THEN
+      # (only now that the manifest says built) emit the schema-valid build-only evidence.
+      - name: Regenerate package manifest + checksums (Visual Studio now built)
+        run: npm run release:cs02
+      - name: Emit build-only evidence (buildState only; install/workflow not-run)
+        run: node scripts/import_cs02_evidence.mjs --host visual-studio --artifact dist/phase0/cs02 --build-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cs02-visual-studio
+          path: |
+            dist/phase0/cs02/Gaep.VisualStudio-0.2.0.vsix
+            dist/phase0/cs02/package-manifest.json
+            dist/phase0/cs02/SHA256SUMS.txt
+            dist/phase0/cs02/engine-host/gaep-engine-host-0.2.0-win32-x64.exe.sha256
+            examples/phase0-provider-model/acceptance/visual-studio/

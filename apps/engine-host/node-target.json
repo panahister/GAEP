@@ -1,0 +1,20 @@
+{
+  "comment": "GAEP-P0-CS02 — pinned official Node 22.11.0 runtime used to inject the Engine Host SEA blob (INV-22). The CI lane downloads the archive, verifies archiveSha256, extracts executablePath, and (when pinned) verifies executableSha256 before build-sea injects the blob. A missing/placeholder archive pin fails closed. Digests are the official nodejs.org SHASUMS256 values; the win32-x64 extracted node.exe digest is additionally pinned. Archive digests are NOT the extracted-executable digests.",
+  "nodeVersion": "22.11.0",
+  "releaseBaseUrl": "https://nodejs.org/download/release/v22.11.0/",
+  "shasumsUrl": "https://nodejs.org/download/release/v22.11.0/SHASUMS256.txt",
+  "targets": {
+    "win32-x64": {
+      "archive": "node-v22.11.0-win-x64.zip",
+      "archiveSha256": "sha256:905373a059aecaf7f48c1ce10ffbd5334457ca00f678747f19db5ea7d256c236",
+      "executablePath": "node-v22.11.0-win-x64/node.exe",
+      "executableSha256": "sha256:7447c4ece014aa41fb2ff866c993c708e5a8213a00913cc2ac5049ea3ffc230d"
+    },
+    "linux-x64": {
+      "archive": "node-v22.11.0-linux-x64.tar.xz",
+      "archiveSha256": "sha256:83bf07dd343002a26211cf1fcd46a9d9534219aad42ee02847816940bf610a72",
+      "executablePath": "node-v22.11.0-linux-x64/bin/node",
+      "executableSha256": "sha256:08a8fa363038215afda76c21853ec2c64b405b2610ba4ff04ef09448997f982d"
+    }
+  }
+}

@@ -156,15 +156,27 @@ async function assertPlatformReadinessReadOnly(root) {
   writeCandidateSignal("passed", snapshot)
 }
 
+async function assertAgentModelDashboardReadOnly(root) {
+  const registered = new Set(await vscode.commands.getCommands(true))
+  for (const command of ["gaep.selectProvider", "gaep.selectModel", "gaep.runReadOnlyAnalysis", "gaep.cancelAnalysis", "gaep.showAgentModelDashboard"]) {
+    assert.ok(registered.has(command), `${command} must be registered after activation`)
+  }
+  // The dashboard command is read-only: it must not create Product state, even when the packaged
+  // Engine Host runtime is unavailable in the unbuilt test host.
+  await vscode.commands.executeCommand("gaep.showAgentModelDashboard")
+  await assertAbsent(path.join(root, ".gaep"))
+}
+
 async function runOpenPhase() {
   await assertWorkspace(1)
   const extension = await activateExtension()
   await assertCommandsAndViews(extension)
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
   await assertPlatformReadinessReadOnly(expectedRoots()[0])
+  await assertAgentModelDashboardReadOnly(expectedRoots()[0])
   await openStudio()
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
-  process.stdout.write("PASS open: activation, all contributed commands, four native views, read-only platform readiness, and Product Studio open\n")
+  process.stdout.write("PASS open: activation, all contributed commands, four native views, read-only platform readiness, read-only agent/model dashboard, and Product Studio open\n")
 }
 
 async function runMultiRootPhase() {

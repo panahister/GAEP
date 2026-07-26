@@ -10,12 +10,11 @@ public sealed class EngineClient : IAsyncDisposable
     private Process? process;
     private long nextId;
 
-    public EngineClient(string workspacePath, string? engineExecutable = null)
+    public EngineClient(string workspacePath, string extensionInstallDir, string? engineExecutable = null)
     {
         this.workspacePath = Path.GetFullPath(workspacePath);
-        this.engineExecutable = engineExecutable
-            ?? Environment.GetEnvironmentVariable("GAEP_ENGINE_EXECUTABLE")
-            ?? "gaep-engine";
+        // GAEP-P0-CS02: launch only the digest-verified bundled runtime; no silent PATH fallback (INV-21/22).
+        this.engineExecutable = engineExecutable ?? EngineHostLocator.ResolveVerified(extensionInstallDir);
     }
 
     public async Task<JsonDocument> RequestAsync(
@@ -29,6 +28,8 @@ public sealed class EngineClient : IAsyncDisposable
         {
             jsonrpc = "2.0",
             id,
+            // GAEP-P0-CS02: versioned protocol v3 over the shared boundary (INV-01/18).
+            protocolVersion = 3,
             method,
             @params = parameters ?? new Dictionary<string, object?>(),
         });

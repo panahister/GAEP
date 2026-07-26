@@ -22,6 +22,12 @@ export interface ManagedClaudeContextRunRequest extends ManagedClaudeAnalysisReq
 export interface ManagedClaudeContextRunCompletion {
   result: ManagedRuntimeResultEnvelope
   terminationCause: "normal" | "cancel-request" | "timeout" | "provider-failure" | "protocol-error"
+  /**
+   * Read-only analysis summary derived from the provider's own stream: the assistant text on
+   * success, or the provider's diagnostic on failure (e.g. "Not logged in · Please run /login"),
+   * used to classify auth-unavailable vs a generic provider error.
+   */
+  analysis: { status: "completed" | "failed"; text: string; failureDetail?: string }
 }
 
 export interface ManagedClaudeContextRunHandle {
@@ -138,6 +144,10 @@ export async function startManagedClaudeContextRun(
     let outputBytes = 0
     let stdoutBuffer = ""
     let timer: NodeJS.Timeout | undefined
+    // Surface the provider's own diagnostic so a read-only caller can distinguish (and correctly
+    // classify) e.g. an authentication failure ("Not logged in") from a generic provider error.
+    let assistantText = ""
+    let failureDetail: string | undefined
     try {
       child = spawn(invocation.invocation.executable, invocation.invocation.args, {
         cwd: invocation.invocation.cwd,
@@ -175,7 +185,7 @@ export async function startManagedClaudeContextRun(
           return
         }
         if (record.type === "assistant") {
-          for (const text of textParts(record.message)) emit({ type: "output-delta", channel: "assistant", text })
+          for (const text of textParts(record.message)) { emit({ type: "output-delta", channel: "assistant", text }); assistantText += text }
           return
         }
         if (record.type === "result") {
@@ -183,6 +193,11 @@ export async function startManagedClaudeContextRun(
           const isError = record.is_error === true || record.subtype === "error"
           terminalDisposition = isError ? "failed" : "completed"
           terminationCause = isError ? "provider-failure" : "normal"
+          // Capture the provider-reported outcome text (e.g. "Not logged in · Please run /login").
+          if (typeof record.result === "string") {
+            if (isError) failureDetail = record.terminal_reason ? `${record.result} (${String(record.terminal_reason)})` : record.result
+            else if (!assistantText.trim()) assistantText = record.result
+          }
           emit({ type: "lifecycle", phase: "turn-completed", turnStatus: isError ? "failed" : "completed" })
         }
       }
@@ -256,6 +271,9 @@ export async function startManagedClaudeContextRun(
       events.close()
       await invocation.cleanup().catch(() => undefined)
     }
+    // parseLine sets terminationCause to "normal" in a stdout closure that the control-flow analysis
+    // cannot see; widen back to the full union so the success comparison is valid.
+    const finalCause = terminationCause as ManagedClaudeContextRunCompletion["terminationCause"]
     return {
       result: {
         portable: {
@@ -278,7 +296,13 @@ export async function startManagedClaudeContextRun(
           executableFingerprint: request.executableFingerprint,
         },
       },
-      terminationCause,
+      terminationCause: finalCause,
+      // Derived from the provider's own stream; classified downstream (auth-unavailable vs error).
+      analysis: {
+        status: finalCause === "normal" ? "completed" : "failed",
+        text: assistantText,
+        ...(failureDetail ? { failureDetail } : {}),
+      },
     }
   })().catch((error: unknown) => {
     events.fail(error instanceof Error ? error : new Error(String(error)))

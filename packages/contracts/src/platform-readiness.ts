@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { sourceIdentitySchema } from "./source-identity.js"
+
 /**
  * GAEP-P0-CS01 — Platform Readiness contract.
  *
@@ -242,6 +244,60 @@ export const evidenceManifestSchema = z.object({
     ctx.addIssue({ code: "custom", message: "manifest must contain exactly one entry each for readiness-evidence.json and observation.json" })
   }
 })
+
+// --- GAEP-P0-CS02: multi-host evidence bundle (distinct from C1; carries sourceIdentity) ---
+
+const cs02EvidenceCommonFields = {
+  schemaVersion: z.literal(1),
+  parentChangeSetId: z.literal("GAEP-P0-CS02"),
+  host: readinessHostSchema,
+  packageVersion: z.string().trim().min(1).max(32),
+  checkId: z.string().trim().min(1).max(200),
+  observedAt: z.string().datetime(),
+  subjectDigest: evidenceDigestSchema,
+  sourceIdentity: sourceIdentitySchema,
+}
+
+/**
+ * CS02 evidence envelope. It requires `host`, `packageVersion`, and `sourceIdentity`, so a
+ * C1 envelope with substituted change-set strings fails this schema (INV-30, anti-forgery).
+ */
+export const cs02EvidenceEnvelopeSchema = z.discriminatedUnion("testOutcome", [
+  z.object({ ...cs02EvidenceCommonFields, executionResult: z.literal("executed"), testOutcome: z.literal("passed") }).strict(),
+  z.object({
+    ...cs02EvidenceCommonFields,
+    executionResult: z.literal("executed"),
+    testOutcome: z.literal("failed"),
+    failureCategory: z.enum(["assertion", "phase", "computation", "build", "install", "workflow"]),
+    failureSummary: z.string().trim().min(1).max(500),
+  }).strict(),
+  z.object({
+    ...cs02EvidenceCommonFields,
+    executionResult: z.literal("not-executed"),
+    testOutcome: z.literal("not-run"),
+    unavailabilityReason: z.string().trim().min(1).max(500),
+  }).strict(),
+])
+
+export const cs02EvidenceManifestSchema = z.object({
+  schemaVersion: z.literal(1),
+  parentChangeSetId: z.literal("GAEP-P0-CS02"),
+  host: readinessHostSchema,
+  packageVersion: z.string().trim().min(1).max(32),
+  checkId: z.string().trim().min(1).max(200),
+  subjectDigest: evidenceDigestSchema,
+  sourceIdentity: sourceIdentitySchema,
+  artifacts: z.array(evidenceManifestArtifactSchema),
+}).strict().superRefine((manifest, ctx) => {
+  const paths = manifest.artifacts.map((artifact) => artifact.path)
+  const unique = new Set(paths)
+  if (paths.length !== 2 || unique.size !== 2 || !unique.has("readiness-evidence.json") || !unique.has("observation.json")) {
+    ctx.addIssue({ code: "custom", message: "manifest must contain exactly one entry each for readiness-evidence.json and observation.json" })
+  }
+})
+
+export type Cs02EvidenceEnvelope = z.infer<typeof cs02EvidenceEnvelopeSchema>
+export type Cs02EvidenceManifest = z.infer<typeof cs02EvidenceManifestSchema>
 
 export type ReadinessHost = z.infer<typeof readinessHostSchema>
 export type ReadinessState = z.infer<typeof readinessStateSchema>

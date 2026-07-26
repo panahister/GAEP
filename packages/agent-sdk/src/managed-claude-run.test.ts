@@ -47,6 +47,19 @@ describe("managed Claude context runtime", () => {
     expect(completion.result.portable.postconditionStatus).toBe("not-assessed")
   })
 
+  it("surfaces the assistant text as the analysis result on success", async () => {
+    const { completion } = await collect("success")
+    expect(completion.analysis.status).toBe("completed")
+    expect(completion.analysis.text).toContain("analysis for")
+  })
+
+  it("surfaces the provider's own auth diagnostic so it can be classified (not a generic error)", async () => {
+    const { completion } = await collect("auth-failure")
+    expect(completion.terminationCause).toBe("provider-failure")
+    expect(completion.analysis.status).toBe("failed")
+    expect(completion.analysis.failureDetail?.toLowerCase()).toContain("not logged in")
+  })
+
   it("cancels the whole managed process group", async () => {
     const handle = await startManagedClaudeContextRun({
       executable: process.execPath,
