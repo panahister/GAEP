@@ -47,6 +47,7 @@ internal static class Program
     private static readonly Guid OutcomeModelId = Guid.Parse("41414141-4141-4141-8141-414141414141");
     private static readonly Guid BusinessCapabilityMapId = Guid.Parse("42424242-4242-4242-8242-424242424242");
     private static readonly Guid ValueStreamModelId = Guid.Parse("43434343-4343-4343-8343-434343434343");
+    private static readonly Guid OperatingModelId = Guid.Parse("44444444-4444-4444-8444-444444444444");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -117,6 +118,9 @@ internal static class Program
         var badValueStreamSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-value-stream-snapshot-binding");
         var badValueStreamSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-value-stream-snapshot-digest");
         var badValueStreamSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-value-stream-snapshot-private");
+        var badOperatingModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-operating-model-snapshot-binding");
+        var badOperatingModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-operating-model-snapshot-digest");
+        var badOperatingModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-operating-model-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -184,6 +188,9 @@ internal static class Program
         Directory.CreateDirectory(badValueStreamSnapshotBindingRoot);
         Directory.CreateDirectory(badValueStreamSnapshotDigestRoot);
         Directory.CreateDirectory(badValueStreamSnapshotPrivateRoot);
+        Directory.CreateDirectory(badOperatingModelSnapshotBindingRoot);
+        Directory.CreateDirectory(badOperatingModelSnapshotDigestRoot);
+        Directory.CreateDirectory(badOperatingModelSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -663,6 +670,44 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadValueStreamModelAsync(InitiativeId),
                 "Value Stream Model rejects a projection rebound to a substituted Product revision");
+        }
+
+        var operatingProjection = await client.ReadOperatingModelAsync(InitiativeId);
+        Check(operatingProjection.ProductId == product.Id &&
+              operatingProjection.ProductRevision == product.Revision &&
+              operatingProjection.ProductDigest == product.Digest &&
+              operatingProjection.InitiativeId == resolved.Id &&
+              operatingProjection.InitiativeRevision == resolved.Revision &&
+              operatingProjection.InitiativeDigest == resolved.Digest &&
+              operatingProjection.AssessmentState == "attention-required" &&
+              operatingProjection.OperatingModel?.RoleCount == 6 &&
+              operatingProjection.OperatingModel?.DecisionRightCount == 8 &&
+              operatingProjection.UnfundedCapacityCount == 3,
+            "Typed Operating Model preserves exact Product, Initiative, assessment, and structural metadata");
+        var operatingOutput = await initiativeController.ReadOperatingModelAsync(InitiativeId);
+        Check(operatingOutput.Contains("GAEP governed Operating Model", StringComparison.Ordinal) &&
+              operatingOutput.Contains("6 roles · 2 governance systems · 8 decision rights", StringComparison.Ordinal) &&
+              operatingOutput.Contains(
+                  "grants no appointment, funding, baseline, readiness, or action authority",
+                  StringComparison.Ordinal) &&
+              !operatingOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !operatingOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !operatingOutput.Contains("operatingNarrative", StringComparison.Ordinal),
+            "Operating Model workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badOperatingModelSnapshotDigestRoot, badOperatingModelSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadOperatingModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Operating Model rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badOperatingModelSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadOperatingModelAsync(InitiativeId),
+                "Operating Model rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -1755,6 +1800,9 @@ internal static class Program
         var badValueStreamSnapshotBinding = Path.GetFileName(workspace) == "bad-value-stream-snapshot-binding";
         var badValueStreamSnapshotDigest = Path.GetFileName(workspace) == "bad-value-stream-snapshot-digest";
         var badValueStreamSnapshotPrivate = Path.GetFileName(workspace) == "bad-value-stream-snapshot-private";
+        var badOperatingModelSnapshotBinding = Path.GetFileName(workspace) == "bad-operating-model-snapshot-binding";
+        var badOperatingModelSnapshotDigest = Path.GetFileName(workspace) == "bad-operating-model-snapshot-digest";
+        var badOperatingModelSnapshotPrivate = Path.GetFileName(workspace) == "bad-operating-model-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -1917,6 +1965,17 @@ internal static class Program
                         badValueStreamSnapshotBinding,
                         badValueStreamSnapshotDigest,
                         badValueStreamSnapshotPrivate);
+                    break;
+                case "business.operatingModels.snapshot":
+                    await HandleOperatingModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badOperatingModelSnapshotBinding,
+                        badOperatingModelSnapshotDigest,
+                        badOperatingModelSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -2573,6 +2632,101 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) model["openBottleneckCount"] = 3;
         if (includePrivateField) result["valueStreamNarrative"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleOperatingModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID OPERATING MODEL");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T07:00:00.000Z";
+        var modelDigest = $"sha256:{new string('8', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var model = new Dictionary<string, object?>
+        {
+            ["id"] = OperatingModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = modelDigest,
+            ["state"] = "candidate",
+            ["roleCount"] = 6,
+            ["decisionRightCount"] = 8,
+            ["forumCount"] = 2,
+            ["cycleCount"] = 3,
+            ["updatedAt"] = "2026-07-26T06:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "operating-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["assessment"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "operating-model-assessment",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["operatingModel"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = OperatingModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = modelDigest,
+                },
+                ["roleCount"] = 6,
+                ["governanceSystemCount"] = 2,
+                ["unassignedAppointingAuthorityCount"] = 1,
+                ["insufficientCapacityCount"] = 2,
+                ["unfundedCapacityCount"] = 3,
+                ["decisionRightCount"] = 8,
+                ["unassignedDecisionAuthorityCount"] = 1,
+                ["forumCount"] = 2,
+                ["cycleCount"] = 3,
+                ["supportCapacityGapCount"] = 1,
+                ["emergencyAuthorityGapCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more candidate roles have no candidate appointing authority" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "operating-model-assessment-reports-candidate-structural-coverage-and-gaps-and-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action",
+            },
+            ["operatingModel"] = model,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-operating-narrative-personal-data-source-content-locators-or-credentials",
+            ["authorityBoundary"] =
+                "operating-model-projection-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) model["roleCount"] = 7;
+        if (includePrivateField) result["operatingNarrative"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
