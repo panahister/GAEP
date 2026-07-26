@@ -1,6 +1,7 @@
 export * from "./agent-model-dashboard.js"
 export * from "./business-architecture-baseline.js"
 export * from "./bounded-context-model.js"
+export * from "./security-privacy-assessment.js"
 export * from "./system-solution-architecture.js"
 export * from "./business-capability-map.js"
 export * from "./business-rule-catalog.js"

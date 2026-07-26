@@ -19,6 +19,7 @@ import {
   auditEventSchema,
   businessArchitectureBaselineSchema,
   boundedContextModelSchema,
+  securityPrivacyAssessmentSchema,
   businessCapabilityMapSchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
@@ -104,6 +105,8 @@ const directoryNames = [
   "system-solution-architecture-history",
   "bounded-context-models",
   "bounded-context-model-history",
+  "security-privacy-assessments",
+  "security-privacy-assessment-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -885,6 +888,8 @@ export class GaepRepository {
       ["system-solution-architecture-history", /^system-solution-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["bounded-context-models", /^[0-9a-f-]+\.json$/i],
       ["bounded-context-model-history", /^bounded-context-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["security-privacy-assessments", /^[0-9a-f-]+\.json$/i],
+      ["security-privacy-assessment-history", /^security-privacy-assessment-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1000,6 +1005,10 @@ export class GaepRepository {
     if (/^bounded-context-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^bounded-context-model-history\/bounded-context-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, boundedContextModelSchema)
+    }
+    if (/^security-privacy-assessments\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^security-privacy-assessment-history\/security-privacy-assessment-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, securityPrivacyAssessmentSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

@@ -6,6 +6,7 @@ import { isAbsolute } from "node:path"
 import {
   architectureRecordSchema,
   boundedContextModelSchema,
+  securityPrivacyAssessmentSchema,
   businessArchitectureBaselineSchema,
   businessCapabilityMapSchema,
   businessRuleCatalogSchema,
@@ -59,6 +60,7 @@ import {
   redactSecretShapedText,
   type ArchitectureRecord,
   type BoundedContextModel,
+  type SecurityPrivacyAssessment,
   type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
   type BusinessRuleCatalog,
@@ -1992,6 +1994,16 @@ export class ProductStudioService {
       /^bounded-context-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       boundedContextModelSchema,
     )
+    const securityPrivacyAssessments = await this.listRecords(
+      "security-privacy-assessments",
+      /^[0-9a-f-]+\.json$/i,
+      securityPrivacyAssessmentSchema,
+    )
+    const securityPrivacyAssessmentHistory = await this.listRecords(
+      "security-privacy-assessment-history",
+      /^security-privacy-assessment-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      securityPrivacyAssessmentSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2035,6 +2047,8 @@ export class ProductStudioService {
       ...systemSolutionArchitectureHistory,
       ...boundedContextModels,
       ...boundedContextModelHistory,
+      ...securityPrivacyAssessments,
+      ...securityPrivacyAssessmentHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2160,6 +2174,13 @@ export class ProductStudioService {
       "bounded-context-ownership-candidate",
       boundedContextModelHistory,
       (record) => `bounded-context-model-history/bounded-context-model-${record.id}-r${record.revision}.json`,
+    )
+    append("security-privacy-assessments", "security-privacy-threat-assessment-candidate", securityPrivacyAssessments)
+    append(
+      "security-privacy-assessment-history",
+      "security-privacy-threat-assessment-candidate",
+      securityPrivacyAssessmentHistory,
+      (record) => `security-privacy-assessment-history/security-privacy-assessment-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2418,6 +2439,14 @@ export class ProductStudioService {
           `bounded-context-model-history/bounded-context-model-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Bounded Context Model history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("security-privacy-assessment-history/")) {
+        const record = validated as SecurityPrivacyAssessment
+        const expectedHistoryPath =
+          `security-privacy-assessment-history/security-privacy-assessment-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Security, Privacy, and Threat Assessment history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3544,7 +3573,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3576,7 +3605,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -4164,6 +4193,82 @@ export class ProductStudioService {
         return Boolean(from && to && from !== to && !mappedRelations.has(entry.key))
       })) {
         throw new Error(`Import Bounded Context Model ${model.id} lacks cross-context contract coverage`)
+      }
+    }
+
+    const securityPrivacyAssessments = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("security-privacy-assessments/"))
+      .map(([, record]) => securityPrivacyAssessmentSchema.parse(record))
+    const securityPrivacyAssessmentHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("security-privacy-assessment-history/"))
+      .map(([, record]) => securityPrivacyAssessmentSchema.parse(record))
+    validateVersionedBusinessRecords(
+      securityPrivacyAssessments,
+      securityPrivacyAssessmentHistory,
+      "Security, Privacy, and Threat Assessment",
+    )
+    const exactBoundedContextModels = new Map(
+      [...boundedContextModels, ...boundedContextModelHistory].map((record) => [
+        `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+        record,
+      ]),
+    )
+    for (const assessment of [...securityPrivacyAssessments, ...securityPrivacyAssessmentHistory]) {
+      const boundedContextModel = exactBoundedContextModels.get(
+        `${assessment.boundedContextModel.recordId}:${assessment.boundedContextModel.revision}:${assessment.boundedContextModel.digest}`,
+      )
+      if (!boundedContextModel || boundedContextModel.initiativeId !== assessment.initiativeId) {
+        throw new Error(`Import Security, Privacy, and Threat Assessment ${assessment.id} exact Bounded Context Model reference is unresolved`)
+      }
+      if (assessment.membershipDigest !== canonicalDigest({ boundedContextModel: assessment.boundedContextModel })) {
+        throw new Error(`Import Security, Privacy, and Threat Assessment ${assessment.id} membership digest is invalid`)
+      }
+      const architecture = exactSystemSolutionArchitectures.get(
+        `${boundedContextModel.systemSolutionArchitecture.recordId}:${boundedContextModel.systemSolutionArchitecture.revision}:${boundedContextModel.systemSolutionArchitecture.digest}`,
+      )
+      if (!architecture) {
+        throw new Error(`Import Security, Privacy, and Threat Assessment ${assessment.id} architecture is unresolved`)
+      }
+      const baseline = exactBusinessArchitectureBaselines.get(
+        `${architecture.businessArchitectureBaseline.recordId}:${architecture.businessArchitectureBaseline.revision}:${architecture.businessArchitectureBaseline.digest}`,
+      )
+      if (!baseline) {
+        throw new Error(`Import Security, Privacy, and Threat Assessment ${assessment.id} architecture baseline is unresolved`)
+      }
+      const operatingModel = resolveOperatingModel(baseline.operatingModel, assessment.initiativeId)
+      const roleKeys = new Set(operatingModel.roles.map((entry) => entry.key))
+      const referencedRoleKeys = [
+        assessment.governance.securityAuthorityRoleKey,
+        assessment.governance.privacyAuthorityRoleKey,
+        ...assessment.governance.riskOwnerRoleKeys,
+        ...assessment.governance.reviewerRoleKeys,
+        ...assessment.assets.map((entry) => entry.ownerRoleKey),
+        ...assessment.dataClasses.map((entry) => entry.ownerRoleKey),
+        ...assessment.controls.map((entry) => entry.ownerRoleKey),
+        ...assessment.threats.map((entry) => entry.ownerRoleKey),
+      ]
+      if (referencedRoleKeys.some((key) => !roleKeys.has(key))) {
+        throw new Error(`Import Security, Privacy, and Threat Assessment ${assessment.id} references an unknown bound Operating Model role`)
+      }
+      const elementKeys = new Set(architecture.elements.map((entry) => entry.key))
+      const relationKeys = new Set(architecture.relations.map((entry) => entry.key))
+      const referencedElementKeys = [
+        ...assessment.assets.flatMap((entry) => entry.architectureElementKeys),
+        ...assessment.dataClasses.flatMap((entry) => entry.architectureElementKeys),
+        ...assessment.controls.flatMap((entry) => entry.architectureElementKeys),
+      ]
+      if (referencedElementKeys.some((key) => !elementKeys.has(key))) {
+        throw new Error(`Import Security, Privacy, and Threat Assessment ${assessment.id} references an unknown architecture element`)
+      }
+      const coveredElements = new Set(assessment.assets.flatMap((entry) => entry.architectureElementKeys))
+      if (architecture.elements.some((entry) => !coveredElements.has(entry.key))) {
+        throw new Error(`Import Security, Privacy, and Threat Assessment ${assessment.id} lacks security-asset coverage`)
+      }
+      const boundaryRelations = new Set(assessment.trustBoundaries.flatMap((entry) => entry.architectureRelationKeys))
+      const flowRelations = new Set(assessment.dataFlows.flatMap((entry) => entry.architectureRelationKeys))
+      if ([...boundaryRelations, ...flowRelations].some((key) => !relationKeys.has(key)) ||
+          architecture.relations.some((entry) => !boundaryRelations.has(entry.key) || !flowRelations.has(entry.key))) {
+        throw new Error(`Import Security, Privacy, and Threat Assessment ${assessment.id} lacks exact relation coverage`)
       }
     }
 
@@ -4796,6 +4901,10 @@ export class ProductStudioService {
         /^bounded-context-model-history\/bounded-context-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "bounded-context-ownership-candidate"
     }
+    if (/^security-privacy-assessments\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^security-privacy-assessment-history\/security-privacy-assessment-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "security-privacy-threat-assessment-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -4872,6 +4981,10 @@ export class ProductStudioService {
     if (/^bounded-context-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^bounded-context-model-history\/bounded-context-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return boundedContextModelSchema
+    }
+    if (/^security-privacy-assessments\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^security-privacy-assessment-history\/security-privacy-assessment-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return securityPrivacyAssessmentSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

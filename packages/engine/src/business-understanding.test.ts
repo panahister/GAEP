@@ -4,6 +4,8 @@ import { join } from "node:path"
 
 import {
   boundedContextModelInputSchema,
+  securityPrivacyAssessmentInputSchema,
+  securityPrivacyRequirementIds,
   businessArchitectureBaselineInputSchema,
   businessCapabilityMapInputSchema,
   businessRuleCatalogInputSchema,
@@ -13,6 +15,8 @@ import {
   valueStreamModelInputSchema,
   type BoundedContextModelInput,
   type BoundedContextModel,
+  type SecurityPrivacyAssessment,
+  type SecurityPrivacyAssessmentInput,
   type BusinessArchitectureBaselineInput,
   type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
@@ -1154,6 +1158,203 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function securityPrivacyAssessmentInput(
+    boundedContextModel: BoundedContextModel,
+    overrides: Partial<SecurityPrivacyAssessmentInput> = {},
+  ): SecurityPrivacyAssessmentInput {
+    const requirementCoverage = [...securityPrivacyRequirementIds]
+      .sort((left, right) => left.localeCompare(right))
+      .map((requirementId) => ({
+        requirementId,
+        state: "covered-candidate" as const,
+        controlKeys: ["strict-shared-engine"],
+        threatKeys: ["authority-and-context-forgery"],
+        basis: "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+        evidence: [reference()],
+      }))
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Security, Privacy, and Threat Assessment",
+      scope: "Assess the exact native-host, shared-engine, governed-workspace, authority, integrity, privacy, data-flow, and recovery boundary for accountable human review.",
+      boundedContextModel: {
+        recordId: boundedContextModel.id,
+        revision: boundedContextModel.revision,
+        digest: canonicalDigest(boundedContextModel),
+      },
+      assets: [{
+        key: "governed-workspace",
+        name: "Governed engine and workspace state",
+        securityObjectives: [
+          "Preserve exact attributable history and audit integrity",
+          "Prevent unauthorized mutation, approval replay, and evidence forgery",
+        ],
+        architectureElementKeys: ["gaep-engine", "workspace-store"],
+        ownerRoleKey: "gaep-steward",
+        sources: [reference()],
+      }, {
+        key: "native-host",
+        name: "Native Product Studio interaction boundary",
+        securityObjectives: [
+          "Expose only strict privacy-safe projections",
+          "Preserve explicit human intent without synthesizing authority",
+        ],
+        architectureElementKeys: ["product-studio-host"],
+        ownerRoleKey: "initiative-owner",
+        sources: [reference()],
+      }],
+      actors: [{
+        key: "malicious-content-author",
+        name: "Malicious or compromised content author",
+        kind: "attacker",
+        trust: "untrusted",
+        capabilities: ["Craft content intended to alter instructions, bindings, or rendered conclusions"],
+        constraints: ["Repository content has no instruction, approval, or effect authority by presence alone"],
+        sources: [reference()],
+      }, {
+        key: "product-owner",
+        name: "Accountable Product owner",
+        kind: "human",
+        trust: "mixed",
+        capabilities: ["Provide explicit candidate input and separately governed human decisions"],
+        constraints: ["Role identity alone does not prove an effective appointment, grant, approval, or risk acceptance"],
+        sources: [reference()],
+      }, {
+        key: "shared-engine",
+        name: "Shared governed engine service",
+        kind: "service",
+        trust: "mixed",
+        capabilities: ["Validate, persist, assess, and project exact governed records"],
+        constraints: ["Cannot approve its own output, attest control effectiveness, accept risk, or authorize action"],
+        sources: [reference()],
+      }],
+      trustBoundaries: [{
+        key: "host-engine-workspace",
+        name: "Native host, engine, and governed workspace boundary",
+        kind: "workspace",
+        architectureRelationKeys: ["engine-writes-store", "host-calls-engine"],
+        actorKeys: ["malicious-content-author", "product-owner", "shared-engine"],
+        dataClassKeys: ["governed-product-metadata"],
+        rationale: "Human and untrusted workspace inputs cross a strict host-to-engine protocol before any validated candidate state reaches the governed workspace store.",
+        failureBehavior: "Unexpected fields, stale bindings, invalid digests, secret-shaped content, audit failure, or untrusted authority claims fail before a governed write or trusted projection.",
+        sources: [reference()],
+      }],
+      dataClasses: [{
+        key: "governed-product-metadata",
+        name: "Governed Product metadata and evidence references",
+        classification: "internal",
+        subjectCategories: ["Governed Product contributors and accountable reviewers"],
+        purposes: ["Maintain attributable Product candidates, exact evidence bindings, audit history, and review status"],
+        processingAuthorityState: "candidate-declared",
+        ownerRoleKey: "gaep-steward",
+        architectureElementKeys: ["gaep-engine", "product-studio-host", "workspace-store"],
+        recipientConstraints: ["Only the selected local workspace and explicit privacy-safe host projections"],
+        residencyConstraints: ["Repository-relative local governed state unless separately reviewed and authorized"],
+        minimization: "Persist only fields required by the declared Product contract and expose hosts only bounded identities, counts, statuses, timestamps, and digests.",
+        retention: "Retain immutable candidate history for traceability while leaving exact retention approval and disposal policy unresolved for accountable review.",
+        deletionAndCorrection: "Correction creates a superseding immutable revision; deletion, legal hold, archival, backup, and downstream disposition require separate governed decisions.",
+        providerAndModelUse: "No provider or model processing is authorized by this candidate; any future provider flow requires exact terms, minimization, residency, retention, and human review.",
+        affectedPersonRights: "Applicable transparency, access, correction, challenge, and deletion channels remain subject to identified policy, jurisdiction, and accountable ownership.",
+        sources: [reference()],
+      }],
+      dataFlows: [{
+        key: "candidate-record-roundtrip",
+        name: "Explicit candidate record input and privacy-safe projection",
+        architectureRelationKeys: ["engine-writes-store", "host-calls-engine"],
+        dataClassKeys: ["governed-product-metadata"],
+        trustBoundaryKeys: ["host-engine-workspace"],
+        actorKeys: ["product-owner", "shared-engine"],
+        purpose: "Validate explicit human candidate input, persist exact immutable history, and return a bounded privacy-safe status projection.",
+        recipients: ["Accountable Product reviewers through a selected native host"],
+        locations: ["Selected local workspace and its native Product Studio projection"],
+        sources: [reference()],
+      }],
+      controls: [{
+        key: "strict-shared-engine",
+        name: "Strict shared-engine validation and immutable evidence boundary",
+        kind: "preventive",
+        statement: "The engine verifies audit integrity, exact Product and Initiative context, immutable upstream revisions, complete profile coverage, canonical graph references, secret exclusion, and atomic current/history/audit persistence.",
+        ownerRoleKey: "gaep-steward",
+        architectureElementKeys: ["gaep-engine", "product-studio-host", "workspace-store"],
+        implementationState: "observed-implemented",
+        verificationState: "evidence-linked",
+        effectivenessState: "not-assessed",
+        evidence: [reference()],
+        failureBehavior: "A failed integrity, schema, source, authority, coverage, binding, or privacy check aborts without partial governed mutation or a weaker fallback path.",
+        reviewTriggers: ["Architecture, boundary, provider, profile, policy, capability, data purpose, or evidence changes"],
+        sources: [reference()],
+      }],
+      threats: [{
+        key: "authority-and-context-forgery",
+        title: "Forged authority or poisoned context crosses the Product boundary",
+        category: "governance-abuse",
+        actorKeys: ["malicious-content-author"],
+        assetKeys: ["governed-workspace", "native-host"],
+        trustBoundaryKeys: ["host-engine-workspace"],
+        dataFlowKeys: ["candidate-record-roundtrip"],
+        scenario: "A malicious or mistaken input attempts to substitute exact Product bindings, inject instructions or secrets, forge approval or risk acceptance, or alter evidence while retaining a plausible native presentation.",
+        consequence: "Governed meaning, privacy, accountability, or workspace integrity could be corrupted and downstream users could act on a false readiness or authority claim.",
+        controlKeys: ["strict-shared-engine"],
+        riskAssessmentState: "not-assessed",
+        residualRisk: "The candidate control has deterministic implementation evidence but no approved risk method, independent effectiveness assessment, native acceptance, provider assessment, or residual-risk acceptance.",
+        residualRiskState: "candidate-described",
+        riskAcceptanceState: "not-granted",
+        ownerRoleKey: "initiative-owner",
+        reviewTriggers: ["A control fails, the trust boundary changes, or new provider, native-host, data, identity, or supply-chain evidence appears"],
+        sources: [reference()],
+      }],
+      requirementCoverage,
+      assumptions: ["The selected local workspace remains the declared system boundary for this candidate assessment"],
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      governance: {
+        securityAuthorityRoleKey: "gaep-steward",
+        privacyAuthorityRoleKey: "initiative-owner",
+        riskOwnerRoleKeys: ["gaep-steward", "initiative-owner"],
+        reviewerRoleKeys: ["gaep-steward", "initiative-owner"],
+        threatModelApprovalState: "not-granted",
+        privacyReviewState: "not-granted",
+        residualRiskAcceptanceState: "not-granted",
+        controlEffectivenessState: "not-established",
+        reviewState: "under-challenge",
+        basis: "Named candidate roles may prepare and challenge the assessment, but only separately established eligible human authorities can approve the threat model and processing, attest control effectiveness, or accept exact residual risk.",
+        sources: [reference()],
+      },
+      limitations: ["No Codex Security scan, approved threat model, control-effectiveness attestation, risk acceptance, privacy approval, security readiness, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
+  async function createArchitectureAndBoundedContext() {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome), actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap), actorId,
+    )
+    const operatingModel = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel), actorId,
+    )
+    const businessRuleCatalog = await engine.businessRuleCatalog.create(
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel), actorId,
+    )
+    const baseline = await engine.businessArchitectureBaseline.create(
+      businessArchitectureBaselineInput(
+        business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel, businessRuleCatalog,
+      ),
+      actorId,
+    )
+    const architecture = await engine.systemSolutionArchitecture.create(
+      systemSolutionArchitectureInput(baseline), actorId,
+    )
+    const boundedContextModel = await engine.boundedContextModel.create(
+      boundedContextModelInput(architecture), actorId,
+    )
+    return { architecture, boundedContextModel }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -2267,6 +2468,161 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("persists exact versioned Security, Privacy, and Threat Assessment candidates and privacy-safe status", async () => {
+    const { boundedContextModel } = await createArchitectureAndBoundedContext()
+    const input = securityPrivacyAssessmentInput(boundedContextModel)
+    const assessment = await engine.securityPrivacyAssessment.create(input, actorId)
+
+    expect(assessment).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      membershipDigest: canonicalDigest({ boundedContextModel: input.boundedContextModel }),
+      governance: {
+        threatModelApprovalState: "not-granted",
+        privacyReviewState: "not-granted",
+        residualRiskAcceptanceState: "not-granted",
+        controlEffectivenessState: "not-established",
+        reviewState: "under-challenge",
+      },
+      authorityBoundary: expect.stringContaining("does-not-approve-a-threat-model"),
+    })
+    expect(await engine.securityPrivacyAssessment.assess(initiative.id)).toMatchObject({
+      assessment: { recordId: assessment.id, revision: 1, digest: canonicalDigest(assessment) },
+      assetCount: 2,
+      actorCount: 3,
+      trustBoundaryCount: 1,
+      dataClassCount: 1,
+      dataFlowCount: 1,
+      controlCount: 1,
+      threatCount: 1,
+      unresolvedThreatCount: 0,
+      unverifiedControlCount: 0,
+      unresolvedProcessingAuthorityCount: 0,
+      uncoveredArchitectureElementCount: 0,
+      unmappedArchitectureRelationCount: 0,
+      unresolvedRequirementCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      authorityBoundary: expect.stringContaining("does-not-approve-threats"),
+    })
+
+    const projection = await engine.securityPrivacyAssessment.project(initiative.id)
+    expect(projection).toMatchObject({
+      assessment: {
+        id: assessment.id,
+        assetCount: 2,
+        trustBoundaryCount: 1,
+        dataClassCount: 1,
+        controlCount: 1,
+        threatCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-threat-scenarios"),
+      authorityBoundary: expect.stringContaining("does-not-approve-a-threat-model"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("A malicious or mistaken input")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.securityPrivacyAssessment.revise(
+      assessment.id,
+      assessment.revision,
+      securityPrivacyAssessmentInput(boundedContextModel, {
+        limitations: [
+          "No Codex Security scan, approved threat model, control-effectiveness attestation, risk acceptance, privacy approval, security readiness, release, deployment, or action authority is represented",
+          "The candidate remains subject to independent security, privacy, risk-owner, and native-host challenge",
+        ],
+      }),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: assessment.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(assessment),
+      governance: {
+        threatModelApprovalState: "not-granted",
+        privacyReviewState: "not-granted",
+        residualRiskAcceptanceState: "not-granted",
+        controlEffectivenessState: "not-established",
+      },
+    })
+    expect((await engine.securityPrivacyAssessment.listHistory(assessment.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "security.privacy-threat.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(assessment),
+        state: "candidate",
+        threatModelApprovalState: "not-granted",
+        privacyReviewState: "not-granted",
+        residualRiskAcceptanceState: "not-granted",
+        controlEffectivenessState: "not-established",
+        reviewState: "under-challenge",
+      },
+    })
+  })
+
+  it("rejects forged Security, Privacy, and Threat authority, coverage, roles, relations, and secrets", async () => {
+    const { boundedContextModel } = await createArchitectureAndBoundedContext()
+    const base = securityPrivacyAssessmentInput(boundedContextModel)
+
+    expect(() => securityPrivacyAssessmentInputSchema.parse({
+      ...base,
+      governance: { ...base.governance, threatModelApprovalState: "approved" },
+    })).toThrow()
+    await expect(engine.securityPrivacyAssessment.create({
+      ...base,
+      governance: { ...base.governance, securityAuthorityRoleKey: "invented-security-authority" },
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.securityPrivacyAssessment.create({
+      ...base,
+      assets: base.assets.map((entry) => entry.key === "governed-workspace"
+        ? { ...entry, architectureElementKeys: ["workspace-store"] }
+        : entry),
+    }, actorId)).rejects.toThrow(/Every System\/Solution Architecture element/)
+    await expect(engine.securityPrivacyAssessment.create({
+      ...base,
+      trustBoundaries: base.trustBoundaries.map((entry) => ({
+        ...entry,
+        architectureRelationKeys: ["engine-writes-store"],
+      })),
+      dataFlows: base.dataFlows.map((entry) => ({
+        ...entry,
+        architectureRelationKeys: ["engine-writes-store"],
+      })),
+    }, actorId)).rejects.toThrow(/Every System\/Solution Architecture relation/)
+    await expect(engine.securityPrivacyAssessment.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable assessment context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const assessment = await engine.securityPrivacyAssessment.create(base, actorId)
+    await engine.boundedContextModel.revise(
+      boundedContextModel.id,
+      boundedContextModel.revision,
+      boundedContextModelInput(
+        await engine.systemSolutionArchitecture.read(boundedContextModel.systemSolutionArchitecture.recordId),
+        { limitations: [
+          "No organizational appointment, accepted ownership, approved boundary, readiness, release, deployment, or action authority is represented",
+          "The exact Bounded Context candidate changed after Security, Privacy, and Threat Assessment capture",
+        ] },
+      ),
+      actorId,
+    )
+    expect(await engine.securityPrivacyAssessment.assess(initiative.id)).toMatchObject({
+      assessment: { recordId: assessment.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -2346,6 +2702,10 @@ describe("Business understanding governance", () => {
       boundedContextModelInput(systemSolutionArchitecture),
       actorId,
     )
+    const securityPrivacyAssessment = await engine.securityPrivacyAssessment.create(
+      securityPrivacyAssessmentInput(boundedContextModel),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -2364,6 +2724,8 @@ describe("Business understanding governance", () => {
       `system-solution-architecture-history/system-solution-architecture-${systemSolutionArchitecture.id}-r1.json`,
       `bounded-context-models/${boundedContextModel.id}.json`,
       `bounded-context-model-history/bounded-context-model-${boundedContextModel.id}-r1.json`,
+      `security-privacy-assessments/${securityPrivacyAssessment.id}.json`,
+      `security-privacy-assessment-history/security-privacy-assessment-${securityPrivacyAssessment.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -2521,6 +2883,26 @@ describe("Business understanding governance", () => {
       forgeContextOwnership,
     )
     await expect(engine.productStudio.previewImportBundle(forgedContext))
+      .rejects.toThrow(/unknown bound Operating Model role/)
+
+    const forgeSecurityAuthority = (content: unknown) => ({
+      ...(content as SecurityPrivacyAssessment),
+      governance: {
+        ...(content as SecurityPrivacyAssessment).governance,
+        securityAuthorityRoleKey: "invented-security-authority",
+      },
+    })
+    let forgedSecurityTrace = replacePortableRecord(
+      bundle,
+      `security-privacy-assessments/${securityPrivacyAssessment.id}.json`,
+      forgeSecurityAuthority,
+    )
+    forgedSecurityTrace = replacePortableRecord(
+      forgedSecurityTrace,
+      `security-privacy-assessment-history/security-privacy-assessment-${securityPrivacyAssessment.id}-r1.json`,
+      forgeSecurityAuthority,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedSecurityTrace))
       .rejects.toThrow(/unknown bound Operating Model role/)
   })
 
