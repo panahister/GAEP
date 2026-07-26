@@ -31,7 +31,8 @@
     { "id": "business-understanding", "label": "Exact governed Business Understanding projection without decision authority" },
     { "id": "stakeholder-role-model", "label": "Exact governed Stakeholder Model projection without appointment authority" },
     { "id": "outcome-success-model", "label": "Exact governed Outcome Model projection without approval or readiness authority" },
-    { "id": "business-capability-map", "label": "Exact governed Business Capability Map projection without priority, baseline, readiness, or action authority" }
+    { "id": "business-capability-map", "label": "Exact governed Business Capability Map projection without priority, baseline, readiness, or action authority" },
+    { "id": "value-stream-model", "label": "Exact governed Value Stream Model projection without baseline, priority, readiness, or action authority" }
   ],
   "hosts": [
     {
@@ -42,7 +43,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T124355Z-phase-1-business-capability-map-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T062621Z-phase-1-value-stream-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -134,6 +135,9 @@
         ] },
         { "capabilityId": "business-capability-map", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["businessCapabilityMap?: {", "engine.businessCapabilityMap!.project(initiative.id)", "id: \"business-capability-map\"", "Candidate architecture only; no priority approval, baseline, readiness, or action authority."] }
+        ] },
+        { "capabilityId": "value-stream-model", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["valueStreamModel?: {", "engine.valueStreamModel!.project(initiative.id)", "id: \"value-stream-model\"", "Candidate value flow only; no baseline, priority, readiness, or action authority."] }
         ] }
       ]
     },
@@ -145,7 +149,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T124355Z-phase-1-business-capability-map-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T062621Z-phase-1-value-stream-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -237,6 +241,10 @@
         { "capabilityId": "business-capability-map", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readBusinessCapabilityMap(", "this.request(\"business.capabilities.snapshot\"", "businessCapabilityMapProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showBusinessCapabilityMap", "GAEP governed Business Capability Map", "Map counts:"] }
+        ] },
+        { "capabilityId": "value-stream-model", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readValueStreamModel(", "this.request(\"business.valueStreams.snapshot\"", "valueStreamModelProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showValueStreamModel", "GAEP governed Value Stream Model", "Model counts:"] }
         ] }
       ]
     },
@@ -248,7 +256,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T124355Z-phase-1-business-capability-map-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T062621Z-phase-1-value-stream-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -349,6 +357,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readBusinessCapabilityMap(", "portableRequest(\"business.capabilities.snapshot\"", "parseBusinessCapabilityMapEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Business Capability Map", "Map counts:", "grants no priority approval, baseline, readiness, or action authority"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["BusinessCapabilityMapRecordView", "CAPABILITY_MAP_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "value-stream-model", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readValueStreamModel(", "portableRequest(\"business.valueStreams.snapshot\"", "parseValueStreamModelEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Value Stream Model", "Model counts:", "grants no baseline, priority, readiness, or action authority"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["ValueStreamModelRecordView", "VALUE_STREAM_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -360,7 +373,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-25T124355Z-phase-1-business-capability-map-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T062621Z-phase-1-value-stream-model-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -470,13 +483,18 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadBusinessCapabilityMapAsync(", "\"business.capabilities.snapshot\"", "ParseBusinessCapabilityMapResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Business Capability Map", "Map counts:", "grants no priority approval, baseline, readiness, or action authority"] },
           { "path": "apps/visual-studio/Gaep.HostClient/BusinessCapabilityMapProtocol.cs", "contains": ["BusinessCapabilityMapRecordView", "CapabilityMapProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "value-stream-model", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadValueStreamModelAsync(", "\"business.valueStreams.snapshot\"", "ParseValueStreamModelResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Value Stream Model", "Model counts:", "grants no baseline, priority, readiness, or action authority"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ValueStreamModelProtocol.cs", "contains": ["ValueStreamModelRecordView", "ValueStreamProjectionAuthorityBoundary"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-25T124355Z-phase-1-business-capability-map-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-26T062621Z-phase-1-value-stream-model-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",
