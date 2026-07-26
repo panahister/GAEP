@@ -37,7 +37,8 @@
     { "id": "business-rule-catalog", "label": "Exact governed Business Rule Catalog projection without policy-evaluation, exception-grant, enforcement, baseline, readiness, or action authority" },
     { "id": "business-architecture-baseline", "label": "Exact governed Business Architecture Baseline candidate projection without designation, approval, readiness, exception-grant, enforcement, or action authority" },
     { "id": "system-solution-architecture", "label": "Exact governed System/Solution Architecture candidate projection without architecture-baseline designation, approval, readiness, proven conformance, technology mandate, or action authority" },
-    { "id": "bounded-context-ownership", "label": "Exact governed Bounded Context and Ownership candidate projection without owner appointment, boundary approval, contract acceptance, readiness, or action authority" }
+    { "id": "bounded-context-ownership", "label": "Exact governed Bounded Context and Ownership candidate projection without owner appointment, boundary approval, contract acceptance, readiness, or action authority" },
+    { "id": "security-privacy-threat-assessment", "label": "Exact governed Security, Privacy, and Threat Assessment candidate projection without threat-model approval, control-effectiveness attestation, risk acceptance, processing approval, security readiness, or action authority" }
   ],
   "hosts": [
     {
@@ -48,7 +49,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T112856Z-phase-1-security-privacy-threat-assessment-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -158,6 +159,9 @@
         ] },
         { "capabilityId": "bounded-context-ownership", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["boundedContextModel?: {", "engine.boundedContextModel!.project(initiative.id)", "id: \"bounded-context-ownership\"", "Candidate boundaries and ownership traces only; no owner appointment, ownership acceptance, boundary approval, contract acceptance, readiness, or action authority."] }
+        ] },
+        { "capabilityId": "security-privacy-threat-assessment", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["securityPrivacyAssessment?: {", "engine.securityPrivacyAssessment!.project(initiative.id)", "id: \"security-privacy-threat-assessment\"", "Candidate security, privacy, and threat coverage only; no threat-model approval, control-effectiveness attestation, risk acceptance, processing approval, security readiness, or action authority."] }
         ] }
       ]
     },
@@ -169,7 +173,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T112856Z-phase-1-security-privacy-threat-assessment-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -285,6 +289,10 @@
         { "capabilityId": "bounded-context-ownership", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readBoundedContextModel(", "this.request(\"architecture.boundedContexts.snapshot\"", "boundedContextModelProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showBoundedContextModel", "GAEP governed Bounded Context and Ownership candidate", "Membership digest:", "Authority boundary: ${projection.authorityBoundary}"] }
+        ] },
+        { "capabilityId": "security-privacy-threat-assessment", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readSecurityPrivacyAssessment(", "this.request(\"security.privacyThreat.snapshot\"", "securityPrivacyAssessmentProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showSecurityPrivacyAssessment", "GAEP governed Security, Privacy, and Threat Assessment candidate", "Candidate counts:", "Authority boundary: ${projection.authorityBoundary}"] }
         ] }
       ]
     },
@@ -296,7 +304,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T112856Z-phase-1-security-privacy-threat-assessment-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -427,6 +435,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readBoundedContextModel(", "portableRequest(\"architecture.boundedContexts.snapshot\"", "parseBoundedContextModelEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Bounded Context and Ownership candidate", "Membership digest:", "does not appoint owners, accept ownership", "approve boundaries or contracts, establish readiness, or authorize action"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["BoundedContextModelRecordView", "BOUNDED_CONTEXT_MODEL_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "security-privacy-threat-assessment", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readSecurityPrivacyAssessment(", "portableRequest(\"security.privacyThreat.snapshot\"", "parseSecurityPrivacyAssessmentEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Security, Privacy, and Threat Assessment candidate", "Membership digest:", "does not approve a threat model, attest", "control effectiveness, accept risk, approve processing, establish security readiness, or authorize action"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["SecurityPrivacyAssessmentRecordView", "SECURITY_PRIVACY_ASSESSMENT_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -438,7 +451,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T112856Z-phase-1-security-privacy-threat-assessment-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -578,13 +591,18 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadBoundedContextModelAsync(", "\"architecture.boundedContexts.snapshot\"", "ParseBoundedContextModelResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Bounded Context and Ownership candidate", "Membership digest:", "does not appoint owners, accept ownership", "approve boundaries or contracts, establish readiness, or authorize action"] },
           { "path": "apps/visual-studio/Gaep.HostClient/BoundedContextModelProtocol.cs", "contains": ["BoundedContextModelRecordView", "BoundedContextModelProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "security-privacy-threat-assessment", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadSecurityPrivacyAssessmentAsync(", "\"security.privacyThreat.snapshot\"", "ParseSecurityPrivacyAssessmentResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Security, Privacy, and Threat Assessment candidate", "Membership digest:", "does not approve a threat model, attest", "control effectiveness, accept risk, approve processing, establish security readiness, or authorize action"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/SecurityPrivacyAssessmentProtocol.cs", "contains": ["SecurityPrivacyAssessmentRecordView", "SecurityPrivacyAssessmentProjectionAuthorityBoundary"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-26T104614Z-phase-1-bounded-context-ownership-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-26T112856Z-phase-1-security-privacy-threat-assessment-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",
