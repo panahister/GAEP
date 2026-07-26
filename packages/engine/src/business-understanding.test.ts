@@ -8,6 +8,7 @@ import {
   businessRuleCatalogInputSchema,
   stakeholderCategoryValues,
   stakeholderModelInputSchema,
+  systemSolutionArchitectureInputSchema,
   valueStreamModelInputSchema,
   type BusinessArchitectureBaselineInput,
   type BusinessArchitectureBaseline,
@@ -28,6 +29,8 @@ import {
   type SourceRecordInput,
   type StakeholderModel,
   type StakeholderModelInput,
+  type SystemSolutionArchitecture,
+  type SystemSolutionArchitectureInput,
   type ValueStreamModelInput,
   type ValueStreamModel,
 } from "@gaep/contracts"
@@ -804,6 +807,231 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function systemSolutionArchitectureInput(
+    baseline: Awaited<ReturnType<typeof engine.businessArchitectureBaseline.create>>,
+    overrides: Partial<SystemSolutionArchitectureInput> = {},
+  ): SystemSolutionArchitectureInput {
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed System/Solution Architecture",
+      purpose: "Describe the candidate system boundary, exact interactions, quality attributes, decisions, and conformance expectations for accountable review.",
+      businessArchitectureBaseline: {
+        recordId: baseline.id,
+        revision: baseline.revision,
+        digest: canonicalDigest(baseline),
+      },
+      scope: {
+        included: ["Governed engine, Product Studio host, and workspace store boundary"],
+        excluded: ["Provider execution, release topology, and production deployment"],
+        boundaries: ["Candidate design only with no approval, baseline, readiness, conformance, technology mandate, or action authority"],
+      },
+      concerns: [{
+        key: "governed-system-boundary",
+        category: "topology",
+        statement: "The native hosts must share one governed engine and workspace-store authority boundary without inventing host-local Product semantics.",
+        stakeholderRoleKeys: ["gaep-steward", "initiative-owner"],
+        affectedBusinessElementKeys: ["governed-context"],
+        priority: "high",
+        sources: [reference()],
+      }],
+      elements: [{
+        key: "gaep-engine",
+        kind: "logical-component",
+        name: "GAEP governed engine",
+        responsibility: "Own contract validation, immutable versioning, audit events, assessments, and privacy-safe projections for the bounded Product workflow.",
+        ownerRoleKey: "gaep-steward",
+        boundaries: ["No host-local semantic authority", "No provider execution authority"],
+        technology: {
+          disposition: "constrained",
+          value: "shared-local-engine",
+          rationale: "The current Product contract requires all native hosts to delegate governed Product semantics to one shared local engine boundary.",
+        },
+        sources: [reference()],
+      }, {
+        key: "product-studio-host",
+        kind: "deployable-unit",
+        name: "Native Product Studio host",
+        responsibility: "Collect explicit human inputs and render privacy-safe engine projections without synthesizing Product decisions or approval authority.",
+        ownerRoleKey: "initiative-owner",
+        boundaries: ["No direct governed-store writes", "No implicit approval or readiness transition"],
+        technology: {
+          disposition: "candidate",
+          value: "native-host-adapter",
+          rationale: "Each supported IDE requires a candidate native adapter while the shared engine retains the authoritative Product behavior.",
+        },
+        sources: [reference()],
+      }, {
+        key: "workspace-store",
+        kind: "data-asset",
+        name: "Governed workspace store",
+        responsibility: "Persist versioned Product-domain records, exact immutable history, transactions, and audit-chain evidence inside the selected workspace.",
+        ownerRoleKey: "gaep-steward",
+        boundaries: ["Repository-relative governed state", "Secret-shaped values prohibited"],
+        technology: {
+          disposition: "constrained",
+          value: "gaep-json-store",
+          rationale: "The existing governed repository format is the exact compatibility constraint for this candidate architecture revision.",
+        },
+        sources: [reference()],
+      }],
+      relations: [{
+        key: "engine-writes-store",
+        kind: "writes",
+        fromElementKey: "gaep-engine",
+        toElementKey: "workspace-store",
+        interactionStyle: "The engine performs lock-protected mutation commits through one repository transaction boundary.",
+        contract: "Every mutation validates the exact contract, writes current and immutable-history records, and appends an attributable audit event.",
+        failureBehavior: "Validation, binding, history, lock, or audit failure aborts the candidate mutation without a partial authoritative write.",
+        sources: [reference()],
+      }, {
+        key: "host-calls-engine",
+        kind: "calls",
+        fromElementKey: "product-studio-host",
+        toElementKey: "gaep-engine",
+        interactionStyle: "The native host uses a strict versioned request and privacy-safe response contract over a bounded local process channel.",
+        contract: "Unexpected fields, protocol downgrade, substituted bindings, digest drift, and private response fields fail closed.",
+        failureBehavior: "The host reports a bounded non-authorizing error and exposes no private engine response details.",
+        sources: [reference()],
+      }],
+      qualityAttributes: [{
+        key: "audit-integrity",
+        attribute: "integrity",
+        source: "An accountable reviewer or deterministic workspace-health gate",
+        stimulus: "A governed System/Solution Architecture mutation or read is requested while the audit chain is missing or invalid.",
+        environment: "The selected local workspace contains initialized GAEP state and the current Product Initiative.",
+        artifactElementKeys: ["gaep-engine", "workspace-store"],
+        response: "The engine refuses semantic mutation or projection and returns a bounded integrity failure without repairing authority-bearing state automatically.",
+        measure: "Zero governed mutations or trusted semantic projections are produced after audit-chain verification fails.",
+        target: "Every hostile audit-chain fixture fails closed before any System/Solution Architecture commit or authoritative projection.",
+        state: "candidate",
+        verificationApproach: "Exercise deterministic corrupted-chain fixtures and verify no current, history, transaction, or audit record is partially created.",
+        sources: [reference()],
+      }, {
+        key: "host-response-integrity",
+        attribute: "security",
+        source: "A native Product Studio user reading one exact Initiative architecture projection",
+        stimulus: "A host receives a response with a substituted Product binding, changed snapshot digest, or undeclared private field.",
+        environment: "A supported local host invokes the strict protocol-v2 System/Solution Architecture snapshot method.",
+        artifactElementKeys: ["gaep-engine", "product-studio-host"],
+        response: "The host rejects the response and exposes only a bounded non-authorizing error without private payload details.",
+        measure: "All substituted-binding, digest-drift, and private-field fixtures are rejected across each implemented host parser.",
+        target: "Three hostile response classes fail closed in every supported native host implementation.",
+        state: "candidate",
+        verificationApproach: "Run deterministic host-client fixtures and verify exact response-shape, digest, binding, and privacy checks.",
+        sources: [reference()],
+      }],
+      decisions: [{
+        key: "shared-engine-boundary",
+        title: "Candidate shared governed engine boundary",
+        concernKeys: ["governed-system-boundary"],
+        disposition: "candidate",
+        options: [{
+          key: "host-local-semantics",
+          statement: "Each native host implements and persists its own Product semantics independently.",
+          benefits: ["Host-specific implementation freedom"],
+          tradeoffs: ["Four semantic implementations can drift and require separate authority-bearing migration paths"],
+          risks: ["Host-specific behavior may silently contradict the shared Product contract"],
+          sources: [reference()],
+        }, {
+          key: "shared-governed-engine",
+          statement: "Every native host delegates Product semantics and governed persistence to one shared engine contract.",
+          benefits: ["Exact cross-host semantic parity", "One attributable governed-store boundary"],
+          tradeoffs: ["Host adapters depend on strict shared protocol compatibility"],
+          risks: ["A shared-engine defect can affect every host and therefore requires broad contract evidence"],
+          sources: [reference()],
+        }],
+        candidateOptionKey: "shared-governed-engine",
+        rationale: "The shared governed engine is the current evidence-backed candidate because it centralizes validation, audit, history, and authority boundaries.",
+        assumptions: ["Each native host can launch or connect to the exact packaged engine build"],
+        consequences: ["Host parsers must reject response drift", "Shared protocol evolution requires compatibility evidence"],
+        invalidationTriggers: ["A supported host cannot satisfy the shared engine protocol", "The governed repository boundary changes materially"],
+        sources: [reference()],
+      }],
+      views: [{
+        key: "governed-system-context",
+        kind: "system-context",
+        title: "Governed Product Studio system context candidate",
+        audienceRoleKeys: ["gaep-steward", "initiative-owner"],
+        concernKeys: ["governed-system-boundary"],
+        elementKeys: ["gaep-engine", "product-studio-host", "workspace-store"],
+        relationKeys: ["engine-writes-store", "host-calls-engine"],
+        qualityAttributeKeys: ["audit-integrity", "host-response-integrity"],
+        decisionKeys: ["shared-engine-boundary"],
+        scope: "The candidate view covers the native host, shared engine, governed workspace store, exact interactions, and bounded failure behavior.",
+        notation: "structured-record",
+        freshness: "candidate-current",
+        regenerationTriggers: ["Governed repository boundary changes", "Host protocol or shared-engine packaging changes"],
+        sources: [reference()],
+      }],
+      conformanceCriteria: [{
+        key: "shared-engine-conformance",
+        statement: "Every supported host delegates governed Product semantics to the exact shared engine and rejects substituted or private projection responses.",
+        subjectElementKeys: ["gaep-engine", "product-studio-host", "workspace-store"],
+        qualityAttributeKeys: ["audit-integrity", "host-response-integrity"],
+        decisionKeys: ["shared-engine-boundary"],
+        method: "Run shared contract, engine lifecycle, controlled portability, host parser, packaged workflow, and conformance-matrix gates.",
+        evidenceExpectation: "Exact passing receipts identify source revisions, package digests, host checks, known limitations, and zero synthesized acceptance authority.",
+        state: "candidate",
+        sources: [reference()],
+      }],
+      lifecycleConsequences: [{
+        topic: "compatibility",
+        statement: "Protocol and governed-record changes require explicit backward-compatibility analysis for every supported native host and portable store.",
+        ownerRoleKey: "gaep-steward",
+        state: "candidate",
+        rationale: "Cross-host semantic parity depends on strict compatible request, response, and persisted-record contracts.",
+        triggers: ["Contract schema changes", "Protocol version changes"],
+        sources: [reference()],
+      }, {
+        topic: "evolution",
+        statement: "Architecture-significant engine, host, or repository changes require a superseding candidate architecture revision and refreshed evidence.",
+        ownerRoleKey: "initiative-owner",
+        state: "candidate",
+        rationale: "The candidate must remain tied to exact current constraints instead of becoming an unversioned timeless diagram.",
+        triggers: ["Authority boundary changes", "New native host support"],
+        sources: [reference()],
+      }, {
+        topic: "migration",
+        statement: "Persisted schema or host-protocol migration requires explicit compatibility, integrity, rollback, and hostile-fixture evidence before adoption.",
+        ownerRoleKey: "gaep-steward",
+        state: "candidate",
+        rationale: "Automatic inference or partial migration could alter governed meaning or fabricate authority-bearing state.",
+        triggers: ["Governed record schema changes", "Repository format changes"],
+        sources: [reference()],
+      }, {
+        topic: "recovery",
+        statement: "Interrupted governed mutations must preserve the last complete current and history state and expose attributable recovery diagnostics.",
+        ownerRoleKey: "gaep-steward",
+        state: "candidate",
+        rationale: "The Product Owner requires durable continuation without partial authority-bearing state after interruption.",
+        triggers: ["Audit or transaction recovery occurs", "Process interruption during mutation"],
+        sources: [reference()],
+      }, {
+        topic: "retirement",
+        statement: "A retired architecture candidate remains in immutable history and is replaced only by a traceable superseding revision or separately governed disposition.",
+        ownerRoleKey: "initiative-owner",
+        state: "candidate",
+        rationale: "Historical design context must remain reconstructable without treating retirement as deletion or approval withdrawal.",
+        triggers: ["Architecture scope is replaced", "The Initiative is cancelled or completed"],
+        sources: [reference()],
+      }],
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      governance: {
+        ownerRoleKey: "initiative-owner",
+        reviewerRoleKeys: ["gaep-steward", "initiative-owner"],
+        approvalState: "not-granted",
+        reviewState: "under-challenge",
+        basis: "The candidate owner and reviewers may prepare and challenge the design, but only a separate accountable human decision can approve an exact architecture set.",
+        sources: [reference()],
+      },
+      limitations: ["No realistic Product Owner architecture approval, implementation conformance, readiness, or release authority is represented"],
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -1522,6 +1750,196 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("governs exact System Solution Architecture candidates and projects privacy-safe architecture coverage", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+    const operatingModel = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
+      actorId,
+    )
+    const businessRuleCatalog = await engine.businessRuleCatalog.create(
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel),
+      actorId,
+    )
+    const baseline = await engine.businessArchitectureBaseline.create(
+      businessArchitectureBaselineInput(
+        business,
+        stakeholder,
+        outcome,
+        capabilityMap,
+        valueStreamModel,
+        operatingModel,
+        businessRuleCatalog,
+      ),
+      actorId,
+    )
+    const input = systemSolutionArchitectureInput(baseline)
+    const architecture = await engine.systemSolutionArchitecture.create(input, actorId)
+    expect(architecture).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      membershipDigest: canonicalDigest({ businessArchitectureBaseline: input.businessArchitectureBaseline }),
+      governance: { approvalState: "not-granted", reviewState: "under-challenge" },
+      authorityBoundary: expect.stringContaining("does-not-approve-or-designate-an-architecture-baseline"),
+    })
+    expect(await engine.systemSolutionArchitecture.assess(initiative.id)).toMatchObject({
+      architecture: { recordId: architecture.id, revision: 1, digest: canonicalDigest(architecture) },
+      concernCount: 1,
+      viewCount: 1,
+      elementCount: 3,
+      relationCount: 2,
+      qualityAttributeCount: 2,
+      unresolvedQualityAttributeCount: 0,
+      decisionCount: 1,
+      unresolvedDecisionCount: 0,
+      conformanceCriterionCount: 1,
+      unresolvedConformanceCriterionCount: 0,
+      lifecycleGapCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.systemSolutionArchitecture.project(initiative.id)
+    expect(projection).toMatchObject({
+      architecture: {
+        id: architecture.id,
+        concernCount: 1,
+        viewCount: 1,
+        elementCount: 3,
+        qualityAttributeCount: 2,
+        decisionCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-architecture-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-approve-or-designate-an-architecture-baseline"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("The native hosts must share")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.systemSolutionArchitecture.revise(
+      architecture.id,
+      architecture.revision,
+      systemSolutionArchitectureInput(baseline, {
+        limitations: [
+          "No realistic Product Owner architecture approval, implementation conformance, readiness, or release authority is represented",
+          "The candidate remains subject to independent native-host and operational challenge",
+        ],
+      }),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: architecture.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(architecture),
+      governance: { approvalState: "not-granted" },
+    })
+    expect((await engine.systemSolutionArchitecture.listHistory(architecture.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "architecture.system-solution.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(architecture),
+        state: "candidate",
+        approvalState: "not-granted",
+        reviewState: "under-challenge",
+      },
+    })
+  })
+
+  it("rejects hostile System Solution Architecture authority, trace, coverage, and secret-shaped input", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+    const operatingModel = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
+      actorId,
+    )
+    const businessRuleCatalog = await engine.businessRuleCatalog.create(
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel),
+      actorId,
+    )
+    const baselineInput = businessArchitectureBaselineInput(
+      business,
+      stakeholder,
+      outcome,
+      capabilityMap,
+      valueStreamModel,
+      operatingModel,
+      businessRuleCatalog,
+    )
+    const baseline = await engine.businessArchitectureBaseline.create(baselineInput, actorId)
+    const base = systemSolutionArchitectureInput(baseline)
+    expect(() => systemSolutionArchitectureInputSchema.parse({
+      ...base,
+      governance: { ...base.governance, approvalState: "approved" },
+    })).toThrow()
+    await expect(engine.systemSolutionArchitecture.create({
+      ...base,
+      concerns: [{ ...base.concerns[0]!, affectedBusinessElementKeys: ["invented-capability"] }],
+    }, actorId)).rejects.toThrow(/exact Business Architecture element keys/)
+    await expect(engine.systemSolutionArchitecture.create({
+      ...base,
+      elements: [{ ...base.elements[0]!, ownerRoleKey: "invented-role" }, ...base.elements.slice(1)],
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.systemSolutionArchitecture.create({
+      ...base,
+      views: [{ ...base.views[0]!, relationKeys: ["engine-writes-store"] }],
+    }, actorId)).rejects.toThrow(/relation and decision must appear/)
+    await expect(engine.systemSolutionArchitecture.create({
+      ...base,
+      conformanceCriteria: [{ ...base.conformanceCriteria[0]!, qualityAttributeKeys: ["audit-integrity"] }],
+    }, actorId)).rejects.toThrow(/quality attribute and architecture decision requires/)
+    await expect(engine.systemSolutionArchitecture.create({
+      ...base,
+      decisions: [{
+        ...base.decisions[0]!,
+        rationale: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable architecture context",
+      }],
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const architecture = await engine.systemSolutionArchitecture.create(base, actorId)
+    await engine.businessArchitectureBaseline.revise(
+      baseline.id,
+      baseline.revision,
+      businessArchitectureBaselineInput(
+        business,
+        stakeholder,
+        outcome,
+        capabilityMap,
+        valueStreamModel,
+        operatingModel,
+        businessRuleCatalog,
+        { limitations: ["The exact Business Architecture Baseline changed after system architecture capture"] },
+      ),
+      actorId,
+    )
+    expect(await engine.systemSolutionArchitecture.assess(initiative.id)).toMatchObject({
+      architecture: { recordId: architecture.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -1593,6 +2011,10 @@ describe("Business understanding governance", () => {
       ),
       actorId,
     )
+    const systemSolutionArchitecture = await engine.systemSolutionArchitecture.create(
+      systemSolutionArchitectureInput(businessArchitectureBaseline),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -1607,6 +2029,8 @@ describe("Business understanding governance", () => {
       `business-rule-catalog-history/business-rule-catalog-${businessRuleCatalog.id}-r1.json`,
       `business-architecture-baselines/${businessArchitectureBaseline.id}.json`,
       `business-architecture-baseline-history/business-architecture-baseline-${businessArchitectureBaseline.id}-r1.json`,
+      `system-solution-architectures/${systemSolutionArchitecture.id}.json`,
+      `system-solution-architecture-history/system-solution-architecture-${systemSolutionArchitecture.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -1726,6 +2150,26 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedBaseline))
       .rejects.toThrow(/coverage differs from exact bound records/)
+
+    const forgeArchitectureTrace = (content: unknown) => ({
+      ...(content as SystemSolutionArchitecture),
+      concerns: [{
+        ...(content as SystemSolutionArchitecture).concerns[0]!,
+        affectedBusinessElementKeys: ["invented-capability"],
+      }],
+    })
+    let forgedArchitecture = replacePortableRecord(
+      bundle,
+      `system-solution-architectures/${systemSolutionArchitecture.id}.json`,
+      forgeArchitectureTrace,
+    )
+    forgedArchitecture = replacePortableRecord(
+      forgedArchitecture,
+      `system-solution-architecture-history/system-solution-architecture-${systemSolutionArchitecture.id}-r1.json`,
+      forgeArchitectureTrace,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedArchitecture))
+      .rejects.toThrow(/unknown bound Business Architecture element/)
   })
 
   it("requires explicit human disclosure review for confidential business records", async () => {

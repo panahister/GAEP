@@ -1,6 +1,7 @@
 export * from "./agent.js"
 export * from "./business-capability-map.js"
 export * from "./business-architecture-baseline.js"
+export * from "./system-solution-architecture.js"
 export * from "./business-rule-catalog.js"
 export * from "./business-understanding.js"
 export * from "./dashboard.js"

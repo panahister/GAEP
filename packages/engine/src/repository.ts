@@ -46,6 +46,7 @@ import {
   runSchema,
   sourceBaselineSchema,
   sourceProvenanceSchema,
+  systemSolutionArchitectureSchema,
   sourceRecordRevisionSchema,
   sourceRecordSchema,
   stakeholderModelSchema,
@@ -98,6 +99,8 @@ const directoryNames = [
   "business-rule-catalog-history",
   "business-architecture-baselines",
   "business-architecture-baseline-history",
+  "system-solution-architectures",
+  "system-solution-architecture-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -875,6 +878,8 @@ export class GaepRepository {
       ["business-rule-catalog-history", /^business-rule-catalog-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["business-architecture-baselines", /^[0-9a-f-]+\.json$/i],
       ["business-architecture-baseline-history", /^business-architecture-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["system-solution-architectures", /^[0-9a-f-]+\.json$/i],
+      ["system-solution-architecture-history", /^system-solution-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -982,6 +987,10 @@ export class GaepRepository {
     if (/^business-architecture-baselines\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^business-architecture-baseline-history\/business-architecture-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, businessArchitectureBaselineSchema)
+    }
+    if (/^system-solution-architectures\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^system-solution-architecture-history\/system-solution-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, systemSolutionArchitectureSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
