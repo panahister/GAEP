@@ -43,6 +43,7 @@ const dataModelId = "45454545-4545-4545-8545-454545454545"
 const authorizationModelId = "46464646-4646-4646-8646-464646464646"
 const eventIntegrationModelId = "47474747-4747-4747-8747-474747474747"
 const failureRecoveryModelId = "48484848-4848-4848-8848-484848484848"
+const architectureChallengeModelId = "49494949-4949-4949-8949-494949494949"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -110,6 +111,8 @@ input.on("line", (line) => {
       return readEventIntegrationModel(id, request.params)
     case "recovery.models.snapshot":
       return readFailureRecoveryModel(id, request.params)
+    case "challenge.models.snapshot":
+      return readArchitectureChallengeModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -1213,6 +1216,68 @@ function readFailureRecoveryModel(id, params) {
   if (workspacePath.endsWith("bad-failure-recovery-model-snapshot-digest")) value.model.recoveryPlanCount = 5
   if (workspacePath.endsWith("bad-failure-recovery-model-snapshot-private")) {
     value.recoveryEvidence = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readArchitectureChallengeModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE ARCHITECTURE CHALLENGE PARAMS")
+  }
+  const modelDigest = `sha256:${"d".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "architecture-challenge-model-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    model: { recordId: architectureChallengeModelId, revision: 2, digest: modelDigest },
+    challengeSubjectCount: 3,
+    assumptionCount: 4,
+    alternativeCount: 5,
+    findingCount: 6,
+    responseCount: 2,
+    unrespondedFindingCount: 4,
+    unresolvedAssumptionCount: 2,
+    unresolvedRequirementCount: 1,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 1,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more Challenge Findings lack an attributable candidate response"],
+    assessedAt: "2026-07-26T16:00:00.000Z",
+    authorityBoundary: "architecture-challenge-status-reports-candidate-coverage-and-gaps-and-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "architecture-challenge-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    model: {
+      id: architectureChallengeModelId,
+      revision: 2,
+      digest: modelDigest,
+      membershipDigest: `sha256:${"b".repeat(64)}`,
+      state: "candidate",
+      challengeSubjectCount: 3,
+      assumptionCount: 4,
+      alternativeCount: 5,
+      findingCount: 6,
+      responseCount: 2,
+      updatedAt: "2026-07-26T15:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-challenge-content-assumptions-evidence-findings-responses-source-content-personal-data-secrets-or-credentials",
+    authorityBoundary: "architecture-challenge-projection-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-architecture-challenge-snapshot-binding")) content.initiative.id = architectureChallengeModelId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-architecture-challenge-snapshot-digest")) value.model.findingCount = 7
+  if (workspacePath.endsWith("bad-architecture-challenge-snapshot-private")) {
+    value.challengeEvidence = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
