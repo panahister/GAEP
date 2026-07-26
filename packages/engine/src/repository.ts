@@ -17,6 +17,7 @@ import {
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
+  failureRecoveryModelSchema,
   auditCheckpointSchema,
   auditEventSchema,
   businessArchitectureBaselineSchema,
@@ -119,6 +120,8 @@ const directoryNames = [
   "authorization-model-history",
   "event-integration-models",
   "event-integration-model-history",
+  "failure-recovery-models",
+  "failure-recovery-model-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -910,6 +913,8 @@ export class GaepRepository {
       ["authorization-model-history", /^authorization-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["event-integration-models", /^[0-9a-f-]+\.json$/i],
       ["event-integration-model-history", /^event-integration-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["failure-recovery-models", /^[0-9a-f-]+\.json$/i],
+      ["failure-recovery-model-history", /^failure-recovery-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1045,6 +1050,10 @@ export class GaepRepository {
     if (/^event-integration-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^event-integration-model-history\/event-integration-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, eventIntegrationModelSchema)
+    }
+    if (/^failure-recovery-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^failure-recovery-model-history\/failure-recovery-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, failureRecoveryModelSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

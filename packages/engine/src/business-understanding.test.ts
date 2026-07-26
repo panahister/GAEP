@@ -7,6 +7,8 @@ import {
   authorizationModelRequirementIds,
   eventIntegrationModelInputSchema,
   eventIntegrationRequirementIds,
+  failureRecoveryModelInputSchema,
+  failureRecoveryRequirementIds,
   boundedContextModelInputSchema,
   securityPrivacyAssessmentInputSchema,
   securityPrivacyRequirementIds,
@@ -27,6 +29,8 @@ import {
   type AuthorizationModelInput,
   type EventIntegrationModel,
   type EventIntegrationModelInput,
+  type FailureRecoveryModel,
+  type FailureRecoveryModelInput,
   type SecurityPrivacyAssessment,
   type SecurityPrivacyAssessmentInput,
   type ProcessModelInput,
@@ -2289,6 +2293,202 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function failureRecoveryModelInput(
+    architecture: SystemSolutionArchitecture,
+    boundedContextModel: BoundedContextModel,
+    operatingModel: OperatingModel,
+    securityPrivacyAssessment: SecurityPrivacyAssessment,
+    processModel: ProcessModel,
+    dataModel: DataModel,
+    authorizationModel: AuthorizationModel,
+    eventIntegrationModel: EventIntegrationModel,
+    overrides: Partial<FailureRecoveryModelInput> = {},
+  ): FailureRecoveryModelInput {
+    const failureModeKeys = ["uncertain-candidate-revision"]
+    const retryPolicyKeys = ["bounded-candidate-retry"]
+    const compensationPlanKeys = ["candidate-revision-compensation"]
+    const recoveryPlanKeys = ["candidate-context-recovery"]
+    const recoveryEvidenceDefinitionKeys = ["candidate-recovery-evidence"]
+    const requirementCoverage = [...failureRecoveryRequirementIds]
+      .sort((left, right) => left.localeCompare(right))
+      .map((requirementId) => ({
+        requirementId,
+        state: "covered-candidate" as const,
+        failureModeKeys,
+        retryPolicyKeys,
+        compensationPlanKeys,
+        recoveryPlanKeys,
+        recoveryEvidenceDefinitionKeys,
+        basis: "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+        evidence: [reference()],
+      }))
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Failure and Recovery Model",
+      scope: "Model explicit candidate failure modes, retry classifications, compensation obligations, recovery paths, and required evidence without representing a failure occurrence, attempted retry, executed compensation, restored state, successful recovery, return-to-service decision, readiness state, or action authority.",
+      systemSolutionArchitecture: {
+        recordId: architecture.id,
+        revision: architecture.revision,
+        digest: canonicalDigest(architecture),
+      },
+      boundedContextModel: {
+        recordId: boundedContextModel.id,
+        revision: boundedContextModel.revision,
+        digest: canonicalDigest(boundedContextModel),
+      },
+      operatingModel: {
+        recordId: operatingModel.id,
+        revision: operatingModel.revision,
+        digest: canonicalDigest(operatingModel),
+      },
+      securityPrivacyAssessment: {
+        recordId: securityPrivacyAssessment.id,
+        revision: securityPrivacyAssessment.revision,
+        digest: canonicalDigest(securityPrivacyAssessment),
+      },
+      processModel: {
+        recordId: processModel.id,
+        revision: processModel.revision,
+        digest: canonicalDigest(processModel),
+      },
+      dataModel: {
+        recordId: dataModel.id,
+        revision: dataModel.revision,
+        digest: canonicalDigest(dataModel),
+      },
+      authorizationModel: {
+        recordId: authorizationModel.id,
+        revision: authorizationModel.revision,
+        digest: canonicalDigest(authorizationModel),
+      },
+      eventIntegrationModel: {
+        recordId: eventIntegrationModel.id,
+        revision: eventIntegrationModel.revision,
+        digest: canonicalDigest(eventIntegrationModel),
+      },
+      failureModes: [{
+        key: "uncertain-candidate-revision",
+        name: "Uncertain candidate revision effect",
+        category: "uncertain-result",
+        affectedProcessKeys: ["governed-context-review"],
+        affectedEventTypeKeys: ["candidate-finalized-event", "review-requested-event"],
+        affectedCommandKeys: ["assess-candidate-command", "revise-candidate-command"],
+        affectedAdapterKeys: ["governed-context-adapter"],
+        affectedRouteKeys: ["governed-context-route"],
+        affectedDataEntityKeys: ["governed-record", "product-studio-projection"],
+        effectDescriptors: ["external-effect", "provisional", "reversible-change"],
+        detectionSignals: ["Authoritative receipt is absent after a possible material effect", "Expected version or postcondition cannot be reconciled with the exact governed record"],
+        containmentRule: "Stop dependent success, preserve the exact attempted command and observed evidence, quarantine conflicting updates, and do not retry or compensate until authority and effect truth are re-established.",
+        propagationBoundary: "The unresolved state propagates only to the exact Product, Initiative, candidate record, external route, and dependent decisions; unrelated records remain separately assessed.",
+        userAndBusinessImpact: "Reviewers may see an explicit uncertain candidate state and blocked dependent workflow while no success, failure, approval, readiness, or absence of effect is inferred.",
+        explicitNonReversibilityBehavior: "If an external disclosure or irreversible effect may have occurred, preserve the residual effect and evidence, prohibit false rollback claims, and require accountable escalation.",
+        retryPolicyKeys,
+        compensationPlanKeys,
+        recoveryPlanKeys,
+        classification: "internal",
+        occurrenceState: "definition-only-not-observed",
+        sources: [reference()],
+      }],
+      retryPolicies: [{
+        key: "bounded-candidate-retry",
+        failureModeKeys,
+        commandKeys: ["assess-candidate-command", "revise-candidate-command"],
+        adapterKeys: ["governed-context-adapter"],
+        authorizationActionKeys: ["assess-candidate", "revise-candidate"],
+        failureClassification: "unknown-stop",
+        maximumAttempts: 1,
+        timeoutAndBackoff: "No automatic retry is permitted while effect truth is unknown; a separately authorized retry starts only after exact reconciliation and uses a bounded deterministic delay.",
+        retryCondition: "Retry is eligible only when the prior attempt is authoritatively proven not committed or the exact idempotency guarantee makes duplicate material effects impossible.",
+        idempotencyScopeAndKey: "Bind exact command version, actor and authority scope, Product, Initiative, candidate identity, expected revision, payload digest, route, adapter, and validity interval.",
+        duplicateEffectRule: "A duplicate identity returns the existing authoritative receipt without repeating a material mutation or external communication.",
+        changedConditionRule: "Any changed record, policy, authority, classification, destination, evidence, or idempotency input invalidates the retry candidate and requires a new reviewed request.",
+        exhaustionBehavior: "Preserve the final known and unknown effects, block aggregate success, create an explicit recovery obligation, and escalate without synthesizing a failure or success result.",
+        retryState: "not-attempted",
+        safetyState: "not-established",
+        authorizationState: "not-granted",
+        sources: [reference()],
+      }],
+      compensationPlans: [{
+        key: "candidate-revision-compensation",
+        failureModeKeys,
+        originalCommandKeys: ["revise-candidate-command"],
+        compensationCommandKeys: ["revise-candidate-command"],
+        authorizationActionKeys: ["revise-candidate"],
+        affectedDataEntityKeys: ["governed-record", "product-studio-projection"],
+        preconditions: ["The original effect, exact prior and resulting revisions, current authority, residual effects, and compensation eligibility are independently verified"],
+        compensationSteps: ["Prepare a separately attributable superseding candidate revision that restores only reversible governed state while preserving immutable history and residual effects"],
+        verificationPostconditions: ["Verify immutable history, current revision, predecessor chain, audit receipt, unresolved external effects, and every dependent projection against exact digests"],
+        residualEffectRule: "External communications, observations, audit history, and irreversible disclosures remain visible residual effects and are never represented as erased by compensation.",
+        compensationFailureBehavior: "A failed, partial, denied, cancelled, timed-out, or uncertain compensation remains a new explicit governed result and cannot establish restoration or recovery success.",
+        originalEffectBindingRule: "Every compensation request binds the exact original command identity, attempt, actor, authority, subject revision, receipts, observed effects, and unresolved effect boundaries.",
+        executionState: "not-executed",
+        restorationState: "not-established",
+        authorizationState: "not-granted",
+        sources: [reference()],
+      }],
+      recoveryPlans: [{
+        key: "candidate-context-recovery",
+        failureModeKeys,
+        processKeys: ["governed-context-review"],
+        routeKeys: ["governed-context-route"],
+        ownerRoleKeys: ["gaep-steward", "initiative-owner"],
+        authorizationActionKeys: ["assess-candidate", "revise-candidate"],
+        lastVerifiedSafeStateRule: "Resolve the last exact Product, Initiative, candidate, audit, authorization, and external receipt state whose digests and postconditions are independently verified.",
+        knownAndUncertainEffectsRule: "Inventory requested, attempted, observed, committed, failed, compensated, denied, cancelled, timed-out, and unknown effects separately without collapsing transport into business truth.",
+        containmentSteps: ["Freeze dependent candidate transitions and external routes while preserving current records, audit history, evidence, and conflicting observations"],
+        reconciliationSteps: ["Compare exact local history, external authoritative receipts, idempotency identities, postconditions, and residual effects under accountable human review"],
+        restorationSteps: ["Apply only separately authorized version-bound repairs or compensating revisions, preserving immutable history and every non-reversible residual effect"],
+        revalidationRequirements: ["Revalidate identity, authority, policy, classification, evidence freshness, upstream bindings, audit integrity, postconditions, and affected projections"],
+        resumeConditions: ["Resume only after separately accepted recovery evidence establishes exact postconditions and an eligible human grants return-to-service authority for the unchanged scope"],
+        degradedModeBehavior: "Any degraded path is explicit, narrow, time-bounded, observable, reversible where possible, independently authorized, and cannot imply normal readiness.",
+        manualModeBehavior: "Manual steps require attributable eligible humans, exact instructions, two-person challenge where policy requires, authoritative receipts, and postcondition verification.",
+        quarantineAndRevocationBehavior: "Quarantine affected routes, revoke stale credentials or grants through their authoritative systems, preserve evidence, and record any unverified revocation as unresolved.",
+        residualRiskRule: "Document remaining irreversible, external, privacy, integrity, availability, authority, evidence, and interpretation risks; acceptance remains separate and not established.",
+        recoveryState: "not-started",
+        successState: "not-established",
+        returnToServiceState: "not-authorized",
+        sources: [reference()],
+      }],
+      recoveryEvidenceDefinitions: [{
+        key: "candidate-recovery-evidence",
+        recoveryPlanKey: "candidate-context-recovery",
+        requiredEvidenceTypes: ["audit-chain-verification", "authoritative-effect-receipt", "postcondition-verification", "residual-risk-review"],
+        authoritativeReceiptRule: "Receipts must bind exact command, attempt, subject, prior and resulting revisions, actor, authority, system, environment, effect, time, integrity, and provider result.",
+        postconditionVerificationRule: "An independent read verifies expected governed records, immutable history, audit continuity, external state where applicable, and every declared invariant against exact digests.",
+        reconciliationRule: "All local and external observations are retained with authority, time, ordering, version, fidelity, and uncertainty before an accountable reviewer can assess convergence.",
+        residualRiskRule: "Accepted evidence must enumerate unresolved irreversible, external, security, privacy, integrity, availability, authority, and evidence risks without treating acceptance as readiness.",
+        custodyIntegrityAndRetention: "Evidence requires attributable origin, collection time, content digest, chain of custody, classification, access controls, retention rule, and invalidation or expiry conditions.",
+        evidenceState: "definition-only-not-collected",
+        acceptanceState: "not-established",
+        sources: [reference()],
+      }],
+      requirementCoverage,
+      governance: {
+        failureModelStewardRoleKeys: ["gaep-steward", "initiative-owner"],
+        recoveryOwnerRoleKeys: ["gaep-steward", "initiative-owner"],
+        recoveryVerifierRoleKeys: ["gaep-steward", "initiative-owner"],
+        reviewState: "under-challenge",
+        failureRegistryApprovalState: "not-granted",
+        retrySafetyState: "not-established",
+        compensationApprovalState: "not-granted",
+        recoveryPlanApprovalState: "not-granted",
+        recoveryEvidenceAcceptanceState: "not-established",
+        operationalReadinessState: "not-established",
+        returnToServiceAuthorityState: "not-granted",
+        executionAuthorityState: "not-granted",
+        basis: "Named candidate roles may prepare and challenge definitions, but only separately verified eligible human authorities and exact current records can approve registries, establish retry safety, authorize compensation, accept recovery evidence, establish readiness, grant return to service, or authorize execution.",
+        sources: [reference()],
+      },
+      assumptions: ["The selected local Product, Initiative, upstream model revisions, and Source records remain the exact bounded Failure and Recovery Model scope"],
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      limitations: ["No failure occurrence, retry attempt or safety determination, compensation execution or restoration, recovered state, accepted recovery evidence, operational readiness, return-to-service decision, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   async function createArchitectureAndBoundedContext() {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const capabilityMap = await engine.businessCapabilityMap.create(
@@ -2371,6 +2571,23 @@ describe("Business understanding governance", () => {
       actorId,
     )
     return { ...upstream, authorizationModel }
+  }
+
+  async function createFailureRecoveryUpstream() {
+    const upstream = await createEventIntegrationUpstream()
+    const eventIntegrationModel = await engine.eventIntegrationModel.create(
+      eventIntegrationModelInput(
+        upstream.architecture,
+        upstream.boundedContextModel,
+        upstream.operatingModel,
+        upstream.securityPrivacyAssessment,
+        upstream.processModel,
+        upstream.dataModel,
+        upstream.authorizationModel,
+      ),
+      actorId,
+    )
+    return { ...upstream, eventIntegrationModel }
   }
 
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
@@ -4414,6 +4631,208 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("persists exact versioned Failure and Recovery Model candidates and privacy-safe status", async () => {
+    const upstream = await createFailureRecoveryUpstream()
+    const input = failureRecoveryModelInput(
+      upstream.architecture,
+      upstream.boundedContextModel,
+      upstream.operatingModel,
+      upstream.securityPrivacyAssessment,
+      upstream.processModel,
+      upstream.dataModel,
+      upstream.authorizationModel,
+      upstream.eventIntegrationModel,
+    )
+    const model = await engine.failureRecoveryModel.create(input, actorId)
+
+    expect(model).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      membershipDigest: canonicalDigest({
+        systemSolutionArchitecture: input.systemSolutionArchitecture,
+        boundedContextModel: input.boundedContextModel,
+        operatingModel: input.operatingModel,
+        securityPrivacyAssessment: input.securityPrivacyAssessment,
+        processModel: input.processModel,
+        dataModel: input.dataModel,
+        authorizationModel: input.authorizationModel,
+        eventIntegrationModel: input.eventIntegrationModel,
+      }),
+      governance: {
+        failureRegistryApprovalState: "not-granted",
+        retrySafetyState: "not-established",
+        compensationApprovalState: "not-granted",
+        recoveryPlanApprovalState: "not-granted",
+        recoveryEvidenceAcceptanceState: "not-established",
+        operationalReadinessState: "not-established",
+        returnToServiceAuthorityState: "not-granted",
+        executionAuthorityState: "not-granted",
+        reviewState: "under-challenge",
+      },
+      authorityBoundary: expect.stringContaining("does-not-prove-failure-occurrence"),
+    })
+    expect(await engine.failureRecoveryModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id, revision: 1, digest: canonicalDigest(model) },
+      failureModeCount: 1,
+      retryPolicyCount: 1,
+      compensationPlanCount: 1,
+      recoveryPlanCount: 1,
+      recoveryEvidenceDefinitionCount: 1,
+      uncoveredProcessCount: 0,
+      uncoveredCommandCount: 0,
+      uncoveredRouteCount: 0,
+      uncoveredAuthorizationActionCount: 0,
+      unresolvedRecoveryEvidenceCount: 0,
+      unresolvedRequirementCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      authorityBoundary: expect.stringContaining("does-not-prove-failure-occurrence"),
+    })
+    const projection = await engine.failureRecoveryModel.project(initiative.id)
+    expect(projection).toMatchObject({
+      model: {
+        id: model.id,
+        failureModeCount: 1,
+        retryPolicyCount: 1,
+        compensationPlanCount: 1,
+        recoveryPlanCount: 1,
+        recoveryEvidenceDefinitionCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-failure-evidence"),
+      authorityBoundary: expect.stringContaining("does-not-prove-failure-occurrence"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Authoritative receipt is absent")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.failureRecoveryModel.revise(
+      model.id,
+      model.revision,
+      failureRecoveryModelInput(
+        upstream.architecture,
+        upstream.boundedContextModel,
+        upstream.operatingModel,
+        upstream.securityPrivacyAssessment,
+        upstream.processModel,
+        upstream.dataModel,
+        upstream.authorizationModel,
+        upstream.eventIntegrationModel,
+        { limitations: [
+          "No failure occurrence, retry attempt or safety determination, compensation execution or restoration, recovered state, accepted recovery evidence, operational readiness, return-to-service decision, release, deployment, or action authority is represented",
+          "The candidate remains subject to independent failure, recovery, authority, evidence, privacy, reliability, native-host, and Product Owner challenge",
+        ] },
+      ),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: model.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(model),
+      governance: {
+        failureRegistryApprovalState: "not-granted",
+        retrySafetyState: "not-established",
+        compensationApprovalState: "not-granted",
+        recoveryPlanApprovalState: "not-granted",
+        recoveryEvidenceAcceptanceState: "not-established",
+        operationalReadinessState: "not-established",
+        returnToServiceAuthorityState: "not-granted",
+        executionAuthorityState: "not-granted",
+      },
+    })
+    expect((await engine.failureRecoveryModel.listHistory(model.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "failure.recovery-model.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(model),
+        state: "candidate",
+        failureRegistryApprovalState: "not-granted",
+        retrySafetyState: "not-established",
+        compensationApprovalState: "not-granted",
+        recoveryPlanApprovalState: "not-granted",
+        recoveryEvidenceAcceptanceState: "not-established",
+        operationalReadinessState: "not-established",
+        returnToServiceAuthorityState: "not-granted",
+        executionAuthorityState: "not-granted",
+        reviewState: "under-challenge",
+      },
+    })
+  })
+
+  it("rejects forged Failure and Recovery state, authority, graph, roles, bindings, and secrets", async () => {
+    const upstream = await createFailureRecoveryUpstream()
+    const base = failureRecoveryModelInput(
+      upstream.architecture,
+      upstream.boundedContextModel,
+      upstream.operatingModel,
+      upstream.securityPrivacyAssessment,
+      upstream.processModel,
+      upstream.dataModel,
+      upstream.authorizationModel,
+      upstream.eventIntegrationModel,
+    )
+    expect(() => failureRecoveryModelInputSchema.parse({
+      ...base,
+      governance: { ...base.governance, returnToServiceAuthorityState: "granted" },
+    })).toThrow()
+    expect(() => failureRecoveryModelInputSchema.parse({
+      ...base,
+      failureModes: base.failureModes.map((entry) => ({ ...entry, occurrenceState: "observed" })),
+    })).toThrow()
+    expect(() => failureRecoveryModelInputSchema.parse({
+      ...base,
+      failureModes: base.failureModes.map((entry) => ({ ...entry, retryPolicyKeys: ["invented-retry"] })),
+    })).toThrow(/declared retry, compensation, and recovery/)
+    await expect(engine.failureRecoveryModel.create({
+      ...base,
+      governance: { ...base.governance, recoveryOwnerRoleKeys: ["invented-role"] },
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.failureRecoveryModel.create({
+      ...base,
+      failureModes: base.failureModes.map((entry) => ({ ...entry, affectedEventTypeKeys: ["invented-event"] })),
+    }, actorId)).rejects.toThrow(/exact bound Process, Event, Command/)
+    await expect(engine.failureRecoveryModel.create({
+      ...base,
+      eventIntegrationModel: { ...base.eventIntegrationModel, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Event and Integration Model/)
+    await expect(engine.failureRecoveryModel.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable recovery context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const model = await engine.failureRecoveryModel.create(base, actorId)
+    await engine.eventIntegrationModel.revise(
+      upstream.eventIntegrationModel.id,
+      upstream.eventIntegrationModel.revision,
+      eventIntegrationModelInput(
+        upstream.architecture,
+        upstream.boundedContextModel,
+        upstream.operatingModel,
+        upstream.securityPrivacyAssessment,
+        upstream.processModel,
+        upstream.dataModel,
+        upstream.authorizationModel,
+        { limitations: [
+          "No event occurrence, command send or delivery, external contract acceptance, adapter evaluation or activation, credential binding, Authorization Grant, executed effect, operational readiness, release, deployment, or action authority is represented",
+          "The exact Event and Integration Model changed after Failure and Recovery Model capture",
+        ] },
+      ),
+      actorId,
+    )
+    expect(await engine.failureRecoveryModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -4540,6 +4959,19 @@ describe("Business understanding governance", () => {
       ),
       actorId,
     )
+    const failureRecoveryModel = await engine.failureRecoveryModel.create(
+      failureRecoveryModelInput(
+        systemSolutionArchitecture,
+        boundedContextModel,
+        operatingModel,
+        securityPrivacyAssessment,
+        processModel,
+        dataModel,
+        authorizationModel,
+        eventIntegrationModel,
+      ),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -4568,6 +5000,8 @@ describe("Business understanding governance", () => {
       `authorization-model-history/authorization-model-${authorizationModel.id}-r1.json`,
       `event-integration-models/${eventIntegrationModel.id}.json`,
       `event-integration-model-history/event-integration-model-${eventIntegrationModel.id}-r1.json`,
+      `failure-recovery-models/${failureRecoveryModel.id}.json`,
+      `failure-recovery-model-history/failure-recovery-model-${failureRecoveryModel.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -4692,6 +5126,37 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedEventBinding))
       .rejects.toThrow(/Event and Integration Model .* Authorization Model reference is unresolved/)
+
+    const forgeFailureEventModel = (content: unknown) => {
+      const record = content as FailureRecoveryModel
+      const eventIntegrationModelReference = { ...record.eventIntegrationModel, digest: digest("9") }
+      return {
+        ...record,
+        eventIntegrationModel: eventIntegrationModelReference,
+        membershipDigest: canonicalDigest({
+          systemSolutionArchitecture: record.systemSolutionArchitecture,
+          boundedContextModel: record.boundedContextModel,
+          operatingModel: record.operatingModel,
+          securityPrivacyAssessment: record.securityPrivacyAssessment,
+          processModel: record.processModel,
+          dataModel: record.dataModel,
+          authorizationModel: record.authorizationModel,
+          eventIntegrationModel: eventIntegrationModelReference,
+        }),
+      }
+    }
+    let forgedFailureBinding = replacePortableRecord(
+      bundle,
+      `failure-recovery-models/${failureRecoveryModel.id}.json`,
+      forgeFailureEventModel,
+    )
+    forgedFailureBinding = replacePortableRecord(
+      forgedFailureBinding,
+      `failure-recovery-model-history/failure-recovery-model-${failureRecoveryModel.id}-r1.json`,
+      forgeFailureEventModel,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedFailureBinding))
+      .rejects.toThrow(/Failure and Recovery Model .* Event and Integration Model reference is unresolved/)
 
     const rebound = replacePortableRecord(
       bundle,

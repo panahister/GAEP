@@ -11,6 +11,7 @@ import {
   dataModelSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
+  failureRecoveryModelSchema,
   businessArchitectureBaselineSchema,
   businessCapabilityMapSchema,
   businessRuleCatalogSchema,
@@ -69,6 +70,7 @@ import {
   type DataModel,
   type AuthorizationModel,
   type EventIntegrationModel,
+  type FailureRecoveryModel,
   type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
   type BusinessRuleCatalog,
@@ -2052,6 +2054,16 @@ export class ProductStudioService {
       /^event-integration-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       eventIntegrationModelSchema,
     )
+    const failureRecoveryModels = await this.listRecords(
+      "failure-recovery-models",
+      /^[0-9a-f-]+\.json$/i,
+      failureRecoveryModelSchema,
+    )
+    const failureRecoveryModelHistory = await this.listRecords(
+      "failure-recovery-model-history",
+      /^failure-recovery-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      failureRecoveryModelSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2257,6 +2269,13 @@ export class ProductStudioService {
       "event-integration-model-candidate",
       eventIntegrationModelHistory,
       (record) => `event-integration-model-history/event-integration-model-${record.id}-r${record.revision}.json`,
+    )
+    append("failure-recovery-models", "failure-recovery-model-candidate", failureRecoveryModels)
+    append(
+      "failure-recovery-model-history",
+      "failure-recovery-model-candidate",
+      failureRecoveryModelHistory,
+      (record) => `failure-recovery-model-history/failure-recovery-model-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2553,6 +2572,14 @@ export class ProductStudioService {
           `event-integration-model-history/event-integration-model-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Event and Integration Model history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("failure-recovery-model-history/")) {
+        const record = validated as FailureRecoveryModel
+        const expectedHistoryPath =
+          `failure-recovery-model-history/failure-recovery-model-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Failure and Recovery Model history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3679,7 +3706,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3711,7 +3738,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -4640,7 +4667,7 @@ export class ProductStudioService {
     const eventIntegrationModelHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("event-integration-model-history/"))
       .map(([, record]) => eventIntegrationModelSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactEventIntegrationModels = validateVersionedBusinessRecords(
       eventIntegrationModels,
       eventIntegrationModelHistory,
       "Event and Integration Model",
@@ -4760,6 +4787,108 @@ export class ProductStudioService {
       if (model.mappings.some((mapping) =>
         mapping.rows.some((row) => !validMappingSubjects.has(row.gaepSubjectKey)))) {
         throw new Error(`Import Event and Integration Model ${model.id} mapping subject is unresolved`)
+      }
+    }
+
+    const failureRecoveryModels = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("failure-recovery-models/"))
+      .map(([, record]) => failureRecoveryModelSchema.parse(record))
+    const failureRecoveryModelHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("failure-recovery-model-history/"))
+      .map(([, record]) => failureRecoveryModelSchema.parse(record))
+    validateVersionedBusinessRecords(
+      failureRecoveryModels,
+      failureRecoveryModelHistory,
+      "Failure and Recovery Model",
+    )
+    for (const model of [...failureRecoveryModels, ...failureRecoveryModelHistory]) {
+      const resolveBound = <T extends { id: string; revision: number; initiativeId: string }>(
+        reference: { recordId: string; revision: number; digest: string },
+        exact: Map<string, T>,
+        label: string,
+      ): T => {
+        const record = exact.get(`${reference.recordId}:${reference.revision}:${reference.digest}`)
+        if (!record || record.initiativeId !== model.initiativeId) {
+          throw new Error(`Import Failure and Recovery Model ${model.id} exact ${label} reference is unresolved`)
+        }
+        return record
+      }
+      resolveBound(model.systemSolutionArchitecture, exactSystemSolutionArchitectures, "System/Solution Architecture")
+      resolveBound(model.boundedContextModel, exactBoundedContextModels, "Bounded Context Model")
+      const operatingModel = resolveBound(model.operatingModel, exactOperatingModels, "Operating Model")
+      resolveBound(
+        model.securityPrivacyAssessment,
+        exactSecurityPrivacyAssessments,
+        "Security, Privacy, and Threat Assessment",
+      )
+      const processModel = resolveBound(model.processModel, exactProcessModels, "Process Model")
+      const dataModel = resolveBound(model.dataModel, exactDataModels, "Data Model")
+      const authorizationModel = resolveBound(model.authorizationModel, exactAuthorizationModels, "Authorization Model")
+      const eventIntegrationModel = resolveBound(
+        model.eventIntegrationModel,
+        exactEventIntegrationModels,
+        "Event and Integration Model",
+      )
+      if (model.membershipDigest !== canonicalDigest({
+        systemSolutionArchitecture: model.systemSolutionArchitecture,
+        boundedContextModel: model.boundedContextModel,
+        operatingModel: model.operatingModel,
+        securityPrivacyAssessment: model.securityPrivacyAssessment,
+        processModel: model.processModel,
+        dataModel: model.dataModel,
+        authorizationModel: model.authorizationModel,
+        eventIntegrationModel: model.eventIntegrationModel,
+      })) {
+        throw new Error(`Import Failure and Recovery Model ${model.id} membership digest is invalid`)
+      }
+      const roleKeys = new Set(operatingModel.roles.map((entry) => entry.key))
+      const processKeys = new Set(processModel.processes.map((entry) => entry.key))
+      const dataEntityKeys = new Set(dataModel.entities.map((entry) => entry.key))
+      const authorizationActionKeys = new Set(authorizationModel.actions.map((entry) => entry.key))
+      const eventKeys = new Set(eventIntegrationModel.eventTypes.map((entry) => entry.key))
+      const commandKeys = new Set(eventIntegrationModel.commands.map((entry) => entry.key))
+      const adapterKeys = new Set(eventIntegrationModel.adapters.map((entry) => entry.key))
+      const routeKeys = new Set(eventIntegrationModel.routes.map((entry) => entry.key))
+      for (const failure of model.failureModes) {
+        if (failure.affectedProcessKeys.some((key) => !processKeys.has(key)) ||
+            failure.affectedEventTypeKeys.some((key) => !eventKeys.has(key)) ||
+            failure.affectedCommandKeys.some((key) => !commandKeys.has(key)) ||
+            failure.affectedAdapterKeys.some((key) => !adapterKeys.has(key)) ||
+            failure.affectedRouteKeys.some((key) => !routeKeys.has(key)) ||
+            failure.affectedDataEntityKeys.some((key) => !dataEntityKeys.has(key))) {
+          throw new Error(`Import Failure and Recovery Model ${model.id} Failure Mode trace is unresolved`)
+        }
+      }
+      for (const retry of model.retryPolicies) {
+        if (retry.commandKeys.some((key) => !commandKeys.has(key)) ||
+            retry.adapterKeys.some((key) => !adapterKeys.has(key)) ||
+            retry.authorizationActionKeys.some((key) => !authorizationActionKeys.has(key))) {
+          throw new Error(`Import Failure and Recovery Model ${model.id} Retry Policy trace is unresolved`)
+        }
+      }
+      for (const compensation of model.compensationPlans) {
+        if ([...compensation.originalCommandKeys, ...compensation.compensationCommandKeys]
+          .some((key) => !commandKeys.has(key)) ||
+            compensation.authorizationActionKeys.some((key) => !authorizationActionKeys.has(key)) ||
+            compensation.affectedDataEntityKeys.some((key) => !dataEntityKeys.has(key))) {
+          throw new Error(`Import Failure and Recovery Model ${model.id} Compensation Plan trace is unresolved`)
+        }
+      }
+      for (const recovery of model.recoveryPlans) {
+        if (recovery.processKeys.some((key) => !processKeys.has(key)) ||
+            recovery.routeKeys.some((key) => !routeKeys.has(key)) ||
+            recovery.ownerRoleKeys.some((key) => !roleKeys.has(key)) ||
+            recovery.authorizationActionKeys.some((key) => !authorizationActionKeys.has(key))) {
+          throw new Error(`Import Failure and Recovery Model ${model.id} Recovery Plan trace is unresolved`)
+        }
+      }
+      const governanceRoles = [
+        ...model.governance.failureModelStewardRoleKeys,
+        ...model.governance.recoveryOwnerRoleKeys,
+        ...model.governance.recoveryVerifierRoleKeys,
+      ]
+      if (governanceRoles.some((key) => !roleKeys.has(key))) {
+        throw new Error(`Import Failure and Recovery Model ${model.id} governance role trace is unresolved`)
       }
     }
 
@@ -5412,6 +5541,10 @@ export class ProductStudioService {
         /^event-integration-model-history\/event-integration-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "event-integration-model-candidate"
     }
+    if (/^failure-recovery-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^failure-recovery-model-history\/failure-recovery-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "failure-recovery-model-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -5508,6 +5641,10 @@ export class ProductStudioService {
     if (/^event-integration-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^event-integration-model-history\/event-integration-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return eventIntegrationModelSchema
+    }
+    if (/^failure-recovery-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^failure-recovery-model-history\/failure-recovery-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return failureRecoveryModelSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
