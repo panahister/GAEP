@@ -3,6 +3,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import {
+  architectureChallengeModelInputSchema,
+  architectureChallengeRequirementIds,
   authorizationModelInputSchema,
   authorizationModelRequirementIds,
   eventIntegrationModelInputSchema,
@@ -24,6 +26,7 @@ import {
   systemSolutionArchitectureInputSchema,
   valueStreamModelInputSchema,
   type BoundedContextModelInput,
+  type ArchitectureChallengeModelInput,
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
@@ -2489,6 +2492,172 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function architectureChallengeModelInput(
+    architecture: SystemSolutionArchitecture,
+    boundedContextModel: BoundedContextModel,
+    operatingModel: OperatingModel,
+    securityPrivacyAssessment: SecurityPrivacyAssessment,
+    processModel: ProcessModel,
+    dataModel: DataModel,
+    authorizationModel: AuthorizationModel,
+    eventIntegrationModel: EventIntegrationModel,
+    failureRecoveryModel: FailureRecoveryModel,
+    overrides: Partial<ArchitectureChallengeModelInput> = {},
+  ): ArchitectureChallengeModelInput {
+    const challengeSubjectKeys = ["shared-engine-decision"]
+    const assumptionKeys = ["host-launch-compatibility"]
+    const alternativeKeys = ["host-local-semantics", "shared-governed-engine"]
+    const findingKeys = ["shared-failure-domain"]
+    const responseKeys = ["shared-failure-domain-response"]
+    const requirementCoverage = [...architectureChallengeRequirementIds]
+      .sort((left, right) => left.localeCompare(right))
+      .map((requirementId) => ({
+        requirementId,
+        state: "covered-candidate" as const,
+        challengeSubjectKeys,
+        assumptionKeys,
+        alternativeKeys,
+        findingKeys,
+        responseKeys,
+        basis: "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+        evidence: [reference()],
+      }))
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Architecture Challenge",
+      scope: "Challenge the exact shared governed-engine boundary, assumptions, alternatives, trade-offs, failure modes, evidence, independence, and downstream consequences without converting a recommendation or response into assurance, risk acceptance, architecture approval, operational readiness, or action authority.",
+      systemSolutionArchitecture: { recordId: architecture.id, revision: architecture.revision, digest: canonicalDigest(architecture) },
+      boundedContextModel: { recordId: boundedContextModel.id, revision: boundedContextModel.revision, digest: canonicalDigest(boundedContextModel) },
+      operatingModel: { recordId: operatingModel.id, revision: operatingModel.revision, digest: canonicalDigest(operatingModel) },
+      securityPrivacyAssessment: { recordId: securityPrivacyAssessment.id, revision: securityPrivacyAssessment.revision, digest: canonicalDigest(securityPrivacyAssessment) },
+      processModel: { recordId: processModel.id, revision: processModel.revision, digest: canonicalDigest(processModel) },
+      dataModel: { recordId: dataModel.id, revision: dataModel.revision, digest: canonicalDigest(dataModel) },
+      authorizationModel: { recordId: authorizationModel.id, revision: authorizationModel.revision, digest: canonicalDigest(authorizationModel) },
+      eventIntegrationModel: { recordId: eventIntegrationModel.id, revision: eventIntegrationModel.revision, digest: canonicalDigest(eventIntegrationModel) },
+      failureRecoveryModel: { recordId: failureRecoveryModel.id, revision: failureRecoveryModel.revision, digest: canonicalDigest(failureRecoveryModel) },
+      challengeSubjects: [{
+        key: "shared-engine-decision",
+        subjectKind: "architecture-decision",
+        decisionQuestion: "Should every native Product Studio host delegate governed Product semantics and persistence to one shared local engine, despite the larger correlated failure domain?",
+        triggerContext: "The candidate System/Solution Architecture selects one shared governed engine across four native hosts and therefore requires explicit alternatives, failure-mode, independence, and downstream-consequence challenge.",
+        consequence: "high",
+        architectureConcernKeys: ["governed-system-boundary"],
+        architectureDecisionKeys: ["shared-engine-boundary"],
+        architectureElementKeys: ["gaep-engine", "product-studio-host", "workspace-store"],
+        architectureViewKeys: ["governed-system-context"],
+        qualityScenarioKeys: ["audit-integrity", "host-response-integrity"],
+        boundedContextKeys: ["governance-core", "product-studio"],
+        failureModeKeys: ["uncertain-candidate-revision"],
+        affectedImplementationUnits: ["All four native Product Studio host adapters and the shared governed engine"],
+        downstreamConsequences: ["A shared-engine contract or persistence failure can affect every host and requires bounded compatibility, recovery, and independent review evidence"],
+        classification: "internal",
+        sources: [reference()],
+      }],
+      assumptions: [{
+        key: "host-launch-compatibility",
+        challengeSubjectKeys,
+        statement: "Every supported native host can launch or connect to the exact packaged shared engine while preserving strict protocol and governed-store semantics.",
+        status: "supported-candidate",
+        falsificationConditions: ["A supported host cannot execute the exact packaged engine or cannot preserve the strict request, response, and repository contracts"],
+        supportingEvidence: [reference()],
+        counterEvidence: [reference()],
+        residualUncertainty: "Native supported-platform interaction, signing, installation, upgrade, accessibility, live-provider behavior, and Product Owner acceptance remain outside current local evidence.",
+      }],
+      alternatives: [{
+        key: "host-local-semantics",
+        challengeSubjectKeys,
+        name: "Host-local governed semantics",
+        description: "Each native host implements and persists Product semantics independently behind a shared conceptual contract.",
+        benefits: ["Host-specific implementation and deployment independence"],
+        tradeoffs: ["Four authority-bearing implementations require separate migration, audit, portability, and semantic-parity evidence"],
+        risks: ["Host-local behavior can silently diverge in governance, privacy, state, or authority semantics"],
+        architectureElementKeys: ["product-studio-host", "workspace-store"],
+        boundedContextKeys: ["product-studio"],
+        failureModeKeys: ["uncertain-candidate-revision"],
+        recommendationState: "not-recommended",
+        dispositionState: "candidate-unresolved",
+        sources: [reference()],
+      }, {
+        key: "shared-governed-engine",
+        challengeSubjectKeys,
+        name: "Shared governed engine",
+        description: "Every native host delegates Product semantics and governed persistence to one strict versioned engine contract.",
+        benefits: ["Exact cross-host semantics and one attributable governed-store boundary"],
+        tradeoffs: ["All hosts depend on shared protocol, packaging, compatibility, and recovery behavior"],
+        risks: ["A shared engine defect or incompatible package can affect every supported host"],
+        architectureElementKeys: ["gaep-engine", "product-studio-host", "workspace-store"],
+        boundedContextKeys: ["governance-core", "product-studio"],
+        failureModeKeys: ["uncertain-candidate-revision"],
+        recommendationState: "candidate-preferred",
+        dispositionState: "candidate-unresolved",
+        sources: [reference()],
+      }],
+      findings: [{
+        key: "shared-failure-domain",
+        challengeSubjectKeys,
+        challengerKind: "ai",
+        challengerId: "codex-architecture-challenger",
+        challengerRoleKeys: ["gaep-steward"],
+        concern: "The shared engine reduces semantic drift but concentrates validation, persistence, packaging, compatibility, and recovery risk across every host.",
+        evidence: [reference()],
+        consequence: "A correlated engine or protocol defect could block governed Product workflows across four hosts while a host-local design would isolate some failures at the cost of semantic divergence.",
+        severity: "high",
+        alternativeKeys,
+        requestedClarifications: ["Define which native-host and package evidence is required before a separately authorized architecture approval may be considered"],
+        limitations: ["The AI challenger is not an independent human reviewer and cannot approve architecture or accept risk"],
+        findingState: "open-candidate",
+        independenceState: "not-established",
+      }],
+      responses: [{
+        key: "shared-failure-domain-response",
+        findingKeys,
+        responderRoleKeys: ["initiative-owner"],
+        responseType: "acknowledge",
+        response: "Retain the shared-engine candidate while requiring strict host parsers, exact package evidence, immutable history, bounded failure behavior, and separate native acceptance before any architecture approval request.",
+        rationale: "Current local evidence supports semantic centralization, but the correlated failure domain and missing native acceptance remain explicit unresolved decision inputs.",
+        resultingTraceOrStateChange: "The challenge remains an open candidate input; no Architecture Decision, Approval Determination, Risk Acceptance, readiness state, or Authorization Grant is created.",
+        dispositionState: "candidate-not-decided",
+        decisionAuthorityState: "not-granted",
+        sources: [reference()],
+      }],
+      independence: {
+        authorRoleKeys: ["initiative-owner"],
+        challengerRoleKeys: ["gaep-steward"],
+        reviewerRoleKeys: ["gaep-steward", "initiative-owner"],
+        disclosedRoleOverlaps: ["The GAEP steward both maintains the engine boundary and authors this AI-assisted challenge evidence"],
+        sharedSourceDependencies: ["The architecture candidate and challenge rely on the same local repository and Source revision"],
+        sharedMethodToolOrModelDependencies: ["The current challenge and implementation were prepared through the same Codex task context"],
+        conflictsOfInterest: ["The implementation author benefits from retaining the implemented shared-engine design"],
+        compensatingControls: ["Require a separately assigned qualified human reviewer and exact native-host evidence before an approval case is assembled"],
+        requiredSeparation: "Architecture approval and material risk acceptance require independently verified eligible humans who did not generate the candidate recommendation and who can inspect the exact evidence and limitations.",
+        assessmentState: "not-established",
+        sources: [reference()],
+      },
+      requirementCoverage,
+      governance: {
+        challengeOwnerRoleKeys: ["initiative-owner"],
+        challengerRoleKeys: ["gaep-steward"],
+        responseOwnerRoleKeys: ["initiative-owner"],
+        reviewState: "under-challenge",
+        challengeCompletionState: "not-established",
+        independenceState: "not-established",
+        assuranceState: "not-established",
+        riskAcceptanceState: "not-granted",
+        architectureApprovalState: "not-granted",
+        operationalReadinessState: "not-established",
+        actionAuthorityState: "not-granted",
+        basis: "Named candidate roles may author, challenge, and respond, but only separately verified eligible human authorities and exact current evidence can complete independent review, establish assurance, accept risk, approve architecture, establish readiness, or authorize action.",
+        sources: [reference()],
+      },
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      limitations: ["No completed independent challenge, assurance conclusion, risk acceptance, architecture approval, native-host acceptance, operational readiness, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   async function createArchitectureAndBoundedContext() {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const capabilityMap = await engine.businessCapabilityMap.create(
@@ -2588,6 +2757,19 @@ describe("Business understanding governance", () => {
       actorId,
     )
     return { ...upstream, eventIntegrationModel }
+  }
+
+  async function createArchitectureChallengeUpstream() {
+    const upstream = await createFailureRecoveryUpstream()
+    const failureRecoveryModel = await engine.failureRecoveryModel.create(
+      failureRecoveryModelInput(
+        upstream.architecture, upstream.boundedContextModel, upstream.operatingModel,
+        upstream.securityPrivacyAssessment, upstream.processModel, upstream.dataModel,
+        upstream.authorizationModel, upstream.eventIntegrationModel,
+      ),
+      actorId,
+    )
+    return { ...upstream, failureRecoveryModel }
   }
 
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
@@ -4827,6 +5009,188 @@ describe("Business understanding governance", () => {
       actorId,
     )
     expect(await engine.failureRecoveryModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
+  it("persists exact versioned Architecture Challenge candidates with explicit non-authority boundaries", async () => {
+    const upstream = await createArchitectureChallengeUpstream()
+    const input = architectureChallengeModelInput(
+      upstream.architecture, upstream.boundedContextModel, upstream.operatingModel,
+      upstream.securityPrivacyAssessment, upstream.processModel, upstream.dataModel,
+      upstream.authorizationModel, upstream.eventIntegrationModel, upstream.failureRecoveryModel,
+    )
+    const model = await engine.architectureChallengeModel.create(input, actorId)
+
+    expect(model).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      membershipDigest: canonicalDigest({
+        systemSolutionArchitecture: input.systemSolutionArchitecture,
+        boundedContextModel: input.boundedContextModel,
+        operatingModel: input.operatingModel,
+        securityPrivacyAssessment: input.securityPrivacyAssessment,
+        processModel: input.processModel,
+        dataModel: input.dataModel,
+        authorizationModel: input.authorizationModel,
+        eventIntegrationModel: input.eventIntegrationModel,
+        failureRecoveryModel: input.failureRecoveryModel,
+      }),
+      governance: {
+        challengeCompletionState: "not-established",
+        independenceState: "not-established",
+        assuranceState: "not-established",
+        riskAcceptanceState: "not-granted",
+        architectureApprovalState: "not-granted",
+        operationalReadinessState: "not-established",
+        actionAuthorityState: "not-granted",
+        reviewState: "under-challenge",
+      },
+      authorityBoundary: expect.stringContaining("does-not-establish-independence"),
+    })
+    expect(await engine.architectureChallengeModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id, revision: 1, digest: canonicalDigest(model) },
+      challengeSubjectCount: 1,
+      assumptionCount: 1,
+      alternativeCount: 2,
+      findingCount: 1,
+      responseCount: 1,
+      unrespondedFindingCount: 0,
+      unresolvedAssumptionCount: 0,
+      unresolvedRequirementCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      authorityBoundary: expect.stringContaining("does-not-establish-independence"),
+    })
+    const projection = await engine.architectureChallengeModel.project(initiative.id)
+    expect(projection).toMatchObject({
+      model: {
+        id: model.id,
+        challengeSubjectCount: 1,
+        assumptionCount: 1,
+        alternativeCount: 2,
+        findingCount: 1,
+        responseCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-challenge-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-independence"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("concentrates validation")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.architectureChallengeModel.revise(
+      model.id,
+      model.revision,
+      architectureChallengeModelInput(
+        upstream.architecture, upstream.boundedContextModel, upstream.operatingModel,
+        upstream.securityPrivacyAssessment, upstream.processModel, upstream.dataModel,
+        upstream.authorizationModel, upstream.eventIntegrationModel, upstream.failureRecoveryModel,
+        { limitations: [
+          "No completed independent challenge, assurance conclusion, risk acceptance, architecture approval, native-host acceptance, operational readiness, release, deployment, or action authority is represented",
+          "The candidate remains subject to a separately assigned qualified human review of exact evidence, independence, conflicts, alternatives, and downstream consequences",
+        ] },
+      ),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: model.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(model),
+      governance: {
+        challengeCompletionState: "not-established",
+        independenceState: "not-established",
+        assuranceState: "not-established",
+        riskAcceptanceState: "not-granted",
+        architectureApprovalState: "not-granted",
+        operationalReadinessState: "not-established",
+        actionAuthorityState: "not-granted",
+      },
+    })
+    expect((await engine.architectureChallengeModel.listHistory(model.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "architecture.challenge-model.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(model),
+        state: "candidate",
+        challengeCompletionState: "not-established",
+        independenceState: "not-established",
+        assuranceState: "not-established",
+        riskAcceptanceState: "not-granted",
+        architectureApprovalState: "not-granted",
+        operationalReadinessState: "not-established",
+        actionAuthorityState: "not-granted",
+        reviewState: "under-challenge",
+      },
+    })
+  })
+
+  it("rejects forged Architecture Challenge authority, graph, roles, bindings, and secrets", async () => {
+    const upstream = await createArchitectureChallengeUpstream()
+    const base = architectureChallengeModelInput(
+      upstream.architecture, upstream.boundedContextModel, upstream.operatingModel,
+      upstream.securityPrivacyAssessment, upstream.processModel, upstream.dataModel,
+      upstream.authorizationModel, upstream.eventIntegrationModel, upstream.failureRecoveryModel,
+    )
+    expect(() => architectureChallengeModelInputSchema.parse({
+      ...base,
+      governance: { ...base.governance, architectureApprovalState: "granted" },
+    })).toThrow()
+    expect(() => architectureChallengeModelInputSchema.parse({
+      ...base,
+      findings: base.findings.map((entry) => ({ ...entry, independenceState: "established" })),
+    })).toThrow()
+    expect(() => architectureChallengeModelInputSchema.parse({
+      ...base,
+      findings: base.findings.map((entry) => ({ ...entry, alternativeKeys: ["invented-alternative"] })),
+    })).toThrow(/declared Alternatives/)
+    await expect(engine.architectureChallengeModel.create({
+      ...base,
+      governance: { ...base.governance, challengerRoleKeys: ["invented-role"] },
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.architectureChallengeModel.create({
+      ...base,
+      challengeSubjects: base.challengeSubjects.map((entry) => ({
+        ...entry,
+        architectureDecisionKeys: ["invented-decision"],
+      })),
+    }, actorId)).rejects.toThrow(/exact bound Architecture, Context, and Failure subjects/)
+    await expect(engine.architectureChallengeModel.create({
+      ...base,
+      failureRecoveryModel: { ...base.failureRecoveryModel, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Failure and Recovery Model/)
+    await expect(engine.architectureChallengeModel.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable challenge context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const model = await engine.architectureChallengeModel.create(base, actorId)
+    await engine.failureRecoveryModel.revise(
+      upstream.failureRecoveryModel.id,
+      upstream.failureRecoveryModel.revision,
+      failureRecoveryModelInput(
+        upstream.architecture, upstream.boundedContextModel, upstream.operatingModel,
+        upstream.securityPrivacyAssessment, upstream.processModel, upstream.dataModel,
+        upstream.authorizationModel, upstream.eventIntegrationModel,
+        { limitations: [
+          "No failure occurrence, retry attempt or safety determination, compensation execution or restoration, recovered state, accepted recovery evidence, operational readiness, return-to-service decision, release, deployment, or action authority is represented",
+          "The exact Failure and Recovery Model changed after Architecture Challenge capture",
+        ] },
+      ),
+      actorId,
+    )
+    expect(await engine.architectureChallengeModel.assess(initiative.id)).toMatchObject({
       model: { recordId: model.id },
       staleBindingCount: 1,
       state: "attention-required",

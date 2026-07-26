@@ -183,7 +183,7 @@ const challengeIndependenceSchema = z.object({
   authorRoleKeys: requiredCanonicalIdentifierListSchema,
   challengerRoleKeys: requiredCanonicalIdentifierListSchema,
   reviewerRoleKeys: requiredCanonicalIdentifierListSchema,
-  disclosedRoleOverlaps: canonicalIdentifierListSchema,
+  disclosedRoleOverlaps: canonicalTextListSchema,
   sharedSourceDependencies: canonicalTextListSchema,
   sharedMethodToolOrModelDependencies: canonicalTextListSchema,
   conflictsOfInterest: canonicalTextListSchema,

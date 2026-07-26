@@ -14,6 +14,7 @@ import { hostname } from "node:os"
 import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from "node:path"
 
 import {
+  architectureChallengeModelSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -122,6 +123,8 @@ const directoryNames = [
   "event-integration-model-history",
   "failure-recovery-models",
   "failure-recovery-model-history",
+  "architecture-challenge-models",
+  "architecture-challenge-model-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -915,6 +918,8 @@ export class GaepRepository {
       ["event-integration-model-history", /^event-integration-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["failure-recovery-models", /^[0-9a-f-]+\.json$/i],
       ["failure-recovery-model-history", /^failure-recovery-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["architecture-challenge-models", /^[0-9a-f-]+\.json$/i],
+      ["architecture-challenge-model-history", /^architecture-challenge-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1054,6 +1059,10 @@ export class GaepRepository {
     if (/^failure-recovery-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^failure-recovery-model-history\/failure-recovery-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, failureRecoveryModelSchema)
+    }
+    if (/^architecture-challenge-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^architecture-challenge-model-history\/architecture-challenge-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, architectureChallengeModelSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
