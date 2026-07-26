@@ -17,6 +17,7 @@ import {
   type FailureRecoveryModelProjection,
   type ArchitectureChallengeModelProjection,
   type DecisionRegisterProjection,
+  type RiskRegisterProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1238,6 +1239,62 @@ function decisionRegisterProjection(): DecisionRegisterProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function riskRegisterProjection(): RiskRegisterProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "risk-register-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    register: {
+      recordId: "f8f8f8f8-f8f8-48f8-88f8-f8f8f8f8f8f8",
+      revision: 3,
+      digest: `sha256:${"f".repeat(64)}` as const,
+    },
+    riskCount: 9,
+    notAssessedRiskCount: 2,
+    unresolvedResidualRiskCount: 3,
+    proposedTreatmentCount: 9,
+    unassignedOwnerCount: 9,
+    unverifiedControlCount: 4,
+    unresolvedRequirementCount: 1,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 1,
+    state: "attention-required" as const,
+    reasons: ["One or more Risk Assessments remain explicitly not assessed"],
+    assessedAt: "2026-07-26T18:00:00.000Z",
+    authorityBoundary: "risk-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "risk-register-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    register: {
+      id: status.register.recordId,
+      revision: status.register.revision,
+      digest: status.register.digest,
+      membershipDigest: `sha256:${"9".repeat(64)}` as const,
+      state: "candidate" as const,
+      riskCount: 9,
+      updatedAt: "2026-07-26T17:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-risk-statements-assessments-controls-treatments-residual-risk-evidence-related-record-content-personal-data-secrets-or-credentials" as const,
+    authorityBoundary: "risk-register-projection-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1806,6 +1863,7 @@ interface HarnessOptions {
   failureRecoveryModelProjection?: FailureRecoveryModelProjection
   architectureChallengeModelProjection?: ArchitectureChallengeModelProjection
   decisionRegisterProjection?: DecisionRegisterProjection
+  riskRegisterProjection?: RiskRegisterProjection
   commandResult?: unknown
 }
 
@@ -1979,6 +2037,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.decisionRegisterProjection ? {
       decisionRegister: {
         project: async () => options.decisionRegisterProjection!,
+      },
+    } : {}),
+    ...(options.riskRegisterProjection ? {
+      riskRegister: {
+        project: async () => options.riskRegisterProjection!,
       },
     } : {}),
   }
@@ -2533,6 +2596,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private decision question|private options|private recommendations|private outcomes|private rationale|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Risk Register metadata on the native risks and decisions page", async () => {
+    const projection = riskRegisterProjection()
+    const { source } = harness({ riskRegisterProjection: projection })
+    const snapshot = await source.readSnapshot("risks-decisions")
+    expect(snapshot.page.kind === "risks-decisions" && snapshot.page.riskRegisters).toMatchObject({
+      id: "risk-register",
+      rows: [{
+        id: projection.register?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "3",
+          membership: projection.register?.membershipDigest,
+          counts: "9 risks",
+          assessment: "attention-required",
+          gaps: "2 not assessed · 3 residual risk gaps · 4 control effectiveness gaps · 1 requirement gaps · 1 stale bindings",
+          boundary: "Candidate risk metadata only; no assessment fact, owner assignment, control effectiveness, risk acceptance, approval, exception, baseline promotion, operational readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private risk statement|private assessment|private controls|private treatment|private residual risk|customer@example\.com|api_key/iu,
     )
   })
 

@@ -638,7 +638,17 @@ class StudioShell {
     recommendations.append(element("h3", undefined, "Recommendations"), this.renderTable(page.recommendations, false))
     const decisions = element("section", "section")
     decisions.append(element("h3", undefined, "Decisions"), this.renderTable(page.decisions, false))
-    container.append(recommendations, decisions)
+    const decisionRegisters = element("section", "section")
+    decisionRegisters.append(
+      element("h3", undefined, "Governed Decision Register"),
+      this.renderTable(page.decisionRegisters, false),
+    )
+    const riskRegisters = element("section", "section")
+    riskRegisters.append(
+      element("h3", undefined, "Governed Risk Register"),
+      this.renderTable(page.riskRegisters, false),
+    )
+    container.append(recommendations, decisions, decisionRegisters, riskRegisters)
     return container
   }
 

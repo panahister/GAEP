@@ -44,6 +44,7 @@ import type {
   FailureRecoveryModelProjection,
   ArchitectureChallengeModelProjection,
   DecisionRegisterProjection,
+  RiskRegisterProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -177,6 +178,9 @@ export interface CurrentStudioEngineReader {
   decisionRegister?: {
     project(initiativeId: string): Promise<DecisionRegisterProjection>
   }
+  riskRegister?: {
+    project(initiativeId: string): Promise<RiskRegisterProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -232,6 +236,7 @@ interface ObservedStudioState {
   failureRecoveryModelProjections: Map<string, FailureRecoveryModelProjection>
   architectureChallengeModelProjections: Map<string, ArchitectureChallengeModelProjection>
   decisionRegisterProjections: Map<string, DecisionRegisterProjection>
+  riskRegisterProjections: Map<string, RiskRegisterProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1289,6 +1294,54 @@ function decisionRegisterTable(state: ObservedStudioState): StudioTableSnapshot 
   }
 }
 
+function riskRegisterTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.riskRegisterProjections.values()].flatMap((projection) => {
+    const record = projection.register
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.riskCount} risks`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.notAssessedRiskCount} not assessed · ${projection.status.unresolvedResidualRiskCount} residual risk gaps · ${projection.status.unverifiedControlCount} control effectiveness gaps · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate risk metadata only; no assessment fact, owner assignment, control effectiveness, risk acceptance, approval, exception, baseline promotion, operational readiness, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "risk-register",
+    title: "Governed Risk Register Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Risk Register Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Risk Register candidate",
+        "Create the candidate through the governed engine workflow. This view does not establish assessment fact, owner assignment, control effectiveness, risk acceptance, approval, exception, operational readiness, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2341,6 +2394,7 @@ function risksPage(state: ObservedStudioState): RisksDecisionsPageSnapshot {
     recommendations,
     decisions,
     decisionRegisters: decisionRegisterTable(state),
+    riskRegisters: riskRegisterTable(state),
   }
 }
 
@@ -3064,6 +3118,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       recommendations: capTable(page.recommendations),
       decisions: capTable(page.decisions),
       decisionRegisters: capTable(page.decisionRegisters),
+      riskRegisters: capTable(page.riskRegisters),
     }
     case "trace": return { ...page, relationships: capTable(page.relationships), searchResults: capTable(page.searchResults) }
     case "agents-tools": return {
@@ -3789,6 +3844,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       failureRecoveryModelProjections: new Map(),
       architectureChallengeModelProjections: new Map(),
       decisionRegisterProjections: new Map(),
+      riskRegisterProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -4622,6 +4678,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "decision-register-unavailable",
           "Decision Register metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "risks-decisions" && engine.riskRegister) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.riskRegister!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.riskRegisterProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Risk Register projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `risk-register-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Risk Register metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "risk-register-unavailable",
+          "Risk Register metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
