@@ -13,6 +13,8 @@ import {
   type BusinessUnderstandingInput,
   type ExactSourceReference,
   type Initiative,
+  type OperatingModel,
+  type OperatingModelInput,
   type OutcomeModelInput,
   type Product,
   type ProductExportBundle,
@@ -21,6 +23,7 @@ import {
   type StakeholderModel,
   type StakeholderModelInput,
   type ValueStreamModelInput,
+  type ValueStreamModel,
 } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -481,6 +484,139 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function operatingModelInput(
+    business: BusinessUnderstanding,
+    stakeholder: StakeholderModel,
+    outcome: Awaited<ReturnType<typeof engine.businessUnderstanding.createOutcomeModel>>,
+    capabilityMap: BusinessCapabilityMap,
+    valueStreamModel: ValueStreamModel,
+    overrides: Partial<OperatingModelInput> = {},
+  ): OperatingModelInput {
+    const authority = {
+      state: "candidate" as const,
+      basis: "The bounded model records a candidate authority shape for review and does not make an appointment.",
+      sources: [reference()],
+    }
+    const capacity = {
+      state: "candidate-sufficient" as const,
+      fundingState: "candidate" as const,
+      statement: "The bounded rehearsal records candidate capacity and funding evidence without creating a commitment.",
+      sources: [reference()],
+    }
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      businessUnderstanding: businessReference(business),
+      stakeholderModel: stakeholderReference(stakeholder),
+      outcomeModel: { recordId: outcome.id, revision: outcome.revision, digest: canonicalDigest(outcome) },
+      capabilityMap: { recordId: capabilityMap.id, revision: capabilityMap.revision, digest: canonicalDigest(capabilityMap) },
+      valueStreamModel: { recordId: valueStreamModel.id, revision: valueStreamModel.revision, digest: canonicalDigest(valueStreamModel) },
+      roles: [{
+        key: "gaep-steward",
+        name: "Candidate GAEP specification steward",
+        governanceSystem: "gaep-governance",
+        accountableScope: "Maintain candidate semantic coherence without absorbing Initiative decision rights.",
+        stakeholderKeys: ["primary-user"],
+        capabilityKeys: ["governed-context"],
+        valueStreamKeys: ["governed-delivery"],
+        mustNotAssume: ["Initiative outcome authority"],
+        appointingAuthority: authority,
+        competenceExpectations: ["Can review governed semantic and compatibility evidence"],
+        delegationRule: "Delegation requires a separately governed candidate record with exact scope and validity.",
+        conflictRule: "Material conflicts and recusals remain visible and escalate without erasing dissent.",
+        successionOrBackup: "A candidate backup must be separately reviewed before operational appointment.",
+        validityRule: "Any future authority would require an exact time-valid assignment outside this candidate model.",
+        capacity,
+        sources: [reference()],
+      }, {
+        key: "initiative-owner",
+        name: "Candidate Initiative owner",
+        governanceSystem: "initiative-governance",
+        accountableScope: "Own the candidate Initiative outcome without changing GAEP constitutional or Core semantics.",
+        stakeholderKeys: ["primary-user"],
+        capabilityKeys: ["governed-context"],
+        valueStreamKeys: ["governed-delivery"],
+        mustNotAssume: ["GAEP constitutional amendment authority"],
+        appointingAuthority: authority,
+        competenceExpectations: ["Can review bounded Product outcome and applicability evidence"],
+        delegationRule: "Delegation requires separately recorded scope, competence, validity, and accountable-human trace.",
+        conflictRule: "Conflicts of interest require visible recusal and escalation through the candidate appeal path.",
+        successionOrBackup: "A candidate backup and handoff path must preserve exact unresolved matters and evidence.",
+        validityRule: "Any future authority would expire or be replaced only through a governed assignment record.",
+        capacity,
+        sources: [reference()],
+      }],
+      decisionRights: [{
+        key: "govern-gaep-semantics",
+        subject: "Review candidate GAEP semantic coherence and compatibility without selecting Initiative outcomes.",
+        governanceSystem: "gaep-governance",
+        accountableRoleKey: "gaep-steward",
+        consultedRoleKeys: ["initiative-owner"],
+        valueStreamKeys: ["governed-delivery"],
+        evidenceRequirements: ["Exact compatibility and affected-scope evidence"],
+        separateApprovalConcern: "A candidate review does not approve a Core change, baseline, release, or implementation.",
+        authority,
+        sources: [reference()],
+      }, {
+        key: "govern-initiative-outcome",
+        subject: "Review the bounded Initiative outcome and value flow without changing GAEP shared semantics.",
+        governanceSystem: "initiative-governance",
+        accountableRoleKey: "initiative-owner",
+        consultedRoleKeys: ["gaep-steward"],
+        valueStreamKeys: ["governed-delivery"],
+        evidenceRequirements: ["Exact outcome, stakeholder, capability, and value-stream evidence"],
+        separateApprovalConcern: "A candidate recommendation does not grant approval, funding, baseline, or effect authority.",
+        authority,
+        sources: [reference()],
+      }],
+      forums: [{
+        key: "bounded-review",
+        name: "Candidate bounded operating review",
+        purpose: "Review the two governance systems and preserve their separate candidate decision boundaries.",
+        participatingRoleKeys: ["gaep-steward", "initiative-owner"],
+        decisionRightKeys: ["govern-gaep-semantics", "govern-initiative-outcome"],
+        boundaries: ["No baseline, appointment, funding, release, or execution authority"],
+        sources: [reference()],
+      }],
+      cycles: [{
+        key: "candidate-learning",
+        name: "Candidate operating learning cycle",
+        ownerRoleKey: "initiative-owner",
+        steps: ["Collect exact bounded evidence", "Review outcomes, burden, dissent, and limitations"],
+        escalationRoleKey: "gaep-steward",
+        sources: [reference()],
+      }],
+      supportModel: {
+        scope: ["Bounded workflow orientation", "Governed-record interpretation"],
+        knownLimitations: ["No supported release or operational service commitment exists"],
+        compatibilityPolicy: "Candidate compatibility guidance must name exact versions, limitations, and unresolved evidence.",
+        deprecationPolicy: "Candidate deprecation guidance preserves fallback, history, notice, and an explicit retirement review.",
+        incidentPath: "Candidate incidents retain evidence and route to a separately authorized operational or security authority.",
+        appealPath: "Affected participants can report harmful, incorrect, or unauthorized use for attributable review.",
+        escalationPath: "Unavailable or conflicted reviewers produce an explicit pause or narrowed result instead of silent delegation.",
+        fallback: "When support or realization is unavailable, stop the bounded workflow and preserve portable evidence.",
+        responseTarget: "Candidate response targets remain proportional to consequence and require later funded approval.",
+        laborMeasurement: "All rehearsal, facilitation, support, and review effort is recorded as candidate operating cost.",
+        capacity,
+        sources: [reference()],
+      },
+      emergencyActionModel: {
+        ownerRoleKey: "initiative-owner",
+        scopeRule: "Any future emergency action must be narrowly scoped to the evidenced urgent condition.",
+        reasonRule: "The material safety, security, or operational reason must be recorded before action when feasible.",
+        evidenceRule: "Evidence, dissent, time pressure, and the original conflict remain preserved through escalation.",
+        recoveryRule: "A bounded recovery and safe-stop path must be identified without inferring successful restoration.",
+        expiryRule: "Any future emergency authority must have an exact expiry and cannot silently become permanent.",
+        retrospectiveReviewRule: "A separately authorized retrospective review must evaluate the action, recovery, and reopening triggers.",
+        authority,
+        sources: [reference()],
+      },
+      limitations: ["No real appointment, funding commitment, service level, baseline, readiness, or execution authority is represented"],
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -772,6 +908,115 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("governs an exact immutable Operating Model and projects privacy-safe structural counts", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+    const model = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
+      actorId,
+    )
+
+    expect(await engine.operatingModel.assess(initiative.id)).toMatchObject({
+      operatingModel: { recordId: model.id, revision: 1, digest: canonicalDigest(model) },
+      roleCount: 2,
+      governanceSystemCount: 2,
+      unassignedAppointingAuthorityCount: 0,
+      insufficientCapacityCount: 0,
+      unfundedCapacityCount: 0,
+      decisionRightCount: 2,
+      unassignedDecisionAuthorityCount: 0,
+      forumCount: 1,
+      cycleCount: 1,
+      supportCapacityGapCount: 0,
+      emergencyAuthorityGapCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.operatingModel.project(initiative.id)
+    expect(projection).toMatchObject({
+      operatingModel: {
+        id: model.id,
+        revision: 1,
+        roleCount: 2,
+        decisionRightCount: 2,
+        forumCount: 1,
+        cycleCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-operating-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-appoint"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Candidate GAEP specification steward")
+    expect(projection.snapshotDigest).toBe(canonicalDigest({ ...projection, snapshotDigest: undefined }))
+
+    const revised = await engine.operatingModel.revise(
+      model.id,
+      model.revision,
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, {
+        limitations: ["A realistic organization, funded capacity, and Product Owner acceptance remain outstanding"],
+      }),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: model.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(model),
+      state: "candidate",
+    })
+    expect((await engine.operatingModel.listHistory(model.id)).map((record) => record.revision)).toEqual([2, 1])
+  })
+
+  it("rejects hostile Operating Model authority and trace bindings and reports stale Value Stream bindings", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+    const base = operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel)
+    await expect(engine.operatingModel.create({
+      ...base,
+      roles: base.roles.map((role) => ({ ...role, governanceSystem: "gaep-governance" as const })),
+    }, actorId)).rejects.toThrow(/distinguish GAEP governance/)
+    await expect(engine.operatingModel.create({
+      ...base,
+      roles: [{ ...base.roles[0]!, stakeholderKeys: ["invented-stakeholder"] }, base.roles[1]!],
+    }, actorId)).rejects.toThrow(/exact bound Stakeholder Model/)
+    await expect(engine.operatingModel.create({
+      ...base,
+      supportModel: {
+        ...base.supportModel,
+        fallback: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable operating context",
+      },
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const model = await engine.operatingModel.create(base, actorId)
+    await engine.valueStreamModel.revise(
+      valueStreamModel.id,
+      valueStreamModel.revision,
+      valueStreamInput(business, stakeholder, outcome, capabilityMap, {
+        limitations: ["The exact Value Stream Model changed after operating-model capture"],
+      }),
+      actorId,
+    )
+    expect(await engine.operatingModel.assess(initiative.id)).toMatchObject({
+      operatingModel: { recordId: model.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -823,6 +1068,10 @@ describe("Business understanding governance", () => {
       valueStreamInput(business, stakeholder, outcome, capabilityMap),
       actorId,
     )
+    const operatingModel = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -831,6 +1080,8 @@ describe("Business understanding governance", () => {
       `business-capability-map-history/business-capability-map-${capabilityMap.id}-r1.json`,
       `value-stream-models/${valueStreamModel.id}.json`,
       `value-stream-model-history/value-stream-model-${valueStreamModel.id}-r1.json`,
+      `operating-models/${operatingModel.id}.json`,
+      `operating-model-history/operating-model-${operatingModel.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -898,6 +1149,24 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedValueStreamTrace))
       .rejects.toThrow(/unknown bound capability/)
+
+    const forgeUnknownOperatingStakeholder = (content: unknown) => ({
+      ...(content as OperatingModel),
+      roles: [{ ...(content as OperatingModel).roles[0]!, stakeholderKeys: ["invented-stakeholder"] },
+        ...(content as OperatingModel).roles.slice(1)],
+    })
+    let forgedOperatingTrace = replacePortableRecord(
+      bundle,
+      `operating-models/${operatingModel.id}.json`,
+      forgeUnknownOperatingStakeholder,
+    )
+    forgedOperatingTrace = replacePortableRecord(
+      forgedOperatingTrace,
+      `operating-model-history/operating-model-${operatingModel.id}-r1.json`,
+      forgeUnknownOperatingStakeholder,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedOperatingTrace))
+      .rejects.toThrow(/unknown bound stakeholder/)
   })
 
   it("requires explicit human disclosure review for confidential business records", async () => {

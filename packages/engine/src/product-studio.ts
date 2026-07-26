@@ -24,6 +24,7 @@ import {
   managedRunRecordSchema,
   managedRunResultSchema,
   outcomeModelSchema,
+  operatingModelSchema,
   productDesignDraftSchema,
   productDesignRevisionSchema,
   productDomainSearchResultSchema,
@@ -67,6 +68,7 @@ import {
   type InstructionPrivilegeGrant,
   type ManagedRunRecord,
   type OutcomeModel,
+  type OperatingModel,
   type Product,
   type ProductDesignDraft,
   type ProductDesignRevision,
@@ -1932,6 +1934,16 @@ export class ProductStudioService {
       /^value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       valueStreamModelSchema,
     )
+    const operatingModels = await this.listRecords(
+      "operating-models",
+      /^[0-9a-f-]+\.json$/i,
+      operatingModelSchema,
+    )
+    const operatingModelHistory = await this.listRecords(
+      "operating-model-history",
+      /^operating-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      operatingModelSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -1965,6 +1977,8 @@ export class ProductStudioService {
       ...businessCapabilityMapHistory,
       ...valueStreamModels,
       ...valueStreamModelHistory,
+      ...operatingModels,
+      ...operatingModelHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -1983,6 +1997,7 @@ export class ProductStudioService {
           businessUnderstanding.find((record) => record.id === id)?.informationClassification ??
           businessCapabilityMaps.find((record) => record.id === id)?.informationClassification ??
           valueStreamModels.find((record) => record.id === id)?.informationClassification ??
+          operatingModels.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2050,6 +2065,13 @@ export class ProductStudioService {
       "value-stream-model",
       valueStreamModelHistory,
       (record) => `value-stream-model-history/value-stream-model-${record.id}-r${record.revision}.json`,
+    )
+    append("operating-models", "operating-model", operatingModels)
+    append(
+      "operating-model-history",
+      "operating-model",
+      operatingModelHistory,
+      (record) => `operating-model-history/operating-model-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2266,6 +2288,14 @@ export class ProductStudioService {
           `value-stream-model-history/value-stream-model-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Value Stream Model history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("operating-model-history/")) {
+        const record = validated as OperatingModel
+        const expectedHistoryPath =
+          `operating-model-history/operating-model-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Operating Model history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3392,7 +3422,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3424,7 +3454,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -3606,7 +3636,7 @@ export class ProductStudioService {
     const valueStreamModelHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("value-stream-model-history/"))
       .map(([, record]) => valueStreamModelSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactValueStreamModels = validateVersionedBusinessRecords(
       valueStreamModels,
       valueStreamModelHistory,
       "Value Stream Model",
@@ -3646,6 +3676,56 @@ export class ProductStudioService {
         ]
         if (roleKeys.some((key) => !stakeholderKeys.has(key))) {
           throw new Error(`Import Value Stream Model ${model.id} references an unknown bound stakeholder`)
+        }
+      }
+    }
+
+    const resolveValueStreamModel = (
+      reference: OperatingModel["valueStreamModel"],
+      initiativeId: string,
+    ): ValueStreamModel => {
+      const record = exactValueStreamModels.get(
+        `${reference.recordId}:${reference.revision}:${reference.digest}`,
+      )
+      if (!record || record.initiativeId !== initiativeId) {
+        throw new Error("Import exact Value Stream Model reference is unresolved")
+      }
+      return record
+    }
+    const operatingModels = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("operating-models/"))
+      .map(([, record]) => operatingModelSchema.parse(record))
+    const operatingModelHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("operating-model-history/"))
+      .map(([, record]) => operatingModelSchema.parse(record))
+    validateVersionedBusinessRecords(operatingModels, operatingModelHistory, "Operating Model")
+    for (const model of [...operatingModels, ...operatingModelHistory]) {
+      resolveBusinessUnderstanding(model.businessUnderstanding, model.initiativeId)
+      const stakeholder = resolveStakeholderModel(model.stakeholderModel, model.initiativeId)
+      resolveOutcomeModel(model.outcomeModel, model.initiativeId)
+      const capabilityMap = resolveCapabilityMap(model.capabilityMap, model.initiativeId)
+      const valueStream = resolveValueStreamModel(model.valueStreamModel, model.initiativeId)
+      const stakeholderKeys = new Set(stakeholder.stakeholders.map((entry) => entry.key))
+      const capabilityKeys = new Set(capabilityMap.capabilities.map((entry) => entry.key))
+      const valueStreamKeys = new Set(valueStream.valueStreams.map((entry) => entry.key))
+      const roleByKey = new Map(model.roles.map((role) => [role.key, role]))
+      for (const role of model.roles) {
+        if (role.stakeholderKeys.some((key) => !stakeholderKeys.has(key))) {
+          throw new Error(`Import Operating Model ${model.id} references an unknown bound stakeholder`)
+        }
+        if (role.capabilityKeys.some((key) => !capabilityKeys.has(key))) {
+          throw new Error(`Import Operating Model ${model.id} references an unknown bound capability`)
+        }
+        if (role.valueStreamKeys.some((key) => !valueStreamKeys.has(key))) {
+          throw new Error(`Import Operating Model ${model.id} references an unknown bound value stream`)
+        }
+      }
+      for (const right of model.decisionRights) {
+        if (right.valueStreamKeys.some((key) => !valueStreamKeys.has(key))) {
+          throw new Error(`Import Operating Model ${model.id} decision right references an unknown bound value stream`)
+        }
+        if (roleByKey.get(right.accountableRoleKey)?.governanceSystem !== right.governanceSystem) {
+          throw new Error(`Import Operating Model ${model.id} crosses a governance-system authority boundary`)
         }
       }
     }
@@ -4259,6 +4339,10 @@ export class ProductStudioService {
         /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "value-stream-model"
     }
+    if (/^operating-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^operating-model-history\/operating-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "operating-model"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -4315,6 +4399,10 @@ export class ProductStudioService {
     if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return valueStreamModelSchema
+    }
+    if (/^operating-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^operating-model-history\/operating-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return operatingModelSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

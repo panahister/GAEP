@@ -73,6 +73,7 @@ import { ProductStudioService } from "./product-studio.js"
 import { SourceGovernanceService } from "./source-governance.js"
 import { BusinessCapabilityMapService } from "./business-capability-map.js"
 import { BusinessUnderstandingService } from "./business-understanding.js"
+import { OperatingModelService } from "./operating-model.js"
 import { ValueStreamModelService } from "./value-stream-model.js"
 
 const execFileAsync = promisify(execFile)
@@ -237,6 +238,7 @@ export class GaepEngine {
   readonly businessUnderstanding: BusinessUnderstandingService
   readonly businessCapabilityMap: BusinessCapabilityMapService
   readonly valueStreamModel: ValueStreamModelService
+  readonly operatingModel: OperatingModelService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -278,6 +280,15 @@ export class GaepEngine {
       this.sourceGovernance,
       this.businessUnderstanding,
       this.businessCapabilityMap,
+    )
+    this.operatingModel = new OperatingModelService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      this.businessUnderstanding,
+      this.businessCapabilityMap,
+      this.valueStreamModel,
     )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
@@ -372,12 +383,13 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
         this.businessCapabilityMap.healthIssues(),
         this.valueStreamModel.healthIssues(),
+        this.operatingModel.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,
@@ -385,6 +397,7 @@ export class GaepEngine {
         ...businessIssues,
         ...capabilityMapIssues,
         ...valueStreamIssues,
+        ...operatingModelIssues,
       ]
     } catch (error) {
       domainIssues = [{
