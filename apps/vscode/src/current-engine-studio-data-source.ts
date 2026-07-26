@@ -6,6 +6,7 @@ import type {
   AgentSelectionState,
   ArchitectureRecord,
   BusinessCapabilityMapProjection,
+  BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
   ChangeImpactDashboard,
@@ -129,6 +130,9 @@ export interface CurrentStudioEngineReader {
   operatingModel?: {
     project(initiativeId: string): Promise<OperatingModelProjection>
   }
+  businessRuleCatalog?: {
+    project(initiativeId: string): Promise<BusinessRuleCatalogProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -172,6 +176,7 @@ interface ObservedStudioState {
   businessCapabilityMapProjections: Map<string, BusinessCapabilityMapProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
+  businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -655,6 +660,52 @@ function operatingModelTable(state: ObservedStudioState): StudioTableSnapshot {
   }
 }
 
+function businessRuleCatalogTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.businessRuleCatalogProjections.values()].flatMap((projection) => {
+    const record = projection.businessRuleCatalog
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        state: record.state,
+        counts: `${record.ruleCount} rules · ${record.enforcementTargetCount} targets · ${record.exceptionCount} exceptions · ${record.nonExceptionableRuleCount} non-exceptionable`,
+        assessment: projection.assessment.state,
+        gaps: `${projection.assessment.unassignedEnforcementTargetCount} unassigned targets · ${projection.assessment.unverifiedEnforcementTargetCount} unverified targets · ${projection.assessment.unassignedExceptionAuthorityCount} exception authorities`,
+        boundary: "Candidate rules only; no policy evaluation, exception grant, deployed enforcement, baseline, readiness, or action authority.",
+      },
+      state: projection.assessment.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "business-rule-catalog",
+    title: "Governed Business Rules",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Business Rule Catalog" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Business Rule Catalog",
+        "Create candidate rules through the governed engine workflow. This view does not evaluate policy, grant exceptions, deploy enforcement, approve a baseline, establish readiness, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -665,7 +716,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -678,6 +729,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       businessCapabilityMapTable(state),
       valueStreamModelTable(state),
       operatingModelTable(state),
+      businessRuleCatalogTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3125,6 +3177,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
+      businessRuleCatalogProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -3454,6 +3507,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "operating-model-unavailable",
           "Operating Model metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.businessRuleCatalog) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.businessRuleCatalog!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.businessRuleCatalogProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Business Rule Catalog projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `business-rule-catalog-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Business Rule Catalog metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "business-rule-catalog-unavailable",
+          "Business Rule Catalog metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

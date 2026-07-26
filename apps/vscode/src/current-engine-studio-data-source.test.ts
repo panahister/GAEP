@@ -8,6 +8,7 @@ import {
   type AdapterCapabilities,
   type AgentSelection,
   type BusinessCapabilityMapProjection,
+  type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
   type Decision,
@@ -485,6 +486,63 @@ function operatingModelProjection(): OperatingModelProjection {
     observedAt: assessment.assessedAt,
     privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-operating-narrative-personal-data-source-content-locators-or-credentials" as const,
     authorityBoundary: "operating-model-projection-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
+function businessRuleCatalogProjection(): BusinessRuleCatalogProjection {
+  const assessment = {
+    schemaVersion: 1 as const,
+    kind: "business-rule-catalog-assessment" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    businessRuleCatalog: {
+      recordId: "abababab-abab-4bab-8bab-abababababab",
+      revision: 2,
+      digest: `sha256:${"b".repeat(64)}` as const,
+    },
+    ruleCount: 7,
+    sourceBackedRuleCount: 7,
+    nonExceptionableRuleCount: 3,
+    enforcementTargetCount: 4,
+    unassignedEnforcementTargetCount: 1,
+    unverifiedEnforcementTargetCount: 2,
+    exceptionCount: 2,
+    unassignedExceptionAuthorityCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more enforcement targets have no candidate assignment"],
+    assessedAt: "2026-07-26T08:30:00.000Z",
+    authorityBoundary: "business-rule-catalog-assessment-reports-candidate-coverage-and-gaps-and-does-not-evaluate-policy-grant-exceptions-deploy-enforcement-approve-baseline-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "business-rule-catalog-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    assessment,
+    businessRuleCatalog: {
+      id: assessment.businessRuleCatalog.recordId,
+      revision: assessment.businessRuleCatalog.revision,
+      digest: assessment.businessRuleCatalog.digest,
+      state: "candidate" as const,
+      ruleCount: 7,
+      enforcementTargetCount: 4,
+      exceptionCount: 2,
+      nonExceptionableRuleCount: 3,
+      updatedAt: "2026-07-26T08:29:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-rule-narrative-source-content-personal-data-locators-or-credentials" as const,
+    authorityBoundary: "business-rule-catalog-projection-does-not-evaluate-policy-grant-exceptions-deploy-enforcement-approve-baseline-readiness-or-authorize-action" as const,
   }
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
@@ -1045,6 +1103,7 @@ interface HarnessOptions {
   businessCapabilityMapProjection?: BusinessCapabilityMapProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
+  businessRuleCatalogProjection?: BusinessRuleCatalogProjection
   commandResult?: unknown
 }
 
@@ -1158,6 +1217,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.operatingModelProjection ? {
       operatingModel: {
         project: async () => options.operatingModelProjection!,
+      },
+    } : {}),
+    ...(options.businessRuleCatalogProjection ? {
+      businessRuleCatalog: {
+        project: async () => options.businessRuleCatalogProjection!,
       },
     } : {}),
   }
@@ -1425,6 +1489,29 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /operating narrative|personal assignment|source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Business Rule metadata on the native architecture page", async () => {
+    const projection = businessRuleCatalogProjection()
+    const { source } = harness({ businessRuleCatalogProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[3]).toMatchObject({
+      id: "business-rule-catalog",
+      rows: [{
+        id: projection.businessRuleCatalog?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          counts: "7 rules · 4 targets · 2 exceptions · 3 non-exceptionable",
+          assessment: "attention-required",
+          gaps: "1 unassigned targets · 2 unverified targets · 1 exception authorities",
+          boundary: "Candidate rules only; no policy evaluation, exception grant, deployed enforcement, baseline, readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /rule narrative|source content|personal data|customer@example\.com|api_key/iu,
     )
   })
 
