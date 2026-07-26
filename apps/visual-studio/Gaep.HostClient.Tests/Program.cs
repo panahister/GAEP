@@ -49,6 +49,7 @@ internal static class Program
     private static readonly Guid ValueStreamModelId = Guid.Parse("43434343-4343-4343-8343-434343434343");
     private static readonly Guid OperatingModelId = Guid.Parse("44444444-4444-4444-8444-444444444444");
     private static readonly Guid BusinessRuleCatalogId = Guid.Parse("45454545-4545-4545-8545-454545454545");
+    private static readonly Guid BusinessArchitectureBaselineId = Guid.Parse("46464646-4646-4646-8646-464646464646");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -125,6 +126,9 @@ internal static class Program
         var badBusinessRuleSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-business-rule-snapshot-binding");
         var badBusinessRuleSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-business-rule-snapshot-digest");
         var badBusinessRuleSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-business-rule-snapshot-private");
+        var badBusinessArchitectureBaselineSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-business-architecture-baseline-snapshot-binding");
+        var badBusinessArchitectureBaselineSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-business-architecture-baseline-snapshot-digest");
+        var badBusinessArchitectureBaselineSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-business-architecture-baseline-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -198,6 +202,9 @@ internal static class Program
         Directory.CreateDirectory(badBusinessRuleSnapshotBindingRoot);
         Directory.CreateDirectory(badBusinessRuleSnapshotDigestRoot);
         Directory.CreateDirectory(badBusinessRuleSnapshotPrivateRoot);
+        Directory.CreateDirectory(badBusinessArchitectureBaselineSnapshotBindingRoot);
+        Directory.CreateDirectory(badBusinessArchitectureBaselineSnapshotDigestRoot);
+        Directory.CreateDirectory(badBusinessArchitectureBaselineSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -753,6 +760,56 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadBusinessRuleCatalogAsync(InitiativeId),
                 "Business Rule Catalog rejects a projection rebound to a substituted Product revision");
+        }
+
+        var businessArchitectureBaselineProjection = await client.ReadBusinessArchitectureBaselineAsync(InitiativeId);
+        Check(businessArchitectureBaselineProjection.ProductId == product.Id &&
+              businessArchitectureBaselineProjection.ProductRevision == product.Revision &&
+              businessArchitectureBaselineProjection.ProductDigest == product.Digest &&
+              businessArchitectureBaselineProjection.InitiativeId == resolved.Id &&
+              businessArchitectureBaselineProjection.InitiativeRevision == resolved.Revision &&
+              businessArchitectureBaselineProjection.InitiativeDigest == resolved.Digest &&
+              businessArchitectureBaselineProjection.AssessmentState == "attention-required" &&
+              businessArchitectureBaselineProjection.Baseline?.CoveredElementCount == 27 &&
+              businessArchitectureBaselineProjection.Baseline?.IntegrationClaimCount == 8 &&
+              businessArchitectureBaselineProjection.ConsistencyGapCount == 2,
+            "Typed Business Architecture Baseline preserves exact Product, Initiative, assessment, and candidate metadata");
+        var businessArchitectureBaselineOutput =
+            await initiativeController.ReadBusinessArchitectureBaselineAsync(InitiativeId);
+        Check(businessArchitectureBaselineOutput.Contains(
+                  "GAEP governed Business Architecture Baseline candidate",
+                  StringComparison.Ordinal) &&
+              businessArchitectureBaselineOutput.Contains(
+                  "27 covered · 25 included · 1 excluded · 1 unresolved",
+                  StringComparison.Ordinal) &&
+              businessArchitectureBaselineOutput.Contains(
+                  "does not designate or approve a baseline, establish readiness",
+                  StringComparison.Ordinal) &&
+              !businessArchitectureBaselineOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !businessArchitectureBaselineOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !businessArchitectureBaselineOutput.Contains("architectureNarrative", StringComparison.Ordinal),
+            "Business Architecture Baseline workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[]
+                 {
+                     badBusinessArchitectureBaselineSnapshotDigestRoot,
+                     badBusinessArchitectureBaselineSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(
+                () => hostileClient.ReadBusinessArchitectureBaselineAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Business Architecture Baseline rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(
+                         badBusinessArchitectureBaselineSnapshotBindingRoot,
+                         executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadBusinessArchitectureBaselineAsync(InitiativeId),
+                "Business Architecture Baseline rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -1851,6 +1908,12 @@ internal static class Program
         var badBusinessRuleSnapshotBinding = Path.GetFileName(workspace) == "bad-business-rule-snapshot-binding";
         var badBusinessRuleSnapshotDigest = Path.GetFileName(workspace) == "bad-business-rule-snapshot-digest";
         var badBusinessRuleSnapshotPrivate = Path.GetFileName(workspace) == "bad-business-rule-snapshot-private";
+        var badBusinessArchitectureBaselineSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-business-architecture-baseline-snapshot-binding";
+        var badBusinessArchitectureBaselineSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-business-architecture-baseline-snapshot-digest";
+        var badBusinessArchitectureBaselineSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-business-architecture-baseline-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2035,6 +2098,17 @@ internal static class Program
                         badBusinessRuleSnapshotBinding,
                         badBusinessRuleSnapshotDigest,
                         badBusinessRuleSnapshotPrivate);
+                    break;
+                case "business.architectureBaselines.snapshot":
+                    await HandleBusinessArchitectureBaselineAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badBusinessArchitectureBaselineSnapshotBinding,
+                        badBusinessArchitectureBaselineSnapshotDigest,
+                        badBusinessArchitectureBaselineSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -2878,6 +2952,97 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) catalog["ruleCount"] = 8;
         if (includePrivateField) result["ruleNarrative"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleBusinessArchitectureBaselineAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID BUSINESS ARCHITECTURE BASELINE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T09:30:00.000Z";
+        var baselineDigest = $"sha256:{new string('a', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var baseline = new Dictionary<string, object?>
+        {
+            ["id"] = BusinessArchitectureBaselineId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = baselineDigest,
+            ["membershipDigest"] = $"sha256:{new string('d', 64)}",
+            ["state"] = "candidate",
+            ["coveredElementCount"] = 27,
+            ["integrationClaimCount"] = 8,
+            ["consistencyGapCount"] = 2,
+            ["updatedAt"] = "2026-07-26T09:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "business-architecture-baseline-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["assessment"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "business-architecture-baseline-assessment",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["baseline"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BusinessArchitectureBaselineId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = baselineDigest,
+                },
+                ["coveredElementCount"] = 27,
+                ["includedElementCount"] = 25,
+                ["excludedElementCount"] = 1,
+                ["unresolvedElementCount"] = 1,
+                ["integrationClaimCount"] = 8,
+                ["consistencyCheckCount"] = 6,
+                ["consistencyGapCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more candidate architecture elements remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "business-architecture-baseline-assessment-reports-candidate-coherence-and-gaps-and-does-not-designate-or-approve-a-baseline-establish-readiness-or-authorize-action",
+            },
+            ["baseline"] = baseline,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-architecture-narrative-source-content-personal-data-locators-or-credentials",
+            ["authorityBoundary"] =
+                "business-architecture-baseline-projection-does-not-designate-or-approve-a-baseline-establish-readiness-grant-exceptions-deploy-enforcement-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) baseline["coveredElementCount"] = 28;
+        if (includePrivateField) result["architectureNarrative"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

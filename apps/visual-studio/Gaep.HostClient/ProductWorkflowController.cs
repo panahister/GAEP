@@ -498,6 +498,61 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadBusinessArchitectureBaselineAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadBusinessArchitectureBaselineAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException(
+                "The Product or Initiative changed while the Business Architecture Baseline was read. Refresh the exact records.");
+        }
+        return RenderBusinessArchitectureBaseline(projection);
+    }
+
+    public static string RenderBusinessArchitectureBaseline(BusinessArchitectureBaselineProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Business Architecture Baseline candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Coverage counts: {projection.CoveredElementCount} covered · {projection.IncludedElementCount} included · " +
+                $"{projection.ExcludedElementCount} excluded · {projection.UnresolvedElementCount} unresolved")
+            .AppendLine(
+                $"Coherence: {projection.IntegrationClaimCount} integration claims · {projection.ConsistencyCheckCount} consistency checks · " +
+                $"{projection.ConsistencyGapCount} gaps · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Baseline is { } baseline)
+        {
+            output.AppendLine($"Baseline candidate: {baseline.Id:D}@{baseline.Revision} · candidate · {baseline.Digest}")
+                .AppendLine($"Membership digest: {baseline.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate counts: {baseline.CoveredElementCount} elements · {baseline.IntegrationClaimCount} integration claims · " +
+                    $"{baseline.ConsistencyGapCount} consistency gaps");
+        }
+        else output.AppendLine("Baseline candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view exposes no architecture narrative, Source content, personal data, locators, " +
+                "local paths, or credentials and does not designate or approve a baseline, establish readiness, grant " +
+                "exceptions, deploy enforcement, or authorize action.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

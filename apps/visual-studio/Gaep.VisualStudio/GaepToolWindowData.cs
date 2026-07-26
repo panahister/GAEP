@@ -208,6 +208,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadValueStreamModelCommand = new AsyncCommand(LoadValueStreamModelAsync);
         LoadOperatingModelCommand = new AsyncCommand(LoadOperatingModelAsync);
         LoadBusinessRulesCommand = new AsyncCommand(LoadBusinessRulesAsync);
+        LoadBusinessArchitectureBaselineCommand = new AsyncCommand(LoadBusinessArchitectureBaselineAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -272,6 +273,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadBusinessRulesCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadBusinessArchitectureBaselineCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -670,6 +674,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Business Rule Catalog",
             (controller, _, token) => controller.ReadBusinessRuleCatalogAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadBusinessArchitectureBaselineAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Business Architecture Baseline candidate",
+            (controller, _, token) => controller.ReadBusinessArchitectureBaselineAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)
