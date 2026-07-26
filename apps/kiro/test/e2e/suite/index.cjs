@@ -37,6 +37,7 @@ const commands = [
   "gaepKiro.authorizationModel.inspect",
   "gaepKiro.eventIntegrationModel.inspect",
   "gaepKiro.failureRecoveryModel.inspect",
+  "gaepKiro.architectureChallengeModel.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",
@@ -118,7 +119,7 @@ async function run() {
   const finalStoreManifest = await inspectPortableStore(path.join(workspace, ".gaep"))
   assert.deepEqual(finalStoreManifest, fixtureStoreManifest)
   process.stdout.write("PASS installed compatible-host provider/model/dashboard smoke: two bounded capability rows, unselected model state, unavailable usage/cost, private-safe output, and immutable fixture store\n")
-  process.stdout.write(`PASS activation: thirty-one bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model dashboard, empty audit-gated evidence workflow, and no workspace mutation\n`)
+  process.stdout.write(`PASS activation: thirty-three bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model dashboard, empty audit-gated evidence workflow, and no workspace mutation\n`)
 }
 
 function assertPrivateSafe(content, workspace, fixtureProductName) {

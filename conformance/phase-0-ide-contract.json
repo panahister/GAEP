@@ -43,7 +43,8 @@
     { "id": "data-model", "label": "Exact governed Data Model candidate projection without model or classification approval, ownership appointment, migration authority, operational readiness, baseline promotion, or action authority" },
     { "id": "authorization-model", "label": "Exact governed Authorization Model candidate projection without identity verification, effective role assignment, standing authority, authorization grant, enforcement decision, operational readiness, baseline promotion, or action authority" },
     { "id": "event-integration-model", "label": "Exact governed Event and Integration Model candidate projection without event occurrence, command delivery, external acceptance, adapter activation, authorization grant, effect execution, operational readiness, baseline promotion, or action authority" },
-    { "id": "failure-recovery-model", "label": "Exact governed Failure and Recovery Model candidate projection without failure occurrence, retry safety, compensation or restoration, recovery success, return-to-service authority, operational readiness, baseline promotion, or action authority" }
+    { "id": "failure-recovery-model", "label": "Exact governed Failure and Recovery Model candidate projection without failure occurrence, retry safety, compensation or restoration, recovery success, return-to-service authority, operational readiness, baseline promotion, or action authority" },
+    { "id": "architecture-challenge-model", "label": "Exact governed Architecture Challenge candidate projection without completed independent review, assurance, risk acceptance, architecture approval, operational readiness, baseline promotion, or action authority" }
   ],
   "hosts": [
     {
@@ -54,7 +55,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T203321Z-phase-1-failure-recovery-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T214453Z-phase-1-architecture-challenge-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -182,6 +183,9 @@
         ] },
         { "capabilityId": "failure-recovery-model", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["failureRecoveryModel?: {", "engine.failureRecoveryModel!.project(initiative.id)", "id: \"failure-recovery-model\"", "Candidate failure modes, retry policies, compensation plans, recovery plans, and evidence definitions only; no failure occurrence, retry safety, compensation or restoration, recovery success, return-to-service authority, operational readiness, or action authority."] }
+        ] },
+        { "capabilityId": "architecture-challenge-model", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["architectureChallengeModel?: {", "engine.architectureChallengeModel!.project(initiative.id)", "id: \"architecture-challenge-model\"", "Candidate challenge subjects, assumptions, alternatives, findings, responses, and independence disclosures only; no completed independent review, assurance, risk acceptance, architecture approval, operational readiness, or action authority."] }
         ] }
       ]
     },
@@ -193,7 +197,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T203321Z-phase-1-failure-recovery-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T214453Z-phase-1-architecture-challenge-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -333,6 +337,10 @@
         { "capabilityId": "failure-recovery-model", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readFailureRecoveryModel(", "this.request(\"recovery.models.snapshot\"", "failureRecoveryModelProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showFailureRecoveryModel", "GAEP governed Failure and Recovery Model candidate", "Candidate counts:", "Authority boundary: ${projection.authorityBoundary}"] }
+        ] },
+        { "capabilityId": "architecture-challenge-model", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readArchitectureChallengeModel(", "this.request(\"challenge.models.snapshot\"", "architectureChallengeModelProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showArchitectureChallengeModel", "GAEP governed Architecture Challenge candidate", "Candidate counts:", "Authority boundary: ${projection.authorityBoundary}"] }
         ] }
       ]
     },
@@ -344,7 +352,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T203321Z-phase-1-failure-recovery-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T214453Z-phase-1-architecture-challenge-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -505,6 +513,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readFailureRecoveryModel(", "portableRequest(\"recovery.models.snapshot\"", "parseFailureRecoveryModelEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Failure and Recovery Model candidate", "Membership digest:", "does not prove failure occurrence, establish retry safety"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["FailureRecoveryModelRecordView", "FAILURE_RECOVERY_MODEL_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "architecture-challenge-model", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readArchitectureChallengeModel(", "portableRequest(\"challenge.models.snapshot\"", "parseArchitectureChallengeModelEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Architecture Challenge candidate", "Membership digest:", "does not complete independent review"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["ArchitectureChallengeModelRecordView", "ARCHITECTURE_CHALLENGE_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -516,7 +529,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T203321Z-phase-1-failure-recovery-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T214453Z-phase-1-architecture-challenge-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -686,13 +699,18 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadFailureRecoveryModelAsync(", "\"recovery.models.snapshot\"", "ParseFailureRecoveryModelResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Failure and Recovery Model candidate", "Membership digest:", "does not prove failure occurrence, establish retry safety"] },
           { "path": "apps/visual-studio/Gaep.HostClient/FailureRecoveryModelProtocol.cs", "contains": ["FailureRecoveryModelRecordView", "FailureRecoveryModelProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "architecture-challenge-model", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadArchitectureChallengeModelAsync(", "\"challenge.models.snapshot\"", "ParseArchitectureChallengeModelResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Architecture Challenge candidate", "Membership digest:", "does not complete independent review"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ArchitectureChallengeModelProtocol.cs", "contains": ["ArchitectureChallengeModelRecordView", "ArchitectureChallengeProjectionAuthorityBoundary"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-26T203321Z-phase-1-failure-recovery-model-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-26T214453Z-phase-1-architecture-challenge-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",
