@@ -180,6 +180,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "risk.registers.revise",
   "risk.registers.assess",
   "risk.registers.snapshot",
+  "evidence.registries.read",
+  "evidence.registries.create",
+  "evidence.registries.revise",
+  "evidence.registries.assess",
+  "evidence.registries.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1123,6 +1128,21 @@ export class EngineHost {
         return this.engine.riskRegister.assess(request.params.initiativeId)
       case "risk.registers.snapshot":
         return this.engine.riskRegister.project(request.params.initiativeId)
+      case "evidence.registries.read":
+        return await this.engine.evidenceRegistry.readCurrent(request.params.initiativeId) ?? null
+      case "evidence.registries.create":
+        return this.engine.evidenceRegistry.create(request.params.record, actorId(request.params.actorId))
+      case "evidence.registries.revise":
+        return this.engine.evidenceRegistry.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "evidence.registries.assess":
+        return this.engine.evidenceRegistry.assess(request.params.initiativeId)
+      case "evidence.registries.snapshot":
+        return this.engine.evidenceRegistry.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

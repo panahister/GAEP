@@ -41,6 +41,7 @@ import { failureRecoveryModelInputSchema } from "./failure-recovery-model.js"
 import { architectureChallengeModelInputSchema } from "./architecture-challenge-model.js"
 import { decisionRegisterInputSchema } from "./decision-register.js"
 import { riskRegisterInputSchema } from "./risk-register.js"
+import { evidenceRegistryInputSchema } from "./evidence-registry.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -445,6 +446,18 @@ export const hostRiskRegisterReviseParamsSchema = z.object({
   record: riskRegisterInputSchema,
 }).strict()
 
+export const hostEvidenceRegistryCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: evidenceRegistryInputSchema,
+}).strict()
+
+export const hostEvidenceRegistryReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: evidenceRegistryInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -586,6 +599,11 @@ export const hostMethodSchema = z.enum([
   "risk.registers.revise",
   "risk.registers.assess",
   "risk.registers.snapshot",
+  "evidence.registries.read",
+  "evidence.registries.create",
+  "evidence.registries.revise",
+  "evidence.registries.assess",
+  "evidence.registries.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -739,6 +757,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("risk.registers.revise", hostRiskRegisterReviseParamsSchema),
   requestVariant("risk.registers.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("risk.registers.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("evidence.registries.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("evidence.registries.create", hostEvidenceRegistryCreateParamsSchema),
+  requestVariant("evidence.registries.revise", hostEvidenceRegistryReviseParamsSchema),
+  requestVariant("evidence.registries.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("evidence.registries.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

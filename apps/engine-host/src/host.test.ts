@@ -1206,6 +1206,39 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "evidence-registry-read-empty",
+      protocolVersion: 2,
+      method: "evidence.registries.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "evidence-registry-assess-empty",
+      protocolVersion: 2,
+      method: "evidence.registries.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      claimCount: 0,
+      evidenceItemCount: 0,
+      linkCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-claim-validation-evidence-sufficiency"),
+    })
+    const evidenceRegistryProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "evidence-registry-snapshot-empty",
+      protocolVersion: 2,
+      method: "evidence.registries.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: evidenceRegistrySnapshotDigest, ...evidenceRegistryProjectionBody } = evidenceRegistryProjection
+    expect(evidenceRegistrySnapshotDigest).toBe(canonicalDigest(evidenceRegistryProjectionBody))
+    expect(evidenceRegistryProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-claim-statements-evidence-observations"),
+      authorityBoundary: expect.stringContaining("does-not-establish-claim-validation-evidence-sufficiency"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1220,6 +1253,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "risk-register-v1-block",
       method: "risk.registers.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "evidence-registry-v1-block",
+      method: "evidence.registries.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
@@ -1369,6 +1408,26 @@ describe("engine host protocol", () => {
           riskAccepted: true,
           approved: true,
           exceptionGranted: true,
+          baselinePromoted: true,
+          ready: true,
+          actionAuthorized: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "evidence-registry-extra-authority",
+      protocolVersion: 2,
+      method: "evidence.registries.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          claimValidated: true,
+          evidenceSufficient: true,
+          assuranceEstablished: true,
+          approved: true,
+          riskAccepted: true,
           baselinePromoted: true,
           ready: true,
           actionAuthorized: true,
