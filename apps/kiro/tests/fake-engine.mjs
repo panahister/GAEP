@@ -46,6 +46,7 @@ const failureRecoveryModelId = "48484848-4848-4848-8848-484848484848"
 const architectureChallengeModelId = "49494949-4949-4949-8949-494949494949"
 const decisionRegisterId = "50505050-5050-4050-8050-505050505050"
 const riskRegisterId = "51515151-5151-4151-8151-515151515151"
+const evidenceRegistryId = "52525252-5252-4252-8252-525252525252"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -119,6 +120,8 @@ input.on("line", (line) => {
       return readDecisionRegister(id, request.params)
     case "risk.registers.snapshot":
       return readRiskRegister(id, request.params)
+    case "evidence.registries.snapshot":
+      return readEvidenceRegistry(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -1396,6 +1399,68 @@ function readRiskRegister(id, params) {
   if (workspacePath.endsWith("bad-risk-register-snapshot-digest")) value.register.riskCount = 10
   if (workspacePath.endsWith("bad-risk-register-snapshot-private")) {
     value.riskStatement = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readEvidenceRegistry(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE EVIDENCE REGISTRY PARAMS")
+  }
+  const registryDigest = `sha256:${"f".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "evidence-registry-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    registry: { recordId: evidenceRegistryId, revision: 4, digest: registryDigest },
+    claimCount: 12,
+    evidenceItemCount: 18,
+    linkCount: 21,
+    notAssessedClaimCount: 2,
+    notAssessedEvidenceCount: 3,
+    adverseEvidencePendingDispositionCount: 1,
+    staleOrUnknownEvidenceCount: 4,
+    invalidatedEvidenceCount: 1,
+    unresolvedLinkCount: 21,
+    unresolvedRequirementCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 1,
+    state: "attention-required",
+    reasons: ["One or more Claims remain explicitly not assessed"],
+    assessedAt: "2026-07-27T00:00:00.000Z",
+    authorityBoundary: "evidence-registry-status-reports-candidate-coverage-freshness-and-gaps-and-does-not-establish-claim-validation-evidence-sufficiency-assurance-approval-readiness-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "evidence-registry-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    registry: {
+      id: evidenceRegistryId,
+      revision: 4,
+      digest: registryDigest,
+      membershipDigest: `sha256:${"d".repeat(64)}`,
+      state: "candidate",
+      claimCount: 12,
+      evidenceItemCount: 18,
+      linkCount: 21,
+      updatedAt: "2026-07-26T23:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-claim-statements-evidence-observations-methods-warrants-quality-details-source-content-personal-data-secrets-or-credentials",
+    authorityBoundary: "evidence-registry-projection-does-not-establish-claim-validation-evidence-sufficiency-assurance-review-approval-risk-acceptance-readiness-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-evidence-registry-snapshot-binding")) content.initiative.id = evidenceRegistryId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-evidence-registry-snapshot-digest")) value.registry.claimCount = 13
+  if (workspacePath.endsWith("bad-evidence-registry-snapshot-private")) {
+    value.claimStatement = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

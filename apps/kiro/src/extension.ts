@@ -20,6 +20,7 @@ import {
   type ArchitectureChallengeModelProjection,
   type DecisionRegisterProjection,
   type RiskRegisterProjection,
+  type EvidenceRegistryProjection,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -105,6 +106,7 @@ const commandIds = {
   architectureChallengeModel: "gaepKiro.architectureChallengeModel.inspect",
   decisionRegister: "gaepKiro.decisionRegister.inspect",
   riskRegister: "gaepKiro.riskRegister.inspect",
+  evidenceRegistry: "gaepKiro.evidenceRegistry.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -212,6 +214,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.architectureChallengeModel, (input?: unknown) => runUserCommand(() => showArchitectureChallengeModel(pool, input))),
     vscode.commands.registerCommand(commandIds.decisionRegister, (input?: unknown) => runUserCommand(() => showDecisionRegister(pool, input))),
     vscode.commands.registerCommand(commandIds.riskRegister, (input?: unknown) => runUserCommand(() => showRiskRegister(pool, input))),
+    vscode.commands.registerCommand(commandIds.evidenceRegistry, (input?: unknown) => runUserCommand(() => showEvidenceRegistry(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1227,6 +1230,44 @@ async function showRiskRegister(
     ...(record ? [
       `Membership digest: ${record.membershipDigest}`,
       `Candidate counts: ${record.riskCount} risks`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showEvidenceRegistry(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<EvidenceRegistryProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Evidence Registry candidate", "Initiative ID")
+  const projection = await client.readEvidenceRegistry(initiativeId)
+  const status = projection.status
+  const record = projection.registry
+  const lines = [
+    "GAEP governed Evidence Registry candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${status.state}`,
+    `Coverage: ${status.claimCount} claims · ${status.evidenceItemCount} evidence items · ${status.linkCount} claim/evidence links`,
+    `Candidate gaps: ${status.notAssessedClaimCount} claims not assessed · ${status.notAssessedEvidenceCount} evidence items not assessed · ${status.adverseEvidencePendingDispositionCount} adverse dispositions pending · ${status.staleOrUnknownEvidenceCount} stale or unknown · ${status.invalidatedEvidenceCount} invalidated · ${status.unresolvedLinkCount} unresolved links · ${status.unresolvedRequirementCount} requirements · ${status.inconsistencyCount} inconsistencies · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate counts: ${record.claimCount} claims · ${record.evidenceItemCount} evidence items · ${record.linkCount} links`,
       `Updated: ${record.updatedAt}`,
     ] : []),
     "",

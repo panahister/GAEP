@@ -40,6 +40,7 @@ const commands = [
   "gaepKiro.architectureChallengeModel.inspect",
   "gaepKiro.decisionRegister.inspect",
   "gaepKiro.riskRegister.inspect",
+  "gaepKiro.evidenceRegistry.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",
