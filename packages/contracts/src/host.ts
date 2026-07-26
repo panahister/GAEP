@@ -38,6 +38,7 @@ import { dataModelInputSchema } from "./data-model.js"
 import { authorizationModelInputSchema } from "./authorization-model.js"
 import { eventIntegrationModelInputSchema } from "./event-integration-model.js"
 import { failureRecoveryModelInputSchema } from "./failure-recovery-model.js"
+import { architectureChallengeModelInputSchema } from "./architecture-challenge-model.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -406,6 +407,18 @@ export const hostFailureRecoveryModelReviseParamsSchema = z.object({
   record: failureRecoveryModelInputSchema,
 }).strict()
 
+export const hostArchitectureChallengeModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: architectureChallengeModelInputSchema,
+}).strict()
+
+export const hostArchitectureChallengeModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: architectureChallengeModelInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -532,6 +545,11 @@ export const hostMethodSchema = z.enum([
   "recovery.models.revise",
   "recovery.models.assess",
   "recovery.models.snapshot",
+  "challenge.models.read",
+  "challenge.models.create",
+  "challenge.models.revise",
+  "challenge.models.assess",
+  "challenge.models.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -670,6 +688,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("recovery.models.revise", hostFailureRecoveryModelReviseParamsSchema),
   requestVariant("recovery.models.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("recovery.models.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("challenge.models.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("challenge.models.create", hostArchitectureChallengeModelCreateParamsSchema),
+  requestVariant("challenge.models.revise", hostArchitectureChallengeModelReviseParamsSchema),
+  requestVariant("challenge.models.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("challenge.models.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

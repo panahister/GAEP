@@ -165,6 +165,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "recovery.models.revise",
   "recovery.models.assess",
   "recovery.models.snapshot",
+  "challenge.models.read",
+  "challenge.models.create",
+  "challenge.models.revise",
+  "challenge.models.assess",
+  "challenge.models.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1063,6 +1068,21 @@ export class EngineHost {
         return this.engine.failureRecoveryModel.assess(request.params.initiativeId)
       case "recovery.models.snapshot":
         return this.engine.failureRecoveryModel.project(request.params.initiativeId)
+      case "challenge.models.read":
+        return await this.engine.architectureChallengeModel.readCurrent(request.params.initiativeId) ?? null
+      case "challenge.models.create":
+        return this.engine.architectureChallengeModel.create(request.params.record, actorId(request.params.actorId))
+      case "challenge.models.revise":
+        return this.engine.architectureChallengeModel.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "challenge.models.assess":
+        return this.engine.architectureChallengeModel.assess(request.params.initiativeId)
+      case "challenge.models.snapshot":
+        return this.engine.architectureChallengeModel.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

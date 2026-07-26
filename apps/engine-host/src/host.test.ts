@@ -1108,6 +1108,39 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "architecture-challenge-read-empty",
+      protocolVersion: 2,
+      method: "challenge.models.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "architecture-challenge-assess-empty",
+      protocolVersion: 2,
+      method: "challenge.models.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      challengeSubjectCount: 0,
+      findingCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-independence"),
+    })
+    const architectureChallengeProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "architecture-challenge-snapshot-empty",
+      protocolVersion: 2,
+      method: "challenge.models.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: architectureChallengeSnapshotDigest, ...architectureChallengeProjectionBody } =
+      architectureChallengeProjection
+    expect(architectureChallengeSnapshotDigest).toBe(canonicalDigest(architectureChallengeProjectionBody))
+    expect(architectureChallengeProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-challenge-content-assumptions-evidence"),
+      authorityBoundary: expect.stringContaining("does-not-establish-independence"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1205,6 +1238,24 @@ describe("engine host protocol", () => {
           compensationRestored: true,
           recoverySucceeded: true,
           returnToServiceAuthorized: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "architecture-challenge-extra-authority",
+      protocolVersion: 2,
+      method: "challenge.models.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          independentReviewCompleted: true,
+          assuranceEstablished: true,
+          riskAccepted: true,
+          architectureApproved: true,
+          operationallyReady: true,
+          actionAuthorized: true,
         },
       },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
