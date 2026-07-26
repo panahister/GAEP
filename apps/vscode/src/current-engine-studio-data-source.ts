@@ -39,6 +39,7 @@ import type {
   SecurityPrivacyAssessmentProjection,
   ProcessModelProjection,
   DataModelProjection,
+  AuthorizationModelProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -157,6 +158,9 @@ export interface CurrentStudioEngineReader {
   dataModel?: {
     project(initiativeId: string): Promise<DataModelProjection>
   }
+  authorizationModel?: {
+    project(initiativeId: string): Promise<AuthorizationModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -207,6 +211,7 @@ interface ObservedStudioState {
   securityPrivacyAssessmentProjections: Map<string, SecurityPrivacyAssessmentProjection>
   processModelProjections: Map<string, ProcessModelProjection>
   dataModelProjections: Map<string, DataModelProjection>
+  authorizationModelProjections: Map<string, AuthorizationModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1024,6 +1029,54 @@ function dataModelTable(state: ObservedStudioState): StudioTableSnapshot {
   }
 }
 
+function authorizationModelTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.authorizationModelProjections.values()].flatMap((projection) => {
+    const record = projection.model
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.principalCount} principals · ${projection.status.roleAssignmentCount} role assignments · ${projection.status.resourceCount} resources · ${record.actionCount} actions · ${projection.status.approvalBindingCount} approval bindings · ${record.ruleCount} rules`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.uncoveredOperatingRoleCount} uncovered roles · ${projection.status.uncoveredProcessCount} uncovered processes · ${projection.status.uncoveredDataEntityCount} uncovered data entities · ${projection.status.unresolvedIdentityCount} unresolved identities · ${projection.status.unresolvedRuleCount} unresolved rules · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate principals, role assignments, resources, actions, approval bindings, and authorization rules only; no identity verification, effective appointment, standing authority, authorization grant, enforcement decision, operational readiness, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "authorization-model",
+    title: "Governed Authorization Model Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Authorization Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Authorization Model candidate",
+        "Create the candidate through the governed engine workflow. This view does not verify identity, approve assignments or standing authority, grant authorization, enforce policy, establish operational readiness, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1034,7 +1087,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -1054,6 +1107,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       securityPrivacyAssessmentTable(state),
       processModelTable(state),
       dataModelTable(state),
+      authorizationModelTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3508,6 +3562,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       securityPrivacyAssessmentProjections: new Map(),
       processModelProjections: new Map(),
       dataModelProjections: new Map(),
+      authorizationModelProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -4131,6 +4186,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "data-model-unavailable",
           "Data Model metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.authorizationModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.authorizationModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.authorizationModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Authorization Model projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `authorization-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Authorization Model metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "authorization-model-unavailable",
+          "Authorization Model metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

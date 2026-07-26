@@ -40,6 +40,7 @@ const boundedContextModelId = "42424242-4242-4242-8242-424242424242"
 const securityPrivacyAssessmentId = "43434343-4343-4343-8343-434343434343"
 const processModelId = "44444444-4444-4444-8444-444444444444"
 const dataModelId = "45454545-4545-4545-8545-454545454545"
+const authorizationModelId = "46464646-4646-4646-8646-464646464646"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -101,6 +102,8 @@ input.on("line", (line) => {
       return readProcessModel(id, request.params)
     case "data.models.snapshot":
       return readDataModel(id, request.params)
+    case "authorization.models.snapshot":
+      return readAuthorizationModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -1007,6 +1010,70 @@ function readDataModel(id, params) {
   if (workspacePath.endsWith("bad-data-model-snapshot-digest")) value.model.entityCount = 7
   if (workspacePath.endsWith("bad-data-model-snapshot-private")) {
     value.entityAttribute = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readAuthorizationModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE AUTHORIZATION MODEL PARAMS")
+  }
+  const modelDigest = `sha256:${"b".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "authorization-model-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    model: { recordId: authorizationModelId, revision: 2, digest: modelDigest },
+    principalCount: 5,
+    roleAssignmentCount: 6,
+    resourceCount: 7,
+    actionCount: 8,
+    approvalBindingCount: 3,
+    ruleCount: 9,
+    uncoveredOperatingRoleCount: 1,
+    uncoveredProcessCount: 2,
+    uncoveredDataEntityCount: 3,
+    unresolvedIdentityCount: 4,
+    unresolvedRuleCount: 5,
+    unresolvedRequirementCount: 6,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more Authorization Rules remain unresolved"],
+    assessedAt: "2026-07-26T13:30:00.000Z",
+    authorityBoundary: "authorization-model-status-reports-candidate-coverage-and-gaps-and-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "authorization-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    model: {
+      id: authorizationModelId,
+      revision: 2,
+      digest: modelDigest,
+      membershipDigest: `sha256:${"c".repeat(64)}`,
+      state: "candidate",
+      principalCount: 5,
+      actionCount: 8,
+      ruleCount: 9,
+      updatedAt: "2026-07-26T13:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-principal-identifiers-role-assignments-rules-conditions-approval-content-source-content-personal-data-locators-secrets-or-credentials",
+    authorityBoundary: "authorization-model-projection-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-authorization-model-snapshot-binding")) content.initiative.id = authorizationModelId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-authorization-model-snapshot-digest")) value.model.principalCount = 6
+  if (workspacePath.endsWith("bad-authorization-model-snapshot-private")) {
+    value.principalIdentifier = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

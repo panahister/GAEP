@@ -35,6 +35,7 @@ import { boundedContextModelInputSchema } from "./bounded-context-model.js"
 import { securityPrivacyAssessmentInputSchema } from "./security-privacy-assessment.js"
 import { processModelInputSchema } from "./process-model.js"
 import { dataModelInputSchema } from "./data-model.js"
+import { authorizationModelInputSchema } from "./authorization-model.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -367,6 +368,18 @@ export const hostDataModelReviseParamsSchema = z.object({
   record: dataModelInputSchema,
 }).strict()
 
+export const hostAuthorizationModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: authorizationModelInputSchema,
+}).strict()
+
+export const hostAuthorizationModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: authorizationModelInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -478,6 +491,11 @@ export const hostMethodSchema = z.enum([
   "data.models.revise",
   "data.models.assess",
   "data.models.snapshot",
+  "authorization.models.read",
+  "authorization.models.create",
+  "authorization.models.revise",
+  "authorization.models.assess",
+  "authorization.models.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -601,6 +619,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("data.models.revise", hostDataModelReviseParamsSchema),
   requestVariant("data.models.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("data.models.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("authorization.models.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("authorization.models.create", hostAuthorizationModelCreateParamsSchema),
+  requestVariant("authorization.models.revise", hostAuthorizationModelReviseParamsSchema),
+  requestVariant("authorization.models.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("authorization.models.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

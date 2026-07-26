@@ -290,6 +290,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += dataModelButton
         actions.add(dataModelButton)
 
+        val authorizationModelButton = JButton("Inspect Authorization Model…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Principal identifiers, role assignments, rules, conditions, approval content, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Authorization Model",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Authorization Model", status, output, buttons) {
+                    controller.readAuthorizationModel(initiativeId)
+                }
+            }
+        }
+        buttons += authorizationModelButton
+        actions.add(authorizationModelButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

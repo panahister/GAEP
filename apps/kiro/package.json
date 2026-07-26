@@ -61,6 +61,7 @@
     "onCommand:gaepKiro.securityPrivacyAssessment.inspect",
     "onCommand:gaepKiro.processModel.inspect",
     "onCommand:gaepKiro.dataModel.inspect",
+    "onCommand:gaepKiro.authorizationModel.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -182,6 +183,10 @@
       {
         "command": "gaepKiro.dataModel.inspect",
         "title": "GAEP for Kiro: Inspect Governed Data Model Candidate"
+      },
+      {
+        "command": "gaepKiro.authorizationModel.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Authorization Model Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

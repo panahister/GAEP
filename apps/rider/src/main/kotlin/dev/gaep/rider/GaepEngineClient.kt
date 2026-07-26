@@ -204,6 +204,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readAuthorizationModel(initiativeId: UUID): AuthorizationModelProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("authorization.models.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseAuthorizationModelEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

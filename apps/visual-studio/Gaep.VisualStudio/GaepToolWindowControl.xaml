@@ -72,6 +72,9 @@
         <Button x:Name="LoadDataModelButton" Content="Inspect governed Data Model"
                 Command="{Binding LoadDataModelCommand}" MinHeight="28" Margin="0,0,0,10"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadAuthorizationModelButton" Content="Inspect governed Authorization Model"
+                Command="{Binding LoadAuthorizationModelCommand}" MinHeight="28" Margin="0,0,0,10"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

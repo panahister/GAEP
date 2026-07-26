@@ -14,6 +14,7 @@ import {
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type DataModelProjection,
+  type AuthorizationModelProjection,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -93,6 +94,7 @@ const commandIds = {
   securityPrivacyAssessment: "gaepKiro.securityPrivacyAssessment.inspect",
   processModel: "gaepKiro.processModel.inspect",
   dataModel: "gaepKiro.dataModel.inspect",
+  authorizationModel: "gaepKiro.authorizationModel.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -194,6 +196,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.securityPrivacyAssessment, (input?: unknown) => runUserCommand(() => showSecurityPrivacyAssessment(pool, input))),
     vscode.commands.registerCommand(commandIds.processModel, (input?: unknown) => runUserCommand(() => showProcessModel(pool, input))),
     vscode.commands.registerCommand(commandIds.dataModel, (input?: unknown) => runUserCommand(() => showDataModel(pool, input))),
+    vscode.commands.registerCommand(commandIds.authorizationModel, (input?: unknown) => runUserCommand(() => showAuthorizationModel(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -969,6 +972,47 @@ async function showDataModel(
     ...(record ? [
       `Membership digest: ${record.membershipDigest}`,
       `Candidate counts: ${record.entityCount} entities · ${record.relationshipCount} relationships · ${record.lifecycleCount} lifecycles`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showAuthorizationModel(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<AuthorizationModelProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Authorization Model candidate", "Initiative ID")
+  const projection = await client.readAuthorizationModel(initiativeId)
+  const status = projection.status
+  const record = projection.model
+  const lines = [
+    "GAEP governed Authorization Model candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${status.state}`,
+    `Coverage: ${status.principalCount} principals · ${status.roleAssignmentCount} role assignments · ${status.resourceCount} resources · ${status.actionCount} actions · ${status.approvalBindingCount} approval bindings · ${status.ruleCount} rules`,
+    `Candidate gaps: ${status.uncoveredOperatingRoleCount} operating roles · ${status.uncoveredProcessCount} processes · ${status.uncoveredDataEntityCount} data entities · ${status.unresolvedIdentityCount} identities · ${status.unresolvedRuleCount} rules · ${status.unresolvedRequirementCount} requirements · ${status.inconsistencyCount} inconsistencies · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate counts: ${record.principalCount} principals · ${record.actionCount} actions · ${record.ruleCount} rules`,
       `Updated: ${record.updatedAt}`,
     ] : []),
     "",

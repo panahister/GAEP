@@ -1006,6 +1006,38 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "authorization-model-read-empty",
+      protocolVersion: 2,
+      method: "authorization.models.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "authorization-model-assess-empty",
+      protocolVersion: 2,
+      method: "authorization.models.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      principalCount: 0,
+      ruleCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-verify-identity"),
+    })
+    const authorizationModelProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "authorization-model-snapshot-empty",
+      protocolVersion: 2,
+      method: "authorization.models.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: authorizationModelSnapshotDigest, ...authorizationModelProjectionBody } = authorizationModelProjection
+    expect(authorizationModelSnapshotDigest).toBe(canonicalDigest(authorizationModelProjectionBody))
+    expect(authorizationModelProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-principal-identifiers-role-assignments-rules-conditions"),
+      authorityBoundary: expect.stringContaining("does-not-verify-identity"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1068,6 +1100,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "data-model-v1-block",
       method: "data.models.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "authorization-model-v1-block",
+      method: "authorization.models.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

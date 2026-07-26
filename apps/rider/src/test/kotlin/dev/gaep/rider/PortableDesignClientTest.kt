@@ -805,6 +805,49 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Authorization Model projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("authorization-model-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readAuthorizationModel(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(5, projection.model?.principalCount)
+            assertEquals(9, projection.model?.ruleCount)
+            assertEquals(6, projection.unresolvedRequirementCount)
+
+            val rendered = RiderProductController(client).readAuthorizationModel(entryId)
+            assertTrue(rendered.contains("GAEP governed Authorization Model candidate"))
+            assertTrue(rendered.contains("5 principals · 6 role assignments · 7 resources · 8 actions · 3 approval bindings · 9 rules"))
+            assertTrue(rendered.contains("does not verify identity, approve role assignments or standing authority"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("principalIdentifier"))
+        }
+
+        listOf(
+            "bad-authorization-model-snapshot-digest",
+            "bad-authorization-model-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readAuthorizationModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-authorization-model-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readAuthorizationModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

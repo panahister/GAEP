@@ -12,6 +12,7 @@ import {
   type SecurityPrivacyAssessmentProjection,
   type ProcessModelProjection,
   type DataModelProjection,
+  type AuthorizationModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -924,6 +925,69 @@ function dataModelProjection(): DataModelProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function authorizationModelProjection(): AuthorizationModelProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "authorization-model-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    model: {
+      recordId: "a4a4a4a4-a4a4-44a4-84a4-a4a4a4a4a4a4",
+      revision: 2,
+      digest: `sha256:${"9".repeat(64)}` as const,
+    },
+    principalCount: 5,
+    roleAssignmentCount: 6,
+    resourceCount: 7,
+    actionCount: 8,
+    approvalBindingCount: 3,
+    ruleCount: 9,
+    uncoveredOperatingRoleCount: 1,
+    uncoveredProcessCount: 2,
+    uncoveredDataEntityCount: 3,
+    unresolvedIdentityCount: 4,
+    unresolvedRuleCount: 5,
+    unresolvedRequirementCount: 6,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more Authorization Rules remain unresolved"],
+    assessedAt: "2026-07-26T13:30:00.000Z",
+    authorityBoundary: "authorization-model-status-reports-candidate-coverage-and-gaps-and-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "authorization-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    model: {
+      id: status.model.recordId,
+      revision: status.model.revision,
+      digest: status.model.digest,
+      membershipDigest: `sha256:${"a".repeat(64)}` as const,
+      state: "candidate" as const,
+      principalCount: 5,
+      actionCount: 8,
+      ruleCount: 9,
+      updatedAt: "2026-07-26T13:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-principal-identifiers-role-assignments-rules-conditions-approval-content-source-content-personal-data-locators-secrets-or-credentials" as const,
+    authorityBoundary: "authorization-model-projection-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1487,6 +1551,7 @@ interface HarnessOptions {
   securityPrivacyAssessmentProjection?: SecurityPrivacyAssessmentProjection
   processModelProjection?: ProcessModelProjection
   dataModelProjection?: DataModelProjection
+  authorizationModelProjection?: AuthorizationModelProjection
   commandResult?: unknown
 }
 
@@ -1635,6 +1700,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.dataModelProjection ? {
       dataModel: {
         project: async () => options.dataModelProjection!,
+      },
+    } : {}),
+    ...(options.authorizationModelProjection ? {
+      authorizationModel: {
+        project: async () => options.authorizationModelProjection!,
       },
     } : {}),
   }
@@ -2069,6 +2139,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /entity attributes|relationship content|lifecycle content|source content|personal data|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Authorization Model metadata on the native architecture page", async () => {
+    const projection = authorizationModelProjection()
+    const { source } = harness({ authorizationModelProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[10]).toMatchObject({
+      id: "authorization-model",
+      rows: [{
+        id: projection.model?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.model?.membershipDigest,
+          counts: "5 principals · 6 role assignments · 7 resources · 8 actions · 3 approval bindings · 9 rules",
+          assessment: "attention-required",
+          gaps: "1 uncovered roles · 2 uncovered processes · 3 uncovered data entities · 4 unresolved identities · 5 unresolved rules · 6 requirement gaps · 1 stale bindings",
+          boundary: "Candidate principals, role assignments, resources, actions, approval bindings, and authorization rules only; no identity verification, effective appointment, standing authority, authorization grant, enforcement decision, operational readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /principal@example\.com|private rule condition|private approval response|customer@example\.com|api_key/iu,
     )
   })
 

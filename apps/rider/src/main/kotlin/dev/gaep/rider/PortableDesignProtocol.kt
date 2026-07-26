@@ -1236,6 +1236,46 @@ data class DataModelProjection(
     val snapshotDigest: String,
 )
 
+data class AuthorizationModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val principalCount: Int,
+    val actionCount: Int,
+    val ruleCount: Int,
+)
+
+data class AuthorizationModelProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val principalCount: Int,
+    val roleAssignmentCount: Int,
+    val resourceCount: Int,
+    val actionCount: Int,
+    val approvalBindingCount: Int,
+    val ruleCount: Int,
+    val uncoveredOperatingRoleCount: Int,
+    val uncoveredProcessCount: Int,
+    val uncoveredDataEntityCount: Int,
+    val unresolvedIdentityCount: Int,
+    val unresolvedRuleCount: Int,
+    val unresolvedRequirementCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val model: AuthorizationModelRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1333,6 +1373,12 @@ internal object PortableDesignProtocol {
         "data-model-projection-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action"
     private const val DATA_MODEL_STATUS_AUTHORITY_BOUNDARY =
         "data-model-status-reports-candidate-coverage-and-gaps-and-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action"
+    private const val AUTHORIZATION_MODEL_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-principal-identifiers-role-assignments-rules-conditions-approval-content-source-content-personal-data-locators-secrets-or-credentials"
+    private const val AUTHORIZATION_MODEL_PROJECTION_AUTHORITY_BOUNDARY =
+        "authorization-model-projection-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action"
+    private const val AUTHORIZATION_MODEL_STATUS_AUTHORITY_BOUNDARY =
+        "authorization-model-status-reports-candidate-coverage-and-gaps-and-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -3930,6 +3976,140 @@ internal object PortableDesignProtocol {
             uncoveredProcessCount, unresolvedSystemOfRecordCount, unresolvedTransformationCount,
             unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount, staleBindingCount,
             staleSourceReferenceCount, model, snapshotDigest,
+        )
+    }
+
+    fun parseAuthorizationModelEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): AuthorizationModelProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("model"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "authorization-model-projection" ||
+            projection.requireString("privacyBoundary") != AUTHORIZATION_MODEL_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != AUTHORIZATION_MODEL_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "principalCount", "roleAssignmentCount", "resourceCount", "actionCount", "approvalBindingCount",
+                "ruleCount", "uncoveredOperatingRoleCount", "uncoveredProcessCount", "uncoveredDataEntityCount",
+                "unresolvedIdentityCount", "unresolvedRuleCount", "unresolvedRequirementCount", "inconsistencyCount",
+                "unresolvedQuestionCount", "staleBindingCount", "staleSourceReferenceCount", "state", "reasons",
+                "assessedAt", "authorityBoundary",
+            ),
+            setOf("model"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "authorization-model-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != AUTHORIZATION_MODEL_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val principalCount = status.requireBoundedNonNegativeInt("principalCount", 4_096)
+        val roleAssignmentCount = status.requireBoundedNonNegativeInt("roleAssignmentCount", 8_192)
+        val resourceCount = status.requireBoundedNonNegativeInt("resourceCount", 8_192)
+        val actionCount = status.requireBoundedNonNegativeInt("actionCount", 4_096)
+        val approvalBindingCount = status.requireBoundedNonNegativeInt("approvalBindingCount", 4_096)
+        val ruleCount = status.requireBoundedNonNegativeInt("ruleCount", 16_384)
+        val uncoveredOperatingRoleCount = status.requireBoundedNonNegativeInt("uncoveredOperatingRoleCount", 2_048)
+        val uncoveredProcessCount = status.requireBoundedNonNegativeInt("uncoveredProcessCount", 512)
+        val uncoveredDataEntityCount = status.requireBoundedNonNegativeInt("uncoveredDataEntityCount", 2_048)
+        val unresolvedIdentityCount = status.requireBoundedNonNegativeInt("unresolvedIdentityCount", 4_096)
+        val unresolvedRuleCount = status.requireBoundedNonNegativeInt("unresolvedRuleCount", 16_384)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 28)
+        val inconsistencyCount = status.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 16)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val assessmentState = status.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val model = projection.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "principalCount", "actionCount",
+                "ruleCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val record = AuthorizationModelRecordView(
+                id,
+                revision,
+                digest,
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("principalCount", 4_096),
+                value.requireBoundedNonNegativeInt("actionCount", 4_096),
+                value.requireBoundedNonNegativeInt("ruleCount", 16_384),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (model == null) ||
+            (model?.principalCount ?: 0) != principalCount ||
+            (model?.actionCount ?: 0) != actionCount ||
+            (model?.ruleCount ?: 0) != ruleCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return AuthorizationModelProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, principalCount, roleAssignmentCount, resourceCount,
+            actionCount, approvalBindingCount, ruleCount, uncoveredOperatingRoleCount, uncoveredProcessCount,
+            uncoveredDataEntityCount, unresolvedIdentityCount, unresolvedRuleCount, unresolvedRequirementCount,
+            inconsistencyCount, unresolvedQuestionCount, staleBindingCount, staleSourceReferenceCount, model,
+            snapshotDigest,
         )
     }
 

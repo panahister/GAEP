@@ -55,6 +55,7 @@ internal static class Program
     private static readonly Guid SecurityPrivacyAssessmentId = Guid.Parse("49494949-4949-4949-8949-494949494949");
     private static readonly Guid ProcessModelId = Guid.Parse("50505050-5050-4050-8050-505050505050");
     private static readonly Guid DataModelId = Guid.Parse("51515151-5151-4151-8151-515151515151");
+    private static readonly Guid AuthorizationModelId = Guid.Parse("52525252-5252-4252-8252-525252525252");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -149,6 +150,9 @@ internal static class Program
         var badDataModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-data-model-snapshot-binding");
         var badDataModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-data-model-snapshot-digest");
         var badDataModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-data-model-snapshot-private");
+        var badAuthorizationModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-authorization-model-snapshot-binding");
+        var badAuthorizationModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-authorization-model-snapshot-digest");
+        var badAuthorizationModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-authorization-model-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -240,6 +244,9 @@ internal static class Program
         Directory.CreateDirectory(badDataModelSnapshotBindingRoot);
         Directory.CreateDirectory(badDataModelSnapshotDigestRoot);
         Directory.CreateDirectory(badDataModelSnapshotPrivateRoot);
+        Directory.CreateDirectory(badAuthorizationModelSnapshotBindingRoot);
+        Directory.CreateDirectory(badAuthorizationModelSnapshotDigestRoot);
+        Directory.CreateDirectory(badAuthorizationModelSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1069,6 +1076,46 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadDataModelAsync(InitiativeId),
                 "Data Model rejects a projection rebound to a substituted Product revision");
+        }
+
+        var authorizationModelProjection = await client.ReadAuthorizationModelAsync(InitiativeId);
+        Check(authorizationModelProjection.ProductId == product.Id &&
+              authorizationModelProjection.ProductRevision == product.Revision &&
+              authorizationModelProjection.ProductDigest == product.Digest &&
+              authorizationModelProjection.InitiativeId == resolved.Id &&
+              authorizationModelProjection.InitiativeRevision == resolved.Revision &&
+              authorizationModelProjection.InitiativeDigest == resolved.Digest &&
+              authorizationModelProjection.AssessmentState == "attention-required" &&
+              authorizationModelProjection.Model?.PrincipalCount == 5 &&
+              authorizationModelProjection.Model?.RuleCount == 9 &&
+              authorizationModelProjection.UnresolvedRequirementCount == 6,
+            "Typed Authorization Model preserves exact Product, Initiative, status, and candidate metadata");
+        var authorizationModelOutput = await initiativeController.ReadAuthorizationModelAsync(InitiativeId);
+        Check(authorizationModelOutput.Contains("GAEP governed Authorization Model candidate", StringComparison.Ordinal) &&
+              authorizationModelOutput.Contains(
+                  "5 principals · 6 role assignments · 7 resources · 8 actions · 3 approval bindings · 9 rules",
+                  StringComparison.Ordinal) &&
+              authorizationModelOutput.Contains(
+                  "does not verify identity, approve role assignments or standing authority",
+                  StringComparison.Ordinal) &&
+              !authorizationModelOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !authorizationModelOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !authorizationModelOutput.Contains("principalIdentifier", StringComparison.Ordinal),
+            "Authorization Model workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badAuthorizationModelSnapshotDigestRoot, badAuthorizationModelSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadAuthorizationModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Authorization Model rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badAuthorizationModelSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadAuthorizationModelAsync(InitiativeId),
+                "Authorization Model rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2203,6 +2250,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-data-model-snapshot-digest";
         var badDataModelSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-data-model-snapshot-private";
+        var badAuthorizationModelSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-authorization-model-snapshot-binding";
+        var badAuthorizationModelSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-authorization-model-snapshot-digest";
+        var badAuthorizationModelSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-authorization-model-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2453,6 +2506,17 @@ internal static class Program
                         badDataModelSnapshotBinding,
                         badDataModelSnapshotDigest,
                         badDataModelSnapshotPrivate);
+                    break;
+                case "authorization.models.snapshot":
+                    await HandleAuthorizationModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badAuthorizationModelSnapshotBinding,
+                        badAuthorizationModelSnapshotDigest,
+                        badAuthorizationModelSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -3877,6 +3941,104 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) model["entityCount"] = 7;
         if (includePrivateField) result["entityAttribute"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleAuthorizationModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID AUTHORIZATION MODEL");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T13:30:00.000Z";
+        var modelDigest = $"sha256:{new string('b', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var model = new Dictionary<string, object?>
+        {
+            ["id"] = AuthorizationModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = modelDigest,
+            ["membershipDigest"] = $"sha256:{new string('c', 64)}",
+            ["state"] = "candidate",
+            ["principalCount"] = 5,
+            ["actionCount"] = 8,
+            ["ruleCount"] = 9,
+            ["updatedAt"] = "2026-07-26T13:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "authorization-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "authorization-model-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["model"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = AuthorizationModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = modelDigest,
+                },
+                ["principalCount"] = 5,
+                ["roleAssignmentCount"] = 6,
+                ["resourceCount"] = 7,
+                ["actionCount"] = 8,
+                ["approvalBindingCount"] = 3,
+                ["ruleCount"] = 9,
+                ["uncoveredOperatingRoleCount"] = 1,
+                ["uncoveredProcessCount"] = 2,
+                ["uncoveredDataEntityCount"] = 3,
+                ["unresolvedIdentityCount"] = 4,
+                ["unresolvedRuleCount"] = 5,
+                ["unresolvedRequirementCount"] = 6,
+                ["inconsistencyCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Authorization Rules remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "authorization-model-status-reports-candidate-coverage-and-gaps-and-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action",
+            },
+            ["model"] = model,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-principal-identifiers-role-assignments-rules-conditions-approval-content-source-content-personal-data-locators-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "authorization-model-projection-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) model["principalCount"] = 6;
+        if (includePrivateField) result["principalIdentifier"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

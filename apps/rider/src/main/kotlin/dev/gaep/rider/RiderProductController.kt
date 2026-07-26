@@ -780,6 +780,57 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readAuthorizationModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readAuthorizationModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Authorization Model was read. Refresh the exact records." }
+        return renderAuthorizationModel(projection)
+    }
+
+    fun renderAuthorizationModel(projection: AuthorizationModelProjection): String = buildString {
+        appendLine("GAEP governed Authorization Model candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.principalCount} principals · ${projection.roleAssignmentCount} role assignments · " +
+                "${projection.resourceCount} resources · ${projection.actionCount} actions · " +
+                "${projection.approvalBindingCount} approval bindings · ${projection.ruleCount} rules",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.uncoveredOperatingRoleCount} operating roles · " +
+                "${projection.uncoveredProcessCount} processes · ${projection.uncoveredDataEntityCount} data entities · " +
+                "${projection.unresolvedIdentityCount} identities · ${projection.unresolvedRuleCount} rules · " +
+                "${projection.unresolvedRequirementCount} requirements · ${projection.inconsistencyCount} inconsistencies · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.model?.let { record ->
+            appendLine("Authorization candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate counts: ${record.principalCount} principals · ${record.actionCount} actions · " +
+                    "${record.ruleCount} rules",
+            )
+        } ?: appendLine("Authorization candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no principal identifiers, role-assignment content, rules, " +
+                "conditions, approval content, Source content, personal data, locators, local paths, secrets, or " +
+                "credentials and does not verify identity, approve role assignments or standing authority, create " +
+                "an authorization grant, enforce policy, establish operational readiness, promote a baseline, or authorize action.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,
