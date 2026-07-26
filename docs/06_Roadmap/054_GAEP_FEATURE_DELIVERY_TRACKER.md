@@ -2,9 +2,9 @@
 
 **Governed AI Engineering Platform (GAEP)**  
 **Document ID:** GAEP-RDM-054  
-**Version:** 1.0.2  
+**Version:** 1.0.3  
 **Status:** Active Delivery Control  
-**Last Updated:** 2026-07-24  
+**Last Updated:** 2026-07-26  
 **Authority:** Feature delivery status and phase acceptance  
 **Product Authority:** [GAEP Platform and Product Identity Manifest](../GAEP_PLATFORM_PRODUCT_IDENTITY_MANIFEST.md)  
 **Maintainers:** Product Owner, Codex, and Claude Code
@@ -48,6 +48,14 @@ Any regression from ✅ Done requires a documented defect, change request, or in
 - Bulk-changing the status of an entire phase without evaluating every Feature ID is prohibited.
 - The Status Summary must be updated in the same change as the feature tables. An incorrect count is a documentation defect.
 
+### 2.3 Delivery-speed and correction rule
+
+- One approved Change Set gets one implementation pass and, when necessary, one consolidated stabilization pass. Agents must not create a new planning report or approval cycle for implementation defects, packaging defects, CI failures, or environment discovery errors already inside the approved scope.
+- Intermediate failures are reported as concise defect lists. A full handoff is produced only when the locally applicable gate is green or a genuine external blocker is demonstrated.
+- Security, evidence, and governance work must be proportional to the active acceptance risk. Non-blocking hardening ideas go to the backlog and must not expand the current acceptance gate.
+- A blocked external lane does not prevent work on the next Product capability from continuing in parallel, but it does prevent an unsupported host or phase from being marked complete.
+- A revised report and new approval are required only for a material Product-scope, trust-boundary, public-contract, artifact-contract, or acceptance-criteria change that has not already been explicitly directed by the Product Owner.
+
 ## 3. Roadmap Phase Model
 
 > **Naming clarification:** Roadmap Phase 0/1A is the delivery-foundation phase. Product Lifecycle steps P0 through P4 are executed during Roadmap Phase 1 and represent a separate concept.
@@ -62,11 +70,31 @@ Any regression from ✅ Done requires a documented defect, change request, or in
 | Phase 3B | Controlled Implementation and QA | Governed code generation or modification, QA, and conformance | `❌ Backlog` | Executable code, multidimensional QA, and human acceptance are complete |
 | Phase 4 | Release, Publish, and Learning | Release, observation, learning, and rebaselining | `❌ Backlog` | Release evidence, rollback, and the learning loop are accepted |
 
+### 3.1 Canonical IDE and operating-system matrix
+
+| IDE host | macOS | Windows | Linux | Delivery rule |
+|---|---:|---:|---:|---|
+| VS Code | Required | Required | Required | One extension implementation; validate the same package/source revision across all three systems |
+| Kiro | Required | Required | Required | One Open VSX-compatible implementation; verify in Kiro, not only VS Code |
+| Rider | Required | Required | Required | One JetBrains plugin implementation; package/select the correct Engine Host runtime |
+| Visual Studio | Not applicable | Required | Not applicable | Native Visual Studio extension; build and validate on Windows |
+
+This table defines operating-system validation, not separate Feature implementations. Shared behavior belongs in the Engine and contracts. Platform-specific behavior is limited to launch, path, process, native-host, and packaging adapters.
+
+The standard delivery loop is:
+
+1. implement the Feature once in shared code and cover it with platform-neutral tests;
+2. connect it through thin IDE adapters;
+3. build, install, and manually smoke VS Code, Kiro, and Rider on the Product Owner's macOS environment when applicable;
+4. run the same commit through automated macOS, Windows, and Linux build/package/launch/protocol/workflow smoke lanes;
+5. correct only the failing platform adapter or lane; do not fork or reimplement the Feature;
+6. perform a full manual operating-system matrix only for a release candidate or a platform-specific defect that automation cannot validate.
+
 ## 4. Mandatory Deliverable Contract for Every Phase
 
 No phase is complete merely because the Core Engine or VS Code implementation is complete. Every phase deliverable must include:
 
-1. a versioned, installable package for **VS Code, Visual Studio, Rider, and Kiro**;
+1. versioned, installable packages for **VS Code, Visual Studio, Rider, and Kiro**, built from the same source revision and validated against the matrix in Section 3.1;
 2. the ability to select and run **Codex** and **Claude Code** in all four IDEs;
 3. the ability to discover, select, and switch the supported models of each provider;
 4. versioned and traceable provider/model handoff without evidence loss;
@@ -346,6 +374,8 @@ Claude Code must not report a phase as Done unless:
 7. the Product Owner has explicitly accepted phase completion; and
 8. the Feature Registry, Status Summary, and Change Log are updated in a single change.
 
+For operating-system coverage, automated same-commit matrix evidence is sufficient for Phase acceptance unless a host workflow cannot be exercised automatically or the Product Owner explicitly requests manual validation. Manual Product Owner acceptance may be performed on the primary macOS environment for VS Code, Kiro, and Rider. Visual Studio acceptance is performed on Windows.
+
 ## 16. Claude Code Update Protocol
 
 Claude Code must follow this contract at the beginning and end of every development run.
@@ -423,6 +453,7 @@ Every status change must add a new row. Previous rows must not be deleted or rew
 
 | Date | Actor | Phase | Feature IDs | Status changes | Evidence / test path | Product Owner acceptance | Notes |
 |---|---|---|---|---|---|---|---|
+| 2026-07-26 | Codex (recording Product Owner direction) | Phase 0 / 1A | PLT-03, PLT-04, PLT-05, PLT-20, PLT-31, PLT-32, PLT-33, PLT-34, PLT-35 | None — statuses unchanged | `docs/GAEP_PLATFORM_PRODUCT_IDENTITY_MANIFEST.md` operating-system matrix and this tracker Sections 2.3/3.1 | Product Owner explicitly clarified that VS Code, Kiro, and Rider must run on macOS, Windows, and Linux; Visual Studio is Windows-only | Established one shared implementation plus thin platform adapters, macOS primary manual acceptance, same-commit automated OS matrix, and a no-new-report rule for in-scope defects/CI failures. This clarification supersedes narrower CS02 platform assumptions without reopening Stage A. |
 | 2026-07-24 | Codex (recording Product Owner acceptance) | Phase 0 / 1A | PLT-28 | PLT-28 `🧪 Ready for Test -> ✅ Done` | Product Owner installed the GAEP VSIX and manually executed `GAEP: Show Platform Readiness`; the visible output contained computed provider/workspace readiness and all four host rows. Automated evidence: `examples/phase0-readiness/acceptance/GAEP-P0-CS01_READINESS_REPORT.json` + `examples/phase0-readiness/acceptance/GAEP-P0-CS01_EVIDENCE_MANIFEST.md`; verified report digest `sha256:158853a9e822ccd9b86dafe5f691aa0ae42b4a4f302e01c55611515ecf5d5b3a`. | Accepted by Product Owner after the 2026-07-24 manual installation and command test; Codex assessed the displayed result as PASS. | GAEP-P0-CS01-C1 is accepted. The visible raw `ENOENT` for `.gaep/manifest.json` came from a Product-dependent command on an uninitialized workspace, not from Platform Readiness; friendly prerequisite handling is carried into GAEP-P0-CS02. PLT-27 and PLT-29 remain `🟡 In Progress`; Phase 0 remains open. |
 | 2026-07-24 | Codex | All | PLT-01..35, P1-01..36, P2-01..26, P3A-01..24, P3B-01..30, P4-01..17 | Initial baseline recorded | Codebase and Manifest assessment | Baseline structure requested by Product Owner; feature completion not newly accepted | Initial 168-feature delivery tracker created |
 | 2026-07-24 | Codex | All | None | No feature status changes | Full-language scan and repository documentation validation | Product Owner requested an English-only tracker | Translated all narrative text and table content to English; IDs, phase assignments, and statuses were preserved |

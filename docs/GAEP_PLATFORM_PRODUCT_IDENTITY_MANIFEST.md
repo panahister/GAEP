@@ -2,9 +2,9 @@
 
 **Product:** Governed AI Engineering Platform (GAEP)  
 **Document ID:** GAEP-PID-001  
-**Version:** 0.4.2<br>
+**Version:** 0.4.3<br>
 **Status:** Draft — Shareable Product Identity  
-**Last updated:** 2026-07-23  
+**Last updated:** 2026-07-26  
 **Intended audience:** Executives, product leaders, engineering leaders, architects, designers, quality and security leaders, software engineers, operators, governance participants, AI-platform evaluators, and AI agents  
 **Intended use:** Product orientation, stakeholder alignment, independent product evaluation, partnership discussion, roadmap framing, role guidance, and AI context  
 **Authority:** Informative Product-direction synthesis; it does not replace approved constitutional, governance, architecture, assurance, lifecycle, or implementation specifications  
@@ -440,6 +440,21 @@ GAEP's required first cross-host matrix consists of **Visual Studio Code, Micros
 - **Kiro** may reuse compatible VS Code-extension foundations through its Open VSX ecosystem, but compatibility must be verified in Kiro itself; VS Code success is not Kiro evidence.
 - **Visual Studio** uses a native Visual Studio extension and the shared versioned Engine Host protocol.
 - **Rider** uses a native JetBrains plugin and the same Engine Host protocol.
+
+The required operating-system support matrix is:
+
+| IDE host | macOS | Windows | Linux |
+|---|---:|---:|---:|
+| VS Code | Required | Required | Required |
+| Kiro | Required | Required | Required |
+| Rider | Required | Required | Required |
+| Visual Studio | Not applicable | Required | Not applicable |
+
+This matrix is a validation matrix over one Product implementation, not permission to create separate Product behavior per operating system. GAEP capabilities must be implemented once in the shared Engine, contracts, provider adapters, evidence model, and dashboard projections. Operating-system-specific code is permitted only in thin bootstrap, process, path, native-host, and packaging adapters. A platform failure must be corrected in that adapter or build lane; the Feature must not be reimplemented for each operating system.
+
+The minimum release-validation matrix for the first credible cross-platform release is macOS Apple silicon, Windows x64, and Linux x64, using the same source revision and versioned protocol. Additional architectures may be added when supported by the relevant IDE vendor and declared in the package manifest. IDE discovery must inspect standard application installations and configured locations as well as `PATH`; an installed macOS application bundle must not be reported absent solely because its command is not on `PATH`.
+
+The Product Owner's primary manual acceptance environment may be macOS. Windows and Linux parity may be established by automated build, package-content, launch, protocol-conformance, and workflow smoke lanes for the same commit. Full manual testing on every operating system is a release-candidate activity, not a requirement for every Feature implementation pass. Visual Studio remains Windows-only.
 
 Every phase release must produce installable, version-aligned artifacts for all four IDEs, exercise the applicable phase dashboard and example in each host, and prove Codex and Claude Code selection, Model selection, switching, handoff, capability truth, and evidence behavior. Platform-specific limitations must be visible and must fail closed; an inert command, hook, or view must not be reported as supported.
 

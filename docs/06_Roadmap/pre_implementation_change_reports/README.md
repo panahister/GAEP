@@ -37,6 +37,12 @@ After approval, an implementation defect already inside the frozen scope is corr
 
 Reviewers must evaluate the implementation against the frozen contract. Non-blocking improvements discovered later belong in the backlog or a later Change Set; they do not move the current goalposts.
 
+### Fast path for implementation and CI corrections
+
+An implementation defect, packaging defect, CI portability failure, or environment-discovery error inside an approved Change Set is corrected directly under that Change Set. It must not create a new report, report revision, approval request, or broad re-audit. The correction response should state only the defect, changed files, focused regression test, affected gate result, and any genuine blocker.
+
+Use one consolidated stabilization pass instead of serial correction reports. Platform corrections must preserve one shared Product implementation and remain inside thin launch, path, process, native-host, packaging, or CI adapters. A green result on one operating system is evidence for that lane only; the same source revision must be validated by the canonical matrix in the Manifest and Feature Delivery Tracker.
+
 ## Naming convention
 
 ```

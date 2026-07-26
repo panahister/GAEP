@@ -115,6 +115,8 @@ For every generated artifact, state who creates it, when it is created, whether 
 | Rider |  |  |  |  |  |
 | Kiro |  |  |  |  |  |
 
+For host-facing work, map the same source revision to the canonical operating-system matrix in the Manifest and Feature Delivery Tracker. Do not propose separate Product implementations per operating system. Put OS-specific behavior only in thin launch, path, process, native-host, packaging, or CI adapters.
+
 > Do not claim four-IDE support when a host only has a scaffold or was not executed.
 
 ### Artifact and evidence contract
