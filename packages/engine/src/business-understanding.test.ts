@@ -7,6 +7,7 @@ import {
   architectureChallengeRequirementIds,
   decisionRegisterRequirementIds,
   riskRegisterRequirementIds,
+  evidenceRegistryRequirementIds,
   authorizationModelInputSchema,
   authorizationModelRequirementIds,
   eventIntegrationModelInputSchema,
@@ -33,6 +34,8 @@ import {
   type DecisionRegisterInput,
   type DecisionRegister,
   type RiskRegisterInput,
+  type RiskRegister,
+  type EvidenceRegistryInput,
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
@@ -3075,6 +3078,177 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function evidenceRegistryInput(
+    operatingModel: OperatingModel,
+    architectureChallengeModel: ArchitectureChallengeModel,
+    securityPrivacyAssessment: SecurityPrivacyAssessment,
+    decisionRegister: DecisionRegister,
+    riskRegister: RiskRegister,
+    overrides: Partial<EvidenceRegistryInput> = {},
+  ): EvidenceRegistryInput {
+    const claimKeys = ["current-cross-host-conformance"]
+    const evidenceKeys = ["local-conformance-receipt"]
+    const linkKeys = ["local-receipt-supports-current-conformance"]
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Product Evidence Registry",
+      scope: "Record claim-bounded, attributable, versioned Evidence Item metadata and explicit support, contradiction, and qualification warrants without treating record presence or favorable output as proof, approval, assurance, readiness, or action authority.",
+      operatingModel: { recordId: operatingModel.id, revision: operatingModel.revision, digest: canonicalDigest(operatingModel) },
+      architectureChallengeModel: { recordId: architectureChallengeModel.id, revision: architectureChallengeModel.revision, digest: canonicalDigest(architectureChallengeModel) },
+      securityPrivacyAssessment: { recordId: securityPrivacyAssessment.id, revision: securityPrivacyAssessment.revision, digest: canonicalDigest(securityPrivacyAssessment) },
+      decisionRegister: { recordId: decisionRegister.id, revision: decisionRegister.revision, digest: canonicalDigest(decisionRegister) },
+      riskRegister: { recordId: riskRegister.id, revision: riskRegister.revision, digest: canonicalDigest(riskRegister) },
+      claims: [{
+        key: "current-cross-host-conformance",
+        type: "conformance-claim",
+        ownerRoleKey: "initiative-owner",
+        ownerAssignmentState: "not-established",
+        statement: "The exact candidate shared-engine capability set has equivalent deterministic source and package behavior across the four declared native host projections for the recorded local snapshot only.",
+        falsificationConditions: ["Any declared host capability marker, behavior receipt, package byte, or source snapshot differs from the exact recorded snapshot"],
+        subjects: [{
+          recordKind: "architecture-challenge-model",
+          recordId: architectureChallengeModel.id,
+          revision: architectureChallengeModel.revision,
+          digest: canonicalDigest(architectureChallengeModel),
+          relationship: "depends-on",
+          elementKeys: ["shared-engine-decision"],
+        }],
+        scope: ["Declared local four-host candidate capability snapshot"],
+        environment: ["Recorded local deterministic test environment"],
+        configuration: ["Exact source, contract, package, and evidence digests"],
+        validFrom: "2026-07-27T00:00:00.000Z",
+        applicableRequirements: ["gaep-cae-req-001"],
+        applicablePolicies: [],
+        relatedRiskKeys: ["shared-engine-correlated-failure"],
+        assumptions: ["The recorded evidence producer and integrity path remain attributable"],
+        requiredEvidenceClasses: ["Exact source snapshot and deterministic host behavior receipt"],
+        acceptanceCriteria: ["Every declared host capability and deterministic behavior check passes against exact package bytes"],
+        assessment: {
+          state: "supported",
+          assessor: { kind: "human", id: actorId },
+          assessedAt: "2026-07-27T01:00:00.000Z",
+          methodName: "Candidate evidence assessment",
+          methodVersion: "0.1.0",
+          evidenceLinkKeys: linkKeys,
+          rationale: "The named human assessor records bounded candidate support for the exact local snapshot only; this is not assurance, approval, readiness, or authority.",
+          validityEndsAt: "2026-08-27T01:00:00.000Z",
+          authorityBoundary: "claim-assessment-is-attributed-epistemic-state-and-does-not-establish-review-approval-assurance-risk-acceptance-readiness-or-action-authority",
+        },
+        knownGaps: ["Native supported-platform and human acceptance evidence is absent"],
+        exclusions: ["Live-provider, native accessibility, release, deployment, and Product Owner acceptance"],
+        residualUncertainty: ["Local deterministic coverage cannot establish supported-host behavior"],
+        defeaters: ["A stale source binding, changed package byte, adverse host result, or omitted platform limitation"],
+        reviewTriggers: ["Contract, source, package, host, provider, or acceptance state changes"],
+        expiryTriggers: ["Declared evidence validity interval ends or a bound artifact changes"],
+        invalidationTriggers: ["Any exact subject, environment, configuration, package, or evidence digest changes"],
+        supersessionTriggers: ["A newer attributable registry revision binds replacement evidence"],
+        authoringLifecycle: "draft",
+        revisionDisposition: "candidate",
+        operationalEligibilityState: "not-established",
+      }],
+      evidenceItems: [{
+        key: "local-conformance-receipt",
+        evidenceId: "55555555-5555-4555-8555-555555555555",
+        evidenceRevision: 1,
+        evidenceDigest: digest("5"),
+        type: "deterministic-conformance-receipt",
+        producer: { kind: "system", id: "gaep-local-conformance-runner" },
+        capturedAt: "2026-07-27T00:01:00.000Z",
+        subjects: [{
+          recordKind: "architecture-challenge-model",
+          recordId: architectureChallengeModel.id,
+          revision: architectureChallengeModel.revision,
+          digest: canonicalDigest(architectureChallengeModel),
+          relationship: "depends-on",
+          elementKeys: ["shared-engine-decision"],
+        }],
+        claimKeys,
+        outcome: "favorable",
+        observation: "All declared deterministic local host-capability checks passed, while native supported-platform and human acceptance remain unavailable and explicitly outside this observation.",
+        method: {
+          name: "GAEP deterministic host conformance",
+          version: "1.0.0",
+          criteria: ["Exact contract, source marker, behavior receipt, and package digest agreement"],
+          procedureVersion: "1.0.0",
+          tools: ["GAEP local evidence runner"],
+          configuration: ["Exact repository snapshot and isolated package lifecycle fixtures"],
+          environment: ["Local developer workstation"],
+          dataReferences: ["Privacy-safe generated receipt digests"],
+          limitations: ["No native supported-platform or real-account acceptance is exercised"],
+          reproducibilityConditions: ["Use the exact repository revision, toolchain, fixtures, package bytes, and declared commands"],
+        },
+        sources: [reference()],
+        provenanceDigest: digest("6"),
+        integrityDigest: digest("7"),
+        evaluatorOrExecutor: { kind: "system", id: "gaep-local-conformance-runner" },
+        independenceCharacteristics: ["Producer and evaluator are the same deterministic local capability"],
+        informationClassification: "internal",
+        permittedRecipientRoles: ["GAEP Assurance Authority"],
+        retentionState: "active-retention",
+        retentionObligations: ["Preserve unfavorable, failed, and inconclusive outcomes with the exact subject and source snapshot"],
+        disposalObligations: ["Follow the controlling Data, Audit, and records-retention policies"],
+        authoringLifecycle: "finalized",
+        assessment: {
+          state: "fit-for-declared-use",
+          assessor: { kind: "human", id: actorId },
+          assessedAt: "2026-07-27T01:00:00.000Z",
+          methodName: "Candidate evidence fitness assessment",
+          methodVersion: "0.1.0",
+          declaredClaimKeys: claimKeys,
+          rationale: "The named human assessor records candidate fitness only for the exact declared local Claim scope and does not certify another subject or environment.",
+          authorityBoundary: "evidence-assessment-is-scoped-to-declared-claims-and-does-not-certify-other-subjects-versions-environments-configurations-or-claims",
+        },
+        freshness: "current",
+        validity: "valid",
+        revisionDisposition: "candidate",
+        operationalEligibility: "eligible",
+        quality: ([
+          "authenticity", "coverage", "freshness", "independence", "integrity",
+          "interpretability", "relevance", "reproducibility", "sensitivity", "validity",
+        ] as const).map((dimension) => ({
+          dimension,
+          state: "candidate-satisfactory" as const,
+          rationale: "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority.",
+        })),
+        limitations: ["The result is bounded to local deterministic behavior and exact recorded inputs"],
+        anomalies: [],
+        expiryTriggers: ["The declared evidence validity interval ends"],
+        invalidationTriggers: ["Any subject, source, method, tool, configuration, environment, data, or package digest changes"],
+        supersessionTriggers: ["A newer exact Evidence Item revision is recorded"],
+        adverseDispositionState: "not-required",
+        authorityBoundary: "evidence-item-is-attributable-metadata-and-does-not-by-presence-or-outcome-prove-a-claim-grant-approval-establish-assurance-or-authorize-action",
+      }],
+      links: [{
+        key: "local-receipt-supports-current-conformance",
+        claimKey: "current-cross-host-conformance",
+        evidenceKey: "local-conformance-receipt",
+        relationship: "supports",
+        warrant: "The exact local receipt supports only the bounded Claim about deterministic agreement within its recorded source, package, fixture, configuration, and environment boundaries.",
+        scope: ["Exact local deterministic snapshot only"],
+        limitations: ["No native supported-platform, live-provider, human, accessibility, readiness, release, or deployment conclusion follows"],
+        sufficiencyState: "not-established",
+        acceptedForClaimState: "not-established",
+        authorityBoundary: "claim-evidence-link-records-a-candidate-warrant-and-does-not-establish-evidence-sufficiency-claim-validation-assurance-approval-or-action-authority",
+      }],
+      requirementCoverage: [...evidenceRegistryRequirementIds]
+        .sort((left, right) => left.localeCompare(right))
+        .map((requirementId) => ({
+          requirementId,
+          state: "covered-candidate" as const,
+          claimKeys,
+          evidenceKeys,
+          basis: "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+          sources: [reference()],
+        })),
+      unresolvedQuestions: [],
+      inconsistencies: [],
+      limitations: ["No Claim validation, Evidence sufficiency, Assurance Case conclusion, Review, Approval, Risk Acceptance, baseline promotion, readiness, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -5849,6 +6023,219 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("persists exact versioned Evidence Registries without synthesizing sufficiency, assurance, or authority", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel), actorId,
+    )
+    const riskRegister = await engine.riskRegister.create(
+      riskRegisterInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister,
+      ),
+      actorId,
+    )
+    const input = evidenceRegistryInput(
+      upstream.operatingModel, upstream.architectureChallengeModel,
+      upstream.securityPrivacyAssessment, decisionRegister, riskRegister,
+    )
+    const registry = await engine.evidenceRegistry.create(input, actorId)
+
+    expect(registry).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      claims: [{
+        assessment: { state: "supported", assessor: { kind: "human", id: actorId } },
+        ownerAssignmentState: "not-established",
+        operationalEligibilityState: "not-established",
+      }],
+      evidenceItems: [{
+        assessment: { state: "fit-for-declared-use", assessor: { kind: "human", id: actorId } },
+        freshness: "current",
+        validity: "valid",
+      }],
+      links: [{ sufficiencyState: "not-established", acceptedForClaimState: "not-established" }],
+      authorityBoundary: expect.stringContaining("does-not-establish-claim-validation-evidence-sufficiency-assurance"),
+    })
+    expect(registry.membershipDigest).toBe(canonicalDigest({
+      operatingModel: input.operatingModel,
+      architectureChallengeModel: input.architectureChallengeModel,
+      securityPrivacyAssessment: input.securityPrivacyAssessment,
+      decisionRegister: input.decisionRegister,
+      riskRegister: input.riskRegister,
+      claims: input.claims.map((claim) => ({ key: claim.key, subjects: claim.subjects })),
+      evidenceItems: input.evidenceItems.map((evidence) => ({
+        key: evidence.key,
+        evidenceId: evidence.evidenceId,
+        evidenceRevision: evidence.evidenceRevision,
+        evidenceDigest: evidence.evidenceDigest,
+        claimKeys: evidence.claimKeys,
+        subjects: evidence.subjects,
+        sourceReferences: [reference()],
+      })),
+      links: input.links.map((link) => ({
+        key: link.key,
+        claimKey: link.claimKey,
+        evidenceKey: link.evidenceKey,
+        relationship: link.relationship,
+      })),
+    }))
+    expect(await engine.evidenceRegistry.assess(initiative.id)).toMatchObject({
+      registry: { recordId: registry.id, revision: 1, digest: canonicalDigest(registry) },
+      claimCount: 1,
+      evidenceItemCount: 1,
+      linkCount: 1,
+      notAssessedClaimCount: 0,
+      notAssessedEvidenceCount: 0,
+      adverseEvidencePendingDispositionCount: 0,
+      staleOrUnknownEvidenceCount: 0,
+      invalidatedEvidenceCount: 0,
+      unresolvedLinkCount: 1,
+      unresolvedRequirementCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      authorityBoundary: expect.stringContaining("does-not-establish-claim-validation-evidence-sufficiency"),
+    })
+    const projection = await engine.evidenceRegistry.project(initiative.id)
+    expect(projection).toMatchObject({
+      registry: { id: registry.id, revision: 1, claimCount: 1, evidenceItemCount: 1, linkCount: 1 },
+      status: { unresolvedLinkCount: 1 },
+      privacyBoundary: expect.stringContaining("not-claim-statements-evidence-observations"),
+      authorityBoundary: expect.stringContaining("does-not-establish-claim-validation-evidence-sufficiency"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("current-cross-host-conformance")
+    expect(JSON.stringify(projection)).not.toContain("All declared deterministic")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.evidenceRegistry.revise(
+      registry.id,
+      registry.revision,
+      evidenceRegistryInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister, riskRegister,
+        { limitations: [
+          "Independent human Assurance Case review, evidence-sufficiency determination, and native supported-host acceptance remain incomplete",
+          "No Claim validation, Evidence sufficiency, Assurance Case conclusion, Review, Approval, Risk Acceptance, baseline promotion, readiness, release, deployment, or action authority is represented",
+        ] },
+      ),
+      actorId,
+    )
+    expect(revised).toMatchObject({ id: registry.id, revision: 2, predecessorDigest: canonicalDigest(registry) })
+    expect((await engine.evidenceRegistry.listHistory(registry.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "evidence.registry.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(registry),
+        claimCount: 1,
+        evidenceItemCount: 1,
+        linkCount: 1,
+        notAssessedClaimCount: 0,
+        notAssessedEvidenceCount: 0,
+        staleOrUnknownEvidenceCount: 0,
+        claimValidationState: "not-established",
+        evidenceSufficiencyState: "not-established",
+        assuranceState: "not-established",
+        reviewState: "not-established",
+        approvalState: "not-established",
+        riskAcceptanceState: "not-granted",
+        baselinePromotionState: "not-granted",
+        readinessState: "not-established",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("rejects forged Evidence Registry roles, risks, subjects, bindings, secrets, and duplicate current records", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel), actorId,
+    )
+    const riskRegister = await engine.riskRegister.create(
+      riskRegisterInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister,
+      ),
+      actorId,
+    )
+    const base = evidenceRegistryInput(
+      upstream.operatingModel, upstream.architectureChallengeModel,
+      upstream.securityPrivacyAssessment, decisionRegister, riskRegister,
+    )
+    await expect(engine.evidenceRegistry.create({
+      ...base,
+      claims: base.claims.map((claim) => ({ ...claim, ownerRoleKey: "invented-owner" })),
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.evidenceRegistry.create({
+      ...base,
+      claims: base.claims.map((claim) => ({ ...claim, relatedRiskKeys: ["invented-risk"] })),
+    }, actorId)).rejects.toThrow(/exact Risk keys/)
+    await expect(engine.evidenceRegistry.create({
+      ...base,
+      evidenceItems: base.evidenceItems.map((evidence) => ({
+        ...evidence,
+        subjects: evidence.subjects.map((subject) => ({ ...subject, digest: digest("e") })),
+      })),
+    }, actorId)).rejects.toThrow(/exact governed records/)
+    await expect(engine.evidenceRegistry.create({
+      ...base,
+      riskRegister: { ...base.riskRegister, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Risk Register/)
+    await expect(engine.evidenceRegistry.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable Evidence Registry context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+    await engine.evidenceRegistry.create(base, actorId)
+    await expect(engine.evidenceRegistry.create(base, actorId)).rejects.toThrow(/only one current Evidence Registry/)
+  })
+
+  it("reports Evidence Registry staleness after its exact Risk Register changes", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel), actorId,
+    )
+    const riskRegister = await engine.riskRegister.create(
+      riskRegisterInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister,
+      ),
+      actorId,
+    )
+    const registry = await engine.evidenceRegistry.create(
+      evidenceRegistryInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister, riskRegister,
+      ),
+      actorId,
+    )
+    await engine.riskRegister.revise(
+      riskRegister.id,
+      riskRegister.revision,
+      riskRegisterInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister,
+        { limitations: [
+          "No assessment fact, owner appointment, control-effectiveness conclusion, Risk Acceptance, Approval Determination, exception, baseline promotion, readiness conclusion, release, deployment, or action authority is represented",
+          "The exact Risk Register changed after Evidence Registry capture",
+        ] },
+      ),
+      actorId,
+    )
+    expect(await engine.evidenceRegistry.assess(initiative.id)).toMatchObject({
+      registry: { recordId: registry.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -6015,6 +6402,16 @@ describe("Business understanding governance", () => {
       ),
       actorId,
     )
+    const evidenceRegistry = await engine.evidenceRegistry.create(
+      evidenceRegistryInput(
+        operatingModel,
+        architectureChallengeModel,
+        securityPrivacyAssessment,
+        decisionRegister,
+        riskRegister,
+      ),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -6051,6 +6448,8 @@ describe("Business understanding governance", () => {
       `decision-register-history/decision-register-${decisionRegister.id}-r1.json`,
       `risk-registers/${riskRegister.id}.json`,
       `risk-register-history/risk-register-${riskRegister.id}-r1.json`,
+      `evidence-registries/${evidenceRegistry.id}.json`,
+      `evidence-registry-history/evidence-registry-${evidenceRegistry.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,

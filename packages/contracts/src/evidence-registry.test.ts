@@ -34,6 +34,7 @@ function input(overrides: Partial<EvidenceRegistryInput> = {}): EvidenceRegistry
     informationClassification: "internal",
     title: "Candidate Product Evidence Registry",
     scope: "Record claim-bounded, attributable, versioned Evidence Item metadata and explicit support, contradiction, and qualification warrants without treating record presence or favorable output as proof, approval, assurance, readiness, or action authority.",
+    operatingModel: { recordId: id("0"), revision: 1, digest: digest("0") },
     architectureChallengeModel: { recordId: id("1"), revision: 1, digest: digest("1") },
     securityPrivacyAssessment: { recordId: id("2"), revision: 1, digest: digest("2") },
     decisionRegister: { recordId: id("3"), revision: 1, digest: digest("3") },

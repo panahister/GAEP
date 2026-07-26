@@ -17,6 +17,7 @@ import {
   architectureChallengeModelSchema,
   decisionRegisterSchema,
   riskRegisterSchema,
+  evidenceRegistrySchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -131,6 +132,8 @@ const directoryNames = [
   "decision-register-history",
   "risk-registers",
   "risk-register-history",
+  "evidence-registries",
+  "evidence-registry-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -930,6 +933,8 @@ export class GaepRepository {
       ["decision-register-history", /^decision-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["risk-registers", /^[0-9a-f-]+\.json$/i],
       ["risk-register-history", /^risk-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["evidence-registries", /^[0-9a-f-]+\.json$/i],
+      ["evidence-registry-history", /^evidence-registry-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1081,6 +1086,10 @@ export class GaepRepository {
     if (/^risk-registers\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^risk-register-history\/risk-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, riskRegisterSchema)
+    }
+    if (/^evidence-registries\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^evidence-registry-history\/evidence-registry-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, evidenceRegistrySchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

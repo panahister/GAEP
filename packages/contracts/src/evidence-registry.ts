@@ -3,6 +3,7 @@ import { z } from "zod"
 import { exactArchitectureChallengeModelReferenceSchema } from "./architecture-challenge-model.js"
 import { businessContextBindingSchema } from "./business-understanding.js"
 import { exactDecisionRegisterReferenceSchema, exactDecisionSubjectReferenceSchema } from "./decision-register.js"
+import { exactOperatingModelReferenceSchema } from "./operating-model.js"
 import { containsSecretShapedValue, informationClassificationSchema } from "./product-studio.js"
 import { exactRiskRegisterReferenceSchema } from "./risk-register.js"
 import { exactSecurityPrivacyAssessmentReferenceSchema } from "./security-privacy-assessment.js"
@@ -287,6 +288,7 @@ const evidenceRegistryInputBaseSchema = z.object({
   informationClassification: informationClassificationSchema,
   title: z.string().trim().min(2).max(240),
   scope: longTextSchema,
+  operatingModel: exactOperatingModelReferenceSchema,
   architectureChallengeModel: exactArchitectureChallengeModelReferenceSchema,
   securityPrivacyAssessment: exactSecurityPrivacyAssessmentReferenceSchema,
   decisionRegister: exactDecisionRegisterReferenceSchema,
