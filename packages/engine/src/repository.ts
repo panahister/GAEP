@@ -21,6 +21,7 @@ import {
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
   processModelSchema,
+  dataModelSchema,
   businessCapabilityMapSchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
@@ -110,6 +111,8 @@ const directoryNames = [
   "security-privacy-assessment-history",
   "process-models",
   "process-model-history",
+  "data-models",
+  "data-model-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -895,6 +898,8 @@ export class GaepRepository {
       ["security-privacy-assessment-history", /^security-privacy-assessment-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["process-models", /^[0-9a-f-]+\.json$/i],
       ["process-model-history", /^process-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["data-models", /^[0-9a-f-]+\.json$/i],
+      ["data-model-history", /^data-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1018,6 +1023,10 @@ export class GaepRepository {
     if (/^process-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^process-model-history\/process-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, processModelSchema)
+    }
+    if (/^data-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^data-model-history\/data-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, dataModelSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

@@ -8,6 +8,8 @@ import {
   securityPrivacyRequirementIds,
   processModelInputSchema,
   processRequirementIds,
+  dataModelInputSchema,
+  dataModelRequirementIds,
   businessArchitectureBaselineInputSchema,
   businessCapabilityMapInputSchema,
   businessRuleCatalogInputSchema,
@@ -21,6 +23,8 @@ import {
   type SecurityPrivacyAssessmentInput,
   type ProcessModelInput,
   type ProcessModel,
+  type DataModelInput,
+  type DataModel,
   type BusinessArchitectureBaselineInput,
   type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
@@ -1549,6 +1553,184 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function dataModelInput(
+    architecture: SystemSolutionArchitecture,
+    boundedContextModel: BoundedContextModel,
+    operatingModel: OperatingModel,
+    securityPrivacyAssessment: SecurityPrivacyAssessment,
+    processModel: ProcessModel,
+    overrides: Partial<DataModelInput> = {},
+  ): DataModelInput {
+    const requirementCoverage = [...dataModelRequirementIds]
+      .sort((left, right) => left.localeCompare(right))
+      .map((requirementId) => ({
+        requirementId,
+        state: "covered-candidate" as const,
+        entityKeys: ["governed-record", "product-studio-projection"],
+        lifecycleKeys: ["candidate-record-lifecycle"],
+        transformationKeys: ["candidate-projection"],
+        basis: "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+        evidence: [reference()],
+      }))
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Data Model",
+      scope: "Model conceptual governed records and privacy-safe host projections with exact semantics, candidate ownership, lifecycle, relationships, transformations, and profile evidence.",
+      systemSolutionArchitecture: { recordId: architecture.id, revision: architecture.revision, digest: canonicalDigest(architecture) },
+      boundedContextModel: { recordId: boundedContextModel.id, revision: boundedContextModel.revision, digest: canonicalDigest(boundedContextModel) },
+      operatingModel: { recordId: operatingModel.id, revision: operatingModel.revision, digest: canonicalDigest(operatingModel) },
+      securityPrivacyAssessment: {
+        recordId: securityPrivacyAssessment.id,
+        revision: securityPrivacyAssessment.revision,
+        digest: canonicalDigest(securityPrivacyAssessment),
+      },
+      processModel: { recordId: processModel.id, revision: processModel.revision, digest: canonicalDigest(processModel) },
+      entities: [{
+        key: "governed-record",
+        name: "Governed candidate record",
+        kind: "aggregate-root",
+        meaning: "One exact immutable Product-domain candidate revision with current identity, predecessor history, upstream membership, evidence, and non-authoritative governance state.",
+        boundedContextKey: "governance-core",
+        architectureElementKeys: ["gaep-engine", "workspace-store"],
+        processKeys: ["governed-context-review"],
+        dataClassKeys: ["governed-product-metadata"],
+        ownerRoleKey: "gaep-steward",
+        stewardRoleKeys: ["gaep-steward", "initiative-owner"],
+        ownershipState: "candidate-not-accepted",
+        systemOfRecordState: "candidate-declared",
+        attributes: [{
+          key: "record-id",
+          name: "Record identity",
+          valueKind: "identifier",
+          required: true,
+          identifierRole: "surrogate",
+          meaning: "Stable opaque identity for one governed record lineage independent from title, owner, status, or storage location.",
+          classification: "internal",
+          containsPersonalData: false,
+          dataClassKeys: ["governed-product-metadata"],
+          constraints: ["Immutable UUID identity", "Never derived from a local path or mutable label"],
+          sources: [reference()],
+        }, {
+          key: "revision",
+          name: "Immutable revision",
+          valueKind: "integer",
+          required: true,
+          identifierRole: "correlation",
+          meaning: "Positive contiguous immutable revision number bound to exact predecessor content and audit evidence.",
+          classification: "internal",
+          containsPersonalData: false,
+          dataClassKeys: ["governed-product-metadata"],
+          constraints: ["Positive contiguous value", "Predecessor digest required after revision one"],
+          sources: [reference()],
+        }],
+        invariants: ["Current state matches the latest complete immutable history", "Every mutation commits current, history, and audit evidence atomically"],
+        sources: [reference()],
+      }, {
+        key: "product-studio-projection",
+        name: "Product Studio privacy-safe projection",
+        kind: "projection",
+        meaning: "Derived read-only host view containing bounded record identities, counts, statuses, timestamps, and digests without candidate narrative or private content.",
+        boundedContextKey: "product-studio",
+        architectureElementKeys: ["product-studio-host"],
+        processKeys: ["governed-context-review"],
+        dataClassKeys: ["governed-product-metadata"],
+        ownerRoleKey: "initiative-owner",
+        stewardRoleKeys: ["gaep-steward", "initiative-owner"],
+        ownershipState: "candidate-not-accepted",
+        systemOfRecordState: "not-applicable",
+        attributes: [{
+          key: "snapshot-digest",
+          name: "Snapshot digest",
+          valueKind: "identifier",
+          required: true,
+          identifierRole: "correlation",
+          meaning: "Canonical digest binding the complete bounded projection body to the exact observation result returned by the shared engine.",
+          classification: "internal",
+          containsPersonalData: false,
+          dataClassKeys: ["governed-product-metadata"],
+          constraints: ["Canonical SHA-256 digest", "Recomputed and verified before native rendering"],
+          sources: [reference()],
+        }],
+        invariants: ["Projection excludes narrative, personal data, locators, paths, secrets, and credentials", "Projection never becomes authoritative source state"],
+        sources: [reference()],
+      }],
+      relationships: [{
+        key: "record-projects-to-host",
+        fromEntityKey: "governed-record",
+        toEntityKey: "product-studio-projection",
+        kind: "derivation",
+        cardinality: "one-to-many",
+        ownership: "from-owns",
+        integrity: "Every projection binds one exact current record revision and a canonical snapshot digest; unknown or excess fields fail validation.",
+        consistency: "Projection reads recheck the exact Product, Initiative, upstream membership, audit, and current-record context before returning bounded state.",
+        deletionBehavior: "Projection data is ephemeral and independently discardable; governed record correction or disposition never erases immutable historical facts silently.",
+        sources: [reference()],
+      }],
+      lifecycles: [{
+        key: "candidate-record-lifecycle",
+        entityKeys: ["governed-record", "product-studio-projection"],
+        initialStateKey: "candidate",
+        states: [{
+          key: "candidate",
+          name: "Candidate",
+          meaning: "The record is versioned and reviewable but has no model, classification, ownership, migration, readiness, release, or action approval.",
+          terminal: false,
+          sources: [reference()],
+        }, {
+          key: "superseded",
+          name: "Superseded",
+          meaning: "A later immutable candidate revision replaces current use while preserving exact lineage, prior assertions, evidence, and correction context.",
+          terminal: true,
+          sources: [reference()],
+        }],
+        retention: "Candidate history is retained for current traceability while the exact retention period and controlling policy remain subject to accountable decision.",
+        archival: "Archival must preserve exact identity, revision, provenance, classification, relationships, integrity, and resolvability under a separately governed policy.",
+        deletion: "Deletion and secure disposition require exact scope, authority, legal-hold reconciliation, downstream consequences, evidence, and separately attributable authorization.",
+        correction: "Correction creates a new immutable revision with actor, reason, time, predecessor relationship, and consequences; prior assertions are not overwritten.",
+        legalHold: "Legal hold remains a distinct unresolved authority-controlled disposition and cannot imply indefinite operational use or unrestricted access.",
+        backupAndRecovery: "Backup and recovery must preserve integrity, classification, retention, correction, deletion, hold, and current-versus-history semantics.",
+        migrationAndCompatibility: "Schema or storage migration requires explicit mapping, compatibility, provenance, reconciliation, cutover, rollback, and data-quality evidence.",
+        dispositionAuthorityState: "not-granted",
+        sources: [reference()],
+      }],
+      transformations: [{
+        key: "candidate-projection",
+        sourceEntityKeys: ["governed-record"],
+        targetEntityKeys: ["product-studio-projection"],
+        processKeys: ["governed-context-review"],
+        dataFlowKeys: ["candidate-record-roundtrip"],
+        purpose: "Provide accountable reviewers bounded current status and exact evidence identity without exposing complete governed record content.",
+        minimization: "Return only identities, revisions, counts, statuses, timestamps, digests, reasons, and fixed privacy and authority boundaries required for review navigation.",
+        correctionAndDeletionPropagation: "A changed authoritative revision invalidates stale projections; correction or disposition consequences require explicit re-evaluation across caches, exports, evidence, backups, and downstream copies.",
+        providerAndModelUse: "No provider or model receives governed content through this candidate projection; any future use requires exact purpose, terms, minimization, retention, residency, and accountable review.",
+        integrityAndLineage: "The projection snapshot digest, upstream membership digest, record digest, immutable history, and audit chain provide exact derivation lineage without transferring authority.",
+        state: "candidate",
+        sources: [reference()],
+      }],
+      requirementCoverage,
+      assumptions: ["The selected local workspace remains the bounded conceptual Data Model scope"],
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      governance: {
+        dataOwnerRoleKeys: ["gaep-steward", "initiative-owner"],
+        dataStewardRoleKeys: ["gaep-steward", "initiative-owner"],
+        privacyReviewerRoleKeys: ["gaep-steward", "initiative-owner"],
+        modelApprovalState: "not-granted",
+        classificationApprovalState: "not-granted",
+        ownershipAcceptanceState: "not-granted",
+        migrationAuthorityState: "not-granted",
+        operationalReadinessState: "not-established",
+        reviewState: "under-challenge",
+        basis: "Named candidate roles may prepare and challenge the model, but only separately established eligible human authorities can approve the model or classification, accept ownership, authorize migration, or establish readiness.",
+        sources: [reference()],
+      },
+      limitations: ["No approved Data Model baseline, classification approval, accepted ownership, migration authority, operational readiness, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   async function createArchitectureAndBoundedContext() {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const capabilityMap = await engine.businessCapabilityMap.create(
@@ -3035,6 +3217,207 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("persists exact versioned Data Model candidates and privacy-safe status", async () => {
+    const upstream = await createArchitectureAndBoundedContext()
+    const securityPrivacyAssessment = await engine.securityPrivacyAssessment.create(
+      securityPrivacyAssessmentInput(upstream.boundedContextModel),
+      actorId,
+    )
+    const processModel = await engine.processModel.create(
+      processModelInput(
+        upstream.valueStreamModel,
+        upstream.operatingModel,
+        upstream.businessRuleCatalog,
+        upstream.boundedContextModel,
+        securityPrivacyAssessment,
+      ),
+      actorId,
+    )
+    const input = dataModelInput(
+      upstream.architecture,
+      upstream.boundedContextModel,
+      upstream.operatingModel,
+      securityPrivacyAssessment,
+      processModel,
+    )
+    const model = await engine.dataModel.create(input, actorId)
+
+    expect(model).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      membershipDigest: canonicalDigest({
+        systemSolutionArchitecture: input.systemSolutionArchitecture,
+        boundedContextModel: input.boundedContextModel,
+        operatingModel: input.operatingModel,
+        securityPrivacyAssessment: input.securityPrivacyAssessment,
+        processModel: input.processModel,
+      }),
+      governance: {
+        modelApprovalState: "not-granted",
+        classificationApprovalState: "not-granted",
+        ownershipAcceptanceState: "not-granted",
+        migrationAuthorityState: "not-granted",
+        operationalReadinessState: "not-established",
+        reviewState: "under-challenge",
+      },
+      authorityBoundary: expect.stringContaining("does-not-approve-a-data-model"),
+    })
+    expect(await engine.dataModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id, revision: 1, digest: canonicalDigest(model) },
+      entityCount: 2,
+      attributeCount: 3,
+      relationshipCount: 1,
+      lifecycleCount: 1,
+      transformationCount: 1,
+      uncoveredBoundedContextCount: 0,
+      uncoveredSecurityDataClassCount: 0,
+      uncoveredProcessCount: 0,
+      unresolvedSystemOfRecordCount: 0,
+      unresolvedTransformationCount: 0,
+      unresolvedRequirementCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      authorityBoundary: expect.stringContaining("does-not-approve-a-data-model"),
+    })
+    const projection = await engine.dataModel.project(initiative.id)
+    expect(projection).toMatchObject({
+      model: {
+        id: model.id,
+        entityCount: 2,
+        relationshipCount: 1,
+        lifecycleCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-entity-attributes"),
+      authorityBoundary: expect.stringContaining("does-not-approve-a-data-model"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Record identity")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.dataModel.revise(
+      model.id,
+      model.revision,
+      dataModelInput(
+        upstream.architecture,
+        upstream.boundedContextModel,
+        upstream.operatingModel,
+        securityPrivacyAssessment,
+        processModel,
+        { limitations: [
+          "No approved Data Model baseline, classification approval, accepted ownership, migration authority, operational readiness, release, deployment, or action authority is represented",
+          "The candidate remains subject to independent data, privacy, records, native-host, and Product Owner challenge",
+        ] },
+      ),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: model.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(model),
+      governance: {
+        modelApprovalState: "not-granted",
+        classificationApprovalState: "not-granted",
+        ownershipAcceptanceState: "not-granted",
+        migrationAuthorityState: "not-granted",
+        operationalReadinessState: "not-established",
+      },
+    })
+    expect((await engine.dataModel.listHistory(model.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "data.model.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(model),
+        state: "candidate",
+        modelApprovalState: "not-granted",
+        classificationApprovalState: "not-granted",
+        ownershipAcceptanceState: "not-granted",
+        migrationAuthorityState: "not-granted",
+        operationalReadinessState: "not-established",
+        reviewState: "under-challenge",
+      },
+    })
+  })
+
+  it("rejects forged Data Model authority, graph, roles, bindings, and secrets", async () => {
+    const upstream = await createArchitectureAndBoundedContext()
+    const securityPrivacyAssessment = await engine.securityPrivacyAssessment.create(
+      securityPrivacyAssessmentInput(upstream.boundedContextModel),
+      actorId,
+    )
+    const processModel = await engine.processModel.create(
+      processModelInput(
+        upstream.valueStreamModel,
+        upstream.operatingModel,
+        upstream.businessRuleCatalog,
+        upstream.boundedContextModel,
+        securityPrivacyAssessment,
+      ),
+      actorId,
+    )
+    const base = dataModelInput(
+      upstream.architecture,
+      upstream.boundedContextModel,
+      upstream.operatingModel,
+      securityPrivacyAssessment,
+      processModel,
+    )
+    expect(() => dataModelInputSchema.parse({
+      ...base,
+      governance: { ...base.governance, modelApprovalState: "approved" },
+    })).toThrow()
+    expect(() => dataModelInputSchema.parse({
+      ...base,
+      relationships: base.relationships.map((entry) => ({ ...entry, toEntityKey: "invented-entity" })),
+    })).toThrow(/declared entities/)
+    await expect(engine.dataModel.create({
+      ...base,
+      governance: { ...base.governance, dataOwnerRoleKeys: ["invented-data-owner"] },
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.dataModel.create({
+      ...base,
+      entities: base.entities.map((entry) => ({ ...entry, dataClassKeys: ["invented-data-class"] })),
+    }, actorId)).rejects.toThrow(/exact bound security\/privacy data classes/)
+    await expect(engine.dataModel.create({
+      ...base,
+      processModel: { ...base.processModel, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Process Model/)
+    await expect(engine.dataModel.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable data-model context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const model = await engine.dataModel.create(base, actorId)
+    await engine.processModel.revise(
+      processModel.id,
+      processModel.revision,
+      processModelInput(
+        upstream.valueStreamModel,
+        upstream.operatingModel,
+        upstream.businessRuleCatalog,
+        upstream.boundedContextModel,
+        securityPrivacyAssessment,
+        { limitations: [
+          "No approved Process baseline, valid human approval, transition execution, operational readiness, release, deployment, or action authority is represented",
+          "The exact Process Model changed after Data Model capture",
+        ] },
+      ),
+      actorId,
+    )
+    expect(await engine.dataModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -3128,6 +3511,16 @@ describe("Business understanding governance", () => {
       ),
       actorId,
     )
+    const dataModel = await engine.dataModel.create(
+      dataModelInput(
+        systemSolutionArchitecture,
+        boundedContextModel,
+        operatingModel,
+        securityPrivacyAssessment,
+        processModel,
+      ),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -3150,6 +3543,8 @@ describe("Business understanding governance", () => {
       `security-privacy-assessment-history/security-privacy-assessment-${securityPrivacyAssessment.id}-r1.json`,
       `process-models/${processModel.id}.json`,
       `process-model-history/process-model-${processModel.id}-r1.json`,
+      `data-models/${dataModel.id}.json`,
+      `data-model-history/data-model-${dataModel.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -3187,6 +3582,34 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedProcessBinding))
       .rejects.toThrow(/Process Model .* Value Stream Model reference is unresolved/)
+
+    const forgeDataProcess = (content: unknown) => {
+      const record = content as DataModel
+      const processModelReference = { ...record.processModel, digest: digest("c") }
+      return {
+        ...record,
+        processModel: processModelReference,
+        membershipDigest: canonicalDigest({
+          systemSolutionArchitecture: record.systemSolutionArchitecture,
+          boundedContextModel: record.boundedContextModel,
+          operatingModel: record.operatingModel,
+          securityPrivacyAssessment: record.securityPrivacyAssessment,
+          processModel: processModelReference,
+        }),
+      }
+    }
+    let forgedDataBinding = replacePortableRecord(
+      bundle,
+      `data-models/${dataModel.id}.json`,
+      forgeDataProcess,
+    )
+    forgedDataBinding = replacePortableRecord(
+      forgedDataBinding,
+      `data-model-history/data-model-${dataModel.id}-r1.json`,
+      forgeDataProcess,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedDataBinding))
+      .rejects.toThrow(/Data Model .* Process Model reference is unresolved/)
 
     const rebound = replacePortableRecord(
       bundle,

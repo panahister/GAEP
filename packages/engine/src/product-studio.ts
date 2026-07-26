@@ -8,6 +8,7 @@ import {
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
   processModelSchema,
+  dataModelSchema,
   businessArchitectureBaselineSchema,
   businessCapabilityMapSchema,
   businessRuleCatalogSchema,
@@ -63,6 +64,7 @@ import {
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
   type ProcessModel,
+  type DataModel,
   type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
   type BusinessRuleCatalog,
@@ -2016,6 +2018,16 @@ export class ProductStudioService {
       /^process-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       processModelSchema,
     )
+    const dataModels = await this.listRecords(
+      "data-models",
+      /^[0-9a-f-]+\.json$/i,
+      dataModelSchema,
+    )
+    const dataModelHistory = await this.listRecords(
+      "data-model-history",
+      /^data-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      dataModelSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2200,6 +2212,13 @@ export class ProductStudioService {
       "process-model-candidate",
       processModelHistory,
       (record) => `process-model-history/process-model-${record.id}-r${record.revision}.json`,
+    )
+    append("data-models", "data-model-candidate", dataModels)
+    append(
+      "data-model-history",
+      "data-model-candidate",
+      dataModelHistory,
+      (record) => `data-model-history/data-model-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2473,6 +2492,13 @@ export class ProductStudioService {
         const expectedHistoryPath = `process-model-history/process-model-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Process Model history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("data-model-history/")) {
+        const record = validated as DataModel
+        const expectedHistoryPath = `data-model-history/data-model-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Data Model history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3599,7 +3625,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3631,7 +3657,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -4372,6 +4398,91 @@ export class ProductStudioService {
       }
     }
 
+    const dataModels = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("data-models/"))
+      .map(([, record]) => dataModelSchema.parse(record))
+    const dataModelHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("data-model-history/"))
+      .map(([, record]) => dataModelSchema.parse(record))
+    validateVersionedBusinessRecords(dataModels, dataModelHistory, "Data Model")
+    const exactProcessModels = new Map(
+      [...processModels, ...processModelHistory].map((record) => [
+        `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+        record,
+      ]),
+    )
+    for (const model of [...dataModels, ...dataModelHistory]) {
+      const resolveBound = <T extends { id: string; revision: number; initiativeId: string }>(
+        reference: { recordId: string; revision: number; digest: string },
+        exact: Map<string, T>,
+        label: string,
+      ): T => {
+        const record = exact.get(`${reference.recordId}:${reference.revision}:${reference.digest}`)
+        if (!record || record.initiativeId !== model.initiativeId) {
+          throw new Error(`Import Data Model ${model.id} exact ${label} reference is unresolved`)
+        }
+        return record
+      }
+      const architecture = resolveBound(
+        model.systemSolutionArchitecture,
+        exactSystemSolutionArchitectures,
+        "System/Solution Architecture",
+      )
+      const boundedContexts = resolveBound(model.boundedContextModel, exactBoundedContextModels, "Bounded Context Model")
+      const operatingModel = resolveBound(model.operatingModel, exactOperatingModels, "Operating Model")
+      const securityAssessment = resolveBound(
+        model.securityPrivacyAssessment,
+        exactSecurityPrivacyAssessments,
+        "Security, Privacy, and Threat Assessment",
+      )
+      const processModel = resolveBound(model.processModel, exactProcessModels, "Process Model")
+      if (model.membershipDigest !== canonicalDigest({
+        systemSolutionArchitecture: model.systemSolutionArchitecture,
+        boundedContextModel: model.boundedContextModel,
+        operatingModel: model.operatingModel,
+        securityPrivacyAssessment: model.securityPrivacyAssessment,
+        processModel: model.processModel,
+      })) {
+        throw new Error(`Import Data Model ${model.id} membership digest is invalid`)
+      }
+      const architectureElementKeys = new Set(architecture.elements.map((entry) => entry.key))
+      const boundedContextKeys = new Set(boundedContexts.boundedContexts.map((entry) => entry.key))
+      const roleKeys = new Set(operatingModel.roles.map((entry) => entry.key))
+      const dataClassKeys = new Set(securityAssessment.dataClasses.map((entry) => entry.key))
+      const dataFlowKeys = new Set(securityAssessment.dataFlows.map((entry) => entry.key))
+      const processKeys = new Set(processModel.processes.map((entry) => entry.key))
+      const referencedRoleKeys = [
+        ...model.governance.dataOwnerRoleKeys,
+        ...model.governance.dataStewardRoleKeys,
+        ...model.governance.privacyReviewerRoleKeys,
+        ...model.entities.flatMap((entry) => [entry.ownerRoleKey, ...entry.stewardRoleKeys]),
+      ]
+      if (referencedRoleKeys.some((key) => !roleKeys.has(key))) {
+        throw new Error(`Import Data Model ${model.id} references an unknown bound Operating Model role`)
+      }
+      for (const entity of model.entities) {
+        if (!boundedContextKeys.has(entity.boundedContextKey)) {
+          throw new Error(`Import Data Model ${model.id} references an unknown bound Bounded Context`)
+        }
+        if (entity.architectureElementKeys.some((key) => !architectureElementKeys.has(key))) {
+          throw new Error(`Import Data Model ${model.id} references an unknown architecture element`)
+        }
+        if (entity.processKeys.some((key) => !processKeys.has(key))) {
+          throw new Error(`Import Data Model ${model.id} references an unknown Process`)
+        }
+        if ([...entity.dataClassKeys, ...entity.attributes.flatMap((entry) => entry.dataClassKeys)]
+          .some((key) => !dataClassKeys.has(key))) {
+          throw new Error(`Import Data Model ${model.id} references an unknown security/privacy data class`)
+        }
+      }
+      for (const transformation of model.transformations) {
+        if (transformation.processKeys.some((key) => !processKeys.has(key)) ||
+            transformation.dataFlowKeys.some((key) => !dataFlowKeys.has(key))) {
+          throw new Error(`Import Data Model ${model.id} transformation trace is unresolved`)
+        }
+      }
+    }
+
     for (const change of changes) {
       if (!initiativesById.has(change.initiativeId)) throw new Error(`Import Change ${change.id} has no Initiative`)
       if (change.baseline.kind === "exact") {
@@ -5009,6 +5120,10 @@ export class ProductStudioService {
         /^process-model-history\/process-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "process-model-candidate"
     }
+    if (/^data-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^data-model-history\/data-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "data-model-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -5093,6 +5208,10 @@ export class ProductStudioService {
     if (/^process-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^process-model-history\/process-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return processModelSchema
+    }
+    if (/^data-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^data-model-history\/data-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return dataModelSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
