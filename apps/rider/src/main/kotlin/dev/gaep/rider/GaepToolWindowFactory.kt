@@ -338,6 +338,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += failureRecoveryModelButton
         actions.add(failureRecoveryModelButton)
 
+        val architectureChallengeButton = JButton("Inspect Architecture Challenge…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Challenge content, assumptions, evidence, findings, responses, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Architecture Challenge",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Architecture Challenge", status, output, buttons) {
+                    controller.readArchitectureChallengeModel(initiativeId)
+                }
+            }
+        }
+        buttons += architectureChallengeButton
+        actions.add(architectureChallengeButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

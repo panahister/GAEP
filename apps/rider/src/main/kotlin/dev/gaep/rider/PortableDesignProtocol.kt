@@ -1361,6 +1361,44 @@ data class FailureRecoveryModelProjection(
     val snapshotDigest: String,
 )
 
+data class ArchitectureChallengeModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val challengeSubjectCount: Int,
+    val assumptionCount: Int,
+    val alternativeCount: Int,
+    val findingCount: Int,
+    val responseCount: Int,
+)
+
+data class ArchitectureChallengeModelProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val challengeSubjectCount: Int,
+    val assumptionCount: Int,
+    val alternativeCount: Int,
+    val findingCount: Int,
+    val responseCount: Int,
+    val unrespondedFindingCount: Int,
+    val unresolvedAssumptionCount: Int,
+    val unresolvedRequirementCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val model: ArchitectureChallengeModelRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1476,6 +1514,12 @@ internal object PortableDesignProtocol {
         "failure-recovery-model-projection-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action"
     private const val FAILURE_RECOVERY_MODEL_STATUS_AUTHORITY_BOUNDARY =
         "failure-recovery-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action"
+    private const val ARCHITECTURE_CHALLENGE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-challenge-content-assumptions-evidence-findings-responses-source-content-personal-data-secrets-or-credentials"
+    private const val ARCHITECTURE_CHALLENGE_PROJECTION_AUTHORITY_BOUNDARY =
+        "architecture-challenge-projection-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action"
+    private const val ARCHITECTURE_CHALLENGE_STATUS_AUTHORITY_BOUNDARY =
+        "architecture-challenge-status-reports-candidate-coverage-and-gaps-and-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -4483,6 +4527,126 @@ internal object PortableDesignProtocol {
             initiativeState, assessmentState, reasons, failureModeCount, retryPolicyCount, compensationPlanCount,
             recoveryPlanCount, recoveryEvidenceDefinitionCount, uncoveredProcessCount, uncoveredCommandCount,
             uncoveredRouteCount, uncoveredAuthorizationActionCount, unresolvedRecoveryEvidenceCount,
+            unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount, staleBindingCount,
+            staleSourceReferenceCount, model, snapshotDigest,
+        )
+    }
+
+    fun parseArchitectureChallengeModelEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): ArchitectureChallengeModelProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("model"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "architecture-challenge-model-projection" ||
+            projection.requireString("privacyBoundary") != ARCHITECTURE_CHALLENGE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != ARCHITECTURE_CHALLENGE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "challengeSubjectCount", "assumptionCount", "alternativeCount", "findingCount", "responseCount",
+                "unrespondedFindingCount", "unresolvedAssumptionCount", "unresolvedRequirementCount",
+                "inconsistencyCount", "unresolvedQuestionCount", "staleBindingCount", "staleSourceReferenceCount",
+                "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("model"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "architecture-challenge-model-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != ARCHITECTURE_CHALLENGE_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val challengeSubjectCount = status.requireBoundedNonNegativeInt("challengeSubjectCount", 4_096)
+        val assumptionCount = status.requireBoundedNonNegativeInt("assumptionCount", 4_096)
+        val alternativeCount = status.requireBoundedNonNegativeInt("alternativeCount", 4_096)
+        val findingCount = status.requireBoundedNonNegativeInt("findingCount", 8_192)
+        val responseCount = status.requireBoundedNonNegativeInt("responseCount", 8_192)
+        val unrespondedFindingCount = status.requireBoundedNonNegativeInt("unrespondedFindingCount", 8_192)
+        val unresolvedAssumptionCount = status.requireBoundedNonNegativeInt("unresolvedAssumptionCount", 4_096)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 36)
+        val inconsistencyCount = status.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val assessmentState = status.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val model = projection.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "challengeSubjectCount",
+                "assumptionCount", "alternativeCount", "findingCount", "responseCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = ArchitectureChallengeModelRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("challengeSubjectCount", 4_096),
+                value.requireBoundedNonNegativeInt("assumptionCount", 4_096),
+                value.requireBoundedNonNegativeInt("alternativeCount", 4_096),
+                value.requireBoundedNonNegativeInt("findingCount", 8_192),
+                value.requireBoundedNonNegativeInt("responseCount", 8_192),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (model == null) ||
+            (model?.challengeSubjectCount ?: 0) != challengeSubjectCount ||
+            (model?.assumptionCount ?: 0) != assumptionCount ||
+            (model?.alternativeCount ?: 0) != alternativeCount ||
+            (model?.findingCount ?: 0) != findingCount ||
+            (model?.responseCount ?: 0) != responseCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return ArchitectureChallengeModelProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, challengeSubjectCount, assumptionCount, alternativeCount,
+            findingCount, responseCount, unrespondedFindingCount, unresolvedAssumptionCount,
             unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount, staleBindingCount,
             staleSourceReferenceCount, model, snapshotDigest,
         )
