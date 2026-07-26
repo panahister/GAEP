@@ -6,6 +6,7 @@ import { isAbsolute } from "node:path"
 import {
   architectureChallengeModelSchema,
   decisionRegisterSchema,
+  riskRegisterSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -68,6 +69,7 @@ import {
   type ArchitectureRecord,
   type ArchitectureChallengeModel,
   type DecisionRegister,
+  type RiskRegister,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
   type ProcessModel,
@@ -2088,6 +2090,16 @@ export class ProductStudioService {
       /^decision-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       decisionRegisterSchema,
     )
+    const riskRegisters = await this.listRecords(
+      "risk-registers",
+      /^[0-9a-f-]+\.json$/i,
+      riskRegisterSchema,
+    )
+    const riskRegisterHistory = await this.listRecords(
+      "risk-register-history",
+      /^risk-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      riskRegisterSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2135,6 +2147,8 @@ export class ProductStudioService {
       ...securityPrivacyAssessmentHistory,
       ...decisionRegisters,
       ...decisionRegisterHistory,
+      ...riskRegisters,
+      ...riskRegisterHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2159,6 +2173,7 @@ export class ProductStudioService {
           systemSolutionArchitectures.find((record) => record.id === id)?.informationClassification ??
           boundedContextModels.find((record) => record.id === id)?.informationClassification ??
           decisionRegisters.find((record) => record.id === id)?.informationClassification ??
+          riskRegisters.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2317,6 +2332,13 @@ export class ProductStudioService {
       "decision-register-candidate",
       decisionRegisterHistory,
       (record) => `decision-register-history/decision-register-${record.id}-r${record.revision}.json`,
+    )
+    append("risk-registers", "risk-register-candidate", riskRegisters)
+    append(
+      "risk-register-history",
+      "risk-register-candidate",
+      riskRegisterHistory,
+      (record) => `risk-register-history/risk-register-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2637,6 +2659,14 @@ export class ProductStudioService {
           `decision-register-history/decision-register-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Decision Register history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("risk-register-history/")) {
+        const record = validated as RiskRegister
+        const expectedHistoryPath =
+          `risk-register-history/risk-register-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Risk Register history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3763,7 +3793,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3795,7 +3825,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -5175,6 +5205,85 @@ export class ProductStudioService {
       }
     }
 
+    const riskRegisters = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("risk-registers/"))
+      .map(([, record]) => riskRegisterSchema.parse(record))
+    const riskRegisterHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("risk-register-history/"))
+      .map(([, record]) => riskRegisterSchema.parse(record))
+    validateVersionedBusinessRecords(riskRegisters, riskRegisterHistory, "Risk Register")
+    const exactDecisionRegisters = new Map(
+      [...decisionRegisters, ...decisionRegisterHistory].map((record) => [
+        `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+        record,
+      ]),
+    )
+    for (const register of [...riskRegisters, ...riskRegisterHistory]) {
+      const operatingModel = exactOperatingModels.get(
+        `${register.operatingModel.recordId}:${register.operatingModel.revision}:${register.operatingModel.digest}`,
+      )
+      const architectureChallengeModel = exactArchitectureChallengeModels.get(
+        `${register.architectureChallengeModel.recordId}:${register.architectureChallengeModel.revision}:${register.architectureChallengeModel.digest}`,
+      )
+      const securityPrivacyAssessment = exactSecurityPrivacyAssessments.get(
+        `${register.securityPrivacyAssessment.recordId}:${register.securityPrivacyAssessment.revision}:${register.securityPrivacyAssessment.digest}`,
+      )
+      const decisionRegister = exactDecisionRegisters.get(
+        `${register.decisionRegister.recordId}:${register.decisionRegister.revision}:${register.decisionRegister.digest}`,
+      )
+      if (!operatingModel || operatingModel.initiativeId !== register.initiativeId) {
+        throw new Error(`Import Risk Register ${register.id} exact Operating Model reference is unresolved`)
+      }
+      if (!architectureChallengeModel || architectureChallengeModel.initiativeId !== register.initiativeId) {
+        throw new Error(`Import Risk Register ${register.id} exact Architecture Challenge reference is unresolved`)
+      }
+      if (!securityPrivacyAssessment || securityPrivacyAssessment.initiativeId !== register.initiativeId) {
+        throw new Error(`Import Risk Register ${register.id} exact Security, Privacy, and Threat Assessment reference is unresolved`)
+      }
+      if (!decisionRegister || decisionRegister.initiativeId !== register.initiativeId) {
+        throw new Error(`Import Risk Register ${register.id} exact Decision Register reference is unresolved`)
+      }
+      const expectedMembership = {
+        operatingModel: register.operatingModel,
+        architectureChallengeModel: register.architectureChallengeModel,
+        securityPrivacyAssessment: register.securityPrivacyAssessment,
+        decisionRegister: register.decisionRegister,
+        risks: register.risks.map((risk) => {
+          const sourceReferences = new Map(collectBusinessSourceReferences(risk).map((reference) => [
+            `${reference.sourceId}:${reference.sourceRevision}:${reference.recordDigest}:${reference.contentDigest}`,
+            reference,
+          ]))
+          return {
+            key: risk.key,
+            controlKeys: risk.controls.map((control) => control.key),
+            relatedRecords: risk.relatedRecords,
+            sourceReferences: [...sourceReferences.values()].sort((left, right) =>
+              left.sourceId.localeCompare(right.sourceId) || left.sourceRevision - right.sourceRevision),
+          }
+        }),
+      }
+      if (register.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Risk Register ${register.id} membership digest is invalid`)
+      }
+      const roleKeys = new Set(operatingModel.roles.map((entry) => entry.key))
+      for (const risk of register.risks) {
+        const governedRoles = [risk.ownerRoleKey, risk.treatment.ownerRoleKey,
+          ...risk.controls.map((control) => control.ownerRoleKey)]
+        if (governedRoles.some((key) => !roleKeys.has(key))) {
+          throw new Error(`Import Risk Register ${register.id} role trace is unresolved`)
+        }
+        for (const related of risk.relatedRecords) {
+          const resolved = exactDecisionSubjects.get(
+            `${related.recordKind}:${related.recordId}:${related.revision}:${related.digest}`,
+          )
+          if (!resolved || (resolved.productId !== undefined && resolved.productId !== register.productId) ||
+              (resolved.initiativeId !== undefined && resolved.initiativeId !== register.initiativeId)) {
+            throw new Error(`Import Risk Register ${register.id} exact governed related-record reference is unresolved`)
+          }
+        }
+      }
+    }
+
     for (const change of changes) {
       if (!initiativesById.has(change.initiativeId)) throw new Error(`Import Change ${change.id} has no Initiative`)
       if (change.baseline.kind === "exact") {
@@ -5836,6 +5945,10 @@ export class ProductStudioService {
         /^decision-register-history\/decision-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "decision-register-candidate"
     }
+    if (/^risk-registers\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^risk-register-history\/risk-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "risk-register-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -5944,6 +6057,10 @@ export class ProductStudioService {
     if (/^decision-registers\/[0-9a-f-]+\.json$/i.test(path) ||
         /^decision-register-history\/decision-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return decisionRegisterSchema
+    }
+    if (/^risk-registers\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^risk-register-history\/risk-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return riskRegisterSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

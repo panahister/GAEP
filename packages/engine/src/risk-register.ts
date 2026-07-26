@@ -1,0 +1,615 @@
+import { randomUUID } from "node:crypto"
+
+import {
+  exactSourceReferenceSchema,
+  riskRegisterInputSchema,
+  riskRegisterProjectionSchema,
+  riskRegisterSchema,
+  riskRegisterStatusSchema,
+  type BusinessContextBinding,
+  type ExactDecisionSubjectReference,
+  type ExactRiskRegisterReference,
+  type ExactSourceReference,
+  type Initiative,
+  type Product,
+  type RiskRegister,
+  type RiskRegisterInput,
+  type RiskRegisterProjection,
+  type RiskRegisterStatus,
+  type WorkspaceHealthIssue,
+} from "@gaep/contracts"
+import { canonicalDigest } from "@gaep/agent-sdk"
+import { z, type ZodType } from "zod"
+
+import type { ArchitectureChallengeModelService } from "./architecture-challenge-model.js"
+import type { DecisionRegisterService } from "./decision-register.js"
+import type { OperatingModelService } from "./operating-model.js"
+import type { GaepRepository, MutationWrite } from "./repository.js"
+import type { SecurityPrivacyAssessmentService } from "./security-privacy-assessment.js"
+import type { SourceGovernanceService } from "./source-governance.js"
+
+type ProductReader = () => Promise<Product>
+type InitiativeReader = (id: string) => Promise<Initiative>
+
+const uuidSchema = z.string().uuid()
+const currentRecordPattern = /^[0-9a-f-]+\.json$/i
+const riskRegisterInventoryLimit = 10_000
+const subjectIdentitySchema = z.object({
+  id: z.string().uuid(),
+  revision: z.number().int().positive(),
+  productId: z.string().uuid().optional(),
+  initiativeId: z.string().uuid().optional(),
+}).passthrough()
+
+function revisionOf(record: { revision?: number }): number {
+  return record.revision ?? 1
+}
+
+function exactReference(record: RiskRegister): ExactRiskRegisterReference {
+  return { recordId: record.id, revision: record.revision, digest: canonicalDigest(record) }
+}
+
+function collectExactSourceReferences(value: unknown, collected: ExactSourceReference[] = []): ExactSourceReference[] {
+  if (Array.isArray(value)) {
+    for (const item of value) collectExactSourceReferences(item, collected)
+    return collected
+  }
+  if (!value || typeof value !== "object") return collected
+  const candidate = exactSourceReferenceSchema.safeParse(value)
+  if (candidate.success) {
+    collected.push(candidate.data)
+    return collected
+  }
+  for (const child of Object.values(value)) collectExactSourceReferences(child, collected)
+  return collected
+}
+
+function uniqueExactSourceReferences(value: unknown): ExactSourceReference[] {
+  const references = collectExactSourceReferences(value)
+  const unique = new Map(references.map((reference) => [
+    `${reference.sourceId}:${reference.sourceRevision}:${reference.recordDigest}:${reference.contentDigest}`,
+    reference,
+  ]))
+  return [...unique.values()].sort((left, right) =>
+    left.sourceId.localeCompare(right.sourceId) || left.sourceRevision - right.sourceRevision)
+}
+
+function uniqueSubjectReferences(value: RiskRegisterInput | RiskRegister): ExactDecisionSubjectReference[] {
+  const references = value.risks.flatMap((risk) => risk.relatedRecords)
+  const unique = new Map(references.map((reference) => [
+    `${reference.recordKind}:${reference.recordId}:${reference.revision}:${reference.digest}`,
+    reference,
+  ]))
+  return [...unique.values()].sort((left, right) =>
+    left.recordKind.localeCompare(right.recordKind) || left.recordId.localeCompare(right.recordId) ||
+    left.revision - right.revision)
+}
+
+function membership(input: RiskRegisterInput) {
+  return {
+    operatingModel: input.operatingModel,
+    architectureChallengeModel: input.architectureChallengeModel,
+    securityPrivacyAssessment: input.securityPrivacyAssessment,
+    decisionRegister: input.decisionRegister,
+    risks: input.risks.map((risk) => ({
+      key: risk.key,
+      controlKeys: risk.controls.map((control) => control.key),
+      relatedRecords: risk.relatedRecords,
+      sourceReferences: uniqueExactSourceReferences(risk),
+    })),
+  }
+}
+
+function exactRecordMatches(
+  reference: { recordId: string; revision: number; digest: string },
+  record: { id: string; revision: number },
+): boolean {
+  return reference.recordId === record.id && reference.revision === record.revision &&
+    reference.digest === canonicalDigest(record)
+}
+
+function riskIsNotAssessed(risk: RiskRegister["risks"][number]): boolean {
+  return risk.assessment.methodState === "unresolved" || [
+    risk.assessment.likelihoodOrPlausibility,
+    risk.assessment.impactSeverity,
+    risk.assessment.exposure,
+    risk.assessment.confidence,
+  ].some((assessment) => assessment.state === "not-assessed")
+}
+
+export class RiskRegisterService {
+  constructor(
+    private readonly repository: GaepRepository,
+    private readonly readProduct: ProductReader,
+    private readonly readInitiative: InitiativeReader,
+    private readonly sourceGovernance: SourceGovernanceService,
+    private readonly operatingModels: OperatingModelService,
+    private readonly architectureChallengeModels: ArchitectureChallengeModelService,
+    private readonly securityPrivacyAssessments: SecurityPrivacyAssessmentService,
+    private readonly decisionRegisters: DecisionRegisterService,
+  ) {}
+
+  async create(inputValue: RiskRegisterInput, actorId: string): Promise<RiskRegister> {
+    const input = riskRegisterInputSchema.parse(inputValue)
+    return this.repository.withLock(async () => {
+      await this.assertIntegrity()
+      const { product, initiative } = await this.requireMutableInitiative(input.initiativeId)
+      this.validateContext(input.context, product, initiative)
+      await this.validateSourceReferences(input, initiative.id)
+      await this.validateBindingsAndTrace(input, product, initiative)
+      if (await this.readCurrent(initiative.id)) {
+        throw new Error("An Initiative can have only one current Risk Register candidate")
+      }
+      const now = new Date().toISOString()
+      const record = riskRegisterSchema.parse({
+        schemaVersion: 1,
+        kind: "risk-register-candidate",
+        id: randomUUID(),
+        productId: product.id,
+        ...input,
+        initiativeId: initiative.id,
+        revision: 1,
+        membershipDigest: canonicalDigest(membership(input)),
+        state: "candidate",
+        createdBy: { kind: "human", id: actorId },
+        updatedBy: { kind: "human", id: actorId },
+        createdAt: now,
+        updatedAt: now,
+        authorityBoundary:
+          "risk-register-is-a-candidate-record-and-does-not-establish-owner-or-authority-assignments-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority",
+      })
+      await this.commitVersionedRecord(record, "risk.register.created", actorId)
+      return record
+    })
+  }
+
+  async revise(
+    id: string,
+    expectedRevision: number,
+    inputValue: RiskRegisterInput,
+    actorId: string,
+  ): Promise<RiskRegister> {
+    const input = riskRegisterInputSchema.parse(inputValue)
+    return this.repository.withLock(async () => {
+      await this.assertIntegrity()
+      const current = await this.read(id)
+      if (current.revision !== expectedRevision) throw new Error("Risk Register revision changed before update")
+      if (current.initiativeId !== input.initiativeId) throw new Error("Risk Register Initiative cannot change")
+      const { product, initiative } = await this.requireMutableInitiative(input.initiativeId)
+      this.validateContext(input.context, product, initiative)
+      await this.validateSourceReferences(input, initiative.id)
+      await this.validateBindingsAndTrace(input, product, initiative)
+      const record = riskRegisterSchema.parse({
+        ...current,
+        ...input,
+        productId: product.id,
+        initiativeId: initiative.id,
+        revision: current.revision + 1,
+        membershipDigest: canonicalDigest(membership(input)),
+        predecessorDigest: canonicalDigest(current),
+        updatedBy: { kind: "human", id: actorId },
+        updatedAt: new Date().toISOString(),
+      })
+      await this.commitVersionedRecord(record, "risk.register.revised", actorId)
+      return record
+    })
+  }
+
+  async read(id: string): Promise<RiskRegister> {
+    return this.repository.readJson(this.currentPath(this.requireUuid(id, "Risk Register ID")), riskRegisterSchema)
+  }
+
+  async readCurrent(initiativeId: string): Promise<RiskRegister | undefined> {
+    const targetId = this.requireUuid(initiativeId, "Initiative ID")
+    const records = await this.listRecords("risk-registers", currentRecordPattern, riskRegisterSchema)
+    const matches = records.filter((record) => record.initiativeId === targetId)
+    if (matches.length > 1) throw new Error("Initiative has more than one current Risk Register candidate")
+    return matches[0]
+  }
+
+  async readRevision(id: string, revision: number): Promise<RiskRegister> {
+    if (!Number.isInteger(revision) || revision < 1) {
+      throw new Error("Risk Register history revision must be a positive integer")
+    }
+    const recordId = this.requireUuid(id, "Risk Register ID")
+    const record = await this.repository.readJson(this.historyPath(recordId, revision), riskRegisterSchema)
+    if (record.id !== recordId || record.revision !== revision) {
+      throw new Error("Risk Register history identity or revision does not match")
+    }
+    return record
+  }
+
+  async listHistory(id: string): Promise<RiskRegister[]> {
+    const recordId = this.requireUuid(id, "Risk Register ID")
+    const records = await this.listRecords(
+      "risk-register-history",
+      new RegExp(`^risk-register-${recordId}-r[1-9][0-9]*\\.json$`, "iu"),
+      riskRegisterSchema,
+    )
+    const ascending = [...records].sort((left, right) => left.revision - right.revision)
+    for (const [index, record] of ascending.entries()) {
+      if (record.id !== recordId || record.revision !== index + 1 ||
+          (index === 0 && record.predecessorDigest !== undefined) ||
+          (index > 0 && record.predecessorDigest !== canonicalDigest(ascending[index - 1]))) {
+        throw new Error("Risk Register history is incomplete or has an invalid predecessor chain")
+      }
+    }
+    return ascending.reverse()
+  }
+
+  async assess(initiativeId: string): Promise<RiskRegisterStatus> {
+    const targetId = this.requireUuid(initiativeId, "Initiative ID")
+    const [product, initiative, register, operatingModel, architectureChallengeModel,
+      securityPrivacyAssessment, decisionRegister, currentSources] = await Promise.all([
+      this.readProduct(),
+      this.readInitiative(targetId),
+      this.readCurrent(targetId),
+      this.operatingModels.readCurrent(targetId),
+      this.architectureChallengeModels.readCurrent(targetId),
+      this.securityPrivacyAssessments.readCurrent(targetId),
+      this.decisionRegisters.readCurrent(targetId),
+      this.sourceGovernance.listSources(targetId),
+    ])
+    if (initiative.productId !== product.id) throw new Error("Initiative does not target the current Product")
+    const expectedContext: BusinessContextBinding = {
+      productRevision: revisionOf(product), productDigest: canonicalDigest(product),
+      initiativeRevision: revisionOf(initiative), initiativeDigest: canonicalDigest(initiative),
+    }
+    let staleBindingCount = 0
+    if (register) {
+      if (canonicalDigest(register.context) !== canonicalDigest(expectedContext)) staleBindingCount += 1
+      if (!operatingModel || !exactRecordMatches(register.operatingModel, operatingModel)) staleBindingCount += 1
+      if (!architectureChallengeModel ||
+          !exactRecordMatches(register.architectureChallengeModel, architectureChallengeModel)) staleBindingCount += 1
+      if (!securityPrivacyAssessment ||
+          !exactRecordMatches(register.securityPrivacyAssessment, securityPrivacyAssessment)) staleBindingCount += 1
+      if (!decisionRegister || !exactRecordMatches(register.decisionRegister, decisionRegister)) staleBindingCount += 1
+      if (register.membershipDigest !== canonicalDigest(membership(register))) staleBindingCount += 1
+      for (const reference of uniqueSubjectReferences(register)) {
+        if (!(await this.subjectMatches(reference, product, initiative))) staleBindingCount += 1
+      }
+    }
+    const currentSourceById = new Map(currentSources.map((entry) => [entry.id, entry]))
+    const staleSourceReferenceCount = uniqueExactSourceReferences(register).filter((reference) => {
+      const current = currentSourceById.get(reference.sourceId)
+      return !current || current.revision !== reference.sourceRevision ||
+        canonicalDigest(current) !== reference.recordDigest || current.contentDigest !== reference.contentDigest
+    }).length
+    const notAssessedRiskCount = register?.risks.filter(riskIsNotAssessed).length ?? 0
+    const unresolvedResidualRiskCount = register?.risks.filter((risk) => risk.residualRisk.state === "not-assessed").length ?? 0
+    const proposedTreatmentCount = register?.risks.filter((risk) => risk.treatment.state === "proposed").length ?? 0
+    const unassignedOwnerCount = register?.risks.filter((risk) => risk.ownerAssignmentState === "not-established").length ?? 0
+    const unverifiedControlCount = register?.risks.flatMap((risk) => risk.controls)
+      .filter((control) => control.effectivenessState === "not-assessed").length ?? 0
+    const unresolvedRequirementCount = register?.requirementCoverage
+      .filter((entry) => entry.state === "unresolved").length ?? 0
+    const inconsistencyCount = register?.inconsistencies.length ?? 0
+    const unresolvedQuestionCount = register?.unresolvedQuestions.length ?? 0
+    const reasons: string[] = []
+    if (!register) reasons.push("No versioned Risk Register candidate exists for this Initiative")
+    if (staleBindingCount > 0) reasons.push("The Risk Register does not bind exact current Product, Initiative, operating, challenge, security/privacy, Decision Register, or governed related records")
+    if (staleSourceReferenceCount > 0) reasons.push("One or more Risk claims reference a superseded Source revision")
+    if (notAssessedRiskCount > 0) reasons.push("One or more Risk Assessments remain explicitly not assessed")
+    if (unresolvedResidualRiskCount > 0) reasons.push("One or more residual Risks remain explicitly not assessed")
+    if (unverifiedControlCount > 0) reasons.push("One or more Risk Controls have no assessed effectiveness")
+    if (unresolvedRequirementCount > 0) reasons.push("One or more Risk Register requirements remain unresolved")
+    if (inconsistencyCount > 0) reasons.push("The Risk Register records explicit inconsistencies")
+    if (unresolvedQuestionCount > 0) reasons.push("The Risk Register records unresolved questions")
+    return riskRegisterStatusSchema.parse({
+      schemaVersion: 1,
+      kind: "risk-register-status",
+      productId: product.id,
+      productRevision: revisionOf(product),
+      initiativeId: initiative.id,
+      initiativeRevision: revisionOf(initiative),
+      ...(register ? { register: exactReference(register) } : {}),
+      riskCount: register?.risks.length ?? 0,
+      notAssessedRiskCount,
+      unresolvedResidualRiskCount,
+      proposedTreatmentCount,
+      unassignedOwnerCount,
+      unverifiedControlCount,
+      unresolvedRequirementCount,
+      staleBindingCount,
+      staleSourceReferenceCount,
+      inconsistencyCount,
+      unresolvedQuestionCount,
+      state: reasons.length === 0 ? "complete-for-review" : "attention-required",
+      reasons,
+      assessedAt: new Date().toISOString(),
+      authorityBoundary:
+        "risk-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority",
+    })
+  }
+
+  async project(initiativeId: string): Promise<RiskRegisterProjection> {
+    const targetId = this.requireUuid(initiativeId, "Initiative ID")
+    const [product, initiative, status, register] = await Promise.all([
+      this.readProduct(), this.readInitiative(targetId), this.assess(targetId), this.readCurrent(targetId),
+    ])
+    if (status.productId !== product.id || status.productRevision !== revisionOf(product) ||
+        status.initiativeId !== initiative.id || status.initiativeRevision !== revisionOf(initiative)) {
+      throw new Error("Risk Register projection context changed while governed records were read")
+    }
+    const projectionWithoutDigest = {
+      schemaVersion: 1 as const,
+      kind: "risk-register-projection" as const,
+      product: { id: product.id, revision: revisionOf(product), digest: canonicalDigest(product) },
+      initiative: {
+        id: initiative.id, revision: revisionOf(initiative), digest: canonicalDigest(initiative),
+        state: initiative.state,
+      },
+      status,
+      ...(register ? { register: {
+        id: register.id,
+        revision: register.revision,
+        digest: canonicalDigest(register),
+        membershipDigest: register.membershipDigest,
+        state: register.state,
+        riskCount: register.risks.length,
+        updatedAt: register.updatedAt,
+      } } : {}),
+      observedAt: new Date().toISOString(),
+      privacyBoundary:
+        "projection-contains-identities-counts-statuses-and-digests-only-not-risk-statements-assessments-controls-treatments-residual-risk-evidence-related-record-content-personal-data-secrets-or-credentials" as const,
+      authorityBoundary:
+        "risk-register-projection-does-not-establish-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority" as const,
+    }
+    return riskRegisterProjectionSchema.parse({
+      ...projectionWithoutDigest,
+      snapshotDigest: canonicalDigest(projectionWithoutDigest),
+    })
+  }
+
+  async healthIssues(): Promise<WorkspaceHealthIssue[]> {
+    const issues: WorkspaceHealthIssue[] = []
+    const [product, records] = await Promise.all([
+      this.readProduct(),
+      this.listRecords("risk-registers", currentRecordPattern, riskRegisterSchema),
+    ])
+    for (const register of records) {
+      try {
+        const initiative = await this.readInitiative(register.initiativeId)
+        this.validateContext(register.context, product, initiative)
+        await this.validateSourceReferences(register, initiative.id)
+        await this.validateBindingsAndTrace(register, product, initiative)
+        if (register.membershipDigest !== canonicalDigest(membership(register))) {
+          throw new Error("Risk Register membership digest is invalid")
+        }
+        const history = await this.listHistory(register.id)
+        if (history.length !== register.revision || canonicalDigest(history[0]) !== canonicalDigest(register)) {
+          throw new Error("Current Risk Register does not match its complete immutable history")
+        }
+        const status = await this.assess(register.initiativeId)
+        if (status.staleBindingCount > 0 || status.staleSourceReferenceCount > 0) {
+          issues.push({
+            code: "risk-register.binding-review-required",
+            severity: "warning",
+            message: `Initiative ${register.initiativeId} has stale Risk Register bindings.`,
+            record: { type: register.kind, id: register.id, revision: register.revision },
+            repairActions: ["inspect-read-only", "create-superseding-revision"],
+          })
+        }
+      } catch (error) {
+        issues.push({
+          code: "risk-register.invalid",
+          severity: "error",
+          message: `Risk Register ${register.id}: ${error instanceof Error ? error.message : "record validation failed"}`,
+          record: { type: register.kind, id: register.id, revision: register.revision },
+          repairActions: ["inspect-read-only", "manual-repair-required"],
+        })
+      }
+    }
+    return issues
+  }
+
+  private async validateBindingsAndTrace(
+    input: RiskRegisterInput,
+    product: Product,
+    initiative: Initiative,
+  ): Promise<void> {
+    const [operatingModel, architectureChallengeModel, securityPrivacyAssessment, decisionRegister] = await Promise.all([
+      this.operatingModels.readCurrent(input.initiativeId),
+      this.architectureChallengeModels.readCurrent(input.initiativeId),
+      this.securityPrivacyAssessments.readCurrent(input.initiativeId),
+      this.decisionRegisters.readCurrent(input.initiativeId),
+    ])
+    if (!operatingModel || !exactRecordMatches(input.operatingModel, operatingModel)) {
+      throw new Error("Risk Register must bind the exact current Operating Model")
+    }
+    if (!architectureChallengeModel || !exactRecordMatches(input.architectureChallengeModel, architectureChallengeModel)) {
+      throw new Error("Risk Register must bind the exact current Architecture Challenge")
+    }
+    if (!securityPrivacyAssessment || !exactRecordMatches(input.securityPrivacyAssessment, securityPrivacyAssessment)) {
+      throw new Error("Risk Register must bind the exact current Security, Privacy, and Threat Assessment")
+    }
+    if (!decisionRegister || !exactRecordMatches(input.decisionRegister, decisionRegister)) {
+      throw new Error("Risk Register must bind the exact current Decision Register")
+    }
+    const roleKeys = new Set(operatingModel.roles.map((entry) => entry.key))
+    for (const risk of input.risks) {
+      const governedRoles = [risk.ownerRoleKey, risk.treatment.ownerRoleKey,
+        ...risk.controls.map((control) => control.ownerRoleKey)]
+      if (governedRoles.some((key) => !roleKeys.has(key))) {
+        throw new Error("Risk owner, treatment owner, and Control owner roles must reference exact bound Operating Model roles")
+      }
+    }
+    for (const reference of uniqueSubjectReferences(input)) {
+      if (!(await this.subjectMatches(reference, product, initiative))) {
+        throw new Error("Risk related records must bind exact governed records in the same Product and Initiative scope")
+      }
+    }
+  }
+
+  private async subjectMatches(
+    reference: ExactDecisionSubjectReference,
+    product: Product,
+    initiative: Initiative,
+  ): Promise<boolean> {
+    try {
+      if (reference.recordKind === "product") return exactRecordMatches(reference, { ...product, revision: revisionOf(product) })
+      if (reference.recordKind === "initiative") return exactRecordMatches(reference, { ...initiative, revision: revisionOf(initiative) })
+      const path = this.currentSubjectPath(reference)
+      const record = await this.repository.readJson(path, subjectIdentitySchema)
+      return exactRecordMatches(reference, record) &&
+        (record.productId === undefined || record.productId === product.id) &&
+        (record.initiativeId === undefined || record.initiativeId === initiative.id)
+    } catch {
+      return false
+    }
+  }
+
+  private currentSubjectPath(reference: ExactDecisionSubjectReference): string {
+    const directories: Record<ExactDecisionSubjectReference["recordKind"], string> = {
+      "architecture-challenge-model": "architecture-challenge-models",
+      "architecture-record": "architecture",
+      "authorization-model": "authorization-models",
+      "bounded-context-model": "bounded-context-models",
+      "business-architecture-baseline": "business-architecture-baselines",
+      "business-capability-map": "business-capability-maps",
+      "business-rule-catalog": "business-rule-catalogs",
+      "business-understanding": "business-understanding",
+      "change": "changes",
+      "data-model": "data-models",
+      "decision-record": "decisions",
+      "evidence-record": "evidence",
+      "event-integration-model": "event-integration-models",
+      "failure-recovery-model": "failure-recovery-models",
+      "initiative": "initiatives",
+      "operating-model": "operating-models",
+      "outcome-model": "outcome-models",
+      "process-model": "process-models",
+      "product": "",
+      "product-design-revision": "design-revisions",
+      "requirement": "requirements",
+      "risk-record": "risks",
+      "security-privacy-assessment": "security-privacy-assessments",
+      "source-record": "sources",
+      "stakeholder-model": "stakeholder-models",
+      "system-solution-architecture": "system-solution-architectures",
+      "value-stream-model": "value-stream-models",
+      "work-item": "work-items",
+    }
+    const directory = directories[reference.recordKind]
+    if (!directory) throw new Error(`Risk related-record kind ${reference.recordKind} has no current record directory`)
+    return this.repository.resolve(directory, `${reference.recordId}.json`)
+  }
+
+  private validateContext(binding: BusinessContextBinding, product: Product, initiative: Initiative): void {
+    if (initiative.productId !== product.id) throw new Error("Risk Register Initiative targets a different Product")
+    const expected = {
+      productRevision: revisionOf(product), productDigest: canonicalDigest(product),
+      initiativeRevision: revisionOf(initiative), initiativeDigest: canonicalDigest(initiative),
+    }
+    if (canonicalDigest(binding) !== canonicalDigest(expected)) {
+      throw new Error("Risk Register must bind the exact current Product and Initiative revisions and digests")
+    }
+  }
+
+  private async validateSourceReferences(value: unknown, initiativeId: string): Promise<void> {
+    for (const reference of uniqueExactSourceReferences(value)) {
+      const history = await this.sourceGovernance.readSourceRevision(reference.sourceId, reference.sourceRevision)
+      if (history.snapshot.initiativeId !== initiativeId || history.recordDigest !== reference.recordDigest ||
+          history.snapshot.contentDigest !== reference.contentDigest) {
+        throw new Error("Risk Register Source reference identity, Initiative, revision, record digest, or content digest does not match")
+      }
+    }
+  }
+
+  private async requireMutableInitiative(initiativeId: string): Promise<{ product: Product; initiative: Initiative }> {
+    const [product, initiative] = await Promise.all([
+      this.readProduct(), this.readInitiative(this.requireUuid(initiativeId, "Initiative ID")),
+    ])
+    if (initiative.productId !== product.id) throw new Error("Initiative does not target the current Product")
+    if (["completed", "cancelled"].includes(initiative.state)) {
+      throw new Error(`Terminal Initiative ${initiative.state} Risk Register is immutable`)
+    }
+    return { product, initiative }
+  }
+
+  private async commitVersionedRecord(record: RiskRegister, eventType: string, actorId: string): Promise<void> {
+    const notAssessedRiskCount = record.risks.filter(riskIsNotAssessed).length
+    const unresolvedResidualRiskCount = record.risks.filter((risk) => risk.residualRisk.state === "not-assessed").length
+    const unverifiedControlCount = record.risks.flatMap((risk) => risk.controls)
+      .filter((control) => control.effectivenessState === "not-assessed").length
+    await this.repository.commitMutation({
+      writes: [
+        this.governed(this.currentPath(record.id), record, riskRegisterSchema),
+        this.governed(this.historyPath(record.id, record.revision), record, riskRegisterSchema),
+      ],
+      audit: {
+        eventType,
+        actor: { kind: "human", id: actorId },
+        subjectId: record.id,
+        payload: {
+          initiativeId: record.initiativeId,
+          revision: record.revision,
+          recordDigest: canonicalDigest(record),
+          membershipDigest: record.membershipDigest,
+          predecessorDigest: record.predecessorDigest,
+          state: record.state,
+          riskCount: record.risks.length,
+          notAssessedRiskCount,
+          unresolvedResidualRiskCount,
+          proposedTreatmentCount: record.risks.length,
+          unassignedOwnerCount: record.risks.length,
+          unverifiedControlCount,
+          assessmentFactState: "not-established",
+          ownerAssignmentState: "not-established",
+          controlEffectivenessState: "not-established",
+          riskAcceptanceState: "not-granted",
+          approvalState: "not-established",
+          exceptionState: "not-established",
+          baselinePromotionState: "not-granted",
+          readinessState: "not-established",
+          actionAuthorityState: "not-granted",
+          authorityBoundary: record.authorityBoundary,
+        },
+      },
+    })
+  }
+
+  private currentPath(id: string): string {
+    return this.repository.resolve("risk-registers", `${id}.json`)
+  }
+
+  private historyPath(id: string, revision: number): string {
+    return this.repository.resolve("risk-register-history", `risk-register-${id}-r${revision}.json`)
+  }
+
+  private governed<T>(path: string, value: T, schema: ZodType<T>): MutationWrite<T> {
+    return { path, value, schema, governed: true }
+  }
+
+  private requireUuid(value: string, label: string): string {
+    const parsed = uuidSchema.safeParse(value)
+    if (!parsed.success) throw new Error(`${label} must be a UUID`)
+    return parsed.data
+  }
+
+  private async assertIntegrity(): Promise<void> {
+    const integrity = await this.repository.verifyAudit()
+    if (!integrity.valid) throw new Error(integrity.error ?? "Audit integrity check failed")
+  }
+
+  private async listRecords<T>(directory: string, pattern: RegExp, schema: ZodType<T>): Promise<T[]> {
+    let names: string[]
+    try {
+      names = (await this.repository.readDirectory(this.repository.resolve(directory))).filter((name) => pattern.test(name))
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") return []
+      throw error
+    }
+    if (names.length > riskRegisterInventoryLimit) {
+      throw new Error(`Risk Register directory ${directory} exceeds the ${riskRegisterInventoryLimit}-record safety limit`)
+    }
+    const records = await Promise.all(names.map((name) =>
+      this.repository.readJson(this.repository.resolve(directory, name), schema)))
+    return records.sort((left, right) => {
+      const leftRecord = left as Record<string, unknown>
+      const rightRecord = right as Record<string, unknown>
+      const recency = String(rightRecord.updatedAt ?? "").localeCompare(String(leftRecord.updatedAt ?? ""))
+      return recency !== 0 ? recency : String(leftRecord.id ?? "").localeCompare(String(rightRecord.id ?? ""))
+    })
+  }
+}

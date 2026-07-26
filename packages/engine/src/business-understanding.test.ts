@@ -6,6 +6,7 @@ import {
   architectureChallengeModelInputSchema,
   architectureChallengeRequirementIds,
   decisionRegisterRequirementIds,
+  riskRegisterRequirementIds,
   authorizationModelInputSchema,
   authorizationModelRequirementIds,
   eventIntegrationModelInputSchema,
@@ -30,6 +31,8 @@ import {
   type ArchitectureChallengeModelInput,
   type ArchitectureChallengeModel,
   type DecisionRegisterInput,
+  type DecisionRegister,
+  type RiskRegisterInput,
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
@@ -2920,6 +2923,158 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function riskRegisterInput(
+    operatingModel: OperatingModel,
+    architectureChallengeModel: ArchitectureChallengeModel,
+    securityPrivacyAssessment: SecurityPrivacyAssessment,
+    decisionRegister: DecisionRegister,
+    overrides: Partial<RiskRegisterInput> = {},
+  ): RiskRegisterInput {
+    const riskKeys = ["shared-engine-correlated-failure"]
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Product Risk Register",
+      scope: "Record material Product and architecture uncertainty, candidate controls, proposed treatment, residual-risk gaps, exact evidence, and review triggers without treating estimates or role labels as facts, assignments, approval, or action authority.",
+      operatingModel: {
+        recordId: operatingModel.id,
+        revision: operatingModel.revision,
+        digest: canonicalDigest(operatingModel),
+      },
+      architectureChallengeModel: {
+        recordId: architectureChallengeModel.id,
+        revision: architectureChallengeModel.revision,
+        digest: canonicalDigest(architectureChallengeModel),
+      },
+      securityPrivacyAssessment: {
+        recordId: securityPrivacyAssessment.id,
+        revision: securityPrivacyAssessment.revision,
+        digest: canonicalDigest(securityPrivacyAssessment),
+      },
+      decisionRegister: {
+        recordId: decisionRegister.id,
+        revision: decisionRegister.revision,
+        digest: canonicalDigest(decisionRegister),
+      },
+      risks: [{
+        key: "shared-engine-correlated-failure",
+        title: "Shared engine failure affects every native host",
+        statement: {
+          cause: "Every native host delegates governed Product semantics and persistence to one shared local engine implementation.",
+          condition: "A semantic, persistence, packaging, compatibility, or protocol defect reaches the shared engine boundary.",
+          consequence: "Multiple native hosts may fail consistently or expose the same governance error before independent detection.",
+        },
+        affectedObjectives: ["Cross-host governance integrity", "Native Product Studio continuity"],
+        affectedScopes: ["Four native Product Studio hosts", "Shared local governed engine"],
+        source: {
+          kind: "dependency",
+          statement: "The shared-engine architecture concentrates governed semantics and persistence in one implementation dependency.",
+          activationTrigger: "A shared engine semantic, storage, package, or protocol regression is detected or a compatibility input changes.",
+        },
+        assessment: {
+          methodState: "candidate-declared",
+          methodName: "Candidate qualitative risk method",
+          methodVersion: "0.1.0",
+          likelihoodOrPlausibility: {
+            kind: "plausibility",
+            state: "candidate-estimate",
+            value: "possible",
+            rationale: "Shared implementation creates a plausible common failure mode, but no approved operational likelihood scale exists.",
+          },
+          impactDimensions: ["Availability", "Governance integrity", "Portability"],
+          impactSeverity: {
+            state: "candidate-estimate",
+            value: "major",
+            rationale: "A common semantic defect could invalidate governed behavior across every projected native host.",
+          },
+          exposure: {
+            state: "candidate-estimate",
+            value: "four-native-host-projections",
+            rationale: "The candidate architecture projects one engine contract through VS Code, Kiro, Rider, and Visual Studio.",
+          },
+          uncertainty: ["Independent supported-host acceptance and operating evidence remain incomplete"],
+          assumptions: ["Every native host consumes the same packaged engine semantics"],
+          confidence: {
+            state: "candidate-estimate",
+            value: "low",
+            rationale: "The estimate is based on local deterministic evidence without independent supported-platform acceptance.",
+          },
+          evidence: [reference()],
+        },
+        controls: [{
+          key: "cross-host-conformance",
+          name: "Cross-host conformance gate",
+          kind: "detective",
+          statement: "Exercise the same governed capability and hostile protocol fixtures through every native host before any supported-host claim.",
+          implementationState: "observed-implemented",
+          effectivenessState: "candidate-estimate",
+          effectiveness: "Candidate evidence shows deterministic local protocol parity; operational effectiveness remains unestablished.",
+          ownerRoleKey: "initiative-owner",
+          ownerAssignmentState: "not-established",
+          evidence: [reference()],
+          failureBehavior: "A failed or missing host receipt keeps conformance and readiness incomplete and must not be converted to acceptance.",
+          reviewTriggers: ["Host, engine, protocol, package, or conformance catalog changes"],
+        }],
+        treatment: {
+          kind: "reduce",
+          state: "proposed",
+          rationale: "Independent host projections, hostile fixtures, deterministic packages, and fail-closed bindings reduce silent semantic drift and correlated release risk.",
+          actions: ["Preserve exact host receipts", "Run cross-host negative cases for every governed capability"],
+          controlKeys: ["cross-host-conformance"],
+          ownerRoleKey: "initiative-owner",
+          ownerAssignmentState: "not-established",
+          dueOrReviewCondition: "Review before any supported-host acceptance, baseline promotion, readiness conclusion, release, deployment, or material engine or protocol change.",
+          evidence: [reference()],
+          authorityBoundary: "risk-treatment-is-proposed-and-does-not-establish-owner-assignment-control-effectiveness-risk-acceptance-or-action-authority",
+        },
+        residualRisk: {
+          state: "candidate-described",
+          statement: "Correlated implementation and package defects remain possible even when every local conformance receipt passes.",
+          uncertainty: ["No native supported-platform acceptance evidence exists for every host"],
+          evidence: [reference()],
+          acceptanceState: "not-granted",
+          acceptanceDecisionState: "not-established",
+          approverAuthorityState: "not-established",
+          validityState: "not-established",
+          conditions: [],
+          reviewTriggers: ["Independent acceptance, incident, material architecture change, or new risk evidence"],
+          authorityBoundary: "residual-risk-description-does-not-establish-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority",
+        },
+        ownerRoleKey: "initiative-owner",
+        ownerAssignmentState: "not-established",
+        authoringLifecycle: "draft",
+        revisionDisposition: "candidate",
+        operationalEligibilityState: "not-established",
+        reviewTriggers: ["Architecture, operating model, protocol, package, or host evidence changes"],
+        escalationTriggers: ["A shared defect affects more than one host or invalidates governed records"],
+        invalidationTriggers: ["The shared-engine architecture or exact upstream candidate revision changes"],
+        relatedRecords: [{
+          recordKind: "architecture-challenge-model",
+          recordId: architectureChallengeModel.id,
+          revision: architectureChallengeModel.revision,
+          digest: canonicalDigest(architectureChallengeModel),
+          relationship: "depends-on",
+          elementKeys: ["shared-engine-decision"],
+        }],
+        sources: [reference()],
+      }],
+      requirementCoverage: [...riskRegisterRequirementIds]
+        .sort((left, right) => left.localeCompare(right))
+        .map((requirementId) => ({
+          requirementId,
+          state: "covered-candidate" as const,
+          riskKeys,
+          basis: "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+          evidence: [reference()],
+        })),
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      limitations: ["No assessment fact, owner appointment, control-effectiveness conclusion, Risk Acceptance, Approval Determination, exception, baseline promotion, readiness conclusion, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -5502,6 +5657,198 @@ describe("Business understanding governance", () => {
     expect((await engine.decisionRegister.assess(initiative.id)).staleBindingCount).toBeGreaterThanOrEqual(1)
   })
 
+  it("persists exact versioned Risk Registers without synthesizing assessment, acceptance, or authority", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel),
+      actorId,
+    )
+    const input = riskRegisterInput(
+      upstream.operatingModel,
+      upstream.architectureChallengeModel,
+      upstream.securityPrivacyAssessment,
+      decisionRegister,
+    )
+    const register = await engine.riskRegister.create(input, actorId)
+
+    expect(register).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      risks: [{
+        assessment: { methodState: "candidate-declared" },
+        treatment: { state: "proposed", ownerAssignmentState: "not-established" },
+        residualRisk: {
+          state: "candidate-described",
+          acceptanceState: "not-granted",
+          approverAuthorityState: "not-established",
+        },
+        ownerAssignmentState: "not-established",
+        operationalEligibilityState: "not-established",
+      }],
+      authorityBoundary: expect.stringContaining("does-not-establish-owner-or-authority-assignments"),
+    })
+    expect(register.membershipDigest).toBe(canonicalDigest({
+      operatingModel: input.operatingModel,
+      architectureChallengeModel: input.architectureChallengeModel,
+      securityPrivacyAssessment: input.securityPrivacyAssessment,
+      decisionRegister: input.decisionRegister,
+      risks: input.risks.map((risk) => ({
+        key: risk.key,
+        controlKeys: risk.controls.map((control) => control.key),
+        relatedRecords: risk.relatedRecords,
+        sourceReferences: [reference()],
+      })),
+    }))
+    expect(await engine.riskRegister.assess(initiative.id)).toMatchObject({
+      register: { recordId: register.id, revision: 1, digest: canonicalDigest(register) },
+      riskCount: 1,
+      notAssessedRiskCount: 0,
+      unresolvedResidualRiskCount: 0,
+      proposedTreatmentCount: 1,
+      unassignedOwnerCount: 1,
+      unverifiedControlCount: 0,
+      unresolvedRequirementCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      authorityBoundary: expect.stringContaining("does-not-establish-assessment-fact"),
+    })
+    const projection = await engine.riskRegister.project(initiative.id)
+    expect(projection).toMatchObject({
+      register: { id: register.id, revision: 1, riskCount: 1 },
+      status: { proposedTreatmentCount: 1, unassignedOwnerCount: 1 },
+      privacyBoundary: expect.stringContaining("not-risk-statements"),
+      authorityBoundary: expect.stringContaining("does-not-establish-assessment-fact"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Shared engine failure")
+    expect(JSON.stringify(projection)).not.toContain("cross-host-conformance")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.riskRegister.revise(
+      register.id,
+      register.revision,
+      riskRegisterInput(
+        upstream.operatingModel,
+        upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment,
+        decisionRegister,
+        { limitations: [
+          "Independent human assessment of the exact method, evidence, treatment, control effectiveness, owner trace, and residual risk remains incomplete",
+          "No assessment fact, owner appointment, control-effectiveness conclusion, Risk Acceptance, Approval Determination, exception, baseline promotion, readiness conclusion, release, deployment, or action authority is represented",
+        ] },
+      ),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: register.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(register),
+      risks: [{ residualRisk: { acceptanceState: "not-granted" } }],
+    })
+    expect((await engine.riskRegister.listHistory(register.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "risk.register.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(register),
+        riskCount: 1,
+        notAssessedRiskCount: 0,
+        unresolvedResidualRiskCount: 0,
+        proposedTreatmentCount: 1,
+        unassignedOwnerCount: 1,
+        unverifiedControlCount: 0,
+        assessmentFactState: "not-established",
+        ownerAssignmentState: "not-established",
+        controlEffectivenessState: "not-established",
+        riskAcceptanceState: "not-granted",
+        approvalState: "not-established",
+        exceptionState: "not-established",
+        baselinePromotionState: "not-granted",
+        readinessState: "not-established",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("rejects forged Risk Register roles, related records, bindings, secrets, and duplicate current records", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel),
+      actorId,
+    )
+    const base = riskRegisterInput(
+      upstream.operatingModel,
+      upstream.architectureChallengeModel,
+      upstream.securityPrivacyAssessment,
+      decisionRegister,
+    )
+    await expect(engine.riskRegister.create({
+      ...base,
+      risks: base.risks.map((risk) => ({ ...risk, ownerRoleKey: "invented-owner" })),
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.riskRegister.create({
+      ...base,
+      risks: base.risks.map((risk) => ({
+        ...risk,
+        relatedRecords: risk.relatedRecords.map((related) => ({ ...related, digest: digest("e") })),
+      })),
+    }, actorId)).rejects.toThrow(/exact governed records/)
+    await expect(engine.riskRegister.create({
+      ...base,
+      securityPrivacyAssessment: { ...base.securityPrivacyAssessment, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Security, Privacy, and Threat Assessment/)
+    await expect(engine.riskRegister.create({
+      ...base,
+      decisionRegister: { ...base.decisionRegister, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Decision Register/)
+    await expect(engine.riskRegister.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable risk context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+    await engine.riskRegister.create(base, actorId)
+    await expect(engine.riskRegister.create(base, actorId)).rejects.toThrow(/only one current Risk Register/)
+  })
+
+  it("reports Risk Register staleness after its exact Decision Register changes", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel),
+      actorId,
+    )
+    const register = await engine.riskRegister.create(
+      riskRegisterInput(
+        upstream.operatingModel,
+        upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment,
+        decisionRegister,
+      ),
+      actorId,
+    )
+    await engine.decisionRegister.revise(
+      decisionRegister.id,
+      decisionRegister.revision,
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel, {
+        limitations: [
+          "No owner appointment, authority eligibility, effective Decision, Approval Determination, risk acceptance, baseline promotion, readiness conclusion, release, deployment, or action authority is represented",
+          "The exact Decision Register changed after Risk Register capture",
+        ],
+      }),
+      actorId,
+    )
+    expect(await engine.riskRegister.assess(initiative.id)).toMatchObject({
+      register: { recordId: register.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -5659,6 +6006,15 @@ describe("Business understanding governance", () => {
       decisionRegisterInput(operatingModel, architectureChallengeModel),
       actorId,
     )
+    const riskRegister = await engine.riskRegister.create(
+      riskRegisterInput(
+        operatingModel,
+        architectureChallengeModel,
+        securityPrivacyAssessment,
+        decisionRegister,
+      ),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -5693,6 +6049,8 @@ describe("Business understanding governance", () => {
       `architecture-challenge-model-history/architecture-challenge-model-${architectureChallengeModel.id}-r1.json`,
       `decision-registers/${decisionRegister.id}.json`,
       `decision-register-history/decision-register-${decisionRegister.id}-r1.json`,
+      `risk-registers/${riskRegister.id}.json`,
+      `risk-register-history/risk-register-${riskRegister.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,

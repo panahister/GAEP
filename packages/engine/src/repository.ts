@@ -16,6 +16,7 @@ import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from "node
 import {
   architectureChallengeModelSchema,
   decisionRegisterSchema,
+  riskRegisterSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -128,6 +129,8 @@ const directoryNames = [
   "architecture-challenge-model-history",
   "decision-registers",
   "decision-register-history",
+  "risk-registers",
+  "risk-register-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -925,6 +928,8 @@ export class GaepRepository {
       ["architecture-challenge-model-history", /^architecture-challenge-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["decision-registers", /^[0-9a-f-]+\.json$/i],
       ["decision-register-history", /^decision-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["risk-registers", /^[0-9a-f-]+\.json$/i],
+      ["risk-register-history", /^risk-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1072,6 +1077,10 @@ export class GaepRepository {
     if (/^decision-registers\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^decision-register-history\/decision-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, decisionRegisterSchema)
+    }
+    if (/^risk-registers\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^risk-register-history\/risk-register-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, riskRegisterSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
