@@ -15,6 +15,7 @@ import {
   type AuthorizationModelProjection,
   type EventIntegrationModelProjection,
   type FailureRecoveryModelProjection,
+  type ArchitectureChallengeModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1121,6 +1122,67 @@ function failureRecoveryModelProjection(): FailureRecoveryModelProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function architectureChallengeModelProjection(): ArchitectureChallengeModelProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "architecture-challenge-model-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    model: {
+      recordId: "d6d6d6d6-d6d6-46d6-86d6-d6d6d6d6d6d6",
+      revision: 2,
+      digest: `sha256:${"d".repeat(64)}` as const,
+    },
+    challengeSubjectCount: 3,
+    assumptionCount: 4,
+    alternativeCount: 5,
+    findingCount: 6,
+    responseCount: 2,
+    unrespondedFindingCount: 4,
+    unresolvedAssumptionCount: 2,
+    unresolvedRequirementCount: 1,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 1,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more Challenge Findings lack an attributable candidate response"],
+    assessedAt: "2026-07-26T16:00:00.000Z",
+    authorityBoundary: "architecture-challenge-status-reports-candidate-coverage-and-gaps-and-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "architecture-challenge-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    model: {
+      id: status.model.recordId,
+      revision: status.model.revision,
+      digest: status.model.digest,
+      membershipDigest: `sha256:${"e".repeat(64)}` as const,
+      state: "candidate" as const,
+      challengeSubjectCount: 3,
+      assumptionCount: 4,
+      alternativeCount: 5,
+      findingCount: 6,
+      responseCount: 2,
+      updatedAt: "2026-07-26T15:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-challenge-content-assumptions-evidence-findings-responses-source-content-personal-data-secrets-or-credentials" as const,
+    authorityBoundary: "architecture-challenge-projection-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1687,6 +1749,7 @@ interface HarnessOptions {
   authorizationModelProjection?: AuthorizationModelProjection
   eventIntegrationModelProjection?: EventIntegrationModelProjection
   failureRecoveryModelProjection?: FailureRecoveryModelProjection
+  architectureChallengeModelProjection?: ArchitectureChallengeModelProjection
   commandResult?: unknown
 }
 
@@ -1850,6 +1913,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.failureRecoveryModelProjection ? {
       failureRecoveryModel: {
         project: async () => options.failureRecoveryModelProjection!,
+      },
+    } : {}),
+    ...(options.architectureChallengeModelProjection ? {
+      architectureChallengeModel: {
+        project: async () => options.architectureChallengeModelProjection!,
       },
     } : {}),
   }
@@ -2356,6 +2424,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private failure evidence|private operational telemetry|private recovery steps|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Architecture Challenge metadata on the native architecture page", async () => {
+    const projection = architectureChallengeModelProjection()
+    const { source } = harness({ architectureChallengeModelProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[13]).toMatchObject({
+      id: "architecture-challenge-model",
+      rows: [{
+        id: projection.model?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.model?.membershipDigest,
+          counts: "3 challenge subjects · 4 assumptions · 5 alternatives · 6 findings · 2 responses",
+          assessment: "attention-required",
+          gaps: "4 unresponded findings · 2 unresolved assumptions · 1 requirement gaps · 1 stale bindings",
+          boundary: "Candidate challenge subjects, assumptions, alternatives, findings, responses, and independence disclosures only; no completed independent review, assurance, risk acceptance, architecture approval, operational readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private challenge content|private assumptions|private evidence|customer@example\.com|api_key/iu,
     )
   })
 

@@ -42,6 +42,7 @@ import type {
   AuthorizationModelProjection,
   EventIntegrationModelProjection,
   FailureRecoveryModelProjection,
+  ArchitectureChallengeModelProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -169,6 +170,9 @@ export interface CurrentStudioEngineReader {
   failureRecoveryModel?: {
     project(initiativeId: string): Promise<FailureRecoveryModelProjection>
   }
+  architectureChallengeModel?: {
+    project(initiativeId: string): Promise<ArchitectureChallengeModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -222,6 +226,7 @@ interface ObservedStudioState {
   authorizationModelProjections: Map<string, AuthorizationModelProjection>
   eventIntegrationModelProjections: Map<string, EventIntegrationModelProjection>
   failureRecoveryModelProjections: Map<string, FailureRecoveryModelProjection>
+  architectureChallengeModelProjections: Map<string, ArchitectureChallengeModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1183,6 +1188,54 @@ function failureRecoveryModelTable(state: ObservedStudioState): StudioTableSnaps
   }
 }
 
+function architectureChallengeModelTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.architectureChallengeModelProjections.values()].flatMap((projection) => {
+    const record = projection.model
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.challengeSubjectCount} challenge subjects · ${record.assumptionCount} assumptions · ${record.alternativeCount} alternatives · ${record.findingCount} findings · ${record.responseCount} responses`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.unrespondedFindingCount} unresponded findings · ${projection.status.unresolvedAssumptionCount} unresolved assumptions · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate challenge subjects, assumptions, alternatives, findings, responses, and independence disclosures only; no completed independent review, assurance, risk acceptance, architecture approval, operational readiness, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "architecture-challenge-model",
+    title: "Governed Architecture Challenge Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Challenge Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Architecture Challenge candidate",
+        "Create the candidate through the governed engine workflow. This view does not complete independent review, establish assurance, accept risk, approve architecture, establish operational readiness, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1193,7 +1246,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), eventIntegrationModelTable(state), failureRecoveryModelTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), eventIntegrationModelTable(state), failureRecoveryModelTable(state), architectureChallengeModelTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -1216,6 +1269,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       authorizationModelTable(state),
       eventIntegrationModelTable(state),
       failureRecoveryModelTable(state),
+      architectureChallengeModelTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3673,6 +3727,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       authorizationModelProjections: new Map(),
       eventIntegrationModelProjections: new Map(),
       failureRecoveryModelProjections: new Map(),
+      architectureChallengeModelProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -4422,6 +4477,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "failure-recovery-model-unavailable",
           "Failure and Recovery Model metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.architectureChallengeModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.architectureChallengeModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.architectureChallengeModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Architecture Challenge projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `architecture-challenge-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Architecture Challenge metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "architecture-challenge-model-unavailable",
+          "Architecture Challenge metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
