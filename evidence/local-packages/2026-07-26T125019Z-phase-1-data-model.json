@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-ide-package-report-v1",
+  "packageSet": "phase-0-local",
+  "artifacts": [
+    {
+      "host": "vscode",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
+      "status": "produced",
+      "bytes": 479548,
+      "digest": "sha256:29e2acaceba42e3b0713f86d6480fc04f09a3fea4b08e1ea9262b46b20efea14",
+      "verification": "exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-bundled-engine-empty-recovery-evidence-workflow"
+    },
+    {
+      "host": "kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
+      "status": "produced",
+      "bytes": 574856,
+      "digest": "sha256:a95826bb116910093f69542bf7607c1bf4266761daa62aa276db46a5e72707d4",
+      "verification": "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-digest-bound-package-local-provider-model-dashboard-and-empty-evidence-workflows-with-private-safe-output-and-immutable-store"
+    },
+    {
+      "host": "rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+      "status": "produced",
+      "bytes": 1010944,
+      "digest": "sha256:5ac49e72aba801f29c5fd8ff7d9a710632eef6209bdd1e7029f80b5939a1254e",
+      "verification": "clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-jetbrains-plugininstaller-install-removal-absence-reinstall-native-startup-and-client-packaged-engine-empty-evidence-workflow"
+    },
+    {
+      "host": "visual-studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "artifactPath": "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
+      "status": "not-produced-on-this-platform",
+      "verification": "cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-333-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending",
+      "limitation": "Native Visual Studio VSIX container creation and installation require Windows and VsixUtil.exe."
+    }
+  ],
+  "summary": {
+    "expected": 4,
+    "produced": 3,
+    "missingNativePlatformArtifacts": 1
+  },
+  "claimBoundary": "Local package evidence is not release signing, publication, supported-OS acceptance, Product readiness, or release approval."
+}
