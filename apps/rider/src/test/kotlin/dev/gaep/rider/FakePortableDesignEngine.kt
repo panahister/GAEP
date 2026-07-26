@@ -28,6 +28,7 @@ private val processModelId = UUID.fromString("50505050-5050-4050-8050-5050505050
 private val dataModelId = UUID.fromString("51515151-5151-4151-8151-515151515151")
 private val authorizationModelId = UUID.fromString("52525252-5252-4252-8252-525252525252")
 private val eventIntegrationModelId = UUID.fromString("53535353-5353-4353-8353-535353535353")
+private val failureRecoveryModelId = UUID.fromString("54545454-5454-4454-8454-545454545454")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -167,6 +168,11 @@ fun main(arguments: Array<String>) {
             )
             "integration.models.snapshot" -> handleEventIntegrationModel(
                 id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "recovery.models.snapshot" -> handleFailureRecoveryModel(
+                request.get("id").asLong,
                 request.getAsJsonObject("params"),
                 workspacePath,
             )
@@ -1626,6 +1632,98 @@ private fun handleEventIntegrationModel(id: Long, params: JsonObject, workspaceP
         }
         workspacePath.endsWith("bad-event-integration-model-snapshot-private") -> {
             value.addProperty("eventPayload", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleFailureRecoveryModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE FAILURE RECOVERY MODEL PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-failure-recovery-model-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T15:00:00.000Z"
+    val modelDigest = "sha256:${"c".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "failure-recovery-model-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "failure-recovery-model-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("model", JsonObject().apply {
+                addProperty("recordId", failureRecoveryModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", modelDigest)
+            })
+            addProperty("failureModeCount", 8)
+            addProperty("retryPolicyCount", 6)
+            addProperty("compensationPlanCount", 5)
+            addProperty("recoveryPlanCount", 4)
+            addProperty("recoveryEvidenceDefinitionCount", 3)
+            addProperty("uncoveredProcessCount", 1)
+            addProperty("uncoveredCommandCount", 2)
+            addProperty("uncoveredRouteCount", 3)
+            addProperty("uncoveredAuthorizationActionCount", 4)
+            addProperty("unresolvedRecoveryEvidenceCount", 5)
+            addProperty("unresolvedRequirementCount", 6)
+            addProperty("inconsistencyCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more recovery evidence definitions remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "failure-recovery-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action",
+            )
+        })
+        add("model", JsonObject().apply {
+            addProperty("id", failureRecoveryModelId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", modelDigest)
+            addProperty("membershipDigest", "sha256:${"b".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("failureModeCount", 8)
+            addProperty("retryPolicyCount", 6)
+            addProperty("compensationPlanCount", 5)
+            addProperty("recoveryPlanCount", 4)
+            addProperty("recoveryEvidenceDefinitionCount", 3)
+            addProperty("updatedAt", "2026-07-26T14:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-failure-evidence-operational-telemetry-retry-keys-compensation-content-recovery-steps-source-content-personal-data-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "failure-recovery-model-projection-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-failure-recovery-model-snapshot-digest") -> {
+            value.getAsJsonObject("model").addProperty("recoveryPlanCount", 5)
+        }
+        workspacePath.endsWith("bad-failure-recovery-model-snapshot-private") -> {
+            value.addProperty("recoveryEvidence", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

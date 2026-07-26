@@ -322,6 +322,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += eventIntegrationModelButton
         actions.add(eventIntegrationModelButton)
 
+        val failureRecoveryModelButton = JButton("Inspect Failure and Recovery Model…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Failure evidence, operational telemetry, retry keys, compensation content, recovery steps, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Failure and Recovery Model",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Failure and Recovery Model", status, output, buttons) {
+                    controller.readFailureRecoveryModel(initiativeId)
+                }
+            }
+        }
+        buttons += failureRecoveryModelButton
+        actions.add(failureRecoveryModelButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

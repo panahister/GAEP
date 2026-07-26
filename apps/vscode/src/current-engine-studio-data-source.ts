@@ -41,6 +41,7 @@ import type {
   DataModelProjection,
   AuthorizationModelProjection,
   EventIntegrationModelProjection,
+  FailureRecoveryModelProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -165,6 +166,9 @@ export interface CurrentStudioEngineReader {
   eventIntegrationModel?: {
     project(initiativeId: string): Promise<EventIntegrationModelProjection>
   }
+  failureRecoveryModel?: {
+    project(initiativeId: string): Promise<FailureRecoveryModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -217,6 +221,7 @@ interface ObservedStudioState {
   dataModelProjections: Map<string, DataModelProjection>
   authorizationModelProjections: Map<string, AuthorizationModelProjection>
   eventIntegrationModelProjections: Map<string, EventIntegrationModelProjection>
+  failureRecoveryModelProjections: Map<string, FailureRecoveryModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1130,6 +1135,54 @@ function eventIntegrationModelTable(state: ObservedStudioState): StudioTableSnap
   }
 }
 
+function failureRecoveryModelTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.failureRecoveryModelProjections.values()].flatMap((projection) => {
+    const record = projection.model
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.failureModeCount} failure modes · ${record.retryPolicyCount} retry policies · ${record.compensationPlanCount} compensation plans · ${record.recoveryPlanCount} recovery plans · ${record.recoveryEvidenceDefinitionCount} recovery evidence definitions`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.uncoveredProcessCount} uncovered processes · ${projection.status.uncoveredCommandCount} uncovered commands · ${projection.status.uncoveredRouteCount} uncovered routes · ${projection.status.uncoveredAuthorizationActionCount} uncovered authorization actions · ${projection.status.unresolvedRecoveryEvidenceCount} recovery evidence gaps · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate failure modes, retry policies, compensation plans, recovery plans, and evidence definitions only; no failure occurrence, retry safety, compensation or restoration, recovery success, return-to-service authority, operational readiness, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "failure-recovery-model",
+    title: "Governed Failure and Recovery Model Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Recovery Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Failure and Recovery Model candidate",
+        "Create the candidate through the governed engine workflow. This view does not prove failure occurrence, establish retry safety, execute compensation, establish restoration or recovery success, authorize return to service, establish operational readiness, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1140,7 +1193,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), eventIntegrationModelTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), eventIntegrationModelTable(state), failureRecoveryModelTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -1162,6 +1215,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       dataModelTable(state),
       authorizationModelTable(state),
       eventIntegrationModelTable(state),
+      failureRecoveryModelTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3618,6 +3672,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       dataModelProjections: new Map(),
       authorizationModelProjections: new Map(),
       eventIntegrationModelProjections: new Map(),
+      failureRecoveryModelProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -4325,6 +4380,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "event-integration-model-unavailable",
           "Event and Integration Model metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.failureRecoveryModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.failureRecoveryModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.failureRecoveryModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Failure and Recovery Model projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `failure-recovery-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Failure and Recovery Model metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "failure-recovery-model-unavailable",
+          "Failure and Recovery Model metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

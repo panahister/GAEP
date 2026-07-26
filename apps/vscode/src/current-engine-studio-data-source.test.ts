@@ -14,6 +14,7 @@ import {
   type DataModelProjection,
   type AuthorizationModelProjection,
   type EventIntegrationModelProjection,
+  type FailureRecoveryModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1056,6 +1057,70 @@ function eventIntegrationModelProjection(): EventIntegrationModelProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function failureRecoveryModelProjection(): FailureRecoveryModelProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "failure-recovery-model-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    model: {
+      recordId: "c5c5c5c5-c5c5-45c5-85c5-c5c5c5c5c5c5",
+      revision: 2,
+      digest: `sha256:${"d".repeat(64)}` as const,
+    },
+    failureModeCount: 8,
+    retryPolicyCount: 6,
+    compensationPlanCount: 5,
+    recoveryPlanCount: 4,
+    recoveryEvidenceDefinitionCount: 3,
+    uncoveredProcessCount: 1,
+    uncoveredCommandCount: 2,
+    uncoveredRouteCount: 3,
+    uncoveredAuthorizationActionCount: 4,
+    unresolvedRecoveryEvidenceCount: 5,
+    unresolvedRequirementCount: 6,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more recovery evidence definitions remain unresolved"],
+    assessedAt: "2026-07-26T15:00:00.000Z",
+    authorityBoundary: "failure-recovery-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "failure-recovery-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    model: {
+      id: status.model.recordId,
+      revision: status.model.revision,
+      digest: status.model.digest,
+      membershipDigest: `sha256:${"e".repeat(64)}` as const,
+      state: "candidate" as const,
+      failureModeCount: 8,
+      retryPolicyCount: 6,
+      compensationPlanCount: 5,
+      recoveryPlanCount: 4,
+      recoveryEvidenceDefinitionCount: 3,
+      updatedAt: "2026-07-26T14:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-failure-evidence-operational-telemetry-retry-keys-compensation-content-recovery-steps-source-content-personal-data-secrets-or-credentials" as const,
+    authorityBoundary: "failure-recovery-model-projection-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1621,6 +1686,7 @@ interface HarnessOptions {
   dataModelProjection?: DataModelProjection
   authorizationModelProjection?: AuthorizationModelProjection
   eventIntegrationModelProjection?: EventIntegrationModelProjection
+  failureRecoveryModelProjection?: FailureRecoveryModelProjection
   commandResult?: unknown
 }
 
@@ -1779,6 +1845,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.eventIntegrationModelProjection ? {
       eventIntegrationModel: {
         project: async () => options.eventIntegrationModelProjection!,
+      },
+    } : {}),
+    ...(options.failureRecoveryModelProjection ? {
+      failureRecoveryModel: {
+        project: async () => options.failureRecoveryModelProjection!,
       },
     } : {}),
   }
@@ -2261,6 +2332,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private event payload|private command input|private mapping content|external locator|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Failure and Recovery Model metadata on the native architecture page", async () => {
+    const projection = failureRecoveryModelProjection()
+    const { source } = harness({ failureRecoveryModelProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[12]).toMatchObject({
+      id: "failure-recovery-model",
+      rows: [{
+        id: projection.model?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.model?.membershipDigest,
+          counts: "8 failure modes · 6 retry policies · 5 compensation plans · 4 recovery plans · 3 recovery evidence definitions",
+          assessment: "attention-required",
+          gaps: "1 uncovered processes · 2 uncovered commands · 3 uncovered routes · 4 uncovered authorization actions · 5 recovery evidence gaps · 6 requirement gaps · 1 stale bindings",
+          boundary: "Candidate failure modes, retry policies, compensation plans, recovery plans, and evidence definitions only; no failure occurrence, retry safety, compensation or restoration, recovery success, return-to-service authority, operational readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private failure evidence|private operational telemetry|private recovery steps|customer@example\.com|api_key/iu,
     )
   })
 

@@ -960,6 +960,64 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadFailureRecoveryModelAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadFailureRecoveryModelAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while the Failure and Recovery Model was read. Refresh the exact records.");
+        }
+        return RenderFailureRecoveryModel(projection);
+    }
+
+    public static string RenderFailureRecoveryModel(FailureRecoveryModelProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Failure and Recovery Model candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Coverage: {projection.FailureModeCount} failure modes · {projection.RetryPolicyCount} retry policies · " +
+                $"{projection.CompensationPlanCount} compensation plans · {projection.RecoveryPlanCount} recovery plans · " +
+                $"{projection.RecoveryEvidenceDefinitionCount} recovery evidence definitions")
+            .AppendLine(
+                $"Candidate gaps: {projection.UncoveredProcessCount} processes · {projection.UncoveredCommandCount} commands · " +
+                $"{projection.UncoveredRouteCount} routes · {projection.UncoveredAuthorizationActionCount} authorization actions · " +
+                $"{projection.UnresolvedRecoveryEvidenceCount} recovery evidence definitions · " +
+                $"{projection.UnresolvedRequirementCount} requirements · {projection.InconsistencyCount} inconsistencies · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Model is { } model)
+        {
+            output.AppendLine($"Failure and recovery candidate: {model.Id:D}@{model.Revision} · candidate · {model.Digest}")
+                .AppendLine($"Membership digest: {model.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate counts: {model.FailureModeCount} failure modes · {model.RetryPolicyCount} retry policies · " +
+                    $"{model.CompensationPlanCount} compensation plans · {model.RecoveryPlanCount} recovery plans · " +
+                    $"{model.RecoveryEvidenceDefinitionCount} recovery evidence definitions");
+        }
+        else output.AppendLine("Failure and recovery candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view exposes no failure evidence, operational telemetry, retry keys, " +
+                "compensation content, recovery steps, Source content, personal data, local paths, secrets, or credentials " +
+                "and does not prove failure occurrence, establish retry safety, execute compensation or restoration, " +
+                "establish recovery success, authorize return to service, establish operational readiness, promote a baseline, or authorize action.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

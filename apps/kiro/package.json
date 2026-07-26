@@ -63,6 +63,7 @@
     "onCommand:gaepKiro.dataModel.inspect",
     "onCommand:gaepKiro.authorizationModel.inspect",
     "onCommand:gaepKiro.eventIntegrationModel.inspect",
+    "onCommand:gaepKiro.failureRecoveryModel.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -192,6 +193,10 @@
       {
         "command": "gaepKiro.eventIntegrationModel.inspect",
         "title": "GAEP for Kiro: Inspect Governed Event and Integration Model Candidate"
+      },
+      {
+        "command": "gaepKiro.failureRecoveryModel.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Failure and Recovery Model Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

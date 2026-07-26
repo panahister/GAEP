@@ -37,6 +37,7 @@ import { processModelInputSchema } from "./process-model.js"
 import { dataModelInputSchema } from "./data-model.js"
 import { authorizationModelInputSchema } from "./authorization-model.js"
 import { eventIntegrationModelInputSchema } from "./event-integration-model.js"
+import { failureRecoveryModelInputSchema } from "./failure-recovery-model.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -393,6 +394,18 @@ export const hostEventIntegrationModelReviseParamsSchema = z.object({
   record: eventIntegrationModelInputSchema,
 }).strict()
 
+export const hostFailureRecoveryModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: failureRecoveryModelInputSchema,
+}).strict()
+
+export const hostFailureRecoveryModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: failureRecoveryModelInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -514,6 +527,11 @@ export const hostMethodSchema = z.enum([
   "integration.models.revise",
   "integration.models.assess",
   "integration.models.snapshot",
+  "recovery.models.read",
+  "recovery.models.create",
+  "recovery.models.revise",
+  "recovery.models.assess",
+  "recovery.models.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -647,6 +665,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("integration.models.revise", hostEventIntegrationModelReviseParamsSchema),
   requestVariant("integration.models.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("integration.models.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("recovery.models.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("recovery.models.create", hostFailureRecoveryModelCreateParamsSchema),
+  requestVariant("recovery.models.revise", hostFailureRecoveryModelReviseParamsSchema),
+  requestVariant("recovery.models.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("recovery.models.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

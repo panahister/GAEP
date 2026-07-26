@@ -1,0 +1,40 @@
+namespace Gaep.HostClient;
+
+public sealed record FailureRecoveryModelRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int FailureModeCount,
+    int RetryPolicyCount,
+    int CompensationPlanCount,
+    int RecoveryPlanCount,
+    int RecoveryEvidenceDefinitionCount);
+
+public sealed record FailureRecoveryModelProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    IReadOnlyList<string> Reasons,
+    int FailureModeCount,
+    int RetryPolicyCount,
+    int CompensationPlanCount,
+    int RecoveryPlanCount,
+    int RecoveryEvidenceDefinitionCount,
+    int UncoveredProcessCount,
+    int UncoveredCommandCount,
+    int UncoveredRouteCount,
+    int UncoveredAuthorizationActionCount,
+    int UnresolvedRecoveryEvidenceCount,
+    int UnresolvedRequirementCount,
+    int InconsistencyCount,
+    int UnresolvedQuestionCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    FailureRecoveryModelRecordView? Model,
+    string SnapshotDigest);

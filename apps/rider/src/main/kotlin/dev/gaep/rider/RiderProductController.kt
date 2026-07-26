@@ -884,6 +884,58 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readFailureRecoveryModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readFailureRecoveryModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Failure and Recovery Model was read. Refresh the exact records." }
+        return renderFailureRecoveryModel(projection)
+    }
+
+    fun renderFailureRecoveryModel(projection: FailureRecoveryModelProjection): String = buildString {
+        appendLine("GAEP governed Failure and Recovery Model candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.failureModeCount} failure modes · ${projection.retryPolicyCount} retry policies · " +
+                "${projection.compensationPlanCount} compensation plans · ${projection.recoveryPlanCount} recovery plans · " +
+                "${projection.recoveryEvidenceDefinitionCount} recovery evidence definitions",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.uncoveredProcessCount} processes · ${projection.uncoveredCommandCount} commands · " +
+                "${projection.uncoveredRouteCount} routes · ${projection.uncoveredAuthorizationActionCount} authorization actions · " +
+                "${projection.unresolvedRecoveryEvidenceCount} recovery evidence definitions · " +
+                "${projection.unresolvedRequirementCount} requirements · ${projection.inconsistencyCount} inconsistencies · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.model?.let { record ->
+            appendLine("Failure and recovery candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate counts: ${record.failureModeCount} failure modes · ${record.retryPolicyCount} retry policies · " +
+                    "${record.compensationPlanCount} compensation plans · ${record.recoveryPlanCount} recovery plans · " +
+                    "${record.recoveryEvidenceDefinitionCount} recovery evidence definitions",
+            )
+        } ?: appendLine("Failure and recovery candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no failure evidence, operational telemetry, retry keys, " +
+                "compensation content, recovery steps, Source content, personal data, local paths, secrets, or credentials " +
+                "and does not prove failure occurrence, establish retry safety, execute compensation or restoration, " +
+                "establish recovery success, authorize return to service, establish operational readiness, promote a baseline, or authorize action.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

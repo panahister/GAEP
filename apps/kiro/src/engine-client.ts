@@ -15,6 +15,7 @@ import {
   dataModelProjectionSchema,
   authorizationModelProjectionSchema,
   eventIntegrationModelProjectionSchema,
+  failureRecoveryModelProjectionSchema,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
@@ -34,6 +35,7 @@ import {
   type DataModelProjection,
   type AuthorizationModelProjection,
   type EventIntegrationModelProjection,
+  type FailureRecoveryModelProjection,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
@@ -440,6 +442,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = eventIntegrationModelProjectionSchema.safeParse(
         await this.request("integration.models.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readFailureRecoveryModel(initiativeValue: string): Promise<FailureRecoveryModelProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = failureRecoveryModelProjectionSchema.safeParse(
+        await this.request("recovery.models.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

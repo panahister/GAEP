@@ -42,6 +42,7 @@ const processModelId = "44444444-4444-4444-8444-444444444444"
 const dataModelId = "45454545-4545-4545-8545-454545454545"
 const authorizationModelId = "46464646-4646-4646-8646-464646464646"
 const eventIntegrationModelId = "47474747-4747-4747-8747-474747474747"
+const failureRecoveryModelId = "48484848-4848-4848-8848-484848484848"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -107,6 +108,8 @@ input.on("line", (line) => {
       return readAuthorizationModel(id, request.params)
     case "integration.models.snapshot":
       return readEventIntegrationModel(id, request.params)
+    case "recovery.models.snapshot":
+      return readFailureRecoveryModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -1145,6 +1148,71 @@ function readEventIntegrationModel(id, params) {
   if (workspacePath.endsWith("bad-event-integration-model-snapshot-digest")) value.model.routeCount = 8
   if (workspacePath.endsWith("bad-event-integration-model-snapshot-private")) {
     value.eventPayload = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readFailureRecoveryModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE FAILURE RECOVERY MODEL PARAMS")
+  }
+  const modelDigest = `sha256:${"c".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "failure-recovery-model-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    model: { recordId: failureRecoveryModelId, revision: 2, digest: modelDigest },
+    failureModeCount: 8,
+    retryPolicyCount: 6,
+    compensationPlanCount: 5,
+    recoveryPlanCount: 4,
+    recoveryEvidenceDefinitionCount: 3,
+    uncoveredProcessCount: 1,
+    uncoveredCommandCount: 2,
+    uncoveredRouteCount: 3,
+    uncoveredAuthorizationActionCount: 4,
+    unresolvedRecoveryEvidenceCount: 5,
+    unresolvedRequirementCount: 6,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more recovery evidence definitions remain unresolved"],
+    assessedAt: "2026-07-26T15:00:00.000Z",
+    authorityBoundary: "failure-recovery-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "failure-recovery-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    model: {
+      id: failureRecoveryModelId,
+      revision: 2,
+      digest: modelDigest,
+      membershipDigest: `sha256:${"b".repeat(64)}`,
+      state: "candidate",
+      failureModeCount: 8,
+      retryPolicyCount: 6,
+      compensationPlanCount: 5,
+      recoveryPlanCount: 4,
+      recoveryEvidenceDefinitionCount: 3,
+      updatedAt: "2026-07-26T14:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-failure-evidence-operational-telemetry-retry-keys-compensation-content-recovery-steps-source-content-personal-data-secrets-or-credentials",
+    authorityBoundary: "failure-recovery-model-projection-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-failure-recovery-model-snapshot-binding")) content.initiative.id = failureRecoveryModelId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-failure-recovery-model-snapshot-digest")) value.model.recoveryPlanCount = 5
+  if (workspacePath.endsWith("bad-failure-recovery-model-snapshot-private")) {
+    value.recoveryEvidence = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

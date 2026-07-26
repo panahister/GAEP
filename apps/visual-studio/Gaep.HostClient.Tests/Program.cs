@@ -57,6 +57,7 @@ internal static class Program
     private static readonly Guid DataModelId = Guid.Parse("51515151-5151-4151-8151-515151515151");
     private static readonly Guid AuthorizationModelId = Guid.Parse("52525252-5252-4252-8252-525252525252");
     private static readonly Guid EventIntegrationModelId = Guid.Parse("53535353-5353-4353-8353-535353535353");
+    private static readonly Guid FailureRecoveryModelId = Guid.Parse("54545454-5454-4454-8454-545454545454");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -157,6 +158,9 @@ internal static class Program
         var badEventIntegrationModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-event-integration-model-snapshot-binding");
         var badEventIntegrationModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-event-integration-model-snapshot-digest");
         var badEventIntegrationModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-event-integration-model-snapshot-private");
+        var badFailureRecoveryModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-failure-recovery-model-snapshot-binding");
+        var badFailureRecoveryModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-failure-recovery-model-snapshot-digest");
+        var badFailureRecoveryModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-failure-recovery-model-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -254,6 +258,9 @@ internal static class Program
         Directory.CreateDirectory(badEventIntegrationModelSnapshotBindingRoot);
         Directory.CreateDirectory(badEventIntegrationModelSnapshotDigestRoot);
         Directory.CreateDirectory(badEventIntegrationModelSnapshotPrivateRoot);
+        Directory.CreateDirectory(badFailureRecoveryModelSnapshotBindingRoot);
+        Directory.CreateDirectory(badFailureRecoveryModelSnapshotDigestRoot);
+        Directory.CreateDirectory(badFailureRecoveryModelSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1163,6 +1170,46 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadEventIntegrationModelAsync(InitiativeId),
                 "Event and Integration Model rejects a projection rebound to a substituted Product revision");
+        }
+
+        var failureRecoveryModelProjection = await client.ReadFailureRecoveryModelAsync(InitiativeId);
+        Check(failureRecoveryModelProjection.ProductId == product.Id &&
+              failureRecoveryModelProjection.ProductRevision == product.Revision &&
+              failureRecoveryModelProjection.ProductDigest == product.Digest &&
+              failureRecoveryModelProjection.InitiativeId == resolved.Id &&
+              failureRecoveryModelProjection.InitiativeRevision == resolved.Revision &&
+              failureRecoveryModelProjection.InitiativeDigest == resolved.Digest &&
+              failureRecoveryModelProjection.AssessmentState == "attention-required" &&
+              failureRecoveryModelProjection.Model?.FailureModeCount == 8 &&
+              failureRecoveryModelProjection.Model?.RecoveryPlanCount == 4 &&
+              failureRecoveryModelProjection.UnresolvedRequirementCount == 6,
+            "Typed Failure and Recovery Model preserves exact Product, Initiative, status, and candidate metadata");
+        var failureRecoveryModelOutput = await initiativeController.ReadFailureRecoveryModelAsync(InitiativeId);
+        Check(failureRecoveryModelOutput.Contains("GAEP governed Failure and Recovery Model candidate", StringComparison.Ordinal) &&
+              failureRecoveryModelOutput.Contains(
+                  "8 failure modes · 6 retry policies · 5 compensation plans · 4 recovery plans · 3 recovery evidence definitions",
+                  StringComparison.Ordinal) &&
+              failureRecoveryModelOutput.Contains(
+                  "does not prove failure occurrence, establish retry safety",
+                  StringComparison.Ordinal) &&
+              !failureRecoveryModelOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !failureRecoveryModelOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !failureRecoveryModelOutput.Contains("recoveryEvidence", StringComparison.Ordinal),
+            "Failure and Recovery Model workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badFailureRecoveryModelSnapshotDigestRoot, badFailureRecoveryModelSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadFailureRecoveryModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Failure and Recovery Model rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badFailureRecoveryModelSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadFailureRecoveryModelAsync(InitiativeId),
+                "Failure and Recovery Model rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2309,6 +2356,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-event-integration-model-snapshot-digest";
         var badEventIntegrationModelSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-event-integration-model-snapshot-private";
+        var badFailureRecoveryModelSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-failure-recovery-model-snapshot-binding";
+        var badFailureRecoveryModelSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-failure-recovery-model-snapshot-digest";
+        var badFailureRecoveryModelSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-failure-recovery-model-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2581,6 +2634,17 @@ internal static class Program
                         badEventIntegrationModelSnapshotBinding,
                         badEventIntegrationModelSnapshotDigest,
                         badEventIntegrationModelSnapshotPrivate);
+                    break;
+                case "recovery.models.snapshot":
+                    await HandleFailureRecoveryModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badFailureRecoveryModelSnapshotBinding,
+                        badFailureRecoveryModelSnapshotDigest,
+                        badFailureRecoveryModelSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -4205,6 +4269,105 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) model["routeCount"] = 8;
         if (includePrivateField) result["eventPayload"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleFailureRecoveryModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID FAILURE RECOVERY MODEL");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T15:00:00.000Z";
+        var modelDigest = $"sha256:{new string('c', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var model = new Dictionary<string, object?>
+        {
+            ["id"] = FailureRecoveryModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = modelDigest,
+            ["membershipDigest"] = $"sha256:{new string('b', 64)}",
+            ["state"] = "candidate",
+            ["failureModeCount"] = 8,
+            ["retryPolicyCount"] = 6,
+            ["compensationPlanCount"] = 5,
+            ["recoveryPlanCount"] = 4,
+            ["recoveryEvidenceDefinitionCount"] = 3,
+            ["updatedAt"] = "2026-07-26T14:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "failure-recovery-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "failure-recovery-model-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["model"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = FailureRecoveryModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = modelDigest,
+                },
+                ["failureModeCount"] = 8,
+                ["retryPolicyCount"] = 6,
+                ["compensationPlanCount"] = 5,
+                ["recoveryPlanCount"] = 4,
+                ["recoveryEvidenceDefinitionCount"] = 3,
+                ["uncoveredProcessCount"] = 1,
+                ["uncoveredCommandCount"] = 2,
+                ["uncoveredRouteCount"] = 3,
+                ["uncoveredAuthorizationActionCount"] = 4,
+                ["unresolvedRecoveryEvidenceCount"] = 5,
+                ["unresolvedRequirementCount"] = 6,
+                ["inconsistencyCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more recovery evidence definitions remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "failure-recovery-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action",
+            },
+            ["model"] = model,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-failure-evidence-operational-telemetry-retry-keys-compensation-content-recovery-steps-source-content-personal-data-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "failure-recovery-model-projection-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) model["recoveryPlanCount"] = 5;
+        if (includePrivateField) result["recoveryEvidence"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

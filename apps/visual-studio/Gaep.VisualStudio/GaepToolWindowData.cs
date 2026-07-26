@@ -216,6 +216,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadDataModelCommand = new AsyncCommand(LoadDataModelAsync);
         LoadAuthorizationModelCommand = new AsyncCommand(LoadAuthorizationModelAsync);
         LoadEventIntegrationModelCommand = new AsyncCommand(LoadEventIntegrationModelAsync);
+        LoadFailureRecoveryModelCommand = new AsyncCommand(LoadFailureRecoveryModelAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -304,6 +305,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadEventIntegrationModelCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadFailureRecoveryModelCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -750,6 +754,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Event and Integration Model candidate",
             (controller, _, token) => controller.ReadEventIntegrationModelAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadFailureRecoveryModelAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Failure and Recovery Model candidate",
+            (controller, _, token) => controller.ReadFailureRecoveryModelAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

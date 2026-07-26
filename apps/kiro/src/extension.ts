@@ -16,6 +16,7 @@ import {
   type DataModelProjection,
   type AuthorizationModelProjection,
   type EventIntegrationModelProjection,
+  type FailureRecoveryModelProjection,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -97,6 +98,7 @@ const commandIds = {
   dataModel: "gaepKiro.dataModel.inspect",
   authorizationModel: "gaepKiro.authorizationModel.inspect",
   eventIntegrationModel: "gaepKiro.eventIntegrationModel.inspect",
+  failureRecoveryModel: "gaepKiro.failureRecoveryModel.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -200,6 +202,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.dataModel, (input?: unknown) => runUserCommand(() => showDataModel(pool, input))),
     vscode.commands.registerCommand(commandIds.authorizationModel, (input?: unknown) => runUserCommand(() => showAuthorizationModel(pool, input))),
     vscode.commands.registerCommand(commandIds.eventIntegrationModel, (input?: unknown) => runUserCommand(() => showEventIntegrationModel(pool, input))),
+    vscode.commands.registerCommand(commandIds.failureRecoveryModel, (input?: unknown) => runUserCommand(() => showFailureRecoveryModel(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1057,6 +1060,47 @@ async function showEventIntegrationModel(
     ...(record ? [
       `Membership digest: ${record.membershipDigest}`,
       `Candidate counts: ${record.eventTypeCount} event types · ${record.commandCount} commands · ${record.adapterCount} adapters · ${record.externalContractCount} external contracts · ${record.mappingCount} mappings · ${record.routeCount} routes`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showFailureRecoveryModel(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<FailureRecoveryModelProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Failure and Recovery Model candidate", "Initiative ID")
+  const projection = await client.readFailureRecoveryModel(initiativeId)
+  const status = projection.status
+  const record = projection.model
+  const lines = [
+    "GAEP governed Failure and Recovery Model candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${status.state}`,
+    `Coverage: ${status.failureModeCount} failure modes · ${status.retryPolicyCount} retry policies · ${status.compensationPlanCount} compensation plans · ${status.recoveryPlanCount} recovery plans · ${status.recoveryEvidenceDefinitionCount} recovery evidence definitions`,
+    `Candidate gaps: ${status.uncoveredProcessCount} processes · ${status.uncoveredCommandCount} commands · ${status.uncoveredRouteCount} routes · ${status.uncoveredAuthorizationActionCount} authorization actions · ${status.unresolvedRecoveryEvidenceCount} recovery evidence definitions · ${status.unresolvedRequirementCount} requirements · ${status.inconsistencyCount} inconsistencies · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate counts: ${record.failureModeCount} failure modes · ${record.retryPolicyCount} retry policies · ${record.compensationPlanCount} compensation plans · ${record.recoveryPlanCount} recovery plans · ${record.recoveryEvidenceDefinitionCount} recovery evidence definitions`,
       `Updated: ${record.updatedAt}`,
     ] : []),
     "",

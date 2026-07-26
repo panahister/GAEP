@@ -1073,6 +1073,41 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "failure-recovery-model-read-empty",
+      protocolVersion: 2,
+      method: "recovery.models.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "failure-recovery-model-assess-empty",
+      protocolVersion: 2,
+      method: "recovery.models.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      failureModeCount: 0,
+      recoveryPlanCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-prove-failure-occurrence"),
+    })
+    const failureRecoveryModelProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "failure-recovery-model-snapshot-empty",
+      protocolVersion: 2,
+      method: "recovery.models.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: failureRecoveryModelSnapshotDigest,
+      ...failureRecoveryModelProjectionBody
+    } = failureRecoveryModelProjection
+    expect(failureRecoveryModelSnapshotDigest).toBe(canonicalDigest(failureRecoveryModelProjectionBody))
+    expect(failureRecoveryModelProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-failure-evidence-operational-telemetry"),
+      authorityBoundary: expect.stringContaining("does-not-prove-failure-occurrence"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1153,6 +1188,23 @@ describe("engine host protocol", () => {
         record: {
           initiativeId,
           approval: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "failure-recovery-model-extra-authority",
+      protocolVersion: 2,
+      method: "recovery.models.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          failureOccurred: true,
+          retrySafe: true,
+          compensationRestored: true,
+          recoverySucceeded: true,
+          returnToServiceAuthorized: true,
         },
       },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })

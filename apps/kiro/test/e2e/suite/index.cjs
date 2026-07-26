@@ -36,6 +36,7 @@ const commands = [
   "gaepKiro.dataModel.inspect",
   "gaepKiro.authorizationModel.inspect",
   "gaepKiro.eventIntegrationModel.inspect",
+  "gaepKiro.failureRecoveryModel.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",

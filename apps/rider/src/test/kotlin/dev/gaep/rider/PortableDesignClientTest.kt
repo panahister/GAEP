@@ -891,6 +891,49 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Failure and Recovery Model projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("failure-recovery-model-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readFailureRecoveryModel(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(8, projection.model?.failureModeCount)
+            assertEquals(4, projection.model?.recoveryPlanCount)
+            assertEquals(6, projection.unresolvedRequirementCount)
+
+            val rendered = RiderProductController(client).readFailureRecoveryModel(entryId)
+            assertTrue(rendered.contains("GAEP governed Failure and Recovery Model candidate"))
+            assertTrue(rendered.contains("8 failure modes · 6 retry policies · 5 compensation plans · 4 recovery plans · 3 recovery evidence definitions"))
+            assertTrue(rendered.contains("does not prove failure occurrence, establish retry safety"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("recoveryEvidence"))
+        }
+
+        listOf(
+            "bad-failure-recovery-model-snapshot-digest",
+            "bad-failure-recovery-model-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readFailureRecoveryModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-failure-recovery-model-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readFailureRecoveryModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

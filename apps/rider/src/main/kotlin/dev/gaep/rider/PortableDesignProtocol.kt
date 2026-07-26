@@ -1320,6 +1320,47 @@ data class EventIntegrationModelProjection(
     val snapshotDigest: String,
 )
 
+data class FailureRecoveryModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val failureModeCount: Int,
+    val retryPolicyCount: Int,
+    val compensationPlanCount: Int,
+    val recoveryPlanCount: Int,
+    val recoveryEvidenceDefinitionCount: Int,
+)
+
+data class FailureRecoveryModelProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val failureModeCount: Int,
+    val retryPolicyCount: Int,
+    val compensationPlanCount: Int,
+    val recoveryPlanCount: Int,
+    val recoveryEvidenceDefinitionCount: Int,
+    val uncoveredProcessCount: Int,
+    val uncoveredCommandCount: Int,
+    val uncoveredRouteCount: Int,
+    val uncoveredAuthorizationActionCount: Int,
+    val unresolvedRecoveryEvidenceCount: Int,
+    val unresolvedRequirementCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val model: FailureRecoveryModelRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1429,6 +1470,12 @@ internal object PortableDesignProtocol {
         "event-integration-model-projection-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action"
     private const val EVENT_INTEGRATION_MODEL_STATUS_AUTHORITY_BOUNDARY =
         "event-integration-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action"
+    private const val FAILURE_RECOVERY_MODEL_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-failure-evidence-operational-telemetry-retry-keys-compensation-content-recovery-steps-source-content-personal-data-secrets-or-credentials"
+    private const val FAILURE_RECOVERY_MODEL_PROJECTION_AUTHORITY_BOUNDARY =
+        "failure-recovery-model-projection-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action"
+    private const val FAILURE_RECOVERY_MODEL_STATUS_AUTHORITY_BOUNDARY =
+        "failure-recovery-model-status-reports-candidate-coverage-and-gaps-and-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -4301,6 +4348,143 @@ internal object PortableDesignProtocol {
             uncoveredBoundedContextCount, uncoveredDataEntityCount, uncoveredAuthorizationActionCount,
             unknownMappingTruthCount, unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount,
             staleBindingCount, staleSourceReferenceCount, model, snapshotDigest,
+        )
+    }
+
+    fun parseFailureRecoveryModelEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): FailureRecoveryModelProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("model"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "failure-recovery-model-projection" ||
+            projection.requireString("privacyBoundary") != FAILURE_RECOVERY_MODEL_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != FAILURE_RECOVERY_MODEL_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "failureModeCount", "retryPolicyCount", "compensationPlanCount", "recoveryPlanCount",
+                "recoveryEvidenceDefinitionCount", "uncoveredProcessCount", "uncoveredCommandCount",
+                "uncoveredRouteCount", "uncoveredAuthorizationActionCount", "unresolvedRecoveryEvidenceCount",
+                "unresolvedRequirementCount", "inconsistencyCount", "unresolvedQuestionCount", "staleBindingCount",
+                "staleSourceReferenceCount", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("model"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "failure-recovery-model-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != FAILURE_RECOVERY_MODEL_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val failureModeCount = status.requireBoundedNonNegativeInt("failureModeCount", 8_192)
+        val retryPolicyCount = status.requireBoundedNonNegativeInt("retryPolicyCount", 8_192)
+        val compensationPlanCount = status.requireBoundedNonNegativeInt("compensationPlanCount", 8_192)
+        val recoveryPlanCount = status.requireBoundedNonNegativeInt("recoveryPlanCount", 8_192)
+        val recoveryEvidenceDefinitionCount = status.requireBoundedNonNegativeInt("recoveryEvidenceDefinitionCount", 8_192)
+        val uncoveredProcessCount = status.requireBoundedNonNegativeInt("uncoveredProcessCount", 512)
+        val uncoveredCommandCount = status.requireBoundedNonNegativeInt("uncoveredCommandCount", 8_192)
+        val uncoveredRouteCount = status.requireBoundedNonNegativeInt("uncoveredRouteCount", 8_192)
+        val uncoveredAuthorizationActionCount = status.requireBoundedNonNegativeInt("uncoveredAuthorizationActionCount", 4_096)
+        val unresolvedRecoveryEvidenceCount = status.requireBoundedNonNegativeInt("unresolvedRecoveryEvidenceCount", 8_192)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 47)
+        val inconsistencyCount = status.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val assessmentState = status.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val model = projection.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "failureModeCount", "retryPolicyCount",
+                "compensationPlanCount", "recoveryPlanCount", "recoveryEvidenceDefinitionCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val record = FailureRecoveryModelRecordView(
+                id,
+                revision,
+                digest,
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("failureModeCount", 8_192),
+                value.requireBoundedNonNegativeInt("retryPolicyCount", 8_192),
+                value.requireBoundedNonNegativeInt("compensationPlanCount", 8_192),
+                value.requireBoundedNonNegativeInt("recoveryPlanCount", 8_192),
+                value.requireBoundedNonNegativeInt("recoveryEvidenceDefinitionCount", 8_192),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (model == null) ||
+            (model?.failureModeCount ?: 0) != failureModeCount ||
+            (model?.retryPolicyCount ?: 0) != retryPolicyCount ||
+            (model?.compensationPlanCount ?: 0) != compensationPlanCount ||
+            (model?.recoveryPlanCount ?: 0) != recoveryPlanCount ||
+            (model?.recoveryEvidenceDefinitionCount ?: 0) != recoveryEvidenceDefinitionCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return FailureRecoveryModelProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, failureModeCount, retryPolicyCount, compensationPlanCount,
+            recoveryPlanCount, recoveryEvidenceDefinitionCount, uncoveredProcessCount, uncoveredCommandCount,
+            uncoveredRouteCount, uncoveredAuthorizationActionCount, unresolvedRecoveryEvidenceCount,
+            unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount, staleBindingCount,
+            staleSourceReferenceCount, model, snapshotDigest,
         )
     }
 
