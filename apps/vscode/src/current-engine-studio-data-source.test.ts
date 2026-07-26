@@ -7,6 +7,7 @@ import {
   productStudioSectionIds,
   type AdapterCapabilities,
   type AgentSelection,
+  type BusinessArchitectureBaselineProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -543,6 +544,62 @@ function businessRuleCatalogProjection(): BusinessRuleCatalogProjection {
     observedAt: assessment.assessedAt,
     privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-rule-narrative-source-content-personal-data-locators-or-credentials" as const,
     authorityBoundary: "business-rule-catalog-projection-does-not-evaluate-policy-grant-exceptions-deploy-enforcement-approve-baseline-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
+function businessArchitectureBaselineProjection(): BusinessArchitectureBaselineProjection {
+  const assessment = {
+    schemaVersion: 1 as const,
+    kind: "business-architecture-baseline-assessment" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    baseline: {
+      recordId: "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd",
+      revision: 2,
+      digest: `sha256:${"c".repeat(64)}` as const,
+    },
+    coveredElementCount: 27,
+    includedElementCount: 25,
+    excludedElementCount: 1,
+    unresolvedElementCount: 1,
+    integrationClaimCount: 8,
+    consistencyCheckCount: 6,
+    consistencyGapCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more candidate architecture elements remain unresolved"],
+    assessedAt: "2026-07-26T09:30:00.000Z",
+    authorityBoundary: "business-architecture-baseline-assessment-reports-candidate-coherence-and-gaps-and-does-not-designate-or-approve-a-baseline-establish-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "business-architecture-baseline-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    assessment,
+    baseline: {
+      id: assessment.baseline.recordId,
+      revision: assessment.baseline.revision,
+      digest: assessment.baseline.digest,
+      membershipDigest: `sha256:${"d".repeat(64)}` as const,
+      state: "candidate" as const,
+      coveredElementCount: 27,
+      integrationClaimCount: 8,
+      consistencyGapCount: 2,
+      updatedAt: "2026-07-26T09:29:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-architecture-narrative-source-content-personal-data-locators-or-credentials" as const,
+    authorityBoundary: "business-architecture-baseline-projection-does-not-designate-or-approve-a-baseline-establish-readiness-grant-exceptions-deploy-enforcement-or-authorize-action" as const,
   }
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
@@ -1104,6 +1161,7 @@ interface HarnessOptions {
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
+  businessArchitectureBaselineProjection?: BusinessArchitectureBaselineProjection
   commandResult?: unknown
 }
 
@@ -1222,6 +1280,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.businessRuleCatalogProjection ? {
       businessRuleCatalog: {
         project: async () => options.businessRuleCatalogProjection!,
+      },
+    } : {}),
+    ...(options.businessArchitectureBaselineProjection ? {
+      businessArchitectureBaseline: {
+        project: async () => options.businessArchitectureBaselineProjection!,
       },
     } : {}),
   }
@@ -1512,6 +1575,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /rule narrative|source content|personal data|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Business Architecture Baseline metadata on the native architecture page", async () => {
+    const projection = businessArchitectureBaselineProjection()
+    const { source } = harness({ businessArchitectureBaselineProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[4]).toMatchObject({
+      id: "business-architecture-baseline",
+      rows: [{
+        id: projection.baseline?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.baseline?.membershipDigest,
+          counts: "27 elements · 8 integration claims",
+          assessment: "attention-required",
+          gaps: "1 unresolved · 2 consistency gaps · 1 stale bindings",
+          boundary: "Candidate compound snapshot only; no baseline designation, approval, readiness, exception grant, enforcement, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /architecture narrative|source content|personal data|customer@example\.com|api_key/iu,
     )
   })
 
