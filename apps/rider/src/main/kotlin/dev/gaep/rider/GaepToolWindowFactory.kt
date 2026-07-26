@@ -274,6 +274,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += processModelButton
         actions.add(processModelButton)
 
+        val dataModelButton = JButton("Inspect Data Model…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Entity attributes, relationships, lifecycle content, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Data Model",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Data Model", status, output, buttons) {
+                    controller.readDataModel(initiativeId)
+                }
+            }
+        }
+        buttons += dataModelButton
+        actions.add(dataModelButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

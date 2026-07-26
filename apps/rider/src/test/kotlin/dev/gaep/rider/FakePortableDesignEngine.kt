@@ -25,6 +25,7 @@ private val systemSolutionArchitectureId = UUID.fromString("47474747-4747-4747-8
 private val boundedContextModelId = UUID.fromString("48484848-4848-4848-8848-484848484848")
 private val securityPrivacyAssessmentId = UUID.fromString("49494949-4949-4949-8949-494949494949")
 private val processModelId = UUID.fromString("50505050-5050-4050-8050-505050505050")
+private val dataModelId = UUID.fromString("51515151-5151-4151-8151-515151515151")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -148,6 +149,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "process.models.snapshot" -> handleProcessModel(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "data.models.snapshot" -> handleDataModel(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -1332,6 +1338,96 @@ private fun handleProcessModel(id: Long, params: JsonObject, workspacePath: Stri
         }
         workspacePath.endsWith("bad-process-model-snapshot-private") -> {
             value.addProperty("transitionGuard", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDataModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DATA MODEL PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-data-model-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T12:30:00.000Z"
+    val modelDigest = "sha256:${"9".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "data-model-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "data-model-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("model", JsonObject().apply {
+                addProperty("recordId", dataModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", modelDigest)
+            })
+            addProperty("entityCount", 6)
+            addProperty("attributeCount", 24)
+            addProperty("relationshipCount", 8)
+            addProperty("lifecycleCount", 6)
+            addProperty("transformationCount", 5)
+            addProperty("uncoveredBoundedContextCount", 1)
+            addProperty("uncoveredSecurityDataClassCount", 2)
+            addProperty("uncoveredProcessCount", 3)
+            addProperty("unresolvedSystemOfRecordCount", 1)
+            addProperty("unresolvedTransformationCount", 2)
+            addProperty("unresolvedRequirementCount", 4)
+            addProperty("inconsistencyCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Data Model requirements remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "data-model-status-reports-candidate-coverage-and-gaps-and-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action",
+            )
+        })
+        add("model", JsonObject().apply {
+            addProperty("id", dataModelId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", modelDigest)
+            addProperty("membershipDigest", "sha256:${"a".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("entityCount", 6)
+            addProperty("relationshipCount", 8)
+            addProperty("lifecycleCount", 6)
+            addProperty("updatedAt", "2026-07-26T12:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-entity-attributes-relationships-lifecycle-content-source-content-personal-data-locators-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "data-model-projection-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-data-model-snapshot-digest") -> {
+            value.getAsJsonObject("model").addProperty("entityCount", 7)
+        }
+        workspacePath.endsWith("bad-data-model-snapshot-private") -> {
+            value.addProperty("entityAttribute", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

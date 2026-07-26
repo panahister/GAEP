@@ -213,6 +213,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadBoundedContextModelCommand = new AsyncCommand(LoadBoundedContextModelAsync);
         LoadSecurityPrivacyAssessmentCommand = new AsyncCommand(LoadSecurityPrivacyAssessmentAsync);
         LoadProcessModelCommand = new AsyncCommand(LoadProcessModelAsync);
+        LoadDataModelCommand = new AsyncCommand(LoadDataModelAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -292,6 +293,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadProcessModelCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadDataModelCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -720,6 +724,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Process Model candidate",
             (controller, _, token) => controller.ReadProcessModelAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadDataModelAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Data Model candidate",
+            (controller, _, token) => controller.ReadDataModelAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

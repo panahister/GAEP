@@ -729,6 +729,57 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readDataModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readDataModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Data Model was read. Refresh the exact records." }
+        return renderDataModel(projection)
+    }
+
+    fun renderDataModel(projection: DataModelProjection): String = buildString {
+        appendLine("GAEP governed Data Model candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.entityCount} entities · ${projection.attributeCount} attributes · " +
+                "${projection.relationshipCount} relationships · ${projection.lifecycleCount} lifecycles · " +
+                "${projection.transformationCount} transformations",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.uncoveredBoundedContextCount} bounded contexts · " +
+                "${projection.uncoveredSecurityDataClassCount} security data classes · ${projection.uncoveredProcessCount} processes · " +
+                "${projection.unresolvedSystemOfRecordCount} systems of record · ${projection.unresolvedTransformationCount} transformations · " +
+                "${projection.unresolvedRequirementCount} requirements · ${projection.inconsistencyCount} inconsistencies · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.model?.let { record ->
+            appendLine("Data candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate counts: ${record.entityCount} entities · ${record.relationshipCount} relationships · " +
+                    "${record.lifecycleCount} lifecycles",
+            )
+        } ?: appendLine("Data candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no entity attributes, relationships, lifecycle content, " +
+                "Source content, personal data, locators, local paths, secrets, or credentials and does not approve " +
+                "a data model or classification, appoint ownership, grant migration authority, establish operational " +
+                "readiness, promote a baseline, or authorize action.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

@@ -54,6 +54,7 @@ internal static class Program
     private static readonly Guid BoundedContextModelId = Guid.Parse("48484848-4848-4848-8848-484848484848");
     private static readonly Guid SecurityPrivacyAssessmentId = Guid.Parse("49494949-4949-4949-8949-494949494949");
     private static readonly Guid ProcessModelId = Guid.Parse("50505050-5050-4050-8050-505050505050");
+    private static readonly Guid DataModelId = Guid.Parse("51515151-5151-4151-8151-515151515151");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -145,6 +146,9 @@ internal static class Program
         var badProcessModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-process-model-snapshot-binding");
         var badProcessModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-process-model-snapshot-digest");
         var badProcessModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-process-model-snapshot-private");
+        var badDataModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-data-model-snapshot-binding");
+        var badDataModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-data-model-snapshot-digest");
+        var badDataModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-data-model-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -233,6 +237,9 @@ internal static class Program
         Directory.CreateDirectory(badProcessModelSnapshotBindingRoot);
         Directory.CreateDirectory(badProcessModelSnapshotDigestRoot);
         Directory.CreateDirectory(badProcessModelSnapshotPrivateRoot);
+        Directory.CreateDirectory(badDataModelSnapshotBindingRoot);
+        Directory.CreateDirectory(badDataModelSnapshotDigestRoot);
+        Directory.CreateDirectory(badDataModelSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1022,6 +1029,46 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadProcessModelAsync(InitiativeId),
                 "Process Model rejects a projection rebound to a substituted Product revision");
+        }
+
+        var dataModelProjection = await client.ReadDataModelAsync(InitiativeId);
+        Check(dataModelProjection.ProductId == product.Id &&
+              dataModelProjection.ProductRevision == product.Revision &&
+              dataModelProjection.ProductDigest == product.Digest &&
+              dataModelProjection.InitiativeId == resolved.Id &&
+              dataModelProjection.InitiativeRevision == resolved.Revision &&
+              dataModelProjection.InitiativeDigest == resolved.Digest &&
+              dataModelProjection.AssessmentState == "attention-required" &&
+              dataModelProjection.Model?.EntityCount == 6 &&
+              dataModelProjection.Model?.RelationshipCount == 8 &&
+              dataModelProjection.UnresolvedRequirementCount == 4,
+            "Typed Data Model preserves exact Product, Initiative, status, and candidate metadata");
+        var dataModelOutput = await initiativeController.ReadDataModelAsync(InitiativeId);
+        Check(dataModelOutput.Contains("GAEP governed Data Model candidate", StringComparison.Ordinal) &&
+              dataModelOutput.Contains(
+                  "6 entities · 24 attributes · 8 relationships · 6 lifecycles · 5 transformations",
+                  StringComparison.Ordinal) &&
+              dataModelOutput.Contains(
+                  "does not approve a data model or classification, appoint ownership",
+                  StringComparison.Ordinal) &&
+              !dataModelOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !dataModelOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !dataModelOutput.Contains("entityAttribute", StringComparison.Ordinal),
+            "Data Model workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badDataModelSnapshotDigestRoot, badDataModelSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDataModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Data Model rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDataModelSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDataModelAsync(InitiativeId),
+                "Data Model rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2150,6 +2197,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-process-model-snapshot-digest";
         var badProcessModelSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-process-model-snapshot-private";
+        var badDataModelSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-data-model-snapshot-binding";
+        var badDataModelSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-data-model-snapshot-digest";
+        var badDataModelSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-data-model-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2389,6 +2442,17 @@ internal static class Program
                         badProcessModelSnapshotBinding,
                         badProcessModelSnapshotDigest,
                         badProcessModelSnapshotPrivate);
+                    break;
+                case "data.models.snapshot":
+                    await HandleDataModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDataModelSnapshotBinding,
+                        badDataModelSnapshotDigest,
+                        badDataModelSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -3716,6 +3780,103 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) model["processCount"] = 4;
         if (includePrivateField) result["transitionGuard"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDataModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DATA MODEL");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T12:30:00.000Z";
+        var modelDigest = $"sha256:{new string('9', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var model = new Dictionary<string, object?>
+        {
+            ["id"] = DataModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = modelDigest,
+            ["membershipDigest"] = $"sha256:{new string('a', 64)}",
+            ["state"] = "candidate",
+            ["entityCount"] = 6,
+            ["relationshipCount"] = 8,
+            ["lifecycleCount"] = 6,
+            ["updatedAt"] = "2026-07-26T12:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "data-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "data-model-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["model"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DataModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = modelDigest,
+                },
+                ["entityCount"] = 6,
+                ["attributeCount"] = 24,
+                ["relationshipCount"] = 8,
+                ["lifecycleCount"] = 6,
+                ["transformationCount"] = 5,
+                ["uncoveredBoundedContextCount"] = 1,
+                ["uncoveredSecurityDataClassCount"] = 2,
+                ["uncoveredProcessCount"] = 3,
+                ["unresolvedSystemOfRecordCount"] = 1,
+                ["unresolvedTransformationCount"] = 2,
+                ["unresolvedRequirementCount"] = 4,
+                ["inconsistencyCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Data Model requirements remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "data-model-status-reports-candidate-coverage-and-gaps-and-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action",
+            },
+            ["model"] = model,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-entity-attributes-relationships-lifecycle-content-source-content-personal-data-locators-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "data-model-projection-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) model["entityCount"] = 7;
+        if (includePrivateField) result["entityAttribute"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

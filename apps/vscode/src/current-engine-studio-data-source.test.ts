@@ -11,6 +11,7 @@ import {
   type BoundedContextModelProjection,
   type SecurityPrivacyAssessmentProjection,
   type ProcessModelProjection,
+  type DataModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -861,6 +862,68 @@ function processModelProjection(): ProcessModelProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function dataModelProjection(): DataModelProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "data-model-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    model: {
+      recordId: "f3f3f3f3-f3f3-43f3-83f3-f3f3f3f3f3f3",
+      revision: 2,
+      digest: `sha256:${"7".repeat(64)}` as const,
+    },
+    entityCount: 6,
+    attributeCount: 24,
+    relationshipCount: 9,
+    lifecycleCount: 4,
+    transformationCount: 5,
+    uncoveredBoundedContextCount: 1,
+    uncoveredSecurityDataClassCount: 2,
+    uncoveredProcessCount: 3,
+    unresolvedSystemOfRecordCount: 1,
+    unresolvedTransformationCount: 2,
+    unresolvedRequirementCount: 3,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more Data Profile requirements remain unresolved"],
+    assessedAt: "2026-07-26T12:30:00.000Z",
+    authorityBoundary: "data-model-status-reports-candidate-coverage-and-gaps-and-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "data-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    model: {
+      id: status.model.recordId,
+      revision: status.model.revision,
+      digest: status.model.digest,
+      membershipDigest: `sha256:${"8".repeat(64)}` as const,
+      state: "candidate" as const,
+      entityCount: 6,
+      relationshipCount: 9,
+      lifecycleCount: 4,
+      updatedAt: "2026-07-26T12:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-entity-attributes-relationships-lifecycle-content-source-content-personal-data-locators-secrets-or-credentials" as const,
+    authorityBoundary: "data-model-projection-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1423,6 +1486,7 @@ interface HarnessOptions {
   boundedContextModelProjection?: BoundedContextModelProjection
   securityPrivacyAssessmentProjection?: SecurityPrivacyAssessmentProjection
   processModelProjection?: ProcessModelProjection
+  dataModelProjection?: DataModelProjection
   commandResult?: unknown
 }
 
@@ -1566,6 +1630,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.processModelProjection ? {
       processModel: {
         project: async () => options.processModelProjection!,
+      },
+    } : {}),
+    ...(options.dataModelProjection ? {
+      dataModel: {
+        project: async () => options.dataModelProjection!,
       },
     } : {}),
   }
@@ -1976,6 +2045,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /process narrative|transition guards|approval content|source content|personal data|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Data Model metadata on the native architecture page", async () => {
+    const projection = dataModelProjection()
+    const { source } = harness({ dataModelProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[9]).toMatchObject({
+      id: "data-model",
+      rows: [{
+        id: projection.model?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.model?.membershipDigest,
+          counts: "6 entities · 24 attributes · 9 relationships · 4 lifecycles · 5 transformations",
+          assessment: "attention-required",
+          gaps: "1 uncovered contexts · 2 uncovered data classes · 3 uncovered processes · 1 unresolved systems of record · 2 unresolved transformations · 3 requirement gaps · 1 stale bindings",
+          boundary: "Candidate entities, attributes, relationships, ownership, lifecycle, and transformations only; no Data Model or classification approval, ownership appointment, migration authority, operational readiness, baseline promotion, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /entity attributes|relationship content|lifecycle content|source content|personal data|customer@example\.com|api_key/iu,
     )
   })
 

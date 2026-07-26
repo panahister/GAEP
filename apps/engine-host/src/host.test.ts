@@ -974,6 +974,38 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "data-model-read-empty",
+      protocolVersion: 2,
+      method: "data.models.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "data-model-assess-empty",
+      protocolVersion: 2,
+      method: "data.models.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      entityCount: 0,
+      relationshipCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-approve-a-data-model-or-classification"),
+    })
+    const dataModelProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "data-model-snapshot-empty",
+      protocolVersion: 2,
+      method: "data.models.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: dataModelSnapshotDigest, ...dataModelProjectionBody } = dataModelProjection
+    expect(dataModelSnapshotDigest).toBe(canonicalDigest(dataModelProjectionBody))
+    expect(dataModelProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-entity-attributes-relationships-lifecycle-content"),
+      authorityBoundary: expect.stringContaining("does-not-approve-a-data-model-or-classification"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1030,6 +1062,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "process-model-v1-block",
       method: "process.models.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "data-model-v1-block",
+      method: "data.models.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
@@ -1138,6 +1176,23 @@ describe("engine host protocol", () => {
           transitionAuthorized: true,
           operationallyReady: true,
           executionAuthorized: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "data-model-extra-authority",
+      protocolVersion: 2,
+      method: "data.models.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          dataModelApproved: true,
+          classificationApproved: true,
+          ownershipAccepted: true,
+          migrationAuthorized: true,
+          operationallyReady: true,
         },
       },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })

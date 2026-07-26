@@ -762,6 +762,49 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Data Model projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("data-model-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDataModel(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(6, projection.model?.entityCount)
+            assertEquals(8, projection.model?.relationshipCount)
+            assertEquals(4, projection.unresolvedRequirementCount)
+
+            val rendered = RiderProductController(client).readDataModel(entryId)
+            assertTrue(rendered.contains("GAEP governed Data Model candidate"))
+            assertTrue(rendered.contains("6 entities · 24 attributes · 8 relationships · 6 lifecycles · 5 transformations"))
+            assertTrue(rendered.contains("does not approve a data model or classification, appoint ownership"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("entityAttribute"))
+        }
+
+        listOf(
+            "bad-data-model-snapshot-digest",
+            "bad-data-model-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDataModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-data-model-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDataModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

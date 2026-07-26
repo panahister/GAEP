@@ -38,6 +38,7 @@ import type {
   RunToolSelection,
   SecurityPrivacyAssessmentProjection,
   ProcessModelProjection,
+  DataModelProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -153,6 +154,9 @@ export interface CurrentStudioEngineReader {
   processModel?: {
     project(initiativeId: string): Promise<ProcessModelProjection>
   }
+  dataModel?: {
+    project(initiativeId: string): Promise<DataModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -202,6 +206,7 @@ interface ObservedStudioState {
   boundedContextModelProjections: Map<string, BoundedContextModelProjection>
   securityPrivacyAssessmentProjections: Map<string, SecurityPrivacyAssessmentProjection>
   processModelProjections: Map<string, ProcessModelProjection>
+  dataModelProjections: Map<string, DataModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -971,6 +976,54 @@ function processModelTable(state: ObservedStudioState): StudioTableSnapshot {
   }
 }
 
+function dataModelTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.dataModelProjections.values()].flatMap((projection) => {
+    const record = projection.model
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.entityCount} entities · ${projection.status.attributeCount} attributes · ${record.relationshipCount} relationships · ${record.lifecycleCount} lifecycles · ${projection.status.transformationCount} transformations`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.uncoveredBoundedContextCount} uncovered contexts · ${projection.status.uncoveredSecurityDataClassCount} uncovered data classes · ${projection.status.uncoveredProcessCount} uncovered processes · ${projection.status.unresolvedSystemOfRecordCount} unresolved systems of record · ${projection.status.unresolvedTransformationCount} unresolved transformations · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate entities, attributes, relationships, ownership, lifecycle, and transformations only; no Data Model or classification approval, ownership appointment, migration authority, operational readiness, baseline promotion, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "data-model",
+    title: "Governed Data Model Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Data Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Data Model candidate",
+        "Create the candidate through the governed engine workflow. This view does not approve the model or classifications, appoint ownership, authorize migration, establish operational readiness, promote a baseline, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -981,7 +1034,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -1000,6 +1053,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       boundedContextModelTable(state),
       securityPrivacyAssessmentTable(state),
       processModelTable(state),
+      dataModelTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3453,6 +3507,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       boundedContextModelProjections: new Map(),
       securityPrivacyAssessmentProjections: new Map(),
       processModelProjections: new Map(),
+      dataModelProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -4034,6 +4089,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "process-model-unavailable",
           "Process Model metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.dataModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.dataModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.dataModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Data Model projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `data-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Data Model metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "data-model-unavailable",
+          "Data Model metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

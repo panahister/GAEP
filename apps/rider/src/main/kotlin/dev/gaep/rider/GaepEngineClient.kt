@@ -195,6 +195,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readDataModel(initiativeId: UUID): DataModelProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("data.models.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseDataModelEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

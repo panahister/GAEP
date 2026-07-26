@@ -39,6 +39,7 @@ const systemSolutionArchitectureId = "41414141-4141-4141-8141-414141414141"
 const boundedContextModelId = "42424242-4242-4242-8242-424242424242"
 const securityPrivacyAssessmentId = "43434343-4343-4343-8343-434343434343"
 const processModelId = "44444444-4444-4444-8444-444444444444"
+const dataModelId = "45454545-4545-4545-8545-454545454545"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -98,6 +99,8 @@ input.on("line", (line) => {
       return readSecurityPrivacyAssessment(id, request.params)
     case "process.models.snapshot":
       return readProcessModel(id, request.params)
+    case "data.models.snapshot":
+      return readDataModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -941,6 +944,69 @@ function readProcessModel(id, params) {
   if (workspacePath.endsWith("bad-process-model-snapshot-digest")) value.model.processCount = 4
   if (workspacePath.endsWith("bad-process-model-snapshot-private")) {
     value.transitionGuard = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readDataModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DATA MODEL PARAMS")
+  }
+  const modelDigest = `sha256:${"9".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "data-model-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    model: { recordId: dataModelId, revision: 2, digest: modelDigest },
+    entityCount: 6,
+    attributeCount: 24,
+    relationshipCount: 8,
+    lifecycleCount: 6,
+    transformationCount: 5,
+    uncoveredBoundedContextCount: 1,
+    uncoveredSecurityDataClassCount: 2,
+    uncoveredProcessCount: 3,
+    unresolvedSystemOfRecordCount: 1,
+    unresolvedTransformationCount: 2,
+    unresolvedRequirementCount: 4,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more Data Model requirements remain unresolved"],
+    assessedAt: "2026-07-26T12:30:00.000Z",
+    authorityBoundary: "data-model-status-reports-candidate-coverage-and-gaps-and-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "data-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    model: {
+      id: dataModelId,
+      revision: 2,
+      digest: modelDigest,
+      membershipDigest: `sha256:${"a".repeat(64)}`,
+      state: "candidate",
+      entityCount: 6,
+      relationshipCount: 8,
+      lifecycleCount: 6,
+      updatedAt: "2026-07-26T12:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-entity-attributes-relationships-lifecycle-content-source-content-personal-data-locators-secrets-or-credentials",
+    authorityBoundary: "data-model-projection-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-data-model-snapshot-binding")) content.initiative.id = dataModelId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-data-model-snapshot-digest")) value.model.entityCount = 7
+  if (workspacePath.endsWith("bad-data-model-snapshot-private")) {
+    value.entityAttribute = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

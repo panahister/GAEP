@@ -245,6 +245,20 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseProcessModelResponse(envelope, initiativeId));
     }
 
+    public async Task<DataModelProjection> ReadDataModelAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync(
+            "data.models.snapshot",
+            new Dictionary<string, object?> { ["initiativeId"] = initiativeId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseDataModelResponse(envelope, initiativeId));
+    }
+
     public async Task<InitiativeEntryRecord> ClassifyInitiativeAsync(
         Guid initiativeId,
         long expectedInitiativeRevision,

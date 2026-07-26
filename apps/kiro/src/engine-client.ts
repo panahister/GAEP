@@ -12,6 +12,7 @@ import {
   businessCapabilityMapProjectionSchema,
   businessRuleCatalogProjectionSchema,
   businessUnderstandingProjectionSchema,
+  dataModelProjectionSchema,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
@@ -28,6 +29,7 @@ import {
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
+  type DataModelProjection,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
@@ -383,6 +385,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = processModelProjectionSchema.safeParse(
         await this.request("process.models.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readDataModel(initiativeValue: string): Promise<DataModelProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = dataModelProjectionSchema.safeParse(
+        await this.request("data.models.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data
