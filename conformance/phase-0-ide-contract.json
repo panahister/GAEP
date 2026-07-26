@@ -34,7 +34,8 @@
     { "id": "business-capability-map", "label": "Exact governed Business Capability Map projection without priority, baseline, readiness, or action authority" },
     { "id": "value-stream-model", "label": "Exact governed Value Stream Model projection without baseline, priority, readiness, or action authority" },
     { "id": "operating-model", "label": "Exact governed Operating Model projection without appointment, funding, baseline, readiness, or action authority" },
-    { "id": "business-rule-catalog", "label": "Exact governed Business Rule Catalog projection without policy-evaluation, exception-grant, enforcement, baseline, readiness, or action authority" }
+    { "id": "business-rule-catalog", "label": "Exact governed Business Rule Catalog projection without policy-evaluation, exception-grant, enforcement, baseline, readiness, or action authority" },
+    { "id": "business-architecture-baseline", "label": "Exact governed Business Architecture Baseline candidate projection without designation, approval, readiness, exception-grant, enforcement, or action authority" }
   ],
   "hosts": [
     {
@@ -45,7 +46,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T084749Z-phase-1-business-rules-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T092612Z-phase-1-business-architecture-baseline-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -146,6 +147,9 @@
         ] },
         { "capabilityId": "business-rule-catalog", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["businessRuleCatalog?: {", "engine.businessRuleCatalog!.project(initiative.id)", "id: \"business-rule-catalog\"", "Candidate rules only; no policy evaluation, exception grant, deployed enforcement, baseline, readiness, or action authority."] }
+        ] },
+        { "capabilityId": "business-architecture-baseline", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["businessArchitectureBaseline?: {", "engine.businessArchitectureBaseline!.project(initiative.id)", "id: \"business-architecture-baseline\"", "Candidate compound snapshot only; no baseline designation, approval, readiness, exception grant, enforcement, or action authority."] }
         ] }
       ]
     },
@@ -157,7 +161,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T084749Z-phase-1-business-rules-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T092612Z-phase-1-business-architecture-baseline-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -261,6 +265,10 @@
         { "capabilityId": "business-rule-catalog", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readBusinessRuleCatalog(", "this.request(\"business.businessRules.snapshot\"", "businessRuleCatalogProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showBusinessRuleCatalog", "GAEP governed Business Rule Catalog", "Catalog counts:"] }
+        ] },
+        { "capabilityId": "business-architecture-baseline", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readBusinessArchitectureBaseline(", "this.request(\"business.architectureBaselines.snapshot\"", "businessArchitectureBaselineProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showBusinessArchitectureBaseline", "GAEP governed Business Architecture Baseline candidate", "Membership digest:"] }
         ] }
       ]
     },
@@ -272,7 +280,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T084749Z-phase-1-business-rules-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T092612Z-phase-1-business-architecture-baseline-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -388,6 +396,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readBusinessRuleCatalog(", "portableRequest(\"business.businessRules.snapshot\"", "parseBusinessRuleCatalogEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Business Rule Catalog", "Catalog counts:", "does not evaluate policy, grant exceptions, deploy enforcement"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["BusinessRuleCatalogRecordView", "BUSINESS_RULE_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "business-architecture-baseline", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readBusinessArchitectureBaseline(", "portableRequest(\"business.architectureBaselines.snapshot\"", "parseBusinessArchitectureBaselineEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Business Architecture Baseline candidate", "Membership digest:", "does not designate or approve a baseline, establish readiness"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["BusinessArchitectureBaselineRecordView", "BUSINESS_ARCHITECTURE_BASELINE_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -399,7 +412,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T084749Z-phase-1-business-rules-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T092612Z-phase-1-business-architecture-baseline-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -524,13 +537,18 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadBusinessRuleCatalogAsync(", "\"business.businessRules.snapshot\"", "ParseBusinessRuleCatalogResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Business Rule Catalog", "Catalog counts:", "does not evaluate policy, grant exceptions, deploy enforcement"] },
           { "path": "apps/visual-studio/Gaep.HostClient/BusinessRuleCatalogProtocol.cs", "contains": ["BusinessRuleCatalogRecordView", "BusinessRuleProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "business-architecture-baseline", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadBusinessArchitectureBaselineAsync(", "\"business.architectureBaselines.snapshot\"", "ParseBusinessArchitectureBaselineResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Business Architecture Baseline candidate", "Membership digest:", "does not designate or approve a baseline, establish readiness"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/BusinessArchitectureBaselineProtocol.cs", "contains": ["BusinessArchitectureBaselineRecordView", "BusinessArchitectureBaselineProjectionAuthorityBoundary"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-26T084749Z-phase-1-business-rules-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-26T092612Z-phase-1-business-architecture-baseline-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",
