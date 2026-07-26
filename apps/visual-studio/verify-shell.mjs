@@ -154,6 +154,10 @@ requireText(remoteUi, /Inspect governed Decision Register/u,
   "Visual Studio Product Studio does not expose governed Decision Register")
 requireText(remoteUi, /does not establish decision effectiveness, approval, risk acceptance, baseline promotion, readiness, or action authority/u,
   "Visual Studio Decision Register action does not communicate its no-authority boundary")
+requireText(remoteUi, /Inspect governed Risk Register/u,
+  "Visual Studio Product Studio does not expose governed Risk Register")
+requireText(remoteUi, /does not establish assessment fact, owner assignment, control effectiveness, risk acceptance/u,
+  "Visual Studio Risk Register action does not communicate its no-authority boundary")
 requireText(remoteUi, /Classify or reclassify exact Initiative/u,
   "Visual Studio Product Studio does not expose governed Initiative classification")
 requireText(remoteUi, /Resolve or re-resolve exact applicability/u,
