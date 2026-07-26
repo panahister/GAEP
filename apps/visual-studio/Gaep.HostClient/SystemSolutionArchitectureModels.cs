@@ -1,0 +1,40 @@
+namespace Gaep.HostClient;
+
+public sealed record SystemSolutionArchitectureRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int ConcernCount,
+    int ViewCount,
+    int ElementCount,
+    int QualityAttributeCount,
+    int DecisionCount);
+
+public sealed record SystemSolutionArchitectureProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    IReadOnlyList<string> Reasons,
+    int ConcernCount,
+    int ViewCount,
+    int ElementCount,
+    int RelationCount,
+    int QualityAttributeCount,
+    int UnresolvedQualityAttributeCount,
+    int DecisionCount,
+    int UnresolvedDecisionCount,
+    int ConformanceCriterionCount,
+    int UnresolvedConformanceCriterionCount,
+    int LifecycleGapCount,
+    int InconsistencyCount,
+    int UnresolvedQuestionCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    SystemSolutionArchitectureRecordView? Architecture,
+    string SnapshotDigest);

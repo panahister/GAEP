@@ -553,6 +553,66 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadSystemSolutionArchitectureAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadSystemSolutionArchitectureAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException(
+                "The Product or Initiative changed while the System/Solution Architecture was read. Refresh the exact records.");
+        }
+        return RenderSystemSolutionArchitecture(projection);
+    }
+
+    public static string RenderSystemSolutionArchitecture(SystemSolutionArchitectureProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed System/Solution Architecture candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Coverage: {projection.ConcernCount} concerns · {projection.ViewCount} views · " +
+                $"{projection.ElementCount} elements · {projection.RelationCount} relations · " +
+                $"{projection.QualityAttributeCount} quality scenarios · {projection.DecisionCount} decisions · " +
+                $"{projection.ConformanceCriterionCount} conformance criteria")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedQualityAttributeCount} quality scenarios · " +
+                $"{projection.UnresolvedDecisionCount} decisions · {projection.UnresolvedConformanceCriterionCount} conformance criteria · " +
+                $"{projection.LifecycleGapCount} lifecycle consequences · {projection.InconsistencyCount} inconsistencies · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Architecture is { } architecture)
+        {
+            output.AppendLine($"Architecture candidate: {architecture.Id:D}@{architecture.Revision} · candidate · {architecture.Digest}")
+                .AppendLine($"Membership digest: {architecture.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate counts: {architecture.ConcernCount} concerns · {architecture.ViewCount} views · " +
+                    $"{architecture.ElementCount} elements · {architecture.QualityAttributeCount} quality scenarios · " +
+                    $"{architecture.DecisionCount} decisions");
+        }
+        else output.AppendLine("Architecture candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view exposes no architecture narrative, Source content, personal data, locators, " +
+                "local paths, or credentials and does not designate or approve an architecture baseline, establish readiness, " +
+                "prove conformance, mandate technology, or authorize action.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

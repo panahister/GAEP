@@ -57,6 +57,9 @@
         <Button x:Name="LoadBusinessArchitectureBaselineButton" Content="Inspect governed Business Architecture Baseline"
                 Command="{Binding LoadBusinessArchitectureBaselineCommand}" MinHeight="28" Margin="0,0,0,10"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadSystemSolutionArchitectureButton" Content="Inspect governed System/Solution Architecture"
+                Command="{Binding LoadSystemSolutionArchitectureCommand}" MinHeight="28" Margin="0,0,0,10"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />
