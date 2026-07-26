@@ -785,6 +785,37 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "business-rule-read-empty",
+      protocolVersion: 2,
+      method: "business.businessRules.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "business-rule-assess-empty",
+      protocolVersion: 2,
+      method: "business.businessRules.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      ruleCount: 0,
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-evaluate-policy"),
+    })
+    const businessRuleProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "business-rule-snapshot-empty",
+      protocolVersion: 2,
+      method: "business.businessRules.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: businessRuleSnapshotDigest, ...businessRuleProjectionBody } = businessRuleProjection
+    expect(businessRuleSnapshotDigest).toBe(canonicalDigest(businessRuleProjectionBody))
+    expect(businessRuleProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-rule-narrative"),
+      authorityBoundary: expect.stringContaining("does-not-evaluate-policy"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -805,6 +836,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "operating-model-v1-block",
       method: "business.operatingModels.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "business-rule-v1-block",
+      method: "business.businessRules.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
@@ -841,6 +878,16 @@ describe("engine host protocol", () => {
       params: {
         actorId: "gaep.host-test",
         record: { initiativeId, approvedAppointment: true },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "business-rule-extra-authority",
+      protocolVersion: 2,
+      method: "business.businessRules.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: { initiativeId, grantedException: true, enforcementEnabled: true },
       },
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
     await expect(host.dispatch({

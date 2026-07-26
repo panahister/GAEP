@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import { portableSelectionSettingsSchema } from "./agent.js"
 import { businessCapabilityMapInputSchema } from "./business-capability-map.js"
+import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
   businessUnderstandingInputSchema,
   outcomeModelInputSchema,
@@ -276,6 +277,18 @@ export const hostOperatingModelReviseParamsSchema = z.object({
   record: operatingModelInputSchema,
 }).strict()
 
+export const hostBusinessRuleCatalogCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: businessRuleCatalogInputSchema,
+}).strict()
+
+export const hostBusinessRuleCatalogReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: businessRuleCatalogInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -352,6 +365,11 @@ export const hostMethodSchema = z.enum([
   "business.operatingModels.revise",
   "business.operatingModels.assess",
   "business.operatingModels.snapshot",
+  "business.businessRules.read",
+  "business.businessRules.create",
+  "business.businessRules.revise",
+  "business.businessRules.assess",
+  "business.businessRules.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -440,6 +458,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("business.operatingModels.revise", hostOperatingModelReviseParamsSchema),
   requestVariant("business.operatingModels.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("business.operatingModels.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.businessRules.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.businessRules.create", hostBusinessRuleCatalogCreateParamsSchema),
+  requestVariant("business.businessRules.revise", hostBusinessRuleCatalogReviseParamsSchema),
+  requestVariant("business.businessRules.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("business.businessRules.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
