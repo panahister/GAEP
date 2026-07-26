@@ -4,6 +4,7 @@ import { open } from "node:fs/promises"
 import { isAbsolute } from "node:path"
 
 import {
+  architectureChallengeModelSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -64,6 +65,7 @@ import {
   workflowPlanSchema,
   redactSecretShapedText,
   type ArchitectureRecord,
+  type ArchitectureChallengeModel,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
   type ProcessModel,
@@ -2064,6 +2066,16 @@ export class ProductStudioService {
       /^failure-recovery-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       failureRecoveryModelSchema,
     )
+    const architectureChallengeModels = await this.listRecords(
+      "architecture-challenge-models",
+      /^[0-9a-f-]+\.json$/i,
+      architectureChallengeModelSchema,
+    )
+    const architectureChallengeModelHistory = await this.listRecords(
+      "architecture-challenge-model-history",
+      /^architecture-challenge-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      architectureChallengeModelSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2276,6 +2288,13 @@ export class ProductStudioService {
       "failure-recovery-model-candidate",
       failureRecoveryModelHistory,
       (record) => `failure-recovery-model-history/failure-recovery-model-${record.id}-r${record.revision}.json`,
+    )
+    append("architecture-challenge-models", "architecture-challenge-model-candidate", architectureChallengeModels)
+    append(
+      "architecture-challenge-model-history",
+      "architecture-challenge-model-candidate",
+      architectureChallengeModelHistory,
+      (record) => `architecture-challenge-model-history/architecture-challenge-model-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2580,6 +2599,14 @@ export class ProductStudioService {
           `failure-recovery-model-history/failure-recovery-model-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Failure and Recovery Model history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("architecture-challenge-model-history/")) {
+        const record = validated as ArchitectureChallengeModel
+        const expectedHistoryPath =
+          `architecture-challenge-model-history/architecture-challenge-model-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Architecture Challenge history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3706,7 +3733,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3738,7 +3765,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -4796,7 +4823,7 @@ export class ProductStudioService {
     const failureRecoveryModelHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("failure-recovery-model-history/"))
       .map(([, record]) => failureRecoveryModelSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactFailureRecoveryModels = validateVersionedBusinessRecords(
       failureRecoveryModels,
       failureRecoveryModelHistory,
       "Failure and Recovery Model",
@@ -4889,6 +4916,108 @@ export class ProductStudioService {
       ]
       if (governanceRoles.some((key) => !roleKeys.has(key))) {
         throw new Error(`Import Failure and Recovery Model ${model.id} governance role trace is unresolved`)
+      }
+    }
+
+    const architectureChallengeModels = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("architecture-challenge-models/"))
+      .map(([, record]) => architectureChallengeModelSchema.parse(record))
+    const architectureChallengeModelHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("architecture-challenge-model-history/"))
+      .map(([, record]) => architectureChallengeModelSchema.parse(record))
+    validateVersionedBusinessRecords(
+      architectureChallengeModels,
+      architectureChallengeModelHistory,
+      "Architecture Challenge",
+    )
+    for (const model of [...architectureChallengeModels, ...architectureChallengeModelHistory]) {
+      const resolveBound = <T extends { id: string; revision: number; initiativeId: string }>(
+        reference: { recordId: string; revision: number; digest: string },
+        exact: Map<string, T>,
+        label: string,
+      ): T => {
+        const record = exact.get(`${reference.recordId}:${reference.revision}:${reference.digest}`)
+        if (!record || record.initiativeId !== model.initiativeId) {
+          throw new Error(`Import Architecture Challenge ${model.id} exact ${label} reference is unresolved`)
+        }
+        return record
+      }
+      const architecture = resolveBound(
+        model.systemSolutionArchitecture,
+        exactSystemSolutionArchitectures,
+        "System/Solution Architecture",
+      )
+      const boundedContextModel = resolveBound(
+        model.boundedContextModel,
+        exactBoundedContextModels,
+        "Bounded Context Model",
+      )
+      const operatingModel = resolveBound(model.operatingModel, exactOperatingModels, "Operating Model")
+      resolveBound(
+        model.securityPrivacyAssessment,
+        exactSecurityPrivacyAssessments,
+        "Security, Privacy, and Threat Assessment",
+      )
+      resolveBound(model.processModel, exactProcessModels, "Process Model")
+      resolveBound(model.dataModel, exactDataModels, "Data Model")
+      resolveBound(model.authorizationModel, exactAuthorizationModels, "Authorization Model")
+      resolveBound(model.eventIntegrationModel, exactEventIntegrationModels, "Event and Integration Model")
+      const failureRecoveryModel = resolveBound(
+        model.failureRecoveryModel,
+        exactFailureRecoveryModels,
+        "Failure and Recovery Model",
+      )
+      if (model.membershipDigest !== canonicalDigest({
+        systemSolutionArchitecture: model.systemSolutionArchitecture,
+        boundedContextModel: model.boundedContextModel,
+        operatingModel: model.operatingModel,
+        securityPrivacyAssessment: model.securityPrivacyAssessment,
+        processModel: model.processModel,
+        dataModel: model.dataModel,
+        authorizationModel: model.authorizationModel,
+        eventIntegrationModel: model.eventIntegrationModel,
+        failureRecoveryModel: model.failureRecoveryModel,
+      })) {
+        throw new Error(`Import Architecture Challenge ${model.id} membership digest is invalid`)
+      }
+      const concernKeys = new Set(architecture.concerns.map((entry) => entry.key))
+      const decisionKeys = new Set(architecture.decisions.map((entry) => entry.key))
+      const elementKeys = new Set(architecture.elements.map((entry) => entry.key))
+      const viewKeys = new Set(architecture.views.map((entry) => entry.key))
+      const qualityKeys = new Set(architecture.qualityAttributes.map((entry) => entry.key))
+      const boundedContextKeys = new Set(boundedContextModel.boundedContexts.map((entry) => entry.key))
+      const failureModeKeys = new Set(failureRecoveryModel.failureModes.map((entry) => entry.key))
+      for (const subject of model.challengeSubjects) {
+        if (subject.architectureConcernKeys.some((key) => !concernKeys.has(key)) ||
+            subject.architectureDecisionKeys.some((key) => !decisionKeys.has(key)) ||
+            subject.architectureElementKeys.some((key) => !elementKeys.has(key)) ||
+            subject.architectureViewKeys.some((key) => !viewKeys.has(key)) ||
+            subject.qualityScenarioKeys.some((key) => !qualityKeys.has(key)) ||
+            subject.boundedContextKeys.some((key) => !boundedContextKeys.has(key)) ||
+            subject.failureModeKeys.some((key) => !failureModeKeys.has(key))) {
+          throw new Error(`Import Architecture Challenge ${model.id} Challenge Subject trace is unresolved`)
+        }
+      }
+      for (const alternative of model.alternatives) {
+        if (alternative.architectureElementKeys.some((key) => !elementKeys.has(key)) ||
+            alternative.boundedContextKeys.some((key) => !boundedContextKeys.has(key)) ||
+            alternative.failureModeKeys.some((key) => !failureModeKeys.has(key))) {
+          throw new Error(`Import Architecture Challenge ${model.id} Alternative trace is unresolved`)
+        }
+      }
+      const roleKeys = new Set(operatingModel.roles.map((entry) => entry.key))
+      const governedRoles = [
+        ...model.findings.flatMap((entry) => entry.challengerRoleKeys),
+        ...model.responses.flatMap((entry) => entry.responderRoleKeys),
+        ...model.independence.authorRoleKeys,
+        ...model.independence.challengerRoleKeys,
+        ...model.independence.reviewerRoleKeys,
+        ...model.governance.challengeOwnerRoleKeys,
+        ...model.governance.challengerRoleKeys,
+        ...model.governance.responseOwnerRoleKeys,
+      ]
+      if (governedRoles.some((key) => !roleKeys.has(key))) {
+        throw new Error(`Import Architecture Challenge ${model.id} role trace is unresolved`)
       }
     }
 
@@ -5545,6 +5674,10 @@ export class ProductStudioService {
         /^failure-recovery-model-history\/failure-recovery-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "failure-recovery-model-candidate"
     }
+    if (/^architecture-challenge-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^architecture-challenge-model-history\/architecture-challenge-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "architecture-challenge-model-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -5645,6 +5778,10 @@ export class ProductStudioService {
     if (/^failure-recovery-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^failure-recovery-model-history\/failure-recovery-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return failureRecoveryModelSchema
+    }
+    if (/^architecture-challenge-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^architecture-challenge-model-history\/architecture-challenge-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return architectureChallengeModelSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

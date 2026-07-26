@@ -27,6 +27,7 @@ import {
   valueStreamModelInputSchema,
   type BoundedContextModelInput,
   type ArchitectureChallengeModelInput,
+  type ArchitectureChallengeModel,
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
@@ -5336,6 +5337,20 @@ describe("Business understanding governance", () => {
       ),
       actorId,
     )
+    const architectureChallengeModel = await engine.architectureChallengeModel.create(
+      architectureChallengeModelInput(
+        systemSolutionArchitecture,
+        boundedContextModel,
+        operatingModel,
+        securityPrivacyAssessment,
+        processModel,
+        dataModel,
+        authorizationModel,
+        eventIntegrationModel,
+        failureRecoveryModel,
+      ),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -5366,6 +5381,8 @@ describe("Business understanding governance", () => {
       `event-integration-model-history/event-integration-model-${eventIntegrationModel.id}-r1.json`,
       `failure-recovery-models/${failureRecoveryModel.id}.json`,
       `failure-recovery-model-history/failure-recovery-model-${failureRecoveryModel.id}-r1.json`,
+      `architecture-challenge-models/${architectureChallengeModel.id}.json`,
+      `architecture-challenge-model-history/architecture-challenge-model-${architectureChallengeModel.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -5521,6 +5538,38 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedFailureBinding))
       .rejects.toThrow(/Failure and Recovery Model .* Event and Integration Model reference is unresolved/)
+
+    const forgeChallengeFailureModel = (content: unknown) => {
+      const record = content as ArchitectureChallengeModel
+      const failureRecoveryModelReference = { ...record.failureRecoveryModel, digest: digest("8") }
+      return {
+        ...record,
+        failureRecoveryModel: failureRecoveryModelReference,
+        membershipDigest: canonicalDigest({
+          systemSolutionArchitecture: record.systemSolutionArchitecture,
+          boundedContextModel: record.boundedContextModel,
+          operatingModel: record.operatingModel,
+          securityPrivacyAssessment: record.securityPrivacyAssessment,
+          processModel: record.processModel,
+          dataModel: record.dataModel,
+          authorizationModel: record.authorizationModel,
+          eventIntegrationModel: record.eventIntegrationModel,
+          failureRecoveryModel: failureRecoveryModelReference,
+        }),
+      }
+    }
+    let forgedChallengeBinding = replacePortableRecord(
+      bundle,
+      `architecture-challenge-models/${architectureChallengeModel.id}.json`,
+      forgeChallengeFailureModel,
+    )
+    forgedChallengeBinding = replacePortableRecord(
+      forgedChallengeBinding,
+      `architecture-challenge-model-history/architecture-challenge-model-${architectureChallengeModel.id}-r1.json`,
+      forgeChallengeFailureModel,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedChallengeBinding))
+      .rejects.toThrow(/Architecture Challenge .* Failure and Recovery Model reference is unresolved/)
 
     const rebound = replacePortableRecord(
       bundle,
