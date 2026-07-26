@@ -33,6 +33,7 @@ import { operatingModelInputSchema } from "./operating-model.js"
 import { systemSolutionArchitectureInputSchema } from "./system-solution-architecture.js"
 import { boundedContextModelInputSchema } from "./bounded-context-model.js"
 import { securityPrivacyAssessmentInputSchema } from "./security-privacy-assessment.js"
+import { processModelInputSchema } from "./process-model.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -341,6 +342,18 @@ export const hostSecurityPrivacyAssessmentReviseParamsSchema = z.object({
   record: securityPrivacyAssessmentInputSchema,
 }).strict()
 
+export const hostProcessModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: processModelInputSchema,
+}).strict()
+
+export const hostProcessModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: processModelInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -442,6 +455,11 @@ export const hostMethodSchema = z.enum([
   "security.privacyThreat.revise",
   "security.privacyThreat.assess",
   "security.privacyThreat.snapshot",
+  "process.models.read",
+  "process.models.create",
+  "process.models.revise",
+  "process.models.assess",
+  "process.models.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -555,6 +573,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("security.privacyThreat.revise", hostSecurityPrivacyAssessmentReviseParamsSchema),
   requestVariant("security.privacyThreat.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("security.privacyThreat.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("process.models.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("process.models.create", hostProcessModelCreateParamsSchema),
+  requestVariant("process.models.revise", hostProcessModelReviseParamsSchema),
+  requestVariant("process.models.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("process.models.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

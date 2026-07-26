@@ -1158,6 +1158,45 @@ data class SecurityPrivacyAssessmentProjection(
     val snapshotDigest: String,
 )
 
+data class ProcessModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val processCount: Int,
+    val transitionCount: Int,
+    val approvalRequirementCount: Int,
+)
+
+data class ProcessModelProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val processCount: Int,
+    val stepCount: Int,
+    val stateDimensionCount: Int,
+    val stateValueCount: Int,
+    val transitionCount: Int,
+    val eventDefinitionCount: Int,
+    val approvalRequirementCount: Int,
+    val uncoveredValueStreamCount: Int,
+    val uncoveredBoundedContextCount: Int,
+    val uncoveredBusinessRuleCount: Int,
+    val unresolvedRequirementCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val model: ProcessModelRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1243,6 +1282,12 @@ internal object PortableDesignProtocol {
         "security-privacy-threat-projection-does-not-approve-a-threat-model-attest-control-effectiveness-accept-risk-approve-processing-establish-security-readiness-or-authorize-action"
     private const val SECURITY_PRIVACY_ASSESSMENT_STATUS_AUTHORITY_BOUNDARY =
         "security-privacy-threat-status-reports-candidate-coverage-and-gaps-and-does-not-approve-threats-attest-controls-accept-risk-approve-processing-establish-security-readiness-or-authorize-action"
+    private const val PROCESS_MODEL_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-process-narrative-transition-guards-approval-content-source-content-personal-data-locators-secrets-or-credentials"
+    private const val PROCESS_MODEL_PROJECTION_AUTHORITY_BOUNDARY =
+        "process-model-projection-does-not-approve-workflows-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action"
+    private const val PROCESS_MODEL_STATUS_AUTHORITY_BOUNDARY =
+        "process-model-status-reports-candidate-coverage-and-gaps-and-does-not-approve-workflows-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -3574,6 +3619,139 @@ internal object PortableDesignProtocol {
             unresolvedProcessingAuthorityCount, uncoveredArchitectureElementCount, unmappedArchitectureRelationCount,
             unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount, staleBindingCount,
             staleSourceReferenceCount, assessment, snapshotDigest,
+        )
+    }
+
+    fun parseProcessModelEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): ProcessModelProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("model"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "process-model-projection" ||
+            projection.requireString("privacyBoundary") != PROCESS_MODEL_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != PROCESS_MODEL_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "processCount", "stepCount", "stateDimensionCount", "stateValueCount", "transitionCount",
+                "eventDefinitionCount", "approvalRequirementCount", "uncoveredValueStreamCount",
+                "uncoveredBoundedContextCount", "uncoveredBusinessRuleCount", "unresolvedRequirementCount",
+                "inconsistencyCount", "unresolvedQuestionCount", "staleBindingCount", "staleSourceReferenceCount",
+                "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("model"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "process-model-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != PROCESS_MODEL_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val processCount = status.requireBoundedNonNegativeInt("processCount", 512)
+        val stepCount = status.requireBoundedNonNegativeInt("stepCount", 65_536)
+        val stateDimensionCount = status.requireBoundedNonNegativeInt("stateDimensionCount", 32_768)
+        val stateValueCount = status.requireBoundedNonNegativeInt("stateValueCount", 65_536)
+        val transitionCount = status.requireBoundedNonNegativeInt("transitionCount", 65_536)
+        val eventDefinitionCount = status.requireBoundedNonNegativeInt("eventDefinitionCount", 65_536)
+        val approvalRequirementCount = status.requireBoundedNonNegativeInt("approvalRequirementCount", 32_768)
+        val uncoveredValueStreamCount = status.requireBoundedNonNegativeInt("uncoveredValueStreamCount", 2_048)
+        val uncoveredBoundedContextCount = status.requireBoundedNonNegativeInt("uncoveredBoundedContextCount", 2_048)
+        val uncoveredBusinessRuleCount = status.requireBoundedNonNegativeInt("uncoveredBusinessRuleCount", 4_096)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 70)
+        val inconsistencyCount = status.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 16)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val assessmentState = status.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val model = projection.get("model")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "processCount", "transitionCount",
+                "approvalRequirementCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val record = ProcessModelRecordView(
+                id,
+                revision,
+                digest,
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("processCount", 512),
+                value.requireBoundedNonNegativeInt("transitionCount", 65_536),
+                value.requireBoundedNonNegativeInt("approvalRequirementCount", 32_768),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (model == null) ||
+            (model?.processCount ?: 0) != processCount ||
+            (model?.transitionCount ?: 0) != transitionCount ||
+            (model?.approvalRequirementCount ?: 0) != approvalRequirementCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return ProcessModelProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, processCount, stepCount, stateDimensionCount,
+            stateValueCount, transitionCount, eventDefinitionCount, approvalRequirementCount,
+            uncoveredValueStreamCount, uncoveredBoundedContextCount, uncoveredBusinessRuleCount,
+            unresolvedRequirementCount, inconsistencyCount, unresolvedQuestionCount, staleBindingCount,
+            staleSourceReferenceCount, model, snapshotDigest,
         )
     }
 

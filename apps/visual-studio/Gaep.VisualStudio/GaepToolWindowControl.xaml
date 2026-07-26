@@ -66,6 +66,9 @@
         <Button x:Name="LoadSecurityPrivacyAssessmentButton" Content="Inspect governed Security, Privacy, and Threat Assessment"
                 Command="{Binding LoadSecurityPrivacyAssessmentCommand}" MinHeight="28" Margin="0,0,0,10"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadProcessModelButton" Content="Inspect governed Process Model"
+                Command="{Binding LoadProcessModelCommand}" MinHeight="28" Margin="0,0,0,10"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

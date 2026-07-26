@@ -37,6 +37,7 @@ import type {
   Run,
   RunToolSelection,
   SecurityPrivacyAssessmentProjection,
+  ProcessModelProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -149,6 +150,9 @@ export interface CurrentStudioEngineReader {
   securityPrivacyAssessment?: {
     project(initiativeId: string): Promise<SecurityPrivacyAssessmentProjection>
   }
+  processModel?: {
+    project(initiativeId: string): Promise<ProcessModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -197,6 +201,7 @@ interface ObservedStudioState {
   systemSolutionArchitectureProjections: Map<string, SystemSolutionArchitectureProjection>
   boundedContextModelProjections: Map<string, BoundedContextModelProjection>
   securityPrivacyAssessmentProjections: Map<string, SecurityPrivacyAssessmentProjection>
+  processModelProjections: Map<string, ProcessModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -918,6 +923,54 @@ function securityPrivacyAssessmentTable(state: ObservedStudioState): StudioTable
   }
 }
 
+function processModelTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.processModelProjections.values()].flatMap((projection) => {
+    const record = projection.model
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.processCount} processes · ${projection.status.stepCount} steps · ${projection.status.stateDimensionCount} dimensions · ${projection.status.transitionCount} transitions · ${projection.status.eventDefinitionCount} events · ${record.approvalRequirementCount} approval requirements`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.uncoveredValueStreamCount} uncovered value streams · ${projection.status.uncoveredBoundedContextCount} uncovered contexts · ${projection.status.uncoveredBusinessRuleCount} uncovered rules · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.inconsistencyCount} inconsistencies · ${projection.status.unresolvedQuestionCount} unresolved questions · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate workflows, states, transitions, events, and approval requirements only; no workflow approval, transition or execution authority, operational readiness, baseline promotion, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "process-model",
+    title: "Governed Process Model Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Process Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Process Model candidate",
+        "Create the candidate through the governed engine workflow. This view does not approve workflows, grant transition or execution authority, establish operational readiness, promote a baseline, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -928,7 +981,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -946,6 +999,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       systemSolutionArchitectureTable(state),
       boundedContextModelTable(state),
       securityPrivacyAssessmentTable(state),
+      processModelTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3398,6 +3452,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       systemSolutionArchitectureProjections: new Map(),
       boundedContextModelProjections: new Map(),
       securityPrivacyAssessmentProjections: new Map(),
+      processModelProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -3937,6 +3992,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "security-privacy-assessment-unavailable",
           "Security, Privacy, and Threat Assessment metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.processModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.processModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.processModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Process Model projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `process-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Process Model metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "process-model-unavailable",
+          "Process Model metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

@@ -10,6 +10,7 @@ import {
   type BusinessArchitectureBaselineProjection,
   type BoundedContextModelProjection,
   type SecurityPrivacyAssessmentProjection,
+  type ProcessModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -798,6 +799,68 @@ function securityPrivacyAssessmentProjection(): SecurityPrivacyAssessmentProject
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function processModelProjection(): ProcessModelProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "process-model-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    model: {
+      recordId: "f2f2f2f2-f2f2-42f2-82f2-f2f2f2f2f2f2",
+      revision: 2,
+      digest: `sha256:${"5".repeat(64)}` as const,
+    },
+    processCount: 3,
+    stepCount: 9,
+    stateDimensionCount: 5,
+    stateValueCount: 18,
+    transitionCount: 11,
+    eventDefinitionCount: 8,
+    approvalRequirementCount: 4,
+    uncoveredValueStreamCount: 1,
+    uncoveredBoundedContextCount: 2,
+    uncoveredBusinessRuleCount: 3,
+    unresolvedRequirementCount: 4,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more Process Model requirements remain unresolved"],
+    assessedAt: "2026-07-26T11:30:00.000Z",
+    authorityBoundary: "process-model-status-reports-candidate-coverage-and-gaps-and-does-not-approve-workflows-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "process-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    model: {
+      id: status.model.recordId,
+      revision: status.model.revision,
+      digest: status.model.digest,
+      membershipDigest: `sha256:${"6".repeat(64)}` as const,
+      state: "candidate" as const,
+      processCount: 3,
+      transitionCount: 11,
+      approvalRequirementCount: 4,
+      updatedAt: "2026-07-26T11:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-process-narrative-transition-guards-approval-content-source-content-personal-data-locators-secrets-or-credentials" as const,
+    authorityBoundary: "process-model-projection-does-not-approve-workflows-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1359,6 +1422,7 @@ interface HarnessOptions {
   systemSolutionArchitectureProjection?: SystemSolutionArchitectureProjection
   boundedContextModelProjection?: BoundedContextModelProjection
   securityPrivacyAssessmentProjection?: SecurityPrivacyAssessmentProjection
+  processModelProjection?: ProcessModelProjection
   commandResult?: unknown
 }
 
@@ -1497,6 +1561,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.securityPrivacyAssessmentProjection ? {
       securityPrivacyAssessment: {
         project: async () => options.securityPrivacyAssessmentProjection!,
+      },
+    } : {}),
+    ...(options.processModelProjection ? {
+      processModel: {
+        project: async () => options.processModelProjection!,
       },
     } : {}),
   }
@@ -1883,6 +1952,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /threat scenario|control statement|data content|source content|personal data|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Process Model metadata on the native architecture page", async () => {
+    const projection = processModelProjection()
+    const { source } = harness({ processModelProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[8]).toMatchObject({
+      id: "process-model",
+      rows: [{
+        id: projection.model?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.model?.membershipDigest,
+          counts: "3 processes · 9 steps · 5 dimensions · 11 transitions · 8 events · 4 approval requirements",
+          assessment: "attention-required",
+          gaps: "1 uncovered value streams · 2 uncovered contexts · 3 uncovered rules · 4 requirement gaps · 1 inconsistencies · 2 unresolved questions · 1 stale bindings",
+          boundary: "Candidate workflows, states, transitions, events, and approval requirements only; no workflow approval, transition or execution authority, operational readiness, baseline promotion, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /process narrative|transition guards|approval content|source content|personal data|customer@example\.com|api_key/iu,
     )
   })
 

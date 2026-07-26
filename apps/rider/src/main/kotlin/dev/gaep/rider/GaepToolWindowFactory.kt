@@ -258,6 +258,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += securityPrivacyAssessmentButton
         actions.add(securityPrivacyAssessmentButton)
 
+        val processModelButton = JButton("Inspect Process Model…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Process narrative, transition guards, approval content, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Process Model",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Process Model", status, output, buttons) {
+                    controller.readProcessModel(initiativeId)
+                }
+            }
+        }
+        buttons += processModelButton
+        actions.add(processModelButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

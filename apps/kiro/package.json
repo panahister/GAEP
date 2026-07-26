@@ -59,6 +59,7 @@
     "onCommand:gaepKiro.systemSolutionArchitecture.inspect",
     "onCommand:gaepKiro.boundedContextModel.inspect",
     "onCommand:gaepKiro.securityPrivacyAssessment.inspect",
+    "onCommand:gaepKiro.processModel.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -172,6 +173,10 @@
       {
         "command": "gaepKiro.securityPrivacyAssessment.inspect",
         "title": "GAEP for Kiro: Inspect Governed Security, Privacy, and Threat Assessment Candidate"
+      },
+      {
+        "command": "gaepKiro.processModel.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Process Model Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

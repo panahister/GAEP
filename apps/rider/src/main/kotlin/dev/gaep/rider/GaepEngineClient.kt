@@ -186,6 +186,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readProcessModel(initiativeId: UUID): ProcessModelProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("process.models.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseProcessModelEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

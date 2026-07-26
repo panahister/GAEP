@@ -24,6 +24,7 @@ private val businessArchitectureBaselineId = UUID.fromString("46464646-4646-4646
 private val systemSolutionArchitectureId = UUID.fromString("47474747-4747-4747-8747-474747474747")
 private val boundedContextModelId = UUID.fromString("48484848-4848-4848-8848-484848484848")
 private val securityPrivacyAssessmentId = UUID.fromString("49494949-4949-4949-8949-494949494949")
+private val processModelId = UUID.fromString("50505050-5050-4050-8050-505050505050")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -142,6 +143,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "security.privacyThreat.snapshot" -> handleSecurityPrivacyAssessment(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "process.models.snapshot" -> handleProcessModel(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -1236,6 +1242,96 @@ private fun handleSecurityPrivacyAssessment(id: Long, params: JsonObject, worksp
         }
         workspacePath.endsWith("bad-security-privacy-snapshot-private") -> {
             value.addProperty("threatScenario", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleProcessModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PROCESS MODEL PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-process-model-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-26T11:30:00.000Z"
+    val modelDigest = "sha256:${"7".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "process-model-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "process-model-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("model", JsonObject().apply {
+                addProperty("recordId", processModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", modelDigest)
+            })
+            addProperty("processCount", 3)
+            addProperty("stepCount", 9)
+            addProperty("stateDimensionCount", 5)
+            addProperty("stateValueCount", 18)
+            addProperty("transitionCount", 11)
+            addProperty("eventDefinitionCount", 8)
+            addProperty("approvalRequirementCount", 4)
+            addProperty("uncoveredValueStreamCount", 1)
+            addProperty("uncoveredBoundedContextCount", 2)
+            addProperty("uncoveredBusinessRuleCount", 3)
+            addProperty("unresolvedRequirementCount", 4)
+            addProperty("inconsistencyCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Process Model requirements remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "process-model-status-reports-candidate-coverage-and-gaps-and-does-not-approve-workflows-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action",
+            )
+        })
+        add("model", JsonObject().apply {
+            addProperty("id", processModelId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", modelDigest)
+            addProperty("membershipDigest", "sha256:${"8".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("processCount", 3)
+            addProperty("transitionCount", 11)
+            addProperty("approvalRequirementCount", 4)
+            addProperty("updatedAt", "2026-07-26T11:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-process-narrative-transition-guards-approval-content-source-content-personal-data-locators-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "process-model-projection-does-not-approve-workflows-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-process-model-snapshot-digest") -> {
+            value.getAsJsonObject("model").addProperty("processCount", 4)
+        }
+        workspacePath.endsWith("bad-process-model-snapshot-private") -> {
+            value.addProperty("transitionGuard", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

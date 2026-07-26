@@ -18,6 +18,7 @@ import {
   type InitiativeEntryWorkflowUi,
   type OperatingModelProjection,
   type SecurityPrivacyAssessmentProjection,
+  type ProcessModelProjection,
   type SourceGovernanceProjection,
   type SystemSolutionArchitectureProjection,
   type ValueStreamModelProjection,
@@ -89,6 +90,7 @@ const commandIds = {
   systemSolutionArchitecture: "gaepKiro.systemSolutionArchitecture.inspect",
   boundedContextModel: "gaepKiro.boundedContextModel.inspect",
   securityPrivacyAssessment: "gaepKiro.securityPrivacyAssessment.inspect",
+  processModel: "gaepKiro.processModel.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -188,6 +190,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.systemSolutionArchitecture, (input?: unknown) => runUserCommand(() => showSystemSolutionArchitecture(pool, input))),
     vscode.commands.registerCommand(commandIds.boundedContextModel, (input?: unknown) => runUserCommand(() => showBoundedContextModel(pool, input))),
     vscode.commands.registerCommand(commandIds.securityPrivacyAssessment, (input?: unknown) => runUserCommand(() => showSecurityPrivacyAssessment(pool, input))),
+    vscode.commands.registerCommand(commandIds.processModel, (input?: unknown) => runUserCommand(() => showProcessModel(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -881,6 +884,47 @@ async function showSecurityPrivacyAssessment(
     ...(record ? [
       `Membership digest: ${record.membershipDigest}`,
       `Candidate counts: ${record.assetCount} assets · ${record.trustBoundaryCount} trust boundaries · ${record.dataClassCount} data classes · ${record.controlCount} controls · ${record.threatCount} threats`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({
+    language: "plaintext",
+    content: `${lines.join("\n")}\n`,
+  })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showProcessModel(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ProcessModelProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Process Model candidate", "Initiative ID")
+  const projection = await client.readProcessModel(initiativeId)
+  const status = projection.status
+  const record = projection.model
+  const lines = [
+    "GAEP governed Process Model candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${status.state}`,
+    `Coverage: ${status.processCount} processes · ${status.stepCount} steps · ${status.stateDimensionCount} state dimensions · ${status.stateValueCount} state values · ${status.transitionCount} transitions · ${status.eventDefinitionCount} events · ${status.approvalRequirementCount} approval requirements`,
+    `Candidate gaps: ${status.uncoveredValueStreamCount} value streams · ${status.uncoveredBoundedContextCount} bounded contexts · ${status.uncoveredBusinessRuleCount} business rules · ${status.unresolvedRequirementCount} requirements · ${status.inconsistencyCount} inconsistencies · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate counts: ${record.processCount} processes · ${record.transitionCount} transitions · ${record.approvalRequirementCount} approval requirements`,
       `Updated: ${record.updatedAt}`,
     ] : []),
     "",

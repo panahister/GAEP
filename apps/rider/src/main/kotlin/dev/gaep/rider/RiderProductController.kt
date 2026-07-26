@@ -679,6 +679,56 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readProcessModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readProcessModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Process Model was read. Refresh the exact records." }
+        return renderProcessModel(projection)
+    }
+
+    fun renderProcessModel(projection: ProcessModelProjection): String = buildString {
+        appendLine("GAEP governed Process Model candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.processCount} processes · ${projection.stepCount} steps · " +
+                "${projection.stateDimensionCount} state dimensions · ${projection.stateValueCount} state values · " +
+                "${projection.transitionCount} transitions · ${projection.eventDefinitionCount} events · " +
+                "${projection.approvalRequirementCount} approval requirements",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.uncoveredValueStreamCount} value streams · " +
+                "${projection.uncoveredBoundedContextCount} bounded contexts · ${projection.uncoveredBusinessRuleCount} business rules · " +
+                "${projection.unresolvedRequirementCount} requirements · ${projection.inconsistencyCount} inconsistencies · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.model?.let { record ->
+            appendLine("Process candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate counts: ${record.processCount} processes · ${record.transitionCount} transitions · " +
+                    "${record.approvalRequirementCount} approval requirements",
+            )
+        } ?: appendLine("Process candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no process narrative, transition guards, approval content, " +
+                "Source content, personal data, locators, local paths, secrets, or credentials and does not approve " +
+                "workflows, grant transition or execution authority, establish operational readiness, promote a baseline, or authorize action.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,

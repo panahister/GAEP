@@ -53,6 +53,7 @@ internal static class Program
     private static readonly Guid SystemSolutionArchitectureId = Guid.Parse("47474747-4747-4747-8747-474747474747");
     private static readonly Guid BoundedContextModelId = Guid.Parse("48484848-4848-4848-8848-484848484848");
     private static readonly Guid SecurityPrivacyAssessmentId = Guid.Parse("49494949-4949-4949-8949-494949494949");
+    private static readonly Guid ProcessModelId = Guid.Parse("50505050-5050-4050-8050-505050505050");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -141,6 +142,9 @@ internal static class Program
         var badSecurityPrivacySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-security-privacy-snapshot-binding");
         var badSecurityPrivacySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-security-privacy-snapshot-digest");
         var badSecurityPrivacySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-security-privacy-snapshot-private");
+        var badProcessModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-process-model-snapshot-binding");
+        var badProcessModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-process-model-snapshot-digest");
+        var badProcessModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-process-model-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -226,6 +230,9 @@ internal static class Program
         Directory.CreateDirectory(badSecurityPrivacySnapshotBindingRoot);
         Directory.CreateDirectory(badSecurityPrivacySnapshotDigestRoot);
         Directory.CreateDirectory(badSecurityPrivacySnapshotPrivateRoot);
+        Directory.CreateDirectory(badProcessModelSnapshotBindingRoot);
+        Directory.CreateDirectory(badProcessModelSnapshotDigestRoot);
+        Directory.CreateDirectory(badProcessModelSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -975,6 +982,46 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadSecurityPrivacyAssessmentAsync(InitiativeId),
                 "Security, Privacy, and Threat Assessment rejects a projection rebound to a substituted Product revision");
+        }
+
+        var processModelProjection = await client.ReadProcessModelAsync(InitiativeId);
+        Check(processModelProjection.ProductId == product.Id &&
+              processModelProjection.ProductRevision == product.Revision &&
+              processModelProjection.ProductDigest == product.Digest &&
+              processModelProjection.InitiativeId == resolved.Id &&
+              processModelProjection.InitiativeRevision == resolved.Revision &&
+              processModelProjection.InitiativeDigest == resolved.Digest &&
+              processModelProjection.AssessmentState == "attention-required" &&
+              processModelProjection.Model?.ProcessCount == 3 &&
+              processModelProjection.Model?.TransitionCount == 11 &&
+              processModelProjection.UnresolvedRequirementCount == 4,
+            "Typed Process Model preserves exact Product, Initiative, status, and candidate metadata");
+        var processModelOutput = await initiativeController.ReadProcessModelAsync(InitiativeId);
+        Check(processModelOutput.Contains("GAEP governed Process Model candidate", StringComparison.Ordinal) &&
+              processModelOutput.Contains(
+                  "3 processes · 9 steps · 5 state dimensions · 18 state values · 11 transitions · 8 events · 4 approval requirements",
+                  StringComparison.Ordinal) &&
+              processModelOutput.Contains(
+                  "does not approve workflows, grant transition or execution authority",
+                  StringComparison.Ordinal) &&
+              !processModelOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !processModelOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !processModelOutput.Contains("transitionGuard", StringComparison.Ordinal),
+            "Process Model workflow renders privacy-safe metadata with an explicit no-authority boundary");
+        foreach (var hostileRoot in new[] { badProcessModelSnapshotDigestRoot, badProcessModelSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadProcessModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Process Model rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badProcessModelSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadProcessModelAsync(InitiativeId),
+                "Process Model rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2097,6 +2144,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-security-privacy-snapshot-digest";
         var badSecurityPrivacySnapshotPrivate =
             Path.GetFileName(workspace) == "bad-security-privacy-snapshot-private";
+        var badProcessModelSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-process-model-snapshot-binding";
+        var badProcessModelSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-process-model-snapshot-digest";
+        var badProcessModelSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-process-model-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2325,6 +2378,17 @@ internal static class Program
                         badSecurityPrivacySnapshotBinding,
                         badSecurityPrivacySnapshotDigest,
                         badSecurityPrivacySnapshotPrivate);
+                    break;
+                case "process.models.snapshot":
+                    await HandleProcessModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badProcessModelSnapshotBinding,
+                        badProcessModelSnapshotDigest,
+                        badProcessModelSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -3555,6 +3619,103 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) assessment["assetCount"] = 5;
         if (includePrivateField) result["threatScenario"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleProcessModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PROCESS MODEL");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-26T11:30:00.000Z";
+        var modelDigest = $"sha256:{new string('7', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var model = new Dictionary<string, object?>
+        {
+            ["id"] = ProcessModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = modelDigest,
+            ["membershipDigest"] = $"sha256:{new string('8', 64)}",
+            ["state"] = "candidate",
+            ["processCount"] = 3,
+            ["transitionCount"] = 11,
+            ["approvalRequirementCount"] = 4,
+            ["updatedAt"] = "2026-07-26T11:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "process-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "process-model-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["model"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = ProcessModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = modelDigest,
+                },
+                ["processCount"] = 3,
+                ["stepCount"] = 9,
+                ["stateDimensionCount"] = 5,
+                ["stateValueCount"] = 18,
+                ["transitionCount"] = 11,
+                ["eventDefinitionCount"] = 8,
+                ["approvalRequirementCount"] = 4,
+                ["uncoveredValueStreamCount"] = 1,
+                ["uncoveredBoundedContextCount"] = 2,
+                ["uncoveredBusinessRuleCount"] = 3,
+                ["unresolvedRequirementCount"] = 4,
+                ["inconsistencyCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Process Model requirements remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "process-model-status-reports-candidate-coverage-and-gaps-and-does-not-approve-workflows-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action",
+            },
+            ["model"] = model,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-process-narrative-transition-guards-approval-content-source-content-personal-data-locators-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "process-model-projection-does-not-approve-workflows-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) model["processCount"] = 4;
+        if (includePrivateField) result["transitionGuard"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

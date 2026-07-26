@@ -18,6 +18,7 @@ import {
   initiativeSchema,
   operatingModelProjectionSchema,
   securityPrivacyAssessmentProjectionSchema,
+  processModelProjectionSchema,
   sourceGovernanceProjectionSchema,
   systemSolutionArchitectureProjectionSchema,
   valueStreamModelProjectionSchema,
@@ -32,6 +33,7 @@ import {
   type InitiativeEntryAssessment,
   type OperatingModelProjection,
   type SecurityPrivacyAssessmentProjection,
+  type ProcessModelProjection,
   type SourceGovernanceProjection,
   type SystemSolutionArchitectureProjection,
   type ValueStreamModelProjection,
@@ -364,6 +366,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = securityPrivacyAssessmentProjectionSchema.safeParse(
         await this.request("security.privacyThreat.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readProcessModel(initiativeValue: string): Promise<ProcessModelProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = processModelProjectionSchema.safeParse(
+        await this.request("process.models.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

@@ -38,6 +38,7 @@ const businessArchitectureBaselineId = "40404040-4040-4040-8040-404040404040"
 const systemSolutionArchitectureId = "41414141-4141-4141-8141-414141414141"
 const boundedContextModelId = "42424242-4242-4242-8242-424242424242"
 const securityPrivacyAssessmentId = "43434343-4343-4343-8343-434343434343"
+const processModelId = "44444444-4444-4444-8444-444444444444"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -95,6 +96,8 @@ input.on("line", (line) => {
       return readBoundedContextModel(id, request.params)
     case "security.privacyThreat.snapshot":
       return readSecurityPrivacyAssessment(id, request.params)
+    case "process.models.snapshot":
+      return readProcessModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -875,6 +878,69 @@ function readSecurityPrivacyAssessment(id, params) {
   }
   if (workspacePath.endsWith("bad-security-privacy-snapshot-private")) {
     value.threatScenario = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readProcessModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PROCESS MODEL PARAMS")
+  }
+  const modelDigest = `sha256:${"7".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "process-model-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    model: { recordId: processModelId, revision: 2, digest: modelDigest },
+    processCount: 3,
+    stepCount: 9,
+    stateDimensionCount: 5,
+    stateValueCount: 18,
+    transitionCount: 11,
+    eventDefinitionCount: 8,
+    approvalRequirementCount: 4,
+    uncoveredValueStreamCount: 1,
+    uncoveredBoundedContextCount: 2,
+    uncoveredBusinessRuleCount: 3,
+    unresolvedRequirementCount: 4,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required",
+    reasons: ["One or more Process Model requirements remain unresolved"],
+    assessedAt: "2026-07-26T11:30:00.000Z",
+    authorityBoundary: "process-model-status-reports-candidate-coverage-and-gaps-and-does-not-approve-workflows-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "process-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    model: {
+      id: processModelId,
+      revision: 2,
+      digest: modelDigest,
+      membershipDigest: `sha256:${"8".repeat(64)}`,
+      state: "candidate",
+      processCount: 3,
+      transitionCount: 11,
+      approvalRequirementCount: 4,
+      updatedAt: "2026-07-26T11:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-process-narrative-transition-guards-approval-content-source-content-personal-data-locators-secrets-or-credentials",
+    authorityBoundary: "process-model-projection-does-not-approve-workflows-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action",
+  }
+  if (workspacePath.endsWith("bad-process-model-snapshot-binding")) content.initiative.id = processModelId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-process-model-snapshot-digest")) value.model.processCount = 4
+  if (workspacePath.endsWith("bad-process-model-snapshot-private")) {
+    value.transitionGuard = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
