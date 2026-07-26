@@ -3,6 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import {
+  boundedContextModelInputSchema,
   businessArchitectureBaselineInputSchema,
   businessCapabilityMapInputSchema,
   businessRuleCatalogInputSchema,
@@ -10,6 +11,8 @@ import {
   stakeholderModelInputSchema,
   systemSolutionArchitectureInputSchema,
   valueStreamModelInputSchema,
+  type BoundedContextModelInput,
+  type BoundedContextModel,
   type BusinessArchitectureBaselineInput,
   type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
@@ -1032,6 +1035,125 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function boundedContextModelInput(
+    architecture: Awaited<ReturnType<typeof engine.systemSolutionArchitecture.create>>,
+    overrides: Partial<BoundedContextModelInput> = {},
+  ): BoundedContextModelInput {
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed Bounded Context and Ownership Model",
+      purpose: "Define explicit candidate domain boundaries, ownership traces, ubiquitous language, cross-context contracts, and context-map relationships for accountable review.",
+      systemSolutionArchitecture: {
+        recordId: architecture.id,
+        revision: architecture.revision,
+        digest: canonicalDigest(architecture),
+      },
+      boundedContexts: [{
+        key: "governance-core",
+        name: "Governed Product Core",
+        domainType: "core",
+        purpose: "Own governed Product semantics, exact validation, immutable history, assessments, and workspace persistence within one explicit language boundary.",
+        responsibilities: [
+          "Assess candidate records without granting approval or readiness",
+          "Persist validated current records, immutable history, and attributable audit events",
+        ],
+        excludedResponsibilities: [
+          "Appoint organizational owners or approve Product architecture",
+          "Render host-native interaction or execute external providers",
+        ],
+        architectureElementKeys: ["gaep-engine", "workspace-store"],
+        dataAssetElementKeys: ["workspace-store"],
+        ownerRoleKey: "gaep-steward",
+        stewardRoleKeys: ["gaep-steward", "initiative-owner"],
+        ownershipState: "candidate-not-accepted",
+        ubiquitousLanguage: [{
+          key: "candidate-record",
+          term: "Candidate record",
+          definition: "A versioned, attributable and reviewable Product-domain record that carries no approval, readiness, release, appointment, or action authority.",
+          aliases: ["governed candidate"],
+          ambiguityNotes: ["Candidate does not mean approved baseline"],
+          sources: [reference()],
+        }],
+        invariants: [
+          "Every governed mutation commits current state, immutable history, and audit evidence atomically",
+          "Every semantic read binds the exact current Product and Initiative",
+        ],
+        sources: [reference()],
+      }, {
+        key: "product-studio",
+        name: "Native Product Studio",
+        domainType: "supporting",
+        purpose: "Own native human interaction and privacy-safe presentation while delegating governed Product semantics to the shared engine boundary.",
+        responsibilities: [
+          "Collect explicit human inputs through a native host surface",
+          "Render strict privacy-safe engine projections and bounded errors",
+        ],
+        excludedResponsibilities: [
+          "Persist governed records directly",
+          "Synthesize Product decisions, ownership acceptance, approval, or readiness",
+        ],
+        architectureElementKeys: ["product-studio-host"],
+        dataAssetElementKeys: [],
+        ownerRoleKey: "initiative-owner",
+        stewardRoleKeys: ["gaep-steward", "initiative-owner"],
+        ownershipState: "candidate-not-accepted",
+        ubiquitousLanguage: [{
+          key: "privacy-safe-projection",
+          term: "Privacy-safe projection",
+          definition: "A strict read model containing only declared identities, counts, statuses, timestamps, and digests needed for native Product inspection.",
+          aliases: ["bounded host projection"],
+          ambiguityNotes: ["A projection is not the governed source record"],
+          sources: [reference()],
+        }],
+        invariants: [
+          "Host responses reject extra private fields and substituted bindings",
+          "Native presentation never grants Product or execution authority",
+        ],
+        sources: [reference()],
+      }],
+      contracts: [{
+        key: "host-engine-protocol",
+        name: "Strict Product Studio engine protocol",
+        kind: "api",
+        providerContextKey: "product-studio",
+        consumerContextKeys: ["governance-core"],
+        architectureRelationKeys: ["host-calls-engine"],
+        ownerRoleKey: "gaep-steward",
+        versioning: "The protocol uses an explicit version and rejects downgrade, unknown method, unexpected request fields, and incompatible response shape.",
+        compatibility: "Every supported native host must parse the exact response contract and reject binding, snapshot-digest, privacy-boundary, or authority-boundary drift.",
+        consistency: "The response binds one exact Product revision, Initiative revision, governed candidate record, assessment, and snapshot digest from a single read boundary.",
+        failureBehavior: "The consumer receives a bounded non-authorizing failure and must not display private payload details or retry a semantic mutation implicitly.",
+        state: "candidate",
+        sources: [reference()],
+      }],
+      relationships: [{
+        key: "product-studio-to-governance-core",
+        upstreamContextKey: "product-studio",
+        downstreamContextKey: "governance-core",
+        pattern: "customer-supplier",
+        contractKeys: ["host-engine-protocol"],
+        rationale: "The native surface supplies explicit human intent and consumes strict shared-engine outcomes while the engine owns governed Product semantics.",
+        changeCoordination: "Protocol changes require shared contract review, four-host parser evidence, package rebinding, and no synthesized approval or migration authority.",
+        sources: [reference()],
+      }],
+      inconsistencies: [],
+      unresolvedQuestions: [],
+      governance: {
+        ownerRoleKey: "initiative-owner",
+        reviewerRoleKeys: ["gaep-steward", "initiative-owner"],
+        boundaryApprovalState: "not-granted",
+        ownershipAcceptanceState: "not-granted",
+        reviewState: "under-challenge",
+        basis: "Named roles prepare and challenge the candidate boundary and ownership trace, but a separate accountable human decision is required for approval and acceptance.",
+        sources: [reference()],
+      },
+      limitations: ["No organizational appointment, accepted ownership, approved boundary, readiness, release, deployment, or action authority is represented"],
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -1940,6 +2062,211 @@ describe("Business understanding governance", () => {
     })
   })
 
+  it("persists exact versioned Bounded Context ownership candidates and privacy-safe assessment", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+    const operatingModel = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
+      actorId,
+    )
+    const businessRuleCatalog = await engine.businessRuleCatalog.create(
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel),
+      actorId,
+    )
+    const baseline = await engine.businessArchitectureBaseline.create(
+      businessArchitectureBaselineInput(
+        business,
+        stakeholder,
+        outcome,
+        capabilityMap,
+        valueStreamModel,
+        operatingModel,
+        businessRuleCatalog,
+      ),
+      actorId,
+    )
+    const architecture = await engine.systemSolutionArchitecture.create(
+      systemSolutionArchitectureInput(baseline),
+      actorId,
+    )
+    const input = boundedContextModelInput(architecture)
+    const model = await engine.boundedContextModel.create(input, actorId)
+    expect(model).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      membershipDigest: canonicalDigest({ systemSolutionArchitecture: input.systemSolutionArchitecture }),
+      governance: {
+        boundaryApprovalState: "not-granted",
+        ownershipAcceptanceState: "not-granted",
+        reviewState: "under-challenge",
+      },
+      authorityBoundary: expect.stringContaining("does-not-appoint-an-owner"),
+    })
+    expect(await engine.boundedContextModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id, revision: 1, digest: canonicalDigest(model) },
+      boundedContextCount: 2,
+      coreContextCount: 1,
+      languageTermCount: 2,
+      contractCount: 1,
+      unresolvedContractCount: 0,
+      relationshipCount: 1,
+      unresolvedRelationshipCount: 0,
+      unassignedArchitectureElementCount: 0,
+      unownedDataAssetCount: 0,
+      unmappedCrossContextRelationCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.boundedContextModel.project(initiative.id)
+    expect(projection).toMatchObject({
+      model: {
+        id: model.id,
+        boundedContextCount: 2,
+        contractCount: 1,
+        relationshipCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-boundary-language-contract"),
+      authorityBoundary: expect.stringContaining("does-not-appoint-owners"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Candidate record")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.boundedContextModel.revise(
+      model.id,
+      model.revision,
+      boundedContextModelInput(architecture, {
+        limitations: [
+          "No organizational appointment, accepted ownership, approved boundary, readiness, release, deployment, or action authority is represented",
+          "The candidate remains subject to independent domain-owner and native-host challenge",
+        ],
+      }),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: model.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(model),
+      governance: { boundaryApprovalState: "not-granted", ownershipAcceptanceState: "not-granted" },
+    })
+    expect((await engine.boundedContextModel.listHistory(model.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "architecture.bounded-context.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        predecessorDigest: canonicalDigest(model),
+        state: "candidate",
+        boundaryApprovalState: "not-granted",
+        ownershipAcceptanceState: "not-granted",
+        reviewState: "under-challenge",
+      },
+    })
+  })
+
+  it("rejects forged Bounded Context ownership, element coverage, contracts, sources, and secrets", async () => {
+    const { business, stakeholder, outcome } = await createCompleteModel()
+    const capabilityMap = await engine.businessCapabilityMap.create(
+      capabilityMapInput(business, stakeholder, outcome),
+      actorId,
+    )
+    const valueStreamModel = await engine.valueStreamModel.create(
+      valueStreamInput(business, stakeholder, outcome, capabilityMap),
+      actorId,
+    )
+    const operatingModel = await engine.operatingModel.create(
+      operatingModelInput(business, stakeholder, outcome, capabilityMap, valueStreamModel),
+      actorId,
+    )
+    const businessRuleCatalog = await engine.businessRuleCatalog.create(
+      businessRuleCatalogInput(business, stakeholder, outcome, capabilityMap, valueStreamModel, operatingModel),
+      actorId,
+    )
+    const baseline = await engine.businessArchitectureBaseline.create(
+      businessArchitectureBaselineInput(
+        business,
+        stakeholder,
+        outcome,
+        capabilityMap,
+        valueStreamModel,
+        operatingModel,
+        businessRuleCatalog,
+      ),
+      actorId,
+    )
+    const architecture = await engine.systemSolutionArchitecture.create(
+      systemSolutionArchitectureInput(baseline),
+      actorId,
+    )
+    const base = boundedContextModelInput(architecture)
+    expect(() => boundedContextModelInputSchema.parse({
+      ...base,
+      governance: { ...base.governance, boundaryApprovalState: "approved" },
+    })).toThrow()
+    expect(() => boundedContextModelInputSchema.parse({
+      ...base,
+      boundedContexts: base.boundedContexts.map((entry) => ({
+        ...entry,
+        architectureElementKeys: entry.key === "product-studio"
+          ? ["gaep-engine", "product-studio-host"]
+          : entry.architectureElementKeys,
+      })),
+    })).toThrow(/at most one bounded context/)
+    await expect(engine.boundedContextModel.create({
+      ...base,
+      boundedContexts: base.boundedContexts.map((entry) => entry.key === "product-studio"
+        ? { ...entry, ownerRoleKey: "invented-owner" }
+        : entry),
+    }, actorId)).rejects.toThrow(/exact bound Operating Model roles/)
+    await expect(engine.boundedContextModel.create({
+      ...base,
+      boundedContexts: base.boundedContexts.map((entry) => entry.key === "governance-core"
+        ? { ...entry, architectureElementKeys: ["workspace-store"], dataAssetElementKeys: ["workspace-store"] }
+        : entry),
+    }, actorId)).rejects.toThrow(/Every internal System\/Solution Architecture element/)
+    await expect(engine.boundedContextModel.create({
+      ...base,
+      contracts: [],
+      relationships: [],
+    }, actorId)).rejects.toThrow(/cross-context architecture relation/)
+    await expect(engine.boundedContextModel.create({
+      ...base,
+      contracts: [{ ...base.contracts[0]!, architectureRelationKeys: ["engine-writes-store"] }],
+    }, actorId)).rejects.toThrow(/direction must match exact architecture element assignments/)
+    await expect(engine.boundedContextModel.create({
+      ...base,
+      purpose: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable bounded context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+
+    const model = await engine.boundedContextModel.create(base, actorId)
+    await engine.systemSolutionArchitecture.revise(
+      architecture.id,
+      architecture.revision,
+      systemSolutionArchitectureInput(baseline, {
+        limitations: ["The exact System/Solution Architecture changed after bounded-context capture"],
+      }),
+      actorId,
+    )
+    expect(await engine.boundedContextModel.assess(initiative.id)).toMatchObject({
+      model: { recordId: model.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+  })
+
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
     const base = capabilityMapInput(business, stakeholder, outcome)
@@ -2015,6 +2342,10 @@ describe("Business understanding governance", () => {
       systemSolutionArchitectureInput(businessArchitectureBaseline),
       actorId,
     )
+    const boundedContextModel = await engine.boundedContextModel.create(
+      boundedContextModelInput(systemSolutionArchitecture),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -2031,6 +2362,8 @@ describe("Business understanding governance", () => {
       `business-architecture-baseline-history/business-architecture-baseline-${businessArchitectureBaseline.id}-r1.json`,
       `system-solution-architectures/${systemSolutionArchitecture.id}.json`,
       `system-solution-architecture-history/system-solution-architecture-${systemSolutionArchitecture.id}-r1.json`,
+      `bounded-context-models/${boundedContextModel.id}.json`,
+      `bounded-context-model-history/bounded-context-model-${boundedContextModel.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -2170,6 +2503,25 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedArchitecture))
       .rejects.toThrow(/unknown bound Business Architecture element/)
+
+    const forgeContextOwnership = (content: unknown) => ({
+      ...(content as BoundedContextModel),
+      boundedContexts: (content as BoundedContextModel).boundedContexts.map((entry) => entry.key === "product-studio"
+        ? { ...entry, ownerRoleKey: "invented-owner" }
+        : entry),
+    })
+    let forgedContext = replacePortableRecord(
+      bundle,
+      `bounded-context-models/${boundedContextModel.id}.json`,
+      forgeContextOwnership,
+    )
+    forgedContext = replacePortableRecord(
+      forgedContext,
+      `bounded-context-model-history/bounded-context-model-${boundedContextModel.id}-r1.json`,
+      forgeContextOwnership,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedContext))
+      .rejects.toThrow(/unknown bound Operating Model role/)
   })
 
   it("requires explicit human disclosure review for confidential business records", async () => {

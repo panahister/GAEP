@@ -78,6 +78,7 @@ import { BusinessUnderstandingService } from "./business-understanding.js"
 import { OperatingModelService } from "./operating-model.js"
 import { ValueStreamModelService } from "./value-stream-model.js"
 import { SystemSolutionArchitectureService } from "./system-solution-architecture.js"
+import { BoundedContextModelService } from "./bounded-context-model.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -245,6 +246,7 @@ export class GaepEngine {
   readonly businessRuleCatalog: BusinessRuleCatalogService
   readonly businessArchitectureBaseline: BusinessArchitectureBaselineService
   readonly systemSolutionArchitecture: SystemSolutionArchitectureService
+  readonly boundedContextModel: BoundedContextModelService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -322,6 +324,15 @@ export class GaepEngine {
       () => this.readProduct(),
       (id) => this.readInitiative(id),
       this.sourceGovernance,
+      this.businessArchitectureBaseline,
+      this.operatingModel,
+    )
+    this.boundedContextModel = new BoundedContextModelService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      this.systemSolutionArchitecture,
       this.businessArchitectureBaseline,
       this.operatingModel,
     )
@@ -418,7 +429,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
@@ -428,6 +439,7 @@ export class GaepEngine {
         this.businessRuleCatalog.healthIssues(),
         this.businessArchitectureBaseline.healthIssues(),
         this.systemSolutionArchitecture.healthIssues(),
+        this.boundedContextModel.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,
@@ -439,6 +451,7 @@ export class GaepEngine {
         ...businessRuleIssues,
         ...businessArchitectureIssues,
         ...systemSolutionArchitectureIssues,
+        ...boundedContextModelIssues,
       ]
     } catch (error) {
       domainIssues = [{

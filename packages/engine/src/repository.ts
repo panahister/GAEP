@@ -18,6 +18,7 @@ import {
   auditCheckpointSchema,
   auditEventSchema,
   businessArchitectureBaselineSchema,
+  boundedContextModelSchema,
   businessCapabilityMapSchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
@@ -101,6 +102,8 @@ const directoryNames = [
   "business-architecture-baseline-history",
   "system-solution-architectures",
   "system-solution-architecture-history",
+  "bounded-context-models",
+  "bounded-context-model-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -880,6 +883,8 @@ export class GaepRepository {
       ["business-architecture-baseline-history", /^business-architecture-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["system-solution-architectures", /^[0-9a-f-]+\.json$/i],
       ["system-solution-architecture-history", /^system-solution-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["bounded-context-models", /^[0-9a-f-]+\.json$/i],
+      ["bounded-context-model-history", /^bounded-context-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -991,6 +996,10 @@ export class GaepRepository {
     if (/^system-solution-architectures\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^system-solution-architecture-history\/system-solution-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, systemSolutionArchitectureSchema)
+    }
+    if (/^bounded-context-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^bounded-context-model-history\/bounded-context-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, boundedContextModelSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

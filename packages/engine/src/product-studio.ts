@@ -5,6 +5,7 @@ import { isAbsolute } from "node:path"
 
 import {
   architectureRecordSchema,
+  boundedContextModelSchema,
   businessArchitectureBaselineSchema,
   businessCapabilityMapSchema,
   businessRuleCatalogSchema,
@@ -57,6 +58,7 @@ import {
   workflowPlanSchema,
   redactSecretShapedText,
   type ArchitectureRecord,
+  type BoundedContextModel,
   type BusinessArchitectureBaseline,
   type BusinessCapabilityMap,
   type BusinessRuleCatalog,
@@ -1980,6 +1982,16 @@ export class ProductStudioService {
       /^system-solution-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       systemSolutionArchitectureSchema,
     )
+    const boundedContextModels = await this.listRecords(
+      "bounded-context-models",
+      /^[0-9a-f-]+\.json$/i,
+      boundedContextModelSchema,
+    )
+    const boundedContextModelHistory = await this.listRecords(
+      "bounded-context-model-history",
+      /^bounded-context-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      boundedContextModelSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2021,6 +2033,8 @@ export class ProductStudioService {
       ...businessArchitectureBaselineHistory,
       ...systemSolutionArchitectures,
       ...systemSolutionArchitectureHistory,
+      ...boundedContextModels,
+      ...boundedContextModelHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2043,6 +2057,7 @@ export class ProductStudioService {
           businessRuleCatalogs.find((record) => record.id === id)?.informationClassification ??
           businessArchitectureBaselines.find((record) => record.id === id)?.informationClassification ??
           systemSolutionArchitectures.find((record) => record.id === id)?.informationClassification ??
+          boundedContextModels.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2139,6 +2154,13 @@ export class ProductStudioService {
       systemSolutionArchitectureHistory,
       (record) => `system-solution-architecture-history/system-solution-architecture-${record.id}-r${record.revision}.json`,
     )
+    append("bounded-context-models", "bounded-context-ownership-candidate", boundedContextModels)
+    append(
+      "bounded-context-model-history",
+      "bounded-context-ownership-candidate",
+      boundedContextModelHistory,
+      (record) => `bounded-context-model-history/bounded-context-model-${record.id}-r${record.revision}.json`,
+    )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
       "stakeholder-model-history",
@@ -2213,6 +2235,7 @@ export class ProductStudioService {
           ...businessUnderstanding.map((record) => record.informationClassification),
           ...businessCapabilityMaps.map((record) => record.informationClassification),
           ...systemSolutionArchitectures.map((record) => record.informationClassification),
+          ...boundedContextModels.map((record) => record.informationClassification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
         ])],
@@ -2387,6 +2410,14 @@ export class ProductStudioService {
           `system-solution-architecture-history/system-solution-architecture-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import System/Solution Architecture history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("bounded-context-model-history/")) {
+        const record = validated as BoundedContextModel
+        const expectedHistoryPath =
+          `bounded-context-model-history/bounded-context-model-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Bounded Context Model history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3513,7 +3544,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3545,7 +3576,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -3996,7 +4027,7 @@ export class ProductStudioService {
     const systemSolutionArchitectureHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("system-solution-architecture-history/"))
       .map(([, record]) => systemSolutionArchitectureSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactSystemSolutionArchitectures = validateVersionedBusinessRecords(
       systemSolutionArchitectures,
       systemSolutionArchitectureHistory,
       "System/Solution Architecture",
@@ -4046,6 +4077,93 @@ export class ProductStudioService {
       if (architecture.qualityAttributes.some((entry) => !criterionQualityKeys.has(entry.key)) ||
           architecture.decisions.some((entry) => !criterionDecisionKeys.has(entry.key))) {
         throw new Error(`Import System/Solution Architecture ${architecture.id} lacks conformance coverage`)
+      }
+    }
+
+    const boundedContextModels = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("bounded-context-models/"))
+      .map(([, record]) => boundedContextModelSchema.parse(record))
+    const boundedContextModelHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("bounded-context-model-history/"))
+      .map(([, record]) => boundedContextModelSchema.parse(record))
+    validateVersionedBusinessRecords(
+      boundedContextModels,
+      boundedContextModelHistory,
+      "Bounded Context Model",
+    )
+    for (const model of [...boundedContextModels, ...boundedContextModelHistory]) {
+      const architecture = exactSystemSolutionArchitectures.get(
+        `${model.systemSolutionArchitecture.recordId}:${model.systemSolutionArchitecture.revision}:${model.systemSolutionArchitecture.digest}`,
+      )
+      if (!architecture || architecture.initiativeId !== model.initiativeId) {
+        throw new Error(`Import Bounded Context Model ${model.id} exact System/Solution Architecture reference is unresolved`)
+      }
+      if (model.membershipDigest !== canonicalDigest({
+        systemSolutionArchitecture: model.systemSolutionArchitecture,
+      })) {
+        throw new Error(`Import Bounded Context Model ${model.id} membership digest is invalid`)
+      }
+      const baseline = exactBusinessArchitectureBaselines.get(
+        `${architecture.businessArchitectureBaseline.recordId}:${architecture.businessArchitectureBaseline.revision}:${architecture.businessArchitectureBaseline.digest}`,
+      )
+      if (!baseline) {
+        throw new Error(`Import Bounded Context Model ${model.id} architecture baseline is unresolved`)
+      }
+      const operatingModel = resolveOperatingModel(baseline.operatingModel, model.initiativeId)
+      const roleKeys = new Set(operatingModel.roles.map((entry) => entry.key))
+      const referencedRoleKeys = [
+        model.governance.ownerRoleKey,
+        ...model.governance.reviewerRoleKeys,
+        ...model.boundedContexts.flatMap((entry) => [entry.ownerRoleKey, ...entry.stewardRoleKeys]),
+        ...model.contracts.map((entry) => entry.ownerRoleKey),
+      ]
+      if (referencedRoleKeys.some((key) => !roleKeys.has(key))) {
+        throw new Error(`Import Bounded Context Model ${model.id} references an unknown bound Operating Model role`)
+      }
+      const elementByKey = new Map(architecture.elements.map((entry) => [entry.key, entry]))
+      const relationByKey = new Map(architecture.relations.map((entry) => [entry.key, entry]))
+      const contextByElement = new Map<string, string>()
+      for (const boundedContext of model.boundedContexts) {
+        for (const elementKey of boundedContext.architectureElementKeys) {
+          if (!elementByKey.has(elementKey)) {
+            throw new Error(`Import Bounded Context Model ${model.id} references an unknown architecture element`)
+          }
+          contextByElement.set(elementKey, boundedContext.key)
+        }
+        if (boundedContext.dataAssetElementKeys.some((key) => elementByKey.get(key)?.kind !== "data-asset")) {
+          throw new Error(`Import Bounded Context Model ${model.id} has invalid data-asset ownership`)
+        }
+      }
+      const expectedElements = architecture.elements.filter(
+        (entry) => entry.kind !== "external-system" && entry.kind !== "deployment-target",
+      )
+      if (expectedElements.some((entry) => !contextByElement.has(entry.key))) {
+        throw new Error(`Import Bounded Context Model ${model.id} lacks internal architecture-element coverage`)
+      }
+      const ownedDataAssets = new Set(model.boundedContexts.flatMap((entry) => entry.dataAssetElementKeys))
+      if (architecture.elements.some((entry) => entry.kind === "data-asset" && !ownedDataAssets.has(entry.key))) {
+        throw new Error(`Import Bounded Context Model ${model.id} lacks candidate data ownership`)
+      }
+      for (const contract of model.contracts) {
+        for (const relationKey of contract.architectureRelationKeys) {
+          const relation = relationByKey.get(relationKey)
+          if (!relation) {
+            throw new Error(`Import Bounded Context Model ${model.id} references an unknown architecture relation`)
+          }
+          const provider = contextByElement.get(relation.fromElementKey)
+          const consumer = contextByElement.get(relation.toElementKey)
+          if (provider !== contract.providerContextKey || !consumer || !contract.consumerContextKeys.includes(consumer)) {
+            throw new Error(`Import Bounded Context Model ${model.id} contract direction contradicts architecture assignments`)
+          }
+        }
+      }
+      const mappedRelations = new Set(model.contracts.flatMap((entry) => entry.architectureRelationKeys))
+      if (architecture.relations.some((entry) => {
+        const from = contextByElement.get(entry.fromElementKey)
+        const to = contextByElement.get(entry.toElementKey)
+        return Boolean(from && to && from !== to && !mappedRelations.has(entry.key))
+      })) {
+        throw new Error(`Import Bounded Context Model ${model.id} lacks cross-context contract coverage`)
       }
     }
 
@@ -4674,6 +4792,10 @@ export class ProductStudioService {
         /^system-solution-architecture-history\/system-solution-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "system-solution-architecture-candidate"
     }
+    if (/^bounded-context-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^bounded-context-model-history\/bounded-context-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "bounded-context-ownership-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -4746,6 +4868,10 @@ export class ProductStudioService {
     if (/^system-solution-architectures\/[0-9a-f-]+\.json$/i.test(path) ||
         /^system-solution-architecture-history\/system-solution-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return systemSolutionArchitectureSchema
+    }
+    if (/^bounded-context-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^bounded-context-model-history\/bounded-context-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return boundedContextModelSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
