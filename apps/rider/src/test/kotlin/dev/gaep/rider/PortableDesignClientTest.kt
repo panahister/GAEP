@@ -507,6 +507,46 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Business Rule Catalog projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("business-rule-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readBusinessRuleCatalog(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals(7, projection.businessRuleCatalog?.ruleCount)
+            assertEquals(2, projection.businessRuleCatalog?.exceptionCount)
+            assertEquals(2, projection.unverifiedEnforcementTargetCount)
+
+            val rendered = RiderProductController(client).readBusinessRuleCatalog(entryId)
+            assertTrue(rendered.contains("GAEP governed Business Rule Catalog"))
+            assertTrue(rendered.contains("7 rules · 7 source-backed · 3 non-exceptionable"))
+            assertTrue(rendered.contains("does not evaluate policy, grant exceptions, deploy enforcement"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("ruleNarrative"))
+        }
+
+        listOf("bad-business-rule-snapshot-digest", "bad-business-rule-snapshot-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readBusinessRuleCatalog(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-business-rule-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readBusinessRuleCatalog(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

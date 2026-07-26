@@ -969,6 +969,40 @@ data class OperatingModelProjection(
     val snapshotDigest: String,
 )
 
+data class BusinessRuleCatalogRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val ruleCount: Int,
+    val enforcementTargetCount: Int,
+    val exceptionCount: Int,
+    val nonExceptionableRuleCount: Int,
+)
+
+data class BusinessRuleCatalogProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val ruleCount: Int,
+    val sourceBackedRuleCount: Int,
+    val nonExceptionableRuleCount: Int,
+    val enforcementTargetCount: Int,
+    val unassignedEnforcementTargetCount: Int,
+    val unverifiedEnforcementTargetCount: Int,
+    val exceptionCount: Int,
+    val unassignedExceptionAuthorityCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val businessRuleCatalog: BusinessRuleCatalogRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1024,6 +1058,12 @@ internal object PortableDesignProtocol {
         "operating-model-projection-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action"
     private const val OPERATING_MODEL_ASSESSMENT_AUTHORITY_BOUNDARY =
         "operating-model-assessment-reports-candidate-structural-coverage-and-gaps-and-does-not-appoint-fund-approve-baseline-readiness-or-authorize-action"
+    private const val BUSINESS_RULE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-rule-narrative-source-content-personal-data-locators-or-credentials"
+    private const val BUSINESS_RULE_PROJECTION_AUTHORITY_BOUNDARY =
+        "business-rule-catalog-projection-does-not-evaluate-policy-grant-exceptions-deploy-enforcement-approve-baseline-readiness-or-authorize-action"
+    private const val BUSINESS_RULE_ASSESSMENT_AUTHORITY_BOUNDARY =
+        "business-rule-catalog-assessment-reports-candidate-coverage-and-gaps-and-does-not-evaluate-policy-grant-exceptions-deploy-enforcement-approve-baseline-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -2657,6 +2697,140 @@ internal object PortableDesignProtocol {
             unassignedAppointingAuthorityCount, insufficientCapacityCount, unfundedCapacityCount,
             decisionRightCount, unassignedDecisionAuthorityCount, forumCount, cycleCount, supportCapacityGapCount,
             emergencyAuthorityGapCount, staleBindingCount, staleSourceReferenceCount, model, snapshotDigest,
+        )
+    }
+
+    fun parseBusinessRuleCatalogEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): BusinessRuleCatalogProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "assessment", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("businessRuleCatalog"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "business-rule-catalog-projection" ||
+            projection.requireString("privacyBoundary") != BUSINESS_RULE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != BUSINESS_RULE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val assessment = projection.get("assessment").requireObject()
+        assessment.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "ruleCount", "sourceBackedRuleCount", "nonExceptionableRuleCount", "enforcementTargetCount",
+                "unassignedEnforcementTargetCount", "unverifiedEnforcementTargetCount", "exceptionCount",
+                "unassignedExceptionAuthorityCount", "staleBindingCount", "staleSourceReferenceCount", "state",
+                "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("businessRuleCatalog"),
+        )
+        if (assessment.requireInt("schemaVersion") != 1 ||
+            assessment.requireString("kind") != "business-rule-catalog-assessment" ||
+            assessment.requireNonEmptyUuid("productId") != productId ||
+            assessment.requireLong("productRevision") != productRevision ||
+            assessment.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            assessment.requireLong("initiativeRevision") != initiativeRevision ||
+            assessment.requireString("authorityBoundary") != BUSINESS_RULE_ASSESSMENT_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = assessment.get("businessRuleCatalog")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val ruleCount = assessment.requireBoundedNonNegativeInt("ruleCount", 512)
+        val sourceBackedRuleCount = assessment.requireBoundedNonNegativeInt("sourceBackedRuleCount", ruleCount)
+        val nonExceptionableRuleCount = assessment.requireBoundedNonNegativeInt("nonExceptionableRuleCount", ruleCount)
+        val enforcementTargetCount = assessment.requireBoundedNonNegativeInt("enforcementTargetCount", 512)
+        val unassignedEnforcementTargetCount =
+            assessment.requireBoundedNonNegativeInt("unassignedEnforcementTargetCount", enforcementTargetCount)
+        val unverifiedEnforcementTargetCount =
+            assessment.requireBoundedNonNegativeInt("unverifiedEnforcementTargetCount", enforcementTargetCount)
+        val exceptionCount = assessment.requireBoundedNonNegativeInt("exceptionCount", 512)
+        val unassignedExceptionAuthorityCount =
+            assessment.requireBoundedNonNegativeInt("unassignedExceptionAuthorityCount", exceptionCount)
+        val staleBindingCount = assessment.requireBoundedNonNegativeInt("staleBindingCount", 9)
+        val staleSourceReferenceCount =
+            assessment.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val assessmentState = assessment.requireOneOf(
+            "state",
+            setOf("complete-for-review", "attention-required"),
+        )
+        val reasonsElement = assessment.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = assessment.requireInstant("assessedAt")
+
+        val catalog = projection.get("businessRuleCatalog")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "ruleCount", "enforcementTargetCount",
+                "exceptionCount", "nonExceptionableRuleCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val digest = value.requireDigest("digest")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" ||
+                reference?.let { it.id == id && it.revision == revision && it.digest == digest } != true
+            ) throw invalidResponse()
+            val record = BusinessRuleCatalogRecordView(
+                id,
+                revision,
+                digest,
+                value.requireBoundedNonNegativeInt("ruleCount", 512),
+                value.requireBoundedNonNegativeInt("enforcementTargetCount", 512),
+                value.requireBoundedNonNegativeInt("exceptionCount", 512),
+                value.requireBoundedNonNegativeInt("nonExceptionableRuleCount", 512),
+            )
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (catalog == null) ||
+            (catalog?.ruleCount ?: 0) != ruleCount ||
+            (catalog?.enforcementTargetCount ?: 0) != enforcementTargetCount ||
+            (catalog?.exceptionCount ?: 0) != exceptionCount ||
+            (catalog?.nonExceptionableRuleCount ?: 0) != nonExceptionableRuleCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return BusinessRuleCatalogProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, ruleCount, sourceBackedRuleCount, nonExceptionableRuleCount,
+            enforcementTargetCount, unassignedEnforcementTargetCount, unverifiedEnforcementTargetCount,
+            exceptionCount, unassignedExceptionAuthorityCount, staleBindingCount, staleSourceReferenceCount,
+            catalog, snapshotDigest,
         )
     }
 

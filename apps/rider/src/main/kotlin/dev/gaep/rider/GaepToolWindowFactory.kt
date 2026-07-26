@@ -178,6 +178,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += operatingModelButton
         actions.add(operatingModelButton)
 
+        val businessRulesButton = JButton("Inspect Business Rules…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Rule narrative, Source content, personal data, local paths, credentials, and authority are withheld.",
+                    "GAEP Business Rules",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Business Rules", status, output, buttons) {
+                    controller.readBusinessRuleCatalog(initiativeId)
+                }
+            }
+        }
+        buttons += businessRulesButton
+        actions.add(businessRulesButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

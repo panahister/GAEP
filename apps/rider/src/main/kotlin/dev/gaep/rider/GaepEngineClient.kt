@@ -141,6 +141,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readBusinessRuleCatalog(initiativeId: UUID): BusinessRuleCatalogProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("business.businessRules.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseBusinessRuleCatalogEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

@@ -436,6 +436,53 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readBusinessRuleCatalog(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readBusinessRuleCatalog(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the Business Rule Catalog was read. Refresh the exact records." }
+        return renderBusinessRuleCatalog(projection)
+    }
+
+    fun renderBusinessRuleCatalog(projection: BusinessRuleCatalogProjection): String = buildString {
+        appendLine("GAEP governed Business Rule Catalog")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Rule counts: ${projection.ruleCount} rules · ${projection.sourceBackedRuleCount} source-backed · " +
+                "${projection.nonExceptionableRuleCount} non-exceptionable · ${projection.enforcementTargetCount} enforcement targets · " +
+                "${projection.exceptionCount} exceptions",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unassignedEnforcementTargetCount} unassigned targets · " +
+                "${projection.unverifiedEnforcementTargetCount} unverified targets · " +
+                "${projection.unassignedExceptionAuthorityCount} unassigned exception authorities · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.businessRuleCatalog?.let { record ->
+            appendLine("Business Rule Catalog: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine(
+                "Catalog counts: ${record.ruleCount} rules · ${record.enforcementTargetCount} enforcement targets · " +
+                    "${record.exceptionCount} exceptions · ${record.nonExceptionableRuleCount} non-exceptionable",
+            )
+        } ?: appendLine("Business Rule Catalog: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no rule narrative, Source content, personal data, locators, local paths, " +
+                "or credentials and does not evaluate policy, grant exceptions, deploy enforcement, approve a baseline, " +
+                "establish readiness, or authorize action.",
+        )
+    }
+
     fun classifyInitiative(
         context: InitiativeEntryContext,
         input: InitiativeClassificationInput,
