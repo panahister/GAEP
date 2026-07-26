@@ -5,6 +5,7 @@ import type {
   AgentSelection,
   AgentSelectionState,
   ArchitectureRecord,
+  BoundedContextModelProjection,
   BusinessArchitectureBaselineProjection,
   BusinessCapabilityMapProjection,
   BusinessRuleCatalogProjection,
@@ -141,6 +142,9 @@ export interface CurrentStudioEngineReader {
   systemSolutionArchitecture?: {
     project(initiativeId: string): Promise<SystemSolutionArchitectureProjection>
   }
+  boundedContextModel?: {
+    project(initiativeId: string): Promise<BoundedContextModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -187,6 +191,7 @@ interface ObservedStudioState {
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
   businessArchitectureBaselineProjections: Map<string, BusinessArchitectureBaselineProjection>
   systemSolutionArchitectureProjections: Map<string, SystemSolutionArchitectureProjection>
+  boundedContextModelProjections: Map<string, BoundedContextModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -812,6 +817,54 @@ function systemSolutionArchitectureTable(state: ObservedStudioState): StudioTabl
   }
 }
 
+function boundedContextModelTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.boundedContextModelProjections.values()].flatMap((projection) => {
+    const record = projection.model
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.boundedContextCount} contexts · ${record.contractCount} contracts · ${record.relationshipCount} relationships`,
+        assessment: projection.assessment.state,
+        gaps: `${projection.assessment.unresolvedContractCount} contract gaps · ${projection.assessment.unresolvedRelationshipCount} relationship gaps · ${projection.assessment.unassignedArchitectureElementCount} unassigned elements · ${projection.assessment.unownedDataAssetCount} unowned data assets · ${projection.assessment.unmappedCrossContextRelationCount} unmapped relations · ${projection.assessment.staleBindingCount} stale bindings`,
+        boundary: "Candidate boundaries and ownership traces only; no owner appointment, ownership acceptance, boundary approval, contract acceptance, readiness, or action authority.",
+      },
+      state: projection.assessment.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "bounded-context-ownership",
+    title: "Governed Bounded Context and Ownership Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Boundary Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Bounded Context and Ownership candidate",
+        "Create the candidate through the governed engine workflow. This view does not appoint owners, accept ownership, approve boundaries or contracts, establish readiness, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -822,7 +875,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), architectureTable(state.architecture)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -838,6 +891,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       businessRuleCatalogTable(state),
       businessArchitectureBaselineTable(state),
       systemSolutionArchitectureTable(state),
+      boundedContextModelTable(state),
       architectureTable(state.architecture),
     )
   }
@@ -3288,6 +3342,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       businessRuleCatalogProjections: new Map(),
       businessArchitectureBaselineProjections: new Map(),
       systemSolutionArchitectureProjections: new Map(),
+      boundedContextModelProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -3743,6 +3798,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "system-solution-architecture-unavailable",
           "System/Solution Architecture metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.boundedContextModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.boundedContextModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.boundedContextModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Bounded Context and Ownership projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `bounded-context-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Bounded Context and Ownership metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "bounded-context-model-unavailable",
+          "Bounded Context and Ownership metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

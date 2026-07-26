@@ -8,6 +8,7 @@ import {
   type AdapterCapabilities,
   type AgentSelection,
   type BusinessArchitectureBaselineProjection,
+  type BoundedContextModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -669,6 +670,67 @@ function systemSolutionArchitectureProjection(): SystemSolutionArchitectureProje
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function boundedContextModelProjection(): BoundedContextModelProjection {
+  const assessment = {
+    schemaVersion: 1 as const,
+    kind: "bounded-context-ownership-assessment" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    model: {
+      recordId: "efefefef-efef-4fef-8fef-efefefefefef",
+      revision: 2,
+      digest: `sha256:${"1".repeat(64)}` as const,
+    },
+    boundedContextCount: 3,
+    coreContextCount: 1,
+    languageTermCount: 11,
+    contractCount: 4,
+    unresolvedContractCount: 1,
+    relationshipCount: 3,
+    unresolvedRelationshipCount: 1,
+    unassignedArchitectureElementCount: 2,
+    unownedDataAssetCount: 1,
+    unmappedCrossContextRelationCount: 2,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    state: "attention-required" as const,
+    reasons: ["One or more cross-context contracts remain unresolved"],
+    assessedAt: "2026-07-26T11:00:00.000Z",
+    authorityBoundary: "bounded-context-model-assessment-reports-candidate-coverage-and-gaps-and-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "bounded-context-ownership-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    assessment,
+    model: {
+      id: assessment.model.recordId,
+      revision: assessment.model.revision,
+      digest: assessment.model.digest,
+      membershipDigest: `sha256:${"2".repeat(64)}` as const,
+      state: "candidate" as const,
+      boundedContextCount: 3,
+      contractCount: 4,
+      relationshipCount: 3,
+      updatedAt: "2026-07-26T10:59:00.000Z",
+    },
+    observedAt: assessment.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-boundary-language-contract-source-content-personal-data-locators-or-credentials" as const,
+    authorityBoundary: "bounded-context-model-projection-does-not-appoint-owners-approve-boundaries-accept-contracts-establish-readiness-or-authorize-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1228,6 +1290,7 @@ interface HarnessOptions {
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
   businessArchitectureBaselineProjection?: BusinessArchitectureBaselineProjection
   systemSolutionArchitectureProjection?: SystemSolutionArchitectureProjection
+  boundedContextModelProjection?: BoundedContextModelProjection
   commandResult?: unknown
 }
 
@@ -1356,6 +1419,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.systemSolutionArchitectureProjection ? {
       systemSolutionArchitecture: {
         project: async () => options.systemSolutionArchitectureProjection!,
+      },
+    } : {}),
+    ...(options.boundedContextModelProjection ? {
+      boundedContextModel: {
+        project: async () => options.boundedContextModelProjection!,
       },
     } : {}),
   }
@@ -1694,6 +1762,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /architecture narrative|source content|personal data|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Bounded Context and Ownership metadata on the native architecture page", async () => {
+    const projection = boundedContextModelProjection()
+    const { source } = harness({ boundedContextModelProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.[6]).toMatchObject({
+      id: "bounded-context-ownership",
+      rows: [{
+        id: projection.model?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.model?.membershipDigest,
+          counts: "3 contexts · 4 contracts · 3 relationships",
+          assessment: "attention-required",
+          gaps: "1 contract gaps · 1 relationship gaps · 2 unassigned elements · 1 unowned data assets · 2 unmapped relations · 1 stale bindings",
+          boundary: "Candidate boundaries and ownership traces only; no owner appointment, ownership acceptance, boundary approval, contract acceptance, readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /ubiquitous language|contract narrative|source content|personal data|customer@example\.com|api_key/iu,
     )
   })
 
