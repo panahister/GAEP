@@ -16,6 +16,7 @@ import {
   type EventIntegrationModelProjection,
   type FailureRecoveryModelProjection,
   type ArchitectureChallengeModelProjection,
+  type DecisionRegisterProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1183,6 +1184,60 @@ function architectureChallengeModelProjection(): ArchitectureChallengeModelProje
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function decisionRegisterProjection(): DecisionRegisterProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "decision-register-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    register: {
+      recordId: "e7e7e7e7-e7e7-47e7-87e7-e7e7e7e7e7e7",
+      revision: 2,
+      digest: `sha256:${"d".repeat(64)}` as const,
+    },
+    decisionCount: 7,
+    unresolvedDecisionCount: 2,
+    selectedPendingDecisionCount: 3,
+    deferredDecisionCount: 1,
+    unresolvedRequirementCount: 1,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 1,
+    state: "attention-required" as const,
+    reasons: ["One or more Decision Questions remain unresolved"],
+    assessedAt: "2026-07-26T17:00:00.000Z",
+    authorityBoundary: "decision-register-status-reports-candidate-coverage-and-gaps-and-does-not-establish-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "decision-register-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    register: {
+      id: status.register.recordId,
+      revision: status.register.revision,
+      digest: status.register.digest,
+      membershipDigest: `sha256:${"e".repeat(64)}` as const,
+      state: "candidate" as const,
+      decisionCount: 7,
+      updatedAt: "2026-07-26T16:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-decision-questions-options-recommendations-outcomes-rationale-evidence-subject-content-personal-data-secrets-or-credentials" as const,
+    authorityBoundary: "decision-register-projection-does-not-establish-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1750,6 +1805,7 @@ interface HarnessOptions {
   eventIntegrationModelProjection?: EventIntegrationModelProjection
   failureRecoveryModelProjection?: FailureRecoveryModelProjection
   architectureChallengeModelProjection?: ArchitectureChallengeModelProjection
+  decisionRegisterProjection?: DecisionRegisterProjection
   commandResult?: unknown
 }
 
@@ -1918,6 +1974,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.architectureChallengeModelProjection ? {
       architectureChallengeModel: {
         project: async () => options.architectureChallengeModelProjection!,
+      },
+    } : {}),
+    ...(options.decisionRegisterProjection ? {
+      decisionRegister: {
+        project: async () => options.decisionRegisterProjection!,
       },
     } : {}),
   }
@@ -2448,6 +2509,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private challenge content|private assumptions|private evidence|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Decision Register metadata on the native risks and decisions page", async () => {
+    const projection = decisionRegisterProjection()
+    const { source } = harness({ decisionRegisterProjection: projection })
+    const snapshot = await source.readSnapshot("risks-decisions")
+    expect(snapshot.page.kind === "risks-decisions" && snapshot.page.decisionRegisters).toMatchObject({
+      id: "decision-register",
+      rows: [{
+        id: projection.register?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.register?.membershipDigest,
+          counts: "7 decisions",
+          assessment: "attention-required",
+          gaps: "2 unresolved decisions · 3 selected pending decisions · 1 deferred decisions · 1 requirement gaps · 1 stale bindings",
+          boundary: "Candidate decision metadata only; no decision effectiveness, approval, risk acceptance, baseline promotion, operational readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private decision question|private options|private recommendations|private outcomes|private rationale|customer@example\.com|api_key/iu,
     )
   })
 

@@ -43,6 +43,7 @@ import type {
   EventIntegrationModelProjection,
   FailureRecoveryModelProjection,
   ArchitectureChallengeModelProjection,
+  DecisionRegisterProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -173,6 +174,9 @@ export interface CurrentStudioEngineReader {
   architectureChallengeModel?: {
     project(initiativeId: string): Promise<ArchitectureChallengeModelProjection>
   }
+  decisionRegister?: {
+    project(initiativeId: string): Promise<DecisionRegisterProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -227,6 +231,7 @@ interface ObservedStudioState {
   eventIntegrationModelProjections: Map<string, EventIntegrationModelProjection>
   failureRecoveryModelProjections: Map<string, FailureRecoveryModelProjection>
   architectureChallengeModelProjections: Map<string, ArchitectureChallengeModelProjection>
+  decisionRegisterProjections: Map<string, DecisionRegisterProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1231,6 +1236,54 @@ function architectureChallengeModelTable(state: ObservedStudioState): StudioTabl
       emptyState: emptySurface(
         "No governed Architecture Challenge candidate",
         "Create the candidate through the governed engine workflow. This view does not complete independent review, establish assurance, accept risk, approve architecture, establish operational readiness, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
+function decisionRegisterTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.decisionRegisterProjections.values()].flatMap((projection) => {
+    const record = projection.register
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.decisionCount} decisions`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.unresolvedDecisionCount} unresolved decisions · ${projection.status.selectedPendingDecisionCount} selected pending decisions · ${projection.status.deferredDecisionCount} deferred decisions · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate decision metadata only; no decision effectiveness, approval, risk acceptance, baseline promotion, operational readiness, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "decision-register",
+    title: "Governed Decision Register Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Decision Register Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Decision Register candidate",
+        "Create the candidate through the governed engine workflow. This view does not establish decision effectiveness, approval, risk acceptance, baseline promotion, operational readiness, or action authority.",
       ),
     } : {}),
   }
@@ -2287,6 +2340,7 @@ function risksPage(state: ObservedStudioState): RisksDecisionsPageSnapshot {
     risks,
     recommendations,
     decisions,
+    decisionRegisters: decisionRegisterTable(state),
   }
 }
 
@@ -3004,7 +3058,13 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       changes: capTable(page.changes),
       workItems: capTable(page.workItems),
     }
-    case "risks-decisions": return { ...page, risks: capTable(page.risks), recommendations: capTable(page.recommendations), decisions: capTable(page.decisions) }
+    case "risks-decisions": return {
+      ...page,
+      risks: capTable(page.risks),
+      recommendations: capTable(page.recommendations),
+      decisions: capTable(page.decisions),
+      decisionRegisters: capTable(page.decisionRegisters),
+    }
     case "trace": return { ...page, relationships: capTable(page.relationships), searchResults: capTable(page.searchResults) }
     case "agents-tools": return {
       ...page,
@@ -3728,6 +3788,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       eventIntegrationModelProjections: new Map(),
       failureRecoveryModelProjections: new Map(),
       architectureChallengeModelProjections: new Map(),
+      decisionRegisterProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -4519,6 +4580,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "architecture-challenge-model-unavailable",
           "Architecture Challenge metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "risks-decisions" && engine.decisionRegister) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.decisionRegister!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.decisionRegisterProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Decision Register projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `decision-register-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Decision Register metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "decision-register-unavailable",
+          "Decision Register metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

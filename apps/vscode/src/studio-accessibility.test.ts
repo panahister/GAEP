@@ -137,7 +137,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         workItems: table("work-items"),
       }
     case "risks-decisions":
-      return { ...baseFor(route), kind: "risks-decisions", risks: table("risks"), recommendations: table("recommendations"), decisions: table("decisions") }
+      return { ...baseFor(route), kind: "risks-decisions", risks: table("risks"), recommendations: table("recommendations"), decisions: table("decisions"), decisionRegisters: table("decision-registers") }
     case "trace":
       return {
         ...baseFor(route),
