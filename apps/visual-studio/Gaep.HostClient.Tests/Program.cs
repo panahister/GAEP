@@ -63,6 +63,7 @@ internal static class Program
     private static readonly Guid RiskRegisterId = Guid.Parse("58585858-5858-4858-8858-585858585858");
     private static readonly Guid EvidenceRegistryId = Guid.Parse("59595959-5959-4959-8959-595959595959");
     private static readonly Guid EndToEndTraceabilityId = Guid.Parse("60606060-6060-4060-8060-606060606060");
+    private static readonly Guid P0P4ReadinessGateId = Guid.Parse("61616161-6161-4161-8161-616161616161");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -181,6 +182,9 @@ internal static class Program
         var badTraceabilitySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-traceability-snapshot-binding");
         var badTraceabilitySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-traceability-snapshot-digest");
         var badTraceabilitySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-traceability-snapshot-private");
+        var badReadinessGateSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-readiness-gate-snapshot-binding");
+        var badReadinessGateSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-readiness-gate-snapshot-digest");
+        var badReadinessGateSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-readiness-gate-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -296,6 +300,9 @@ internal static class Program
         Directory.CreateDirectory(badTraceabilitySnapshotBindingRoot);
         Directory.CreateDirectory(badTraceabilitySnapshotDigestRoot);
         Directory.CreateDirectory(badTraceabilitySnapshotPrivateRoot);
+        Directory.CreateDirectory(badReadinessGateSnapshotBindingRoot);
+        Directory.CreateDirectory(badReadinessGateSnapshotDigestRoot);
+        Directory.CreateDirectory(badReadinessGateSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1440,6 +1447,46 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadEndToEndTraceabilityAsync(InitiativeId),
                 "End-to-End Traceability rejects a projection rebound to a substituted Product revision");
+        }
+
+        var readinessProjection = await client.ReadP0P4ReadinessGateAsync(InitiativeId);
+        Check(readinessProjection.ProductId == product.Id &&
+              readinessProjection.ProductRevision == product.Revision &&
+              readinessProjection.ProductDigest == product.Digest &&
+              readinessProjection.InitiativeId == resolved.Id &&
+              readinessProjection.InitiativeRevision == resolved.Revision &&
+              readinessProjection.InitiativeDigest == resolved.Digest &&
+              readinessProjection.Result == "failed" &&
+              readinessProjection.Gate?.OutputCount == 25 &&
+              readinessProjection.Gate?.EvaluationDefinitionDigest == $"sha256:{new string('e', 64)}" &&
+              readinessProjection.ApplicableOutputCount == 20 &&
+              readinessProjection.SatisfiedOutputCount == 17 &&
+              readinessProjection.UnresolvedDecisionCount == 2 &&
+              readinessProjection.AdverseEvidenceCount == 1,
+            "Typed P0-P4 Readiness Gate preserves exact Product, Initiative, evaluation, and candidate metadata");
+        var readinessGateOutput = await initiativeController.ReadP0P4ReadinessGateAsync(InitiativeId);
+        Check(readinessGateOutput.Contains("GAEP governed P0-P4 Readiness Gate candidate", StringComparison.Ordinal) &&
+              readinessGateOutput.Contains("17/20 applicable satisfied", StringComparison.Ordinal) &&
+              readinessGateOutput.Contains("a-passing-gate-is-an-evaluation-result-not-permission", StringComparison.Ordinal) &&
+              readinessGateOutput.Contains("does not grant approval", StringComparison.Ordinal) &&
+              !readinessGateOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !readinessGateOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !readinessGateOutput.Contains("waiverRationale", StringComparison.Ordinal),
+            "P0-P4 Readiness Gate workflow renders privacy-safe metadata with explicit evaluation and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badReadinessGateSnapshotDigestRoot, badReadinessGateSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadP0P4ReadinessGateAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "P0-P4 Readiness Gate rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badReadinessGateSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadP0P4ReadinessGateAsync(InitiativeId),
+                "P0-P4 Readiness Gate rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2622,6 +2669,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-traceability-snapshot-digest";
         var badTraceabilitySnapshotPrivate =
             Path.GetFileName(workspace) == "bad-traceability-snapshot-private";
+        var badReadinessGateSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-readiness-gate-snapshot-binding";
+        var badReadinessGateSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-readiness-gate-snapshot-digest";
+        var badReadinessGateSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-readiness-gate-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2960,6 +3013,17 @@ internal static class Program
                         badTraceabilitySnapshotBinding,
                         badTraceabilitySnapshotDigest,
                         badTraceabilitySnapshotPrivate);
+                    break;
+                case "readiness.gates.snapshot":
+                    await HandleP0P4ReadinessGateAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badReadinessGateSnapshotBinding,
+                        badReadinessGateSnapshotDigest,
+                        badReadinessGateSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -5156,6 +5220,110 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) traceability["nodeCount"] = 45;
         if (includePrivateField) result["linkRationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleP0P4ReadinessGateAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID P0-P4 READINESS GATE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-27T00:00:00.000Z";
+        var gateDigest = $"sha256:{new string('c', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var gate = new Dictionary<string, object?>
+        {
+            ["id"] = P0P4ReadinessGateId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = gateDigest,
+            ["membershipDigest"] = $"sha256:{new string('d', 64)}",
+            ["state"] = "candidate",
+            ["evaluationDefinitionDigest"] = $"sha256:{new string('e', 64)}",
+            ["outputCount"] = 25,
+            ["waiverCount"] = 1,
+            ["unresolvedDecisionCount"] = 2,
+            ["conditionCount"] = 3,
+            ["updatedAt"] = "2026-07-26T23:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "p0-p4-readiness-gate-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "p0-p4-readiness-gate-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["gate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = P0P4ReadinessGateId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = gateDigest,
+                },
+                ["outputCount"] = 25,
+                ["applicableOutputCount"] = 20,
+                ["notApplicableOutputCount"] = 4,
+                ["unresolvedApplicabilityCount"] = 1,
+                ["satisfiedOutputCount"] = 17,
+                ["conditionalOutputCount"] = 1,
+                ["incompleteOutputCount"] = 1,
+                ["failedOutputCount"] = 1,
+                ["blockedOutputCount"] = 0,
+                ["staleOrUnknownOutputCount"] = 1,
+                ["pendingOrInvalidWaiverCount"] = 1,
+                ["unresolvedDecisionCount"] = 2,
+                ["unmetConditionCount"] = 1,
+                ["unresolvedRequirementCount"] = 2,
+                ["adverseEvidenceCount"] = 1,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["inconsistencyCount"] = 0,
+                ["unresolvedQuestionCount"] = 1,
+                ["result"] = "failed",
+                ["reasons"] = new[] { "One or more applicable outputs have adverse evidence" },
+                ["assessedAt"] = assessedAt,
+                ["gateBoundary"] = "a-passing-gate-is-an-evaluation-result-not-permission",
+                ["authorityBoundary"] =
+                    "p0-p4-readiness-gate-status-is-an-evaluation-result-and-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority",
+            },
+            ["gate"] = gate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-results-and-digests-only-not-output-content-criteria-findings-waiver-rationale-decision-content-evidence-content-source-content-personal-data-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "p0-p4-readiness-gate-projection-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) gate["outputCount"] = 24;
+        if (includePrivateField) result["waiverRationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

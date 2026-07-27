@@ -1286,6 +1286,63 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadP0P4ReadinessGateAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadP0P4ReadinessGateAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while the P0-P4 Readiness Gate was read. Refresh the exact records.");
+        }
+        return RenderP0P4ReadinessGate(projection);
+    }
+
+    public static string RenderP0P4ReadinessGate(P0P4ReadinessGateProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed P0-P4 Readiness Gate candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Evaluation result: {projection.Result}")
+            .AppendLine(
+                $"Outputs: {projection.SatisfiedOutputCount}/{projection.ApplicableOutputCount} applicable satisfied · " +
+                $"{projection.NotApplicableOutputCount} candidate not applicable · " +
+                $"{projection.UnresolvedApplicabilityCount} unresolved applicability")
+            .AppendLine(
+                $"Candidate gaps: {projection.BlockedOutputCount} blocked · {projection.FailedOutputCount} failed · " +
+                $"{projection.IncompleteOutputCount} incomplete · {projection.ConditionalOutputCount} conditional · " +
+                $"{projection.StaleOrUnknownOutputCount} stale or unknown · {projection.PendingOrInvalidWaiverCount} waiver gaps · " +
+                $"{projection.UnresolvedDecisionCount} open decisions · {projection.UnmetConditionCount} unmet conditions · " +
+                $"{projection.UnresolvedRequirementCount} requirements · {projection.AdverseEvidenceCount} adverse evidence · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Gate is { } gate)
+        {
+            output.AppendLine($"P0-P4 Readiness Gate candidate: {gate.Id:D}@{gate.Revision} · candidate · {gate.Digest}")
+                .AppendLine($"Membership digest: {gate.MembershipDigest}")
+                .AppendLine($"Evaluation definition digest: {gate.EvaluationDefinitionDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {gate.OutputCount} outputs · {gate.WaiverCount} waivers · " +
+                    $"{gate.UnresolvedDecisionCount} open decisions · {gate.ConditionCount} conditions");
+        }
+        else output.AppendLine("P0-P4 Readiness Gate candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Gate boundary: {projection.GateBoundary}")
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: a readiness result does not grant approval, accept a waiver, authorize phase entry or " +
+                "implementation, promote a baseline, establish Product readiness, or authorize action.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

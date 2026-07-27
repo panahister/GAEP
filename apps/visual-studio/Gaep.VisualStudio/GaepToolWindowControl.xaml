@@ -101,6 +101,10 @@
                 Command="{Binding LoadEndToEndTraceabilityCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate node, relationship, link, transformation, and gap counts only; absence does not prove no impact, and presence does not establish relationship truth, completeness, approval, baseline promotion, readiness, or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadP0P4ReadinessGateButton" Content="Inspect governed P0-P4 Readiness Gate"
+                Command="{Binding LoadP0P4ReadinessGateCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows a bounded candidate evaluation result and gap counts only; a passing gate is not permission and does not grant approval, accept a waiver, authorize phase entry or implementation, establish readiness, or authorize action."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />
