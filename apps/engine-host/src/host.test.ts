@@ -2333,6 +2333,66 @@ describe("engine host protocol", () => {
     expect(JSON.stringify(result)).not.toContain(product.name)
     expect(JSON.stringify(result)).not.toContain(change.title)
 
+    const initiative = await host.engine.readInitiative(initiativeId)
+    const phase1Params = {
+      ...params,
+      expectedInitiativeId: initiative.id,
+      expectedInitiativeRevision: initiative.revision ?? 1,
+      expectedInitiativeDigest: canonicalDigest(initiative),
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 10,
+      protocolVersion: 1,
+      method: "dashboard.phase1ChangeImpact",
+      params: phase1Params,
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    const phase1Result = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 11,
+      protocolVersion: 2,
+      method: "dashboard.phase1ChangeImpact",
+      params: phase1Params,
+    }) as Record<string, unknown>
+    expect(phase1Result).toMatchObject({
+      kind: "phase-1-change-impact-dashboard",
+      initiative: { recordId: initiative.id, revision: initiative.revision ?? 1 },
+      change: { recordId: change.id, revision: change.revision },
+      outputs: expect.arrayContaining([
+        expect.objectContaining({
+          outputKind: "architecture-challenge-model",
+          impact: expect.objectContaining({ state: "not-established", revalidationState: "not-established" }),
+        }),
+      ]),
+      coverage: {
+        state: "bounded-not-complete",
+        outputCount: 25,
+        applicableOutputCount: 0,
+        currentTraceObservedOutputCount: 0,
+        attentionRequiredOutputCount: 0,
+        impactNotEstablishedOutputCount: 25,
+        revalidationNotEstablishedOutputCount: 25,
+        basis: "exact-current-readiness-subjects-matched-to-bounded-governed-change-trace-results",
+        coverageBoundary: "trace-presence-proves-only-the-recorded-link-and-trace-absence-does-not-prove-no-impact",
+      },
+      governance: {
+        changeApproval: "not-established",
+        riskAcceptanceAuthority: "not-established",
+        revalidationAuthority: "not-established",
+        productOwnerAcceptance: "not-established",
+        effectAuthority: "not-established",
+      },
+    })
+    expect(JSON.stringify(phase1Result)).not.toContain(workspace)
+    expect(JSON.stringify(phase1Result)).not.toContain(change.title)
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 12,
+      protocolVersion: 2,
+      method: "dashboard.phase1ChangeImpact",
+      params: { ...phase1Params, impactComplete: true, approved: true },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+
     const verifyAudit = vi.spyOn(host.engine.repository, "verifyAudit").mockResolvedValueOnce({
       valid: false,
       events: 0,

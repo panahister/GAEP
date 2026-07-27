@@ -1,8 +1,10 @@
 import {
   phase1SummaryDashboardSchema,
+  phase1ChangeImpactDashboardSchema,
   type AgentModelDashboard,
   type ChangeImpactDashboard,
   type Phase1SummaryDashboard,
+  type Phase1ChangeImpactDashboard,
   type PhaseDashboardFramework,
 } from "@gaep/contracts"
 
@@ -423,6 +425,7 @@ export interface StudioSnapshot {
   surface: StudioSurfaceState
   dashboard?: PhaseDashboardFramework
   phase1Summary?: Phase1SummaryDashboard
+  phase1ChangeImpact?: Phase1ChangeImpactDashboard
   changeImpact?: ChangeImpactDashboard
   agentModel?: AgentModelDashboard
   page: StudioPageSnapshot
@@ -642,6 +645,13 @@ function isPhaseDashboardFramework(value: unknown): value is PhaseDashboardFrame
 
 function isPhase1SummaryDashboard(value: unknown): value is Phase1SummaryDashboard {
   const parsed = phase1SummaryDashboardSchema.safeParse(value)
+  if (!parsed.success) return false
+  const { snapshotDigest, ...content } = parsed.data
+  return snapshotDigest === canonicalStudioDigest(content)
+}
+
+function isPhase1ChangeImpactDashboard(value: unknown): value is Phase1ChangeImpactDashboard {
+  const parsed = phase1ChangeImpactDashboardSchema.safeParse(value)
   if (!parsed.success) return false
   const { snapshotDigest, ...content } = parsed.data
   return snapshotDigest === canonicalStudioDigest(content)
@@ -1422,7 +1432,7 @@ function routeMatchesPage(route: StudioRoute, page: Record<string, unknown>): bo
 
 export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
   if (!isRecord(value) || !hasOnlyKeys(value, [
-    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "phase1Summary", "changeImpact", "agentModel", "page", "inspector", "footer",
+    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "phase1Summary", "phase1ChangeImpact", "changeImpact", "agentModel", "page", "inspector", "footer",
   ])) return false
   if (value.protocolVersion !== studioProtocolVersion || !isOpaqueContextGeneration(value.contextGeneration) ||
     !isNonNegativeInteger(value.snapshotRevision) || !isStudioRoute(value.route)) {
@@ -1436,6 +1446,7 @@ export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
   if (!isStudioSurfaceState(value.surface)) return false
   if (value.dashboard !== undefined && !isPhaseDashboardFramework(value.dashboard)) return false
   if (value.phase1Summary !== undefined && !isPhase1SummaryDashboard(value.phase1Summary)) return false
+  if (value.phase1ChangeImpact !== undefined && (value.route !== "delivery" || !isPhase1ChangeImpactDashboard(value.phase1ChangeImpact))) return false
   if (value.changeImpact !== undefined && (value.route !== "delivery" || !isChangeImpactDashboard(value.changeImpact))) return false
   if (value.agentModel !== undefined && (value.route !== "agents-tools" || !isAgentModelDashboard(value.agentModel))) return false
   if (!Array.isArray(value.navigation) || value.navigation.length !== studioRoutes.length) return false

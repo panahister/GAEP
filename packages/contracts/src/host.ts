@@ -16,6 +16,7 @@ import {
   phaseDashboardCompositionRequestSchema,
 } from "./dashboard.js"
 import { phase1SummaryDashboardRequestSchema } from "./phase1-summary-dashboard.js"
+import { phase1ChangeImpactDashboardRequestSchema } from "./phase1-change-impact-dashboard.js"
 import { effectDescriptorSchema, toolPermissionSchema } from "./execution.js"
 import {
   initiativeApplicabilityMatrixInputSchema,
@@ -500,6 +501,7 @@ export const hostP5HandoffPackageReviseParamsSchema = z.object({
 
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
+export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
 export const hostAgentModelDashboardParamsSchema = agentModelDashboardRequestSchema
@@ -532,6 +534,7 @@ export const hostMethodSchema = z.enum([
   "managed.review.discard",
   "dashboard.framework",
   "dashboard.phase1Summary",
+  "dashboard.phase1ChangeImpact",
   "dashboard.changeImpact.changes",
   "dashboard.changeImpact",
   "dashboard.agentModel",
@@ -706,6 +709,7 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("managed.review.discard", hostManagedReviewDiscardParamsSchema),
   requestVariant("dashboard.framework", hostDashboardFrameworkParamsSchema),
   requestVariant("dashboard.phase1Summary", hostPhase1SummaryDashboardParamsSchema),
+  requestVariant("dashboard.phase1ChangeImpact", hostPhase1ChangeImpactDashboardParamsSchema),
   requestVariant("dashboard.changeImpact.changes", hostChangeImpactChangeCatalogParamsSchema),
   requestVariant("dashboard.changeImpact", hostChangeImpactDashboardParamsSchema),
   requestVariant("dashboard.agentModel", hostAgentModelDashboardParamsSchema),

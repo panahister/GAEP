@@ -44,6 +44,7 @@
     "onCommand:gaepKiro.runs.stagedReview",
     "onCommand:gaepKiro.dashboard.phase",
     "onCommand:gaepKiro.dashboard.phase1Summary",
+    "onCommand:gaepKiro.dashboard.phase1ChangeImpact",
     "onCommand:gaepKiro.dashboard.changeImpact",
     "onCommand:gaepKiro.dashboard.agentModel",
     "onCommand:gaepKiro.dashboard.accessibleTables",
@@ -125,6 +126,10 @@
       {
         "command": "gaepKiro.dashboard.phase1Summary",
         "title": "GAEP for Kiro: Show Phase 1 Summary and Readiness"
+      },
+      {
+        "command": "gaepKiro.dashboard.phase1ChangeImpact",
+        "title": "GAEP for Kiro: Show Phase 1 Change and Impact"
       },
       {
         "command": "gaepKiro.dashboard.changeImpact",

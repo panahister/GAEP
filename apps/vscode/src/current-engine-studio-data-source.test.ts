@@ -1558,6 +1558,77 @@ function p5HandoffPackageProjection(): P5HandoffPackageProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
+  const projection = p0P4ReadinessGateProjection()
+  const body = {
+    ...projection,
+    status: {
+      ...projection.status,
+      gate: undefined,
+      outputCount: 0,
+      applicableOutputCount: 0,
+      notApplicableOutputCount: 0,
+      unresolvedApplicabilityCount: 0,
+      satisfiedOutputCount: 0,
+      conditionalOutputCount: 0,
+      incompleteOutputCount: 0,
+      failedOutputCount: 0,
+      blockedOutputCount: 0,
+      staleOrUnknownOutputCount: 0,
+      pendingOrInvalidWaiverCount: 0,
+      unresolvedDecisionCount: 0,
+      unmetConditionCount: 0,
+      unresolvedRequirementCount: 0,
+      adverseEvidenceCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      result: "not-assessed" as const,
+      reasons: ["No current readiness gate candidate is available"],
+    },
+    gate: undefined,
+    snapshotDigest: undefined,
+  }
+  const { snapshotDigest: _snapshotDigest, gate: _gate, ...content } = body
+  const { gate: _statusGate, ...status } = content.status
+  const canonical = { ...content, status }
+  return { ...canonical, snapshotDigest: canonicalDigest(canonical) }
+}
+
+function p5HandoffPackageProjectionWithoutCandidate(): P5HandoffPackageProjection {
+  const projection = p5HandoffPackageProjection()
+  const body = {
+    ...projection,
+    status: {
+      ...projection.status,
+      handoff: undefined,
+      itemCount: 0,
+      includedItemCount: 0,
+      referenceOnlyItemCount: 0,
+      omittedNotApplicableItemCount: 0,
+      unresolvedItemCount: 0,
+      staleOrUnknownItemCount: 0,
+      lossyTransformationCount: 0,
+      unresolvedRequirementCount: 0,
+      conflictCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      readinessResult: "not-assessed" as const,
+      transferState: "draft" as const,
+      state: "attention-required" as const,
+      reasons: ["No current P5 Handoff Package candidate is available"],
+    },
+    handoff: undefined,
+    snapshotDigest: undefined,
+  }
+  const { snapshotDigest: _snapshotDigest, handoff: _handoff, ...content } = body
+  const { handoff: _statusHandoff, ...status } = content.status
+  const canonical = { ...content, status }
+  return { ...canonical, snapshotDigest: canonicalDigest(canonical) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -2325,11 +2396,13 @@ function harness(options: HarnessOptions = {}) {
     ...(options.p0P4ReadinessGateProjection ? {
       p0P4ReadinessGate: {
         project: async () => options.p0P4ReadinessGateProjection!,
+        readCurrent: async () => undefined,
       },
     } : {}),
     ...(options.p5HandoffPackageProjection ? {
       p5HandoffPackage: {
         project: async () => options.p5HandoffPackageProjection!,
+        readCurrent: async () => undefined,
       },
     } : {}),
   }
@@ -3185,7 +3258,12 @@ describe("current-engine Product Studio data source", () => {
       listDecisions: async () => [decision],
       listRisks: async () => [risk],
     } as unknown as ProductStudioService
-    const { source } = harness({ productStudio: service })
+    const { source } = harness({
+      productStudio: service,
+      deliveryPhase: "phase-1b-product",
+      p0P4ReadinessGateProjection: p0P4ReadinessGateProjectionWithoutCandidate(),
+      p5HandoffPackageProjection: p5HandoffPackageProjectionWithoutCandidate(),
+    })
     const delivery = await source.readSnapshot("delivery")
     if (delivery.page.kind !== "delivery") throw new Error("Expected Delivery page")
     const action = delivery.page.changes.rows[0]?.actions.find((entry) => entry.label === "Show impact")?.action
@@ -3213,6 +3291,31 @@ describe("current-engine Product Studio data source", () => {
     expect(snapshotDigest).toBe(canonicalDigest(content))
     expect(JSON.stringify(dashboard)).not.toContain(change.title)
     expect(JSON.stringify(dashboard)).not.toContain(risk.title)
+    expect(refreshed.phase1ChangeImpact).toMatchObject({
+      kind: "phase-1-change-impact-dashboard",
+      initiative: { recordId: initiative.id, revision: initiative.revision },
+      change: { recordId: change.id, revision: change.revision },
+      coverage: {
+        state: "bounded-not-complete",
+        outputCount: 25,
+        currentTraceObservedOutputCount: 0,
+        attentionRequiredOutputCount: 0,
+        impactNotEstablishedOutputCount: 25,
+        revalidationNotEstablishedOutputCount: 25,
+      },
+      owners: { state: "unbound", boundOutputOwnerCount: 0 },
+    })
+    const phase1ChangeImpact = refreshed.phase1ChangeImpact
+    if (!phase1ChangeImpact) throw new Error("Expected exact Phase 1 Change/Impact dashboard")
+    const { snapshotDigest: phase1Digest, ...phase1Content } = phase1ChangeImpact
+    expect(phase1Digest).toBe(canonicalDigest(phase1Content))
+    expect(phase1ChangeImpact.outputs).toHaveLength(25)
+    expect(phase1ChangeImpact.outputs.every((output) => output.impact.revalidationState === "not-established")).toBe(true)
+    expect(JSON.stringify(phase1ChangeImpact)).not.toContain(change.title)
+    const tamperedPhase1 = structuredClone(refreshed)
+    if (!tamperedPhase1.phase1ChangeImpact) throw new Error("Expected Phase 1 impact dashboard to tamper")
+    tamperedPhase1.phase1ChangeImpact.coverage.impactNotEstablishedOutputCount = 24
+    expect(isStudioSnapshot(tamperedPhase1)).toBe(false)
 
     const hostile = { ...action, expectedChangeDigest: `sha256:${"0".repeat(64)}` }
     expect(await source.execute(hostile, {

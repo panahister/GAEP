@@ -1602,6 +1602,30 @@ internal static class Program
               changeCatalog.Items.Single().RecordId == ChangeId &&
               changeCatalog.Items.Single().EffectEnvelope.SequenceEqual(["reversible-change"]),
             "Typed Change catalog preserves one exact current metadata-only Change binding");
+        var phase1ChangeImpact = await client.ReadPhase1ChangeImpactAsync(
+            product,
+            phase1Initiative,
+            changeCatalog.Items.Single());
+        Check(phase1ChangeImpact.Outputs.Count == 25 &&
+              phase1ChangeImpact.CurrentTraceObservedOutputCount == 0 &&
+              phase1ChangeImpact.AttentionRequiredOutputCount == 0 &&
+              phase1ChangeImpact.ImpactNotEstablishedOutputCount == 25 &&
+              phase1ChangeImpact.Outputs.All(output => output.RevalidationState == "not-established") &&
+              phase1ChangeImpact.FreshnessState == "current",
+            "Typed Phase 1 Change/Impact dashboard preserves the complete conservative P0-P4 output catalog");
+        var phase1ChangeOutput = await new ProductWorkflowController(client).ReadPhase1ChangeImpactAsync(
+            InitiativeId,
+            new ChangeImpactContext(product, changeCatalog),
+            changeCatalog.Items.Single());
+        Check(phase1ChangeOutput.Contains("GAEP exact Phase 1 Change and impact dashboard", StringComparison.Ordinal) &&
+              phase1ChangeOutput.Contains("25 impact not established", StringComparison.Ordinal) &&
+              phase1ChangeOutput.Contains("Owners: unbound", StringComparison.Ordinal) &&
+              phase1ChangeOutput.Contains("absence does not prove no impact", StringComparison.Ordinal) &&
+              !phase1ChangeOutput.Contains("Founder Product", StringComparison.Ordinal) &&
+              !phase1ChangeOutput.Contains("Private Change title", StringComparison.Ordinal) &&
+              !phase1ChangeOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !phase1ChangeOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Phase 1 Change/Impact workflow renders bounded output coverage and explicit no-authority state");
         var changeDashboard = await client.ReadChangeImpactAsync(product, changeCatalog.Items.Single());
         Check(changeDashboard.Change.RecordId == ChangeId && changeDashboard.Freshness.State == "current" &&
               changeDashboard.EvidenceCues.Freshness == "current" &&
@@ -3114,6 +3138,14 @@ internal static class Program
                     break;
                 case "dashboard.phase1Summary":
                     await HandlePhase1SummaryAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability);
+                    break;
+                case "dashboard.phase1ChangeImpact":
+                    await HandlePhase1ChangeImpactAsync(
                         id,
                         parameters,
                         initiativeRevision,
@@ -6822,6 +6854,165 @@ internal static class Program
         };
         RefreshCanonicalDigest(summary, "snapshotDigest");
         await WriteResultAsync(id, summary);
+    }
+
+    private static async Task HandlePhase1ChangeImpactAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability)
+    {
+        var productDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var initiativeDigest = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord));
+        var change = ChangeReference();
+        if (!HasOnlyProperties(
+                parameters,
+                "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+                "expectedInitiativeRevision", "expectedInitiativeDigest", "expectedChangeId", "expectedChangeRevision",
+                "expectedChangeDigest") ||
+            parameters.GetProperty("expectedProductId").GetString() != ProductId.ToString("D") ||
+            parameters.GetProperty("expectedProductRevision").GetInt64() != 7 ||
+            parameters.GetProperty("expectedProductDigest").GetString() != productDigest ||
+            parameters.GetProperty("expectedInitiativeId").GetString() != InitiativeId.ToString("D") ||
+            parameters.GetProperty("expectedInitiativeRevision").GetInt64() != initiativeRevision ||
+            parameters.GetProperty("expectedInitiativeDigest").GetString() != initiativeDigest ||
+            parameters.GetProperty("expectedChangeId").GetString() != ChangeId.ToString("D") ||
+            parameters.GetProperty("expectedChangeRevision").GetInt64() != 3 ||
+            parameters.GetProperty("expectedChangeDigest").GetString() != (string)change["digest"]!)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PHASE1 CHANGE IMPACT REQUEST");
+            return;
+        }
+        var outputKinds = new (string OutputKind, string RecordKind)[]
+        {
+            ("architecture-challenge-model", "architecture-challenge-model"),
+            ("authorization-model", "authorization-model"),
+            ("bounded-context-ownership", "bounded-context-model"),
+            ("business-architecture-baseline", "business-architecture-baseline"),
+            ("business-capability-map", "business-capability-map"),
+            ("business-rule-catalog", "business-rule-catalog"),
+            ("business-understanding", "business-understanding"),
+            ("candidate-source-baseline", "source-baseline"),
+            ("data-model", "data-model"),
+            ("decision-register", "decision-register"),
+            ("end-to-end-traceability", "end-to-end-traceability-candidate"),
+            ("event-integration-model", "event-integration-model"),
+            ("evidence-registry", "evidence-registry"),
+            ("failure-recovery-model", "failure-recovery-model"),
+            ("initiative-entry", "initiative"),
+            ("operating-model", "operating-model"),
+            ("outcome-success-model", "outcome-model"),
+            ("process-model", "process-model"),
+            ("risk-register", "risk-register"),
+            ("security-privacy-threat-assessment", "security-privacy-threat-assessment"),
+            ("source-intake", "source-record"),
+            ("source-provenance", "source-provenance"),
+            ("stakeholder-role-model", "stakeholder-model"),
+            ("system-solution-architecture", "system-solution-architecture"),
+            ("value-stream-model", "value-stream-model"),
+        };
+        var outputs = outputKinds.Select(item => new Dictionary<string, object?>
+        {
+            ["outputKind"] = item.OutputKind,
+            ["recordKind"] = item.RecordKind,
+            ["readiness"] = new Dictionary<string, object?>
+            {
+                ["applicability"] = "not-assessed", ["evaluationState"] = "not-assessed",
+                ["freshness"] = "unknown", ["subjectCount"] = 0,
+            },
+            ["impact"] = new Dictionary<string, object?>
+            {
+                ["state"] = "not-established", ["exactMatchedSubjectCount"] = 0,
+                ["staleSubjectBindingCount"] = 0, ["traceReferenceCount"] = 0,
+                ["validTraceCount"] = 0, ["unresolvedTraceCount"] = 0, ["staleTraceCount"] = 0,
+                ["invalidTraceCount"] = 0, ["upstreamTraceCount"] = 0, ["downstreamTraceCount"] = 0,
+                ["revalidationState"] = "not-established",
+                ["coverageBoundary"] = "absence-of-an-exact-trace-match-does-not-prove-absence-of-impact",
+            },
+            ["handoff"] = new Dictionary<string, object?>
+            {
+                ["disposition"] = "not-established", ["freshness"] = "unknown", ["subjectCount"] = 0,
+            },
+        }).ToArray();
+        var dashboard = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "phase-1-change-impact-dashboard",
+            ["phase"] = new Dictionary<string, object?>
+            {
+                ["id"] = "phase-1b-product", ["label"] = "Phase 1B — Product P0–P4",
+            },
+            ["product"] = ExactReference("product", ProductId, 7, productDigest),
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["recordType"] = "initiative", ["recordId"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision, ["digest"] = initiativeDigest, ["state"] = "active",
+            },
+            ["change"] = change,
+            ["sources"] = new Dictionary<string, object?>
+            {
+                ["changeImpactSnapshotDigest"] = $"sha256:{new string('7', 64)}",
+                ["readinessSnapshotDigest"] = $"sha256:{new string('8', 64)}",
+                ["handoffSnapshotDigest"] = $"sha256:{new string('9', 64)}",
+            },
+            ["changeScope"] = new Dictionary<string, object?>
+            {
+                ["workItemCount"] = 1, ["changedArtifactCount"] = 1, ["effectTargetCount"] = 1,
+                ["affectedUnitCount"] = 1, ["decisionCount"] = 1, ["riskCount"] = 1,
+                ["unresolvedTraceLinkCount"] = 0, ["staleTraceLinkCount"] = 0, ["invalidTraceLinkCount"] = 0,
+                ["traceAnalysisTruncated"] = false,
+            },
+            ["outputs"] = outputs,
+            ["coverage"] = new Dictionary<string, object?>
+            {
+                ["state"] = "bounded-not-complete", ["outputCount"] = 25, ["applicableOutputCount"] = 0,
+                ["currentTraceObservedOutputCount"] = 0, ["attentionRequiredOutputCount"] = 0,
+                ["impactNotEstablishedOutputCount"] = 25, ["revalidationNotEstablishedOutputCount"] = 25,
+                ["basis"] = "exact-current-readiness-subjects-matched-to-bounded-governed-change-trace-results",
+                ["coverageBoundary"] = "trace-presence-proves-only-the-recorded-link-and-trace-absence-does-not-prove-no-impact",
+            },
+            ["owners"] = new Dictionary<string, object?>
+            {
+                ["state"] = "unbound", ["boundOutputOwnerCount"] = 0,
+                ["basis"] = "no-governed-phase-output-owner-assignment-is-bound",
+            },
+            ["governance"] = new Dictionary<string, object?>
+            {
+                ["changeApproval"] = "not-established", ["riskAcceptanceAuthority"] = "not-established",
+                ["revalidationAuthority"] = "not-established", ["productOwnerAcceptance"] = "not-established",
+                ["effectAuthority"] = "not-established",
+            },
+            ["freshness"] = new Dictionary<string, object?>
+            {
+                ["state"] = "current", ["changeImpactEvaluatedAt"] = "2026-07-27T12:04:00.000Z",
+                ["readinessObservedAt"] = "2026-07-27T12:04:01.000Z",
+                ["handoffObservedAt"] = "2026-07-27T12:04:02.000Z", ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 0, ["traceAttentionLinkCount"] = 0,
+                ["traceAnalysisTruncated"] = false,
+                ["basis"] = "current-governed-snapshots-and-declared-trace-readiness-handoff-freshness",
+            },
+            ["evidenceCues"] = new Dictionary<string, object?>
+            {
+                ["freshness"] = "current",
+                ["confidence"] = new Dictionary<string, object?>
+                {
+                    ["state"] = "not-assessed",
+                    ["basis"] = "bounded-trace-coverage-does-not-establish-impact-confidence-or-completeness",
+                },
+            },
+            ["observedAt"] = "2026-07-27T12:04:03.000Z",
+            ["sourceBoundary"] = "current-governed-product-initiative-change-readiness-handoff-and-bounded-trace-projections-only",
+            ["privacyBoundary"] = "dashboard-exposes-identities-digests-counts-statuses-effects-and-times-not-change-text-output-content-findings-evidence-source-content-personal-data-secrets-or-credentials",
+            ["limitations"] = new[]
+            {
+                "Outputs without exact trace matches remain impact not established rather than unaffected.",
+            },
+            ["authorityBoundary"] = "phase-1-change-impact-dashboard-is-read-only-observed-candidate-evidence-not-impact-completeness-revalidation-approval-risk-acceptance-readiness-effect-release-or-action-authority",
+        };
+        RefreshCanonicalDigest(dashboard, "snapshotDigest");
+        await WriteResultAsync(id, dashboard);
     }
 
     private static Dictionary<string, object?> PhaseDashboardPanel(

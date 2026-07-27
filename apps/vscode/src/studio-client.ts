@@ -1,6 +1,12 @@
 /// <reference lib="dom" />
 
-import type { AgentModelDashboard, ChangeImpactDashboard, Phase1SummaryDashboard, PhaseDashboardFramework } from "@gaep/contracts"
+import type {
+  AgentModelDashboard,
+  ChangeImpactDashboard,
+  Phase1ChangeImpactDashboard,
+  Phase1SummaryDashboard,
+  PhaseDashboardFramework,
+} from "@gaep/contracts"
 
 import {
   isStudioAction,
@@ -211,6 +217,7 @@ class StudioShell {
       main.append(this.renderPage(snapshot))
       if (snapshot.dashboard) main.append(this.renderPhaseDashboard(snapshot.dashboard))
       if (snapshot.phase1Summary) main.append(this.renderPhase1Summary(snapshot.phase1Summary))
+      if (snapshot.phase1ChangeImpact) main.append(this.renderPhase1ChangeImpact(snapshot.phase1ChangeImpact))
       if (snapshot.changeImpact) main.append(this.renderChangeImpactDashboard(snapshot.changeImpact))
       if (snapshot.agentModel) main.append(this.renderAgentModelDashboard(snapshot.agentModel))
     }
@@ -1113,6 +1120,64 @@ class StudioShell {
         "p",
         "prose muted",
         "This read-only candidate summary grants no readiness, approval, acceptance, phase-entry, release, Run, Tool, write, or action authority.",
+      ),
+    )
+    return section
+  }
+
+  private renderPhase1ChangeImpact(dashboard: Phase1ChangeImpactDashboard): HTMLElement {
+    const section = element("section", "section phase1-change-impact-dashboard")
+    section.setAttribute("aria-label", "Phase 1 Change and impact dashboard")
+    section.append(
+      element("h3", undefined, "Phase 1 Change and impact"),
+      element(
+        "p",
+        "prose",
+        `${dashboard.coverage.currentTraceObservedOutputCount} current trace-observed outputs, ${dashboard.coverage.attentionRequiredOutputCount} requiring attention, and ${dashboard.coverage.impactNotEstablishedOutputCount} with impact not established.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        `Exact Change revision ${dashboard.change.revision}; Initiative revision ${dashboard.initiative.revision}; freshness ${dashboard.freshness.state}. Trace absence never means unaffected.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        "Output owners, revalidation, Change approval, risk-acceptance authority, Product Owner acceptance, and effect authority are not established.",
+      ),
+    )
+    section.append(this.renderTable({
+      id: "phase1-change-impact-outputs",
+      title: "P0–P4 governed output impact coverage",
+      columns: [
+        { key: "output", label: "Governed output" },
+        { key: "readiness", label: "Readiness" },
+        { key: "impact", label: "Observed impact" },
+        { key: "matches", label: "Exact subjects / traces" },
+        { key: "handoff", label: "P5 handoff" },
+        { key: "revalidation", label: "Revalidation" },
+      ],
+      rows: dashboard.outputs.map((output) => ({
+        id: `phase1-impact-${output.outputKind}`,
+        cells: {
+          output: output.outputKind,
+          readiness: `${output.readiness.applicability}; ${output.readiness.evaluationState}; ${output.readiness.freshness}`,
+          impact: output.impact.state,
+          matches: `${output.impact.exactMatchedSubjectCount}/${output.readiness.subjectCount}; ${output.impact.traceReferenceCount} traces`,
+          handoff: `${output.handoff.disposition}; ${output.handoff.freshness}`,
+          revalidation: output.impact.revalidationState,
+        },
+        state: output.impact.state,
+        actions: [],
+      })),
+      actions: [],
+    }))
+    section.append(
+      this.renderStringList("Projection limits", dashboard.limitations),
+      element(
+        "p",
+        "prose muted",
+        "This bounded read-only projection grants no impact-completeness, revalidation, approval, risk-acceptance, readiness, effect, release, write, or action authority.",
       ),
     )
     return section

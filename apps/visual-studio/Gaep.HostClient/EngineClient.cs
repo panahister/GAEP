@@ -520,6 +520,46 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParsePhase1SummaryResponse(envelope, product, initiative));
     }
 
+    public async Task<Phase1ChangeImpactDashboard> ReadPhase1ChangeImpactAsync(
+        ProductBinding product,
+        InitiativeEntryRecord initiative,
+        ChangeImpactChangeReference change,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        ArgumentNullException.ThrowIfNull(initiative);
+        ArgumentNullException.ThrowIfNull(change);
+        if (product.Id == Guid.Empty || initiative.Id == Guid.Empty || change.RecordId == Guid.Empty ||
+            initiative.ProductId != product.Id)
+        {
+            throw new ArgumentException("The Phase 1 Change/Impact request must bind one exact Product, Initiative, and Change.");
+        }
+        PortableDesignProtocol.ValidateProductRevision(product.Revision);
+        PortableDesignProtocol.ValidateProductRevision(initiative.Revision);
+        PortableDesignProtocol.ValidateProductRevision(change.Revision);
+        PortableDesignProtocol.ValidateProductDigest(product.Digest);
+        PortableDesignProtocol.ValidateProductDigest(initiative.Digest);
+        PortableDesignProtocol.ValidateProductDigest(change.Digest);
+        using var response = await RequestPortableDesignAsync(
+            "dashboard.phase1ChangeImpact",
+            new Dictionary<string, object?>
+            {
+                ["expectedProductId"] = product.Id,
+                ["expectedProductRevision"] = product.Revision,
+                ["expectedProductDigest"] = product.Digest,
+                ["expectedInitiativeId"] = initiative.Id,
+                ["expectedInitiativeRevision"] = initiative.Revision,
+                ["expectedInitiativeDigest"] = initiative.Digest,
+                ["expectedChangeId"] = change.RecordId,
+                ["expectedChangeRevision"] = change.Revision,
+                ["expectedChangeDigest"] = change.Digest,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParsePhase1ChangeImpactResponse(envelope, product, initiative, change));
+    }
+
     public async Task<ChangeImpactChangeCatalog> ListChangeImpactChangesAsync(
         ProductBinding product,
         CancellationToken cancellationToken = default)

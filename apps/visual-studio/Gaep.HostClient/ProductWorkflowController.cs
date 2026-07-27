@@ -1566,6 +1566,31 @@ public sealed class ProductWorkflowController(EngineClient client)
         return RenderPhase1Summary(await client.ReadPhase1SummaryAsync(product, initiative, cancellationToken));
     }
 
+    public async Task<string> ReadPhase1ChangeImpactAsync(
+        Guid initiativeId,
+        ChangeImpactContext context,
+        ChangeImpactChangeReference change,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(change);
+        if (!context.Catalog.Items.Contains(change))
+        {
+            throw new ArgumentException("The selected Change is not part of the verified current catalog.", nameof(change));
+        }
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        if (initiative.ProductId != context.Product.Id)
+        {
+            throw new ArgumentException("The Initiative does not target the exact Product bound to the Change catalog.");
+        }
+        return RenderPhase1ChangeImpact(await client.ReadPhase1ChangeImpactAsync(
+            context.Product,
+            initiative,
+            change,
+            cancellationToken));
+    }
+
     public async Task<IReadOnlyList<AccessibleMetadataTable>> ReadPhaseDashboardTablesAsync(
         CancellationToken cancellationToken = default)
     {
@@ -2173,6 +2198,47 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append(
                 "Boundary: this read-only candidate summary grants no readiness, approval, acceptance, phase-entry, " +
                 "release, Run, Tool, write, or action authority.")
+            .ToString();
+    }
+
+    private static string RenderPhase1ChangeImpact(Phase1ChangeImpactDashboard dashboard)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP exact Phase 1 Change and impact dashboard")
+            .AppendLine()
+            .AppendLine($"Initiative: {dashboard.InitiativeId:D}@{dashboard.InitiativeRevision} · {dashboard.InitiativeState}")
+            .AppendLine($"Change: {dashboard.Change.RecordId:D}@{dashboard.Change.Revision} · {dashboard.Change.State}")
+            .AppendLine(
+                $"Coverage: {dashboard.CurrentTraceObservedOutputCount} current trace-observed · " +
+                $"{dashboard.AttentionRequiredOutputCount} attention · " +
+                $"{dashboard.ImpactNotEstablishedOutputCount} impact not established")
+            .AppendLine(
+                $"Change scope: {dashboard.ChangedArtifactCount} changed artifacts · {dashboard.EffectTargetCount} effect targets · " +
+                $"{dashboard.AffectedUnitCount} affected trace units")
+            .AppendLine(
+                $"Freshness: {dashboard.FreshnessState} · {dashboard.TraceAttentionLinkCount} trace-attention links · " +
+                $"{dashboard.StaleBindingCount} stale bindings")
+            .AppendLine("Owners: unbound · revalidation: not established · Change approval: not established")
+            .AppendLine("Risk-acceptance authority, Product Owner acceptance, and effect authority: not established")
+            .AppendLine($"Snapshot digest: {dashboard.SnapshotDigest}")
+            .AppendLine()
+            .AppendLine("P0-P4 governed output impact coverage:");
+        foreach (var item in dashboard.Outputs)
+        {
+            output.AppendLine(
+                $"  {item.OutputKind} · readiness={item.ReadinessApplicability}/{item.ReadinessEvaluationState}/" +
+                $"{item.ReadinessFreshness} · impact={item.ImpactState} · exact={item.ExactMatchedSubjectCount}/" +
+                $"{item.ReadinessSubjectCount} · traces={item.TraceReferenceCount} · " +
+                $"handoff={item.HandoffDisposition}/{item.HandoffFreshness} · revalidation={item.RevalidationState}");
+        }
+        output.AppendLine();
+        foreach (var limitation in dashboard.Limitations) output.AppendLine($"Limit: {limitation}");
+        return output
+            .AppendLine()
+            .Append(
+                "Boundary: trace presence proves only recorded links; absence does not prove no impact. This read-only " +
+                "projection grants no impact-completeness, revalidation, approval, risk-acceptance, readiness, " +
+                "effect, release, write, or action authority.")
             .ToString();
     }
 

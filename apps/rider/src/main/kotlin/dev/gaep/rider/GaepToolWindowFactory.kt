@@ -468,6 +468,28 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += phase1SummaryButton
         actions.add(phase1SummaryButton)
 
+        val phase1ChangeImpactButton = JButton("Show Phase 1 Change and impact…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Narrative, output content, findings, evidence content, owners, local paths, credentials, and authority are withheld.",
+                    "GAEP Phase 1 Change and Impact",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                val changeId = promptManagedUuid(
+                    project,
+                    "Change ID",
+                    "Enter one exact current Change UUID from the governed Change catalog. Selection grants no approval, revalidation, risk acceptance, or effect authority.",
+                    "GAEP Phase 1 Change and Impact",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Show Phase 1 Change and impact", status, output, buttons) {
+                    controller.readPhase1ChangeImpact(initiativeId, changeId)
+                }
+            }
+        }
+        buttons += phase1ChangeImpactButton
+        actions.add(phase1ChangeImpactButton)
+
         val changeImpactButton = JButton("Show Change and impact…").apply {
             addActionListener {
                 beginChangeImpact(project, controller, status, output, buttons)

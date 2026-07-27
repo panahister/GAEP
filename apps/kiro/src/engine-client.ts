@@ -24,6 +24,7 @@ import {
   p0P4ReadinessGateProjectionSchema,
   p5HandoffPackageProjectionSchema,
   phase1SummaryDashboardSchema,
+  phase1ChangeImpactDashboardSchema,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
@@ -52,6 +53,7 @@ import {
   type P0P4ReadinessGateProjection,
   type P5HandoffPackageProjection,
   type Phase1SummaryDashboard,
+  type Phase1ChangeImpactDashboard,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
@@ -708,6 +710,46 @@ export class GaepEngineClient {
           parsed.data.initiative.recordId.toLowerCase() !== initiative.id.toLowerCase() ||
           parsed.data.initiative.revision !== initiativeRevision || parsed.data.initiative.digest !== initiativeDigest ||
           parsed.data.initiative.state !== initiative.state) throw invalidHostResponse()
+      return parsed.data
+    })
+  }
+
+  readPhase1ChangeImpact(
+    product: ProductBinding,
+    initiativeValue: Initiative,
+    changeValue: ChangeImpactChangeReference,
+  ): Promise<Phase1ChangeImpactDashboard> {
+    return this.enqueue(async () => {
+      const productId = normalizeUuid(product.id, "Product ID")
+      const productRevision = validateProductRevision(product.revision)
+      const productDigest = product.digest.trim().toLowerCase()
+      const initiative = initiativeSchema.parse(initiativeValue)
+      const initiativeRevision = validateProductRevision(initiative.revision ?? 1)
+      const initiativeDigest = canonicalDigest(initiative)
+      const changeId = normalizeUuid(changeValue.recordId, "Change ID")
+      const changeRevision = validateProductRevision(changeValue.revision)
+      const changeDigest = changeValue.digest.trim().toLowerCase()
+      if (![productDigest, changeDigest].every((digest) => /^sha256:[0-9a-f]{64}$/u.test(digest)) ||
+          initiative.productId.toLowerCase() !== productId) throw invalidHostResponse()
+      const parsed = phase1ChangeImpactDashboardSchema.safeParse(await this.request("dashboard.phase1ChangeImpact", {
+        expectedProductId: productId,
+        expectedProductRevision: productRevision,
+        expectedProductDigest: productDigest,
+        expectedInitiativeId: initiative.id,
+        expectedInitiativeRevision: initiativeRevision,
+        expectedInitiativeDigest: initiativeDigest,
+        expectedChangeId: changeId,
+        expectedChangeRevision: changeRevision,
+        expectedChangeDigest: changeDigest,
+      }))
+      if (!parsed.success) throw invalidHostResponse()
+      const { snapshotDigest, ...content } = parsed.data
+      if (snapshotDigest !== canonicalDigest(content) || parsed.data.product.recordId.toLowerCase() !== productId ||
+          parsed.data.product.revision !== productRevision || parsed.data.product.digest !== productDigest ||
+          parsed.data.initiative.recordId.toLowerCase() !== initiative.id.toLowerCase() ||
+          parsed.data.initiative.revision !== initiativeRevision || parsed.data.initiative.digest !== initiativeDigest ||
+          parsed.data.initiative.state !== initiative.state || parsed.data.change.recordId.toLowerCase() !== changeId ||
+          parsed.data.change.revision !== changeRevision || parsed.data.change.digest !== changeDigest) throw invalidHostResponse()
       return parsed.data
     })
   }

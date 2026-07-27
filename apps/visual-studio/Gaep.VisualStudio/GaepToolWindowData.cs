@@ -231,6 +231,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         ResolveInitiativeApplicabilityCommand = new AsyncCommand(ResolveInitiativeApplicabilityAsync);
         ShowPhaseDashboardCommand = new AsyncCommand(ShowPhaseDashboardAsync);
         ShowPhase1SummaryCommand = new AsyncCommand(ShowPhase1SummaryAsync);
+        ShowPhase1ChangeImpactCommand = new AsyncCommand(ShowPhase1ChangeImpactAsync);
         LoadChangeImpactCommand = new AsyncCommand(LoadChangeImpactAsync);
         ShowChangeImpactCommand = new AsyncCommand(ShowChangeImpactAsync);
         ShowAgentModelCommand = new AsyncCommand(ShowAgentModelAsync);
@@ -358,6 +359,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ShowPhase1SummaryCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ShowPhase1ChangeImpactCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadChangeImpactCommand { get; }
@@ -1002,6 +1006,23 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact Phase 1 summary",
             (controller, _, token) => controller.ReadPhase1SummaryAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task ShowPhase1ChangeImpactAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Phase 1 Change/Impact projection",
+            (controller, workspace, token) =>
+            {
+                var context = changeImpactContext
+                    ?? throw new ArgumentException("Load the exact current Change catalog before opening a Phase 1 projection.");
+                if (!StringComparer.Ordinal.Equals(changeImpactWorkspace, workspace))
+                {
+                    throw new ArgumentException("The workspace changed after the Change catalog was loaded. Load it again.");
+                }
+                var change = context.Catalog.Items.SingleOrDefault(item => ChangeChoice(item) == SelectedChangeChoice)
+                    ?? throw new ArgumentException("Select one exact Change from the verified current catalog.");
+                return controller.ReadPhase1ChangeImpactAsync(ParseInitiativeId(InitiativeId), context, change, token);
+            },
             cancellationToken);
 
     private Task LoadChangeImpactAsync(object? commandParameter, CancellationToken cancellationToken) =>

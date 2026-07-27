@@ -104,6 +104,43 @@ public sealed record Phase1SummaryDashboard(
     IReadOnlyList<string> Limitations,
     string SnapshotDigest);
 
+public sealed record Phase1ChangeImpactOutput(
+    string OutputKind,
+    string RecordKind,
+    string ReadinessApplicability,
+    string ReadinessEvaluationState,
+    string ReadinessFreshness,
+    long ReadinessSubjectCount,
+    string ImpactState,
+    long ExactMatchedSubjectCount,
+    long TraceReferenceCount,
+    string HandoffDisposition,
+    string HandoffFreshness,
+    string RevalidationState);
+
+public sealed record Phase1ChangeImpactDashboard(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    ChangeImpactChangeReference Change,
+    long ChangedArtifactCount,
+    long EffectTargetCount,
+    long AffectedUnitCount,
+    IReadOnlyList<Phase1ChangeImpactOutput> Outputs,
+    int CurrentTraceObservedOutputCount,
+    int AttentionRequiredOutputCount,
+    int ImpactNotEstablishedOutputCount,
+    string FreshnessState,
+    long TraceAttentionLinkCount,
+    long StaleBindingCount,
+    DateTimeOffset ObservedAt,
+    IReadOnlyList<string> Limitations,
+    string SnapshotDigest);
+
 public sealed record ChangeImpactChangeReference(
     Guid RecordId,
     long Revision,

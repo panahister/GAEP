@@ -228,6 +228,11 @@ fun main(arguments: Array<String>) {
                 request.getAsJsonObject("params"),
                 workspacePath,
             )
+            "dashboard.phase1ChangeImpact" -> handlePhase1ChangeImpact(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
             "dashboard.changeImpact.changes" -> handleChangeImpactCatalog(
                 id,
                 request.getAsJsonObject("params"),
@@ -2857,6 +2862,192 @@ private fun changeReference(): JsonObject {
         addProperty("state", "active")
         add("effectEnvelope", change.getAsJsonArray("effectEnvelope").deepCopy())
     }
+}
+
+private fun handlePhase1ChangeImpact(id: Long, params: JsonObject, workspacePath: String) {
+    val productDigest = canonicalDigest(productRecord())
+    val initiativeRevision = initiativeState.get("revision").asLong
+    val initiativeDigest = canonicalDigest(initiativeState)
+    val change = changeReference()
+    if (params.keySet() != setOf(
+            "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+            "expectedInitiativeRevision", "expectedInitiativeDigest", "expectedChangeId", "expectedChangeRevision",
+            "expectedChangeDigest",
+        ) || params.get("expectedProductId").asString != productId.toString() ||
+        params.get("expectedProductRevision").asLong != 7L || params.get("expectedProductDigest").asString != productDigest ||
+        params.get("expectedInitiativeId").asString != initiativeId.toString() ||
+        params.get("expectedInitiativeRevision").asLong != initiativeRevision ||
+        params.get("expectedInitiativeDigest").asString != initiativeDigest ||
+        params.get("expectedChangeId").asString != changeId.toString() ||
+        params.get("expectedChangeRevision").asLong != 3L ||
+        params.get("expectedChangeDigest").asString != change.get("digest").asString
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE1 CHANGE IMPACT PARAMS")
+        return
+    }
+    val outputKinds = listOf(
+        "architecture-challenge-model" to "architecture-challenge-model",
+        "authorization-model" to "authorization-model",
+        "bounded-context-ownership" to "bounded-context-model",
+        "business-architecture-baseline" to "business-architecture-baseline",
+        "business-capability-map" to "business-capability-map",
+        "business-rule-catalog" to "business-rule-catalog",
+        "business-understanding" to "business-understanding",
+        "candidate-source-baseline" to "source-baseline",
+        "data-model" to "data-model",
+        "decision-register" to "decision-register",
+        "end-to-end-traceability" to "end-to-end-traceability-candidate",
+        "event-integration-model" to "event-integration-model",
+        "evidence-registry" to "evidence-registry",
+        "failure-recovery-model" to "failure-recovery-model",
+        "initiative-entry" to "initiative",
+        "operating-model" to "operating-model",
+        "outcome-success-model" to "outcome-model",
+        "process-model" to "process-model",
+        "risk-register" to "risk-register",
+        "security-privacy-threat-assessment" to "security-privacy-threat-assessment",
+        "source-intake" to "source-record",
+        "source-provenance" to "source-provenance",
+        "stakeholder-role-model" to "stakeholder-model",
+        "system-solution-architecture" to "system-solution-architecture",
+        "value-stream-model" to "value-stream-model",
+    )
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "phase-1-change-impact-dashboard")
+        add("phase", JsonObject().apply {
+            addProperty("id", "phase-1b-product")
+            addProperty("label", "Phase 1B — Product P0–P4")
+        })
+        add("product", exactReference("product", productId, 7, productDigest))
+        add("initiative", JsonObject().apply {
+            addProperty("recordType", "initiative")
+            addProperty("recordId", initiativeId.toString())
+            addProperty("revision", initiativeRevision)
+            addProperty("digest", initiativeDigest)
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("change", change)
+        add("sources", JsonObject().apply {
+            addProperty("changeImpactSnapshotDigest", "sha256:${"7".repeat(64)}")
+            addProperty("readinessSnapshotDigest", "sha256:${"8".repeat(64)}")
+            addProperty("handoffSnapshotDigest", "sha256:${"9".repeat(64)}")
+        })
+        add("changeScope", JsonObject().apply {
+            addProperty("workItemCount", 1)
+            addProperty("changedArtifactCount", 1)
+            addProperty("effectTargetCount", 1)
+            addProperty("affectedUnitCount", 1)
+            addProperty("decisionCount", 1)
+            addProperty("riskCount", 1)
+            addProperty("unresolvedTraceLinkCount", 0)
+            addProperty("staleTraceLinkCount", 0)
+            addProperty("invalidTraceLinkCount", 0)
+            addProperty("traceAnalysisTruncated", false)
+        })
+        add("outputs", JsonArray().apply {
+            outputKinds.forEach { (outputKind, recordKind) ->
+                add(JsonObject().apply {
+                    addProperty("outputKind", outputKind)
+                    addProperty("recordKind", recordKind)
+                    add("readiness", JsonObject().apply {
+                        addProperty("applicability", "not-assessed")
+                        addProperty("evaluationState", "not-assessed")
+                        addProperty("freshness", "unknown")
+                        addProperty("subjectCount", 0)
+                    })
+                    add("impact", JsonObject().apply {
+                        addProperty("state", "not-established")
+                        addProperty("exactMatchedSubjectCount", 0)
+                        addProperty("staleSubjectBindingCount", 0)
+                        addProperty("traceReferenceCount", 0)
+                        addProperty("validTraceCount", 0)
+                        addProperty("unresolvedTraceCount", 0)
+                        addProperty("staleTraceCount", 0)
+                        addProperty("invalidTraceCount", 0)
+                        addProperty("upstreamTraceCount", 0)
+                        addProperty("downstreamTraceCount", 0)
+                        addProperty("revalidationState", "not-established")
+                        addProperty(
+                            "coverageBoundary",
+                            "absence-of-an-exact-trace-match-does-not-prove-absence-of-impact",
+                        )
+                    })
+                    add("handoff", JsonObject().apply {
+                        addProperty("disposition", "not-established")
+                        addProperty("freshness", "unknown")
+                        addProperty("subjectCount", 0)
+                    })
+                })
+            }
+        })
+        add("coverage", JsonObject().apply {
+            addProperty("state", "bounded-not-complete")
+            addProperty("outputCount", 25)
+            addProperty("applicableOutputCount", 0)
+            addProperty("currentTraceObservedOutputCount", 0)
+            addProperty("attentionRequiredOutputCount", 0)
+            addProperty("impactNotEstablishedOutputCount", 25)
+            addProperty("revalidationNotEstablishedOutputCount", 25)
+            addProperty("basis", "exact-current-readiness-subjects-matched-to-bounded-governed-change-trace-results")
+            addProperty(
+                "coverageBoundary",
+                "trace-presence-proves-only-the-recorded-link-and-trace-absence-does-not-prove-no-impact",
+            )
+        })
+        add("owners", JsonObject().apply {
+            addProperty("state", "unbound")
+            addProperty("boundOutputOwnerCount", 0)
+            addProperty("basis", "no-governed-phase-output-owner-assignment-is-bound")
+        })
+        add("governance", JsonObject().apply {
+            addProperty("changeApproval", "not-established")
+            addProperty("riskAcceptanceAuthority", "not-established")
+            addProperty("revalidationAuthority", "not-established")
+            addProperty("productOwnerAcceptance", "not-established")
+            addProperty("effectAuthority", "not-established")
+        })
+        add("freshness", JsonObject().apply {
+            addProperty("state", "current")
+            addProperty("changeImpactEvaluatedAt", "2026-07-27T12:04:00.000Z")
+            addProperty("readinessObservedAt", "2026-07-27T12:04:01.000Z")
+            addProperty("handoffObservedAt", "2026-07-27T12:04:02.000Z")
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("traceAttentionLinkCount", 0)
+            addProperty("traceAnalysisTruncated", false)
+            addProperty("basis", "current-governed-snapshots-and-declared-trace-readiness-handoff-freshness")
+        })
+        add("evidenceCues", JsonObject().apply {
+            addProperty("freshness", "current")
+            add("confidence", JsonObject().apply {
+                addProperty("state", "not-assessed")
+                addProperty("basis", "bounded-trace-coverage-does-not-establish-impact-confidence-or-completeness")
+            })
+        })
+        addProperty("observedAt", "2026-07-27T12:04:03.000Z")
+        addProperty(
+            "sourceBoundary",
+            "current-governed-product-initiative-change-readiness-handoff-and-bounded-trace-projections-only",
+        )
+        addProperty(
+            "privacyBoundary",
+            "dashboard-exposes-identities-digests-counts-statuses-effects-and-times-not-change-text-output-content-findings-evidence-source-content-personal-data-secrets-or-credentials",
+        )
+        add("limitations", JsonArray().apply {
+            add("Outputs without exact trace matches remain impact not established rather than unaffected.")
+        })
+        addProperty(
+            "authorityBoundary",
+            "phase-1-change-impact-dashboard-is-read-only-observed-candidate-evidence-not-impact-completeness-revalidation-approval-risk-acceptance-readiness-effect-release-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-phase1-change-impact-digest")) {
+        value.getAsJsonObject("coverage").addProperty("impactNotEstablishedOutputCount", 24)
+    }
+    if (workspacePath.endsWith("bad-dashboard-private")) value.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+    writeResult(id, value)
 }
 
 private fun handleChangeImpactCatalog(id: Long, params: JsonObject, workspacePath: String) {

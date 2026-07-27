@@ -28,9 +28,11 @@ import {
   composeChangeImpactDashboard,
   composePhaseDashboardFramework,
   composePhase1SummaryDashboard,
+  composePhase1ChangeImpactDashboard,
   DashboardProductBindingError,
   GaepEngine,
   Phase1SummaryBindingError,
+  Phase1ChangeImpactBindingError,
 } from "@gaep/engine"
 import { z, ZodError } from "zod"
 
@@ -75,6 +77,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "managed.review.discard",
   "dashboard.framework",
   "dashboard.phase1Summary",
+  "dashboard.phase1ChangeImpact",
   "dashboard.changeImpact.changes",
   "dashboard.changeImpact",
   "dashboard.agentModel",
@@ -628,6 +631,98 @@ export class EngineHost {
               -32_047,
               "PHASE1_SUMMARY_CONTEXT_CHANGED",
               "The Product, Initiative, readiness, or handoff context changed before the Phase 1 summary was composed; reload the exact governed projections",
+            )
+          }
+          throw error
+        }
+      }
+      case "dashboard.phase1ChangeImpact": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_048,
+            "PHASE1_CHANGE_IMPACT_AUDIT_INVALID",
+            "The audit chain is invalid or unavailable; no Phase 1 Change/Impact dashboard was composed",
+          )
+        }
+        const product = await this.engine.readProduct()
+        if (
+          request.params.expectedProductId.toLowerCase() !== product.id.toLowerCase()
+          || request.params.expectedProductRevision !== (product.revision ?? 1)
+          || request.params.expectedProductDigest !== canonicalDigest(product)
+        ) {
+          throw new HostRpcError(
+            -32_049,
+            "PHASE1_CHANGE_IMPACT_CONTEXT_CHANGED",
+            "The Product changed before the Phase 1 Change/Impact dashboard was composed; reload the exact governed context",
+          )
+        }
+        let initiative
+        let change: Change
+        try {
+          [initiative, change] = await Promise.all([
+            this.engine.readInitiative(request.params.expectedInitiativeId),
+            this.engine.productStudio.readChange(request.params.expectedChangeId),
+          ])
+        } catch {
+          throw new HostRpcError(
+            -32_049,
+            "PHASE1_CHANGE_IMPACT_CONTEXT_CHANGED",
+            "The Initiative or Change is unavailable; reload the exact governed Phase 1 context",
+          )
+        }
+        const changeDigest = canonicalDigest(change)
+        if (request.params.expectedChangeRevision !== change.revision || request.params.expectedChangeDigest !== changeDigest) {
+          throw new HostRpcError(
+            -32_049,
+            "PHASE1_CHANGE_IMPACT_CONTEXT_CHANGED",
+            "The Change changed before the Phase 1 Change/Impact dashboard was composed; reload the exact governed context",
+          )
+        }
+        const [workItems, traceImpact, decisions, risks, readiness, readinessGate, handoff, handoffPackage] = await Promise.all([
+          this.engine.productStudio.listWorkItems(),
+          this.engine.productStudio.impactAnalysis({
+            recordType: "change",
+            recordId: change.id,
+            revision: change.revision,
+            digest: changeDigest,
+          }),
+          this.engine.productStudio.listDecisions(),
+          this.engine.productStudio.listRisks(),
+          this.engine.p0P4ReadinessGate.project(initiative.id),
+          this.engine.p0P4ReadinessGate.readCurrent(initiative.id),
+          this.engine.p5HandoffPackage.project(initiative.id),
+          this.engine.p5HandoffPackage.readCurrent(initiative.id),
+        ])
+        try {
+          const changeImpact = composeChangeImpactDashboard(
+            { product, change, workItems, traceImpact, decisions, risks },
+            {
+              expectedProductId: request.params.expectedProductId,
+              expectedProductRevision: request.params.expectedProductRevision,
+              expectedProductDigest: request.params.expectedProductDigest,
+              expectedChangeId: request.params.expectedChangeId,
+              expectedChangeRevision: request.params.expectedChangeRevision,
+              expectedChangeDigest: request.params.expectedChangeDigest,
+            },
+          )
+          return composePhase1ChangeImpactDashboard({
+            product,
+            initiative,
+            change,
+            changeImpact,
+            readiness,
+            ...(readinessGate ? { readinessGate } : {}),
+            handoff,
+            ...(handoffPackage ? { handoffPackage } : {}),
+          }, request.params)
+        } catch (error) {
+          if (error instanceof Phase1ChangeImpactBindingError || error instanceof ChangeImpactProductBindingError ||
+              error instanceof ChangeImpactChangeBindingError) {
+            throw new HostRpcError(
+              -32_049,
+              "PHASE1_CHANGE_IMPACT_CONTEXT_CHANGED",
+              "The Product, Initiative, Change, readiness, handoff, or trace context changed before composition; reload the exact governed context",
             )
           }
           throw error

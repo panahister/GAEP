@@ -1399,6 +1399,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badDashboardDigestRoot = join(root, "bad-dashboard-digest")
   const badDashboardPrivateRoot = join(root, "bad-dashboard-private")
   const badPhase1SummaryDigestRoot = join(root, "bad-phase1-summary-digest")
+  const badPhase1ChangeImpactDigestRoot = join(root, "bad-phase1-change-impact-digest")
   const badChangeCatalogBindingRoot = join(root, "bad-change-catalog-binding")
   const badChangeCatalogDigestRoot = join(root, "bad-change-catalog-digest")
   const badChangeCatalogPrivateRoot = join(root, "bad-change-catalog-private")
@@ -1426,6 +1427,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     badDashboardEvidenceCuesRoot,
     badDashboardDigestRoot, badDashboardPrivateRoot, badChangeCatalogBindingRoot, badChangeCatalogDigestRoot,
     badPhase1SummaryDigestRoot,
+    badPhase1ChangeImpactDigestRoot,
     badChangeCatalogPrivateRoot, badChangeImpactBindingRoot, badChangeImpactCountRoot, badChangeImpactFreshnessRoot,
     badChangeImpactEvidenceCuesRoot,
     badChangeImpactDigestRoot, badChangeImpactPrivateRoot, badAgentModelBindingRoot, badAgentModelCountRoot,
@@ -1524,6 +1526,35 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.equal(JSON.stringify(changeCatalog).includes("Private Change title"), false)
     assert.equal(JSON.stringify(changeCatalog).includes(privateRoot), false)
     assert.equal(JSON.stringify(changeCatalog).includes(privateCredential), false)
+
+    const phase1ChangeImpact = await client.readPhase1ChangeImpact(product, initiative, changeCatalog.items[0]!)
+    assert.equal(phase1ChangeImpact.outputs.length, 25)
+    assert.equal(phase1ChangeImpact.coverage.currentTraceObservedOutputCount, 0)
+    assert.equal(phase1ChangeImpact.coverage.attentionRequiredOutputCount, 0)
+    assert.equal(phase1ChangeImpact.coverage.impactNotEstablishedOutputCount, 25)
+    assert.equal(phase1ChangeImpact.outputs.every((output) => output.impact.revalidationState === "not-established"), true)
+    assert.equal(JSON.stringify(phase1ChangeImpact).includes("Private Change title"), false)
+    assert.equal(JSON.stringify(phase1ChangeImpact).includes(privateRoot), false)
+    assert.equal(JSON.stringify(phase1ChangeImpact).includes(privateCredential), false)
+
+    for (const workspacePath of [badPhase1ChangeImpactDigestRoot, badDashboardPrivateRoot]) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        const hostileProduct = await hostileClient.readProduct()
+        const hostileInitiative = await hostileClient.readInitiative("29292929-2929-4929-8929-292929292929")
+        const hostileCatalog = await hostileClient.listChangeImpactChanges(hostileProduct)
+        await assert.rejects(
+          () => hostileClient.readPhase1ChangeImpact(hostileProduct, hostileInitiative, hostileCatalog.items[0]!),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
 
     for (const workspacePath of [badChangeCatalogBindingRoot, badChangeCatalogDigestRoot, badChangeCatalogPrivateRoot]) {
       const hostileClient = await GaepEngineClient.create({

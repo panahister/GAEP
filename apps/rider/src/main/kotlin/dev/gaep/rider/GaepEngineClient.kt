@@ -393,6 +393,36 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readPhase1ChangeImpact(
+        product: ProductBinding,
+        initiative: InitiativeEntryRecord,
+        change: ChangeImpactChangeReference,
+    ): Phase1ChangeImpactDashboard {
+        PortableDesignProtocol.validateProductId(product.id)
+        PortableDesignProtocol.validateProductRevision(product.revision)
+        PortableDesignProtocol.validateProductId(change.recordId)
+        PortableDesignProtocol.validateProductRevision(change.revision)
+        require(initiative.productId == product.id) { "Initiative must target the exact current Product" }
+        require(Regex("^sha256:[0-9a-f]{64}$").matches(product.digest) &&
+            Regex("^sha256:[0-9a-f]{64}$").matches(initiative.digest) &&
+            Regex("^sha256:[0-9a-f]{64}$").matches(change.digest)) { "Exact digests must be SHA-256" }
+        val params = JsonObject().apply {
+            addProperty("expectedProductId", product.id.toString())
+            addProperty("expectedProductRevision", product.revision)
+            addProperty("expectedProductDigest", product.digest)
+            addProperty("expectedInitiativeId", initiative.id.toString())
+            addProperty("expectedInitiativeRevision", initiative.revision)
+            addProperty("expectedInitiativeDigest", initiative.digest)
+            addProperty("expectedChangeId", change.recordId.toString())
+            addProperty("expectedChangeRevision", change.revision)
+            addProperty("expectedChangeDigest", change.digest)
+        }
+        return portableRequest("dashboard.phase1ChangeImpact", params) { envelope ->
+            PortableDesignProtocol.parsePhase1ChangeImpactEnvelope(envelope, product, initiative, change)
+        }
+    }
+
+    @Synchronized
     fun listChangeImpactChanges(product: ProductBinding): ChangeImpactChangeCatalog {
         PortableDesignProtocol.validateProductId(product.id)
         PortableDesignProtocol.validateProductRevision(product.revision)

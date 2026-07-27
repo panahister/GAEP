@@ -135,6 +135,8 @@ input.on("line", (line) => {
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
       return readPhase1Summary(id, request.params)
+    case "dashboard.phase1ChangeImpact":
+      return readPhase1ChangeImpact(id, request.params)
     case "dashboard.changeImpact.changes":
       return readChangeCatalog(id, request.params)
     case "dashboard.changeImpact":
@@ -2168,6 +2170,103 @@ function readChangeImpact(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-change-impact-digest")) value.change.state = "blocked"
   if (workspacePath.endsWith("bad-change-impact-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readPhase1ChangeImpact(id, params) {
+  const productDigest = canonicalDigest(productRecord())
+  const initiativeDigest = canonicalDigest(initiativeState)
+  const change = changeReference()
+  if (!exactKeys(params, [
+    "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+    "expectedInitiativeRevision", "expectedInitiativeDigest", "expectedChangeId", "expectedChangeRevision",
+    "expectedChangeDigest",
+  ]) || params.expectedProductId !== productId || params.expectedProductRevision !== 7 ||
+      params.expectedProductDigest !== productDigest || params.expectedInitiativeId !== initiativeId ||
+      params.expectedInitiativeRevision !== initiativeState.revision || params.expectedInitiativeDigest !== initiativeDigest ||
+      params.expectedChangeId !== change.recordId || params.expectedChangeRevision !== change.revision ||
+      params.expectedChangeDigest !== change.digest) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE 1 CHANGE IMPACT PARAMS")
+  }
+  const outputKinds = [
+    ["architecture-challenge-model", "architecture-challenge-model"], ["authorization-model", "authorization-model"],
+    ["bounded-context-ownership", "bounded-context-model"], ["business-architecture-baseline", "business-architecture-baseline"],
+    ["business-capability-map", "business-capability-map"], ["business-rule-catalog", "business-rule-catalog"],
+    ["business-understanding", "business-understanding"], ["candidate-source-baseline", "source-baseline"],
+    ["data-model", "data-model"], ["decision-register", "decision-register"],
+    ["end-to-end-traceability", "end-to-end-traceability-candidate"], ["event-integration-model", "event-integration-model"],
+    ["evidence-registry", "evidence-registry"], ["failure-recovery-model", "failure-recovery-model"],
+    ["initiative-entry", "initiative"], ["operating-model", "operating-model"],
+    ["outcome-success-model", "outcome-model"], ["process-model", "process-model"],
+    ["risk-register", "risk-register"], ["security-privacy-threat-assessment", "security-privacy-threat-assessment"],
+    ["source-intake", "source-record"], ["source-provenance", "source-provenance"],
+    ["stakeholder-role-model", "stakeholder-model"], ["system-solution-architecture", "system-solution-architecture"],
+    ["value-stream-model", "value-stream-model"],
+  ]
+  const content = {
+    schemaVersion: 1,
+    kind: "phase-1-change-impact-dashboard",
+    phase: { id: "phase-1b-product", label: "Phase 1B — Product P0–P4" },
+    product: { recordType: "product", recordId: productId, revision: 7, digest: productDigest },
+    initiative: {
+      recordType: "initiative", recordId: initiativeId, revision: initiativeState.revision,
+      digest: initiativeDigest, state: initiativeState.state,
+    },
+    change,
+    sources: {
+      changeImpactSnapshotDigest: `sha256:${"7".repeat(64)}`,
+      readinessSnapshotDigest: `sha256:${"8".repeat(64)}`,
+      handoffSnapshotDigest: `sha256:${"9".repeat(64)}`,
+    },
+    changeScope: {
+      workItemCount: 1, changedArtifactCount: 1, effectTargetCount: 1, affectedUnitCount: 1,
+      decisionCount: 1, riskCount: 1, unresolvedTraceLinkCount: 0, staleTraceLinkCount: 0,
+      invalidTraceLinkCount: 0, traceAnalysisTruncated: false,
+    },
+    outputs: outputKinds.map(([outputKind, recordKind]) => ({
+      outputKind,
+      recordKind,
+      readiness: { applicability: "not-assessed", evaluationState: "not-assessed", freshness: "unknown", subjectCount: 0 },
+      impact: {
+        state: "not-established", exactMatchedSubjectCount: 0, staleSubjectBindingCount: 0, traceReferenceCount: 0,
+        validTraceCount: 0, unresolvedTraceCount: 0, staleTraceCount: 0, invalidTraceCount: 0,
+        upstreamTraceCount: 0, downstreamTraceCount: 0, revalidationState: "not-established",
+        coverageBoundary: "absence-of-an-exact-trace-match-does-not-prove-absence-of-impact",
+      },
+      handoff: { disposition: "not-established", freshness: "unknown", subjectCount: 0 },
+    })),
+    coverage: {
+      state: "bounded-not-complete", outputCount: 25, applicableOutputCount: 0,
+      currentTraceObservedOutputCount: 0, attentionRequiredOutputCount: 0, impactNotEstablishedOutputCount: 25,
+      revalidationNotEstablishedOutputCount: 25,
+      basis: "exact-current-readiness-subjects-matched-to-bounded-governed-change-trace-results",
+      coverageBoundary: "trace-presence-proves-only-the-recorded-link-and-trace-absence-does-not-prove-no-impact",
+    },
+    owners: { state: "unbound", boundOutputOwnerCount: 0, basis: "no-governed-phase-output-owner-assignment-is-bound" },
+    governance: {
+      changeApproval: "not-established", riskAcceptanceAuthority: "not-established",
+      revalidationAuthority: "not-established", productOwnerAcceptance: "not-established", effectAuthority: "not-established",
+    },
+    freshness: {
+      state: "current", changeImpactEvaluatedAt: "2026-07-27T12:04:00.000Z",
+      readinessObservedAt: "2026-07-27T12:04:01.000Z", handoffObservedAt: "2026-07-27T12:04:02.000Z",
+      staleBindingCount: 0, staleSourceReferenceCount: 0, traceAttentionLinkCount: 0,
+      traceAnalysisTruncated: false,
+      basis: "current-governed-snapshots-and-declared-trace-readiness-handoff-freshness",
+    },
+    evidenceCues: {
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "bounded-trace-coverage-does-not-establish-impact-confidence-or-completeness" },
+    },
+    observedAt: "2026-07-27T12:04:03.000Z",
+    sourceBoundary: "current-governed-product-initiative-change-readiness-handoff-and-bounded-trace-projections-only",
+    privacyBoundary: "dashboard-exposes-identities-digests-counts-statuses-effects-and-times-not-change-text-output-content-findings-evidence-source-content-personal-data-secrets-or-credentials",
+    limitations: ["Outputs without exact trace matches remain impact not established rather than unaffected."],
+    authorityBoundary: "phase-1-change-impact-dashboard-is-read-only-observed-candidate-evidence-not-impact-completeness-revalidation-approval-risk-acceptance-readiness-effect-release-or-action-authority",
+  }
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-phase1-change-impact-digest")) value.coverage.impactNotEstablishedOutputCount = 24
+  if (workspacePath.endsWith("bad-dashboard-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

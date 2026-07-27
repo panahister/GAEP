@@ -124,6 +124,45 @@ data class Phase1SummaryDashboard(
     val snapshotDigest: String,
 )
 
+data class Phase1ChangeImpactOutput(
+    val outputKind: String,
+    val recordKind: String,
+    val readinessApplicability: String,
+    val readinessEvaluationState: String,
+    val readinessFreshness: String,
+    val readinessSubjectCount: Long,
+    val impactState: String,
+    val exactMatchedSubjectCount: Long,
+    val traceReferenceCount: Long,
+    val handoffDisposition: String,
+    val handoffFreshness: String,
+    val revalidationState: String,
+)
+
+data class Phase1ChangeImpactDashboard(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val change: ChangeImpactChangeReference,
+    val changedArtifactCount: Long,
+    val effectTargetCount: Long,
+    val affectedUnitCount: Long,
+    val outputs: List<Phase1ChangeImpactOutput>,
+    val currentTraceObservedOutputCount: Int,
+    val attentionRequiredOutputCount: Int,
+    val impactNotEstablishedOutputCount: Int,
+    val freshnessState: String,
+    val traceAttentionLinkCount: Long,
+    val staleBindingCount: Long,
+    val observedAt: Instant,
+    val limitations: List<String>,
+    val snapshotDigest: String,
+)
+
 data class ChangeImpactChangeReference(
     val recordId: UUID,
     val revision: Long,
@@ -1884,6 +1923,33 @@ internal object PortableDesignProtocol {
         "observe", "provisional", "reversible-change", "external-effect", "destructive-or-irreversible",
     )
     private val changeImpactStates = setOf("proposed", "planned", "active", "blocked", "completed", "cancelled")
+    private val phase1ImpactOutputRecordKinds = linkedMapOf(
+        "architecture-challenge-model" to "architecture-challenge-model",
+        "authorization-model" to "authorization-model",
+        "bounded-context-ownership" to "bounded-context-model",
+        "business-architecture-baseline" to "business-architecture-baseline",
+        "business-capability-map" to "business-capability-map",
+        "business-rule-catalog" to "business-rule-catalog",
+        "business-understanding" to "business-understanding",
+        "candidate-source-baseline" to "source-baseline",
+        "data-model" to "data-model",
+        "decision-register" to "decision-register",
+        "end-to-end-traceability" to "end-to-end-traceability-candidate",
+        "event-integration-model" to "event-integration-model",
+        "evidence-registry" to "evidence-registry",
+        "failure-recovery-model" to "failure-recovery-model",
+        "initiative-entry" to "initiative",
+        "operating-model" to "operating-model",
+        "outcome-success-model" to "outcome-model",
+        "process-model" to "process-model",
+        "risk-register" to "risk-register",
+        "security-privacy-threat-assessment" to "security-privacy-threat-assessment",
+        "source-intake" to "source-record",
+        "source-provenance" to "source-provenance",
+        "stakeholder-role-model" to "stakeholder-model",
+        "system-solution-architecture" to "system-solution-architecture",
+        "value-stream-model" to "value-stream-model",
+    )
     private val changeImpactWorkItemStates = changeImpactStates + "ready" + "in-progress"
     private val changeImpactRelationships = setOf(
         "targets", "derives-from", "contributes-to", "depends-on", "implements", "satisfies", "validates",
@@ -2059,6 +2125,14 @@ internal object PortableDesignProtocol {
         "CHANGE_IMPACT_CATALOG_INVALID" to StableHostError(
             -32_043,
             "The current Change catalog could not be verified.",
+        ),
+        "PHASE1_CHANGE_IMPACT_CONTEXT_CHANGED" to StableHostError(
+            -32_049,
+            "The Phase 1 Change/Impact context changed; reload the exact Product, Initiative, Change, readiness, handoff, and trace records.",
+        ),
+        "PHASE1_CHANGE_IMPACT_AUDIT_INVALID" to StableHostError(
+            -32_048,
+            "The Phase 1 Change/Impact projection is unavailable because the governed audit chain is invalid.",
         ),
         "INVALID_PARAMS" to StableHostError(-32_602, "The GAEP engine rejected the local request parameters."),
         "PROTOCOL_UPGRADE_REQUIRED" to StableHostError(
@@ -6024,6 +6098,239 @@ internal object PortableDesignProtocol {
             readinessTotal, readinessGapCount, handoffState, handoffTransferState, handoffIncluded, handoffTotal,
             handoffGapCount, freshnessState, staleBindingCount, staleSourceReferenceCount, observedAt,
             PHASE1_SUMMARY_SOURCE_BOUNDARY, PHASE1_SUMMARY_PRIVACY_BOUNDARY, limitations, snapshotDigest,
+        )
+    }
+
+    fun parsePhase1ChangeImpactEnvelope(
+        envelope: JsonObject,
+        expectedProduct: ProductBinding,
+        expectedInitiative: InitiativeEntryRecord,
+        expectedChange: ChangeImpactChangeReference,
+    ): Phase1ChangeImpactDashboard {
+        val dashboard = readResult(envelope).requireObject()
+        dashboard.requireExactKeys(
+            "schemaVersion", "kind", "phase", "product", "initiative", "change", "sources", "changeScope",
+            "outputs", "coverage", "owners", "governance", "freshness", "evidenceCues", "observedAt",
+            "sourceBoundary", "privacyBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+        )
+        if (dashboard.requireInt("schemaVersion") != 1 ||
+            dashboard.requireString("kind") != "phase-1-change-impact-dashboard" ||
+            dashboard.requireString("sourceBoundary") !=
+            "current-governed-product-initiative-change-readiness-handoff-and-bounded-trace-projections-only" ||
+            dashboard.requireString("privacyBoundary") !=
+            "dashboard-exposes-identities-digests-counts-statuses-effects-and-times-not-change-text-output-content-findings-evidence-source-content-personal-data-secrets-or-credentials" ||
+            dashboard.requireString("authorityBoundary") !=
+            "phase-1-change-impact-dashboard-is-read-only-observed-candidate-evidence-not-impact-completeness-revalidation-approval-risk-acceptance-readiness-effect-release-or-action-authority"
+        ) throw invalidResponse()
+        val phase = dashboard.get("phase").requireObject()
+        phase.requireExactKeys("id", "label")
+        if (phase.requireString("id") != "phase-1b-product" ||
+            phase.requireString("label") != "Phase 1B — Product P0–P4"
+        ) throw invalidResponse()
+
+        val product = dashboard.get("product").requireObject()
+        product.requireExactKeys("recordType", "recordId", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("recordId")
+        val productRevision = product.requireLong("revision")
+        val productDigest = product.requireDigest("digest")
+        if (product.requireString("recordType") != "product" || productId != expectedProduct.id ||
+            productRevision != expectedProduct.revision || productDigest != expectedProduct.digest
+        ) throw invalidResponse()
+        val initiative = dashboard.get("initiative").requireObject()
+        initiative.requireExactKeys("recordType", "recordId", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("recordId")
+        val initiativeRevision = initiative.requireLong("revision")
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("active", "blocked", "cancelled", "completed", "proposed"))
+        if (initiative.requireString("recordType") != "initiative" || initiativeId != expectedInitiative.id ||
+            initiativeRevision != expectedInitiative.revision || initiativeDigest != expectedInitiative.digest ||
+            initiativeState != expectedInitiative.state || expectedInitiative.productId != expectedProduct.id
+        ) throw invalidResponse()
+        val change = parseChangeImpactChangeReference(dashboard.get("change"))
+        if (change != expectedChange) throw invalidResponse()
+
+        fun validateReference(value: JsonElement?) {
+            val reference = value.requireObject()
+            reference.requireExactKeys("recordId", "revision", "digest")
+            reference.requireNonEmptyUuid("recordId")
+            if (reference.requireLong("revision") !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            reference.requireDigest("digest")
+        }
+        val sources = dashboard.get("sources").requireObject()
+        sources.requireKeys(
+            setOf("changeImpactSnapshotDigest", "readinessSnapshotDigest", "handoffSnapshotDigest"),
+            setOf("readinessGate", "handoffPackage"),
+        )
+        sources.requireDigest("changeImpactSnapshotDigest")
+        sources.requireDigest("readinessSnapshotDigest")
+        sources.requireDigest("handoffSnapshotDigest")
+        sources.get("readinessGate")?.let(::validateReference)
+        sources.get("handoffPackage")?.let(::validateReference)
+
+        val scope = dashboard.get("changeScope").requireObject()
+        scope.requireExactKeys(
+            "workItemCount", "changedArtifactCount", "effectTargetCount", "affectedUnitCount", "decisionCount",
+            "riskCount", "unresolvedTraceLinkCount", "staleTraceLinkCount", "invalidTraceLinkCount", "traceAnalysisTruncated",
+        )
+        fun scopeCount(key: String) = scope.requireBoundedNonNegativeLong(key, 1_000_000)
+        scopeCount("workItemCount")
+        val changedArtifactCount = scopeCount("changedArtifactCount")
+        val effectTargetCount = scopeCount("effectTargetCount")
+        val affectedUnitCount = scopeCount("affectedUnitCount")
+        scopeCount("decisionCount")
+        scopeCount("riskCount")
+        val unresolvedTraceLinkCount = scopeCount("unresolvedTraceLinkCount")
+        val staleTraceLinkCount = scopeCount("staleTraceLinkCount")
+        val invalidTraceLinkCount = scopeCount("invalidTraceLinkCount")
+        val traceAnalysisTruncated = scope.requireBoolean("traceAnalysisTruncated")
+
+        val outputArray = dashboard.get("outputs")
+        if (outputArray == null || !outputArray.isJsonArray || outputArray.asJsonArray.size() != phase1ImpactOutputRecordKinds.size) {
+            throw invalidResponse()
+        }
+        val outputs = outputArray.asJsonArray.mapIndexed { index, element ->
+            val output = element.requireObject()
+            output.requireExactKeys("outputKind", "recordKind", "readiness", "impact", "handoff")
+            val outputKind = output.requireString("outputKind")
+            val expectedKind = phase1ImpactOutputRecordKinds.entries.elementAt(index)
+            if (outputKind != expectedKind.key || output.requireString("recordKind") != expectedKind.value) throw invalidResponse()
+            val readiness = output.get("readiness").requireObject()
+            readiness.requireExactKeys("applicability", "evaluationState", "freshness", "subjectCount")
+            val applicability = readiness.requireOneOf(
+                "applicability", setOf("applicable", "not-applicable-candidate", "unresolved", "not-assessed"),
+            )
+            val evaluationState = readiness.requireOneOf(
+                "evaluationState",
+                setOf("blocked", "conditionally-satisfied", "failed", "incomplete", "not-applicable-candidate", "not-assessed", "satisfied"),
+            )
+            val readinessFreshness = readiness.requireOneOf("freshness", setOf("current", "stale", "unknown"))
+            val subjectCount = readiness.requireBoundedNonNegativeLong("subjectCount", 512)
+            if (applicability == "not-assessed" &&
+                (evaluationState != "not-assessed" || readinessFreshness != "unknown" || subjectCount != 0L)
+            ) throw invalidResponse()
+
+            val impact = output.get("impact").requireObject()
+            impact.requireExactKeys(
+                "state", "exactMatchedSubjectCount", "staleSubjectBindingCount", "traceReferenceCount",
+                "validTraceCount", "unresolvedTraceCount", "staleTraceCount", "invalidTraceCount",
+                "upstreamTraceCount", "downstreamTraceCount", "revalidationState", "coverageBoundary",
+            )
+            val exactMatches = impact.requireBoundedNonNegativeLong("exactMatchedSubjectCount", 512)
+            val staleBindings = impact.requireBoundedNonNegativeLong("staleSubjectBindingCount", 512)
+            val traceCount = impact.requireBoundedNonNegativeLong("traceReferenceCount", 512)
+            val validTraces = impact.requireBoundedNonNegativeLong("validTraceCount", 512)
+            val unresolvedTraces = impact.requireBoundedNonNegativeLong("unresolvedTraceCount", 512)
+            val staleTraces = impact.requireBoundedNonNegativeLong("staleTraceCount", 512)
+            val invalidTraces = impact.requireBoundedNonNegativeLong("invalidTraceCount", 512)
+            val upstreamTraces = impact.requireBoundedNonNegativeLong("upstreamTraceCount", 512)
+            val downstreamTraces = impact.requireBoundedNonNegativeLong("downstreamTraceCount", 512)
+            val expectedImpactState = if (staleBindings + unresolvedTraces + staleTraces + invalidTraces > 0) {
+                "attention-required"
+            } else if (exactMatches > 0) "current-trace-observed" else "not-established"
+            val impactState = impact.requireString("state")
+            if (exactMatches > subjectCount || traceCount != validTraces + unresolvedTraces + staleTraces + invalidTraces ||
+                traceCount != upstreamTraces + downstreamTraces || impactState != expectedImpactState ||
+                impact.requireString("revalidationState") != "not-established" ||
+                impact.requireString("coverageBoundary") !=
+                "absence-of-an-exact-trace-match-does-not-prove-absence-of-impact"
+            ) throw invalidResponse()
+
+            val handoff = output.get("handoff").requireObject()
+            handoff.requireExactKeys("disposition", "freshness", "subjectCount")
+            val handoffDisposition = handoff.requireOneOf(
+                "disposition", setOf("included", "omitted-not-applicable", "reference-only", "unresolved", "not-established"),
+            )
+            val handoffFreshness = handoff.requireOneOf("freshness", setOf("current", "stale", "unknown"))
+            val handoffSubjectCount = handoff.requireBoundedNonNegativeLong("subjectCount", 512)
+            if (handoffDisposition == "not-established" && (handoffFreshness != "unknown" || handoffSubjectCount != 0L)) {
+                throw invalidResponse()
+            }
+            Phase1ChangeImpactOutput(
+                outputKind, expectedKind.value, applicability, evaluationState, readinessFreshness, subjectCount,
+                impactState, exactMatches, traceCount, handoffDisposition, handoffFreshness, "not-established",
+            )
+        }
+
+        val coverage = dashboard.get("coverage").requireObject()
+        coverage.requireExactKeys(
+            "state", "outputCount", "applicableOutputCount", "currentTraceObservedOutputCount",
+            "attentionRequiredOutputCount", "impactNotEstablishedOutputCount", "revalidationNotEstablishedOutputCount",
+            "basis", "coverageBoundary",
+        )
+        val currentCount = outputs.count { it.impactState == "current-trace-observed" }
+        val attentionCount = outputs.count { it.impactState == "attention-required" }
+        val unknownCount = outputs.count { it.impactState == "not-established" }
+        val applicableCount = outputs.count { it.readinessApplicability == "applicable" }
+        if (coverage.requireString("state") != "bounded-not-complete" || coverage.requireInt("outputCount") != 25 ||
+            coverage.requireInt("applicableOutputCount") != applicableCount ||
+            coverage.requireInt("currentTraceObservedOutputCount") != currentCount ||
+            coverage.requireInt("attentionRequiredOutputCount") != attentionCount ||
+            coverage.requireInt("impactNotEstablishedOutputCount") != unknownCount ||
+            coverage.requireInt("revalidationNotEstablishedOutputCount") != 25 ||
+            coverage.requireString("basis") !=
+            "exact-current-readiness-subjects-matched-to-bounded-governed-change-trace-results" ||
+            coverage.requireString("coverageBoundary") !=
+            "trace-presence-proves-only-the-recorded-link-and-trace-absence-does-not-prove-no-impact"
+        ) throw invalidResponse()
+
+        val owners = dashboard.get("owners").requireObject()
+        owners.requireExactKeys("state", "boundOutputOwnerCount", "basis")
+        if (owners.requireString("state") != "unbound" || owners.requireInt("boundOutputOwnerCount") != 0 ||
+            owners.requireString("basis") != "no-governed-phase-output-owner-assignment-is-bound"
+        ) throw invalidResponse()
+        val governance = dashboard.get("governance").requireObject()
+        governance.requireExactKeys(
+            "changeApproval", "riskAcceptanceAuthority", "revalidationAuthority", "productOwnerAcceptance", "effectAuthority",
+        )
+        if (governance.keySet().any { governance.requireString(it) != "not-established" }) throw invalidResponse()
+
+        val freshness = dashboard.get("freshness").requireObject()
+        freshness.requireExactKeys(
+            "state", "changeImpactEvaluatedAt", "readinessObservedAt", "handoffObservedAt", "staleBindingCount",
+            "staleSourceReferenceCount", "traceAttentionLinkCount", "traceAnalysisTruncated", "basis",
+        )
+        val freshnessState = freshness.requireOneOf("state", setOf("current", "attention-required"))
+        val changeImpactEvaluatedAt = freshness.requireInstant("changeImpactEvaluatedAt")
+        val readinessObservedAt = freshness.requireInstant("readinessObservedAt")
+        val handoffObservedAt = freshness.requireInstant("handoffObservedAt")
+        val staleBindingCount = freshness.requireBoundedNonNegativeLong("staleBindingCount", 1_000_000)
+        val staleSourceCount = freshness.requireBoundedNonNegativeLong("staleSourceReferenceCount", 1_000_000)
+        val traceAttentionCount = freshness.requireBoundedNonNegativeLong("traceAttentionLinkCount", 1_000_000)
+        val freshnessTruncated = freshness.requireBoolean("traceAnalysisTruncated")
+        val expectedFreshnessAttention = staleBindingCount > 0 || staleSourceCount > 0 || traceAttentionCount > 0 ||
+            freshnessTruncated || attentionCount > 0
+        if (traceAttentionCount != unresolvedTraceLinkCount + staleTraceLinkCount + invalidTraceLinkCount ||
+            freshnessTruncated != traceAnalysisTruncated ||
+            (freshnessState == "attention-required") != expectedFreshnessAttention ||
+            freshness.requireString("basis") !=
+            "current-governed-snapshots-and-declared-trace-readiness-handoff-freshness"
+        ) throw invalidResponse()
+        val cues = dashboard.get("evidenceCues").requireObject()
+        cues.requireExactKeys("freshness", "confidence")
+        val confidence = cues.get("confidence").requireObject()
+        confidence.requireExactKeys("state", "basis")
+        if (cues.requireString("freshness") != (if (expectedFreshnessAttention) "potentially-stale" else "current") ||
+            confidence.requireString("state") != "not-assessed" || confidence.requireString("basis") !=
+            "bounded-trace-coverage-does-not-establish-impact-confidence-or-completeness"
+        ) throw invalidResponse()
+
+        val observedAt = dashboard.requireInstant("observedAt")
+        if (listOf(changeImpactEvaluatedAt, readinessObservedAt, handoffObservedAt).any { it > observedAt }) throw invalidResponse()
+        val limitationsElement = dashboard.get("limitations")
+        if (limitationsElement == null || !limitationsElement.isJsonArray || limitationsElement.asJsonArray.size() !in 1..8) {
+            throw invalidResponse()
+        }
+        val limitations = limitationsElement.asJsonArray.map {
+            portableText(it.requireString(), minimum = 4).also { text -> if (text.length > 1_000) throw invalidResponse() }
+        }
+        val snapshotDigest = dashboard.requireDigest("snapshotDigest")
+        val digestBody = dashboard.deepCopy().apply { remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+        return Phase1ChangeImpactDashboard(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, change, changedArtifactCount, effectTargetCount, affectedUnitCount, outputs,
+            currentCount, attentionCount, unknownCount, freshnessState, traceAttentionCount, staleBindingCount,
+            observedAt, limitations, snapshotDigest,
         )
     }
 

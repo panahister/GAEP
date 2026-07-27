@@ -25,6 +25,7 @@ import {
   type P0P4ReadinessGateProjection,
   type P5HandoffPackageProjection,
   type Phase1SummaryDashboard,
+  type Phase1ChangeImpactDashboard,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -87,6 +88,7 @@ const commandIds = {
   stagedReview: "gaepKiro.runs.stagedReview",
   dashboard: "gaepKiro.dashboard.phase",
   phase1Summary: "gaepKiro.dashboard.phase1Summary",
+  phase1ChangeImpact: "gaepKiro.dashboard.phase1ChangeImpact",
   changeImpact: "gaepKiro.dashboard.changeImpact",
   agentModel: "gaepKiro.dashboard.agentModel",
   accessibleTables: "gaepKiro.dashboard.accessibleTables",
@@ -199,6 +201,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.stagedReview, () => runUserCommand(() => reviewManagedStagedChanges(pool))),
     vscode.commands.registerCommand(commandIds.dashboard, () => runUserCommand(() => showPhaseDashboard(pool))),
     vscode.commands.registerCommand(commandIds.phase1Summary, (input?: unknown) => runUserCommand(() => showPhase1Summary(pool, input))),
+    vscode.commands.registerCommand(commandIds.phase1ChangeImpact, (input?: unknown) => runUserCommand(() => showPhase1ChangeImpact(pool, input))),
     vscode.commands.registerCommand(commandIds.changeImpact, () => runUserCommand(() => showChangeImpactDashboard(pool))),
     vscode.commands.registerCommand(commandIds.agentModel, () => runUserCommand(() => showAgentModelDashboard(pool))),
     vscode.commands.registerCommand(commandIds.accessibleTables, () => runUserCommand(() => showAccessibleDashboardTables(pool))),
@@ -1920,6 +1923,54 @@ async function showPhase1Summary(pool: EngineClientPool, input: unknown): Promis
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })
   return summary
+}
+
+async function showPhase1ChangeImpact(pool: EngineClientPool, input: unknown): Promise<Phase1ChangeImpactDashboard> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Phase 1 Change/Impact view", "Initiative ID")
+  const [product, initiative] = await Promise.all([client.readProduct(), client.readInitiative(initiativeId)])
+  const catalog = await client.listChangeImpactChanges(product)
+  if (catalog.items.length === 0) {
+    throw new ConfigurationBoundaryError("No current Change metadata is available for the Phase 1 Change/Impact dashboard.")
+  }
+  const selected = await vscode.window.showQuickPick(catalog.items.map((change) => ({
+    label: change.recordId,
+    description: `${change.state} · revision ${change.revision}`,
+    detail: `Effects: ${change.effectEnvelope.join(", ")} · digest ${change.digest}`,
+    change,
+  })), {
+    title: `Select one exact Phase 1 Change (${catalog.items.length} of ${catalog.total}; ${catalog.omitted} omitted)`,
+    placeHolder: "Observe bounded P0-P4 impact coverage; selection grants no approval, revalidation, or effect authority",
+    ignoreFocusOut: true,
+  })
+  if (!selected) throw new WorkflowCancelled()
+  const dashboard = await client.readPhase1ChangeImpact(product, initiative, selected.change)
+  const lines = [
+    "GAEP exact Phase 1 Change and impact dashboard",
+    "",
+    `Initiative: ${dashboard.initiative.recordId}@${dashboard.initiative.revision}`,
+    `Change: ${dashboard.change.recordId}@${dashboard.change.revision} · ${dashboard.change.state}`,
+    `Coverage: ${dashboard.coverage.currentTraceObservedOutputCount} current trace-observed · ${dashboard.coverage.attentionRequiredOutputCount} attention · ${dashboard.coverage.impactNotEstablishedOutputCount} impact not established`,
+    `Freshness: ${dashboard.freshness.state} · ${dashboard.freshness.traceAttentionLinkCount} trace-attention links · ${dashboard.freshness.staleBindingCount} stale bindings`,
+    `Change scope: ${dashboard.changeScope.changedArtifactCount} changed artifacts · ${dashboard.changeScope.effectTargetCount} effect targets · ${dashboard.changeScope.affectedUnitCount} affected trace units`,
+    "Owners: unbound · revalidation: not established · Change approval: not established · risk-acceptance authority: not established · effect authority: not established",
+    `Snapshot digest: ${dashboard.snapshotDigest}`,
+    "",
+    "P0-P4 governed output impact coverage:",
+    ...dashboard.outputs.map((output) =>
+      `  ${output.outputKind} · readiness=${output.readiness.applicability}/${output.readiness.evaluationState}/${output.readiness.freshness} · impact=${output.impact.state} · exact=${output.impact.exactMatchedSubjectCount}/${output.readiness.subjectCount} · traces=${output.impact.traceReferenceCount} · handoff=${output.handoff.disposition}/${output.handoff.freshness} · revalidation=${output.impact.revalidationState}`),
+    "",
+    ...dashboard.limitations.map((limitation) => `Limit: ${limitation}`),
+    "",
+    "Boundary: trace presence proves only recorded links; absence does not prove no impact. This read-only projection grants no impact-completeness, revalidation, approval, risk-acceptance, readiness, effect, release, write, or action authority.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return dashboard
 }
 
 async function showChangeImpactDashboard(pool: EngineClientPool): Promise<ChangeImpactDashboard> {

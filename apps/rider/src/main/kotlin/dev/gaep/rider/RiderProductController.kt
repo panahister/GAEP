@@ -1320,6 +1320,18 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         return renderPhase1Summary(client.readPhase1Summary(product, initiative))
     }
 
+    fun readPhase1ChangeImpact(initiativeId: UUID, changeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        require(initiative.productId == product.id) {
+            "The Initiative does not target the exact current Product. Reload the Product and Initiative."
+        }
+        val catalog = client.listChangeImpactChanges(product)
+        val change = catalog.items.singleOrNull { it.recordId == changeId }
+            ?: error("The Change is not part of the verified current catalog. Reload and select the exact Change again.")
+        return renderPhase1ChangeImpact(client.readPhase1ChangeImpact(product, initiative, change))
+    }
+
     fun readPhaseDashboardTables(): List<AccessibleMetadataTable> {
         val product = client.readProductBinding()
         return AccessibleDashboardTables.phase(client.readPhaseDashboard(product))
@@ -1760,6 +1772,47 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         append(
             "Boundary: this read-only candidate summary grants no readiness, approval, acceptance, phase-entry, " +
                 "release, Run, Tool, write, or action authority.",
+        )
+    }
+
+    private fun renderPhase1ChangeImpact(dashboard: Phase1ChangeImpactDashboard): String = buildString {
+        appendLine("GAEP exact Phase 1 Change and impact dashboard")
+        appendLine()
+        appendLine("Initiative: ${dashboard.initiativeId}@${dashboard.initiativeRevision} · ${dashboard.initiativeState}")
+        appendLine("Change: ${dashboard.change.recordId}@${dashboard.change.revision} · ${dashboard.change.state}")
+        appendLine(
+            "Coverage: ${dashboard.currentTraceObservedOutputCount} current trace-observed · " +
+                "${dashboard.attentionRequiredOutputCount} attention · " +
+                "${dashboard.impactNotEstablishedOutputCount} impact not established",
+        )
+        appendLine(
+            "Change scope: ${dashboard.changedArtifactCount} changed artifacts · ${dashboard.effectTargetCount} effect targets · " +
+                "${dashboard.affectedUnitCount} affected trace units",
+        )
+        appendLine(
+            "Freshness: ${dashboard.freshnessState} · ${dashboard.traceAttentionLinkCount} trace-attention links · " +
+                "${dashboard.staleBindingCount} stale bindings",
+        )
+        appendLine("Owners: unbound · revalidation: not established · Change approval: not established")
+        appendLine("Risk-acceptance authority, Product Owner acceptance, and effect authority: not established")
+        appendLine("Snapshot digest: ${dashboard.snapshotDigest}")
+        appendLine()
+        appendLine("P0-P4 governed output impact coverage:")
+        dashboard.outputs.forEach { output ->
+            appendLine(
+                "  ${output.outputKind} · readiness=${output.readinessApplicability}/${output.readinessEvaluationState}/" +
+                    "${output.readinessFreshness} · impact=${output.impactState} · exact=${output.exactMatchedSubjectCount}/" +
+                    "${output.readinessSubjectCount} · traces=${output.traceReferenceCount} · " +
+                    "handoff=${output.handoffDisposition}/${output.handoffFreshness} · revalidation=${output.revalidationState}",
+            )
+        }
+        appendLine()
+        dashboard.limitations.forEach { appendLine("Limit: $it") }
+        appendLine()
+        append(
+            "Boundary: trace presence proves only recorded links; absence does not prove no impact. This read-only " +
+                "projection grants no impact-completeness, revalidation, approval, risk-acceptance, readiness, " +
+                "effect, release, write, or action authority.",
         )
     }
 

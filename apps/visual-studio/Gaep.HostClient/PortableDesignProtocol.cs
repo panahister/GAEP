@@ -53,6 +53,34 @@ internal static partial class PortableDesignProtocol
     {
         "proposed", "planned", "active", "blocked", "completed", "cancelled",
     };
+    private static readonly (string OutputKind, string RecordKind)[] Phase1ImpactOutputRecordKinds =
+    [
+        ("architecture-challenge-model", "architecture-challenge-model"),
+        ("authorization-model", "authorization-model"),
+        ("bounded-context-ownership", "bounded-context-model"),
+        ("business-architecture-baseline", "business-architecture-baseline"),
+        ("business-capability-map", "business-capability-map"),
+        ("business-rule-catalog", "business-rule-catalog"),
+        ("business-understanding", "business-understanding"),
+        ("candidate-source-baseline", "source-baseline"),
+        ("data-model", "data-model"),
+        ("decision-register", "decision-register"),
+        ("end-to-end-traceability", "end-to-end-traceability-candidate"),
+        ("event-integration-model", "event-integration-model"),
+        ("evidence-registry", "evidence-registry"),
+        ("failure-recovery-model", "failure-recovery-model"),
+        ("initiative-entry", "initiative"),
+        ("operating-model", "operating-model"),
+        ("outcome-success-model", "outcome-model"),
+        ("process-model", "process-model"),
+        ("risk-register", "risk-register"),
+        ("security-privacy-threat-assessment", "security-privacy-threat-assessment"),
+        ("source-intake", "source-record"),
+        ("source-provenance", "source-provenance"),
+        ("stakeholder-role-model", "stakeholder-model"),
+        ("system-solution-architecture", "system-solution-architecture"),
+        ("value-stream-model", "value-stream-model"),
+    ];
     private static readonly HashSet<string> ChangeImpactWorkItemStates = new(ChangeImpactStates, StringComparer.Ordinal)
     {
         "ready", "in-progress",
@@ -139,6 +167,8 @@ internal static partial class PortableDesignProtocol
             ["CHANGE_IMPACT_CHANGE_CONTEXT_CHANGED"] = (-32_041, "The Change changed before the Change/Impact projection was composed; select the current Change again."),
             ["CHANGE_IMPACT_AUDIT_INVALID"] = (-32_042, "The Change/Impact projection is unavailable because the governed audit chain is invalid."),
             ["CHANGE_IMPACT_CATALOG_INVALID"] = (-32_043, "The current Change catalog could not be verified."),
+            ["PHASE1_CHANGE_IMPACT_AUDIT_INVALID"] = (-32_048, "The Phase 1 Change/Impact projection is unavailable because the governed audit chain is invalid."),
+            ["PHASE1_CHANGE_IMPACT_CONTEXT_CHANGED"] = (-32_049, "The Phase 1 Change/Impact context changed; reload the exact Product, Initiative, Change, readiness, handoff, and trace records."),
             ["INVALID_PARAMS"] = (-32_602, "The GAEP engine rejected the local request parameters."),
             ["PROTOCOL_UPGRADE_REQUIRED"] = (-32_021, "The GAEP engine requires protocol version 2 for portable design requests."),
             ["UNSUPPORTED_PROTOCOL_VERSION"] = (-32_020, "The GAEP engine does not support the requested portable design protocol version."),
@@ -646,6 +676,324 @@ internal static partial class PortableDesignProtocol
             readinessTotal, readinessGapCount, handoffState, handoffTransferState, handoffIncluded, handoffTotal,
             handoffGapCount, freshnessState, staleBindingCount, staleSourceReferenceCount, observedAt,
             Phase1SummarySourceBoundary, Phase1SummaryPrivacyBoundary, Array.AsReadOnly(limitations), snapshotDigest);
+    }
+
+    internal static Phase1ChangeImpactDashboard ParsePhase1ChangeImpactResponse(
+        JsonElement envelope,
+        ProductBinding expectedProduct,
+        InitiativeEntryRecord expectedInitiative,
+        ChangeImpactChangeReference expectedChange)
+    {
+        var result = ReadResult(envelope);
+        if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                result,
+                "schemaVersion", "kind", "phase", "product", "initiative", "change", "sources", "changeScope",
+                "outputs", "coverage", "owners", "governance", "freshness", "evidenceCues", "observedAt",
+                "sourceBoundary", "privacyBoundary", "limitations", "authorityBoundary", "snapshotDigest") ||
+            !result.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var schema) || schema != 1 ||
+            ParseRequiredEnum(result, "kind", "phase-1-change-impact-dashboard") != "phase-1-change-impact-dashboard" ||
+            ParseRequiredEnum(
+                result,
+                "sourceBoundary",
+                "current-governed-product-initiative-change-readiness-handoff-and-bounded-trace-projections-only") !=
+            "current-governed-product-initiative-change-readiness-handoff-and-bounded-trace-projections-only" ||
+            ParseRequiredEnum(
+                result,
+                "privacyBoundary",
+                "dashboard-exposes-identities-digests-counts-statuses-effects-and-times-not-change-text-output-content-findings-evidence-source-content-personal-data-secrets-or-credentials") !=
+            "dashboard-exposes-identities-digests-counts-statuses-effects-and-times-not-change-text-output-content-findings-evidence-source-content-personal-data-secrets-or-credentials" ||
+            ParseRequiredEnum(
+                result,
+                "authorityBoundary",
+                "phase-1-change-impact-dashboard-is-read-only-observed-candidate-evidence-not-impact-completeness-revalidation-approval-risk-acceptance-readiness-effect-release-or-action-authority") !=
+            "phase-1-change-impact-dashboard-is-read-only-observed-candidate-evidence-not-impact-completeness-revalidation-approval-risk-acceptance-readiness-effect-release-or-action-authority")
+        {
+            throw InvalidResponse();
+        }
+        static long NonNegative(JsonElement element, string name, long maximum = 1_000_000)
+        {
+            if (!element.TryGetProperty(name, out var value) || !value.TryGetInt64(out var parsed) || parsed < 0 || parsed > maximum)
+            {
+                throw InvalidResponse();
+            }
+            return parsed;
+        }
+        static void ValidateReference(JsonElement reference)
+        {
+            if (reference.ValueKind != JsonValueKind.Object || !HasOnlyProperties(reference, "recordId", "revision", "digest"))
+            {
+                throw InvalidResponse();
+            }
+            ParseRequiredGuid(reference, "recordId");
+            ParsePositiveLong(reference, "revision");
+            ParseRequiredDigest(reference, "digest");
+        }
+
+        var phase = result.GetProperty("phase");
+        if (phase.ValueKind != JsonValueKind.Object || !HasOnlyProperties(phase, "id", "label") ||
+            ParseRequiredEnum(phase, "id", "phase-1b-product") != "phase-1b-product" ||
+            ParseRequiredPortableText(phase, "label") != "Phase 1B — Product P0–P4") throw InvalidResponse();
+        var product = result.GetProperty("product");
+        if (product.ValueKind != JsonValueKind.Object || !HasOnlyProperties(product, "recordType", "recordId", "revision", "digest") ||
+            ParseRequiredEnum(product, "recordType", "product") != "product") throw InvalidResponse();
+        var productId = ParseRequiredGuid(product, "recordId");
+        var productRevision = ParsePositiveLong(product, "revision");
+        var productDigest = ParseRequiredDigest(product, "digest");
+        if (productId != expectedProduct.Id || productRevision != expectedProduct.Revision || productDigest != expectedProduct.Digest)
+        {
+            throw InvalidResponse();
+        }
+        var initiative = result.GetProperty("initiative");
+        if (initiative.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(initiative, "recordType", "recordId", "revision", "digest", "state") ||
+            ParseRequiredEnum(initiative, "recordType", "initiative") != "initiative") throw InvalidResponse();
+        var initiativeId = ParseRequiredGuid(initiative, "recordId");
+        var initiativeRevision = ParsePositiveLong(initiative, "revision");
+        var initiativeDigest = ParseRequiredDigest(initiative, "digest");
+        var initiativeState = ParseRequiredEnum(initiative, "state", "active", "blocked", "cancelled", "completed", "proposed");
+        if (initiativeId != expectedInitiative.Id || initiativeRevision != expectedInitiative.Revision ||
+            initiativeDigest != expectedInitiative.Digest || initiativeState != expectedInitiative.State ||
+            expectedInitiative.ProductId != expectedProduct.Id) throw InvalidResponse();
+        var change = ParseChangeImpactChangeReference(result.GetProperty("change"));
+        if (change.RecordId != expectedChange.RecordId || change.Revision != expectedChange.Revision ||
+            change.Digest != expectedChange.Digest || change.State != expectedChange.State ||
+            !change.EffectEnvelope.SequenceEqual(expectedChange.EffectEnvelope, StringComparer.Ordinal)) throw InvalidResponse();
+
+        var sources = result.GetProperty("sources");
+        if (!HasRequiredAndAllowedProperties(
+                sources,
+                ["changeImpactSnapshotDigest", "readinessSnapshotDigest", "handoffSnapshotDigest"],
+                ["readinessGate", "handoffPackage"])) throw InvalidResponse();
+        ParseRequiredDigest(sources, "changeImpactSnapshotDigest");
+        ParseRequiredDigest(sources, "readinessSnapshotDigest");
+        ParseRequiredDigest(sources, "handoffSnapshotDigest");
+        if (sources.TryGetProperty("readinessGate", out var readinessGate)) ValidateReference(readinessGate);
+        if (sources.TryGetProperty("handoffPackage", out var handoffPackage)) ValidateReference(handoffPackage);
+
+        var scope = result.GetProperty("changeScope");
+        if (!HasOnlyProperties(
+                scope,
+                "workItemCount", "changedArtifactCount", "effectTargetCount", "affectedUnitCount", "decisionCount",
+                "riskCount", "unresolvedTraceLinkCount", "staleTraceLinkCount", "invalidTraceLinkCount", "traceAnalysisTruncated"))
+        {
+            throw InvalidResponse();
+        }
+        NonNegative(scope, "workItemCount");
+        var changedArtifactCount = NonNegative(scope, "changedArtifactCount");
+        var effectTargetCount = NonNegative(scope, "effectTargetCount");
+        var affectedUnitCount = NonNegative(scope, "affectedUnitCount");
+        NonNegative(scope, "decisionCount");
+        NonNegative(scope, "riskCount");
+        var unresolvedTraceLinkCount = NonNegative(scope, "unresolvedTraceLinkCount");
+        var staleTraceLinkCount = NonNegative(scope, "staleTraceLinkCount");
+        var invalidTraceLinkCount = NonNegative(scope, "invalidTraceLinkCount");
+        var traceAnalysisTruncated = ParseRequiredBoolean(scope, "traceAnalysisTruncated");
+
+        var outputArray = result.GetProperty("outputs");
+        if (outputArray.ValueKind != JsonValueKind.Array || outputArray.GetArrayLength() != Phase1ImpactOutputRecordKinds.Length)
+        {
+            throw InvalidResponse();
+        }
+        var parsedOutputs = new List<Phase1ChangeImpactOutput>(Phase1ImpactOutputRecordKinds.Length);
+        var index = 0;
+        foreach (var output in outputArray.EnumerateArray())
+        {
+            var expectedKind = Phase1ImpactOutputRecordKinds[index++];
+            if (output.ValueKind != JsonValueKind.Object || !HasOnlyProperties(output, "outputKind", "recordKind", "readiness", "impact", "handoff") ||
+                ParseRequiredPortableText(output, "outputKind") != expectedKind.OutputKind ||
+                ParseRequiredPortableText(output, "recordKind") != expectedKind.RecordKind) throw InvalidResponse();
+            var readiness = output.GetProperty("readiness");
+            if (!HasOnlyProperties(readiness, "applicability", "evaluationState", "freshness", "subjectCount")) throw InvalidResponse();
+            var applicability = ParseRequiredEnum(readiness, "applicability", "applicable", "not-applicable-candidate", "unresolved", "not-assessed");
+            var evaluationState = ParseRequiredEnum(
+                readiness,
+                "evaluationState",
+                "blocked", "conditionally-satisfied", "failed", "incomplete", "not-applicable-candidate", "not-assessed", "satisfied");
+            var readinessFreshness = ParseRequiredEnum(readiness, "freshness", "current", "stale", "unknown");
+            var subjectCount = NonNegative(readiness, "subjectCount", 512);
+            if (applicability == "not-assessed" &&
+                (evaluationState != "not-assessed" || readinessFreshness != "unknown" || subjectCount != 0)) throw InvalidResponse();
+
+            var impact = output.GetProperty("impact");
+            if (!HasOnlyProperties(
+                    impact,
+                    "state", "exactMatchedSubjectCount", "staleSubjectBindingCount", "traceReferenceCount",
+                    "validTraceCount", "unresolvedTraceCount", "staleTraceCount", "invalidTraceCount",
+                    "upstreamTraceCount", "downstreamTraceCount", "revalidationState", "coverageBoundary")) throw InvalidResponse();
+            var exactMatches = NonNegative(impact, "exactMatchedSubjectCount", 512);
+            var staleBindings = NonNegative(impact, "staleSubjectBindingCount", 512);
+            var traceCount = NonNegative(impact, "traceReferenceCount", 512);
+            var validTraces = NonNegative(impact, "validTraceCount", 512);
+            var unresolvedTraces = NonNegative(impact, "unresolvedTraceCount", 512);
+            var staleTraces = NonNegative(impact, "staleTraceCount", 512);
+            var invalidTraces = NonNegative(impact, "invalidTraceCount", 512);
+            var upstreamTraces = NonNegative(impact, "upstreamTraceCount", 512);
+            var downstreamTraces = NonNegative(impact, "downstreamTraceCount", 512);
+            var expectedImpactState = staleBindings + unresolvedTraces + staleTraces + invalidTraces > 0
+                ? "attention-required"
+                : exactMatches > 0 ? "current-trace-observed" : "not-established";
+            var impactState = ParseRequiredEnum(impact, "state", "current-trace-observed", "attention-required", "not-established");
+            if (exactMatches > subjectCount || traceCount != validTraces + unresolvedTraces + staleTraces + invalidTraces ||
+                traceCount != upstreamTraces + downstreamTraces || impactState != expectedImpactState ||
+                ParseRequiredEnum(impact, "revalidationState", "not-established") != "not-established" ||
+                ParseRequiredEnum(
+                    impact,
+                    "coverageBoundary",
+                    "absence-of-an-exact-trace-match-does-not-prove-absence-of-impact") !=
+                "absence-of-an-exact-trace-match-does-not-prove-absence-of-impact") throw InvalidResponse();
+
+            var handoff = output.GetProperty("handoff");
+            if (!HasOnlyProperties(handoff, "disposition", "freshness", "subjectCount")) throw InvalidResponse();
+            var handoffDisposition = ParseRequiredEnum(
+                handoff,
+                "disposition",
+                "included", "omitted-not-applicable", "reference-only", "unresolved", "not-established");
+            var handoffFreshness = ParseRequiredEnum(handoff, "freshness", "current", "stale", "unknown");
+            var handoffSubjectCount = NonNegative(handoff, "subjectCount", 512);
+            if (handoffDisposition == "not-established" && (handoffFreshness != "unknown" || handoffSubjectCount != 0))
+            {
+                throw InvalidResponse();
+            }
+            parsedOutputs.Add(new Phase1ChangeImpactOutput(
+                expectedKind.OutputKind,
+                expectedKind.RecordKind,
+                applicability,
+                evaluationState,
+                readinessFreshness,
+                subjectCount,
+                impactState,
+                exactMatches,
+                traceCount,
+                handoffDisposition,
+                handoffFreshness,
+                "not-established"));
+        }
+
+        var coverage = result.GetProperty("coverage");
+        if (!HasOnlyProperties(
+                coverage,
+                "state", "outputCount", "applicableOutputCount", "currentTraceObservedOutputCount",
+                "attentionRequiredOutputCount", "impactNotEstablishedOutputCount", "revalidationNotEstablishedOutputCount",
+                "basis", "coverageBoundary")) throw InvalidResponse();
+        var currentCount = parsedOutputs.Count(item => item.ImpactState == "current-trace-observed");
+        var attentionCount = parsedOutputs.Count(item => item.ImpactState == "attention-required");
+        var unknownCount = parsedOutputs.Count(item => item.ImpactState == "not-established");
+        var applicableCount = parsedOutputs.Count(item => item.ReadinessApplicability == "applicable");
+        if (ParseRequiredEnum(coverage, "state", "bounded-not-complete") != "bounded-not-complete" ||
+            NonNegative(coverage, "outputCount", 25) != 25 || NonNegative(coverage, "applicableOutputCount", 25) != applicableCount ||
+            NonNegative(coverage, "currentTraceObservedOutputCount", 25) != currentCount ||
+            NonNegative(coverage, "attentionRequiredOutputCount", 25) != attentionCount ||
+            NonNegative(coverage, "impactNotEstablishedOutputCount", 25) != unknownCount ||
+            NonNegative(coverage, "revalidationNotEstablishedOutputCount", 25) != 25 ||
+            ParseRequiredEnum(
+                coverage,
+                "basis",
+                "exact-current-readiness-subjects-matched-to-bounded-governed-change-trace-results") !=
+            "exact-current-readiness-subjects-matched-to-bounded-governed-change-trace-results" ||
+            ParseRequiredEnum(
+                coverage,
+                "coverageBoundary",
+                "trace-presence-proves-only-the-recorded-link-and-trace-absence-does-not-prove-no-impact") !=
+            "trace-presence-proves-only-the-recorded-link-and-trace-absence-does-not-prove-no-impact") throw InvalidResponse();
+
+        var owners = result.GetProperty("owners");
+        if (!HasOnlyProperties(owners, "state", "boundOutputOwnerCount", "basis") ||
+            ParseRequiredEnum(owners, "state", "unbound") != "unbound" || NonNegative(owners, "boundOutputOwnerCount", 0) != 0 ||
+            ParseRequiredEnum(owners, "basis", "no-governed-phase-output-owner-assignment-is-bound") !=
+            "no-governed-phase-output-owner-assignment-is-bound") throw InvalidResponse();
+        var governance = result.GetProperty("governance");
+        if (!HasOnlyProperties(
+                governance,
+                "changeApproval", "riskAcceptanceAuthority", "revalidationAuthority", "productOwnerAcceptance", "effectAuthority"))
+        {
+            throw InvalidResponse();
+        }
+        foreach (var field in new[] { "changeApproval", "riskAcceptanceAuthority", "revalidationAuthority", "productOwnerAcceptance", "effectAuthority" })
+        {
+            if (ParseRequiredEnum(governance, field, "not-established") != "not-established") throw InvalidResponse();
+        }
+
+        var freshness = result.GetProperty("freshness");
+        if (!HasOnlyProperties(
+                freshness,
+                "state", "changeImpactEvaluatedAt", "readinessObservedAt", "handoffObservedAt", "staleBindingCount",
+                "staleSourceReferenceCount", "traceAttentionLinkCount", "traceAnalysisTruncated", "basis")) throw InvalidResponse();
+        var freshnessState = ParseRequiredEnum(freshness, "state", "current", "attention-required");
+        var changeImpactEvaluatedAt = ParseRequiredTimestamp(freshness, "changeImpactEvaluatedAt");
+        var readinessObservedAt = ParseRequiredTimestamp(freshness, "readinessObservedAt");
+        var handoffObservedAt = ParseRequiredTimestamp(freshness, "handoffObservedAt");
+        var staleBindingCount = NonNegative(freshness, "staleBindingCount");
+        var staleSourceCount = NonNegative(freshness, "staleSourceReferenceCount");
+        var traceAttentionCount = NonNegative(freshness, "traceAttentionLinkCount");
+        var freshnessTruncated = ParseRequiredBoolean(freshness, "traceAnalysisTruncated");
+        var expectedFreshnessAttention = staleBindingCount > 0 || staleSourceCount > 0 || traceAttentionCount > 0 ||
+            freshnessTruncated || attentionCount > 0;
+        if (traceAttentionCount != unresolvedTraceLinkCount + staleTraceLinkCount + invalidTraceLinkCount ||
+            freshnessTruncated != traceAnalysisTruncated || (freshnessState == "attention-required") != expectedFreshnessAttention ||
+            ParseRequiredEnum(
+                freshness,
+                "basis",
+                "current-governed-snapshots-and-declared-trace-readiness-handoff-freshness") !=
+            "current-governed-snapshots-and-declared-trace-readiness-handoff-freshness") throw InvalidResponse();
+        var cues = result.GetProperty("evidenceCues");
+        if (!HasOnlyProperties(cues, "freshness", "confidence") ||
+            ParseRequiredEnum(cues, "freshness", "current", "potentially-stale") !=
+            (expectedFreshnessAttention ? "potentially-stale" : "current")) throw InvalidResponse();
+        var confidence = cues.GetProperty("confidence");
+        if (!HasOnlyProperties(confidence, "state", "basis") ||
+            ParseRequiredEnum(confidence, "state", "not-assessed") != "not-assessed" ||
+            ParseRequiredEnum(
+                confidence,
+                "basis",
+                "bounded-trace-coverage-does-not-establish-impact-confidence-or-completeness") !=
+            "bounded-trace-coverage-does-not-establish-impact-confidence-or-completeness") throw InvalidResponse();
+
+        var observedAt = ParseRequiredTimestamp(result, "observedAt");
+        if (changeImpactEvaluatedAt > observedAt || readinessObservedAt > observedAt || handoffObservedAt > observedAt)
+        {
+            throw InvalidResponse();
+        }
+        var limitationsElement = result.GetProperty("limitations");
+        if (limitationsElement.ValueKind != JsonValueKind.Array || limitationsElement.GetArrayLength() is < 1 or > 8)
+        {
+            throw InvalidResponse();
+        }
+        var limitations = limitationsElement.EnumerateArray().Select(value =>
+        {
+            if (value.ValueKind != JsonValueKind.String || !ValidPortableText(value.GetString(), minimum: 4, maximum: 1_000))
+            {
+                throw InvalidResponse();
+            }
+            return value.GetString()!;
+        }).ToArray();
+        var snapshotDigest = ParseRequiredDigest(result, "snapshotDigest");
+        var digestBody = JsonSerializer.SerializeToElement(
+            result.EnumerateObject()
+                .Where(property => property.Name != "snapshotDigest")
+                .ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal));
+        if (snapshotDigest != CanonicalDigest(digestBody)) throw InvalidResponse();
+        return new Phase1ChangeImpactDashboard(
+            productId,
+            productRevision,
+            productDigest,
+            initiativeId,
+            initiativeRevision,
+            initiativeDigest,
+            initiativeState,
+            change,
+            changedArtifactCount,
+            effectTargetCount,
+            affectedUnitCount,
+            Array.AsReadOnly(parsedOutputs.ToArray()),
+            currentCount,
+            attentionCount,
+            unknownCount,
+            freshnessState,
+            traceAttentionCount,
+            staleBindingCount,
+            observedAt,
+            Array.AsReadOnly(limitations),
+            snapshotDigest);
     }
 
     private static PhaseDashboardPanel ParsePhaseDashboardPanel(JsonElement panel, string expectedId)

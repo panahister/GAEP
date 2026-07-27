@@ -341,6 +341,9 @@
         <Button x:Name="ShowChangeImpactButton" Content="Show exact Change and impact"
                 Command="{Binding ShowChangeImpactCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="ShowPhase1ChangeImpactButton" Content="Show Phase 1 Change and impact"
+                Command="{Binding ShowPhase1ChangeImpactCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Agent and model" FontWeight="SemiBold" />
         <TextBlock Text="Show an exact Product-, capability-, and selection-bound metadata projection. It cannot select or switch an agent, create a handoff, launch a Run, authorize effects, establish readiness, or invent provider usage or cost."
@@ -545,6 +548,7 @@
       <Setter TargetName="RefreshProductButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhaseDashboardButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhase1SummaryButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ShowPhase1ChangeImpactButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadInitiativeEntryButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ClassifyInitiativeButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="AddInitiativeDecisionButton" Property="IsEnabled" Value="False" />

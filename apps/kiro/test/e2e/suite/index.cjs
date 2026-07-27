@@ -17,6 +17,7 @@ const commands = [
   "gaepKiro.runs.stagedReview",
   "gaepKiro.dashboard.phase",
   "gaepKiro.dashboard.phase1Summary",
+  "gaepKiro.dashboard.phase1ChangeImpact",
   "gaepKiro.dashboard.changeImpact",
   "gaepKiro.dashboard.agentModel",
   "gaepKiro.dashboard.accessibleTables",

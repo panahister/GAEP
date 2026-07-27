@@ -48,7 +48,9 @@ import type {
   EvidenceRegistryProjection,
   EndToEndTraceabilityProjection,
   P0P4ReadinessGateProjection,
+  P0P4ReadinessGate,
   P5HandoffPackageProjection,
+  P5HandoffPackage,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -61,6 +63,7 @@ import type {
   WorkspaceHealthIssue,
   DeliveryPhaseId,
   Phase1SummaryDashboard,
+  Phase1ChangeImpactDashboard,
   PhaseDashboardFramework,
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
@@ -69,6 +72,7 @@ import {
   composeAgentModelDashboard,
   composeChangeImpactDashboard,
   composePhase1SummaryDashboard,
+  composePhase1ChangeImpactDashboard,
   composePhaseDashboardFramework,
 } from "@gaep/engine"
 import type {
@@ -199,9 +203,11 @@ export interface CurrentStudioEngineReader {
   }
   p0P4ReadinessGate?: {
     project(initiativeId: string): Promise<P0P4ReadinessGateProjection>
+    readCurrent?(initiativeId: string): Promise<P0P4ReadinessGate | undefined>
   }
   p5HandoffPackage?: {
     project(initiativeId: string): Promise<P5HandoffPackageProjection>
+    readCurrent?(initiativeId: string): Promise<P5HandoffPackage | undefined>
   }
 }
 
@@ -3749,6 +3755,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       : undefined
     let phase1Summary: Phase1SummaryDashboard | undefined
+    let phase1ChangeImpact: Phase1ChangeImpactDashboard | undefined
     if (observed.product) {
       const initiative = currentInitiative(observed.initiatives)
       const readiness = initiative ? observed.p0P4ReadinessGateProjections.get(initiative.id) : undefined
@@ -3779,6 +3786,49 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         }
       }
     }
+    if (route === "delivery" && observed.product && changeImpact) {
+      const initiative = currentInitiative(observed.initiatives)
+      const change = observed.changes.find((record) => record.id === changeImpact.change.recordId)
+      const readiness = initiative ? observed.p0P4ReadinessGateProjections.get(initiative.id) : undefined
+      const handoff = initiative ? observed.p5HandoffPackageProjections.get(initiative.id) : undefined
+      const engine = this.context.engine()
+      if (initiative && change && change.initiativeId === initiative.id && readiness && handoff &&
+          engine?.p0P4ReadinessGate?.readCurrent && engine.p5HandoffPackage?.readCurrent) {
+        try {
+          const [readinessGate, handoffPackage] = await Promise.all([
+            engine.p0P4ReadinessGate.readCurrent(initiative.id),
+            engine.p5HandoffPackage.readCurrent(initiative.id),
+          ])
+          phase1ChangeImpact = composePhase1ChangeImpactDashboard({
+            product: observed.product,
+            initiative,
+            change,
+            changeImpact,
+            readiness,
+            ...(readinessGate ? { readinessGate } : {}),
+            handoff,
+            ...(handoffPackage ? { handoffPackage } : {}),
+          }, {
+            expectedProductId: observed.product.id,
+            expectedProductRevision: observed.product.revision ?? 1,
+            expectedProductDigest: canonicalDigest(observed.product),
+            expectedInitiativeId: initiative.id,
+            expectedInitiativeRevision: initiative.revision ?? 1,
+            expectedInitiativeDigest: canonicalDigest(initiative),
+            expectedChangeId: change.id,
+            expectedChangeRevision: change.revision,
+            expectedChangeDigest: canonicalDigest(change),
+          })
+        } catch (error) {
+          this.context.logDiagnostic("Product Studio exact Phase 1 Change/Impact composition failed; stale or private detail was withheld", error)
+          observed.issues.push(issue(
+            "phase-1-change-impact-unavailable",
+            "The Phase 1 Change/Impact view could not be revalidated against the exact current Product, Initiative, Change, readiness, handoff, and bounded trace projections.",
+            "warning",
+          ))
+        }
+      }
+    }
     this.offeredProductRevision = observed.product?.revision ?? (observed.product ? 1 : undefined)
     return {
       protocolVersion: studioProtocolVersion,
@@ -3795,6 +3845,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       surface: surfaceFor(route, this.context, observed),
       ...(dashboard ? { dashboard } : {}),
       ...(phase1Summary ? { phase1Summary } : {}),
+      ...(phase1ChangeImpact ? { phase1ChangeImpact } : {}),
       ...(changeImpact ? { changeImpact } : {}),
       ...(agentModel ? { agentModel } : {}),
       page: page.page,
