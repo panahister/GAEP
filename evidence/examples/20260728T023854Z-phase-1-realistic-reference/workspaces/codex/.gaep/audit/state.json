@@ -1,0 +1,399 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-07-27T23:09:07.060Z",
+  "records": {
+    "manifest.json": {
+      "digest": "sha256:d7c75cace48c85a15b14ce849eb79e7839283726173c792ec2e4bed876f12837",
+      "transactionId": "39654779-1f38-4830-a3e6-ccc7a8a9d6b3",
+      "auditSequence": 1
+    },
+    "product.json": {
+      "digest": "sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c",
+      "revision": 1,
+      "transactionId": "39654779-1f38-4830-a3e6-ccc7a8a9d6b3",
+      "auditSequence": 1
+    },
+    "product-history/product-a079a93e-0e12-4d78-b190-26333007f6ed-r1.json": {
+      "digest": "sha256:06b224df5fba98a0bffe83b1a2fd572744a49bfd876c0b0b3d7a8e6cff32c9fe",
+      "revision": 1,
+      "transactionId": "39654779-1f38-4830-a3e6-ccc7a8a9d6b3",
+      "auditSequence": 1
+    },
+    "initiatives/5b57c220-c798-4db8-8dd9-2b929b7b58fd.json": {
+      "digest": "sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533",
+      "revision": 4,
+      "transactionId": "1dae204a-c956-416f-8dcc-bb8607e04d6f",
+      "auditSequence": 6
+    },
+    "sources/21b26907-ef4d-40eb-abd1-69dd8d221207.json": {
+      "digest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+      "revision": 1,
+      "transactionId": "e88dd758-b5ab-44be-90b1-b84247a787d3",
+      "auditSequence": 3
+    },
+    "source-history/source-21b26907-ef4d-40eb-abd1-69dd8d221207-r1.json": {
+      "digest": "sha256:6e7f33b8f55e7535002fda3273a6669b9660e53ce11284ee4f9237b5551766f6",
+      "revision": 1,
+      "transactionId": "e88dd758-b5ab-44be-90b1-b84247a787d3",
+      "auditSequence": 3
+    },
+    "business-understanding/f5a75bcf-f20b-4dd5-a267-52e9f64362b9.json": {
+      "digest": "sha256:ab8e2da0f466b7094d3bb174c26d7bf1993bc3e938dd9d0af29fdba55a60b32f",
+      "revision": 1,
+      "transactionId": "f2f4ecb5-bfad-4bca-a140-d66d283af527",
+      "auditSequence": 7
+    },
+    "business-understanding-history/business-understanding-f5a75bcf-f20b-4dd5-a267-52e9f64362b9-r1.json": {
+      "digest": "sha256:ab8e2da0f466b7094d3bb174c26d7bf1993bc3e938dd9d0af29fdba55a60b32f",
+      "revision": 1,
+      "transactionId": "f2f4ecb5-bfad-4bca-a140-d66d283af527",
+      "auditSequence": 7
+    },
+    "stakeholder-models/ad34b26e-6b47-4240-949c-30a7476aa7af.json": {
+      "digest": "sha256:501afad3370e0ea62be567ee0e6f850e496a73efa607f1d6ec46bb9f961f9040",
+      "revision": 1,
+      "transactionId": "87bcdba6-50da-4a1a-a06a-f0bef9081f01",
+      "auditSequence": 8
+    },
+    "stakeholder-model-history/stakeholder-model-ad34b26e-6b47-4240-949c-30a7476aa7af-r1.json": {
+      "digest": "sha256:501afad3370e0ea62be567ee0e6f850e496a73efa607f1d6ec46bb9f961f9040",
+      "revision": 1,
+      "transactionId": "87bcdba6-50da-4a1a-a06a-f0bef9081f01",
+      "auditSequence": 8
+    },
+    "outcome-models/4307f80e-fed8-43a6-a47c-4cf1e9700092.json": {
+      "digest": "sha256:32593f75d64f3891cc968f65dfce45498aef5e82f552d3761d43b4fd18f6fc7b",
+      "revision": 1,
+      "transactionId": "d89fdc24-20bd-4377-b833-8fe562fd5ad3",
+      "auditSequence": 9
+    },
+    "outcome-model-history/outcome-model-4307f80e-fed8-43a6-a47c-4cf1e9700092-r1.json": {
+      "digest": "sha256:32593f75d64f3891cc968f65dfce45498aef5e82f552d3761d43b4fd18f6fc7b",
+      "revision": 1,
+      "transactionId": "d89fdc24-20bd-4377-b833-8fe562fd5ad3",
+      "auditSequence": 9
+    },
+    "business-capability-maps/10267e29-dab2-4fd8-bcb8-d85d3783f2d1.json": {
+      "digest": "sha256:12b8dcdd461be8a3f3e59198b55b9a558be1a28dbd13cbf5e33fc88d9cb82b4c",
+      "revision": 1,
+      "transactionId": "8f034147-5d8b-436d-9cb8-38194c60e07f",
+      "auditSequence": 10
+    },
+    "business-capability-map-history/business-capability-map-10267e29-dab2-4fd8-bcb8-d85d3783f2d1-r1.json": {
+      "digest": "sha256:12b8dcdd461be8a3f3e59198b55b9a558be1a28dbd13cbf5e33fc88d9cb82b4c",
+      "revision": 1,
+      "transactionId": "8f034147-5d8b-436d-9cb8-38194c60e07f",
+      "auditSequence": 10
+    },
+    "value-stream-models/70c21851-04c0-4974-9a39-9a6b506b2af5.json": {
+      "digest": "sha256:7f97838e89e65c37bba2483a22705682cc2211896b445e725f1bbb6f2ebb2b7f",
+      "revision": 1,
+      "transactionId": "89925bc8-5ef2-4210-8352-3e5c328f8eea",
+      "auditSequence": 11
+    },
+    "value-stream-model-history/value-stream-model-70c21851-04c0-4974-9a39-9a6b506b2af5-r1.json": {
+      "digest": "sha256:7f97838e89e65c37bba2483a22705682cc2211896b445e725f1bbb6f2ebb2b7f",
+      "revision": 1,
+      "transactionId": "89925bc8-5ef2-4210-8352-3e5c328f8eea",
+      "auditSequence": 11
+    },
+    "operating-models/37895456-deb2-4c00-9e40-6d740fd51707.json": {
+      "digest": "sha256:a1f9c07f34d5beb4082634c8d2b3d0fd90773ea1c254194d47c108ecd50a2b23",
+      "revision": 1,
+      "transactionId": "c98cac07-b8eb-490f-b3c1-948033a951da",
+      "auditSequence": 12
+    },
+    "operating-model-history/operating-model-37895456-deb2-4c00-9e40-6d740fd51707-r1.json": {
+      "digest": "sha256:a1f9c07f34d5beb4082634c8d2b3d0fd90773ea1c254194d47c108ecd50a2b23",
+      "revision": 1,
+      "transactionId": "c98cac07-b8eb-490f-b3c1-948033a951da",
+      "auditSequence": 12
+    },
+    "business-rule-catalogs/929bad40-af35-482b-81fc-cbfff2e7b51a.json": {
+      "digest": "sha256:b90f92b5a1d60c80bb9499a82ee75c72ea3ae4b6ecf0b6189f258a36314ac9e0",
+      "revision": 1,
+      "transactionId": "32d7a98e-0605-42ae-9e91-c58d080aca13",
+      "auditSequence": 13
+    },
+    "business-rule-catalog-history/business-rule-catalog-929bad40-af35-482b-81fc-cbfff2e7b51a-r1.json": {
+      "digest": "sha256:b90f92b5a1d60c80bb9499a82ee75c72ea3ae4b6ecf0b6189f258a36314ac9e0",
+      "revision": 1,
+      "transactionId": "32d7a98e-0605-42ae-9e91-c58d080aca13",
+      "auditSequence": 13
+    },
+    "business-architecture-baselines/e58eca3e-ca09-461d-8b6a-22662801d548.json": {
+      "digest": "sha256:2dcc0d250608772f37ae258904c3ef91b2caae79bde348c34fd7f29c66a92c45",
+      "revision": 1,
+      "transactionId": "f98066ee-8c20-47ee-a0ab-086af66d3bb5",
+      "auditSequence": 14
+    },
+    "business-architecture-baseline-history/business-architecture-baseline-e58eca3e-ca09-461d-8b6a-22662801d548-r1.json": {
+      "digest": "sha256:2dcc0d250608772f37ae258904c3ef91b2caae79bde348c34fd7f29c66a92c45",
+      "revision": 1,
+      "transactionId": "f98066ee-8c20-47ee-a0ab-086af66d3bb5",
+      "auditSequence": 14
+    },
+    "system-solution-architectures/c181b435-e05b-4693-8591-dbbdc8ea6378.json": {
+      "digest": "sha256:c5d197509af5abdac25ca5b56a128a618d08992ddd263816c6c91360ca507d34",
+      "revision": 1,
+      "transactionId": "b4578e74-52b4-41f2-9e52-7bfa5c30e1aa",
+      "auditSequence": 15
+    },
+    "system-solution-architecture-history/system-solution-architecture-c181b435-e05b-4693-8591-dbbdc8ea6378-r1.json": {
+      "digest": "sha256:c5d197509af5abdac25ca5b56a128a618d08992ddd263816c6c91360ca507d34",
+      "revision": 1,
+      "transactionId": "b4578e74-52b4-41f2-9e52-7bfa5c30e1aa",
+      "auditSequence": 15
+    },
+    "bounded-context-models/e6aca26a-c8ad-4981-bc6b-4edc34e41e3d.json": {
+      "digest": "sha256:b89fde27268aff5272183845ada8425d5cebba70d01a10f00337b94c184ea1fa",
+      "revision": 1,
+      "transactionId": "6990c2e4-c33e-4bb5-afa5-bac2d87294f2",
+      "auditSequence": 16
+    },
+    "bounded-context-model-history/bounded-context-model-e6aca26a-c8ad-4981-bc6b-4edc34e41e3d-r1.json": {
+      "digest": "sha256:b89fde27268aff5272183845ada8425d5cebba70d01a10f00337b94c184ea1fa",
+      "revision": 1,
+      "transactionId": "6990c2e4-c33e-4bb5-afa5-bac2d87294f2",
+      "auditSequence": 16
+    },
+    "security-privacy-assessments/36a655f3-3869-42de-9373-e1a64f5cad04.json": {
+      "digest": "sha256:d4a46b130517b2e0956a569d772ffe1d022ec361b3840774ca9bb37a6cd413c1",
+      "revision": 1,
+      "transactionId": "69f9addb-1efe-4600-8064-6a140b74dac1",
+      "auditSequence": 17
+    },
+    "security-privacy-assessment-history/security-privacy-assessment-36a655f3-3869-42de-9373-e1a64f5cad04-r1.json": {
+      "digest": "sha256:d4a46b130517b2e0956a569d772ffe1d022ec361b3840774ca9bb37a6cd413c1",
+      "revision": 1,
+      "transactionId": "69f9addb-1efe-4600-8064-6a140b74dac1",
+      "auditSequence": 17
+    },
+    "process-models/ac9f6b58-aff7-47ee-9442-ee2286a07b16.json": {
+      "digest": "sha256:0f157b64cedd1fc3296b39cca713c6bf8abafd00c9583f10e41056c7714580ba",
+      "revision": 1,
+      "transactionId": "80bdcc65-a858-47fe-b213-6881e96b46c5",
+      "auditSequence": 18
+    },
+    "process-model-history/process-model-ac9f6b58-aff7-47ee-9442-ee2286a07b16-r1.json": {
+      "digest": "sha256:0f157b64cedd1fc3296b39cca713c6bf8abafd00c9583f10e41056c7714580ba",
+      "revision": 1,
+      "transactionId": "80bdcc65-a858-47fe-b213-6881e96b46c5",
+      "auditSequence": 18
+    },
+    "data-models/892f5744-2e58-457c-a435-0ea629581a2e.json": {
+      "digest": "sha256:c0ed1419289389bf862a09c38c12ca5e3844d90e761bb547477c32772bebd843",
+      "revision": 1,
+      "transactionId": "abfdf4ee-41b1-483f-ac96-b62843ab5f97",
+      "auditSequence": 19
+    },
+    "data-model-history/data-model-892f5744-2e58-457c-a435-0ea629581a2e-r1.json": {
+      "digest": "sha256:c0ed1419289389bf862a09c38c12ca5e3844d90e761bb547477c32772bebd843",
+      "revision": 1,
+      "transactionId": "abfdf4ee-41b1-483f-ac96-b62843ab5f97",
+      "auditSequence": 19
+    },
+    "authorization-models/ef97a4ad-581a-4028-9728-6929c7d75948.json": {
+      "digest": "sha256:762e03a8f73a6516fe0dabaa48658ce419590738e882c30d6efaa2232f00ad0a",
+      "revision": 1,
+      "transactionId": "098908c3-6e1c-4a16-9e9a-7fcdd46833fb",
+      "auditSequence": 20
+    },
+    "authorization-model-history/authorization-model-ef97a4ad-581a-4028-9728-6929c7d75948-r1.json": {
+      "digest": "sha256:762e03a8f73a6516fe0dabaa48658ce419590738e882c30d6efaa2232f00ad0a",
+      "revision": 1,
+      "transactionId": "098908c3-6e1c-4a16-9e9a-7fcdd46833fb",
+      "auditSequence": 20
+    },
+    "event-integration-models/fa2ba771-91ba-467d-87d2-e188149171e2.json": {
+      "digest": "sha256:a8aa83f1bf1c4d96acc27a325b7f1f6e7696248573fa32ee95b0907b156bda0e",
+      "revision": 1,
+      "transactionId": "8c677b45-8101-406f-b806-a90eb698de99",
+      "auditSequence": 21
+    },
+    "event-integration-model-history/event-integration-model-fa2ba771-91ba-467d-87d2-e188149171e2-r1.json": {
+      "digest": "sha256:a8aa83f1bf1c4d96acc27a325b7f1f6e7696248573fa32ee95b0907b156bda0e",
+      "revision": 1,
+      "transactionId": "8c677b45-8101-406f-b806-a90eb698de99",
+      "auditSequence": 21
+    },
+    "failure-recovery-models/795b5dfc-8ed4-49fe-bff9-e5145f76353c.json": {
+      "digest": "sha256:6a0906235c4fe3b6f7c54956108c7c66976e9ad10a5d8d5af5ea44956b6db97a",
+      "revision": 1,
+      "transactionId": "08155558-aa37-463d-b792-2ec7d51b70f1",
+      "auditSequence": 22
+    },
+    "failure-recovery-model-history/failure-recovery-model-795b5dfc-8ed4-49fe-bff9-e5145f76353c-r1.json": {
+      "digest": "sha256:6a0906235c4fe3b6f7c54956108c7c66976e9ad10a5d8d5af5ea44956b6db97a",
+      "revision": 1,
+      "transactionId": "08155558-aa37-463d-b792-2ec7d51b70f1",
+      "auditSequence": 22
+    },
+    "architecture-challenge-models/0c6eb5e2-8114-404c-85b3-6d6ed1dba6b5.json": {
+      "digest": "sha256:c724541c42b6fd7e215fad729757cd94db9101a0f52c22c677487e7328e6dd62",
+      "revision": 1,
+      "transactionId": "cba54098-7086-45ff-b4fd-e24049da5fa3",
+      "auditSequence": 23
+    },
+    "architecture-challenge-model-history/architecture-challenge-model-0c6eb5e2-8114-404c-85b3-6d6ed1dba6b5-r1.json": {
+      "digest": "sha256:c724541c42b6fd7e215fad729757cd94db9101a0f52c22c677487e7328e6dd62",
+      "revision": 1,
+      "transactionId": "cba54098-7086-45ff-b4fd-e24049da5fa3",
+      "auditSequence": 23
+    },
+    "decision-registers/3811ddb0-1cbe-47e1-b3e0-30d040b4563c.json": {
+      "digest": "sha256:305fd1e08ad6ac6927f4d19565b240e4751b4a54f5aae0953d569b8faa0aad5b",
+      "revision": 1,
+      "transactionId": "8bfffd8a-c382-4767-9fd8-266f0c99e7f9",
+      "auditSequence": 24
+    },
+    "decision-register-history/decision-register-3811ddb0-1cbe-47e1-b3e0-30d040b4563c-r1.json": {
+      "digest": "sha256:305fd1e08ad6ac6927f4d19565b240e4751b4a54f5aae0953d569b8faa0aad5b",
+      "revision": 1,
+      "transactionId": "8bfffd8a-c382-4767-9fd8-266f0c99e7f9",
+      "auditSequence": 24
+    },
+    "risk-registers/d574754f-5362-4237-844d-9a1083f306a6.json": {
+      "digest": "sha256:aa54f2677767276a1231b13893f91056cc6aa2a77a379cc5e524921a2fdee900",
+      "revision": 1,
+      "transactionId": "f6a4f84a-0ccd-4962-b984-b1296b14ebf4",
+      "auditSequence": 25
+    },
+    "risk-register-history/risk-register-d574754f-5362-4237-844d-9a1083f306a6-r1.json": {
+      "digest": "sha256:aa54f2677767276a1231b13893f91056cc6aa2a77a379cc5e524921a2fdee900",
+      "revision": 1,
+      "transactionId": "f6a4f84a-0ccd-4962-b984-b1296b14ebf4",
+      "auditSequence": 25
+    },
+    "evidence-registries/4088bec8-cae9-4c6d-aa06-32e29e5045a1.json": {
+      "digest": "sha256:83c95acba64264c65c4dbe1bd7760b835d6f1d0d807d61105ffefe526a8a1a1f",
+      "revision": 1,
+      "transactionId": "797f4835-3d63-49fb-84a2-d4934158677c",
+      "auditSequence": 26
+    },
+    "evidence-registry-history/evidence-registry-4088bec8-cae9-4c6d-aa06-32e29e5045a1-r1.json": {
+      "digest": "sha256:83c95acba64264c65c4dbe1bd7760b835d6f1d0d807d61105ffefe526a8a1a1f",
+      "revision": 1,
+      "transactionId": "797f4835-3d63-49fb-84a2-d4934158677c",
+      "auditSequence": 26
+    },
+    "end-to-end-traceability/31401ecd-bf6d-4961-bf5d-657a4be552c1.json": {
+      "digest": "sha256:5cea1a854e1def5042d057bb1b535ec5b27b59e91ca6557c86270f3660822fc2",
+      "revision": 1,
+      "transactionId": "88b128df-ee59-479d-a291-8770b6b9dcfe",
+      "auditSequence": 27
+    },
+    "end-to-end-traceability-history/end-to-end-traceability-31401ecd-bf6d-4961-bf5d-657a4be552c1-r1.json": {
+      "digest": "sha256:5cea1a854e1def5042d057bb1b535ec5b27b59e91ca6557c86270f3660822fc2",
+      "revision": 1,
+      "transactionId": "88b128df-ee59-479d-a291-8770b6b9dcfe",
+      "auditSequence": 27
+    },
+    "p0-p4-readiness-gates/094d5c43-6d3b-4714-a13f-8167c504de45.json": {
+      "digest": "sha256:96a33665230c772e470464330b6626db18f23627a482ddcb1cad447f01a58b79",
+      "revision": 1,
+      "transactionId": "6924b43e-2855-4046-8cfb-5a5bca55d1fd",
+      "auditSequence": 28
+    },
+    "p0-p4-readiness-gate-history/p0-p4-readiness-gate-094d5c43-6d3b-4714-a13f-8167c504de45-r1.json": {
+      "digest": "sha256:96a33665230c772e470464330b6626db18f23627a482ddcb1cad447f01a58b79",
+      "revision": 1,
+      "transactionId": "6924b43e-2855-4046-8cfb-5a5bca55d1fd",
+      "auditSequence": 28
+    },
+    "p5-handoff-packages/f9e9419b-3ca4-4ebd-85d8-a0ceb1d6c0f7.json": {
+      "digest": "sha256:8d1099e58648f1bef1986a2a9223a20d90d177ba7360b97890a81f9cf78d2df2",
+      "revision": 1,
+      "transactionId": "02c258c2-eb52-4746-b6e1-6e0e76e01222",
+      "auditSequence": 29
+    },
+    "p5-handoff-package-history/p5-handoff-package-f9e9419b-3ca4-4ebd-85d8-a0ceb1d6c0f7-r1.json": {
+      "digest": "sha256:8d1099e58648f1bef1986a2a9223a20d90d177ba7360b97890a81f9cf78d2df2",
+      "revision": 1,
+      "transactionId": "02c258c2-eb52-4746-b6e1-6e0e76e01222",
+      "auditSequence": 29
+    },
+    "runtime/selection.json": {
+      "digest": "sha256:34d51b9973849e433beb8a30bd839044791496e390e9be6c03340c759ab9503b",
+      "transactionId": "2395f2da-e15e-481e-ac72-db91cf00f962",
+      "auditSequence": 30
+    },
+    "runtime/capabilities-046d18a34436b2234fb4e8b53115390a864331550d6f665168d6fae9e51aaf1f.json": {
+      "digest": "sha256:33150657316903fecc7d41ac5a9885d41acb00b786a8eefa07aa7e4b1aedaec0",
+      "transactionId": "2395f2da-e15e-481e-ac72-db91cf00f962",
+      "auditSequence": 30
+    },
+    "context-packs/6a60ef22-cb55-4b0f-9a8e-610240935e15.json": {
+      "digest": "sha256:138fc515eaded2e306df29fe07e3cd64916362f4dbda0edc4be74a72f1abc73d",
+      "revision": 1,
+      "transactionId": "947f5e1f-103e-486b-a693-664ddd365769",
+      "auditSequence": 31
+    },
+    "record-history/context-pack-6a60ef22-cb55-4b0f-9a8e-610240935e15-r1.json": {
+      "digest": "sha256:015bd800ae3b2cd18d31e650899d188122f75e8a79aef907d87c13df875db0d2",
+      "revision": 1,
+      "transactionId": "947f5e1f-103e-486b-a693-664ddd365769",
+      "auditSequence": 31
+    },
+    "workflow-plans/90d234b1-cac8-416f-ae24-95d044f6d2d3.json": {
+      "digest": "sha256:4f960a123b9a9fd59da38fa1e266f9dc7a6dc6dce86f0b7283f5e940bc143124",
+      "revision": 2,
+      "transactionId": "c0409349-c8e0-4c8e-b30d-9d2881d0ca8e",
+      "auditSequence": 33
+    },
+    "record-history/workflow-plan-90d234b1-cac8-416f-ae24-95d044f6d2d3-r1.json": {
+      "digest": "sha256:94b2b1f8217b76688eaa6211df275dc526cd83e98c91269d1710316c923327da",
+      "revision": 1,
+      "transactionId": "c2eef843-3e00-4c03-a779-c7603d3e1a9a",
+      "auditSequence": 32
+    },
+    "record-history/workflow-plan-90d234b1-cac8-416f-ae24-95d044f6d2d3-r2.json": {
+      "digest": "sha256:8bd867504448b08055f0e9224f52c4fbcfe9262a4df2b5ba77a4910277521ee7",
+      "revision": 2,
+      "transactionId": "c0409349-c8e0-4c8e-b30d-9d2881d0ca8e",
+      "auditSequence": 33
+    },
+    "sessions/charter-2b839115-a1de-4182-ae09-38fc47d4a4e0.json": {
+      "digest": "sha256:52ea50d15602e6d5a21bf06306e7fb983c7c444524982f1d5b86ac3ca8250022",
+      "transactionId": "d9d72627-979c-46b0-86b9-5f437a15e6a6",
+      "auditSequence": 35
+    },
+    "sessions/run-fbab04df-3f0c-4e0d-9a6b-f995828c511b.json": {
+      "digest": "sha256:ea505ec1907ad018a75ba9cb74214dca19f2e5fc4c9309df68e4d2859a949389",
+      "revision": 3,
+      "transactionId": "068431a8-6113-43e1-8844-d87dc1274dc0",
+      "auditSequence": 41
+    },
+    "sessions/managed-run-f25d8a95-bb72-48a1-b707-20b78fd9546d.json": {
+      "digest": "sha256:d298298158916e0a5e026032071b8ed2b5e75f341bc836e30f30bc0a58eac924",
+      "revision": 5,
+      "transactionId": "068431a8-6113-43e1-8844-d87dc1274dc0",
+      "auditSequence": 41
+    },
+    "sessions/managed-evidence-e97ba6b6-d663-4baf-b494-6e3aacf881e7.json": {
+      "digest": "sha256:6ebb6f1b144c445888f1132cfdade9489d9b8b672a64f79ae85d1ba771a1d2a4",
+      "transactionId": "a2e438dd-622c-4ccd-8222-50f0736e0ba4",
+      "auditSequence": 39
+    },
+    "sessions/managed-result-46367853-a84b-4fc1-9bdb-cc32213a33f7.json": {
+      "digest": "sha256:72105e23e6b328cb4676e14a029b3f8614c0d40c4add04f65770b040fc1ddac0",
+      "transactionId": "a2e438dd-622c-4ccd-8222-50f0736e0ba4",
+      "auditSequence": 39
+    },
+    "sessions/managed-apply-decision-be76aae6-a77a-4151-9af7-e9e3a28f2931.json": {
+      "digest": "sha256:a8639b3b5957893209a101dc7964867b5642b97c68b75c081f047c74273d09bd",
+      "transactionId": "3948624f-0428-4880-b9f6-566ca63f07c6",
+      "auditSequence": 40
+    },
+    "sessions/managed-evidence-3ad1776b-cd5d-462b-b185-788c30ea7b99.json": {
+      "digest": "sha256:4aad9a57aa3f89ac6ccaf75b84b4df44433f99e8949ff4ceb98c0ab862ce32ba",
+      "transactionId": "068431a8-6113-43e1-8844-d87dc1274dc0",
+      "auditSequence": 41
+    },
+    "sessions/managed-result-4c9a33ee-1c79-4973-bfb7-33cf23392248.json": {
+      "digest": "sha256:56eccb6fa768d9fcf15070b5f15a5190b5123cd8d2ce61f91c8a416ab353b4fe",
+      "transactionId": "068431a8-6113-43e1-8844-d87dc1274dc0",
+      "auditSequence": 41
+    }
+  }
+}

@@ -1,0 +1,1380 @@
+{
+  "initiativeId": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:850ad63df195d41793dbe52c32261725b4afd4f9fc59de25cdb31dbdbc63bc1e",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:cb6cce9b9bc3ff00eeb0527c3e9319d183537cabfa42d61523c5fc070ff63292"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Architecture Challenge",
+  "scope": "Challenge the exact shared governed-engine boundary, assumptions, alternatives, trade-offs, failure modes, evidence, independence, and downstream consequences without converting a recommendation or response into assurance, risk acceptance, architecture approval, operational readiness, or action authority.",
+  "systemSolutionArchitecture": {
+    "recordId": "6055e2d1-9d43-4f0e-8b52-120f13d0af10",
+    "revision": 1,
+    "digest": "sha256:50a92f57f1f7a282d7cfe6c861367745dfe4eecd1dc5bf48faeabe0466cc43b5"
+  },
+  "boundedContextModel": {
+    "recordId": "5c082959-f617-4655-9dd6-64c49fbe30a9",
+    "revision": 1,
+    "digest": "sha256:05a208d778f99616912f41e61a099c365f48487794626fe3e77b12177c33d2a0"
+  },
+  "operatingModel": {
+    "recordId": "302500ad-7fda-4aa1-8ea1-85e019bddf85",
+    "revision": 1,
+    "digest": "sha256:f6ea2958452ca3d9e90707ed98ae82b91ab8d3b9db7e553fd6b8525b3b75426b"
+  },
+  "securityPrivacyAssessment": {
+    "recordId": "a2dcbab7-0caf-4f1a-b834-66ff70f63ac2",
+    "revision": 1,
+    "digest": "sha256:1888d05ae476ec2acdf1e18e2f5a77d963523727b28f5f6d7ed46363519b071c"
+  },
+  "processModel": {
+    "recordId": "42b02974-bd3b-4374-90fc-eb9019c8fe4d",
+    "revision": 1,
+    "digest": "sha256:1fbc77f8becaed5f6cce8147bbb1716507e2ea46c52a7a2bc411398c713a536e"
+  },
+  "dataModel": {
+    "recordId": "d00b551d-5911-4bdb-b8ab-8650d67b38c2",
+    "revision": 1,
+    "digest": "sha256:33d1251e48d28eea1830dce7c3cdf5371d8186817e7fb3780888c912e3c26f46"
+  },
+  "authorizationModel": {
+    "recordId": "be928c74-abd3-42e6-924c-0ae169660409",
+    "revision": 1,
+    "digest": "sha256:1988cf0053c345cf2e9442abc00b2d4c98588f7325a8d3db4cba98291982fe4f"
+  },
+  "eventIntegrationModel": {
+    "recordId": "f37746fb-76fb-4b37-b1cd-31850728621a",
+    "revision": 1,
+    "digest": "sha256:4caee60595b9ab5f2dc04ca3a080e07ff8ac7864c3ab0deb6ae2c4c38fa754e9"
+  },
+  "failureRecoveryModel": {
+    "recordId": "4fe8a0f1-63f3-4a8b-92e6-45420cfd5992",
+    "revision": 1,
+    "digest": "sha256:6e9e86988282aafa422eaaf27749679c65abbdf7780d36a2df54ad527ed00e62"
+  },
+  "challengeSubjects": [
+    {
+      "key": "shared-engine-decision",
+      "subjectKind": "architecture-decision",
+      "decisionQuestion": "Should every native Product Studio host delegate governed Product semantics and persistence to one shared local engine, despite the larger correlated failure domain?",
+      "triggerContext": "The candidate System/Solution Architecture selects one shared governed engine across four native hosts and therefore requires explicit alternatives, failure-mode, independence, and downstream-consequence challenge.",
+      "consequence": "high",
+      "architectureConcernKeys": [
+        "governed-system-boundary"
+      ],
+      "architectureDecisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "architectureElementKeys": [
+        "gaep-engine",
+        "product-studio-host",
+        "workspace-store"
+      ],
+      "architectureViewKeys": [
+        "governed-system-context"
+      ],
+      "qualityScenarioKeys": [
+        "audit-integrity",
+        "host-response-integrity"
+      ],
+      "boundedContextKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "affectedImplementationUnits": [
+        "All four native Product Studio host adapters and the shared governed engine"
+      ],
+      "downstreamConsequences": [
+        "A shared-engine contract or persistence failure can affect every host and requires bounded compatibility, recovery, and independent review evidence"
+      ],
+      "classification": "internal",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "assumptions": [
+    {
+      "key": "host-launch-compatibility",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "statement": "Every supported native host can launch or connect to the exact packaged shared engine while preserving strict protocol and governed-store semantics.",
+      "status": "supported-candidate",
+      "falsificationConditions": [
+        "A supported host cannot execute the exact packaged engine or cannot preserve the strict request, response, and repository contracts"
+      ],
+      "supportingEvidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "counterEvidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "residualUncertainty": "Native supported-platform interaction, signing, installation, upgrade, accessibility, live-provider behavior, and Product Owner acceptance remain outside current local evidence."
+    }
+  ],
+  "alternatives": [
+    {
+      "key": "host-local-semantics",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "name": "Host-local governed semantics",
+      "description": "Each native host implements and persists Product semantics independently behind a shared conceptual contract.",
+      "benefits": [
+        "Host-specific implementation and deployment independence"
+      ],
+      "tradeoffs": [
+        "Four authority-bearing implementations require separate migration, audit, portability, and semantic-parity evidence"
+      ],
+      "risks": [
+        "Host-local behavior can silently diverge in governance, privacy, state, or authority semantics"
+      ],
+      "architectureElementKeys": [
+        "product-studio-host",
+        "workspace-store"
+      ],
+      "boundedContextKeys": [
+        "product-studio"
+      ],
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "recommendationState": "not-recommended",
+      "dispositionState": "candidate-unresolved",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "shared-governed-engine",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "name": "Shared governed engine",
+      "description": "Every native host delegates Product semantics and governed persistence to one strict versioned engine contract.",
+      "benefits": [
+        "Exact cross-host semantics and one attributable governed-store boundary"
+      ],
+      "tradeoffs": [
+        "All hosts depend on shared protocol, packaging, compatibility, and recovery behavior"
+      ],
+      "risks": [
+        "A shared engine defect or incompatible package can affect every supported host"
+      ],
+      "architectureElementKeys": [
+        "gaep-engine",
+        "product-studio-host",
+        "workspace-store"
+      ],
+      "boundedContextKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "recommendationState": "candidate-preferred",
+      "dispositionState": "candidate-unresolved",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "key": "shared-failure-domain",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "challengerKind": "ai",
+      "challengerId": "codex-architecture-challenger",
+      "challengerRoleKeys": [
+        "gaep-steward"
+      ],
+      "concern": "The shared engine reduces semantic drift but concentrates validation, persistence, packaging, compatibility, and recovery risk across every host.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "consequence": "A correlated engine or protocol defect could block governed Product workflows across four hosts while a host-local design would isolate some failures at the cost of semantic divergence.",
+      "severity": "high",
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "requestedClarifications": [
+        "Define which native-host and package evidence is required before a separately authorized architecture approval may be considered"
+      ],
+      "limitations": [
+        "The AI challenger is not an independent human reviewer and cannot approve architecture or accept risk"
+      ],
+      "findingState": "open-candidate",
+      "independenceState": "not-established"
+    }
+  ],
+  "responses": [
+    {
+      "key": "shared-failure-domain-response",
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responderRoleKeys": [
+        "initiative-owner"
+      ],
+      "responseType": "acknowledge",
+      "response": "Retain the shared-engine candidate while requiring strict host parsers, exact package evidence, immutable history, bounded failure behavior, and separate native acceptance before any architecture approval request.",
+      "rationale": "Current local evidence supports semantic centralization, but the correlated failure domain and missing native acceptance remain explicit unresolved decision inputs.",
+      "resultingTraceOrStateChange": "The challenge remains an open candidate input; no Architecture Decision, Approval Determination, Risk Acceptance, readiness state, or Authorization Grant is created.",
+      "dispositionState": "candidate-not-decided",
+      "decisionAuthorityState": "not-granted",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "independence": {
+    "authorRoleKeys": [
+      "initiative-owner"
+    ],
+    "challengerRoleKeys": [
+      "gaep-steward"
+    ],
+    "reviewerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "disclosedRoleOverlaps": [
+      "The GAEP steward both maintains the engine boundary and authors this AI-assisted challenge evidence"
+    ],
+    "sharedSourceDependencies": [
+      "The architecture candidate and challenge rely on the same local repository and Source revision"
+    ],
+    "sharedMethodToolOrModelDependencies": [
+      "The current challenge and implementation were prepared through the same Codex task context"
+    ],
+    "conflictsOfInterest": [
+      "The implementation author benefits from retaining the implemented shared-engine design"
+    ],
+    "compensatingControls": [
+      "Require a separately assigned qualified human reviewer and exact native-host evidence before an approval case is assembled"
+    ],
+    "requiredSeparation": "Architecture approval and material risk acceptance require independently verified eligible humans who did not generate the candidate recommendation and who can inspect the exact evidence and limitations.",
+    "assessmentState": "not-established",
+    "sources": [
+      {
+        "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-ARCH-REQ-001",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-002",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-003",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-004",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-005",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-006",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-007",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-008",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-009",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-010",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-011",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ARCH-REQ-012",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-001",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-002",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-003",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-004",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-005",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-006",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-007",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-008",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-009",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-010",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-013",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-014",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-016",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-017",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-018",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-019",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-020",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-024",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-001",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-003",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-008",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-009",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-036",
+      "state": "covered-candidate",
+      "challengeSubjectKeys": [
+        "shared-engine-decision"
+      ],
+      "assumptionKeys": [
+        "host-launch-compatibility"
+      ],
+      "alternativeKeys": [
+        "host-local-semantics",
+        "shared-governed-engine"
+      ],
+      "findingKeys": [
+        "shared-failure-domain"
+      ],
+      "responseKeys": [
+        "shared-failure-domain-response"
+      ],
+      "basis": "The candidate maps this exact Architecture, Assurance, or Review requirement to versioned challenge subjects, assumptions, alternatives, findings, responses, independence limits, and evidence without claiming completed independent review, assurance, risk acceptance, architecture approval, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "governance": {
+    "challengeOwnerRoleKeys": [
+      "initiative-owner"
+    ],
+    "challengerRoleKeys": [
+      "gaep-steward"
+    ],
+    "responseOwnerRoleKeys": [
+      "initiative-owner"
+    ],
+    "reviewState": "under-challenge",
+    "challengeCompletionState": "not-established",
+    "independenceState": "not-established",
+    "assuranceState": "not-established",
+    "riskAcceptanceState": "not-granted",
+    "architectureApprovalState": "not-granted",
+    "operationalReadinessState": "not-established",
+    "actionAuthorityState": "not-granted",
+    "basis": "Named candidate roles may author, challenge, and respond, but only separately verified eligible human authorities and exact current evidence can complete independent review, establish assurance, accept risk, approve architecture, establish readiness, or authorize action.",
+    "sources": [
+      {
+        "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "limitations": [
+    "No completed independent challenge, assurance conclusion, risk acceptance, architecture approval, native-host acceptance, operational readiness, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "architecture-challenge-model-candidate",
+  "id": "876ad3ec-42a5-4536-81e5-8a4f0ba45d4c",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "revision": 1,
+  "membershipDigest": "sha256:07024b5385aa3f279d3d19a225890cb5acb2ff960fba2bb6a4127bb5fd3f942c",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:03.398Z",
+  "updatedAt": "2026-07-27T23:09:03.398Z",
+  "authorityBoundary": "architecture-challenge-is-a-candidate-review-record-and-does-not-establish-independence-assurance-risk-acceptance-architecture-approval-operational-readiness-or-authorize-action"
+}

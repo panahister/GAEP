@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "kind": "product-revision",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "revision": 1,
+  "product": {
+    "schemaVersion": 1,
+    "id": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+    "kind": "product",
+    "revision": 1,
+    "name": "Atlas Release Readiness",
+    "summary": "A local-first desktop product preparing a bounded release candidate review.",
+    "problem": "Scattered release evidence can make provider completion look like product readiness.",
+    "affectedUsers": "Product owners and release engineers",
+    "desiredOutcome": "Produce a traceable readiness observation without modifying source files or contacting a provider.",
+    "successSignals": [
+      "The run is bound to an exact preview and governed context",
+      "Provider completion and outcome status remain separately recorded",
+      "The resulting evidence can be independently verified"
+    ],
+    "firstWorkflow": "Review a fixed release evidence packet through the offline managed runtime.",
+    "exclusions": [
+      "Deployment",
+      "Source changes",
+      "Network or provider access",
+      "Release acceptance"
+    ],
+    "profile": "software",
+    "lifecycleState": "active",
+    "createdAt": "2026-07-27T23:09:01.059Z",
+    "updatedAt": "2026-07-27T23:09:01.059Z"
+  },
+  "source": {
+    "kind": "initialization",
+    "id": "b64e5bd7-51d6-4022-80fe-3bac71e8793f"
+  },
+  "productDigest": "sha256:850ad63df195d41793dbe52c32261725b4afd4f9fc59de25cdb31dbdbc63bc1e",
+  "recordedAt": "2026-07-27T23:09:01.059Z"
+}

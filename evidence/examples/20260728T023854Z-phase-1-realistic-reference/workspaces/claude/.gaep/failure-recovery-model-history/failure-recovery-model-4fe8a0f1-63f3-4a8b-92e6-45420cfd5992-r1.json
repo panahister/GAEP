@@ -1,0 +1,1651 @@
+{
+  "initiativeId": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:850ad63df195d41793dbe52c32261725b4afd4f9fc59de25cdb31dbdbc63bc1e",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:cb6cce9b9bc3ff00eeb0527c3e9319d183537cabfa42d61523c5fc070ff63292"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Failure and Recovery Model",
+  "scope": "Model explicit candidate failure modes, retry classifications, compensation obligations, recovery paths, and required evidence without representing a failure occurrence, attempted retry, executed compensation, restored state, successful recovery, return-to-service decision, readiness state, or action authority.",
+  "systemSolutionArchitecture": {
+    "recordId": "6055e2d1-9d43-4f0e-8b52-120f13d0af10",
+    "revision": 1,
+    "digest": "sha256:50a92f57f1f7a282d7cfe6c861367745dfe4eecd1dc5bf48faeabe0466cc43b5"
+  },
+  "boundedContextModel": {
+    "recordId": "5c082959-f617-4655-9dd6-64c49fbe30a9",
+    "revision": 1,
+    "digest": "sha256:05a208d778f99616912f41e61a099c365f48487794626fe3e77b12177c33d2a0"
+  },
+  "operatingModel": {
+    "recordId": "302500ad-7fda-4aa1-8ea1-85e019bddf85",
+    "revision": 1,
+    "digest": "sha256:f6ea2958452ca3d9e90707ed98ae82b91ab8d3b9db7e553fd6b8525b3b75426b"
+  },
+  "securityPrivacyAssessment": {
+    "recordId": "a2dcbab7-0caf-4f1a-b834-66ff70f63ac2",
+    "revision": 1,
+    "digest": "sha256:1888d05ae476ec2acdf1e18e2f5a77d963523727b28f5f6d7ed46363519b071c"
+  },
+  "processModel": {
+    "recordId": "42b02974-bd3b-4374-90fc-eb9019c8fe4d",
+    "revision": 1,
+    "digest": "sha256:1fbc77f8becaed5f6cce8147bbb1716507e2ea46c52a7a2bc411398c713a536e"
+  },
+  "dataModel": {
+    "recordId": "d00b551d-5911-4bdb-b8ab-8650d67b38c2",
+    "revision": 1,
+    "digest": "sha256:33d1251e48d28eea1830dce7c3cdf5371d8186817e7fb3780888c912e3c26f46"
+  },
+  "authorizationModel": {
+    "recordId": "be928c74-abd3-42e6-924c-0ae169660409",
+    "revision": 1,
+    "digest": "sha256:1988cf0053c345cf2e9442abc00b2d4c98588f7325a8d3db4cba98291982fe4f"
+  },
+  "eventIntegrationModel": {
+    "recordId": "f37746fb-76fb-4b37-b1cd-31850728621a",
+    "revision": 1,
+    "digest": "sha256:4caee60595b9ab5f2dc04ca3a080e07ff8ac7864c3ab0deb6ae2c4c38fa754e9"
+  },
+  "failureModes": [
+    {
+      "key": "uncertain-candidate-revision",
+      "name": "Uncertain candidate revision effect",
+      "category": "uncertain-result",
+      "affectedProcessKeys": [
+        "governed-context-review"
+      ],
+      "affectedEventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "affectedCommandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "affectedAdapterKeys": [
+        "governed-context-adapter"
+      ],
+      "affectedRouteKeys": [
+        "governed-context-route"
+      ],
+      "affectedDataEntityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "effectDescriptors": [
+        "external-effect",
+        "provisional",
+        "reversible-change"
+      ],
+      "detectionSignals": [
+        "Authoritative receipt is absent after a possible material effect",
+        "Expected version or postcondition cannot be reconciled with the exact governed record"
+      ],
+      "containmentRule": "Stop dependent success, preserve the exact attempted command and observed evidence, quarantine conflicting updates, and do not retry or compensate until authority and effect truth are re-established.",
+      "propagationBoundary": "The unresolved state propagates only to the exact Product, Initiative, candidate record, external route, and dependent decisions; unrelated records remain separately assessed.",
+      "userAndBusinessImpact": "Reviewers may see an explicit uncertain candidate state and blocked dependent workflow while no success, failure, approval, readiness, or absence of effect is inferred.",
+      "explicitNonReversibilityBehavior": "If an external disclosure or irreversible effect may have occurred, preserve the residual effect and evidence, prohibit false rollback claims, and require accountable escalation.",
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "classification": "internal",
+      "occurrenceState": "definition-only-not-observed",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "retryPolicies": [
+    {
+      "key": "bounded-candidate-retry",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "authorizationActionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "failureClassification": "unknown-stop",
+      "maximumAttempts": 1,
+      "timeoutAndBackoff": "No automatic retry is permitted while effect truth is unknown; a separately authorized retry starts only after exact reconciliation and uses a bounded deterministic delay.",
+      "retryCondition": "Retry is eligible only when the prior attempt is authoritatively proven not committed or the exact idempotency guarantee makes duplicate material effects impossible.",
+      "idempotencyScopeAndKey": "Bind exact command version, actor and authority scope, Product, Initiative, candidate identity, expected revision, payload digest, route, adapter, and validity interval.",
+      "duplicateEffectRule": "A duplicate identity returns the existing authoritative receipt without repeating a material mutation or external communication.",
+      "changedConditionRule": "Any changed record, policy, authority, classification, destination, evidence, or idempotency input invalidates the retry candidate and requires a new reviewed request.",
+      "exhaustionBehavior": "Preserve the final known and unknown effects, block aggregate success, create an explicit recovery obligation, and escalate without synthesizing a failure or success result.",
+      "retryState": "not-attempted",
+      "safetyState": "not-established",
+      "authorizationState": "not-granted",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "compensationPlans": [
+    {
+      "key": "candidate-revision-compensation",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "originalCommandKeys": [
+        "revise-candidate-command"
+      ],
+      "compensationCommandKeys": [
+        "revise-candidate-command"
+      ],
+      "authorizationActionKeys": [
+        "revise-candidate"
+      ],
+      "affectedDataEntityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "preconditions": [
+        "The original effect, exact prior and resulting revisions, current authority, residual effects, and compensation eligibility are independently verified"
+      ],
+      "compensationSteps": [
+        "Prepare a separately attributable superseding candidate revision that restores only reversible governed state while preserving immutable history and residual effects"
+      ],
+      "verificationPostconditions": [
+        "Verify immutable history, current revision, predecessor chain, audit receipt, unresolved external effects, and every dependent projection against exact digests"
+      ],
+      "residualEffectRule": "External communications, observations, audit history, and irreversible disclosures remain visible residual effects and are never represented as erased by compensation.",
+      "compensationFailureBehavior": "A failed, partial, denied, cancelled, timed-out, or uncertain compensation remains a new explicit governed result and cannot establish restoration or recovery success.",
+      "originalEffectBindingRule": "Every compensation request binds the exact original command identity, attempt, actor, authority, subject revision, receipts, observed effects, and unresolved effect boundaries.",
+      "executionState": "not-executed",
+      "restorationState": "not-established",
+      "authorizationState": "not-granted",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "recoveryPlans": [
+    {
+      "key": "candidate-context-recovery",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "ownerRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "authorizationActionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "lastVerifiedSafeStateRule": "Resolve the last exact Product, Initiative, candidate, audit, authorization, and external receipt state whose digests and postconditions are independently verified.",
+      "knownAndUncertainEffectsRule": "Inventory requested, attempted, observed, committed, failed, compensated, denied, cancelled, timed-out, and unknown effects separately without collapsing transport into business truth.",
+      "containmentSteps": [
+        "Freeze dependent candidate transitions and external routes while preserving current records, audit history, evidence, and conflicting observations"
+      ],
+      "reconciliationSteps": [
+        "Compare exact local history, external authoritative receipts, idempotency identities, postconditions, and residual effects under accountable human review"
+      ],
+      "restorationSteps": [
+        "Apply only separately authorized version-bound repairs or compensating revisions, preserving immutable history and every non-reversible residual effect"
+      ],
+      "revalidationRequirements": [
+        "Revalidate identity, authority, policy, classification, evidence freshness, upstream bindings, audit integrity, postconditions, and affected projections"
+      ],
+      "resumeConditions": [
+        "Resume only after separately accepted recovery evidence establishes exact postconditions and an eligible human grants return-to-service authority for the unchanged scope"
+      ],
+      "degradedModeBehavior": "Any degraded path is explicit, narrow, time-bounded, observable, reversible where possible, independently authorized, and cannot imply normal readiness.",
+      "manualModeBehavior": "Manual steps require attributable eligible humans, exact instructions, two-person challenge where policy requires, authoritative receipts, and postcondition verification.",
+      "quarantineAndRevocationBehavior": "Quarantine affected routes, revoke stale credentials or grants through their authoritative systems, preserve evidence, and record any unverified revocation as unresolved.",
+      "residualRiskRule": "Document remaining irreversible, external, privacy, integrity, availability, authority, evidence, and interpretation risks; acceptance remains separate and not established.",
+      "recoveryState": "not-started",
+      "successState": "not-established",
+      "returnToServiceState": "not-authorized",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "recoveryEvidenceDefinitions": [
+    {
+      "key": "candidate-recovery-evidence",
+      "recoveryPlanKey": "candidate-context-recovery",
+      "requiredEvidenceTypes": [
+        "audit-chain-verification",
+        "authoritative-effect-receipt",
+        "postcondition-verification",
+        "residual-risk-review"
+      ],
+      "authoritativeReceiptRule": "Receipts must bind exact command, attempt, subject, prior and resulting revisions, actor, authority, system, environment, effect, time, integrity, and provider result.",
+      "postconditionVerificationRule": "An independent read verifies expected governed records, immutable history, audit continuity, external state where applicable, and every declared invariant against exact digests.",
+      "reconciliationRule": "All local and external observations are retained with authority, time, ordering, version, fidelity, and uncertainty before an accountable reviewer can assess convergence.",
+      "residualRiskRule": "Accepted evidence must enumerate unresolved irreversible, external, security, privacy, integrity, availability, authority, and evidence risks without treating acceptance as readiness.",
+      "custodyIntegrityAndRetention": "Evidence requires attributable origin, collection time, content digest, chain of custody, classification, access controls, retention rule, and invalidation or expiry conditions.",
+      "evidenceState": "definition-only-not-collected",
+      "acceptanceState": "not-established",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-EER-REQ-001",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-002",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-003",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-004",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-005",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-006",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-007",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-008",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-009",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-010",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-011",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-012",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-013",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-014",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-015",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-016",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-017",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-018",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-019",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-020",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-021",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-022",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-023",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-024",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-025",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-026",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-027",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-028",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-029",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-030",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-001",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-002",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-003",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-004",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-005",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-006",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-007",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-008",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-009",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-010",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-011",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-012",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-013",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RUN-REQ-014",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-009",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-020",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-024",
+      "state": "covered-candidate",
+      "failureModeKeys": [
+        "uncertain-candidate-revision"
+      ],
+      "retryPolicyKeys": [
+        "bounded-candidate-retry"
+      ],
+      "compensationPlanKeys": [
+        "candidate-revision-compensation"
+      ],
+      "recoveryPlanKeys": [
+        "candidate-context-recovery"
+      ],
+      "recoveryEvidenceDefinitionKeys": [
+        "candidate-recovery-evidence"
+      ],
+      "basis": "The candidate maps this exact State, Effect, or Runtime requirement to versioned failure, retry, compensation, recovery, and evidence-definition identities without claiming an actual failure, safe retry, executed compensation, restoration, recovery success, return to service, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "governance": {
+    "failureModelStewardRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "recoveryOwnerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "recoveryVerifierRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "reviewState": "under-challenge",
+    "failureRegistryApprovalState": "not-granted",
+    "retrySafetyState": "not-established",
+    "compensationApprovalState": "not-granted",
+    "recoveryPlanApprovalState": "not-granted",
+    "recoveryEvidenceAcceptanceState": "not-established",
+    "operationalReadinessState": "not-established",
+    "returnToServiceAuthorityState": "not-granted",
+    "executionAuthorityState": "not-granted",
+    "basis": "Named candidate roles may prepare and challenge definitions, but only separately verified eligible human authorities and exact current records can approve registries, establish retry safety, authorize compensation, accept recovery evidence, establish readiness, grant return to service, or authorize execution.",
+    "sources": [
+      {
+        "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "assumptions": [
+    "The selected local Product, Initiative, upstream model revisions, and Source records remain the exact bounded Failure and Recovery Model scope"
+  ],
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "limitations": [
+    "No failure occurrence, retry attempt or safety determination, compensation execution or restoration, recovered state, accepted recovery evidence, operational readiness, return-to-service decision, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "failure-recovery-model-candidate",
+  "id": "4fe8a0f1-63f3-4a8b-92e6-45420cfd5992",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "revision": 1,
+  "membershipDigest": "sha256:2e25c9e4cac33feae54b8d39c8ea1300ae415ffc861d50d3e0749aa69b5e7484",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:03.284Z",
+  "updatedAt": "2026-07-27T23:09:03.284Z",
+  "authorityBoundary": "failure-recovery-model-is-a-candidate-registry-and-does-not-prove-failure-occurrence-retry-safety-compensation-or-restoration-recovery-success-return-to-service-operational-readiness-or-authorize-action"
+}

@@ -1,0 +1,67 @@
+{
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "sourceType": "stakeholder-note",
+  "title": "Reviewed stakeholder discovery",
+  "description": "The exact reviewed discovery input for the bounded business-understanding workflow.",
+  "locator": {
+    "kind": "logical",
+    "value": "discovery.reviewed"
+  },
+  "revisionIdentity": {
+    "kind": "resource-revision",
+    "value": "DISCOVERY-001@1"
+  },
+  "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "digestScope": "Canonical UTF-8 discovery content",
+  "owner": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "semanticAuthority": {
+    "standing": "advisory",
+    "domain": "Initiative business context",
+    "scope": [
+      "P1 candidate understanding"
+    ],
+    "basis": "The accountable Product owner reviewed this exact discovery input as advisory evidence.",
+    "declaredBy": {
+      "kind": "human",
+      "id": "product-owner"
+    }
+  },
+  "knowledgeDisposition": "confirmed",
+  "trust": {
+    "sourceAuthenticity": "verified",
+    "contentIntegrity": "verified"
+  },
+  "informationClassification": "internal",
+  "rights": {
+    "status": "verified",
+    "basis": "Internal Product analysis is recorded for this source."
+  },
+  "freshness": {
+    "status": "fresh",
+    "assessedAt": "2026-07-25T00:00:00.000Z",
+    "basis": "The accountable owner reviewed this exact revision.",
+    "validUntil": "2026-08-25T00:00:00.000Z"
+  },
+  "availability": {
+    "status": "available",
+    "basis": "The logical discovery source is available."
+  },
+  "limitations": [
+    "The record does not establish stakeholder authority or Product approval."
+  ],
+  "schemaVersion": 1,
+  "kind": "source-record",
+  "id": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "revision": 1,
+  "recordedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:01.350Z",
+  "updatedAt": "2026-07-27T23:09:01.350Z",
+  "authorityBoundary": "source-semantic-authority-is-an-attributed-input-claim-and-does-not-grant-decision-approval-authorization-or-action-authority"
+}

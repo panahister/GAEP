@@ -18,10 +18,11 @@ const repository = fileURLToPath(new URL("..", import.meta.url))
 const vitest = resolve(repository, "node_modules/vitest/vitest.mjs")
 const testFile = "packages/engine/src/business-understanding.test.ts"
 const fakeStreamFile = "packages/agent-sdk/test/fixtures/fake-claude-stream.mjs"
+const referenceScenarioFile = "examples/phase-1-realistic-reference/scenario.json"
 const summaryPrefix = "GAEP_P1_31_SEMANTIC_SUMMARY="
 const outputByteLimit = 4 * 1024 * 1024
 
-async function runTest() {
+async function runTest(options = {}) {
   const { stdout, stderr } = await execute(process.execPath, [
     vitest,
     "run",
@@ -30,7 +31,11 @@ async function runTest() {
     claudeP0P4TestName,
   ], {
     cwd: repository,
-    env: { ...process.env, GAEP_P1_31_EMIT_RECEIPT: "1" },
+    env: {
+      ...process.env,
+      GAEP_P1_31_EMIT_RECEIPT: "1",
+      ...(options.artifactWorkspace ? { GAEP_P1_31_ARTIFACT_WORKSPACE: resolve(options.artifactWorkspace) } : {}),
+    },
     maxBuffer: outputByteLimit,
   })
   const summaries = stdout.split(/\r?\n/u)
@@ -46,11 +51,12 @@ async function runTest() {
   return summaries[0]
 }
 
-export async function runClaudeP0P4Acceptance() {
-  const summary = await runTest()
-  const [testBytes, fakeStreamBytes] = await Promise.all([
+export async function runClaudeP0P4Acceptance(options = {}) {
+  const summary = await runTest(options)
+  const [testBytes, fakeStreamBytes, referenceScenarioBytes] = await Promise.all([
     readFile(resolve(repository, testFile)),
     readFile(resolve(repository, fakeStreamFile)),
+    readFile(resolve(repository, referenceScenarioFile)),
   ])
   const receipt = {
     schemaVersion: 1,
@@ -62,6 +68,8 @@ export async function runClaudeP0P4Acceptance() {
       testSourceDigest: rawDigest(exactTestSource(testBytes)),
       fakeStreamFile,
       fakeStreamSourceDigest: rawDigest(fakeStreamBytes),
+      referenceScenarioFile,
+      referenceScenarioSourceDigest: rawDigest(referenceScenarioBytes),
     },
     execution: {
       runner: "vitest-isolated-child-process",

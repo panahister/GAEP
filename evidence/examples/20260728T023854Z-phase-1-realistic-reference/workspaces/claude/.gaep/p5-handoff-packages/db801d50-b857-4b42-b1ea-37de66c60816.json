@@ -1,0 +1,1899 @@
+{
+  "initiativeId": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:850ad63df195d41793dbe52c32261725b4afd4f9fc59de25cdb31dbdbc63bc1e",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:cb6cce9b9bc3ff00eeb0527c3e9319d183537cabfa42d61523c5fc070ff63292"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate P0-P4 to P5 experience-design handoff",
+  "objective": "Transfer exact governed candidate context into P5 experience design without losing provenance, hiding limits, or creating authority.",
+  "scope": "The complete canonical P0 through P4 output catalog, its exact current subjects, declared applicability, freshness, limits, and requirement coverage.",
+  "readinessGate": {
+    "recordId": "66b9d764-5f3a-4f02-ae46-7694d91cc58b",
+    "revision": 1,
+    "digest": "sha256:c73224116cfd202aacacbabe5f5760ef7b183ed4533e373c5e7dc741949b71ac"
+  },
+  "readinessStatusDigest": "sha256:f6c97f4e544c57c3e13301902c0b42bd0bce8d8c409219b32bc75a1554f48fc5",
+  "readinessResult": "passed",
+  "target": {
+    "phase": "p5-experience-and-figma",
+    "capability": "experience-design",
+    "audience": {
+      "kind": "team",
+      "id": "experience-design"
+    },
+    "deliveryMode": "disconnected"
+  },
+  "items": [
+    {
+      "outputKind": "architecture-challenge-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "authorization-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "bounded-context-ownership",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "business-architecture-baseline",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "business-capability-map",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "business-rule-catalog",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "business-understanding",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "candidate-source-baseline",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "data-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "decision-register",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "end-to-end-traceability",
+      "applicability": "applicable",
+      "subjects": [
+        {
+          "recordKind": "end-to-end-traceability-candidate",
+          "recordId": "e81faa16-1f9c-4c41-9806-d95990f2030f",
+          "revision": 1,
+          "digest": "sha256:45b5500585136621c575bf7ef4575fbe4b836631ca26658551d373ef3d8ecede"
+        }
+      ],
+      "disposition": "included",
+      "representation": "exact-reference",
+      "semanticRelationship": "exact",
+      "freshness": "current",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output applicable, so its exact governed subject is included.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "event-integration-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "evidence-registry",
+      "applicability": "applicable",
+      "subjects": [
+        {
+          "recordKind": "evidence-registry",
+          "recordId": "4ef12346-bae4-4b55-8b06-61f048e10b8e",
+          "revision": 1,
+          "digest": "sha256:8576c213fb98bedee236c5453e04d992761ce8eebfd3cd6850b18f62e386cbce"
+        }
+      ],
+      "disposition": "included",
+      "representation": "exact-reference",
+      "semanticRelationship": "exact",
+      "freshness": "current",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output applicable, so its exact governed subject is included.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "failure-recovery-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "initiative-entry",
+      "applicability": "applicable",
+      "subjects": [
+        {
+          "recordKind": "initiative",
+          "recordId": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+          "revision": 4,
+          "digest": "sha256:cb6cce9b9bc3ff00eeb0527c3e9319d183537cabfa42d61523c5fc070ff63292"
+        }
+      ],
+      "disposition": "included",
+      "representation": "exact-reference",
+      "semanticRelationship": "exact",
+      "freshness": "current",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output applicable, so its exact governed subject is included.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "operating-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "outcome-success-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "process-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "risk-register",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "security-privacy-threat-assessment",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "source-intake",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "source-provenance",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "stakeholder-role-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "system-solution-architecture",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    },
+    {
+      "outputKind": "value-stream-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "disposition": "omitted-not-applicable",
+      "representation": "omitted",
+      "semanticRelationship": "not-applicable",
+      "freshness": "unknown",
+      "consumerPurpose": "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+      "selectionRationale": "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+      "materialOmissions": [],
+      "uncertainties": [],
+      "limitations": [
+        "The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action"
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-CST-REQ-003",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-014",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-019",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-021",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-022",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-024",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-026",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-029",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-031",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-033",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-038",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-040",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-053",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-055",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-056",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-058",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-061",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-064",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-003",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-004",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-011",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-012",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-015",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-016",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-017",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-018",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-019",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-020",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-021",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-022",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-023",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-024",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-025",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-027",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-028",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-PROD-REQ-001",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-PROD-REQ-003",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-PROD-REQ-004",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-PROD-REQ-005",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-PROD-REQ-009",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-PROD-REQ-010",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-PROD-REQ-011",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-PROD-REQ-012",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-REPO-REQ-002",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-REPO-REQ-004",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-REPO-REQ-005",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-REPO-REQ-006",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-REPO-REQ-007",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-REPO-REQ-008",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-001",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-002",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-003",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-004",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-005",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-006",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-007",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-008",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-009",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-010",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-013",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-015",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-002",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-005",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-009",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-010",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-024",
+      "state": "covered-candidate",
+      "itemKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "assumptions": [],
+  "unresolvedQuestions": [],
+  "conflicts": [],
+  "limitations": [
+    "P5 acknowledgement, design approval, baseline promotion, source ownership transfer, write authority, and action authority remain unestablished"
+  ],
+  "nextActions": [
+    "A named human P5 reviewer must inspect the exact candidate package and independently decide whether any next lifecycle action is appropriate"
+  ],
+  "transferState": "ready-for-human-review",
+  "acknowledgementState": "not-established",
+  "sourceOwnershipState": "retained",
+  "transferAuthorityState": "not-established",
+  "p5EntryAuthorityState": "not-established",
+  "schemaVersion": 1,
+  "kind": "p5-handoff-package-candidate",
+  "id": "db801d50-b857-4b42-b1ea-37de66c60816",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "revision": 1,
+  "membershipDigest": "sha256:b7c73ee0e5da02b18adc1e2f3fb3613c86267b02c31f04955145f727ed2636be",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:04.068Z",
+  "updatedAt": "2026-07-27T23:09:04.068Z",
+  "authorityBoundary": "p5-handoff-package-is-candidate-context-and-does-not-transfer-source-ownership-establish-acknowledgement-approve-design-authorize-p5-entry-or-authorize-action"
+}

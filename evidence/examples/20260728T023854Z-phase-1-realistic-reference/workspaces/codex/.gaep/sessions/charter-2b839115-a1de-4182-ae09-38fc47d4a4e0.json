@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "2b839115-a1de-4182-ae09-38fc47d4a4e0",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "productRevision": 1,
+  "initiativeRevision": 4,
+  "productDigest": "sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c",
+  "initiativeDigest": "sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533",
+  "selectionDigest": "sha256:34d51b9973849e433beb8a30bd839044791496e390e9be6c03340c759ab9503b",
+  "agent": {
+    "schemaVersion": 2,
+    "adapterId": "gaep.codex-cli",
+    "agentId": "codex-cli",
+    "modelId": "fake-model",
+    "modelTruthClass": "observed",
+    "modelAlias": false,
+    "settings": {},
+    "selectedAt": "2026-07-27T23:09:04.259Z",
+    "capabilityDigest": "sha256:107982a95ba201f7abd0af4228e0616402331e00d287a61ea142974ca490528d"
+  },
+  "objective": "Run one isolated Codex observation over the exact governed P0-P4 candidate context.",
+  "permissions": [
+    {
+      "capability": "all-tools",
+      "mode": "deny",
+      "scope": []
+    }
+  ],
+  "expectedEffects": [
+    "observe"
+  ],
+  "forbiddenActions": [
+    "Do not access network, ambient integrations, project instructions, tools, or workspace writes",
+    "Do not infer approval, readiness, acknowledgement, baseline, release, or action authority"
+  ],
+  "stopConditions": [
+    "Stop after the bounded provider observation or any denied capability request"
+  ],
+  "requiredEvidence": [
+    "Exact governed binding digest",
+    "Normalized provider and workflow-gate events",
+    "Zero-change isolated staging inventory",
+    "Explicit non-authority boundary"
+  ],
+  "managedIntent": {
+    "workflowPlan": {
+      "recordType": "workflow-plan",
+      "recordId": "90d234b1-cac8-416f-ae24-95d044f6d2d3",
+      "revision": 2,
+      "digest": "sha256:4f960a123b9a9fd59da38fa1e266f9dc7a6dc6dce86f0b7283f5e940bc143124"
+    },
+    "contextPacks": [
+      {
+        "recordType": "context-pack",
+        "recordId": "6a60ef22-cb55-4b0f-9a8e-610240935e15",
+        "revision": 1,
+        "digest": "sha256:138fc515eaded2e306df29fe07e3cd64916362f4dbda0edc4be74a72f1abc73d"
+      }
+    ],
+    "toolDefinitions": [],
+    "requestedEffects": [
+      "observe"
+    ],
+    "requestedScopes": []
+  },
+  "createdAt": "2026-07-27T23:09:04.735Z",
+  "confirmedAt": "2026-07-27T23:09:04.844Z"
+}

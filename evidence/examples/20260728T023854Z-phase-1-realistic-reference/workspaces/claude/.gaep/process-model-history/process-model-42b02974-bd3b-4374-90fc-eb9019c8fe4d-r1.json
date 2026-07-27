@@ -1,0 +1,1858 @@
+{
+  "initiativeId": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:850ad63df195d41793dbe52c32261725b4afd4f9fc59de25cdb31dbdbc63bc1e",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:cb6cce9b9bc3ff00eeb0527c3e9319d183537cabfa42d61523c5fc070ff63292"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Process Model",
+  "scope": "Model the exact governed context review workflow, orthogonal authoring state, attributable transitions, events, evidence, and human approval boundary for accountable review.",
+  "valueStreamModel": {
+    "recordId": "d4009969-2903-4f47-902c-e5c8b615d2a2",
+    "revision": 1,
+    "digest": "sha256:4435e399f4435ff6559d7f540efc48440b1791247b0143c529810998fac44878"
+  },
+  "operatingModel": {
+    "recordId": "302500ad-7fda-4aa1-8ea1-85e019bddf85",
+    "revision": 1,
+    "digest": "sha256:f6ea2958452ca3d9e90707ed98ae82b91ab8d3b9db7e553fd6b8525b3b75426b"
+  },
+  "businessRuleCatalog": {
+    "recordId": "9a88c9bd-6f79-4918-a7c8-ca3b29516762",
+    "revision": 1,
+    "digest": "sha256:6eaf32278cd65643b0cc8d98d3f92d14e37a9d403d387da9e4f2306d345301ce"
+  },
+  "boundedContextModel": {
+    "recordId": "5c082959-f617-4655-9dd6-64c49fbe30a9",
+    "revision": 1,
+    "digest": "sha256:05a208d778f99616912f41e61a099c365f48487794626fe3e77b12177c33d2a0"
+  },
+  "securityPrivacyAssessment": {
+    "recordId": "a2dcbab7-0caf-4f1a-b834-66ff70f63ac2",
+    "revision": 1,
+    "digest": "sha256:1888d05ae476ec2acdf1e18e2f5a77d963523727b28f5f6d7ed46363519b071c"
+  },
+  "processes": [
+    {
+      "key": "governed-context-review",
+      "name": "Governed context review",
+      "purpose": "Prepare, challenge, and present exact governed Product context for a separate accountable human decision without treating workflow completion as approval or authority.",
+      "ownerRoleKey": "initiative-owner",
+      "participantRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "valueStreamKeys": [
+        "governed-delivery"
+      ],
+      "boundedContextKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "businessRuleKeys": [
+        "govern-context-eligibility"
+      ],
+      "trigger": "An exact active Product Initiative requires governed candidate context before downstream Product progression can be considered.",
+      "inputs": [
+        "Exact bound Product records and attributable Source evidence"
+      ],
+      "outputs": [
+        "Candidate Process Model and separate human approval request context"
+      ],
+      "stateDimensions": [
+        {
+          "key": "authoring-lifecycle",
+          "name": "Process authoring lifecycle",
+          "family": "authoring-lifecycle",
+          "statechartVersion": 1,
+          "initialStateKey": "draft",
+          "states": [
+            {
+              "key": "draft",
+              "name": "Draft",
+              "terminal": false,
+              "meaning": "The candidate process is being prepared and has no approval, readiness, transition, execution, or action authority.",
+              "sources": [
+                {
+                  "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+                  "sourceRevision": 1,
+                  "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+                  "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              ]
+            },
+            {
+              "key": "finalized",
+              "name": "Finalized candidate",
+              "terminal": true,
+              "meaning": "The exact candidate authoring revision is closed for review history but remains separate from approval, baseline, authorization, readiness, and execution.",
+              "sources": [
+                {
+                  "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+                  "sourceRevision": 1,
+                  "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+                  "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              ]
+            },
+            {
+              "key": "in-review",
+              "name": "In review",
+              "terminal": false,
+              "meaning": "Named reviewers are challenging the exact candidate under declared evidence and limitations without granting human approval or authority.",
+              "sources": [
+                {
+                  "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+                  "sourceRevision": 1,
+                  "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+                  "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              ]
+            }
+          ],
+          "migrationAndCompatibility": "A changed statechart version requires an explicit migration, affected-instance review, compatibility statement, and re-evaluation before any dependent transition.",
+          "sources": [
+            {
+              "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "approvalRequirements": [
+        {
+          "key": "process-baseline-approval",
+          "level": "A2",
+          "purpose": "Require a separately attributable accountable human decision before any exact Process Model candidate can become an approved Product baseline.",
+          "exactSubject": "One exact immutable Process Model candidate revision and its five upstream membership bindings.",
+          "approverRoleKeys": [
+            "initiative-owner"
+          ],
+          "segregationRules": [
+            "The process generator cannot provide the accountable approval response"
+          ],
+          "aggregationRule": "One valid exact-version response from an independently established eligible Initiative owner is required; absence, ambiguity, conflict, expiry, or revocation remains incomplete.",
+          "allowedOutcomes": [
+            "approved",
+            "changes-requested",
+            "deferred",
+            "rejected"
+          ],
+          "evidenceRequirements": [
+            "Exact candidate digest, upstream membership, assessment gaps, unresolved matters, and reviewer limitations"
+          ],
+          "validity": "Any future determination remains valid only for the unchanged exact subject, authority, policy, evidence, conditions, and effective interval.",
+          "reopeningTriggers": [
+            "Authority, policy, evidence, scope, Source, upstream record, statechart, process, step, transition, approval, or risk context changes materially"
+          ],
+          "approvalState": "not-granted",
+          "sources": [
+            {
+              "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "key": "draft-to-review",
+          "dimensionKey": "authoring-lifecycle",
+          "sourceStateKey": "draft",
+          "targetStateKey": "in-review",
+          "trigger": "The candidate author requests accountable challenge of the exact draft revision.",
+          "actorRoleKeys": [
+            "initiative-owner"
+          ],
+          "authorityBasis": "A future exact role assignment and applicable policy must independently authorize submission; this candidate records no such grant.",
+          "guardCriteria": [
+            "Exact upstream bindings and Source evidence are current",
+            "Required process, step, event, transition, rule, context, role, and requirement coverage is explicit"
+          ],
+          "evidenceRequirements": [
+            "Candidate integrity, completeness, limitations, and unresolved-matter evidence"
+          ],
+          "approvalRequirementKeys": [],
+          "confirmationRequired": false,
+          "idempotencyRequired": true,
+          "concurrencyRule": "compare-and-swap",
+          "effects": [
+            "Create an immutable transition record and attributable governance and audit events"
+          ],
+          "failureBehavior": "A stale, conflicting, missing, unsupported, unauthorized, or uncertain request is rejected without changing current state or inferring review entry.",
+          "reopeningAndCompensation": "A material change creates a superseding candidate and explicit reopening record; history is never overwritten and rollback never erases prior facts.",
+          "authorityState": "not-granted",
+          "sources": [
+            {
+              "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "key": "review-to-finalized",
+          "dimensionKey": "authoring-lifecycle",
+          "sourceStateKey": "in-review",
+          "targetStateKey": "finalized",
+          "trigger": "Reviewers conclude the exact candidate is sufficiently described for a separate accountable Product approval decision.",
+          "actorRoleKeys": [
+            "gaep-steward",
+            "initiative-owner"
+          ],
+          "authorityBasis": "Candidate review participation is not approval; any final transition requires separately valid exact human approval and authorization records at action time.",
+          "guardCriteria": [
+            "Every required contribution, finding, limitation, dissent, and evidence result is exact and attributable",
+            "The approval requirement remains explicit and no response is synthesized"
+          ],
+          "evidenceRequirements": [
+            "Exact review conclusion, findings, limitations, requirement coverage, and approval-case context"
+          ],
+          "approvalRequirementKeys": [
+            "process-baseline-approval"
+          ],
+          "confirmationRequired": true,
+          "idempotencyRequired": true,
+          "concurrencyRule": "explicit-re-evaluation",
+          "effects": [
+            "Create immutable candidate-finalization, transition, governance, and audit records without baseline promotion"
+          ],
+          "failureBehavior": "Missing or invalid approval, authority, evidence, confirmation, or concurrency state fails closed and preserves the candidate in review.",
+          "reopeningAndCompensation": "New material evidence reopens through a defined superseding revision and preserves the earlier review, approval, transition, and event history.",
+          "authorityState": "not-granted",
+          "sources": [
+            {
+              "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "key": "prepare-candidate",
+          "sequence": 1,
+          "objective": "Assemble the exact bounded Product process candidate and validate its source, graph, governance, state, approval, and authority boundaries.",
+          "responsibility": "mixed",
+          "dependencyKeys": [],
+          "roleKeys": [
+            "gaep-steward",
+            "initiative-owner"
+          ],
+          "boundedContextKeys": [
+            "governance-core",
+            "product-studio"
+          ],
+          "transitionKeys": [
+            "draft-to-review"
+          ],
+          "approvalRequirementKeys": [],
+          "inputs": [
+            "Exact upstream records and Source evidence"
+          ],
+          "outputs": [
+            "Validated candidate ready for accountable challenge"
+          ],
+          "evidenceRequirements": [
+            "Schema, exact-binding, hostile-input, audit, history, health, and privacy-projection evidence"
+          ],
+          "stopConditions": [
+            "Any required identity, binding, role, rule, state, transition, evidence, Source, or authority input is stale, missing, conflicting, unsupported, or uncertain"
+          ],
+          "recoveryExpectations": [
+            "Preserve immutable history and resume only from revalidated exact inputs"
+          ],
+          "proposedEffects": [],
+          "authorizationState": "not-granted",
+          "completionState": "not-assessed",
+          "sources": [
+            {
+              "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "key": "review-candidate",
+          "sequence": 2,
+          "objective": "Challenge the exact candidate, surface findings and limitations, and prepare a separate human approval case without treating review completion as permission.",
+          "responsibility": "human",
+          "dependencyKeys": [
+            "prepare-candidate"
+          ],
+          "roleKeys": [
+            "gaep-steward",
+            "initiative-owner"
+          ],
+          "boundedContextKeys": [
+            "governance-core",
+            "product-studio"
+          ],
+          "transitionKeys": [
+            "review-to-finalized"
+          ],
+          "approvalRequirementKeys": [
+            "process-baseline-approval"
+          ],
+          "inputs": [
+            "Exact candidate, evaluation results, review contributions, findings, limitations, and unresolved matters"
+          ],
+          "outputs": [
+            "Attributable review conclusion and separately governed approval request"
+          ],
+          "evidenceRequirements": [
+            "Exact reviewer identities, roles, criteria, contributions, findings, conclusion, exclusions, and limitations"
+          ],
+          "stopConditions": [
+            "Approval, authority, evidence, independence, subject version, policy, state, or confirmation is absent, invalid, stale, conflicted, expired, revoked, or indeterminate"
+          ],
+          "recoveryExpectations": [
+            "Reopen or supersede explicitly after material change and preserve every prior review, approval, transition, and event record"
+          ],
+          "proposedEffects": [
+            "Candidate authoring finalization only after separate exact authorization"
+          ],
+          "authorizationState": "not-granted",
+          "completionState": "not-assessed",
+          "sources": [
+            {
+              "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "events": [
+        {
+          "key": "process-finalized",
+          "category": "governance",
+          "schemaVersion": 1,
+          "subject": "One exact candidate authoring-lifecycle transition from in-review to finalized without baseline promotion or action authority.",
+          "producerRoleKeys": [
+            "gaep-steward",
+            "initiative-owner"
+          ],
+          "transitionKeys": [
+            "review-to-finalized"
+          ],
+          "payloadContract": "Bind event identity, exact subject and state versions, actor, role, authority, approval, evidence, occurrence and recording time, cause, correlation, classification, provenance, and integrity.",
+          "classification": "internal",
+          "provenanceAndIntegrity": "The immutable event is transaction-bound to the exact transition record and audit chain; correction requires a linked corrective event.",
+          "correctionSemantics": "Never overwrite the original event; record a linked correction or compensating action with residual effects and attributable authority.",
+          "sources": [
+            {
+              "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "key": "process-review-requested",
+          "category": "governance",
+          "schemaVersion": 1,
+          "subject": "One exact candidate authoring-lifecycle transition request from draft to in-review and its independently committed result.",
+          "producerRoleKeys": [
+            "initiative-owner"
+          ],
+          "transitionKeys": [
+            "draft-to-review"
+          ],
+          "payloadContract": "Bind request and committed transition separately with exact expected version, actor, role, authority basis, reason, evidence, idempotency, correlation, classification, provenance, and integrity.",
+          "classification": "internal",
+          "provenanceAndIntegrity": "The immutable event distinguishes requested and committed facts and remains transaction-bound to the governed audit chain.",
+          "correctionSemantics": "An incorrect event remains preserved and is corrected only through an attributable linked event or defined compensating transition.",
+          "sources": [
+            {
+              "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "assumptions": [
+        "The exact local candidate records remain the declared bounded Process Model scope"
+      ],
+      "inconsistencies": [],
+      "unresolvedQuestions": [],
+      "limitations": [
+        "No human approval, transition execution, operational readiness, baseline designation, release, deployment, or action authority is represented"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-CWC-REQ-001",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-002",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-003",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-004",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-005",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-006",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-007",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-008",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-009",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-010",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-011",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-012",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-013",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-014",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-015",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-016",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-017",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-018",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-019",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-020",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-021",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-022",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-023",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-024",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-025",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-026",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-027",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-028",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-001",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-003",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-004",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-005",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-006",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-008",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-009",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-013",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-014",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-015",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-017",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-018",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-020",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-022",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-023",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-024",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-025",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-026",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-029",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-033",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-035",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-036",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-001",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-002",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-003",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-004",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-005",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-006",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-007",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-008",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-009",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-010",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-011",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-012",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-016",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-017",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-018",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-019",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-020",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-021",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-023",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-024",
+      "state": "covered-candidate",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "transitionKeys": [
+        "draft-to-review",
+        "review-to-finalized"
+      ],
+      "basis": "The candidate maps this exact requirement to stable process, state, transition, event, approval, evidence, and Source identities without claiming approval, authorization, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "governance": {
+    "processOwnerRoleKey": "initiative-owner",
+    "stateStewardRoleKey": "gaep-steward",
+    "approvalCoordinatorRoleKey": "initiative-owner",
+    "reviewerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "authoringLifecycle": "under-challenge",
+    "transitionAuthorityState": "not-granted",
+    "approvalState": "not-granted",
+    "operationalReadinessState": "not-established",
+    "executionAuthorityState": "not-granted",
+    "basis": "Named candidate roles can prepare and challenge the process, but only separately established eligible humans and exact authorization records can approve or cause material transitions and effects.",
+    "sources": [
+      {
+        "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "assumptions": [
+    "The selected candidate Process Model remains bounded to the exact current Product and Initiative"
+  ],
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "limitations": [
+    "No approved Process baseline, valid human approval, transition execution, operational readiness, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "process-model-candidate",
+  "id": "42b02974-bd3b-4374-90fc-eb9019c8fe4d",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "revision": 1,
+  "membershipDigest": "sha256:222e739fff479d5c31f3631bcbee98cb23672fb91583030404896fcaf78c6c16",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:02.854Z",
+  "updatedAt": "2026-07-27T23:09:02.854Z",
+  "authorityBoundary": "process-model-is-a-candidate-record-and-does-not-approve-a-workflow-grant-transition-or-execution-authority-establish-operational-readiness-or-authorize-action"
+}

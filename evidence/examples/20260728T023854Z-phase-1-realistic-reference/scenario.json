@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase1-realistic-reference-scenario",
+  "id": "phase-1-atlas-release-readiness-v1",
+  "actorId": "product-owner",
+  "product": {
+    "name": "Atlas Release Readiness",
+    "summary": "A local-first desktop product preparing a bounded release candidate review.",
+    "problem": "Scattered release evidence can make provider completion look like product readiness.",
+    "affectedUsers": "Product owners and release engineers",
+    "desiredOutcome": "Produce a traceable readiness observation without modifying source files or contacting a provider.",
+    "successSignals": [
+      "The run is bound to an exact preview and governed context",
+      "Provider completion and outcome status remain separately recorded",
+      "The resulting evidence can be independently verified"
+    ],
+    "firstWorkflow": "Review a fixed release evidence packet through the offline managed runtime.",
+    "exclusions": [
+      "Deployment",
+      "Source changes",
+      "Network or provider access",
+      "Release acceptance"
+    ],
+    "profile": "software"
+  },
+  "initiative": {
+    "title": "Review the Atlas release evidence packet",
+    "outcome": "A bounded observation records what the supplied evidence can and cannot establish.",
+    "scope": [
+      "Release evidence review",
+      "Portable managed-run receipt",
+      "Governed P0-P4 candidate chain"
+    ],
+    "exclusions": [
+      "Workspace mutation",
+      "External effects",
+      "Human acceptance substitution"
+    ]
+  },
+  "referenceEvidence": {
+    "source": "atlas-release-evidence-packet-v1",
+    "statement": "Candidate 0.1.0 has local build and contract-test evidence. Native installation, live-provider behavior, security completion, human acceptance, release authorization, and deployment approval are not recorded.",
+    "classification": "internal",
+    "freshness": "deterministic-reference",
+    "instructionPrivilege": "workflow-data"
+  },
+  "expectedP0P4Outputs": [
+    "architecture-challenge-model",
+    "authorization-model",
+    "bounded-context-ownership",
+    "business-architecture-baseline",
+    "business-capability-map",
+    "business-rule-catalog",
+    "business-understanding",
+    "candidate-source-baseline",
+    "data-model",
+    "decision-register",
+    "end-to-end-traceability",
+    "event-integration-model",
+    "evidence-registry",
+    "failure-recovery-model",
+    "initiative-entry",
+    "operating-model",
+    "outcome-success-model",
+    "process-model",
+    "risk-register",
+    "security-privacy-threat-assessment",
+    "source-intake",
+    "source-provenance",
+    "stakeholder-role-model",
+    "system-solution-architecture",
+    "value-stream-model"
+  ],
+  "limitations": [
+    "This is a deterministic realistic reference scenario, not a real Product baseline or production readiness decision.",
+    "Provider execution uses local fixtures; live authentication, entitlement, reachability, quality, usage, and cost remain untested.",
+    "Native host interaction, accessibility, independent human review, and Product Owner acceptance remain unestablished.",
+    "The Product Owner explicitly skipped the interrupted Codex Security scan; this scenario is not security assurance."
+  ],
+  "authorityBoundary": "realistic-reference-scenario-does-not-establish-product-baseline-readiness-approval-acceptance-phase-entry-release-deployment-or-action-authority"
+}

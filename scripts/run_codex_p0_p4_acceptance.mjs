@@ -18,10 +18,11 @@ const repository = fileURLToPath(new URL("..", import.meta.url))
 const vitest = resolve(repository, "node_modules/vitest/vitest.mjs")
 const testFile = "packages/engine/src/business-understanding.test.ts"
 const fakeServerFile = "packages/agent-sdk/test/fixtures/fake-codex-app-server.mjs"
+const referenceScenarioFile = "examples/phase-1-realistic-reference/scenario.json"
 const summaryPrefix = "GAEP_P1_30_SEMANTIC_SUMMARY="
 const outputByteLimit = 4 * 1024 * 1024
 
-async function runTest() {
+async function runTest(options = {}) {
   const { stdout, stderr } = await execute(process.execPath, [
     vitest,
     "run",
@@ -30,7 +31,11 @@ async function runTest() {
     codexP0P4TestName,
   ], {
     cwd: repository,
-    env: { ...process.env, GAEP_P1_30_EMIT_RECEIPT: "1" },
+    env: {
+      ...process.env,
+      GAEP_P1_30_EMIT_RECEIPT: "1",
+      ...(options.artifactWorkspace ? { GAEP_P1_30_ARTIFACT_WORKSPACE: resolve(options.artifactWorkspace) } : {}),
+    },
     maxBuffer: outputByteLimit,
   })
   const summaries = stdout.split(/\r?\n/u)
@@ -46,11 +51,12 @@ async function runTest() {
   return summaries[0]
 }
 
-export async function runCodexP0P4Acceptance() {
-  const summary = await runTest()
-  const [testBytes, fakeServerBytes] = await Promise.all([
+export async function runCodexP0P4Acceptance(options = {}) {
+  const summary = await runTest(options)
+  const [testBytes, fakeServerBytes, referenceScenarioBytes] = await Promise.all([
     readFile(resolve(repository, testFile)),
     readFile(resolve(repository, fakeServerFile)),
+    readFile(resolve(repository, referenceScenarioFile)),
   ])
   const receipt = {
     schemaVersion: 1,
@@ -62,6 +68,8 @@ export async function runCodexP0P4Acceptance() {
       testSourceDigest: rawDigest(exactCodexTestSource(testBytes)),
       fakeServerFile,
       fakeServerSourceDigest: rawDigest(fakeServerBytes),
+      referenceScenarioFile,
+      referenceScenarioSourceDigest: rawDigest(referenceScenarioBytes),
     },
     execution: {
       runner: "vitest-isolated-child-process",

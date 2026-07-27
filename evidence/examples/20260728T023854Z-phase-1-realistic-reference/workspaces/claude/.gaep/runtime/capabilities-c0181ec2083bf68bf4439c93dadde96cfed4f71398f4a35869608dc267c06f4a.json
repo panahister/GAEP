@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "gaep.claude-code-cli",
+  "adapterVersion": "p1-31-test",
+  "agentId": "claude-code-cli",
+  "agentLabel": "Claude deterministic stream fixture",
+  "runtimeVersion": "p1-31-test",
+  "detected": true,
+  "executionInterface": "cli-stream-json",
+  "interfaceMaturity": "stable",
+  "supportsResume": false,
+  "supportsCancel": true,
+  "supportsCheckpoints": false,
+  "supportsModelDiscovery": false,
+  "supportsToolSelection": false,
+  "settings": [],
+  "models": [
+    {
+      "id": "success",
+      "label": "Deterministic Claude success fixture",
+      "reasoningOptions": [],
+      "inputModalities": [
+        "text"
+      ],
+      "truthClass": "provider-declared",
+      "alias": false
+    }
+  ],
+  "limitations": [
+    "Deterministic local stream fixture; this does not establish live provider authentication, entitlement, reachability, model quality, usage, or cost.",
+    "The production lane remains tool-free, context-only, observation-only, and non-resumable."
+  ],
+  "observedAt": "2026-07-27T00:00:00.000Z"
+}

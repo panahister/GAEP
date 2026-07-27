@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "kind": "product-record-revision",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "recordType": "workflow-plan",
+  "recordId": "74df25c3-b4fd-464b-8cc2-8968f55848ec",
+  "revision": 1,
+  "recordDigest": "sha256:99f56e1b10b66456f9445ed5754595c8c7ad27cb53c6b2369171ea377feac022",
+  "snapshot": {
+    "schemaVersion": 1,
+    "id": "74df25c3-b4fd-464b-8cc2-8968f55848ec",
+    "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+    "revision": 1,
+    "createdAt": "2026-07-27T23:09:04.427Z",
+    "updatedAt": "2026-07-27T23:09:04.427Z",
+    "kind": "workflow-plan",
+    "title": "Claude P0-P4 deterministic acceptance workflow",
+    "objective": "Exercise the exact governed P0-P4 candidate chain through the tool-free Claude stream boundary.",
+    "subject": {
+      "recordType": "product",
+      "recordId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+      "revision": 1,
+      "digest": "sha256:850ad63df195d41793dbe52c32261725b4afd4f9fc59de25cdb31dbdbc63bc1e"
+    },
+    "actor": {
+      "kind": "human",
+      "id": "product-owner"
+    },
+    "strategy": "sequential",
+    "contextPacks": [
+      {
+        "recordType": "context-pack",
+        "recordId": "7da58dc0-fe69-41ff-bccd-169e5541f52e",
+        "revision": 1,
+        "digest": "sha256:3a7a3d6542d12ad15aa8cf1bb287812572405af8c9617597892ac860c8d12d8e"
+      }
+    ],
+    "toolDefinitions": [],
+    "steps": [
+      {
+        "id": "d646535b-f04d-4128-93da-b8b630bd588d",
+        "title": "Review exact governed P0-P4 candidate context",
+        "objective": "Produce one bounded provider observation over exact candidate metadata without tools, writes, resume, or authority.",
+        "responsibility": {
+          "kind": "agent",
+          "id": "claude-code-cli"
+        },
+        "contextPacks": [
+          {
+            "recordType": "context-pack",
+            "recordId": "7da58dc0-fe69-41ff-bccd-169e5541f52e",
+            "revision": 1,
+            "digest": "sha256:3a7a3d6542d12ad15aa8cf1bb287812572405af8c9617597892ac860c8d12d8e"
+          }
+        ],
+        "toolDefinitions": [],
+        "dependsOn": [],
+        "preconditions": [
+          "The exact Context Pack is current, internal, and sufficient"
+        ],
+        "outputs": [
+          "One normalized observation from the tool-free Claude stream transport"
+        ],
+        "evidenceCriteria": [
+          "Portable provider, event, workflow-gate, and outcome evidence is committed"
+        ],
+        "retry": {
+          "maxAttempts": 1,
+          "backoffMs": 0,
+          "retryOn": []
+        },
+        "stopConditions": [
+          "Stop before every Tool, filesystem, approval, or external-effect request"
+        ],
+        "scope": {
+          "read": [
+            {
+              "kind": "workspace-relative",
+              "path": "."
+            }
+          ],
+          "write": [],
+          "effects": []
+        },
+        "effectEnvelope": [
+          "observe"
+        ]
+      }
+    ],
+    "state": "draft",
+    "planDigest": "sha256:5345688256999b5deb154a248382f73733eb47bd9c8245c2084fc24b51c6098d",
+    "authorityBoundary": "workflow-plan-does-not-grant-authority"
+  },
+  "recordedAt": "2026-07-27T23:09:04.428Z"
+}

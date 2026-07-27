@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "c1613c5e-4921-4dc0-975b-86483aa54d45",
+  "revision": 3,
+  "charterId": "62071088-f188-4f06-be9a-135a621725d2",
+  "charterDigest": "sha256:b3a538417cf388955819d5ba8e5bd7786a74c0bf4000a96158a6aaf0063b9c7b",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "initiativeId": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+  "agent": {
+    "schemaVersion": 2,
+    "adapterId": "gaep.claude-code-cli",
+    "agentId": "claude-code-cli",
+    "modelId": "success",
+    "modelTruthClass": "provider-declared",
+    "modelAlias": false,
+    "settings": {},
+    "selectedAt": "2026-07-27T23:09:04.197Z",
+    "capabilityDigest": "sha256:a691c7c8c856fefe61035b43f878cd1884b11663b5a86df79f8b12fd61c576be"
+  },
+  "state": "completed",
+  "startedAt": "2026-07-27T23:09:05.148Z",
+  "endedAt": "2026-07-27T23:09:06.111Z"
+}

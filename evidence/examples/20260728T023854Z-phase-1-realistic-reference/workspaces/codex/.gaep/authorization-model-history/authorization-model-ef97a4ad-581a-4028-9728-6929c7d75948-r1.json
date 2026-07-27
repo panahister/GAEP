@@ -1,0 +1,1368 @@
+{
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Authorization Model",
+  "scope": "Model candidate principals, role assignments, resources, actions, approval bindings, and authorization rules for exact governed Product records without creating an effective identity, appointment, approval, grant, enforcement decision, readiness state, or action authority.",
+  "systemSolutionArchitecture": {
+    "recordId": "c181b435-e05b-4693-8591-dbbdc8ea6378",
+    "revision": 1,
+    "digest": "sha256:c5d197509af5abdac25ca5b56a128a618d08992ddd263816c6c91360ca507d34"
+  },
+  "boundedContextModel": {
+    "recordId": "e6aca26a-c8ad-4981-bc6b-4edc34e41e3d",
+    "revision": 1,
+    "digest": "sha256:b89fde27268aff5272183845ada8425d5cebba70d01a10f00337b94c184ea1fa"
+  },
+  "operatingModel": {
+    "recordId": "37895456-deb2-4c00-9e40-6d740fd51707",
+    "revision": 1,
+    "digest": "sha256:a1f9c07f34d5beb4082634c8d2b3d0fd90773ea1c254194d47c108ecd50a2b23"
+  },
+  "securityPrivacyAssessment": {
+    "recordId": "36a655f3-3869-42de-9373-e1a64f5cad04",
+    "revision": 1,
+    "digest": "sha256:d4a46b130517b2e0956a569d772ffe1d022ec361b3840774ca9bb37a6cd413c1"
+  },
+  "processModel": {
+    "recordId": "ac9f6b58-aff7-47ee-9442-ee2286a07b16",
+    "revision": 1,
+    "digest": "sha256:0f157b64cedd1fc3296b39cca713c6bf8abafd00c9583f10e41056c7714580ba"
+  },
+  "dataModel": {
+    "recordId": "892f5744-2e58-457c-a435-0ea629581a2e",
+    "revision": 1,
+    "digest": "sha256:c0ed1419289389bf862a09c38c12ca5e3844d90e761bb547477c32772bebd843"
+  },
+  "principals": [
+    {
+      "key": "gaep-steward-principal",
+      "name": "Candidate GAEP steward principal",
+      "kind": "human",
+      "operatingRoleKeys": [
+        "gaep-steward"
+      ],
+      "identitySourceState": "candidate-declared",
+      "identityAssuranceState": "not-verified",
+      "limitations": [
+        "The candidate principal identity is not verified and establishes no appointment, standing authority, delegation, or authorization grant"
+      ],
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "initiative-owner-principal",
+      "name": "Candidate Initiative owner principal",
+      "kind": "human",
+      "operatingRoleKeys": [
+        "initiative-owner"
+      ],
+      "identitySourceState": "candidate-declared",
+      "identityAssuranceState": "not-verified",
+      "limitations": [
+        "The candidate principal identity is not verified and establishes no appointment, standing authority, delegation, or authorization grant"
+      ],
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "roleAssignments": [
+    {
+      "key": "assign-gaep-steward",
+      "principalKey": "gaep-steward-principal",
+      "operatingRoleKey": "gaep-steward",
+      "scopeKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "assigningAuthorityRoleKey": "initiative-owner",
+      "effectiveFrom": "2026-07-26T00:00:00.000Z",
+      "expiryOrReviewCondition": "The candidate assignment requires independent identity, competence, conflict, scope, validity, and appointing-authority review before it could become effective.",
+      "validityState": "candidate-not-effective",
+      "delegationState": "not-granted",
+      "limitations": [
+        "No effective role assignment, standing authority, delegation, or action authorization is represented"
+      ],
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "assign-initiative-owner",
+      "principalKey": "initiative-owner-principal",
+      "operatingRoleKey": "initiative-owner",
+      "scopeKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "assigningAuthorityRoleKey": "gaep-steward",
+      "effectiveFrom": "2026-07-26T00:00:00.000Z",
+      "expiryOrReviewCondition": "The candidate assignment requires independent identity, competence, conflict, scope, validity, and appointing-authority review before it could become effective.",
+      "validityState": "candidate-not-effective",
+      "delegationState": "not-granted",
+      "limitations": [
+        "No effective role assignment, standing authority, delegation, or action authorization is represented"
+      ],
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "key": "architecture-engine",
+      "name": "Shared engine architecture element",
+      "kind": "architecture-element",
+      "subjectKey": "gaep-engine",
+      "scopeKeys": [
+        "governance-core"
+      ],
+      "classification": "internal",
+      "effectBoundary": "The resource represents candidate review scope only and grants no mutation, execution, deployment, or release capability.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "context-product-studio",
+      "name": "Product Studio bounded context",
+      "kind": "bounded-context",
+      "subjectKey": "product-studio",
+      "scopeKeys": [
+        "product-studio"
+      ],
+      "classification": "internal",
+      "effectBoundary": "The resource represents privacy-safe native presentation scope only and grants no governed-store, approval, or execution capability.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "data-governed-record",
+      "name": "Governed candidate record data entity",
+      "kind": "data-entity",
+      "subjectKey": "governed-record",
+      "scopeKeys": [
+        "governance-core"
+      ],
+      "classification": "internal",
+      "effectBoundary": "The resource identifies one conceptual data entity for candidate policy review and grants no read, write, processing, retention, deletion, or disclosure authority.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "data-product-studio-projection",
+      "name": "Product Studio projection data entity",
+      "kind": "data-entity",
+      "subjectKey": "product-studio-projection",
+      "scopeKeys": [
+        "product-studio"
+      ],
+      "classification": "internal",
+      "effectBoundary": "The resource identifies one privacy-safe projection for candidate policy review and grants no access, disclosure, persistence, or downstream-use authority.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "process-governed-context-review",
+      "name": "Governed context review process",
+      "kind": "process",
+      "subjectKey": "governed-context-review",
+      "scopeKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "classification": "internal",
+      "effectBoundary": "The resource represents an exact candidate process and grants no transition, approval, baseline, readiness, execution, or action authority.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "assess-candidate",
+      "name": "Assess candidate coverage",
+      "purpose": "Read exact governed records and derive a bounded candidate coverage status without changing state or making an authorization decision.",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "effectKinds": [
+        "read-derived-status"
+      ],
+      "requiredState": "The exact Product, Initiative, upstream records, Source evidence, and audit chain must remain internally consistent and current.",
+      "approvalRequirementKeys": [],
+      "confirmationRequired": false,
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "revise-candidate",
+      "name": "Revise candidate record",
+      "purpose": "Prepare a superseding immutable candidate revision with exact predecessor, context, evidence, and audit identity without approving or executing it.",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "effectKinds": [
+        "governed-candidate-mutation"
+      ],
+      "requiredState": "The Initiative must be mutable and the exact expected revision, context, upstream records, Source evidence, and audit chain must validate.",
+      "approvalRequirementKeys": [
+        "process-baseline-approval"
+      ],
+      "confirmationRequired": true,
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "approvalBindings": [
+    {
+      "key": "candidate-baseline-approval",
+      "processApprovalRequirementKeys": [
+        "process-baseline-approval"
+      ],
+      "actionKeys": [
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "approverRoleKeys": [
+        "initiative-owner"
+      ],
+      "segregation": "The generator, reviewer, and candidate principal cannot synthesize the accountable human approval response or its identity, eligibility, independence, scope, or validity.",
+      "aggregation": "The exact Process requirement remains separately evaluated; missing, ambiguous, conflicted, expired, revoked, or stale responses remain incomplete.",
+      "validity": "Any future determination would remain valid only for the unchanged exact subject, authority, policy, evidence, conditions, and effective interval.",
+      "determinationState": "not-established",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "key": "candidate-review-rule",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "roleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "decision": "candidate-eligible",
+      "conditions": [
+        "Eligibility is descriptive candidate policy coverage only and never an effective permission, approval response, authorization grant, enforcement result, or action authority"
+      ],
+      "invalidationTriggers": [
+        "Any identity, appointment, authority, scope, role, policy, evidence, approval, resource, action, Product, Initiative, or upstream record changes materially"
+      ],
+      "delegationState": "not-granted",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-DRAA-REQ-001",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-003",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-004",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-005",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-006",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-008",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-009",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-013",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-014",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-015",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-017",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-018",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-020",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-022",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-023",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-024",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-025",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-026",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-029",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-033",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-035",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-036",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-IDAUTH-REQ-001",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-IDAUTH-REQ-004",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-IDAUTH-REQ-005",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-IDAUTH-REQ-006",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-IDAUTH-REQ-008",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-IDAUTH-REQ-009",
+      "state": "covered-candidate",
+      "principalKeys": [
+        "gaep-steward-principal",
+        "initiative-owner-principal"
+      ],
+      "actionKeys": [
+        "assess-candidate",
+        "revise-candidate"
+      ],
+      "resourceKeys": [
+        "architecture-engine",
+        "context-product-studio",
+        "data-governed-record",
+        "data-product-studio-projection",
+        "process-governed-context-review"
+      ],
+      "ruleKeys": [
+        "candidate-review-rule"
+      ],
+      "approvalBindingKeys": [
+        "candidate-baseline-approval"
+      ],
+      "basis": "The candidate maps this exact Identity and Authority or Decision, Review, Approval, and Authorization requirement to attributable principals, roles, actions, resources, approval constraints, rules, and Source identities without verifying identity, granting authority, approving action, or enforcing policy.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "assumptions": [
+    "The selected local Product and Initiative records remain the exact bounded Authorization Model scope"
+  ],
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "governance": {
+    "securityAuthorityRoleKeys": [
+      "gaep-steward"
+    ],
+    "identityAuthorityRoleKeys": [
+      "initiative-owner"
+    ],
+    "modelReviewerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "modelApprovalState": "not-granted",
+    "identityVerificationState": "not-established",
+    "roleAssignmentApprovalState": "not-granted",
+    "standingAuthorityState": "not-granted",
+    "authorizationGrantState": "not-granted",
+    "enforcementState": "not-established",
+    "reviewState": "under-challenge",
+    "basis": "Named candidate principals and roles may prepare and challenge the model, but only separately verified and eligible humans with exact effective appointments and authorization records could approve identity, assignments, standing authority, grants, enforcement, readiness, or action.",
+    "sources": [
+      {
+        "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "limitations": [
+    "No verified identity, effective role assignment, standing authority, authorization grant, enforcement decision, approved model, operational readiness, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "authorization-model-candidate",
+  "id": "ef97a4ad-581a-4028-9728-6929c7d75948",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "revision": 1,
+  "membershipDigest": "sha256:a751d2fbd2fd93927b1b6e57c048dda77eec19bad37c83641c1e30c6f2d74fb0",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:03.118Z",
+  "updatedAt": "2026-07-27T23:09:03.118Z",
+  "authorityBoundary": "authorization-model-is-a-candidate-record-and-does-not-verify-identity-approve-role-assignments-or-standing-authority-create-an-authorization-grant-enforce-policy-establish-operational-readiness-or-authorize-action"
+}

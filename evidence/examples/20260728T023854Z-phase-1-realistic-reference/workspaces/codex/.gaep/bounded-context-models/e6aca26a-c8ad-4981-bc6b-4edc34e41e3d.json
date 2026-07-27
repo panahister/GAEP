@@ -1,0 +1,227 @@
+{
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Bounded Context and Ownership Model",
+  "purpose": "Define explicit candidate domain boundaries, ownership traces, ubiquitous language, cross-context contracts, and context-map relationships for accountable review.",
+  "systemSolutionArchitecture": {
+    "recordId": "c181b435-e05b-4693-8591-dbbdc8ea6378",
+    "revision": 1,
+    "digest": "sha256:c5d197509af5abdac25ca5b56a128a618d08992ddd263816c6c91360ca507d34"
+  },
+  "boundedContexts": [
+    {
+      "key": "governance-core",
+      "name": "Governed Product Core",
+      "domainType": "core",
+      "purpose": "Own governed Product semantics, exact validation, immutable history, assessments, and workspace persistence within one explicit language boundary.",
+      "responsibilities": [
+        "Assess candidate records without granting approval or readiness",
+        "Persist validated current records, immutable history, and attributable audit events"
+      ],
+      "excludedResponsibilities": [
+        "Appoint organizational owners or approve Product architecture",
+        "Render host-native interaction or execute external providers"
+      ],
+      "architectureElementKeys": [
+        "gaep-engine",
+        "workspace-store"
+      ],
+      "dataAssetElementKeys": [
+        "workspace-store"
+      ],
+      "ownerRoleKey": "gaep-steward",
+      "stewardRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "ownershipState": "candidate-not-accepted",
+      "ubiquitousLanguage": [
+        {
+          "key": "candidate-record",
+          "term": "Candidate record",
+          "definition": "A versioned, attributable and reviewable Product-domain record that carries no approval, readiness, release, appointment, or action authority.",
+          "aliases": [
+            "governed candidate"
+          ],
+          "ambiguityNotes": [
+            "Candidate does not mean approved baseline"
+          ],
+          "sources": [
+            {
+              "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "invariants": [
+        "Every governed mutation commits current state, immutable history, and audit evidence atomically",
+        "Every semantic read binds the exact current Product and Initiative"
+      ],
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "product-studio",
+      "name": "Native Product Studio",
+      "domainType": "supporting",
+      "purpose": "Own native human interaction and privacy-safe presentation while delegating governed Product semantics to the shared engine boundary.",
+      "responsibilities": [
+        "Collect explicit human inputs through a native host surface",
+        "Render strict privacy-safe engine projections and bounded errors"
+      ],
+      "excludedResponsibilities": [
+        "Persist governed records directly",
+        "Synthesize Product decisions, ownership acceptance, approval, or readiness"
+      ],
+      "architectureElementKeys": [
+        "product-studio-host"
+      ],
+      "dataAssetElementKeys": [],
+      "ownerRoleKey": "initiative-owner",
+      "stewardRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "ownershipState": "candidate-not-accepted",
+      "ubiquitousLanguage": [
+        {
+          "key": "privacy-safe-projection",
+          "term": "Privacy-safe projection",
+          "definition": "A strict read model containing only declared identities, counts, statuses, timestamps, and digests needed for native Product inspection.",
+          "aliases": [
+            "bounded host projection"
+          ],
+          "ambiguityNotes": [
+            "A projection is not the governed source record"
+          ],
+          "sources": [
+            {
+              "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "invariants": [
+        "Host responses reject extra private fields and substituted bindings",
+        "Native presentation never grants Product or execution authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "key": "host-engine-protocol",
+      "name": "Strict Product Studio engine protocol",
+      "kind": "api",
+      "providerContextKey": "product-studio",
+      "consumerContextKeys": [
+        "governance-core"
+      ],
+      "architectureRelationKeys": [
+        "host-calls-engine"
+      ],
+      "ownerRoleKey": "gaep-steward",
+      "versioning": "The protocol uses an explicit version and rejects downgrade, unknown method, unexpected request fields, and incompatible response shape.",
+      "compatibility": "Every supported native host must parse the exact response contract and reject binding, snapshot-digest, privacy-boundary, or authority-boundary drift.",
+      "consistency": "The response binds one exact Product revision, Initiative revision, governed candidate record, assessment, and snapshot digest from a single read boundary.",
+      "failureBehavior": "The consumer receives a bounded non-authorizing failure and must not display private payload details or retry a semantic mutation implicitly.",
+      "state": "candidate",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "key": "product-studio-to-governance-core",
+      "upstreamContextKey": "product-studio",
+      "downstreamContextKey": "governance-core",
+      "pattern": "customer-supplier",
+      "contractKeys": [
+        "host-engine-protocol"
+      ],
+      "rationale": "The native surface supplies explicit human intent and consumes strict shared-engine outcomes while the engine owns governed Product semantics.",
+      "changeCoordination": "Protocol changes require shared contract review, four-host parser evidence, package rebinding, and no synthesized approval or migration authority.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "governance": {
+    "ownerRoleKey": "initiative-owner",
+    "reviewerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "boundaryApprovalState": "not-granted",
+    "ownershipAcceptanceState": "not-granted",
+    "reviewState": "under-challenge",
+    "basis": "Named roles prepare and challenge the candidate boundary and ownership trace, but a separate accountable human decision is required for approval and acceptance.",
+    "sources": [
+      {
+        "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "limitations": [
+    "No organizational appointment, accepted ownership, approved boundary, readiness, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "bounded-context-ownership-candidate",
+  "id": "e6aca26a-c8ad-4981-bc6b-4edc34e41e3d",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "revision": 1,
+  "membershipDigest": "sha256:8eda997a4f679fdec70a5b05fd8706ebca36b8d9372a79aa613a770916f872b9",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:02.708Z",
+  "updatedAt": "2026-07-27T23:09:02.708Z",
+  "authorityBoundary": "bounded-context-model-is-a-candidate-boundary-and-ownership-record-and-does-not-appoint-an-owner-approve-a-boundary-accept-a-contract-establish-readiness-or-authorize-action"
+}

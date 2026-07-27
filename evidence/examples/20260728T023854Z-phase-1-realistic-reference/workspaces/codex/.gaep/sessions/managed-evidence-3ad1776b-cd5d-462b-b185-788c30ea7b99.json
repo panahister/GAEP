@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 2,
+  "kind": "managed-run-evidence",
+  "id": "3ad1776b-cd5d-462b-b185-788c30ea7b99",
+  "managedRunId": "f25d8a95-bb72-48a1-b707-20b78fd9546d",
+  "runId": "fbab04df-3f0c-4e0d-9a6b-f995828c511b",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "bindingsDigest": "sha256:5e9002995b17d051dd34d07e10bb1001e33be340c398f65eb96746472d172155",
+  "events": [
+    {
+      "sequence": 0,
+      "observedAt": "2026-07-27T23:09:06.406Z",
+      "type": "lifecycle",
+      "phase": "initialized"
+    },
+    {
+      "sequence": 1,
+      "observedAt": "2026-07-27T23:09:06.406Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "type": "lifecycle",
+      "phase": "thread-started"
+    },
+    {
+      "sequence": 2,
+      "observedAt": "2026-07-27T23:09:06.407Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+      "type": "lifecycle",
+      "phase": "turn-started"
+    },
+    {
+      "sequence": 3,
+      "observedAt": "2026-07-27T23:09:06.407Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+      "type": "item",
+      "itemRef": "sha256:f7ab422d725d88cbb65bbdeebbead98d44d685edebab535c4a43bb0fbd8ac08f",
+      "itemType": "agentmessage",
+      "status": "started"
+    },
+    {
+      "sequence": 4,
+      "observedAt": "2026-07-27T23:09:06.407Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+      "type": "output",
+      "channel": "assistant",
+      "contentDigest": "sha256:e4692830928080948a91bbee09a44f003ce020e10fd37f438b6eecf41b47902f",
+      "byteLength": 5,
+      "redactionCount": 0
+    },
+    {
+      "sequence": 5,
+      "observedAt": "2026-07-27T23:09:06.407Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+      "type": "item",
+      "itemRef": "sha256:f7ab422d725d88cbb65bbdeebbead98d44d685edebab535c4a43bb0fbd8ac08f",
+      "itemType": "agentmessage",
+      "status": "completed"
+    },
+    {
+      "sequence": 6,
+      "observedAt": "2026-07-27T23:09:06.407Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+      "type": "lifecycle",
+      "phase": "turn-completed",
+      "turnStatus": "completed"
+    }
+  ],
+  "eventsDigest": "sha256:126afc0d702c34d0187a2076d9ceff4938eb3108bde366021a2d6cc4c1f90762",
+  "workflow": {
+    "plan": {
+      "recordType": "workflow-plan",
+      "recordId": "90d234b1-cac8-416f-ae24-95d044f6d2d3",
+      "revision": 2,
+      "digest": "sha256:4f960a123b9a9fd59da38fa1e266f9dc7a6dc6dce86f0b7283f5e940bc143124"
+    },
+    "strategy": "sequential",
+    "orderedStepIds": [
+      "251954e2-0aa5-4cc9-ac42-2c1a499a6338"
+    ],
+    "attempts": [
+      {
+        "id": "52bc7b4d-7abf-4a65-a5d5-3e244610505a",
+        "revision": 2,
+        "previousSnapshotDigest": "sha256:5464590ec10445fa57ba355f4e6c0d63c7776bb436ce82deb27acc2452086cad",
+        "stepId": "251954e2-0aa5-4cc9-ac42-2c1a499a6338",
+        "stepIndex": 0,
+        "attempt": 1,
+        "state": "completed",
+        "dependencies": [],
+        "contextPacks": [
+          {
+            "recordType": "context-pack",
+            "recordId": "6a60ef22-cb55-4b0f-9a8e-610240935e15",
+            "revision": 1,
+            "digest": "sha256:138fc515eaded2e306df29fe07e3cd64916362f4dbda0edc4be74a72f1abc73d"
+          }
+        ],
+        "tools": [],
+        "effectEnvelope": [
+          "observe"
+        ],
+        "eventRange": {
+          "startSequence": 0,
+          "endSequence": 6
+        },
+        "providerDisposition": "completed",
+        "terminationCause": "normal",
+        "postconditionStatus": "satisfied",
+        "gates": {
+          "preconditions": {
+            "phase": "preconditions",
+            "interpretation": "criteria-satisfied",
+            "criteriaDigest": "sha256:8ae848851a909b46578c342d189d925094e9c9d2cfc792a976f4b7b5282b4dc7",
+            "status": "satisfied",
+            "basis": "human-attestation",
+            "evidenceDigest": "sha256:64a4d0f6ac136c328ce690371f5994546491bbde357a03cf328f50e276ece01c",
+            "actor": {
+              "kind": "human",
+              "id": "product-owner"
+            },
+            "evaluator": {
+              "kind": "human",
+              "id": "product-owner",
+              "version": "1",
+              "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+            },
+            "assessedAt": "2026-07-27T23:09:05.316Z"
+          },
+          "outputs": {
+            "phase": "outputs",
+            "interpretation": "criteria-satisfied",
+            "criteriaDigest": "sha256:5ca50e1008f05b2d7f1e6a34fc673fd1070e8b7935d74553e255d025537030bc",
+            "status": "satisfied",
+            "basis": "human-attestation",
+            "evidenceDigest": "sha256:5a4a7a96526ef47bc38f776432fe5b5b7496c190779acc4cb038157a6e728aee",
+            "actor": {
+              "kind": "human",
+              "id": "product-owner"
+            },
+            "evaluator": {
+              "kind": "human",
+              "id": "product-owner",
+              "version": "1",
+              "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+            },
+            "assessedAt": "2026-07-27T23:09:07.004Z"
+          },
+          "evidence": {
+            "phase": "evidence",
+            "interpretation": "criteria-satisfied",
+            "criteriaDigest": "sha256:ed60e9cd86c2db1fd96a798a6133c92f2a93eee56b87e6cdb253146a87ec7cc8",
+            "status": "satisfied",
+            "basis": "human-attestation",
+            "evidenceDigest": "sha256:e1ba79ab62aabf8acb2d9358de1ad5621141e78dc54a393b367d8c36670b8fc1",
+            "actor": {
+              "kind": "human",
+              "id": "product-owner"
+            },
+            "evaluator": {
+              "kind": "human",
+              "id": "product-owner",
+              "version": "1",
+              "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+            },
+            "assessedAt": "2026-07-27T23:09:07.004Z"
+          },
+          "stopConditions": {
+            "phase": "stop-conditions",
+            "interpretation": "stop-boundary-complied",
+            "criteriaDigest": "sha256:f7346969412ce68c87eaa3f62ded2bbfe40d8cdec541546314b652389820412f",
+            "status": "satisfied",
+            "basis": "human-attestation",
+            "evidenceDigest": "sha256:660b04580a51c5eab4af366613768174b52795c05329ec2dd22f073a5fca2ab5",
+            "actor": {
+              "kind": "human",
+              "id": "product-owner"
+            },
+            "evaluator": {
+              "kind": "human",
+              "id": "product-owner",
+              "version": "1",
+              "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+            },
+            "assessedAt": "2026-07-27T23:09:07.004Z"
+          }
+        },
+        "startedAt": "2026-07-27T23:09:05.316Z",
+        "endedAt": "2026-07-27T23:09:07.004Z"
+      }
+    ],
+    "completedStepIds": [
+      "251954e2-0aa5-4cc9-ac42-2c1a499a6338"
+    ],
+    "charterGates": {
+      "requiredEvidence": {
+        "phase": "charter-evidence",
+        "interpretation": "criteria-satisfied",
+        "criteriaDigest": "sha256:74d26e3ec1796234cef9c72ce217cdb6fb1cadfddc8601f02af74c86bbfb531a",
+        "status": "satisfied",
+        "basis": "human-attestation",
+        "evidenceDigest": "sha256:981e51e0a4b2c880bfc8cc1e0ff0c1c547abdc2855e09b3fb9c9fb3b38f98feb",
+        "actor": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "evaluator": {
+          "kind": "human",
+          "id": "product-owner",
+          "version": "1",
+          "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+        },
+        "assessedAt": "2026-07-27T23:09:07.004Z"
+      },
+      "stopConditions": {
+        "phase": "charter-stop-conditions",
+        "interpretation": "stop-boundary-complied",
+        "criteriaDigest": "sha256:2c4468bb6156e9dd051fcd8180226e45f95f3bc553ca1ab1d87187bc7ef2b988",
+        "status": "satisfied",
+        "basis": "human-attestation",
+        "evidenceDigest": "sha256:dbef3b96038452856e15cbc0fe628ae3a3f8b52598f979eae6735a7b79885200",
+        "actor": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "evaluator": {
+          "kind": "human",
+          "id": "product-owner",
+          "version": "1",
+          "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+        },
+        "assessedAt": "2026-07-27T23:09:07.004Z"
+      }
+    },
+    "terminalReasonCode": "workflow-completed",
+    "capabilityBoundary": "natural-language-gates-require-explicit-human-or-system-assessment"
+  },
+  "staging": {
+    "baselineDigest": "sha256:5fcb218258540a124bb266b7b8d760bd709a6d828eb0a51a19f23cc010470c85",
+    "finalDigest": "sha256:5fcb218258540a124bb266b7b8d760bd709a6d828eb0a51a19f23cc010470c85",
+    "changes": [],
+    "excludedPathCount": 1,
+    "excludedPathSetDigest": "sha256:80a94ea0b8339714e9ca2d29372a2945d67123240f3be365683be296f62b3efc",
+    "applyState": "applied",
+    "applyJournalDigest": "sha256:bcdd8ed31255ae586505c1ea6b96ebd95d0700f1fdc2b39f2c2e6bf3e8248c60",
+    "applyDecision": {
+      "receiptId": "be76aae6-a77a-4151-9af7-e9e3a28f2931",
+      "receiptDigest": "sha256:a8639b3b5957893209a101dc7964867b5642b97c68b75c081f047c74273d09bd"
+    }
+  },
+  "actualEffects": [
+    {
+      "effect": "observe",
+      "status": "observed-provisional",
+      "evidenceDigest": "sha256:063bc928a66c1400a3513e547be0a1720dff8b99f6fadedec78fed8918cfc7c1"
+    }
+  ],
+  "capturedAt": "2026-07-27T23:09:07.004Z",
+  "authorityBoundary": "evidence-does-not-self-assert-outcome-or-authorization"
+}

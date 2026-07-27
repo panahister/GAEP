@@ -6,20 +6,33 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 const repository = fileURLToPath(new URL("..", import.meta.url))
 const testFile = "packages/engine/src/business-understanding.test.ts"
 const fakeServerFile = "packages/agent-sdk/test/fixtures/fake-codex-app-server.mjs"
+const referenceScenarioFile = "examples/phase-1-realistic-reference/scenario.json"
 const receiptByteLimit = 64 * 1024
 const digestPattern = /^sha256:[0-9a-f]{64}$/
 
 export const codexP0P4TestName = "executes an exact P0-P4 candidate chain through isolated Codex app-server evidence"
 export const codexP0P4Limitations = [
   "The deterministic local Codex app-server fixture verifies the managed transport and evidence contract, not live provider authentication, entitlement, reachability, model quality, usage, or cost.",
-  "The governed P0-P4 records are synthetic candidate fixtures and do not establish a real Product baseline, independent review, readiness, approval, or Product Owner acceptance.",
+  "The governed P0-P4 records exercise one source-bound realistic reference scenario but do not establish a real Product baseline, independent review, readiness, approval, or Product Owner acceptance.",
   "The integration runs through the shared engine and does not validate native IDE installation, activation, interaction, rendering, accessibility, or supported-host acceptance.",
   "The Product Owner explicitly skipped the interrupted Codex Security scan; this acceptance receipt is not security assurance or a security result.",
 ]
 
+const referenceScenarioBytes = await readFile(resolve(repository, referenceScenarioFile))
+const referenceScenario = JSON.parse(referenceScenarioBytes.toString("utf8"))
+
 export const expectedCodexP0P4Summary = {
   schemaVersion: 1,
   kind: "gaep-codex-p0-p4-semantic-summary",
+  referenceScenario: {
+    id: referenceScenario.id,
+    kind: referenceScenario.kind,
+    digest: canonicalDigest(referenceScenario),
+    productName: referenceScenario.product.name,
+    initiativeTitle: referenceScenario.initiative.title,
+    outputKinds: referenceScenario.expectedP0P4Outputs,
+    authorityBoundary: referenceScenario.authorityBoundary,
+  },
   governedRecordKinds: [
     "architecture",
     "architectureChallengeModel",
@@ -136,13 +149,15 @@ function assertDigest(value, label) {
 }
 
 async function currentSourceDigests() {
-  const [testBytes, fakeServerBytes] = await Promise.all([
+  const [testBytes, fakeServerBytes, currentReferenceScenarioBytes] = await Promise.all([
     readFile(resolve(repository, testFile)),
     readFile(resolve(repository, fakeServerFile)),
+    readFile(resolve(repository, referenceScenarioFile)),
   ])
   return {
     testSourceDigest: rawDigest(exactCodexTestSource(testBytes)),
     fakeServerSourceDigest: rawDigest(fakeServerBytes),
+    referenceScenarioSourceDigest: rawDigest(currentReferenceScenarioBytes),
   }
 }
 
@@ -155,16 +170,20 @@ export async function verifyCodexP0P4ReceiptObject(receipt) {
   }
   assertExactKeys(receipt.scenario, [
     "id", "testFile", "testName", "testSourceDigest", "fakeServerFile", "fakeServerSourceDigest",
+    "referenceScenarioFile", "referenceScenarioSourceDigest",
   ], "receipt.scenario")
   const sourceDigests = await currentSourceDigests()
   if (receipt.scenario.id !== "P1-30" || receipt.scenario.testFile !== testFile ||
-      receipt.scenario.testName !== codexP0P4TestName || receipt.scenario.fakeServerFile !== fakeServerFile) {
+      receipt.scenario.testName !== codexP0P4TestName || receipt.scenario.fakeServerFile !== fakeServerFile ||
+      receipt.scenario.referenceScenarioFile !== referenceScenarioFile) {
     fail("scenario identity differs")
   }
   assertDigest(receipt.scenario.testSourceDigest, "receipt.scenario.testSourceDigest")
   assertDigest(receipt.scenario.fakeServerSourceDigest, "receipt.scenario.fakeServerSourceDigest")
+  assertDigest(receipt.scenario.referenceScenarioSourceDigest, "receipt.scenario.referenceScenarioSourceDigest")
   if (receipt.scenario.testSourceDigest !== sourceDigests.testSourceDigest ||
-      receipt.scenario.fakeServerSourceDigest !== sourceDigests.fakeServerSourceDigest) {
+      receipt.scenario.fakeServerSourceDigest !== sourceDigests.fakeServerSourceDigest ||
+      receipt.scenario.referenceScenarioSourceDigest !== sourceDigests.referenceScenarioSourceDigest) {
     fail("scenario source digest differs from the current executable fixture")
   }
   assertExactKeys(receipt.execution, ["runner", "exitCode", "semanticSummaryCount"], "receipt.execution")

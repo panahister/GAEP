@@ -1,0 +1,1873 @@
+{
+  "schemaVersion": 1,
+  "id": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+  "kind": "initiative",
+  "revision": 4,
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "title": "Review the Atlas release evidence packet",
+  "outcome": "A bounded observation records what the supplied evidence can and cannot establish.",
+  "scope": [
+    "Release evidence review",
+    "Portable managed-run receipt",
+    "Governed P0-P4 candidate chain"
+  ],
+  "exclusions": [
+    "Workspace mutation",
+    "External effects",
+    "Human acceptance substitution"
+  ],
+  "classification": {
+    "primaryType": "product-increment",
+    "secondaryTypes": [
+      "client-application"
+    ],
+    "systemState": "greenfield",
+    "changePosture": "new",
+    "motivations": [
+      "business-driven",
+      "technical"
+    ],
+    "characteristics": {
+      "userInterface": "ui-bearing",
+      "data": "data-bearing",
+      "integration": "isolated",
+      "interactionModes": [
+        "interactive"
+      ],
+      "exposure": "internal"
+    },
+    "regulated": false,
+    "policyDomains": [],
+    "sensitivities": [
+      "data"
+    ],
+    "expectedLifetime": "long-lived",
+    "maintenanceHorizon": "Maintain the governed Product workflow through its supported lifetime.",
+    "risk": {
+      "blastRadius": "localized",
+      "reversibility": "reversible",
+      "urgency": "normal",
+      "costOfFailure": "medium"
+    },
+    "dependencies": [],
+    "affectedAssets": [
+      "Governed Product context and candidate P0-P4 outputs"
+    ],
+    "owner": "product-owner",
+    "accountableAuthority": "product-owner",
+    "confidence": {
+      "level": "high",
+      "basis": "The deterministic fixture defines the bounded Product, lifecycle, provider, and evidence envelope."
+    },
+    "evidence": [
+      {
+        "kind": "requirement",
+        "reference": "P1-31"
+      }
+    ],
+    "unresolvedQuestions": [],
+    "rationale": "The acceptance fixture exercises one bounded Product increment through the governed P0-P4 and managed Claude context-only paths.",
+    "productProfile": "software",
+    "productRevision": 1,
+    "productDigest": "sha256:850ad63df195d41793dbe52c32261725b4afd4f9fc59de25cdb31dbdbc63bc1e",
+    "completenessPolicyVersion": "gaep-initiative-classification-completeness-v1",
+    "completenessPolicyDigest": "sha256:ced0e5e1ceb00075bdb5e062e4ed554f80c1acebba4e11ac5ee74c27d6326a5e",
+    "classifiedBy": {
+      "kind": "human",
+      "id": "product-owner"
+    },
+    "classifiedAt": "2026-07-27T23:09:01.453Z",
+    "authorityBoundary": "classification-guides-profile-selection-and-does-not-grant-approval-or-action-authority"
+  },
+  "applicability": {
+    "subjectCatalog": {
+      "catalogVersion": "gaep-initiative-applicability-subjects-v1",
+      "digest": "sha256:2bbe10e7429c9edd888e5e35a43e64e88c6b5c24b5d03a03d473f0d49c54d16f",
+      "subjectCount": 49
+    },
+    "decisions": [
+      {
+        "subject": {
+          "type": "phase",
+          "key": "intake",
+          "label": "Initiative intake"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Initiative intake without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "20fdfce6-25d6-44f5-9184-6559f935c54b",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "phase",
+          "key": "initiative-classification",
+          "label": "Initiative classification"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Initiative classification without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "aefffc73-335b-4297-8d56-f3078fe72b4f",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "phase",
+          "key": "existing-system-assessment",
+          "label": "Existing-system and lifecycle-state assessment"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Existing-system and lifecycle-state assessment without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "362e40e9-dce2-426a-a19a-b394b23b6c12",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "phase",
+          "key": "scope-criticality-assessment",
+          "label": "Scope and criticality assessment"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Scope and criticality assessment without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "d360f623-6f84-4d80-b984-7b7275a8fd5d",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "phase",
+          "key": "applicability-assessment",
+          "label": "Applicability assessment"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Applicability assessment without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "fd49bc16-3e70-4595-8ede-8d46b43977ba",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "phase",
+          "key": "architecture-assurance-resolution",
+          "label": "Architecture and assurance resolution"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Architecture and assurance resolution without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "63a17478-7533-42f8-b011-509bb454d9b0",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "phase",
+          "key": "implementation-verification",
+          "label": "Implementation and verification"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Implementation and verification without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "ade212f1-75fd-4d2c-9dae-8c0d7e0d44c0",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "phase",
+          "key": "release-operation-learning",
+          "label": "Release, operation, and learning"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Release, operation, and learning without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "db06bfff-0ead-4272-a08c-35dbce07dff6",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "activity",
+          "key": "product-discovery",
+          "label": "Product discovery"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Product discovery without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "4db6fa01-25dc-49dc-bbff-0917a0964498",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "activity",
+          "key": "business-architecture",
+          "label": "Business architecture"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Business architecture without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "287b8783-ff41-46ad-ad0f-d0e9d56e2407",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "activity",
+          "key": "experience-design",
+          "label": "Experience and interaction design"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Experience and interaction design without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "84167512-0955-44b3-98be-3ee7af926f0f",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "activity",
+          "key": "existing-system-discovery",
+          "label": "Existing-system discovery"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Existing-system discovery without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "c48d17e8-7a71-4e55-aab7-0cf4b4d20fc0",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "activity",
+          "key": "human-ai-challenge",
+          "label": "Human-AI challenge"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Human-AI challenge without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "6fcfdde8-2dbc-487c-95a2-34f57262e311",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "activity",
+          "key": "threat-modeling",
+          "label": "Threat modeling"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Threat modeling without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "9a2f82ea-6abc-4985-a921-e09a1b5d7984",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "activity",
+          "key": "identity-authorization-analysis",
+          "label": "Identity and authorization analysis"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Identity and authorization analysis without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "2a28055d-6296-4a8c-a7b5-cd5bb18e3f8c",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "activity",
+          "key": "technology-selection",
+          "label": "Technology selection"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Technology selection without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "ea61ff56-6c0d-42db-9ac8-fecc91ae0d9d",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "activity",
+          "key": "change-impact-analysis",
+          "label": "Change and impact analysis"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Change and impact analysis without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "9cd6b3b6-1a1c-4f73-85ad-e1a4ea550628",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "artifact",
+          "key": "initiative-profile",
+          "label": "Initiative Profile"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Initiative Profile without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "666c5417-90a4-4271-b0ba-03c3a065bc01",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "artifact",
+          "key": "applicability-matrix",
+          "label": "Applicability Matrix"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Applicability Matrix without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "098de2a4-e872-4aea-8162-26f403caa5e9",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "artifact",
+          "key": "source-baseline",
+          "label": "Source baseline"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Source baseline without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "a83f34bc-f31f-4261-a3c3-a8b221648a41",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "artifact",
+          "key": "requirements-acceptance",
+          "label": "Requirements and acceptance criteria"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Requirements and acceptance criteria without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "967abe6f-1f6b-4f55-9b51-8f005d4cb8c2",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "artifact",
+          "key": "architecture-assets",
+          "label": "Architecture Assets"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Architecture Assets without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "2909cbf2-af1e-4d22-a1c9-9b45034d9bec",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "artifact",
+          "key": "technology-profile",
+          "label": "Technology Profile"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Technology Profile without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "7f7110b4-cb6e-4273-96a8-5f410ba8b4ca",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "artifact",
+          "key": "assurance-strategy",
+          "label": "Assurance Strategy and Profile"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Assurance Strategy and Profile without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "0401cb5f-e11a-410c-9369-e2044f14b5dc",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "artifact",
+          "key": "release-evidence",
+          "label": "Release evidence package"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Release evidence package without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "0d554d30-9dc3-4e47-bc62-986633be6967",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "capability",
+          "key": "design-reference-integration",
+          "label": "Design-reference integration"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Design-reference integration without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "131b3cab-75d3-4650-8755-3157ab328e3e",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "capability",
+          "key": "governed-agent-execution",
+          "label": "Governed agent execution"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Governed agent execution without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "ee45d802-28f2-42f8-8538-1f45d8f5c0f4",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "capability",
+          "key": "managed-staging",
+          "label": "Managed staged changes"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Managed staged changes without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "2112a0c7-c6a9-432e-a8c0-e3b405622cc2",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "capability",
+          "key": "provider-model-handoff",
+          "label": "Provider and model handoff"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Provider and model handoff without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "fa0eb030-731d-4f5e-bde6-7b079a6a36f1",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "test-method",
+          "key": "unit-testing",
+          "label": "Unit testing"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Unit testing without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "071acd7d-e1c6-4b55-be47-f44b2f17c4c1",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "test-method",
+          "key": "integration-testing",
+          "label": "Integration testing"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Integration testing without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "0a61a5e3-6edf-4315-9ba8-a3975ff57c2a",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "test-method",
+          "key": "consumer-contract-testing",
+          "label": "Consumer contract testing"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Consumer contract testing without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "08165434-6a71-4768-a4cb-20666534dca2",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "test-method",
+          "key": "security-testing",
+          "label": "Security testing"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Security testing without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "24b7a7aa-20b5-4a66-9742-3937bd6cd11d",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "test-method",
+          "key": "usability-accessibility-testing",
+          "label": "Usability and accessibility testing"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Usability and accessibility testing without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "9a408b61-ebac-4a35-b24b-ee35278b1e87",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "test-level",
+          "key": "component",
+          "label": "Component test level"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Component test level without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "1bc8dbc0-d41a-4e94-85f0-a136ca4a2e2f",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "test-level",
+          "key": "service",
+          "label": "Service test level"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Service test level without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "062fc5e7-7b1d-4292-9bf3-32067276b9a0",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "test-level",
+          "key": "system",
+          "label": "System test level"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates System test level without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "3a6f3bab-80ea-4e7d-9e51-bf0d67ed2e54",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "test-level",
+          "key": "acceptance",
+          "label": "Acceptance test level"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Acceptance test level without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "fce62874-cf1c-4c8b-a64f-123a688b205c",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "approval",
+          "key": "initiative-entry",
+          "label": "Initiative entry approval"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Initiative entry approval without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "77a2611d-8d67-4e55-95f9-369073fe4e4b",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "approval",
+          "key": "architecture",
+          "label": "Architecture approval"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Architecture approval without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "2056681e-7c2f-4275-8906-1f5ee39e4096",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "approval",
+          "key": "security",
+          "label": "Security approval"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Security approval without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "3fa3809a-7614-4179-92d0-172393c29cb4",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "approval",
+          "key": "implementation",
+          "label": "Implementation approval"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Implementation approval without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "15ec40c3-69f6-4e1d-b096-2881f9804961",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "approval",
+          "key": "release",
+          "label": "Release approval"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Release approval without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "d35151ca-32d7-4e4b-9ddb-79da2be425d8",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "evidence-obligation",
+          "key": "classification",
+          "label": "Classification evidence"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Classification evidence without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "1b3a0134-22a1-4ae8-96b5-444fe3c19264",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "evidence-obligation",
+          "key": "applicability",
+          "label": "Applicability evidence"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Applicability evidence without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "af51f90a-cd57-446c-8085-ef90263168b2",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "evidence-obligation",
+          "key": "traceability",
+          "label": "Traceability evidence"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Traceability evidence without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "3b7018ed-2aa7-465b-87e5-cd92143a858f",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "evidence-obligation",
+          "key": "test-results",
+          "label": "Test result evidence"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Test result evidence without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "7434c604-ce5c-4ab9-a4c7-305d86d91df4",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "evidence-obligation",
+          "key": "approval",
+          "label": "Approval evidence"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Approval evidence without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "2751959e-4386-41cb-8be0-e9470f537aea",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      },
+      {
+        "subject": {
+          "type": "evidence-obligation",
+          "key": "rollback-operability",
+          "label": "Rollback and operability evidence"
+        },
+        "status": "optional",
+        "rationale": "The deterministic P1-31 fixture explicitly evaluates Rollback and operability evidence without granting approval or action authority.",
+        "sources": [
+          {
+            "kind": "requirement",
+            "reference": "P1-31"
+          }
+        ],
+        "owner": "product-owner",
+        "dependencies": [],
+        "conditions": [],
+        "reviewTriggers": [
+          "The fixture scope, classification, policy, provider boundary, or evidence changes"
+        ],
+        "approval": {
+          "state": "not-required",
+          "conditions": []
+        },
+        "relatedRecords": [],
+        "relatedImplementationUnits": [],
+        "id": "2349a629-46a2-479f-8cee-694ca21087bd",
+        "revision": 1,
+        "initiativeRevision": 3,
+        "decidedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "decidedAt": "2026-07-27T23:09:01.557Z",
+        "authorityBoundary": "applicability-decision-does-not-grant-approval-readiness-or-action-authority"
+      }
+    ],
+    "unresolvedSubjects": [],
+    "schemaVersion": 1,
+    "kind": "initiative-applicability-matrix",
+    "revision": 1,
+    "initiativeId": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+    "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+    "initiativeRevision": 3,
+    "classificationDigest": "sha256:1325a49ee12f71938a6cf448d1c4cab6c657872c104dde995f0838f16aa1f0e1",
+    "state": "current",
+    "evaluatedBy": {
+      "kind": "human",
+      "id": "product-owner"
+    },
+    "evaluatedAt": "2026-07-27T23:09:01.557Z",
+    "authorityBoundary": "applicability-matrix-does-not-grant-approval-readiness-or-action-authority"
+  },
+  "state": "active",
+  "createdAt": "2026-07-27T23:09:01.245Z",
+  "updatedAt": "2026-07-27T23:09:01.669Z"
+}

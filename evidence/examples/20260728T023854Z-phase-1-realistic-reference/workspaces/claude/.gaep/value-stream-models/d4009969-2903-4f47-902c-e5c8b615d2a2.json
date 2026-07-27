@@ -1,0 +1,142 @@
+{
+  "initiativeId": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:850ad63df195d41793dbe52c32261725b4afd4f9fc59de25cdb31dbdbc63bc1e",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:cb6cce9b9bc3ff00eeb0527c3e9319d183537cabfa42d61523c5fc070ff63292"
+  },
+  "informationClassification": "internal",
+  "businessUnderstanding": {
+    "recordId": "05b452eb-2dc3-4d38-aab6-457e154e1645",
+    "revision": 1,
+    "digest": "sha256:d43ead4d936cfa47a6c27400bcde25043f55f9b39185203dc32b420d931152fe"
+  },
+  "stakeholderModel": {
+    "recordId": "702d78e6-79cb-4ba9-9a09-bbaf416cc771",
+    "revision": 1,
+    "digest": "sha256:df6fa41fffff981cfe8c46d4a2c9b376f17e2bc2281f6c4503cb95bd333e112e"
+  },
+  "outcomeModel": {
+    "recordId": "2d95c96e-27f8-4227-92a2-cb25a3207aaa",
+    "revision": 1,
+    "digest": "sha256:e33bdab692ab44acac914eb95e4d341576cb8ba473e651ca242e30a43bbbd7c4"
+  },
+  "capabilityMap": {
+    "recordId": "8552b94c-633f-4463-8b75-4fe726ba6acc",
+    "revision": 1,
+    "digest": "sha256:741a56fa1b144f955f7d49384ce135de88a5ae144019dde277215ca589eac895"
+  },
+  "valueStreams": [
+    {
+      "key": "governed-delivery",
+      "name": "Governed context delivery",
+      "purpose": "Deliver attributable Product context to a stakeholder without losing exact upstream evidence.",
+      "placement": "gaep-native-authority",
+      "trigger": "A bounded Product Initiative requires governed context before downstream engineering work begins.",
+      "valueProposition": "The receiving stakeholder obtains exact portable context with visible limitations and no synthesized authority.",
+      "ownerStakeholderKey": "primary-user",
+      "beneficiaryStakeholderKeys": [
+        "primary-user"
+      ],
+      "participatingStakeholderKeys": [
+        "primary-user"
+      ],
+      "objectiveIds": [
+        "reduce-context-loss"
+      ],
+      "outcomeIds": [
+        "trusted-context"
+      ],
+      "capabilityKeys": [
+        "governed-context"
+      ],
+      "dependencyKeys": [],
+      "stages": [
+        {
+          "key": "preserve-context",
+          "sequence": 1,
+          "name": "Preserve governed context",
+          "purpose": "Bind the current business evidence and capability identity into portable candidate context.",
+          "entryCriteria": [
+            "Exact governed upstream records are available"
+          ],
+          "exitCriteria": [
+            "Portable candidate context retains every exact governed binding"
+          ],
+          "capabilityKeys": [
+            "governed-context"
+          ],
+          "participatingStakeholderKeys": [
+            "primary-user"
+          ],
+          "outcomeIds": [
+            "trusted-context"
+          ],
+          "inputs": [
+            "Exact upstream business records"
+          ],
+          "outputs": [
+            "Bounded portable context record"
+          ],
+          "flowEvidence": {
+            "state": "observed",
+            "statement": "The contract and engine tests observe exact binding through the bounded value-delivery stage.",
+            "sources": [
+              {
+                "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+                "sourceRevision": 1,
+                "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+                "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ]
+          },
+          "sources": [
+            {
+              "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "bottlenecks": [],
+      "externalDependencies": [
+        "Governed Source inventory"
+      ],
+      "burden": "Exact binding requires explicit superseding revisions whenever upstream business truth changes.",
+      "risk": "A candidate flow description could be mistaken for an approved operating process or delivery commitment.",
+      "exitPath": "Retire the candidate stream through a superseding revision while preserving immutable history.",
+      "lifecycle": "candidate",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "No realistic Product Owner acceptance or organization-wide value-stream baseline is represented."
+  ],
+  "schemaVersion": 1,
+  "kind": "value-stream-model",
+  "id": "d4009969-2903-4f47-902c-e5c8b615d2a2",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "revision": 1,
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:02.182Z",
+  "updatedAt": "2026-07-27T23:09:02.182Z",
+  "authorityBoundary": "value-stream-model-records-candidate-value-flow-stages-dependencies-ownership-bottlenecks-and-does-not-approve-baseline-readiness-or-authorize-action"
+}

@@ -13,16 +13,16 @@ const sourceByteLimit = 64 * 1024
 const digestPattern = /^sha256:[0-9a-f]{64}$/
 
 export const defaultProviderComparisonInputs = {
-  codex: "evidence/examples/20260727T115725Z-phase-1-codex-p0-p4-acceptance.json",
-  claude: "evidence/examples/20260727T114738Z-phase-1-claude-p0-p4-acceptance.json",
+  codex: "evidence/examples/20260728T023152Z-phase-1-codex-p0-p4-realistic-reference.json",
+  claude: "evidence/examples/20260728T023152Z-phase-1-claude-p0-p4-realistic-reference.json",
 }
 
 export const providerComparisonLimitations = [
-  "Both inputs are deterministic local fixture receipts over synthetic candidate Product context; neither input establishes live-provider authentication, entitlement, reachability, model quality, reliability, usage, or cost.",
+  "Both inputs are deterministic local fixture receipts bound to the same realistic reference Product scenario; neither input establishes live-provider authentication, entitlement, reachability, model quality, reliability, usage, or cost.",
   "Provider output content is not retained in the portable receipts, so semantic correctness, usefulness, reasoning quality, style, latency, token use, and cost remain not assessed.",
   "Structural parity covers only exact governed candidate coverage, readiness, handoff, terminal Workflow fields, evidence integrity, and authority boundaries represented by both receipts.",
   "Expected transport differences do not rank providers or authorize automatic provider/model selection.",
-  "Native-host interaction, accessibility, realistic Product evidence, independent human review, Product Owner acceptance, security completion, release authorization, and deployment approval remain outside this comparison.",
+  "Native-host interaction, accessibility, real Product validation, independent human review, Product Owner acceptance, security completion, release authorization, and deployment approval remain outside this comparison.",
 ]
 
 function normalize(value) {
@@ -141,6 +141,13 @@ export async function buildProviderOutputComparison({
     claude: inputBinding(claudeSource, claude),
   }
   const criteria = [
+    parityCriterion(
+      "reference-scenario",
+      "structural-parity",
+      codex.summary.referenceScenario,
+      claude.summary.referenceScenario,
+      "Exact canonical realistic Product scenario, output catalog, digest, and authority boundary",
+    ),
     parityCriterion(
       "governed-record-coverage",
       "structural-parity",

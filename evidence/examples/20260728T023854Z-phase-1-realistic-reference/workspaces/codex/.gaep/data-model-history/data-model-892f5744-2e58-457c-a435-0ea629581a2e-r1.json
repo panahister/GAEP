@@ -1,0 +1,676 @@
+{
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Data Model",
+  "scope": "Model conceptual governed records and privacy-safe host projections with exact semantics, candidate ownership, lifecycle, relationships, transformations, and profile evidence.",
+  "systemSolutionArchitecture": {
+    "recordId": "c181b435-e05b-4693-8591-dbbdc8ea6378",
+    "revision": 1,
+    "digest": "sha256:c5d197509af5abdac25ca5b56a128a618d08992ddd263816c6c91360ca507d34"
+  },
+  "boundedContextModel": {
+    "recordId": "e6aca26a-c8ad-4981-bc6b-4edc34e41e3d",
+    "revision": 1,
+    "digest": "sha256:b89fde27268aff5272183845ada8425d5cebba70d01a10f00337b94c184ea1fa"
+  },
+  "operatingModel": {
+    "recordId": "37895456-deb2-4c00-9e40-6d740fd51707",
+    "revision": 1,
+    "digest": "sha256:a1f9c07f34d5beb4082634c8d2b3d0fd90773ea1c254194d47c108ecd50a2b23"
+  },
+  "securityPrivacyAssessment": {
+    "recordId": "36a655f3-3869-42de-9373-e1a64f5cad04",
+    "revision": 1,
+    "digest": "sha256:d4a46b130517b2e0956a569d772ffe1d022ec361b3840774ca9bb37a6cd413c1"
+  },
+  "processModel": {
+    "recordId": "ac9f6b58-aff7-47ee-9442-ee2286a07b16",
+    "revision": 1,
+    "digest": "sha256:0f157b64cedd1fc3296b39cca713c6bf8abafd00c9583f10e41056c7714580ba"
+  },
+  "entities": [
+    {
+      "key": "governed-record",
+      "name": "Governed candidate record",
+      "kind": "aggregate-root",
+      "meaning": "One exact immutable Product-domain candidate revision with current identity, predecessor history, upstream membership, evidence, and non-authoritative governance state.",
+      "boundedContextKey": "governance-core",
+      "architectureElementKeys": [
+        "gaep-engine",
+        "workspace-store"
+      ],
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "dataClassKeys": [
+        "governed-product-metadata"
+      ],
+      "ownerRoleKey": "gaep-steward",
+      "stewardRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "ownershipState": "candidate-not-accepted",
+      "systemOfRecordState": "candidate-declared",
+      "attributes": [
+        {
+          "key": "record-id",
+          "name": "Record identity",
+          "valueKind": "identifier",
+          "required": true,
+          "identifierRole": "surrogate",
+          "meaning": "Stable opaque identity for one governed record lineage independent from title, owner, status, or storage location.",
+          "classification": "internal",
+          "containsPersonalData": false,
+          "dataClassKeys": [
+            "governed-product-metadata"
+          ],
+          "constraints": [
+            "Immutable UUID identity",
+            "Never derived from a local path or mutable label"
+          ],
+          "sources": [
+            {
+              "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "key": "revision",
+          "name": "Immutable revision",
+          "valueKind": "integer",
+          "required": true,
+          "identifierRole": "correlation",
+          "meaning": "Positive contiguous immutable revision number bound to exact predecessor content and audit evidence.",
+          "classification": "internal",
+          "containsPersonalData": false,
+          "dataClassKeys": [
+            "governed-product-metadata"
+          ],
+          "constraints": [
+            "Positive contiguous value",
+            "Predecessor digest required after revision one"
+          ],
+          "sources": [
+            {
+              "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "invariants": [
+        "Current state matches the latest complete immutable history",
+        "Every mutation commits current, history, and audit evidence atomically"
+      ],
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "product-studio-projection",
+      "name": "Product Studio privacy-safe projection",
+      "kind": "projection",
+      "meaning": "Derived read-only host view containing bounded record identities, counts, statuses, timestamps, and digests without candidate narrative or private content.",
+      "boundedContextKey": "product-studio",
+      "architectureElementKeys": [
+        "product-studio-host"
+      ],
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "dataClassKeys": [
+        "governed-product-metadata"
+      ],
+      "ownerRoleKey": "initiative-owner",
+      "stewardRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "ownershipState": "candidate-not-accepted",
+      "systemOfRecordState": "not-applicable",
+      "attributes": [
+        {
+          "key": "snapshot-digest",
+          "name": "Snapshot digest",
+          "valueKind": "identifier",
+          "required": true,
+          "identifierRole": "correlation",
+          "meaning": "Canonical digest binding the complete bounded projection body to the exact observation result returned by the shared engine.",
+          "classification": "internal",
+          "containsPersonalData": false,
+          "dataClassKeys": [
+            "governed-product-metadata"
+          ],
+          "constraints": [
+            "Canonical SHA-256 digest",
+            "Recomputed and verified before native rendering"
+          ],
+          "sources": [
+            {
+              "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "invariants": [
+        "Projection excludes narrative, personal data, locators, paths, secrets, and credentials",
+        "Projection never becomes authoritative source state"
+      ],
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "key": "record-projects-to-host",
+      "fromEntityKey": "governed-record",
+      "toEntityKey": "product-studio-projection",
+      "kind": "derivation",
+      "cardinality": "one-to-many",
+      "ownership": "from-owns",
+      "integrity": "Every projection binds one exact current record revision and a canonical snapshot digest; unknown or excess fields fail validation.",
+      "consistency": "Projection reads recheck the exact Product, Initiative, upstream membership, audit, and current-record context before returning bounded state.",
+      "deletionBehavior": "Projection data is ephemeral and independently discardable; governed record correction or disposition never erases immutable historical facts silently.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "lifecycles": [
+    {
+      "key": "candidate-record-lifecycle",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "initialStateKey": "candidate",
+      "states": [
+        {
+          "key": "candidate",
+          "name": "Candidate",
+          "meaning": "The record is versioned and reviewable but has no model, classification, ownership, migration, readiness, release, or action approval.",
+          "terminal": false,
+          "sources": [
+            {
+              "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "key": "superseded",
+          "name": "Superseded",
+          "meaning": "A later immutable candidate revision replaces current use while preserving exact lineage, prior assertions, evidence, and correction context.",
+          "terminal": true,
+          "sources": [
+            {
+              "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "retention": "Candidate history is retained for current traceability while the exact retention period and controlling policy remain subject to accountable decision.",
+      "archival": "Archival must preserve exact identity, revision, provenance, classification, relationships, integrity, and resolvability under a separately governed policy.",
+      "deletion": "Deletion and secure disposition require exact scope, authority, legal-hold reconciliation, downstream consequences, evidence, and separately attributable authorization.",
+      "correction": "Correction creates a new immutable revision with actor, reason, time, predecessor relationship, and consequences; prior assertions are not overwritten.",
+      "legalHold": "Legal hold remains a distinct unresolved authority-controlled disposition and cannot imply indefinite operational use or unrestricted access.",
+      "backupAndRecovery": "Backup and recovery must preserve integrity, classification, retention, correction, deletion, hold, and current-versus-history semantics.",
+      "migrationAndCompatibility": "Schema or storage migration requires explicit mapping, compatibility, provenance, reconciliation, cutover, rollback, and data-quality evidence.",
+      "dispositionAuthorityState": "not-granted",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "transformations": [
+    {
+      "key": "candidate-projection",
+      "sourceEntityKeys": [
+        "governed-record"
+      ],
+      "targetEntityKeys": [
+        "product-studio-projection"
+      ],
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "dataFlowKeys": [
+        "candidate-record-roundtrip"
+      ],
+      "purpose": "Provide accountable reviewers bounded current status and exact evidence identity without exposing complete governed record content.",
+      "minimization": "Return only identities, revisions, counts, statuses, timestamps, digests, reasons, and fixed privacy and authority boundaries required for review navigation.",
+      "correctionAndDeletionPropagation": "A changed authoritative revision invalidates stale projections; correction or disposition consequences require explicit re-evaluation across caches, exports, evidence, backups, and downstream copies.",
+      "providerAndModelUse": "No provider or model receives governed content through this candidate projection; any future use requires exact purpose, terms, minimization, retention, residency, and accountable review.",
+      "integrityAndLineage": "The projection snapshot digest, upstream membership digest, record digest, immutable history, and audit chain provide exact derivation lineage without transferring authority.",
+      "state": "candidate",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-DATA-REQ-001",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-002",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-003",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-004",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-005",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-006",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-007",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-008",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-009",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-010",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-011",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-012",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-013",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-014",
+      "state": "covered-candidate",
+      "entityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "lifecycleKeys": [
+        "candidate-record-lifecycle"
+      ],
+      "transformationKeys": [
+        "candidate-projection"
+      ],
+      "basis": "The candidate maps this exact Data Profile requirement to entity, attribute, ownership, lifecycle, transformation, flow, and Source identities without claiming approval, processing authority, readiness, or execution.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "assumptions": [
+    "The selected local workspace remains the bounded conceptual Data Model scope"
+  ],
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "governance": {
+    "dataOwnerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "dataStewardRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "privacyReviewerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "modelApprovalState": "not-granted",
+    "classificationApprovalState": "not-granted",
+    "ownershipAcceptanceState": "not-granted",
+    "migrationAuthorityState": "not-granted",
+    "operationalReadinessState": "not-established",
+    "reviewState": "under-challenge",
+    "basis": "Named candidate roles may prepare and challenge the model, but only separately established eligible human authorities can approve the model or classification, accept ownership, authorize migration, or establish readiness.",
+    "sources": [
+      {
+        "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "limitations": [
+    "No approved Data Model baseline, classification approval, accepted ownership, migration authority, operational readiness, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "data-model-candidate",
+  "id": "892f5744-2e58-457c-a435-0ea629581a2e",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "revision": 1,
+  "membershipDigest": "sha256:5042eb19cf062ee66071a0f7e9c34138dcfb73ba6ec1bcec0f02f870cd7ac7bb",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:03.010Z",
+  "updatedAt": "2026-07-27T23:09:03.010Z",
+  "authorityBoundary": "data-model-is-a-candidate-record-and-does-not-approve-a-data-model-or-classification-appoint-ownership-grant-migration-authority-establish-operational-readiness-or-authorize-action"
+}

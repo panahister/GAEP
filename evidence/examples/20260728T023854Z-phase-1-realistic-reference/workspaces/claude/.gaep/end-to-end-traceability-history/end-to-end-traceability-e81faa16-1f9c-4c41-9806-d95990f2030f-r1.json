@@ -1,0 +1,617 @@
+{
+  "initiativeId": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:850ad63df195d41793dbe52c32261725b4afd4f9fc59de25cdb31dbdbc63bc1e",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:cb6cce9b9bc3ff00eeb0527c3e9319d183537cabfa42d61523c5fc070ff63292"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed end-to-end Product traceability",
+  "scope": "Bind exact governed Product records through typed, attributable, versioned candidate relationships, explicit transformations, minimum-spine coverage, and uncertainty without treating graph presence as truth, completeness, approval, readiness, or action authority.",
+  "evidenceRegistry": {
+    "recordId": "4ef12346-bae4-4b55-8b06-61f048e10b8e",
+    "revision": 1,
+    "digest": "sha256:8576c213fb98bedee236c5453e04d992761ce8eebfd3cd6850b18f62e386cbce"
+  },
+  "nodes": [
+    {
+      "key": "evidence-registry",
+      "subject": {
+        "recordKind": "evidence-registry",
+        "recordId": "4ef12346-bae4-4b55-8b06-61f048e10b8e",
+        "revision": 1,
+        "digest": "sha256:8576c213fb98bedee236c5453e04d992761ce8eebfd3cd6850b18f62e386cbce",
+        "elementKeys": [
+          "current-cross-host-conformance"
+        ]
+      },
+      "scope": [
+        "Candidate claim and evidence relationships"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "lifecycle": "current-candidate",
+      "authorityState": "not-established"
+    },
+    {
+      "key": "risk-register",
+      "subject": {
+        "recordKind": "risk-register",
+        "recordId": "de32ab11-3bde-4336-b815-a35ba5e638f5",
+        "revision": 1,
+        "digest": "sha256:896dc6f2dd5b995b26831a1016c4ff59e55fda14095789d71e91212f2b30107e",
+        "elementKeys": [
+          "shared-engine-correlated-failure"
+        ]
+      },
+      "scope": [
+        "Candidate shared-engine risks"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "lifecycle": "current-candidate",
+      "authorityState": "not-established"
+    }
+  ],
+  "relationships": [
+    {
+      "key": "substantiates",
+      "namespace": "gaep.traceability",
+      "registryRevision": 1,
+      "definitionDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+      "sourceKinds": [
+        "risk-register"
+      ],
+      "targetKinds": [
+        "evidence-registry"
+      ],
+      "direction": "directed",
+      "inverseRelationshipKey": "is-substantiated-by",
+      "transitivity": "not-transitive",
+      "symmetry": "asymmetric",
+      "impactBehavior": "probable",
+      "sourceCardinality": "many",
+      "targetCardinality": "many",
+      "lifecycle": "candidate",
+      "authoritativeUseState": "not-established",
+      "rationale": "A candidate risk can identify the evidence needed to assess its bounded statements without making the evidence or relationship authoritative.",
+      "invalidationTriggers": [
+        "The relationship registry definition changes"
+      ],
+      "authorityBoundary": "relationship-definition-is-candidate-semantics-and-does-not-by-registration-establish-a-relationship-approval-baseline-readiness-or-action-authority"
+    }
+  ],
+  "links": [
+    {
+      "key": "risk-register-substantiates-evidence-registry",
+      "sourceNodeKey": "risk-register",
+      "targetNodeKey": "evidence-registry",
+      "relationshipKey": "substantiates",
+      "scope": [
+        "Exact current candidate revisions only"
+      ],
+      "rationale": "The exact Risk Register and Evidence Registry revisions share attributable source evidence and a bounded candidate relationship for local review.",
+      "provenance": {
+        "kind": "human-asserted",
+        "actor": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "assertedAt": "2026-07-27T02:00:00.000Z",
+        "method": "Governed trace review",
+        "sourceReferences": [
+          {
+            "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "state": "verified",
+      "verification": {
+        "endpointResolution": "resolved",
+        "semanticFitness": "fit",
+        "verifier": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "verifiedAt": "2026-07-27T02:01:00.000Z",
+        "methodName": "Candidate semantic review",
+        "methodVersion": "0.1.0",
+        "rationale": "The named reviewer verified exact endpoint resolution and candidate semantic fitness for this declared scope only.",
+        "authorityBoundary": "trace-verification-establishes-only-scoped-endpoint-and-semantic-assessment-not-approval-baseline-readiness-or-action-authority"
+      },
+      "effectiveFrom": "2026-07-27T02:00:00.000Z",
+      "invalidationConditions": [
+        "Either exact governed endpoint changes"
+      ],
+      "supersedesLinkKeys": [],
+      "authoritativeUseState": "not-established",
+      "authorityBoundary": "trace-link-is-a-candidate-attributable-assertion-and-does-not-by-presence-or-verification-prove-completeness-grant-approval-promote-a-baseline-establish-readiness-or-authorize-action"
+    }
+  ],
+  "transformations": [],
+  "traceSpine": [
+    {
+      "key": "risk-to-evidence",
+      "sourceNodeKey": "risk-register",
+      "targetNodeKey": "evidence-registry",
+      "relationshipKey": "substantiates",
+      "state": "covered-candidate",
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate spine records the exact current Risk Register to Evidence Registry relationship without claiming graph completeness.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "applicabilityAuthorityState": "not-established"
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-CAE-REQ-019",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-001",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-002",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-003",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-006",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-007",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-008",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-013",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-015",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SCOPE-REQ-018",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SCOPE-REQ-021",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-019",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-002",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-004",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-005",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-006",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-007",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-009",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-010",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-015",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-TPS-REQ-024",
+      "state": "covered-candidate",
+      "nodeKeys": [
+        "evidence-registry",
+        "risk-register"
+      ],
+      "linkKeys": [
+        "risk-register-substantiates-evidence-registry"
+      ],
+      "basis": "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "unknownRelationships": [],
+  "unresolvedQuestions": [],
+  "inconsistencies": [],
+  "limitations": [
+    "Relationship truth, completeness, approval, baseline promotion, readiness, release, deployment, and action authority remain explicitly unestablished"
+  ],
+  "coverageState": "not-established",
+  "schemaVersion": 1,
+  "kind": "end-to-end-traceability-candidate",
+  "id": "e81faa16-1f9c-4c41-9806-d95990f2030f",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "revision": 1,
+  "membershipDigest": "sha256:d3f59732bc71bd1f762bd41ea34b183a4f8d2da0eba3dd566c22539c27b2c501",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:03.813Z",
+  "updatedAt": "2026-07-27T23:09:03.813Z",
+  "authorityBoundary": "end-to-end-traceability-is-a-candidate-graph-and-does-not-establish-relationship-truth-completeness-approval-baseline-promotion-readiness-or-action-authority"
+}

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { chmod, cp, lstat, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -111,7 +111,44 @@ const actorId = "product-owner"
 const digest = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as const
 const fakeCodexServer = fileURLToPath(new URL("../../agent-sdk/test/fixtures/fake-codex-app-server.mjs", import.meta.url))
 const fakeClaudeStream = fileURLToPath(new URL("../../agent-sdk/test/fixtures/fake-claude-stream.mjs", import.meta.url))
+const realisticReferenceScenarioPath = fileURLToPath(
+  new URL("../../../examples/phase-1-realistic-reference/scenario.json", import.meta.url),
+)
+const realisticReferenceScenario = JSON.parse(await readFile(realisticReferenceScenarioPath, "utf8")) as {
+  schemaVersion: number
+  kind: string
+  id: string
+  actorId: string
+  product: Parameters<GaepEngine["createProduct"]>[0]
+  initiative: Parameters<GaepEngine["createInitiative"]>[0]
+  expectedP0P4Outputs: string[]
+  authorityBoundary: string
+}
+const realisticReferenceScenarioDigest = canonicalDigest(realisticReferenceScenario)
 const workspaceRoot = { kind: "workspace-relative" as const, path: "." }
+
+async function exportP0P4Workspace(environmentVariable: string, workspace: string) {
+  const targetValue = process.env[environmentVariable]
+  if (!targetValue) return
+  const target = join(targetValue)
+  try {
+    await mkdir(target, { mode: 0o700 })
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "EEXIST") {
+      throw new Error(`${environmentVariable} target already exists; refusing to overwrite it`)
+    }
+    throw error
+  }
+  const targetStat = await lstat(target)
+  if (!targetStat.isDirectory() || targetStat.isSymbolicLink()) {
+    throw new Error(`${environmentVariable} target must be a regular directory`)
+  }
+  await cp(join(workspace, ".gaep"), join(target, ".gaep"), {
+    recursive: true,
+    force: false,
+    errorOnExist: true,
+  })
+}
 
 class P0P4FakeManagedCodexAdapter implements AgentAdapter {
   readonly id = "gaep.codex-cli"
@@ -260,23 +297,8 @@ describe("Business understanding governance", () => {
   beforeEach(async () => {
     workspace = await mkdtemp(join(tmpdir(), "gaep-business-understanding-"))
     engine = new GaepEngine(workspace, [])
-    product = await engine.createProduct({
-      name: "Atlas",
-      summary: "A governed Product with attributable business context.",
-      problem: "Business intent, stakeholder authority, and outcome evidence can silently drift.",
-      affectedUsers: "Product owners, reviewers, stewards, and affected contributors",
-      desiredOutcome: "Business understanding stays exact, attributable, and independently reviewable.",
-      successSignals: ["Candidate context remains source bound without synthesizing approval"],
-      firstWorkflow: "Record business understanding, stakeholder roles, and measurable outcomes.",
-      exclusions: ["Authority appointment", "Readiness approval", "Release authorization"],
-      profile: "software",
-    }, actorId)
-    initiative = await engine.createInitiative({
-      title: "Govern business understanding",
-      outcome: "The P1 candidate context remains attributable and measurable.",
-      scope: ["Business understanding", "Stakeholder roles", "Outcome measures"],
-      exclusions: ["Approval substitution"],
-    }, actorId)
+    product = await engine.createProduct(realisticReferenceScenario.product, actorId)
+    initiative = await engine.createInitiative(realisticReferenceScenario.initiative, actorId)
     source = await engine.sourceGovernance.createSource(sourceInput(), actorId)
   })
 
@@ -8264,6 +8286,15 @@ describe("Business understanding governance", () => {
     const summary = {
       schemaVersion: 1,
       kind: "gaep-codex-p0-p4-semantic-summary",
+      referenceScenario: {
+        id: realisticReferenceScenario.id,
+        kind: realisticReferenceScenario.kind,
+        digest: realisticReferenceScenarioDigest,
+        productName: product.name,
+        initiativeTitle: initiative.title,
+        outputKinds: gate.outputs.map((output) => output.outputKind),
+        authorityBoundary: realisticReferenceScenario.authorityBoundary,
+      },
       governedRecordKinds: governedRecords.map((record) => record.kind),
       governedRecordCount: governedRecords.length,
       readiness: {
@@ -8307,6 +8338,15 @@ describe("Business understanding governance", () => {
     expect(summary).toEqual({
       schemaVersion: 1,
       kind: "gaep-codex-p0-p4-semantic-summary",
+      referenceScenario: {
+        id: realisticReferenceScenario.id,
+        kind: realisticReferenceScenario.kind,
+        digest: realisticReferenceScenarioDigest,
+        productName: "Atlas Release Readiness",
+        initiativeTitle: "Review the Atlas release evidence packet",
+        outputKinds: realisticReferenceScenario.expectedP0P4Outputs,
+        authorityBoundary: realisticReferenceScenario.authorityBoundary,
+      },
       governedRecordKinds: [
         "architecture",
         "architectureChallengeModel",
@@ -8377,6 +8417,7 @@ describe("Business understanding governance", () => {
     const bundle = await engine.productStudio.buildPortableExport()
     await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({ status: "compatible" })
     expect(JSON.stringify(bundle)).not.toContain(workspace)
+    await exportP0P4Workspace("GAEP_P1_30_ARTIFACT_WORKSPACE", workspace)
     if (process.env.GAEP_P1_30_EMIT_RECEIPT === "1") {
       process.stdout.write(`GAEP_P1_30_SEMANTIC_SUMMARY=${JSON.stringify(summary)}\n`)
     }
@@ -8624,6 +8665,15 @@ describe("Business understanding governance", () => {
     const summary = {
       schemaVersion: 1,
       kind: "gaep-claude-p0-p4-semantic-summary",
+      referenceScenario: {
+        id: realisticReferenceScenario.id,
+        kind: realisticReferenceScenario.kind,
+        digest: realisticReferenceScenarioDigest,
+        productName: product.name,
+        initiativeTitle: initiative.title,
+        outputKinds: gate.outputs.map((output) => output.outputKind),
+        authorityBoundary: realisticReferenceScenario.authorityBoundary,
+      },
       governedRecordKinds: governedRecords.map((record) => record.kind),
       governedRecordCount: governedRecords.length,
       readiness: {
@@ -8672,6 +8722,15 @@ describe("Business understanding governance", () => {
     expect(summary).toEqual({
       schemaVersion: 1,
       kind: "gaep-claude-p0-p4-semantic-summary",
+      referenceScenario: {
+        id: realisticReferenceScenario.id,
+        kind: realisticReferenceScenario.kind,
+        digest: realisticReferenceScenarioDigest,
+        productName: "Atlas Release Readiness",
+        initiativeTitle: "Review the Atlas release evidence packet",
+        outputKinds: realisticReferenceScenario.expectedP0P4Outputs,
+        authorityBoundary: realisticReferenceScenario.authorityBoundary,
+      },
       governedRecordKinds: [
         "architecture",
         "architectureChallengeModel",
@@ -8753,6 +8812,7 @@ describe("Business understanding governance", () => {
     const bundle = await engine.productStudio.buildPortableExport()
     await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({ status: "compatible" })
     expect(JSON.stringify(bundle)).not.toContain(workspace)
+    await exportP0P4Workspace("GAEP_P1_31_ARTIFACT_WORKSPACE", workspace)
     if (process.env.GAEP_P1_31_EMIT_RECEIPT === "1") {
       process.stdout.write(`GAEP_P1_31_SEMANTIC_SUMMARY=${JSON.stringify(summary)}\n`)
     }

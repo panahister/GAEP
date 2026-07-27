@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "fbab04df-3f0c-4e0d-9a6b-f995828c511b",
+  "revision": 3,
+  "charterId": "2b839115-a1de-4182-ae09-38fc47d4a4e0",
+  "charterDigest": "sha256:52ea50d15602e6d5a21bf06306e7fb983c7c444524982f1d5b86ac3ca8250022",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "agent": {
+    "schemaVersion": 2,
+    "adapterId": "gaep.codex-cli",
+    "agentId": "codex-cli",
+    "modelId": "fake-model",
+    "modelTruthClass": "observed",
+    "modelAlias": false,
+    "settings": {},
+    "selectedAt": "2026-07-27T23:09:04.259Z",
+    "capabilityDigest": "sha256:107982a95ba201f7abd0af4228e0616402331e00d287a61ea142974ca490528d"
+  },
+  "state": "completed",
+  "startedAt": "2026-07-27T23:09:05.233Z",
+  "endedAt": "2026-07-27T23:09:07.010Z"
+}

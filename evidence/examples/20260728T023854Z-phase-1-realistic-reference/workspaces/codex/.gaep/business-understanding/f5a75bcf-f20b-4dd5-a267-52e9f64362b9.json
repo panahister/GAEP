@@ -1,0 +1,160 @@
+{
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533"
+  },
+  "informationClassification": "internal",
+  "problem": {
+    "text": "Teams cannot independently reconstruct why this bounded Initiative should exist.",
+    "disposition": "confirmed",
+    "sources": [
+      {
+        "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "opportunity": {
+    "text": "Exact governed context can reduce re-explanation while preserving human authority.",
+    "disposition": "confirmed",
+    "sources": [
+      {
+        "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "currentState": {
+    "text": "Business understanding is distributed across sources and informal participant knowledge.",
+    "disposition": "confirmed",
+    "sources": [
+      {
+        "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "targetState": {
+    "text": "Candidate business context is versioned, attributable, measurable, and reviewable.",
+    "disposition": "confirmed",
+    "sources": [
+      {
+        "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "scope": {
+    "included": [
+      "Business context",
+      "Outcome measures",
+      "Stakeholder roles"
+    ],
+    "excluded": [
+      "Authority appointment",
+      "Release authorization"
+    ],
+    "boundaries": [
+      "Candidate records only",
+      "No implicit approval"
+    ]
+  },
+  "objectives": [
+    {
+      "text": "Reduce material context loss across governed Product handoffs.",
+      "disposition": "confirmed",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "id": "reduce-context-loss"
+    }
+  ],
+  "constraints": [
+    {
+      "text": "Preserve human decision, approval, and authorization boundaries.",
+      "disposition": "confirmed",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "id": "preserve-human-authority"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "reviewers-can-inspect",
+      "statement": {
+        "text": "Qualified reviewers can inspect portable metadata without receiving source content.",
+        "disposition": "confirmed",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "status": "supported",
+      "reviewTrigger": "Reassess when the projection or disclosure policy changes."
+    }
+  ],
+  "unresolvedQuestions": [],
+  "glossary": [
+    {
+      "term": "Business Understanding",
+      "definition": {
+        "text": "A versioned candidate context record that remains separate from decisions and approval.",
+        "disposition": "confirmed",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "No realistic Product participant study is represented."
+  ],
+  "schemaVersion": 1,
+  "kind": "business-understanding-record",
+  "id": "f5a75bcf-f20b-4dd5-a267-52e9f64362b9",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "revision": 1,
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:01.776Z",
+  "updatedAt": "2026-07-27T23:09:01.776Z",
+  "authorityBoundary": "business-understanding-is-attributed-candidate-context-and-does-not-decide-approve-designate-readiness-or-authorize-action"
+}

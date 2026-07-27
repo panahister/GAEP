@@ -31,6 +31,9 @@ test("repeats the strict Claude P0-P4 semantic receipt", async () => {
   const first = await runClaudeP0P4Acceptance()
   const second = await runClaudeP0P4Acceptance()
   assert.deepEqual(first, second)
+  assert.equal(first.summary.referenceScenario.id, "phase-1-atlas-release-readiness-v1")
+  assert.equal(first.summary.referenceScenario.productName, "Atlas Release Readiness")
+  assert.equal(first.summary.referenceScenario.outputKinds.length, 25)
   assert.equal(first.summary.governedRecordCount, 21)
   assert.equal(first.summary.readiness.outputCount, 25)
   assert.equal(first.summary.readiness.result, "passed")
@@ -85,6 +88,10 @@ test("rejects Claude semantic, digest, source, authority, and shape tampering", 
   const source = structuredClone(receipt)
   source.scenario.fakeStreamSourceDigest = `sha256:${"1".repeat(64)}`
   await assert.rejects(verifyClaudeP0P4ReceiptObject(source), /source digest differs/)
+
+  const scenario = structuredClone(receipt)
+  scenario.scenario.referenceScenarioSourceDigest = `sha256:${"2".repeat(64)}`
+  await assert.rejects(verifyClaudeP0P4ReceiptObject(scenario), /source digest differs/)
 
   const authority = structuredClone(receipt)
   authority.authority.liveProviderStatus = "accepted"

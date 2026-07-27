@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "managed-apply-decision",
+  "id": "be76aae6-a77a-4151-9af7-e9e3a28f2931",
+  "managedRunId": "f25d8a95-bb72-48a1-b707-20b78fd9546d",
+  "managedRunRevision": 3,
+  "runId": "fbab04df-3f0c-4e0d-9a6b-f995828c511b",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "bindingsDigest": "sha256:5e9002995b17d051dd34d07e10bb1001e33be340c398f65eb96746472d172155",
+  "reviewResultId": "46367853-a84b-4fc1-9bdb-cc32213a33f7",
+  "reviewResultDigest": "sha256:72105e23e6b328cb4676e14a029b3f8614c0d40c4add04f65770b040fc1ddac0",
+  "reviewEvidenceId": "e97ba6b6-d663-4baf-b494-6e3aacf881e7",
+  "reviewEvidenceDigest": "sha256:6ebb6f1b144c445888f1132cfdade9489d9b8b672a64f79ae85d1ba771a1d2a4",
+  "changedInventory": [],
+  "changedInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "writeEnvelope": [],
+  "writeEnvelopeDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "actor": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "decision": "apply-exact-reviewed-inventory",
+  "decidedAt": "2026-07-27T23:09:06.830Z",
+  "authorityBoundary": "apply-decision-is-exact-run-evidence-inventory-actor-and-scope"
+}

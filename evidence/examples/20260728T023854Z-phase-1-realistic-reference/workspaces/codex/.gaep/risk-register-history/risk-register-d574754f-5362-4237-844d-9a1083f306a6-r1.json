@@ -1,0 +1,473 @@
+{
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Product Risk Register",
+  "scope": "Record material Product and architecture uncertainty, candidate controls, proposed treatment, residual-risk gaps, exact evidence, and review triggers without treating estimates or role labels as facts, assignments, approval, or action authority.",
+  "operatingModel": {
+    "recordId": "37895456-deb2-4c00-9e40-6d740fd51707",
+    "revision": 1,
+    "digest": "sha256:a1f9c07f34d5beb4082634c8d2b3d0fd90773ea1c254194d47c108ecd50a2b23"
+  },
+  "architectureChallengeModel": {
+    "recordId": "0c6eb5e2-8114-404c-85b3-6d6ed1dba6b5",
+    "revision": 1,
+    "digest": "sha256:c724541c42b6fd7e215fad729757cd94db9101a0f52c22c677487e7328e6dd62"
+  },
+  "securityPrivacyAssessment": {
+    "recordId": "36a655f3-3869-42de-9373-e1a64f5cad04",
+    "revision": 1,
+    "digest": "sha256:d4a46b130517b2e0956a569d772ffe1d022ec361b3840774ca9bb37a6cd413c1"
+  },
+  "decisionRegister": {
+    "recordId": "3811ddb0-1cbe-47e1-b3e0-30d040b4563c",
+    "revision": 1,
+    "digest": "sha256:305fd1e08ad6ac6927f4d19565b240e4751b4a54f5aae0953d569b8faa0aad5b"
+  },
+  "risks": [
+    {
+      "key": "shared-engine-correlated-failure",
+      "title": "Shared engine failure affects every native host",
+      "statement": {
+        "cause": "Every native host delegates governed Product semantics and persistence to one shared local engine implementation.",
+        "condition": "A semantic, persistence, packaging, compatibility, or protocol defect reaches the shared engine boundary.",
+        "consequence": "Multiple native hosts may fail consistently or expose the same governance error before independent detection."
+      },
+      "affectedObjectives": [
+        "Cross-host governance integrity",
+        "Native Product Studio continuity"
+      ],
+      "affectedScopes": [
+        "Four native Product Studio hosts",
+        "Shared local governed engine"
+      ],
+      "source": {
+        "kind": "dependency",
+        "statement": "The shared-engine architecture concentrates governed semantics and persistence in one implementation dependency.",
+        "activationTrigger": "A shared engine semantic, storage, package, or protocol regression is detected or a compatibility input changes."
+      },
+      "assessment": {
+        "methodState": "candidate-declared",
+        "methodName": "Candidate qualitative risk method",
+        "methodVersion": "0.1.0",
+        "likelihoodOrPlausibility": {
+          "state": "candidate-estimate",
+          "value": "possible",
+          "rationale": "Shared implementation creates a plausible common failure mode, but no approved operational likelihood scale exists.",
+          "kind": "plausibility"
+        },
+        "impactDimensions": [
+          "Availability",
+          "Governance integrity",
+          "Portability"
+        ],
+        "impactSeverity": {
+          "state": "candidate-estimate",
+          "value": "major",
+          "rationale": "A common semantic defect could invalidate governed behavior across every projected native host."
+        },
+        "exposure": {
+          "state": "candidate-estimate",
+          "value": "four-native-host-projections",
+          "rationale": "The candidate architecture projects one engine contract through VS Code, Kiro, Rider, and Visual Studio."
+        },
+        "uncertainty": [
+          "Independent supported-host acceptance and operating evidence remain incomplete"
+        ],
+        "assumptions": [
+          "Every native host consumes the same packaged engine semantics"
+        ],
+        "confidence": {
+          "state": "candidate-estimate",
+          "value": "low",
+          "rationale": "The estimate is based on local deterministic evidence without independent supported-platform acceptance."
+        },
+        "evidence": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "controls": [
+        {
+          "key": "cross-host-conformance",
+          "name": "Cross-host conformance gate",
+          "kind": "detective",
+          "statement": "Exercise the same governed capability and hostile protocol fixtures through every native host before any supported-host claim.",
+          "implementationState": "observed-implemented",
+          "effectivenessState": "candidate-estimate",
+          "effectiveness": "Candidate evidence shows deterministic local protocol parity; operational effectiveness remains unestablished.",
+          "ownerRoleKey": "initiative-owner",
+          "ownerAssignmentState": "not-established",
+          "evidence": [
+            {
+              "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ],
+          "failureBehavior": "A failed or missing host receipt keeps conformance and readiness incomplete and must not be converted to acceptance.",
+          "reviewTriggers": [
+            "Host, engine, protocol, package, or conformance catalog changes"
+          ]
+        }
+      ],
+      "treatment": {
+        "kind": "reduce",
+        "state": "proposed",
+        "rationale": "Independent host projections, hostile fixtures, deterministic packages, and fail-closed bindings reduce silent semantic drift and correlated release risk.",
+        "actions": [
+          "Preserve exact host receipts",
+          "Run cross-host negative cases for every governed capability"
+        ],
+        "controlKeys": [
+          "cross-host-conformance"
+        ],
+        "ownerRoleKey": "initiative-owner",
+        "ownerAssignmentState": "not-established",
+        "dueOrReviewCondition": "Review before any supported-host acceptance, baseline promotion, readiness conclusion, release, deployment, or material engine or protocol change.",
+        "evidence": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "authorityBoundary": "risk-treatment-is-proposed-and-does-not-establish-owner-assignment-control-effectiveness-risk-acceptance-or-action-authority"
+      },
+      "residualRisk": {
+        "state": "candidate-described",
+        "statement": "Correlated implementation and package defects remain possible even when every local conformance receipt passes.",
+        "uncertainty": [
+          "No native supported-platform acceptance evidence exists for every host"
+        ],
+        "evidence": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "acceptanceState": "not-granted",
+        "acceptanceDecisionState": "not-established",
+        "approverAuthorityState": "not-established",
+        "validityState": "not-established",
+        "conditions": [],
+        "reviewTriggers": [
+          "Independent acceptance, incident, material architecture change, or new risk evidence"
+        ],
+        "authorityBoundary": "residual-risk-description-does-not-establish-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority"
+      },
+      "ownerRoleKey": "initiative-owner",
+      "ownerAssignmentState": "not-established",
+      "authoringLifecycle": "draft",
+      "revisionDisposition": "candidate",
+      "operationalEligibilityState": "not-established",
+      "reviewTriggers": [
+        "Architecture, operating model, protocol, package, or host evidence changes"
+      ],
+      "escalationTriggers": [
+        "A shared defect affects more than one host or invalidates governed records"
+      ],
+      "invalidationTriggers": [
+        "The shared-engine architecture or exact upstream candidate revision changes"
+      ],
+      "relatedRecords": [
+        {
+          "recordKind": "architecture-challenge-model",
+          "recordId": "0c6eb5e2-8114-404c-85b3-6d6ed1dba6b5",
+          "revision": 1,
+          "digest": "sha256:c724541c42b6fd7e215fad729757cd94db9101a0f52c22c677487e7328e6dd62",
+          "relationship": "depends-on",
+          "elementKeys": [
+            "shared-engine-decision"
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-CST-REQ-006",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-036",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-045",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-071",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-003",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-009",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-017",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-029",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-033",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-035",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-IDAUTH-REQ-001",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-POLICY-REQ-014",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-POLICY-REQ-016",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-POLICY-REQ-017",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-002",
+      "state": "covered-candidate",
+      "riskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "basis": "The candidate preserves exact scope, source, declared assessment method, evidence, controls, proposed treatment, owner-role trace, residual risk, acceptance gaps, and review triggers without synthesizing authority.",
+      "evidence": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "limitations": [
+    "No assessment fact, owner appointment, control-effectiveness conclusion, Risk Acceptance, Approval Determination, exception, baseline promotion, readiness conclusion, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "risk-register-candidate",
+  "id": "d574754f-5362-4237-844d-9a1083f306a6",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "revision": 1,
+  "membershipDigest": "sha256:68ae252d825fee6ac23e7945ea463f831e9d0bcc6c4916632c37206d9a5abc54",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:03.656Z",
+  "updatedAt": "2026-07-27T23:09:03.656Z",
+  "authorityBoundary": "risk-register-is-a-candidate-record-and-does-not-establish-owner-or-authority-assignments-assessment-fact-control-effectiveness-risk-acceptance-approval-exception-baseline-promotion-readiness-or-action-authority"
+}

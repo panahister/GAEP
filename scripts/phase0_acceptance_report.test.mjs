@@ -70,8 +70,8 @@ function passingTestEvidence() {
 test("binds exact Phase 0 package, conformance, provider, host, example, test and gap truth", async () => {
   const report = await buildPhase0AcceptanceReport({ root, recordedAt, sourceCommit, testEvidence: passingTestEvidence() })
   assert.equal(report.verificationResult, "pass")
-  assert.equal(report.evidenceScope, "phase-1-agent-model-dashboard-local")
-  assert.match(report.claimBoundary, /exact Phase 1 Agent and Model execution-truth dashboard/u)
+  assert.equal(report.evidenceScope, "phase-1-realistic-reference-local")
+  assert.match(report.claimBoundary, /exact Atlas Release Readiness realistic reference scenario/u)
   assert.equal(report.reportingStatus, "current-local-evidence-bound")
   assert.equal(report.phaseGate, "incomplete")
   assert.equal(report.acceptance, "not-established")

@@ -1,0 +1,250 @@
+{
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533"
+  },
+  "informationClassification": "internal",
+  "businessUnderstanding": {
+    "recordId": "f5a75bcf-f20b-4dd5-a267-52e9f64362b9",
+    "revision": 1,
+    "digest": "sha256:ab8e2da0f466b7094d3bb174c26d7bf1993bc3e938dd9d0af29fdba55a60b32f"
+  },
+  "stakeholders": [
+    {
+      "key": "primary-user",
+      "label": "Primary governed workflow user",
+      "category": "user",
+      "job": {
+        "text": "Prepare and challenge the bounded context needed for an accountable engineering decision.",
+        "disposition": "confirmed",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "concerns": [
+        "Incorrect context",
+        "Unnecessary ceremony"
+      ],
+      "successSignals": [
+        "Can explain current state and unresolved matters"
+      ],
+      "assignment": {
+        "status": "confirmed",
+        "subject": {
+          "kind": "human",
+          "id": "pilot-user"
+        },
+        "basis": "The named pilot participant confirmed this bounded workflow assignment.",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "confirmedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "confirmedAt": "2026-07-25T01:00:00.000Z"
+      },
+      "authority": {
+        "standing": "none",
+        "domains": [],
+        "scope": [],
+        "basis": "Workflow participation does not grant decision, approval, or action authority.",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "competence": {
+        "status": "verified",
+        "basis": "The participant completed the bounded workflow rehearsal.",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "verifiedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "verifiedAt": "2026-07-25T01:00:00.000Z"
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "category": "sponsor",
+      "status": "not-applicable",
+      "rationale": "The bounded local contract test does not require a sponsor participant.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "category": "change-owner",
+      "status": "not-applicable",
+      "rationale": "The bounded local contract test does not require a change-owner participant.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "category": "user",
+      "status": "represented",
+      "rationale": "The bounded pilot records one primary workflow user.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "category": "reviewer",
+      "status": "not-applicable",
+      "rationale": "The bounded local contract test does not require a reviewer participant.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "category": "approver",
+      "status": "not-applicable",
+      "rationale": "The bounded local contract test does not require a approver participant.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "category": "steward",
+      "status": "not-applicable",
+      "rationale": "The bounded local contract test does not require a steward participant.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "category": "affected-non-user",
+      "status": "not-applicable",
+      "rationale": "The bounded local contract test does not require a affected-non-user participant.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "category": "external-authority-owner",
+      "status": "not-applicable",
+      "rationale": "The bounded local contract test does not require a external-authority-owner participant.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "responsibilities": [
+    {
+      "id": "prepare-context",
+      "subject": "Prepare candidate business context",
+      "stakeholderKey": "primary-user",
+      "relationship": "responsible",
+      "basis": "The participant performs preparation without acquiring approval authority.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "separationOfDuty": [],
+  "contestability": {
+    "path": "Challenge incorrect context through an attributable amendment request.",
+    "ownerStakeholderKey": "primary-user",
+    "escalation": "Escalate unresolved authority or evidence disputes to the separately assigned decision owner.",
+    "sources": [
+      {
+        "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "limitations": [
+    "The local fixture does not establish organization-wide role applicability."
+  ],
+  "schemaVersion": 1,
+  "kind": "stakeholder-role-model",
+  "id": "ad34b26e-6b47-4240-949c-30a7476aa7af",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "revision": 1,
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:01.899Z",
+  "updatedAt": "2026-07-27T23:09:01.899Z",
+  "authorityBoundary": "stakeholder-role-model-separates-role-assignment-competence-and-authority-and-does-not-appoint-approve-or-authorize"
+}

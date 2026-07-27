@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "gaep.codex-cli",
+  "adapterVersion": "p1-30-test",
+  "agentId": "codex-cli",
+  "agentLabel": "Codex deterministic app-server fixture",
+  "runtimeVersion": "p1-30-test",
+  "detected": true,
+  "executionInterface": "stdio-rpc",
+  "interfaceMaturity": "stable",
+  "supportsResume": true,
+  "supportsCancel": true,
+  "supportsCheckpoints": false,
+  "supportsModelDiscovery": true,
+  "supportsToolSelection": true,
+  "settings": [],
+  "models": [
+    {
+      "id": "fake-model",
+      "label": "Deterministic P0-P4 model",
+      "reasoningOptions": [],
+      "inputModalities": [
+        "text"
+      ],
+      "truthClass": "observed",
+      "alias": false
+    }
+  ],
+  "limitations": [
+    "Deterministic local app-server fixture; this does not establish live provider authentication, entitlement, reachability, quality, or acceptance."
+  ],
+  "observedAt": "2026-07-27T00:00:00.000Z"
+}

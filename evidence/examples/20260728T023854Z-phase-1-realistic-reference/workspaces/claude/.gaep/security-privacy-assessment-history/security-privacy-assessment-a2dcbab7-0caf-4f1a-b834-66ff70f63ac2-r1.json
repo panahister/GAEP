@@ -1,0 +1,889 @@
+{
+  "initiativeId": "786fd7e6-a776-41e3-a6f6-7aa2fcd62000",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:850ad63df195d41793dbe52c32261725b4afd4f9fc59de25cdb31dbdbc63bc1e",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:cb6cce9b9bc3ff00eeb0527c3e9319d183537cabfa42d61523c5fc070ff63292"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Security, Privacy, and Threat Assessment",
+  "scope": "Assess the exact native-host, shared-engine, governed-workspace, authority, integrity, privacy, data-flow, and recovery boundary for accountable human review.",
+  "boundedContextModel": {
+    "recordId": "5c082959-f617-4655-9dd6-64c49fbe30a9",
+    "revision": 1,
+    "digest": "sha256:05a208d778f99616912f41e61a099c365f48487794626fe3e77b12177c33d2a0"
+  },
+  "assets": [
+    {
+      "key": "governed-workspace",
+      "name": "Governed engine and workspace state",
+      "securityObjectives": [
+        "Preserve exact attributable history and audit integrity",
+        "Prevent unauthorized mutation, approval replay, and evidence forgery"
+      ],
+      "architectureElementKeys": [
+        "gaep-engine",
+        "workspace-store"
+      ],
+      "ownerRoleKey": "gaep-steward",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "native-host",
+      "name": "Native Product Studio interaction boundary",
+      "securityObjectives": [
+        "Expose only strict privacy-safe projections",
+        "Preserve explicit human intent without synthesizing authority"
+      ],
+      "architectureElementKeys": [
+        "product-studio-host"
+      ],
+      "ownerRoleKey": "initiative-owner",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "actors": [
+    {
+      "key": "malicious-content-author",
+      "name": "Malicious or compromised content author",
+      "kind": "attacker",
+      "trust": "untrusted",
+      "capabilities": [
+        "Craft content intended to alter instructions, bindings, or rendered conclusions"
+      ],
+      "constraints": [
+        "Repository content has no instruction, approval, or effect authority by presence alone"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "product-owner",
+      "name": "Accountable Product owner",
+      "kind": "human",
+      "trust": "mixed",
+      "capabilities": [
+        "Provide explicit candidate input and separately governed human decisions"
+      ],
+      "constraints": [
+        "Role identity alone does not prove an effective appointment, grant, approval, or risk acceptance"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "shared-engine",
+      "name": "Shared governed engine service",
+      "kind": "service",
+      "trust": "mixed",
+      "capabilities": [
+        "Validate, persist, assess, and project exact governed records"
+      ],
+      "constraints": [
+        "Cannot approve its own output, attest control effectiveness, accept risk, or authorize action"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "trustBoundaries": [
+    {
+      "key": "host-engine-workspace",
+      "name": "Native host, engine, and governed workspace boundary",
+      "kind": "workspace",
+      "architectureRelationKeys": [
+        "engine-writes-store",
+        "host-calls-engine"
+      ],
+      "actorKeys": [
+        "malicious-content-author",
+        "product-owner",
+        "shared-engine"
+      ],
+      "dataClassKeys": [
+        "governed-product-metadata"
+      ],
+      "rationale": "Human and untrusted workspace inputs cross a strict host-to-engine protocol before any validated candidate state reaches the governed workspace store.",
+      "failureBehavior": "Unexpected fields, stale bindings, invalid digests, secret-shaped content, audit failure, or untrusted authority claims fail before a governed write or trusted projection.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "dataClasses": [
+    {
+      "key": "governed-product-metadata",
+      "name": "Governed Product metadata and evidence references",
+      "classification": "internal",
+      "subjectCategories": [
+        "Governed Product contributors and accountable reviewers"
+      ],
+      "purposes": [
+        "Maintain attributable Product candidates, exact evidence bindings, audit history, and review status"
+      ],
+      "processingAuthorityState": "candidate-declared",
+      "ownerRoleKey": "gaep-steward",
+      "architectureElementKeys": [
+        "gaep-engine",
+        "product-studio-host",
+        "workspace-store"
+      ],
+      "recipientConstraints": [
+        "Only the selected local workspace and explicit privacy-safe host projections"
+      ],
+      "residencyConstraints": [
+        "Repository-relative local governed state unless separately reviewed and authorized"
+      ],
+      "minimization": "Persist only fields required by the declared Product contract and expose hosts only bounded identities, counts, statuses, timestamps, and digests.",
+      "retention": "Retain immutable candidate history for traceability while leaving exact retention approval and disposal policy unresolved for accountable review.",
+      "deletionAndCorrection": "Correction creates a superseding immutable revision; deletion, legal hold, archival, backup, and downstream disposition require separate governed decisions.",
+      "providerAndModelUse": "No provider or model processing is authorized by this candidate; any future provider flow requires exact terms, minimization, residency, retention, and human review.",
+      "affectedPersonRights": "Applicable transparency, access, correction, challenge, and deletion channels remain subject to identified policy, jurisdiction, and accountable ownership.",
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "dataFlows": [
+    {
+      "key": "candidate-record-roundtrip",
+      "name": "Explicit candidate record input and privacy-safe projection",
+      "architectureRelationKeys": [
+        "engine-writes-store",
+        "host-calls-engine"
+      ],
+      "dataClassKeys": [
+        "governed-product-metadata"
+      ],
+      "trustBoundaryKeys": [
+        "host-engine-workspace"
+      ],
+      "actorKeys": [
+        "product-owner",
+        "shared-engine"
+      ],
+      "purpose": "Validate explicit human candidate input, persist exact immutable history, and return a bounded privacy-safe status projection.",
+      "recipients": [
+        "Accountable Product reviewers through a selected native host"
+      ],
+      "locations": [
+        "Selected local workspace and its native Product Studio projection"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "key": "strict-shared-engine",
+      "name": "Strict shared-engine validation and immutable evidence boundary",
+      "kind": "preventive",
+      "statement": "The engine verifies audit integrity, exact Product and Initiative context, immutable upstream revisions, complete profile coverage, canonical graph references, secret exclusion, and atomic current/history/audit persistence.",
+      "ownerRoleKey": "gaep-steward",
+      "architectureElementKeys": [
+        "gaep-engine",
+        "product-studio-host",
+        "workspace-store"
+      ],
+      "implementationState": "observed-implemented",
+      "verificationState": "evidence-linked",
+      "effectivenessState": "not-assessed",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "failureBehavior": "A failed integrity, schema, source, authority, coverage, binding, or privacy check aborts without partial governed mutation or a weaker fallback path.",
+      "reviewTriggers": [
+        "Architecture, boundary, provider, profile, policy, capability, data purpose, or evidence changes"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "threats": [
+    {
+      "key": "authority-and-context-forgery",
+      "title": "Forged authority or poisoned context crosses the Product boundary",
+      "category": "governance-abuse",
+      "actorKeys": [
+        "malicious-content-author"
+      ],
+      "assetKeys": [
+        "governed-workspace",
+        "native-host"
+      ],
+      "trustBoundaryKeys": [
+        "host-engine-workspace"
+      ],
+      "dataFlowKeys": [
+        "candidate-record-roundtrip"
+      ],
+      "scenario": "A malicious or mistaken input attempts to substitute exact Product bindings, inject instructions or secrets, forge approval or risk acceptance, or alter evidence while retaining a plausible native presentation.",
+      "consequence": "Governed meaning, privacy, accountability, or workspace integrity could be corrupted and downstream users could act on a false readiness or authority claim.",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "riskAssessmentState": "not-assessed",
+      "residualRisk": "The candidate control has deterministic implementation evidence but no approved risk method, independent effectiveness assessment, native acceptance, provider assessment, or residual-risk acceptance.",
+      "residualRiskState": "candidate-described",
+      "riskAcceptanceState": "not-granted",
+      "ownerRoleKey": "initiative-owner",
+      "reviewTriggers": [
+        "A control fails, the trust boundary changes, or new provider, native-host, data, identity, or supply-chain evidence appears"
+      ],
+      "sources": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-DATA-REQ-001",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-002",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-003",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-004",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-005",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-006",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-007",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-008",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-009",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-010",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-011",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-012",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-013",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DATA-REQ-014",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-001",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-002",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-003",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-004",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-005",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-006",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-007",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-008",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-009",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-010",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-011",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-012",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-013",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SEC-REQ-014",
+      "state": "covered-candidate",
+      "controlKeys": [
+        "strict-shared-engine"
+      ],
+      "threatKeys": [
+        "authority-and-context-forgery"
+      ],
+      "basis": "The candidate maps this exact profile requirement to the declared threat, control, architecture, and Source evidence without claiming approval, conformance, or control effectiveness.",
+      "evidence": [
+        {
+          "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "assumptions": [
+    "The selected local workspace remains the declared system boundary for this candidate assessment"
+  ],
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "governance": {
+    "securityAuthorityRoleKey": "gaep-steward",
+    "privacyAuthorityRoleKey": "initiative-owner",
+    "riskOwnerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "reviewerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "threatModelApprovalState": "not-granted",
+    "privacyReviewState": "not-granted",
+    "residualRiskAcceptanceState": "not-granted",
+    "controlEffectivenessState": "not-established",
+    "reviewState": "under-challenge",
+    "basis": "Named candidate roles may prepare and challenge the assessment, but only separately established eligible human authorities can approve the threat model and processing, attest control effectiveness, or accept exact residual risk.",
+    "sources": [
+      {
+        "sourceId": "c9d27c54-b8c1-4318-a141-0064f118f2f1",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:33dbfb18235acc195dc7dd5ee8370670335f5ff363666a435f90c252410bf158",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "limitations": [
+    "No Codex Security scan, approved threat model, control-effectiveness attestation, risk acceptance, privacy approval, security readiness, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "security-privacy-threat-assessment-candidate",
+  "id": "a2dcbab7-0caf-4f1a-b834-66ff70f63ac2",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "revision": 1,
+  "membershipDigest": "sha256:f4fbc81a9f2604456b04e572a06d46f44d8b70e39fc5bee06078ac6c6c431368",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:02.745Z",
+  "updatedAt": "2026-07-27T23:09:02.745Z",
+  "authorityBoundary": "security-privacy-threat-assessment-is-a-candidate-record-and-does-not-approve-a-threat-model-attest-control-effectiveness-accept-risk-approve-data-processing-establish-security-readiness-or-authorize-action"
+}

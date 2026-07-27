@@ -9,6 +9,7 @@ import { promisify } from "node:util"
 import { canonicalDigest } from "@gaep/agent-sdk"
 
 import { buildIdeConformanceReport } from "./lib/ide_conformance.mjs"
+import { verifyPhase1RealisticReferenceArtifactDirectory } from "./phase1_realistic_reference_artifacts.mjs"
 import { verifyClaudeP0P4ReceiptFile } from "./verify_claude_p0_p4_receipt.mjs"
 import { verifyCodexP0P4ReceiptFile } from "./verify_codex_p0_p4_receipt.mjs"
 import { verifyPhase0ExampleReceiptFile } from "./verify_phase0_example_receipt.mjs"
@@ -22,7 +23,7 @@ const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
   packages: "evidence/local-packages/20260727T201803Z-phase-1-agent-model-dashboard-packages.json",
   conformance: "evidence/ide-conformance/20260727T201803Z-phase-1-agent-model-dashboard.json",
-  example: "evidence/examples/20260727T120059Z-phase-1-provider-output-comparison.json",
+  example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
   { id: "typecheck", command: ["npm", "run", "typecheck"], parser: parseTypecheck },
@@ -171,7 +172,9 @@ async function verifiedSources(root, paths) {
   } catch {
     fail("conformance report differs from current contract, package, host, provider, or source evidence")
   }
-  const receipt = example.value?.kind === "gaep-provider-output-comparison-receipt"
+  const receipt = example.value?.kind === "gaep-phase1-realistic-reference-receipt"
+    ? (await verifyPhase1RealisticReferenceArtifactDirectory(dirname(example.resolved))).receipt
+    : example.value?.kind === "gaep-provider-output-comparison-receipt"
     ? await verifyProviderOutputComparisonFile(example.resolved)
     : example.value?.kind === "gaep-claude-p0-p4-acceptance-receipt"
       ? await verifyClaudeP0P4ReceiptFile(example.resolved)
@@ -228,11 +231,14 @@ function knownGaps(inputs) {
       "gaep-codex-p0-p4-acceptance-receipt",
       "gaep-claude-p0-p4-acceptance-receipt",
       "gaep-provider-output-comparison-receipt",
+      "gaep-phase1-realistic-reference-receipt",
     ].includes(inputs.exampleKind)
       ? {
           id: "phase-1-closure",
           state: "not-established",
-          basis: inputs.exampleKind === "gaep-provider-output-comparison-receipt"
+          basis: inputs.exampleKind === "gaep-phase1-realistic-reference-receipt"
+            ? "the deterministic realistic reference makes both P0-P4 stores inspectable; real Product validation, live providers, native-host acceptance and independent human/Product Owner acceptance remain incomplete"
+            : inputs.exampleKind === "gaep-provider-output-comparison-receipt"
             ? "the deterministic provider comparison proves structural receipt parity only; semantic quality, live providers, dashboards, native-host acceptance and human acceptance remain incomplete"
             : inputs.exampleKind === "gaep-claude-p0-p4-acceptance-receipt"
               ? "the deterministic Claude parity workflow is local candidate evidence; live providers, dashboards, native-host acceptance and human acceptance remain incomplete"
@@ -262,10 +268,12 @@ export async function buildPhase0AcceptanceReport({
     "gaep-codex-p0-p4-acceptance-receipt",
     "gaep-claude-p0-p4-acceptance-receipt",
     "gaep-provider-output-comparison-receipt",
+    "gaep-phase1-realistic-reference-receipt",
   ]
     .includes(inputs.exampleKind)
   const claudeP0P4 = inputs.exampleKind === "gaep-claude-p0-p4-acceptance-receipt"
   const providerComparison = inputs.exampleKind === "gaep-provider-output-comparison-receipt"
+  const realisticReference = inputs.exampleKind === "gaep-phase1-realistic-reference-receipt"
   const phase1AgentModelDashboard = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "phase1-agent-model-dashboard" && capability.state === "implemented"))
@@ -273,7 +281,9 @@ export async function buildPhase0AcceptanceReport({
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
     phase: p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: phase1AgentModelDashboard
+    evidenceScope: realisticReference
+      ? "phase-1-realistic-reference-local"
+      : phase1AgentModelDashboard
       ? "phase-1-agent-model-dashboard-local"
       : providerComparison
       ? "phase-1-provider-output-comparison-local"
@@ -305,7 +315,7 @@ export async function buildPhase0AcceptanceReport({
       providersAccepted: inputs.conformance.summary.acceptedProviders,
       validationGatesPassed: testEvidence.length,
       validationGatesFailed: 0,
-      exampleSummaryDigest: inputs.receipt.summaryDigest ?? inputs.receipt.comparisonDigest,
+      exampleSummaryDigest: inputs.receipt.summaryDigest ?? inputs.receipt.comparisonDigest ?? inputs.receipt.compositionDigest,
       knownGaps: gaps.length,
     },
     sources: inputs.sources,
@@ -313,7 +323,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: phase1AgentModelDashboard
+    claimBoundary: realisticReference
+      ? "This report binds the exact Atlas Release Readiness realistic reference scenario to two independently reopened P0-P4 portable stores, 21 governed record kinds per provider, all 25 output classes, managed Run, readiness, handoff, audit and structural provider-comparison evidence. It is deterministic local evidence, not a real Product baseline, live-provider or native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : phase1AgentModelDashboard
       ? "This report binds the current exact Phase 1 Agent and Model execution-truth dashboard to package, test, host, deterministic provider-comparison and conformance evidence. It is not live-provider quality or provider-ranking evidence, automatic-selection authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : p0P4
       ? `This report binds the current deterministic local ${providerComparison ? "Codex/Claude provider-output comparison" : claudeP0P4 ? "Claude P0-P4 candidate workflow" : "Codex P0-P4 candidate workflow"} to package, test, host, provider and conformance evidence. It is not semantic model-quality or provider-ranking evidence, live-provider or native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval.`

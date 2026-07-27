@@ -1,0 +1,360 @@
+{
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533"
+  },
+  "informationClassification": "internal",
+  "businessUnderstanding": {
+    "recordId": "f5a75bcf-f20b-4dd5-a267-52e9f64362b9",
+    "revision": 1,
+    "digest": "sha256:ab8e2da0f466b7094d3bb174c26d7bf1993bc3e938dd9d0af29fdba55a60b32f"
+  },
+  "stakeholderModel": {
+    "recordId": "ad34b26e-6b47-4240-949c-30a7476aa7af",
+    "revision": 1,
+    "digest": "sha256:501afad3370e0ea62be567ee0e6f850e496a73efa607f1d6ec46bb9f961f9040"
+  },
+  "outcomeModel": {
+    "recordId": "4307f80e-fed8-43a6-a47c-4cf1e9700092",
+    "revision": 1,
+    "digest": "sha256:32593f75d64f3891cc968f65dfce45498aef5e82f552d3761d43b4fd18f6fc7b"
+  },
+  "capabilityMap": {
+    "recordId": "10267e29-dab2-4fd8-bcb8-d85d3783f2d1",
+    "revision": 1,
+    "digest": "sha256:12b8dcdd461be8a3f3e59198b55b9a558be1a28dbd13cbf5e33fc88d9cb82b4c"
+  },
+  "valueStreamModel": {
+    "recordId": "70c21851-04c0-4974-9a39-9a6b506b2af5",
+    "revision": 1,
+    "digest": "sha256:7f97838e89e65c37bba2483a22705682cc2211896b445e725f1bbb6f2ebb2b7f"
+  },
+  "roles": [
+    {
+      "key": "gaep-steward",
+      "name": "Candidate GAEP specification steward",
+      "governanceSystem": "gaep-governance",
+      "accountableScope": "Maintain candidate semantic coherence without absorbing Initiative decision rights.",
+      "stakeholderKeys": [
+        "primary-user"
+      ],
+      "capabilityKeys": [
+        "governed-context"
+      ],
+      "valueStreamKeys": [
+        "governed-delivery"
+      ],
+      "mustNotAssume": [
+        "Initiative outcome authority"
+      ],
+      "appointingAuthority": {
+        "state": "candidate",
+        "basis": "The bounded model records a candidate authority shape for review and does not make an appointment.",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "competenceExpectations": [
+        "Can review governed semantic and compatibility evidence"
+      ],
+      "delegationRule": "Delegation requires a separately governed candidate record with exact scope and validity.",
+      "conflictRule": "Material conflicts and recusals remain visible and escalate without erasing dissent.",
+      "successionOrBackup": "A candidate backup must be separately reviewed before operational appointment.",
+      "validityRule": "Any future authority would require an exact time-valid assignment outside this candidate model.",
+      "capacity": {
+        "state": "candidate-sufficient",
+        "fundingState": "candidate",
+        "statement": "The bounded rehearsal records candidate capacity and funding evidence without creating a commitment.",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "initiative-owner",
+      "name": "Candidate Initiative owner",
+      "governanceSystem": "initiative-governance",
+      "accountableScope": "Own the candidate Initiative outcome without changing GAEP constitutional or Core semantics.",
+      "stakeholderKeys": [
+        "primary-user"
+      ],
+      "capabilityKeys": [
+        "governed-context"
+      ],
+      "valueStreamKeys": [
+        "governed-delivery"
+      ],
+      "mustNotAssume": [
+        "GAEP constitutional amendment authority"
+      ],
+      "appointingAuthority": {
+        "state": "candidate",
+        "basis": "The bounded model records a candidate authority shape for review and does not make an appointment.",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "competenceExpectations": [
+        "Can review bounded Product outcome and applicability evidence"
+      ],
+      "delegationRule": "Delegation requires separately recorded scope, competence, validity, and accountable-human trace.",
+      "conflictRule": "Conflicts of interest require visible recusal and escalation through the candidate appeal path.",
+      "successionOrBackup": "A candidate backup and handoff path must preserve exact unresolved matters and evidence.",
+      "validityRule": "Any future authority would expire or be replaced only through a governed assignment record.",
+      "capacity": {
+        "state": "candidate-sufficient",
+        "fundingState": "candidate",
+        "statement": "The bounded rehearsal records candidate capacity and funding evidence without creating a commitment.",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "decisionRights": [
+    {
+      "key": "govern-gaep-semantics",
+      "subject": "Review candidate GAEP semantic coherence and compatibility without selecting Initiative outcomes.",
+      "governanceSystem": "gaep-governance",
+      "accountableRoleKey": "gaep-steward",
+      "consultedRoleKeys": [
+        "initiative-owner"
+      ],
+      "valueStreamKeys": [
+        "governed-delivery"
+      ],
+      "evidenceRequirements": [
+        "Exact compatibility and affected-scope evidence"
+      ],
+      "separateApprovalConcern": "A candidate review does not approve a Core change, baseline, release, or implementation.",
+      "authority": {
+        "state": "candidate",
+        "basis": "The bounded model records a candidate authority shape for review and does not make an appointment.",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "govern-initiative-outcome",
+      "subject": "Review the bounded Initiative outcome and value flow without changing GAEP shared semantics.",
+      "governanceSystem": "initiative-governance",
+      "accountableRoleKey": "initiative-owner",
+      "consultedRoleKeys": [
+        "gaep-steward"
+      ],
+      "valueStreamKeys": [
+        "governed-delivery"
+      ],
+      "evidenceRequirements": [
+        "Exact outcome, stakeholder, capability, and value-stream evidence"
+      ],
+      "separateApprovalConcern": "A candidate recommendation does not grant approval, funding, baseline, or effect authority.",
+      "authority": {
+        "state": "candidate",
+        "basis": "The bounded model records a candidate authority shape for review and does not make an appointment.",
+        "sources": [
+          {
+            "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "forums": [
+    {
+      "key": "bounded-review",
+      "name": "Candidate bounded operating review",
+      "purpose": "Review the two governance systems and preserve their separate candidate decision boundaries.",
+      "participatingRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "decisionRightKeys": [
+        "govern-gaep-semantics",
+        "govern-initiative-outcome"
+      ],
+      "boundaries": [
+        "No baseline, appointment, funding, release, or execution authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "cycles": [
+    {
+      "key": "candidate-learning",
+      "name": "Candidate operating learning cycle",
+      "ownerRoleKey": "initiative-owner",
+      "steps": [
+        "Collect exact bounded evidence",
+        "Review outcomes, burden, dissent, and limitations"
+      ],
+      "escalationRoleKey": "gaep-steward",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "supportModel": {
+    "scope": [
+      "Bounded workflow orientation",
+      "Governed-record interpretation"
+    ],
+    "knownLimitations": [
+      "No supported release or operational service commitment exists"
+    ],
+    "compatibilityPolicy": "Candidate compatibility guidance must name exact versions, limitations, and unresolved evidence.",
+    "deprecationPolicy": "Candidate deprecation guidance preserves fallback, history, notice, and an explicit retirement review.",
+    "incidentPath": "Candidate incidents retain evidence and route to a separately authorized operational or security authority.",
+    "appealPath": "Affected participants can report harmful, incorrect, or unauthorized use for attributable review.",
+    "escalationPath": "Unavailable or conflicted reviewers produce an explicit pause or narrowed result instead of silent delegation.",
+    "fallback": "When support or realization is unavailable, stop the bounded workflow and preserve portable evidence.",
+    "responseTarget": "Candidate response targets remain proportional to consequence and require later funded approval.",
+    "laborMeasurement": "All rehearsal, facilitation, support, and review effort is recorded as candidate operating cost.",
+    "capacity": {
+      "state": "candidate-sufficient",
+      "fundingState": "candidate",
+      "statement": "The bounded rehearsal records candidate capacity and funding evidence without creating a commitment.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "emergencyActionModel": {
+    "ownerRoleKey": "initiative-owner",
+    "scopeRule": "Any future emergency action must be narrowly scoped to the evidenced urgent condition.",
+    "reasonRule": "The material safety, security, or operational reason must be recorded before action when feasible.",
+    "evidenceRule": "Evidence, dissent, time pressure, and the original conflict remain preserved through escalation.",
+    "recoveryRule": "A bounded recovery and safe-stop path must be identified without inferring successful restoration.",
+    "expiryRule": "Any future emergency authority must have an exact expiry and cannot silently become permanent.",
+    "retrospectiveReviewRule": "A separately authorized retrospective review must evaluate the action, recovery, and reopening triggers.",
+    "authority": {
+      "state": "candidate",
+      "basis": "The bounded model records a candidate authority shape for review and does not make an appointment.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "limitations": [
+    "No real appointment, funding commitment, service level, baseline, readiness, or execution authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "operating-model",
+  "id": "37895456-deb2-4c00-9e40-6d740fd51707",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "revision": 1,
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:02.316Z",
+  "updatedAt": "2026-07-27T23:09:02.316Z",
+  "authorityBoundary": "operating-model-records-candidate-roles-responsibilities-decision-rights-capacity-support-and-emergency-boundaries-and-does-not-appoint-fund-approve-baseline-or-authorize-action"
+}

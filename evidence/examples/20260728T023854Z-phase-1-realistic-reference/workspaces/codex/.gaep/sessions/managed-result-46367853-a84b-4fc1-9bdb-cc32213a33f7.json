@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "kind": "managed-run-result",
+  "id": "46367853-a84b-4fc1-9bdb-cc32213a33f7",
+  "managedRunId": "f25d8a95-bb72-48a1-b707-20b78fd9546d",
+  "runId": "fbab04df-3f0c-4e0d-9a6b-f995828c511b",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "mode": "codex-staged",
+  "provider": {
+    "adapterId": "gaep.codex-cli",
+    "agentId": "codex-cli",
+    "modelId": "fake-model",
+    "capabilityDigest": "sha256:107982a95ba201f7abd0af4228e0616402331e00d287a61ea142974ca490528d",
+    "runtimeVersion": "p1-30-test"
+  },
+  "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+  "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+  "providerDisposition": "completed",
+  "terminationCause": "normal",
+  "outcome": {
+    "status": "not-assessed",
+    "basis": "not-evaluated"
+  },
+  "terminalState": "review-required",
+  "evidenceId": "e97ba6b6-d663-4baf-b494-6e3aacf881e7",
+  "evidenceDigest": "sha256:6ebb6f1b144c445888f1132cfdade9489d9b8b672a64f79ae85d1ba771a1d2a4",
+  "warnings": [
+    "runtime-warning",
+    "staging-read-confinement-unattested"
+  ],
+  "startedAt": "2026-07-27T23:09:05.233Z",
+  "endedAt": "2026-07-27T23:09:06.705Z",
+  "authorityBoundary": "provider-completion-does-not-equal-outcome-completion"
+}

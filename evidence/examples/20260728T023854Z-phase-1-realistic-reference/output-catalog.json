@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase1-realistic-reference-output-catalog",
+  "scenario": {
+    "id": "phase-1-atlas-release-readiness-v1",
+    "digest": "sha256:38aea6886e76a509f5709a8f6d7366feb14f79a45d8743a172ca4b535d06c2c1",
+    "productName": "Atlas Release Readiness",
+    "initiativeTitle": "Review the Atlas release evidence packet"
+  },
+  "providers": {
+    "codexSummaryDigest": "sha256:a0b5bed8e40efed149961fa21c8745f410840fef3c7f5cef1baceb48609ba96c",
+    "claudeSummaryDigest": "sha256:7a1a526288ec3ef910cbbfea8fc0e53b8cf57b6788950a4724cc053fecb53ad7"
+  },
+  "outputs": [
+    {
+      "ordinal": 1,
+      "outputKind": "architecture-challenge-model",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 2,
+      "outputKind": "authorization-model",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 3,
+      "outputKind": "bounded-context-ownership",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 4,
+      "outputKind": "business-architecture-baseline",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 5,
+      "outputKind": "business-capability-map",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 6,
+      "outputKind": "business-rule-catalog",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 7,
+      "outputKind": "business-understanding",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 8,
+      "outputKind": "candidate-source-baseline",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 9,
+      "outputKind": "data-model",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 10,
+      "outputKind": "decision-register",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 11,
+      "outputKind": "end-to-end-traceability",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 12,
+      "outputKind": "event-integration-model",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 13,
+      "outputKind": "evidence-registry",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 14,
+      "outputKind": "failure-recovery-model",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 15,
+      "outputKind": "initiative-entry",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 16,
+      "outputKind": "operating-model",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 17,
+      "outputKind": "outcome-success-model",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 18,
+      "outputKind": "process-model",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 19,
+      "outputKind": "risk-register",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 20,
+      "outputKind": "security-privacy-threat-assessment",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 21,
+      "outputKind": "source-intake",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 22,
+      "outputKind": "source-provenance",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 23,
+      "outputKind": "stakeholder-role-model",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 24,
+      "outputKind": "system-solution-architecture",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    },
+    {
+      "ordinal": 25,
+      "outputKind": "value-stream-model",
+      "codexEvidence": "represented",
+      "claudeEvidence": "represented"
+    }
+  ],
+  "counts": {
+    "outputCount": 25,
+    "codexRepresentedCount": 25,
+    "claudeRepresentedCount": 25
+  },
+  "authorityBoundary": "output-catalog-is-inspectable-local-evidence-not-readiness-approval-acceptance-phase-entry-or-action-authority",
+  "catalogDigest": "sha256:bd6ac080327ee5ac39a0154d8a6ffafe2140b8ab02b669d2713278149f45b8e6"
+}

@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 2,
+  "kind": "managed-run-evidence",
+  "id": "b786bdd3-3c2e-4235-ac4e-fc3543c304cf",
+  "managedRunId": "e237ffee-bd78-45fc-a744-f1d3775e0695",
+  "runId": "c1613c5e-4921-4dc0-975b-86483aa54d45",
+  "productId": "b64e5bd7-51d6-4022-80fe-3bac71e8793f",
+  "bindingsDigest": "sha256:67e2b7dc253abd0f49e04a60a04cbc4659587c3ea5f44ee9f01eeac434f1c369",
+  "events": [
+    {
+      "sequence": 0,
+      "observedAt": "2026-07-27T23:09:05.255Z",
+      "type": "lifecycle",
+      "phase": "initialized"
+    },
+    {
+      "sequence": 1,
+      "observedAt": "2026-07-27T23:09:06.098Z",
+      "providerThreadRef": "sha256:8a50139d33a58302d18d88c6b33a1e53609ecbbe61cd4fe3540e5843f3ee9b80",
+      "type": "lifecycle",
+      "phase": "thread-started"
+    },
+    {
+      "sequence": 2,
+      "observedAt": "2026-07-27T23:09:06.098Z",
+      "providerThreadRef": "sha256:8a50139d33a58302d18d88c6b33a1e53609ecbbe61cd4fe3540e5843f3ee9b80",
+      "providerTurnRef": "sha256:4a174cd277835a40bd74edcdb3143ac1281f495c6dded47ec8a8ae545f082d08",
+      "type": "output",
+      "channel": "assistant",
+      "contentDigest": "sha256:2a98b6ceeca21bf4795e17bdd77816e6b46f907c590afeb35558b8c656aed959",
+      "byteLength": 48,
+      "redactionCount": 2
+    },
+    {
+      "sequence": 3,
+      "observedAt": "2026-07-27T23:09:06.098Z",
+      "providerThreadRef": "sha256:8a50139d33a58302d18d88c6b33a1e53609ecbbe61cd4fe3540e5843f3ee9b80",
+      "providerTurnRef": "sha256:4a174cd277835a40bd74edcdb3143ac1281f495c6dded47ec8a8ae545f082d08",
+      "type": "lifecycle",
+      "phase": "turn-completed",
+      "turnStatus": "completed"
+    }
+  ],
+  "eventsDigest": "sha256:08d0da96e23a64c022530c4c91e6c2497df0ca33a907a937a37fd84f8d7ce342",
+  "workflow": {
+    "plan": {
+      "recordType": "workflow-plan",
+      "recordId": "74df25c3-b4fd-464b-8cc2-8968f55848ec",
+      "revision": 2,
+      "digest": "sha256:10cd990aa711283589292e29f2d491879b417954ae9318613bb38aa4c555d0f5"
+    },
+    "strategy": "sequential",
+    "orderedStepIds": [
+      "d646535b-f04d-4128-93da-b8b630bd588d"
+    ],
+    "attempts": [
+      {
+        "id": "1533077c-d2c6-427d-8d22-174bd05a4de6",
+        "revision": 1,
+        "stepId": "d646535b-f04d-4128-93da-b8b630bd588d",
+        "stepIndex": 0,
+        "attempt": 1,
+        "state": "completed",
+        "dependencies": [],
+        "contextPacks": [
+          {
+            "recordType": "context-pack",
+            "recordId": "7da58dc0-fe69-41ff-bccd-169e5541f52e",
+            "revision": 1,
+            "digest": "sha256:3a7a3d6542d12ad15aa8cf1bb287812572405af8c9617597892ac860c8d12d8e"
+          }
+        ],
+        "tools": [],
+        "effectEnvelope": [
+          "observe"
+        ],
+        "eventRange": {
+          "startSequence": 0,
+          "endSequence": 3
+        },
+        "providerDisposition": "completed",
+        "terminationCause": "normal",
+        "providerPostconditionStatus": "not-assessed",
+        "postconditionStatus": "satisfied",
+        "postconditionAuthority": "workflow-gate-evaluator",
+        "gates": {
+          "preconditions": {
+            "phase": "preconditions",
+            "interpretation": "criteria-satisfied",
+            "criteriaDigest": "sha256:02f7287dd147d7f76f93f3480284f0767f949eac6a570c9ed2c4cf806c0a7f9e",
+            "status": "satisfied",
+            "basis": "human-attestation",
+            "evidenceDigest": "sha256:e32b5d94845ca42a267db5964e23d8900349d73e0fd58c7c7653f8396f000a62",
+            "actor": {
+              "kind": "human",
+              "id": "product-owner"
+            },
+            "evaluator": {
+              "kind": "human",
+              "id": "product-owner",
+              "version": "1",
+              "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+            },
+            "assessedAt": "2026-07-27T23:09:05.253Z"
+          },
+          "outputs": {
+            "phase": "outputs",
+            "interpretation": "criteria-satisfied",
+            "criteriaDigest": "sha256:7cfc33b70ce2ced63c8298c04677ef00cbff042b35789fa52c48a4245022a7fc",
+            "status": "satisfied",
+            "basis": "human-attestation",
+            "evidenceDigest": "sha256:3bca94be28a9dbd8563533a2fc2322be8180dc747ea2f627f2bf4193cd326232",
+            "actor": {
+              "kind": "human",
+              "id": "product-owner"
+            },
+            "evaluator": {
+              "kind": "human",
+              "id": "product-owner",
+              "version": "1",
+              "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+            },
+            "assessedAt": "2026-07-27T23:09:06.101Z"
+          },
+          "evidence": {
+            "phase": "evidence",
+            "interpretation": "criteria-satisfied",
+            "criteriaDigest": "sha256:d297f80a76822da17de22b3c27b13784ac331c740438b7fa189d7704b917388c",
+            "status": "satisfied",
+            "basis": "human-attestation",
+            "evidenceDigest": "sha256:25b8524bdbe80dab3fcdd86f8dd26bf329c626c826756172b9ffd19c7b11ba99",
+            "actor": {
+              "kind": "human",
+              "id": "product-owner"
+            },
+            "evaluator": {
+              "kind": "human",
+              "id": "product-owner",
+              "version": "1",
+              "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+            },
+            "assessedAt": "2026-07-27T23:09:06.101Z"
+          },
+          "stopConditions": {
+            "phase": "stop-conditions",
+            "interpretation": "stop-boundary-complied",
+            "criteriaDigest": "sha256:40f0bb0c2deb0ae0c00bb1d530e04d78a4659a470dd3421a812386cf2fda1291",
+            "status": "satisfied",
+            "basis": "human-attestation",
+            "evidenceDigest": "sha256:95f62c6aeecaf70732a88162c250f541de318f1d325bdf0303e4c6ebb748da58",
+            "actor": {
+              "kind": "human",
+              "id": "product-owner"
+            },
+            "evaluator": {
+              "kind": "human",
+              "id": "product-owner",
+              "version": "1",
+              "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+            },
+            "assessedAt": "2026-07-27T23:09:06.101Z"
+          }
+        },
+        "startedAt": "2026-07-27T23:09:05.253Z",
+        "endedAt": "2026-07-27T23:09:06.101Z"
+      }
+    ],
+    "completedStepIds": [
+      "d646535b-f04d-4128-93da-b8b630bd588d"
+    ],
+    "charterGates": {
+      "requiredEvidence": {
+        "phase": "charter-evidence",
+        "interpretation": "criteria-satisfied",
+        "criteriaDigest": "sha256:aea1a3d75496d6149a5756bb59bdcc8f279a2fa838802a4bdfcc40bcf11ab2bf",
+        "status": "satisfied",
+        "basis": "human-attestation",
+        "evidenceDigest": "sha256:8b38d48918704df4f6d3ab3d3b3e453c7e460797c7667054045a73021d099c6d",
+        "actor": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "evaluator": {
+          "kind": "human",
+          "id": "product-owner",
+          "version": "1",
+          "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+        },
+        "assessedAt": "2026-07-27T23:09:06.102Z"
+      },
+      "stopConditions": {
+        "phase": "charter-stop-conditions",
+        "interpretation": "stop-boundary-complied",
+        "criteriaDigest": "sha256:2c4468bb6156e9dd051fcd8180226e45f95f3bc553ca1ab1d87187bc7ef2b988",
+        "status": "satisfied",
+        "basis": "human-attestation",
+        "evidenceDigest": "sha256:a9f3a8e6bbb3091117272d65991a1b6fd7e7097188d9009c0ad915d2804ebd78",
+        "actor": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "evaluator": {
+          "kind": "human",
+          "id": "product-owner",
+          "version": "1",
+          "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+        },
+        "assessedAt": "2026-07-27T23:09:06.102Z"
+      }
+    },
+    "terminalReasonCode": "workflow-completed",
+    "capabilityBoundary": "natural-language-gates-require-explicit-human-or-system-assessment"
+  },
+  "actualEffects": [
+    {
+      "effect": "observe",
+      "status": "observed-provisional",
+      "evidenceDigest": "sha256:355da392e647e560aac6391ac0f73ffabec7f9369174b3e3daa533bcad59fbb8"
+    }
+  ],
+  "capturedAt": "2026-07-27T23:09:06.104Z",
+  "authorityBoundary": "evidence-does-not-self-assert-outcome-or-authorization"
+}

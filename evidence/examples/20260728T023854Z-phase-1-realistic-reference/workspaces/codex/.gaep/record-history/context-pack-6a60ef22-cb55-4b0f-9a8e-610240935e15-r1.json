@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "kind": "product-record-revision",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "recordType": "context-pack",
+  "recordId": "6a60ef22-cb55-4b0f-9a8e-610240935e15",
+  "revision": 1,
+  "recordDigest": "sha256:138fc515eaded2e306df29fe07e3cd64916362f4dbda0edc4be74a72f1abc73d",
+  "snapshot": {
+    "schemaVersion": 1,
+    "id": "6a60ef22-cb55-4b0f-9a8e-610240935e15",
+    "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+    "revision": 1,
+    "createdAt": "2026-07-27T23:09:04.369Z",
+    "updatedAt": "2026-07-27T23:09:04.369Z",
+    "kind": "context-pack",
+    "objective": "Provide the exact current governed P0-P4 candidate chain for one isolated Codex review.",
+    "recipient": {
+      "kind": "agent",
+      "id": "codex-cli"
+    },
+    "items": [
+      {
+        "id": "45b375f5-d67e-4e82-8c85-8c2b7a682f5e",
+        "source": {
+          "kind": "logical",
+          "value": "p1-30-codex-p0-p4-candidate-context"
+        },
+        "sourceRevision": 1,
+        "sourceDigest": "sha256:584f06e50f7205b8b8bbb13e81cabab5486742f039c867a4bdd805273fa914d3",
+        "selectionReason": "The workflow must bind every created P0-P4 candidate record plus its exact readiness and handoff state.",
+        "required": true,
+        "content": "{\"schemaVersion\":1,\"kind\":\"gaep-codex-p0-p4-candidate-context\",\"product\":{\"recordId\":\"a079a93e-0e12-4d78-b190-26333007f6ed\",\"revision\":1,\"digest\":\"sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c\"},\"initiative\":{\"recordId\":\"5b57c220-c798-4db8-8dd9-2b929b7b58fd\",\"revision\":4,\"digest\":\"sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533\"},\"source\":{\"sourceId\":\"21b26907-ef4d-40eb-abd1-69dd8d221207\",\"sourceRevision\":1,\"recordDigest\":\"sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375\",\"contentDigest\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"governedRecords\":[{\"kind\":\"architecture\",\"recordId\":\"c181b435-e05b-4693-8591-dbbdc8ea6378\",\"revision\":1,\"digest\":\"sha256:c5d197509af5abdac25ca5b56a128a618d08992ddd263816c6c91360ca507d34\"},{\"kind\":\"architectureChallengeModel\",\"recordId\":\"0c6eb5e2-8114-404c-85b3-6d6ed1dba6b5\",\"revision\":1,\"digest\":\"sha256:c724541c42b6fd7e215fad729757cd94db9101a0f52c22c677487e7328e6dd62\"},{\"kind\":\"authorizationModel\",\"recordId\":\"ef97a4ad-581a-4028-9728-6929c7d75948\",\"revision\":1,\"digest\":\"sha256:762e03a8f73a6516fe0dabaa48658ce419590738e882c30d6efaa2232f00ad0a\"},{\"kind\":\"baseline\",\"recordId\":\"e58eca3e-ca09-461d-8b6a-22662801d548\",\"revision\":1,\"digest\":\"sha256:2dcc0d250608772f37ae258904c3ef91b2caae79bde348c34fd7f29c66a92c45\"},{\"kind\":\"boundedContextModel\",\"recordId\":\"e6aca26a-c8ad-4981-bc6b-4edc34e41e3d\",\"revision\":1,\"digest\":\"sha256:b89fde27268aff5272183845ada8425d5cebba70d01a10f00337b94c184ea1fa\"},{\"kind\":\"business\",\"recordId\":\"f5a75bcf-f20b-4dd5-a267-52e9f64362b9\",\"revision\":1,\"digest\":\"sha256:ab8e2da0f466b7094d3bb174c26d7bf1993bc3e938dd9d0af29fdba55a60b32f\"},{\"kind\":\"businessRuleCatalog\",\"recordId\":\"929bad40-af35-482b-81fc-cbfff2e7b51a\",\"revision\":1,\"digest\":\"sha256:b90f92b5a1d60c80bb9499a82ee75c72ea3ae4b6ecf0b6189f258a36314ac9e0\"},{\"kind\":\"capabilityMap\",\"recordId\":\"10267e29-dab2-4fd8-bcb8-d85d3783f2d1\",\"revision\":1,\"digest\":\"sha256:12b8dcdd461be8a3f3e59198b55b9a558be1a28dbd13cbf5e33fc88d9cb82b4c\"},{\"kind\":\"dataModel\",\"recordId\":\"892f5744-2e58-457c-a435-0ea629581a2e\",\"revision\":1,\"digest\":\"sha256:c0ed1419289389bf862a09c38c12ca5e3844d90e761bb547477c32772bebd843\"},{\"kind\":\"decisionRegister\",\"recordId\":\"3811ddb0-1cbe-47e1-b3e0-30d040b4563c\",\"revision\":1,\"digest\":\"sha256:305fd1e08ad6ac6927f4d19565b240e4751b4a54f5aae0953d569b8faa0aad5b\"},{\"kind\":\"eventIntegrationModel\",\"recordId\":\"fa2ba771-91ba-467d-87d2-e188149171e2\",\"revision\":1,\"digest\":\"sha256:a8aa83f1bf1c4d96acc27a325b7f1f6e7696248573fa32ee95b0907b156bda0e\"},{\"kind\":\"evidenceRegistry\",\"recordId\":\"4088bec8-cae9-4c6d-aa06-32e29e5045a1\",\"revision\":1,\"digest\":\"sha256:83c95acba64264c65c4dbe1bd7760b835d6f1d0d807d61105ffefe526a8a1a1f\"},{\"kind\":\"failureRecoveryModel\",\"recordId\":\"795b5dfc-8ed4-49fe-bff9-e5145f76353c\",\"revision\":1,\"digest\":\"sha256:6a0906235c4fe3b6f7c54956108c7c66976e9ad10a5d8d5af5ea44956b6db97a\"},{\"kind\":\"operatingModel\",\"recordId\":\"37895456-deb2-4c00-9e40-6d740fd51707\",\"revision\":1,\"digest\":\"sha256:a1f9c07f34d5beb4082634c8d2b3d0fd90773ea1c254194d47c108ecd50a2b23\"},{\"kind\":\"outcome\",\"recordId\":\"4307f80e-fed8-43a6-a47c-4cf1e9700092\",\"revision\":1,\"digest\":\"sha256:32593f75d64f3891cc968f65dfce45498aef5e82f552d3761d43b4fd18f6fc7b\"},{\"kind\":\"processModel\",\"recordId\":\"ac9f6b58-aff7-47ee-9442-ee2286a07b16\",\"revision\":1,\"digest\":\"sha256:0f157b64cedd1fc3296b39cca713c6bf8abafd00c9583f10e41056c7714580ba\"},{\"kind\":\"riskRegister\",\"recordId\":\"d574754f-5362-4237-844d-9a1083f306a6\",\"revision\":1,\"digest\":\"sha256:aa54f2677767276a1231b13893f91056cc6aa2a77a379cc5e524921a2fdee900\"},{\"kind\":\"securityPrivacyAssessment\",\"recordId\":\"36a655f3-3869-42de-9373-e1a64f5cad04\",\"revision\":1,\"digest\":\"sha256:d4a46b130517b2e0956a569d772ffe1d022ec361b3840774ca9bb37a6cd413c1\"},{\"kind\":\"stakeholder\",\"recordId\":\"ad34b26e-6b47-4240-949c-30a7476aa7af\",\"revision\":1,\"digest\":\"sha256:501afad3370e0ea62be567ee0e6f850e496a73efa607f1d6ec46bb9f961f9040\"},{\"kind\":\"traceability\",\"recordId\":\"31401ecd-bf6d-4961-bf5d-657a4be552c1\",\"revision\":1,\"digest\":\"sha256:5cea1a854e1def5042d057bb1b535ec5b27b59e91ca6557c86270f3660822fc2\"},{\"kind\":\"valueStreamModel\",\"recordId\":\"70c21851-04c0-4974-9a39-9a6b506b2af5\",\"revision\":1,\"digest\":\"sha256:7f97838e89e65c37bba2483a22705682cc2211896b445e725f1bbb6f2ebb2b7f\"}],\"readinessGate\":{\"recordId\":\"094d5c43-6d3b-4714-a13f-8167c504de45\",\"revision\":1,\"digest\":\"sha256:96a33665230c772e470464330b6626db18f23627a482ddcb1cad447f01a58b79\"},\"handoff\":{\"recordId\":\"f9e9419b-3ca4-4ebd-85d8-a0ceb1d6c0f7\",\"revision\":1,\"digest\":\"sha256:8d1099e58648f1bef1986a2a9223a20d90d177ba7360b97890a81f9cf78d2df2\"},\"authorityBoundary\":\"candidate-context-does-not-establish-approval-readiness-handoff-acknowledgement-or-action-authority\"}",
+        "contentDigest": "sha256:584f06e50f7205b8b8bbb13e81cabab5486742f039c867a4bdd805273fa914d3",
+        "trust": {
+          "semanticAuthority": {
+            "standing": "advisory",
+            "domain": "P0-P4 candidate context",
+            "owner": "product-owner",
+            "scope": [
+              "Deterministic P1-30 managed Codex review"
+            ],
+            "precedence": 10
+          },
+          "epistemicRole": "reference",
+          "sourceAuthenticity": "verified",
+          "contentIntegrity": "verified",
+          "confidentiality": {
+            "classification": "internal",
+            "purpose": "Exercise an exact isolated Codex review of the governed P0-P4 candidate chain",
+            "recipients": [
+              "codex-cli"
+            ],
+            "retention": "Retain with the governed acceptance fixture"
+          },
+          "instructionPrivilege": "workflow-data",
+          "freshness": {
+            "status": "fresh",
+            "assessedAt": "2026-07-27T00:00:00.000Z",
+            "basis": "Constructed from exact current governed record identities and digests"
+          },
+          "validity": {
+            "status": "valid",
+            "basis": "Bound to the exact current candidate chain"
+          },
+          "revisionDisposition": "current",
+          "applicability": {
+            "status": "applicable",
+            "basis": "Targets this exact P1-30 managed workflow"
+          }
+        },
+        "transformations": []
+      }
+    ],
+    "omissions": [],
+    "warnings": [
+      "The deterministic app-server verifies transport and governed evidence behavior, not live provider quality or availability."
+    ],
+    "conflicts": [],
+    "classification": {
+      "level": "internal",
+      "combinationRisk": "The single internal metadata-only context contains governed identities and digests but no private Source content."
+    },
+    "sufficiency": {
+      "status": "sufficient-with-assumptions",
+      "criteria": [
+        "All 21 created P0-P4 candidate records are represented by exact identity, revision, and digest",
+        "The exact readiness gate and P5 handoff candidates are represented without authority inflation"
+      ],
+      "evaluator": {
+        "kind": "system",
+        "id": "gaep.p1-30-fixture"
+      },
+      "assumptions": [
+        "Warning retained: The deterministic app-server verifies transport and governed evidence behavior, not live provider quality or availability."
+      ],
+      "reasons": []
+    },
+    "packDigest": "sha256:85ba841c43e3ef76e8914646f0b579d639ba5d7ee0e64497821f81ce1f2c37ec",
+    "authorityBoundary": "context-sufficiency-does-not-grant-authority"
+  },
+  "recordedAt": "2026-07-27T23:09:04.371Z"
+}

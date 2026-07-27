@@ -1,0 +1,782 @@
+{
+  "initiativeId": "5b57c220-c798-4db8-8dd9-2b929b7b58fd",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e078f874d4a3393ebce7e103acd1427b0eda11a63d8b771349a9dd272e60d32c",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:686c721fb3c4b2ba9c02ad23087ed62a81b9632c007289c623c6734dcfb3f533"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Product Evidence Registry",
+  "scope": "Record claim-bounded, attributable, versioned Evidence Item metadata and explicit support, contradiction, and qualification warrants without treating record presence or favorable output as proof, approval, assurance, readiness, or action authority.",
+  "operatingModel": {
+    "recordId": "37895456-deb2-4c00-9e40-6d740fd51707",
+    "revision": 1,
+    "digest": "sha256:a1f9c07f34d5beb4082634c8d2b3d0fd90773ea1c254194d47c108ecd50a2b23"
+  },
+  "architectureChallengeModel": {
+    "recordId": "0c6eb5e2-8114-404c-85b3-6d6ed1dba6b5",
+    "revision": 1,
+    "digest": "sha256:c724541c42b6fd7e215fad729757cd94db9101a0f52c22c677487e7328e6dd62"
+  },
+  "securityPrivacyAssessment": {
+    "recordId": "36a655f3-3869-42de-9373-e1a64f5cad04",
+    "revision": 1,
+    "digest": "sha256:d4a46b130517b2e0956a569d772ffe1d022ec361b3840774ca9bb37a6cd413c1"
+  },
+  "decisionRegister": {
+    "recordId": "3811ddb0-1cbe-47e1-b3e0-30d040b4563c",
+    "revision": 1,
+    "digest": "sha256:305fd1e08ad6ac6927f4d19565b240e4751b4a54f5aae0953d569b8faa0aad5b"
+  },
+  "riskRegister": {
+    "recordId": "d574754f-5362-4237-844d-9a1083f306a6",
+    "revision": 1,
+    "digest": "sha256:aa54f2677767276a1231b13893f91056cc6aa2a77a379cc5e524921a2fdee900"
+  },
+  "claims": [
+    {
+      "key": "current-cross-host-conformance",
+      "type": "conformance-claim",
+      "ownerRoleKey": "initiative-owner",
+      "ownerAssignmentState": "not-established",
+      "statement": "The exact candidate shared-engine capability set has equivalent deterministic source and package behavior across the four declared native host projections for the recorded local snapshot only.",
+      "falsificationConditions": [
+        "Any declared host capability marker, behavior receipt, package byte, or source snapshot differs from the exact recorded snapshot"
+      ],
+      "subjects": [
+        {
+          "recordKind": "architecture-challenge-model",
+          "recordId": "0c6eb5e2-8114-404c-85b3-6d6ed1dba6b5",
+          "revision": 1,
+          "digest": "sha256:c724541c42b6fd7e215fad729757cd94db9101a0f52c22c677487e7328e6dd62",
+          "relationship": "depends-on",
+          "elementKeys": [
+            "shared-engine-decision"
+          ]
+        }
+      ],
+      "scope": [
+        "Declared local four-host candidate capability snapshot"
+      ],
+      "environment": [
+        "Recorded local deterministic test environment"
+      ],
+      "configuration": [
+        "Exact source, contract, package, and evidence digests"
+      ],
+      "validFrom": "2026-07-27T00:00:00.000Z",
+      "applicableRequirements": [
+        "gaep-cae-req-001"
+      ],
+      "applicablePolicies": [],
+      "relatedRiskKeys": [
+        "shared-engine-correlated-failure"
+      ],
+      "assumptions": [
+        "The recorded evidence producer and integrity path remain attributable"
+      ],
+      "requiredEvidenceClasses": [
+        "Exact source snapshot and deterministic host behavior receipt"
+      ],
+      "acceptanceCriteria": [
+        "Every declared host capability and deterministic behavior check passes against exact package bytes"
+      ],
+      "assessment": {
+        "state": "supported",
+        "assessor": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "assessedAt": "2026-07-27T01:00:00.000Z",
+        "methodName": "Candidate evidence assessment",
+        "methodVersion": "0.1.0",
+        "evidenceLinkKeys": [
+          "local-receipt-supports-current-conformance"
+        ],
+        "rationale": "The named human assessor records bounded candidate support for the exact local snapshot only; this is not assurance, approval, readiness, or authority.",
+        "validityEndsAt": "2026-08-27T01:00:00.000Z",
+        "authorityBoundary": "claim-assessment-is-attributed-epistemic-state-and-does-not-establish-review-approval-assurance-risk-acceptance-readiness-or-action-authority"
+      },
+      "knownGaps": [
+        "Native supported-platform and human acceptance evidence is absent"
+      ],
+      "exclusions": [
+        "Live-provider, native accessibility, release, deployment, and Product Owner acceptance"
+      ],
+      "residualUncertainty": [
+        "Local deterministic coverage cannot establish supported-host behavior"
+      ],
+      "defeaters": [
+        "A stale source binding, changed package byte, adverse host result, or omitted platform limitation"
+      ],
+      "reviewTriggers": [
+        "Contract, source, package, host, provider, or acceptance state changes"
+      ],
+      "expiryTriggers": [
+        "Declared evidence validity interval ends or a bound artifact changes"
+      ],
+      "invalidationTriggers": [
+        "Any exact subject, environment, configuration, package, or evidence digest changes"
+      ],
+      "supersessionTriggers": [
+        "A newer attributable registry revision binds replacement evidence"
+      ],
+      "authoringLifecycle": "draft",
+      "revisionDisposition": "candidate",
+      "operationalEligibilityState": "not-established"
+    }
+  ],
+  "evidenceItems": [
+    {
+      "key": "local-conformance-receipt",
+      "evidenceId": "55555555-5555-4555-8555-555555555555",
+      "evidenceRevision": 1,
+      "evidenceDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "type": "deterministic-conformance-receipt",
+      "producer": {
+        "kind": "system",
+        "id": "gaep-local-conformance-runner"
+      },
+      "capturedAt": "2026-07-27T00:01:00.000Z",
+      "subjects": [
+        {
+          "recordKind": "architecture-challenge-model",
+          "recordId": "0c6eb5e2-8114-404c-85b3-6d6ed1dba6b5",
+          "revision": 1,
+          "digest": "sha256:c724541c42b6fd7e215fad729757cd94db9101a0f52c22c677487e7328e6dd62",
+          "relationship": "depends-on",
+          "elementKeys": [
+            "shared-engine-decision"
+          ]
+        }
+      ],
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "outcome": "favorable",
+      "observation": "All declared deterministic local host-capability checks passed, while native supported-platform and human acceptance remain unavailable and explicitly outside this observation.",
+      "method": {
+        "name": "GAEP deterministic host conformance",
+        "version": "1.0.0",
+        "criteria": [
+          "Exact contract, source marker, behavior receipt, and package digest agreement"
+        ],
+        "procedureVersion": "1.0.0",
+        "tools": [
+          "GAEP local evidence runner"
+        ],
+        "configuration": [
+          "Exact repository snapshot and isolated package lifecycle fixtures"
+        ],
+        "environment": [
+          "Local developer workstation"
+        ],
+        "dataReferences": [
+          "Privacy-safe generated receipt digests"
+        ],
+        "limitations": [
+          "No native supported-platform or real-account acceptance is exercised"
+        ],
+        "reproducibilityConditions": [
+          "Use the exact repository revision, toolchain, fixtures, package bytes, and declared commands"
+        ]
+      },
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "provenanceDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "integrityDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "evaluatorOrExecutor": {
+        "kind": "system",
+        "id": "gaep-local-conformance-runner"
+      },
+      "independenceCharacteristics": [
+        "Producer and evaluator are the same deterministic local capability"
+      ],
+      "informationClassification": "internal",
+      "permittedRecipientRoles": [
+        "GAEP Assurance Authority"
+      ],
+      "retentionState": "active-retention",
+      "retentionObligations": [
+        "Preserve unfavorable, failed, and inconclusive outcomes with the exact subject and source snapshot"
+      ],
+      "disposalObligations": [
+        "Follow the controlling Data, Audit, and records-retention policies"
+      ],
+      "authoringLifecycle": "finalized",
+      "assessment": {
+        "state": "fit-for-declared-use",
+        "assessor": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "assessedAt": "2026-07-27T01:00:00.000Z",
+        "methodName": "Candidate evidence fitness assessment",
+        "methodVersion": "0.1.0",
+        "declaredClaimKeys": [
+          "current-cross-host-conformance"
+        ],
+        "rationale": "The named human assessor records candidate fitness only for the exact declared local Claim scope and does not certify another subject or environment.",
+        "authorityBoundary": "evidence-assessment-is-scoped-to-declared-claims-and-does-not-certify-other-subjects-versions-environments-configurations-or-claims"
+      },
+      "freshness": "current",
+      "validity": "valid",
+      "revisionDisposition": "candidate",
+      "operationalEligibility": "eligible",
+      "quality": [
+        {
+          "dimension": "authenticity",
+          "state": "candidate-satisfactory",
+          "rationale": "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority."
+        },
+        {
+          "dimension": "coverage",
+          "state": "candidate-satisfactory",
+          "rationale": "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority."
+        },
+        {
+          "dimension": "freshness",
+          "state": "candidate-satisfactory",
+          "rationale": "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority."
+        },
+        {
+          "dimension": "independence",
+          "state": "candidate-satisfactory",
+          "rationale": "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority."
+        },
+        {
+          "dimension": "integrity",
+          "state": "candidate-satisfactory",
+          "rationale": "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority."
+        },
+        {
+          "dimension": "interpretability",
+          "state": "candidate-satisfactory",
+          "rationale": "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority."
+        },
+        {
+          "dimension": "relevance",
+          "state": "candidate-satisfactory",
+          "rationale": "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority."
+        },
+        {
+          "dimension": "reproducibility",
+          "state": "candidate-satisfactory",
+          "rationale": "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority."
+        },
+        {
+          "dimension": "sensitivity",
+          "state": "candidate-satisfactory",
+          "rationale": "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority."
+        },
+        {
+          "dimension": "validity",
+          "state": "candidate-satisfactory",
+          "rationale": "The named assessor records this candidate quality observation without converting it to aggregate assurance or authority."
+        }
+      ],
+      "limitations": [
+        "The result is bounded to local deterministic behavior and exact recorded inputs"
+      ],
+      "anomalies": [],
+      "expiryTriggers": [
+        "The declared evidence validity interval ends"
+      ],
+      "invalidationTriggers": [
+        "Any subject, source, method, tool, configuration, environment, data, or package digest changes"
+      ],
+      "supersessionTriggers": [
+        "A newer exact Evidence Item revision is recorded"
+      ],
+      "adverseDispositionState": "not-required",
+      "authorityBoundary": "evidence-item-is-attributable-metadata-and-does-not-by-presence-or-outcome-prove-a-claim-grant-approval-establish-assurance-or-authorize-action"
+    }
+  ],
+  "links": [
+    {
+      "key": "local-receipt-supports-current-conformance",
+      "claimKey": "current-cross-host-conformance",
+      "evidenceKey": "local-conformance-receipt",
+      "relationship": "supports",
+      "warrant": "The exact local receipt supports only the bounded Claim about deterministic agreement within its recorded source, package, fixture, configuration, and environment boundaries.",
+      "scope": [
+        "Exact local deterministic snapshot only"
+      ],
+      "limitations": [
+        "No native supported-platform, live-provider, human, accessibility, readiness, release, or deployment conclusion follows"
+      ],
+      "sufficiencyState": "not-established",
+      "acceptedForClaimState": "not-established",
+      "authorityBoundary": "claim-evidence-link-records-a-candidate-warrant-and-does-not-establish-evidence-sufficiency-claim-validation-assurance-approval-or-action-authority"
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-CAE-REQ-001",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-002",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-003",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-004",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-005",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-006",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-007",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-008",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-009",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-010",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-013",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-014",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-016",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-017",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-018",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-019",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-020",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-024",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-009",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-017",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-029",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-035",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-002",
+      "state": "covered-candidate",
+      "claimKeys": [
+        "current-cross-host-conformance"
+      ],
+      "evidenceKeys": [
+        "local-conformance-receipt"
+      ],
+      "basis": "The candidate registry preserves exact subjects, attributable Evidence metadata, explicit warrants, adverse results, orthogonal state, freshness, history, limits and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "21b26907-ef4d-40eb-abd1-69dd8d221207",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:0c1b45920d9b5a2e34deb721132ae7dbb600eceef380c733d7e345f6a81b9375",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "unresolvedQuestions": [],
+  "inconsistencies": [],
+  "limitations": [
+    "No Claim validation, Evidence sufficiency, Assurance Case conclusion, Review, Approval, Risk Acceptance, baseline promotion, readiness, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "evidence-registry-candidate",
+  "id": "4088bec8-cae9-4c6d-aa06-32e29e5045a1",
+  "productId": "a079a93e-0e12-4d78-b190-26333007f6ed",
+  "revision": 1,
+  "membershipDigest": "sha256:901b05dde543590089b5ddc8ea03da7db6a33fe7ab96efe4f9993420c3674e03",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-07-27T23:09:03.759Z",
+  "updatedAt": "2026-07-27T23:09:03.759Z",
+  "authorityBoundary": "evidence-registry-is-a-candidate-record-and-does-not-establish-claim-validation-evidence-sufficiency-assurance-review-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority"
+}

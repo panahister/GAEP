@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "adapterId": "gaep.codex-cli",
+  "agentId": "codex-cli",
+  "modelId": "fake-model",
+  "modelTruthClass": "observed",
+  "modelAlias": false,
+  "settings": {},
+  "selectedAt": "2026-07-27T23:09:04.259Z",
+  "capabilityDigest": "sha256:107982a95ba201f7abd0af4228e0616402331e00d287a61ea142974ca490528d"
+}
