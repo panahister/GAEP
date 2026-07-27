@@ -9,6 +9,7 @@ import {
   riskRegisterSchema,
   evidenceRegistrySchema,
   endToEndTraceabilitySchema,
+  p0P4ReadinessGateSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -74,6 +75,7 @@ import {
   type RiskRegister,
   type EvidenceRegistry,
   type EndToEndTraceability,
+  type P0P4ReadinessGate,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2125,6 +2127,16 @@ export class ProductStudioService {
       /^end-to-end-traceability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       endToEndTraceabilitySchema,
     )
+    const p0P4ReadinessGates = await this.listRecords(
+      "p0-p4-readiness-gates",
+      /^[0-9a-f-]+\.json$/i,
+      p0P4ReadinessGateSchema,
+    )
+    const p0P4ReadinessGateHistory = await this.listRecords(
+      "p0-p4-readiness-gate-history",
+      /^p0-p4-readiness-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      p0P4ReadinessGateSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2178,6 +2190,8 @@ export class ProductStudioService {
       ...evidenceRegistryHistory,
       ...endToEndTraceability,
       ...endToEndTraceabilityHistory,
+      ...p0P4ReadinessGates,
+      ...p0P4ReadinessGateHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2205,6 +2219,7 @@ export class ProductStudioService {
           riskRegisters.find((record) => record.id === id)?.informationClassification ??
           evidenceRegistries.find((record) => record.id === id)?.informationClassification ??
           endToEndTraceability.find((record) => record.id === id)?.informationClassification ??
+          p0P4ReadinessGates.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2384,6 +2399,13 @@ export class ProductStudioService {
       "end-to-end-traceability-candidate",
       endToEndTraceabilityHistory,
       (record) => `end-to-end-traceability-history/end-to-end-traceability-${record.id}-r${record.revision}.json`,
+    )
+    append("p0-p4-readiness-gates", "p0-p4-readiness-gate-candidate", p0P4ReadinessGates)
+    append(
+      "p0-p4-readiness-gate-history",
+      "p0-p4-readiness-gate-candidate",
+      p0P4ReadinessGateHistory,
+      (record) => `p0-p4-readiness-gate-history/p0-p4-readiness-gate-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2728,6 +2750,14 @@ export class ProductStudioService {
           `end-to-end-traceability-history/end-to-end-traceability-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import End-to-End Traceability history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("p0-p4-readiness-gate-history/")) {
+        const record = validated as P0P4ReadinessGate
+        const expectedHistoryPath =
+          `p0-p4-readiness-gate-history/p0-p4-readiness-gate-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import P0-P4 Readiness Gate history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3854,7 +3884,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3886,7 +3916,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -5454,7 +5484,7 @@ export class ProductStudioService {
     const endToEndTraceabilityHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("end-to-end-traceability-history/"))
       .map(([, record]) => endToEndTraceabilitySchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactEndToEndTraceability = validateVersionedBusinessRecords(
       endToEndTraceability,
       endToEndTraceabilityHistory,
       "End-to-End Traceability",
@@ -5536,6 +5566,137 @@ export class ProductStudioService {
       }
       if (traceability.membershipDigest !== canonicalDigest(expectedMembership)) {
         throw new Error(`Import End-to-End Traceability ${traceability.id} membership digest is invalid`)
+      }
+    }
+
+    const p0P4ReadinessGates = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("p0-p4-readiness-gates/"))
+      .map(([, record]) => p0P4ReadinessGateSchema.parse(record))
+    const p0P4ReadinessGateHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("p0-p4-readiness-gate-history/"))
+      .map(([, record]) => p0P4ReadinessGateSchema.parse(record))
+    validateVersionedBusinessRecords(
+      p0P4ReadinessGates,
+      p0P4ReadinessGateHistory,
+      "P0-P4 Readiness Gate",
+    )
+    type ReadinessIdentity = {
+      id: string
+      revision?: number
+      productId?: string
+      initiativeId?: string
+    }
+    const exactReadinessSubjects = new Map<string, ReadinessIdentity>()
+    const addReadinessSubject = (kind: string, record: unknown, digestValue = canonicalDigest(record)): void => {
+      const candidate = record as ReadinessIdentity
+      if (!candidate.id) return
+      const revision = candidate.revision ?? 1
+      exactReadinessSubjects.set(`${kind}:${candidate.id}:${revision}:${digestValue}`, candidate)
+    }
+    const addReadinessSubjects = (kind: string, records: unknown[]): void => {
+      for (const record of records) addReadinessSubject(kind, record)
+    }
+    addReadinessSubjects("architecture-challenge-model", [...architectureChallengeModels, ...architectureChallengeModelHistory])
+    addReadinessSubjects("authorization-model", [...authorizationModels, ...authorizationModelHistory])
+    addReadinessSubjects("bounded-context-model", [...boundedContextModels, ...boundedContextModelHistory])
+    addReadinessSubjects("business-architecture-baseline", [...businessArchitectureBaselines, ...businessArchitectureBaselineHistory])
+    addReadinessSubjects("business-capability-map", [...capabilityMaps, ...capabilityMapHistory])
+    addReadinessSubjects("business-rule-catalog", [...businessRuleCatalogs, ...businessRuleCatalogHistory])
+    addReadinessSubjects("business-understanding", [...businessUnderstanding, ...businessUnderstandingHistory])
+    addReadinessSubjects("source-baseline", [...sourceBaselines, ...sourceBaselineHistory])
+    addReadinessSubjects("data-model", [...dataModels, ...dataModelHistory])
+    addReadinessSubjects("decision-register", [...decisionRegisters, ...decisionRegisterHistory])
+    addReadinessSubjects("end-to-end-traceability-candidate", [...endToEndTraceability, ...endToEndTraceabilityHistory])
+    addReadinessSubjects("event-integration-model", [...eventIntegrationModels, ...eventIntegrationModelHistory])
+    addReadinessSubjects("evidence-registry", [...evidenceRegistries, ...evidenceRegistryHistory])
+    addReadinessSubjects("failure-recovery-model", [...failureRecoveryModels, ...failureRecoveryModelHistory])
+    for (const initiative of initiatives) addReadinessSubject("initiative", initiative)
+    addReadinessSubjects("operating-model", [...operatingModels, ...operatingModelHistory])
+    addReadinessSubjects("outcome-model", [...outcomeModels, ...outcomeModelHistory])
+    addReadinessSubjects("process-model", [...processModels, ...processModelHistory])
+    addReadinessSubjects("risk-register", [...riskRegisters, ...riskRegisterHistory])
+    addReadinessSubjects("security-privacy-threat-assessment", [...securityPrivacyAssessments, ...securityPrivacyAssessmentHistory])
+    addReadinessSubjects("source-record", sources)
+    for (const history of sourceHistory) {
+      addReadinessSubject("source-record", history.snapshot, history.recordDigest)
+    }
+    addReadinessSubjects("source-provenance", sourceProvenance)
+    addReadinessSubjects("stakeholder-model", [...stakeholderModels, ...stakeholderModelHistory])
+    addReadinessSubjects("system-solution-architecture", [...systemSolutionArchitectures, ...systemSolutionArchitectureHistory])
+    addReadinessSubjects("value-stream-model", [...valueStreamModels, ...valueStreamModelHistory])
+    const resolveReadinessSubject = (
+      reference: P0P4ReadinessGate["outputs"][number]["subjects"][number],
+      gate: P0P4ReadinessGate,
+    ): ReadinessIdentity => {
+      const resolved = exactReadinessSubjects.get(
+        `${reference.recordKind}:${reference.recordId}:${reference.revision}:${reference.digest}`,
+      )
+      if (!resolved || (resolved.productId !== undefined && resolved.productId !== gate.productId) ||
+          (resolved.initiativeId !== undefined && resolved.initiativeId !== gate.initiativeId)) {
+        throw new Error(`Import P0-P4 Readiness Gate ${gate.id} exact governed subject reference is unresolved`)
+      }
+      return resolved
+    }
+    for (const gate of [...p0P4ReadinessGates, ...p0P4ReadinessGateHistory]) {
+      const evidenceRegistry = exactEvidenceRegistries.get(
+        `${gate.evidenceRegistry.recordId}:${gate.evidenceRegistry.revision}:${gate.evidenceRegistry.digest}`,
+      )
+      if (!evidenceRegistry || evidenceRegistry.initiativeId !== gate.initiativeId) {
+        throw new Error(`Import P0-P4 Readiness Gate ${gate.id} exact Evidence Registry reference is unresolved`)
+      }
+      const traceability = exactEndToEndTraceability.get(
+        `${gate.traceability.recordId}:${gate.traceability.revision}:${gate.traceability.digest}`,
+      )
+      if (!traceability || traceability.initiativeId !== gate.initiativeId) {
+        throw new Error(`Import P0-P4 Readiness Gate ${gate.id} exact End-to-End Traceability reference is unresolved`)
+      }
+      const evidenceKeys = new Set(evidenceRegistry.evidenceItems.map((evidence) => evidence.key))
+      for (const output of gate.outputs) {
+        for (const subject of output.subjects) resolveReadinessSubject(subject, gate)
+        if (output.evidenceItemKeys.some((key) => !evidenceKeys.has(key))) {
+          throw new Error(`Import P0-P4 Readiness Gate ${gate.id} references an unknown Evidence Item`)
+        }
+      }
+      for (const waiver of gate.waivers) {
+        if (waiver.state === "granted") {
+          throw new Error(`Import P0-P4 Readiness Gate ${gate.id} contains unverifiable granted waiver authority`)
+        }
+        const decisions = exactDecisionRegisters.get(
+          `${waiver.decision.register.recordId}:${waiver.decision.register.revision}:${waiver.decision.register.digest}`,
+        )
+        const risks = exactRiskRegisters.get(
+          `${waiver.risk.register.recordId}:${waiver.risk.register.revision}:${waiver.risk.register.digest}`,
+        )
+        if (!decisions || decisions.initiativeId !== gate.initiativeId ||
+            !decisions.decisions.some((decision) => decision.key === waiver.decision.decisionKey) ||
+            !risks || risks.initiativeId !== gate.initiativeId ||
+            !risks.risks.some((risk) => risk.key === waiver.risk.riskKey)) {
+          throw new Error(`Import P0-P4 Readiness Gate ${gate.id} waiver Decision or Risk reference is unresolved`)
+        }
+      }
+      for (const unresolved of gate.unresolvedDecisions) {
+        const decisions = exactDecisionRegisters.get(
+          `${unresolved.decisionRegister.recordId}:${unresolved.decisionRegister.revision}:${unresolved.decisionRegister.digest}`,
+        )
+        if (!decisions || decisions.initiativeId !== gate.initiativeId ||
+            !decisions.decisions.some((decision) => decision.key === unresolved.decisionKey)) {
+          throw new Error(`Import P0-P4 Readiness Gate ${gate.id} unresolved Decision reference is unresolved`)
+        }
+      }
+      for (const condition of gate.conditions) resolveReadinessSubject(condition.sourceReference, gate)
+      const expectedMembership = {
+        evaluationDefinition: gate.evaluationDefinition,
+        evidenceRegistry: gate.evidenceRegistry,
+        traceability: gate.traceability,
+        outputs: gate.outputs,
+        waivers: gate.waivers,
+        unresolvedDecisions: gate.unresolvedDecisions,
+        conditions: gate.conditions,
+        requirementCoverage: gate.requirementCoverage,
+        readinessAuthorityState: gate.readinessAuthorityState,
+      }
+      if (gate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import P0-P4 Readiness Gate ${gate.id} membership digest is invalid`)
       }
     }
 
@@ -6212,6 +6373,10 @@ export class ProductStudioService {
         /^end-to-end-traceability-history\/end-to-end-traceability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "end-to-end-traceability-candidate"
     }
+    if (/^p0-p4-readiness-gates\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^p0-p4-readiness-gate-history\/p0-p4-readiness-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "p0-p4-readiness-gate-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -6332,6 +6497,10 @@ export class ProductStudioService {
     if (/^end-to-end-traceability\/[0-9a-f-]+\.json$/i.test(path) ||
         /^end-to-end-traceability-history\/end-to-end-traceability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return endToEndTraceabilitySchema
+    }
+    if (/^p0-p4-readiness-gates\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^p0-p4-readiness-gate-history\/p0-p4-readiness-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return p0P4ReadinessGateSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

@@ -7059,6 +7059,10 @@ describe("Business understanding governance", () => {
       endToEndTraceabilityInput(riskRegister, evidenceRegistry),
       actorId,
     )
+    const readinessGate = await engine.p0P4ReadinessGate.create(
+      p0P4ReadinessGateInput(evidenceRegistry, traceability),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -7099,6 +7103,8 @@ describe("Business understanding governance", () => {
       `evidence-registry-history/evidence-registry-${evidenceRegistry.id}-r1.json`,
       `end-to-end-traceability/${traceability.id}.json`,
       `end-to-end-traceability-history/end-to-end-traceability-${traceability.id}-r1.json`,
+      `p0-p4-readiness-gates/${readinessGate.id}.json`,
+      `p0-p4-readiness-gate-history/p0-p4-readiness-gate-${readinessGate.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -7362,6 +7368,28 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedTraceabilityNode))
       .rejects.toThrow(/End-to-End Traceability .* exact governed node reference is unresolved/)
+
+    const forgeReadinessSubject = (content: unknown) => {
+      const record = content as Awaited<ReturnType<typeof engine.p0P4ReadinessGate.read>>
+      return {
+        ...record,
+        outputs: record.outputs.map((output) => output.outputKind === "evidence-registry"
+          ? { ...output, subjects: output.subjects.map((subject) => ({ ...subject, digest: digest("6") })) }
+          : output),
+      }
+    }
+    let forgedReadinessGate = replacePortableRecord(
+      bundle,
+      `p0-p4-readiness-gates/${readinessGate.id}.json`,
+      forgeReadinessSubject,
+    )
+    forgedReadinessGate = replacePortableRecord(
+      forgedReadinessGate,
+      `p0-p4-readiness-gate-history/p0-p4-readiness-gate-${readinessGate.id}-r1.json`,
+      forgeReadinessSubject,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedReadinessGate))
+      .rejects.toThrow(/P0-P4 Readiness Gate .* exact governed subject reference is unresolved/)
 
     const rebound = replacePortableRecord(
       bundle,
