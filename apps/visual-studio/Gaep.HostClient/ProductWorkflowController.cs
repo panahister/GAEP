@@ -1343,6 +1343,61 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadP5HandoffPackageAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadP5HandoffPackageAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while the P5 Handoff Package was read. Refresh the exact records.");
+        }
+        return RenderP5HandoffPackage(projection);
+    }
+
+    public static string RenderP5HandoffPackage(P5HandoffPackageProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed P5 Handoff Package candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState}")
+            .AppendLine($"Readiness result: {projection.ReadinessResult} · transfer state: {projection.TransferState}")
+            .AppendLine(
+                $"Items: {projection.IncludedItemCount} included · {projection.ReferenceOnlyItemCount} exact references · " +
+                $"{projection.OmittedNotApplicableItemCount} candidate not applicable · {projection.UnresolvedItemCount} unresolved")
+            .AppendLine(
+                $"Candidate gaps: {projection.StaleOrUnknownItemCount} stale or unknown applicable items · " +
+                $"{projection.LossyTransformationCount} lossy transformations · {projection.UnresolvedRequirementCount} requirements · " +
+                $"{projection.ConflictCount} conflicts · {projection.UnresolvedQuestionCount} questions · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Handoff is { } handoff)
+        {
+            output.AppendLine($"P5 Handoff Package candidate: {handoff.Id:D}@{handoff.Revision} · candidate · {handoff.Digest}")
+                .AppendLine($"Membership digest: {handoff.MembershipDigest}")
+                .AppendLine($"Readiness assessment digest: {handoff.ReadinessStatusDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {handoff.ItemCount} items · {handoff.RequirementCount} requirements · " +
+                    $"{handoff.DeliveryMode} delivery");
+        }
+        else output.AppendLine("P5 Handoff Package candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Handoff boundary: {projection.HandoffBoundary}")
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: source ownership remains retained; complete for review is not acknowledgement, readiness " +
+                "approval, design approval, a Design Baseline, P5 entry, transfer authority, write authority, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

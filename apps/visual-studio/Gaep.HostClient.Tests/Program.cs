@@ -64,6 +64,7 @@ internal static class Program
     private static readonly Guid EvidenceRegistryId = Guid.Parse("59595959-5959-4959-8959-595959595959");
     private static readonly Guid EndToEndTraceabilityId = Guid.Parse("60606060-6060-4060-8060-606060606060");
     private static readonly Guid P0P4ReadinessGateId = Guid.Parse("61616161-6161-4161-8161-616161616161");
+    private static readonly Guid P5HandoffPackageId = Guid.Parse("62626262-6262-4262-8262-626262626262");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -185,6 +186,9 @@ internal static class Program
         var badReadinessGateSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-readiness-gate-snapshot-binding");
         var badReadinessGateSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-readiness-gate-snapshot-digest");
         var badReadinessGateSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-readiness-gate-snapshot-private");
+        var badP5HandoffSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-p5-handoff-snapshot-binding");
+        var badP5HandoffSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-p5-handoff-snapshot-digest");
+        var badP5HandoffSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-p5-handoff-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -303,6 +307,9 @@ internal static class Program
         Directory.CreateDirectory(badReadinessGateSnapshotBindingRoot);
         Directory.CreateDirectory(badReadinessGateSnapshotDigestRoot);
         Directory.CreateDirectory(badReadinessGateSnapshotPrivateRoot);
+        Directory.CreateDirectory(badP5HandoffSnapshotBindingRoot);
+        Directory.CreateDirectory(badP5HandoffSnapshotDigestRoot);
+        Directory.CreateDirectory(badP5HandoffSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1487,6 +1494,45 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadP0P4ReadinessGateAsync(InitiativeId),
                 "P0-P4 Readiness Gate rejects a projection rebound to a substituted Product revision");
+        }
+
+        var p5HandoffProjection = await client.ReadP5HandoffPackageAsync(InitiativeId);
+        Check(p5HandoffProjection.ProductId == product.Id &&
+              p5HandoffProjection.ProductRevision == product.Revision &&
+              p5HandoffProjection.ProductDigest == product.Digest &&
+              p5HandoffProjection.InitiativeId == resolved.Id &&
+              p5HandoffProjection.InitiativeRevision == resolved.Revision &&
+              p5HandoffProjection.InitiativeDigest == resolved.Digest &&
+              p5HandoffProjection.AssessmentState == "attention-required" &&
+              p5HandoffProjection.ReadinessResult == "incomplete" &&
+              p5HandoffProjection.TransferState == "held" &&
+              p5HandoffProjection.Handoff?.ItemCount == 25 &&
+              p5HandoffProjection.Handoff?.RequirementCount == 66 &&
+              p5HandoffProjection.Handoff?.DeliveryMode == "disconnected",
+            "Typed P5 Handoff Package preserves exact Product, Initiative, candidate inventory, and transfer metadata");
+        var p5HandoffOutput = await initiativeController.ReadP5HandoffPackageAsync(InitiativeId);
+        Check(p5HandoffOutput.Contains("GAEP governed P5 Handoff Package candidate", StringComparison.Ordinal) &&
+              p5HandoffOutput.Contains("17 included · 3 exact references · 4 candidate not applicable · 1 unresolved", StringComparison.Ordinal) &&
+              p5HandoffOutput.Contains("source ownership remains retained", StringComparison.Ordinal) &&
+              p5HandoffOutput.Contains("complete for review is not acknowledgement", StringComparison.Ordinal) &&
+              !p5HandoffOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !p5HandoffOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !p5HandoffOutput.Contains("itemContent", StringComparison.Ordinal),
+            "P5 Handoff Package workflow renders privacy-safe metadata with explicit ownership and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badP5HandoffSnapshotDigestRoot, badP5HandoffSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadP5HandoffPackageAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "P5 Handoff Package rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badP5HandoffSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadP5HandoffPackageAsync(InitiativeId),
+                "P5 Handoff Package rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2675,6 +2721,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-readiness-gate-snapshot-digest";
         var badReadinessGateSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-readiness-gate-snapshot-private";
+        var badP5HandoffSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-p5-handoff-snapshot-binding";
+        var badP5HandoffSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-p5-handoff-snapshot-digest";
+        var badP5HandoffSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-p5-handoff-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3024,6 +3076,17 @@ internal static class Program
                         badReadinessGateSnapshotBinding,
                         badReadinessGateSnapshotDigest,
                         badReadinessGateSnapshotPrivate);
+                    break;
+                case "handoff.p5.snapshot":
+                    await HandleP5HandoffPackageAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badP5HandoffSnapshotBinding,
+                        badP5HandoffSnapshotDigest,
+                        badP5HandoffSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -5324,6 +5387,105 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) gate["outputCount"] = 24;
         if (includePrivateField) result["waiverRationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleP5HandoffPackageAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID P5 HANDOFF PACKAGE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-27T04:00:00.000Z";
+        var handoffDigest = $"sha256:{new string('1', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var handoff = new Dictionary<string, object?>
+        {
+            ["id"] = P5HandoffPackageId.ToString("D"),
+            ["revision"] = 3,
+            ["digest"] = handoffDigest,
+            ["membershipDigest"] = $"sha256:{new string('2', 64)}",
+            ["state"] = "candidate",
+            ["readinessStatusDigest"] = $"sha256:{new string('3', 64)}",
+            ["itemCount"] = 25,
+            ["requirementCount"] = 66,
+            ["deliveryMode"] = "disconnected",
+            ["updatedAt"] = "2026-07-27T03:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "p5-handoff-package-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "p5-handoff-package-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["handoff"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = P5HandoffPackageId.ToString("D"),
+                    ["revision"] = 3,
+                    ["digest"] = handoffDigest,
+                },
+                ["itemCount"] = 25,
+                ["includedItemCount"] = 17,
+                ["referenceOnlyItemCount"] = 3,
+                ["omittedNotApplicableItemCount"] = 4,
+                ["unresolvedItemCount"] = 1,
+                ["staleOrUnknownItemCount"] = 2,
+                ["lossyTransformationCount"] = 1,
+                ["unresolvedRequirementCount"] = 2,
+                ["conflictCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["readinessResult"] = "incomplete",
+                ["transferState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "Candidate package retains unresolved review gaps" },
+                ["assessedAt"] = assessedAt,
+                ["handoffBoundary"] =
+                    "handoff-transfers-exact-candidate-context-not-source-ownership-or-authority",
+                ["authorityBoundary"] =
+                    "p5-handoff-package-status-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-or-action-authority",
+            },
+            ["handoff"] = handoff,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-item-content-summaries-omissions-uncertainties-source-content-personal-data-secrets-credentials-or-destinations",
+            ["authorityBoundary"] =
+                "p5-handoff-package-projection-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) handoff["itemCount"] = 24;
+        if (includePrivateField) result["itemContent"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

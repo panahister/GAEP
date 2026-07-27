@@ -70,6 +70,7 @@ for (const binding of [
   "LoadEvidenceRegistryCommand",
   "LoadEndToEndTraceabilityCommand",
   "LoadP0P4ReadinessGateCommand",
+  "LoadP5HandoffPackageCommand",
   "InitiativeTypes",
   "InitiativeClassification",
   "ClassifyInitiativeCommand",
