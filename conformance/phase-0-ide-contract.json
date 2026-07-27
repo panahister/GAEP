@@ -49,7 +49,8 @@
     { "id": "risk-register", "label": "Exact governed Risk Register candidate projection without assessment fact, owner assignment, control effectiveness, risk acceptance, approval, exception, baseline promotion, operational readiness, or action authority" },
     { "id": "evidence-registry", "label": "Exact governed Evidence Registry candidate projection without claim validation, evidence sufficiency, assurance, completed review, approval, risk acceptance, operational readiness, baseline promotion, or action authority" },
     { "id": "end-to-end-traceability", "label": "Exact governed End-to-End Traceability candidate projection with an explicit incomplete-coverage boundary and without relationship truth, completeness, approval, baseline promotion, operational readiness, or action authority" },
-    { "id": "p0-p4-readiness-gate", "label": "Exact governed P0-P4 Readiness Gate candidate evaluation with an explicit passing-is-not-permission boundary and without readiness, approval, waiver acceptance, phase-entry or implementation authorization, baseline promotion, or action authority" }
+    { "id": "p0-p4-readiness-gate", "label": "Exact governed P0-P4 Readiness Gate candidate evaluation with an explicit passing-is-not-permission boundary and without readiness, approval, waiver acceptance, phase-entry or implementation authorization, baseline promotion, or action authority" },
+    { "id": "p5-handoff-package", "label": "Exact governed P5 Handoff Package candidate projection with retained source ownership and without acknowledgement, readiness, approval, Design Baseline, P5 entry, transfer, write, or action authority" }
   ],
   "hosts": [
     {
@@ -60,7 +61,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-27T100328Z-phase-1-p0-p4-readiness-gate-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -206,6 +207,9 @@
         ] },
         { "capabilityId": "p0-p4-readiness-gate", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["p0P4ReadinessGate?: {", "engine.p0P4ReadinessGate!.project(initiative.id)", "id: \"p0-p4-readiness-gates\"", "A passing gate is an evaluation result, not permission; it does not grant approval, accept waivers, authorize phase entry or implementation, promote a baseline, establish readiness, or authorize action."] }
+        ] },
+        { "capabilityId": "p5-handoff-package", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["p5HandoffPackageProjections: Map<string, P5HandoffPackageProjection>", "engine.p5HandoffPackage!.project(initiative.id)", "id: \"p5-handoff-packages\"", "Candidate context transfer only; source ownership remains retained and this does not establish acknowledgement, readiness, approval, a design baseline, P5 entry, transfer authority, write authority, or action authority."] }
         ] }
       ]
     },
@@ -217,7 +221,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-27T100328Z-phase-1-p0-p4-readiness-gate-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -381,6 +385,10 @@
         { "capabilityId": "p0-p4-readiness-gate", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readP0P4ReadinessGate(", "this.request(\"readiness.gates.snapshot\"", "p0P4ReadinessGateProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showP0P4ReadinessGate", "GAEP governed P0-P4 Readiness Gate candidate", "Evaluation result: ${status.result}", "Gate boundary: ${status.gateBoundary}"] }
+        ] },
+        { "capabilityId": "p5-handoff-package", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readP5HandoffPackage(", "this.request(\"handoff.p5.snapshot\"", "p5HandoffPackageProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showP5HandoffPackage", "GAEP governed P5 Handoff Package candidate", "Handoff boundary: ${status.handoffBoundary}", "Source ownership remains retained. Complete for review is not acknowledgement"] }
         ] }
       ]
     },
@@ -392,7 +400,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-27T100328Z-phase-1-p0-p4-readiness-gate-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -583,6 +591,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readP0P4ReadinessGate(", "portableRequest(\"readiness.gates.snapshot\"", "parseP0P4ReadinessGateEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed P0-P4 Readiness Gate candidate", "Gate boundary:", "does not grant approval"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["P0P4ReadinessGateRecordView", "P0_P4_READINESS_GATE_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "p5-handoff-package", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readP5HandoffPackage(", "portableRequest(\"handoff.p5.snapshot\"", "parseP5HandoffPackageEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed P5 Handoff Package candidate", "Handoff boundary:", "source ownership remains retained"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["P5HandoffPackageRecordView", "P5_HANDOFF_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -594,7 +607,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-27T100328Z-phase-1-p0-p4-readiness-gate-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -794,13 +807,18 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadP0P4ReadinessGateAsync(", "\"readiness.gates.snapshot\"", "ParseP0P4ReadinessGateResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed P0-P4 Readiness Gate candidate", "Gate boundary:", "does not grant approval"] },
           { "path": "apps/visual-studio/Gaep.HostClient/P0P4ReadinessGateProtocol.cs", "contains": ["P0P4ReadinessGateProjection", "P0P4ReadinessGateProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "p5-handoff-package", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadP5HandoffPackageAsync(", "\"handoff.p5.snapshot\"", "ParseP5HandoffPackageResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed P5 Handoff Package candidate", "Handoff boundary:", "source ownership remains retained"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/P5HandoffPackageProtocol.cs", "contains": ["P5HandoffPackageProjection", "P5HandoffProjectionAuthorityBoundary"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-27T100328Z-phase-1-p0-p4-readiness-gate-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",

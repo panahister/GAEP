@@ -115,6 +115,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/EndToEndTraceabilityProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/P0P4ReadinessGateModels.cs",
       "apps/visual-studio/Gaep.HostClient/P0P4ReadinessGateProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/P5HandoffPackageModels.cs",
+      "apps/visual-studio/Gaep.HostClient/P5HandoffPackageProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -131,7 +133,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (396)",
+        "GAEP Visual Studio host-client tests: PASS (403)",
       ],
     }],
   },
