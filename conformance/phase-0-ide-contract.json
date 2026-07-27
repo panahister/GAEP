@@ -62,7 +62,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T133617Z-phase-1-summary-readiness-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -109,7 +109,7 @@
           { "path": "apps/vscode/src/extension.ts", "contains": ["engine.listManagedRunsPage({ offset: 0, limit: 200 })", "runtime.engine.readManagedRunEvidence(id)", "No apply, discard, cleanup, recovery, or outcome success is claimed"] }
         ] },
         { "capabilityId": "phase-dashboard-framework", "state": "implemented", "probes": [
-          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["composePhaseDashboardFramework(observed.product", "phase: this.context.deliveryPhase()", "...(dashboard ? { dashboard } : {})"] },
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["composePhaseDashboardFramework(observed.product", "phase: deliveryPhase", "...(dashboard ? { dashboard } : {})"] },
           { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isPhaseDashboardFramework", "value.catalogVersion !== \"gaep-phase-dashboards-v1\"", "panel.id !== expected[index]", "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"] },
           { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderPhaseDashboard(snapshot.dashboard)", "Exact Product revision", "This projection does not prove phase approval, readiness, acceptance, or applicability"] }
         ] },
@@ -227,7 +227,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T133617Z-phase-1-summary-readiness-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -410,7 +410,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T133617Z-phase-1-summary-readiness-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -623,7 +623,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T133617Z-phase-1-summary-readiness-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
