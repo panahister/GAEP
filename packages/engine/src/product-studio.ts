@@ -8,6 +8,7 @@ import {
   decisionRegisterSchema,
   riskRegisterSchema,
   evidenceRegistrySchema,
+  endToEndTraceabilitySchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -72,6 +73,8 @@ import {
   type DecisionRegister,
   type RiskRegister,
   type EvidenceRegistry,
+  type EndToEndTraceability,
+  type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
   type ProcessModel,
@@ -2112,6 +2115,16 @@ export class ProductStudioService {
       /^evidence-registry-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       evidenceRegistrySchema,
     )
+    const endToEndTraceability = await this.listRecords(
+      "end-to-end-traceability",
+      /^[0-9a-f-]+\.json$/i,
+      endToEndTraceabilitySchema,
+    )
+    const endToEndTraceabilityHistory = await this.listRecords(
+      "end-to-end-traceability-history",
+      /^end-to-end-traceability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      endToEndTraceabilitySchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2163,6 +2176,8 @@ export class ProductStudioService {
       ...riskRegisterHistory,
       ...evidenceRegistries,
       ...evidenceRegistryHistory,
+      ...endToEndTraceability,
+      ...endToEndTraceabilityHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2189,6 +2204,7 @@ export class ProductStudioService {
           decisionRegisters.find((record) => record.id === id)?.informationClassification ??
           riskRegisters.find((record) => record.id === id)?.informationClassification ??
           evidenceRegistries.find((record) => record.id === id)?.informationClassification ??
+          endToEndTraceability.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2361,6 +2377,13 @@ export class ProductStudioService {
       "evidence-registry-candidate",
       evidenceRegistryHistory,
       (record) => `evidence-registry-history/evidence-registry-${record.id}-r${record.revision}.json`,
+    )
+    append("end-to-end-traceability", "end-to-end-traceability-candidate", endToEndTraceability)
+    append(
+      "end-to-end-traceability-history",
+      "end-to-end-traceability-candidate",
+      endToEndTraceabilityHistory,
+      (record) => `end-to-end-traceability-history/end-to-end-traceability-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2697,6 +2720,14 @@ export class ProductStudioService {
           `evidence-registry-history/evidence-registry-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Evidence Registry history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("end-to-end-traceability-history/")) {
+        const record = validated as EndToEndTraceability
+        const expectedHistoryPath =
+          `end-to-end-traceability-history/end-to-end-traceability-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import End-to-End Traceability history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3823,7 +3854,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3855,7 +3886,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -5320,7 +5351,11 @@ export class ProductStudioService {
     const evidenceRegistryHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("evidence-registry-history/"))
       .map(([, record]) => evidenceRegistrySchema.parse(record))
-    validateVersionedBusinessRecords(evidenceRegistries, evidenceRegistryHistory, "Evidence Registry")
+    const exactEvidenceRegistries = validateVersionedBusinessRecords(
+      evidenceRegistries,
+      evidenceRegistryHistory,
+      "Evidence Registry",
+    )
     const exactRiskRegisters = new Map(
       [...riskRegisters, ...riskRegisterHistory].map((record) => [
         `${record.id}:${record.revision}:${canonicalDigest(record)}`,
@@ -5410,6 +5445,97 @@ export class ProductStudioService {
             (resolved.initiativeId !== undefined && resolved.initiativeId !== registry.initiativeId)) {
           throw new Error(`Import Evidence Registry ${registry.id} exact governed subject reference is unresolved`)
         }
+      }
+    }
+
+    const endToEndTraceability = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("end-to-end-traceability/"))
+      .map(([, record]) => endToEndTraceabilitySchema.parse(record))
+    const endToEndTraceabilityHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("end-to-end-traceability-history/"))
+      .map(([, record]) => endToEndTraceabilitySchema.parse(record))
+    validateVersionedBusinessRecords(
+      endToEndTraceability,
+      endToEndTraceabilityHistory,
+      "End-to-End Traceability",
+    )
+    const exactTraceabilitySubjects = new Map(exactDecisionSubjects)
+    const addTraceabilitySubject = (kind: TraceabilitySubjectKind, record: unknown): void => {
+      const candidate = record as { id?: string; revision?: number; productId?: string; initiativeId?: string }
+      if (!candidate.id || !candidate.revision) return
+      exactTraceabilitySubjects.set(
+        `${kind}:${candidate.id}:${candidate.revision}:${canonicalDigest(record)}`,
+        candidate as { id: string; revision: number; productId?: string; initiativeId?: string },
+      )
+    }
+    for (const record of [...decisionRegisters, ...decisionRegisterHistory]) {
+      addTraceabilitySubject("decision-register", record)
+    }
+    for (const record of [...riskRegisters, ...riskRegisterHistory]) {
+      addTraceabilitySubject("risk-register", record)
+    }
+    for (const record of [...evidenceRegistries, ...evidenceRegistryHistory]) {
+      addTraceabilitySubject("evidence-registry", record)
+    }
+    for (const traceability of [...endToEndTraceability, ...endToEndTraceabilityHistory]) {
+      const evidenceRegistry = exactEvidenceRegistries.get(
+        `${traceability.evidenceRegistry.recordId}:${traceability.evidenceRegistry.revision}:${traceability.evidenceRegistry.digest}`,
+      )
+      if (!evidenceRegistry || evidenceRegistry.initiativeId !== traceability.initiativeId) {
+        throw new Error(`Import End-to-End Traceability ${traceability.id} exact Evidence Registry reference is unresolved`)
+      }
+      for (const node of traceability.nodes) {
+        const resolved = exactTraceabilitySubjects.get(
+          `${node.subject.recordKind}:${node.subject.recordId}:${node.subject.revision}:${node.subject.digest}`,
+        )
+        if (!resolved || (resolved.productId !== undefined && resolved.productId !== traceability.productId) ||
+            (resolved.initiativeId !== undefined && resolved.initiativeId !== traceability.initiativeId)) {
+          throw new Error(`Import End-to-End Traceability ${traceability.id} exact governed node reference is unresolved`)
+        }
+      }
+      const expectedMembership = {
+        evidenceRegistry: traceability.evidenceRegistry,
+        nodes: traceability.nodes.map((node) => ({
+          key: node.key,
+          subject: node.subject,
+          lifecycle: node.lifecycle,
+        })),
+        relationships: traceability.relationships.map((relationship) => ({
+          key: relationship.key,
+          namespace: relationship.namespace,
+          registryRevision: relationship.registryRevision,
+          definitionDigest: relationship.definitionDigest,
+          sourceKinds: relationship.sourceKinds,
+          targetKinds: relationship.targetKinds,
+          direction: relationship.direction,
+          inverseRelationshipKey: relationship.inverseRelationshipKey,
+          transitivity: relationship.transitivity,
+          symmetry: relationship.symmetry,
+          impactBehavior: relationship.impactBehavior,
+          sourceCardinality: relationship.sourceCardinality,
+          targetCardinality: relationship.targetCardinality,
+          lifecycle: relationship.lifecycle,
+        })),
+        links: traceability.links.map((link) => ({
+          key: link.key,
+          sourceNodeKey: link.sourceNodeKey,
+          targetNodeKey: link.targetNodeKey,
+          relationshipKey: link.relationshipKey,
+          provenance: link.provenance,
+          state: link.state,
+          verification: link.verification,
+          effectiveFrom: link.effectiveFrom,
+          expiresAt: link.expiresAt,
+          invalidationConditions: link.invalidationConditions,
+          supersedesLinkKeys: link.supersedesLinkKeys,
+        })),
+        transformations: traceability.transformations,
+        traceSpine: traceability.traceSpine,
+        requirementCoverage: traceability.requirementCoverage,
+        coverageState: traceability.coverageState,
+      }
+      if (traceability.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import End-to-End Traceability ${traceability.id} membership digest is invalid`)
       }
     }
 
@@ -6082,6 +6208,10 @@ export class ProductStudioService {
         /^evidence-registry-history\/evidence-registry-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "evidence-registry-candidate"
     }
+    if (/^end-to-end-traceability\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^end-to-end-traceability-history\/end-to-end-traceability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "end-to-end-traceability-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -6198,6 +6328,10 @@ export class ProductStudioService {
     if (/^evidence-registries\/[0-9a-f-]+\.json$/i.test(path) ||
         /^evidence-registry-history\/evidence-registry-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return evidenceRegistrySchema
+    }
+    if (/^end-to-end-traceability\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^end-to-end-traceability-history\/end-to-end-traceability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return endToEndTraceabilitySchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

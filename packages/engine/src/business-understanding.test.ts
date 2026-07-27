@@ -39,6 +39,7 @@ import {
   type EvidenceRegistryInput,
   type EvidenceRegistry,
   type EndToEndTraceabilityInput,
+  type EndToEndTraceability,
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
@@ -6749,6 +6750,10 @@ describe("Business understanding governance", () => {
       ),
       actorId,
     )
+    const traceability = await engine.endToEndTraceability.create(
+      endToEndTraceabilityInput(riskRegister, evidenceRegistry),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -6787,6 +6792,8 @@ describe("Business understanding governance", () => {
       `risk-register-history/risk-register-${riskRegister.id}-r1.json`,
       `evidence-registries/${evidenceRegistry.id}.json`,
       `evidence-registry-history/evidence-registry-${evidenceRegistry.id}-r1.json`,
+      `end-to-end-traceability/${traceability.id}.json`,
+      `end-to-end-traceability-history/end-to-end-traceability-${traceability.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -7028,6 +7035,28 @@ describe("Business understanding governance", () => {
     )
     await expect(engine.productStudio.previewImportBundle(forgedDecisionSubject))
       .rejects.toThrow(/Decision Register .* exact governed subject reference is unresolved/)
+
+    const forgeTraceabilityNode = (content: unknown) => {
+      const record = content as EndToEndTraceability
+      return {
+        ...record,
+        nodes: record.nodes.map((node) => node.key === "risk-register"
+          ? { ...node, subject: { ...node.subject, digest: digest("6") } }
+          : node),
+      }
+    }
+    let forgedTraceabilityNode = replacePortableRecord(
+      bundle,
+      `end-to-end-traceability/${traceability.id}.json`,
+      forgeTraceabilityNode,
+    )
+    forgedTraceabilityNode = replacePortableRecord(
+      forgedTraceabilityNode,
+      `end-to-end-traceability-history/end-to-end-traceability-${traceability.id}-r1.json`,
+      forgeTraceabilityNode,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedTraceabilityNode))
+      .rejects.toThrow(/End-to-End Traceability .* exact governed node reference is unresolved/)
 
     const rebound = replacePortableRecord(
       bundle,
