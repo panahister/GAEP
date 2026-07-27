@@ -76,12 +76,12 @@ function input() {
       return {
         outputKind,
         applicability: isApplicable ? "applicable" as const : "not-applicable-candidate" as const,
-        ...(isApplicable ? { subject: {
+        subjects: isApplicable ? [{
           recordKind: recordKinds[outputKind],
           recordId: `${String(index + 1).padStart(8, "0")}-0000-4000-8000-000000000001`,
           revision: 1,
           digest: digest("f"),
-        } } : {}),
+        }] : [],
         evaluationState: isApplicable ? "incomplete" as const : "not-applicable-candidate" as const,
         freshness: isApplicable ? "current" as const : "unknown" as const,
         evidenceItemKeys: [],

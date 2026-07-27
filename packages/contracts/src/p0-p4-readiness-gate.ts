@@ -152,7 +152,9 @@ const exactReadinessSubjectReferenceSchema = z.object({
 const readinessOutputEvaluationSchema = z.object({
   outputKind: p0P4ReadinessOutputKindSchema,
   applicability: z.enum(["applicable", "not-applicable-candidate", "unresolved"]),
-  subject: exactReadinessSubjectReferenceSchema.optional(),
+  subjects: z.array(exactReadinessSubjectReferenceSchema).max(512)
+    .refine((entries) => unique(entries.map((entry) => `${entry.recordKind}:${entry.recordId}:${entry.revision}`)), "Readiness output subjects must be unique")
+    .refine((entries) => canonical(entries.map((entry) => `${entry.recordKind}:${entry.recordId}:${String(entry.revision).padStart(12, "0")}`)), "Readiness output subjects must use canonical ordering"),
   evaluationState: z.enum([
     "blocked",
     "conditionally-satisfied",
@@ -176,11 +178,11 @@ const readinessOutputEvaluationSchema = z.object({
     "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority",
   ),
 }).strict().superRefine((entry, context) => {
-  if ((entry.applicability === "applicable") !== (entry.subject !== undefined)) {
-    context.addIssue({ code: "custom", path: ["subject"], message: "Applicable outputs require one exact subject and other applicability states must not invent one" })
+  if ((entry.applicability === "applicable") !== (entry.subjects.length > 0)) {
+    context.addIssue({ code: "custom", path: ["subjects"], message: "Applicable outputs require exact subjects and other applicability states must not invent them" })
   }
-  if (entry.subject && entry.subject.recordKind !== p0P4ReadinessRecordKinds[entry.outputKind]) {
-    context.addIssue({ code: "custom", path: ["subject", "recordKind"], message: "Readiness output subject kind does not match its canonical output class" })
+  if (entry.subjects.some((subject) => subject.recordKind !== p0P4ReadinessRecordKinds[entry.outputKind])) {
+    context.addIssue({ code: "custom", path: ["subjects"], message: "Readiness output subject kind does not match its canonical output class" })
   }
   if ((entry.applicability === "not-applicable-candidate") !==
       (entry.evaluationState === "not-applicable-candidate")) {
