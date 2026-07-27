@@ -1274,6 +1274,39 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "readiness-gate-read-empty",
+      protocolVersion: 2,
+      method: "readiness.gates.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "readiness-gate-assess-empty",
+      protocolVersion: 2,
+      method: "readiness.gates.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      outputCount: 0,
+      applicableOutputCount: 0,
+      result: "not-assessed",
+      gateBoundary: "a-passing-gate-is-an-evaluation-result-not-permission",
+      authorityBoundary: expect.stringContaining("does-not-establish-readiness-approval"),
+    })
+    const readinessGateProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "readiness-gate-snapshot-empty",
+      protocolVersion: 2,
+      method: "readiness.gates.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: readinessGateSnapshotDigest, ...readinessGateProjectionBody } = readinessGateProjection
+    expect(readinessGateSnapshotDigest).toBe(canonicalDigest(readinessGateProjectionBody))
+    expect(readinessGateProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-output-content-criteria-findings"),
+      authorityBoundary: expect.stringContaining("does-not-establish-readiness-approval"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1300,6 +1333,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "traceability-v1-block",
       method: "traceability.graphs.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "readiness-gate-v1-block",
+      method: "readiness.gates.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
@@ -1489,6 +1528,25 @@ describe("engine host protocol", () => {
           approved: true,
           baselinePromoted: true,
           ready: true,
+          actionAuthorized: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "readiness-gate-extra-authority",
+      protocolVersion: 2,
+      method: "readiness.gates.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          ready: true,
+          approved: true,
+          waiverAccepted: true,
+          phaseEntryGranted: true,
+          implementationAuthorized: true,
+          baselinePromoted: true,
           actionAuthorized: true,
         },
       },

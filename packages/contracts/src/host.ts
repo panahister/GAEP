@@ -43,6 +43,7 @@ import { decisionRegisterInputSchema } from "./decision-register.js"
 import { riskRegisterInputSchema } from "./risk-register.js"
 import { evidenceRegistryInputSchema } from "./evidence-registry.js"
 import { endToEndTraceabilityInputSchema } from "./end-to-end-traceability.js"
+import { p0P4ReadinessGateInputSchema } from "./p0-p4-readiness-gate.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -471,6 +472,18 @@ export const hostEndToEndTraceabilityReviseParamsSchema = z.object({
   record: endToEndTraceabilityInputSchema,
 }).strict()
 
+export const hostP0P4ReadinessGateCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: p0P4ReadinessGateInputSchema,
+}).strict()
+
+export const hostP0P4ReadinessGateReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: p0P4ReadinessGateInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -622,6 +635,11 @@ export const hostMethodSchema = z.enum([
   "traceability.graphs.revise",
   "traceability.graphs.assess",
   "traceability.graphs.snapshot",
+  "readiness.gates.read",
+  "readiness.gates.create",
+  "readiness.gates.revise",
+  "readiness.gates.assess",
+  "readiness.gates.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -785,6 +803,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("traceability.graphs.revise", hostEndToEndTraceabilityReviseParamsSchema),
   requestVariant("traceability.graphs.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("traceability.graphs.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("readiness.gates.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("readiness.gates.create", hostP0P4ReadinessGateCreateParamsSchema),
+  requestVariant("readiness.gates.revise", hostP0P4ReadinessGateReviseParamsSchema),
+  requestVariant("readiness.gates.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("readiness.gates.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
