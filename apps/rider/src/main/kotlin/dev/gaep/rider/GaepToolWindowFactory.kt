@@ -402,6 +402,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += evidenceRegistryButton
         actions.add(evidenceRegistryButton)
 
+        val endToEndTraceabilityButton = JButton("Inspect End-to-End Traceability…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Node content, link rationale, transformation detail, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP End-to-End Traceability",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect End-to-End Traceability", status, output, buttons) {
+                    controller.readEndToEndTraceability(initiativeId)
+                }
+            }
+        }
+        buttons += endToEndTraceabilityButton
+        actions.add(endToEndTraceabilityButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

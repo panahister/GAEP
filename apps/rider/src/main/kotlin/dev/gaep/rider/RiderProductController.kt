@@ -1072,6 +1072,55 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readEndToEndTraceability(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readEndToEndTraceability(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while End-to-End Traceability was read. Refresh the exact records." }
+        return renderEndToEndTraceability(projection)
+    }
+
+    fun renderEndToEndTraceability(projection: EndToEndTraceabilityProjection): String = buildString {
+        appendLine("GAEP governed End-to-End Traceability candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Assessment: ${projection.assessmentState}")
+        appendLine(
+            "Coverage: ${projection.nodeCount} nodes · ${projection.relationshipCount} relationship types · " +
+                "${projection.linkCount} links · ${projection.transformationCount} transformations",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedEndpointCount} unresolved endpoints · " +
+                "${projection.notAssessedSemanticCount} semantic reviews pending · " +
+                "${projection.missingSpineCount} missing spine segments · " +
+                "${projection.unknownRelationshipCount} unknown relationships · " +
+                "${projection.unresolvedRequirementCount} requirements · " +
+                "${projection.inconsistencyCount} inconsistencies · ${projection.unresolvedQuestionCount} questions · " +
+                "${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.traceability?.let { record ->
+            appendLine("End-to-End Traceability candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+        } ?: appendLine("End-to-End Traceability candidate: not recorded")
+        appendLine()
+        appendLine("Coverage boundary: ${projection.coverageBoundary}")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Boundary: this privacy-safe view exposes no node content, link rationale, transformation detail, Source content, " +
+                "personal data, local paths, secrets, or credentials; absence does not prove no impact or relationship, and " +
+                "presence does not establish relationship truth, completeness, approval, baseline promotion, operational " +
+                "readiness, or action authority.",
+        )
+    }
+
     fun renderFailureRecoveryModel(projection: FailureRecoveryModelProjection): String = buildString {
         appendLine("GAEP governed Failure and Recovery Model candidate")
         appendLine()

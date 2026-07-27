@@ -33,6 +33,7 @@ private val architectureChallengeModelId = UUID.fromString("56565656-5656-4656-8
 private val decisionRegisterId = UUID.fromString("57575757-5757-4757-8757-575757575757")
 private val riskRegisterId = UUID.fromString("58585858-5858-4858-8858-585858585858")
 private val evidenceRegistryId = UUID.fromString("59595959-5959-4959-8959-595959595959")
+private val endToEndTraceabilityId = UUID.fromString("60606060-6060-4060-8060-606060606060")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -196,6 +197,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "evidence.registries.snapshot" -> handleEvidenceRegistry(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "traceability.graphs.snapshot" -> handleEndToEndTraceability(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -2092,6 +2098,102 @@ private fun handleEvidenceRegistry(id: Long, params: JsonObject, workspacePath: 
         }
         workspacePath.endsWith("bad-evidence-registry-snapshot-private") -> {
             value.addProperty("claimStatement", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleEndToEndTraceability(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE TRACEABILITY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-traceability-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-27T02:30:00.000Z"
+    val traceabilityDigest = "sha256:${"a".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "end-to-end-traceability-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "end-to-end-traceability-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("traceability", JsonObject().apply {
+                addProperty("recordId", endToEndTraceabilityId.toString())
+                addProperty("revision", 3)
+                addProperty("digest", traceabilityDigest)
+            })
+            addProperty("nodeCount", 44)
+            addProperty("relationshipCount", 12)
+            addProperty("linkCount", 67)
+            addProperty("transformationCount", 5)
+            addProperty("verifiedLinkCount", 40)
+            addProperty("proposedLinkCount", 20)
+            addProperty("invalidOrHistoricalLinkCount", 7)
+            addProperty("unresolvedEndpointCount", 2)
+            addProperty("notAssessedSemanticCount", 6)
+            addProperty("missingSpineCount", 1)
+            addProperty("unknownRelationshipCount", 3)
+            addProperty("unresolvedRequirementCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("inconsistencyCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Trace Links have unresolved endpoints") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "coverageBoundary",
+                "absence-of-a-trace-link-does-not-prove-absence-of-impact-or-relationship",
+            )
+            addProperty(
+                "authorityBoundary",
+                "end-to-end-traceability-status-reports-candidate-coverage-and-gaps-and-does-not-establish-relationship-truth-completeness-approval-readiness-or-action-authority",
+            )
+        })
+        add("traceability", JsonObject().apply {
+            addProperty("id", endToEndTraceabilityId.toString())
+            addProperty("revision", 3)
+            addProperty("digest", traceabilityDigest)
+            addProperty("membershipDigest", "sha256:${"b".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("nodeCount", 44)
+            addProperty("relationshipCount", 12)
+            addProperty("linkCount", 67)
+            addProperty("transformationCount", 5)
+            addProperty("updatedAt", "2026-07-27T02:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-statuses-and-digests-only-not-node-content-link-rationale-transformation-detail-source-content-personal-data-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "end-to-end-traceability-projection-does-not-establish-relationship-truth-completeness-approval-baseline-promotion-readiness-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-traceability-snapshot-digest") -> {
+            value.getAsJsonObject("traceability").addProperty("nodeCount", 45)
+        }
+        workspacePath.endsWith("bad-traceability-snapshot-private") -> {
+            value.addProperty("linkRationale", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

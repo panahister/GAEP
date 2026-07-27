@@ -1501,6 +1501,48 @@ data class EvidenceRegistryProjection(
     val snapshotDigest: String,
 )
 
+data class EndToEndTraceabilityRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val nodeCount: Int,
+    val relationshipCount: Int,
+    val linkCount: Int,
+    val transformationCount: Int,
+)
+
+data class EndToEndTraceabilityProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val nodeCount: Int,
+    val relationshipCount: Int,
+    val linkCount: Int,
+    val transformationCount: Int,
+    val verifiedLinkCount: Int,
+    val proposedLinkCount: Int,
+    val invalidOrHistoricalLinkCount: Int,
+    val unresolvedEndpointCount: Int,
+    val notAssessedSemanticCount: Int,
+    val missingSpineCount: Int,
+    val unknownRelationshipCount: Int,
+    val unresolvedRequirementCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val coverageBoundary: String,
+    val traceability: EndToEndTraceabilityRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1640,6 +1682,14 @@ internal object PortableDesignProtocol {
         "evidence-registry-projection-does-not-establish-claim-validation-evidence-sufficiency-assurance-review-approval-risk-acceptance-readiness-or-action-authority"
     private const val EVIDENCE_REGISTRY_STATUS_AUTHORITY_BOUNDARY =
         "evidence-registry-status-reports-candidate-coverage-freshness-and-gaps-and-does-not-establish-claim-validation-evidence-sufficiency-assurance-approval-readiness-or-action-authority"
+    private const val END_TO_END_TRACEABILITY_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-node-content-link-rationale-transformation-detail-source-content-personal-data-secrets-or-credentials"
+    private const val END_TO_END_TRACEABILITY_PROJECTION_AUTHORITY_BOUNDARY =
+        "end-to-end-traceability-projection-does-not-establish-relationship-truth-completeness-approval-baseline-promotion-readiness-or-action-authority"
+    private const val END_TO_END_TRACEABILITY_STATUS_AUTHORITY_BOUNDARY =
+        "end-to-end-traceability-status-reports-candidate-coverage-and-gaps-and-does-not-establish-relationship-truth-completeness-approval-readiness-or-action-authority"
+    private const val END_TO_END_TRACEABILITY_COVERAGE_BOUNDARY =
+        "absence-of-a-trace-link-does-not-prove-absence-of-impact-or-relationship"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -5119,6 +5169,147 @@ internal object PortableDesignProtocol {
             staleOrUnknownEvidenceCount, invalidatedEvidenceCount, unresolvedLinkCount, unresolvedRequirementCount,
             inconsistencyCount, unresolvedQuestionCount, staleBindingCount, staleSourceReferenceCount, registry,
             snapshotDigest,
+        )
+    }
+
+    fun parseEndToEndTraceabilityEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): EndToEndTraceabilityProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("traceability"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "end-to-end-traceability-projection" ||
+            projection.requireString("privacyBoundary") != END_TO_END_TRACEABILITY_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != END_TO_END_TRACEABILITY_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "nodeCount", "relationshipCount", "linkCount", "transformationCount", "verifiedLinkCount",
+                "proposedLinkCount", "invalidOrHistoricalLinkCount", "unresolvedEndpointCount",
+                "notAssessedSemanticCount", "missingSpineCount", "unknownRelationshipCount",
+                "unresolvedRequirementCount", "staleBindingCount", "staleSourceReferenceCount",
+                "inconsistencyCount", "unresolvedQuestionCount", "state", "reasons", "assessedAt",
+                "coverageBoundary", "authorityBoundary",
+            ),
+            setOf("traceability"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "end-to-end-traceability-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != END_TO_END_TRACEABILITY_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val coverageBoundary = status.requireString("coverageBoundary")
+        if (coverageBoundary != END_TO_END_TRACEABILITY_COVERAGE_BOUNDARY) throw invalidResponse()
+        val reference = status.get("traceability")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val nodeCount = status.requireBoundedNonNegativeInt("nodeCount", 8_192)
+        val relationshipCount = status.requireBoundedNonNegativeInt("relationshipCount", 512)
+        val linkCount = status.requireBoundedNonNegativeInt("linkCount", 32_768)
+        val transformationCount = status.requireBoundedNonNegativeInt("transformationCount", 4_096)
+        val verifiedLinkCount = status.requireBoundedNonNegativeInt("verifiedLinkCount", 32_768)
+        val proposedLinkCount = status.requireBoundedNonNegativeInt("proposedLinkCount", 32_768)
+        val invalidOrHistoricalLinkCount = status.requireBoundedNonNegativeInt("invalidOrHistoricalLinkCount", 32_768)
+        val unresolvedEndpointCount = status.requireBoundedNonNegativeInt("unresolvedEndpointCount", 65_536)
+        val notAssessedSemanticCount = status.requireBoundedNonNegativeInt("notAssessedSemanticCount", 32_768)
+        if (verifiedLinkCount + proposedLinkCount + invalidOrHistoricalLinkCount > linkCount ||
+            notAssessedSemanticCount > linkCount
+        ) throw invalidResponse()
+        val missingSpineCount = status.requireBoundedNonNegativeInt("missingSpineCount", 4_096)
+        val unknownRelationshipCount = status.requireBoundedNonNegativeInt("unknownRelationshipCount", 512)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 21)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val inconsistencyCount = status.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val assessmentState = status.requireOneOf("state", setOf("complete-for-review", "attention-required"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 512) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if ((assessmentState == "complete-for-review") != reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val traceability = projection.get("traceability")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "nodeCount",
+                "relationshipCount", "linkCount", "transformationCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = EndToEndTraceabilityRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("nodeCount", 8_192),
+                value.requireBoundedNonNegativeInt("relationshipCount", 512),
+                value.requireBoundedNonNegativeInt("linkCount", 32_768),
+                value.requireBoundedNonNegativeInt("transformationCount", 4_096),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision ||
+                reference.digest != record.digest
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (traceability == null) ||
+            (traceability?.nodeCount ?: 0) != nodeCount ||
+            (traceability?.relationshipCount ?: 0) != relationshipCount ||
+            (traceability?.linkCount ?: 0) != linkCount ||
+            (traceability?.transformationCount ?: 0) != transformationCount ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return EndToEndTraceabilityProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reasons, nodeCount, relationshipCount, linkCount,
+            transformationCount, verifiedLinkCount, proposedLinkCount, invalidOrHistoricalLinkCount,
+            unresolvedEndpointCount, notAssessedSemanticCount, missingSpineCount, unknownRelationshipCount,
+            unresolvedRequirementCount, staleBindingCount, staleSourceReferenceCount, inconsistencyCount,
+            unresolvedQuestionCount, coverageBoundary, traceability, snapshotDigest,
         )
     }
 

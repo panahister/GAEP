@@ -267,6 +267,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readEndToEndTraceability(initiativeId: UUID): EndToEndTraceabilityProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("traceability.graphs.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseEndToEndTraceabilityEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,
