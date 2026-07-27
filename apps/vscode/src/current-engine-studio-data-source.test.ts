@@ -2521,6 +2521,29 @@ describe("current-engine Product Studio data source", () => {
     const { snapshotDigest, ...agentModelContent } = agentModel
     expect(snapshotDigest).toBe(canonicalDigest(agentModelContent))
     expect(JSON.stringify(agentModel)).not.toContain("must-redact")
+    expect(agents.phase1AgentModel).toMatchObject({
+      kind: "phase-1-agent-model-dashboard",
+      product: { recordId: product.id, revision: product.revision },
+      initiative: { recordId: initiative.id, revision: initiative.revision, state: initiative.state },
+      source: { scope: "exact-current-initiative" },
+      executionTruth: {
+        capabilities: { shown: 2, total: 2, omitted: 0, selected: 1 },
+        runs: { shown: 1, total: 1, omitted: 0, terminal: 1, nonTerminal: 0 },
+        handoffs: { shown: 0, total: 0, omitted: 0 },
+        liveProviderQuality: "not-assessed",
+        semanticOutputQuality: "not-assessed",
+      },
+      governance: { runLaunchAuthority: "not-granted", productOwnerAcceptance: "not-established" },
+    })
+    const phase1AgentModel = agents.phase1AgentModel
+    if (!phase1AgentModel) throw new Error("Expected exact Phase 1 Agent/Model dashboard")
+    const { snapshotDigest: phase1Digest, ...phase1Content } = phase1AgentModel
+    expect(phase1Digest).toBe(canonicalDigest(phase1Content))
+    expect(JSON.stringify(phase1AgentModel)).not.toContain("must-redact")
+    const tampered = structuredClone(agents)
+    if (!tampered.phase1AgentModel) throw new Error("Expected Phase 1 Agent/Model dashboard to tamper")
+    tampered.phase1AgentModel.executionTruth.runs.terminal = 0
+    expect(isStudioSnapshot(tampered)).toBe(false)
   })
 
   it("composes an exact Phase 1 summary from current Initiative readiness and handoff projections", async () => {

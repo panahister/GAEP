@@ -4,6 +4,7 @@ import type {
   AgentModelDashboard,
   ChangeImpactDashboard,
   Phase1ChangeImpactDashboard,
+  Phase1AgentModelDashboard,
   Phase1SummaryDashboard,
   PhaseDashboardFramework,
 } from "@gaep/contracts"
@@ -219,7 +220,8 @@ class StudioShell {
       if (snapshot.phase1Summary) main.append(this.renderPhase1Summary(snapshot.phase1Summary))
       if (snapshot.phase1ChangeImpact) main.append(this.renderPhase1ChangeImpact(snapshot.phase1ChangeImpact))
       if (snapshot.changeImpact) main.append(this.renderChangeImpactDashboard(snapshot.changeImpact))
-      if (snapshot.agentModel) main.append(this.renderAgentModelDashboard(snapshot.agentModel))
+      if (snapshot.phase1AgentModel) main.append(this.renderPhase1AgentModelDashboard(snapshot.phase1AgentModel))
+      else if (snapshot.agentModel) main.append(this.renderAgentModelDashboard(snapshot.agentModel))
     }
     else main.append(this.renderSurfaceState(snapshot.surface))
     workspace.append(main)
@@ -1339,6 +1341,39 @@ class StudioShell {
       { term: "Omission", value: dashboard.limits.truncated ? "One or more bounded categories are truncated." : "No rows are omitted from the bounded categories." },
     ]))
     section.append(this.renderStringList("Projection limits", dashboard.limitations))
+    return section
+  }
+
+  private renderPhase1AgentModelDashboard(dashboard: Phase1AgentModelDashboard): HTMLElement {
+    const section = element("section", "section phase1-agent-model-dashboard")
+    section.setAttribute("aria-label", "Phase 1 Agent and Model execution truth")
+    section.append(
+      element("h3", undefined, "Phase 1 Agent and model execution truth"),
+      element(
+        "p",
+        "prose",
+        `Exact Initiative ${dashboard.initiative.recordId} at revision ${dashboard.initiative.revision} · ${dashboard.freshness.state}.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        "This Initiative-scoped observation does not establish provider readiness or quality, choose a provider, acknowledge a handoff, launch a Run, authorize effects, approve Phase 1, or record Product Owner acceptance.",
+      ),
+      this.renderDefinitionGroup("Initiative-scoped execution truth", [
+        { term: "Capabilities", value: `${dashboard.executionTruth.capabilities.shown}/${dashboard.executionTruth.capabilities.total} shown · ${dashboard.executionTruth.capabilities.detected} detected · ${dashboard.executionTruth.capabilities.selected} selected` },
+        { term: "Runs", value: `${dashboard.executionTruth.runs.shown}/${dashboard.executionTruth.runs.total} shown · ${dashboard.executionTruth.runs.terminal} terminal · ${dashboard.executionTruth.runs.nonTerminal} non-terminal` },
+        { term: "Managed results", value: `${dashboard.executionTruth.runs.resultBound} bound · ${dashboard.executionTruth.runs.actualEffectCount} recorded actual effects` },
+        { term: "Outcomes", value: `${dashboard.executionTruth.runs.outcomes.satisfied} satisfied · ${dashboard.executionTruth.runs.outcomes.failed} failed · ${dashboard.executionTruth.runs.outcomes.notAssessed} not assessed · ${dashboard.executionTruth.runs.outcomes.indeterminate} indeterminate` },
+        { term: "Handoffs", value: `${dashboard.executionTruth.handoffs.shown}/${dashboard.executionTruth.handoffs.total} shown · ${dashboard.executionTruth.handoffs.pendingAcknowledgement} pending acknowledgement · ${dashboard.executionTruth.handoffs.acknowledged} acknowledged` },
+        { term: "Provider usage and cost", value: "Unavailable" },
+        { term: "Live provider quality", value: dashboard.executionTruth.liveProviderQuality },
+        { term: "Semantic output quality", value: dashboard.executionTruth.semanticOutputQuality },
+        { term: "Product Owner acceptance", value: dashboard.governance.productOwnerAcceptance },
+        { term: "Snapshot digest", value: dashboard.snapshotDigest },
+      ]),
+      this.renderStringList("Phase 1 Agent and model limits", dashboard.limitations),
+      this.renderAgentModelDashboard(dashboard.agentModel),
+    )
     return section
   }
 

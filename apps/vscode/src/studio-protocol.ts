@@ -1,10 +1,12 @@
 import {
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
+  phase1AgentModelDashboardSchema,
   type AgentModelDashboard,
   type ChangeImpactDashboard,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
+  type Phase1AgentModelDashboard,
   type PhaseDashboardFramework,
 } from "@gaep/contracts"
 
@@ -428,6 +430,7 @@ export interface StudioSnapshot {
   phase1ChangeImpact?: Phase1ChangeImpactDashboard
   changeImpact?: ChangeImpactDashboard
   agentModel?: AgentModelDashboard
+  phase1AgentModel?: Phase1AgentModelDashboard
   page: StudioPageSnapshot
   inspector?: StudioInspectorSnapshot
   footer: StudioFooterSnapshot
@@ -655,6 +658,15 @@ function isPhase1ChangeImpactDashboard(value: unknown): value is Phase1ChangeImp
   if (!parsed.success) return false
   const { snapshotDigest, ...content } = parsed.data
   return snapshotDigest === canonicalStudioDigest(content)
+}
+
+function isPhase1AgentModelDashboard(value: unknown): value is Phase1AgentModelDashboard {
+  const parsed = phase1AgentModelDashboardSchema.safeParse(value)
+  if (!parsed.success) return false
+  const { snapshotDigest, ...content } = parsed.data
+  const { snapshotDigest: agentModelDigest, ...agentModelContent } = parsed.data.agentModel
+  return snapshotDigest === canonicalStudioDigest(content) &&
+    agentModelDigest === canonicalStudioDigest(agentModelContent)
 }
 
 const changeImpactEffects = new Set([
@@ -1432,7 +1444,7 @@ function routeMatchesPage(route: StudioRoute, page: Record<string, unknown>): bo
 
 export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
   if (!isRecord(value) || !hasOnlyKeys(value, [
-    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "phase1Summary", "phase1ChangeImpact", "changeImpact", "agentModel", "page", "inspector", "footer",
+    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "phase1Summary", "phase1ChangeImpact", "changeImpact", "agentModel", "phase1AgentModel", "page", "inspector", "footer",
   ])) return false
   if (value.protocolVersion !== studioProtocolVersion || !isOpaqueContextGeneration(value.contextGeneration) ||
     !isNonNegativeInteger(value.snapshotRevision) || !isStudioRoute(value.route)) {
@@ -1449,6 +1461,7 @@ export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
   if (value.phase1ChangeImpact !== undefined && (value.route !== "delivery" || !isPhase1ChangeImpactDashboard(value.phase1ChangeImpact))) return false
   if (value.changeImpact !== undefined && (value.route !== "delivery" || !isChangeImpactDashboard(value.changeImpact))) return false
   if (value.agentModel !== undefined && (value.route !== "agents-tools" || !isAgentModelDashboard(value.agentModel))) return false
+  if (value.phase1AgentModel !== undefined && (value.route !== "agents-tools" || !isPhase1AgentModelDashboard(value.phase1AgentModel))) return false
   if (!Array.isArray(value.navigation) || value.navigation.length !== studioRoutes.length) return false
   const navigationRoutes = value.navigation.flatMap((entry) =>
     isRecord(entry) && hasOnlyKeys(entry, ["route", "state", "gapCount"]) && isStudioRoute(entry.route) &&

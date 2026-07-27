@@ -64,6 +64,7 @@ import type {
   DeliveryPhaseId,
   Phase1SummaryDashboard,
   Phase1ChangeImpactDashboard,
+  Phase1AgentModelDashboard,
   PhaseDashboardFramework,
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
@@ -73,6 +74,7 @@ import {
   composeChangeImpactDashboard,
   composePhase1SummaryDashboard,
   composePhase1ChangeImpactDashboard,
+  composePhase1AgentModelDashboard,
   composePhaseDashboardFramework,
 } from "@gaep/engine"
 import type {
@@ -3709,6 +3711,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     const observed = await this.observe(route)
     let changeImpact: ChangeImpactDashboard | undefined
     let agentModel: AgentModelDashboard | undefined
+    let phase1AgentModel: Phase1AgentModelDashboard | undefined
     if (route === "delivery" && this.changeImpactSelection) {
       try {
         changeImpact = await this.readChangeImpactDashboard(this.changeImpactSelection)
@@ -3731,6 +3734,19 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
           "The Agent/Model dashboard could not be revalidated against the current Product, audit, capability, selection, Run, handoff, and Managed Run evidence snapshots.",
           "warning",
         ))
+      }
+      const initiative = currentInitiative(observed.initiatives)
+      if (initiative) {
+        try {
+          phase1AgentModel = this.composePhase1AgentModelDashboard(observed, initiative)
+        } catch (error) {
+          this.context.logDiagnostic("Product Studio exact Phase 1 Agent/Model dashboard observation failed; private source detail was withheld", error)
+          observed.issues.push(issue(
+            "phase-1-agent-model-unavailable",
+            "The Phase 1 Agent/Model view could not be revalidated against the exact current Product, Initiative, capability, selection, Run, handoff, and Managed Run evidence snapshots.",
+            "warning",
+          ))
+        }
       }
     }
     signal?.throwIfAborted()
@@ -3848,6 +3864,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       ...(phase1ChangeImpact ? { phase1ChangeImpact } : {}),
       ...(changeImpact ? { changeImpact } : {}),
       ...(agentModel ? { agentModel } : {}),
+      ...(phase1AgentModel ? { phase1AgentModel } : {}),
       page: page.page,
       ...(selectedInspector ?? page.inspector ? { inspector: selectedInspector ?? page.inspector } : {}),
       footer: {
@@ -4113,11 +4130,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         !observed.managedRunsObserved) {
       throw new Error("The exact Agent/Model dashboard source set is incomplete")
     }
-    const expectedSelection: AgentModelDashboardRequest["expectedSelection"] = observed.selectionState.status === "selected"
-      ? { status: "selected", selectionDigest: canonicalDigest(observed.selectionState.selection) }
-      : observed.selectionState.status === "migration-required"
-        ? { status: "migration-required", selectionDigest: canonicalDigest(observed.selectionState.portableCandidate) }
-        : { status: observed.selectionState.status }
+    const request = this.agentModelDashboardRequest(observed)
     const managedRuns = observed.managedRuns.map(({ record, result, evidence, issue: observationIssue }) => {
       if (observationIssue) throw new Error("A Managed Run evidence observation is incomplete")
       return { record, ...(result ? { result } : {}), ...(evidence ? { evidence } : {}) }
@@ -4131,7 +4144,19 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       handoffTotal: observed.handoffTotal,
       managedRuns,
       managedRunTotal: observed.managedRunTotal,
-    }, {
+    }, request)
+  }
+
+  private agentModelDashboardRequest(observed: ObservedStudioState): AgentModelDashboardRequest {
+    if (!observed.product || !observed.selectionState || observed.agents.length === 0) {
+      throw new Error("The exact Agent/Model request bindings are incomplete")
+    }
+    const expectedSelection: AgentModelDashboardRequest["expectedSelection"] = observed.selectionState.status === "selected"
+      ? { status: "selected", selectionDigest: canonicalDigest(observed.selectionState.selection) }
+      : observed.selectionState.status === "migration-required"
+        ? { status: "migration-required", selectionDigest: canonicalDigest(observed.selectionState.portableCandidate) }
+        : { status: observed.selectionState.status }
+    return {
       expectedProductId: observed.product.id,
       expectedProductRevision: observed.product.revision ?? 1,
       expectedProductDigest: canonicalDigest(observed.product),
@@ -4141,6 +4166,44 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         agentId: entry.agentId,
         capabilityDigest: capabilityDigest(entry),
       })),
+    }
+  }
+
+  private composePhase1AgentModelDashboard(
+    observed: ObservedStudioState,
+    initiative: Initiative,
+  ): Phase1AgentModelDashboard {
+    if (!observed.product || observed.audit?.valid !== true || !observed.selectionState ||
+        observed.agents.length === 0 || !observed.runsObserved || !observed.handoffsObserved ||
+        !observed.managedRunsObserved || observed.handoffTotal !== observed.handoffs.length ||
+        observed.managedRunTotal !== observed.managedRuns.length) {
+      throw new Error("The exact Initiative-scoped Agent/Model source set is incomplete or bounded")
+    }
+    const initiativeId = initiative.id.toLowerCase()
+    const runs = observed.runs.filter((run) => run.initiativeId.toLowerCase() === initiativeId)
+    const handoffs = observed.handoffs.filter((handoff) => handoff.initiativeId.toLowerCase() === initiativeId)
+    const managedRuns = observed.managedRuns
+      .filter(({ record }) => record.initiativeId.toLowerCase() === initiativeId)
+      .map(({ record, result, evidence, issue: observationIssue }) => {
+        if (observationIssue) throw new Error("An Initiative Managed Run evidence observation is incomplete")
+        return { record, ...(result ? { result } : {}), ...(evidence ? { evidence } : {}) }
+      })
+    const agentModelRequest = this.agentModelDashboardRequest(observed)
+    const agentModel = composeAgentModelDashboard({
+      product: observed.product,
+      capabilities: observed.agents,
+      selection: observed.selectionState,
+      runs,
+      handoffs,
+      handoffTotal: handoffs.length,
+      managedRuns,
+      managedRunTotal: managedRuns.length,
+    }, agentModelRequest)
+    return composePhase1AgentModelDashboard(observed.product, initiative, agentModel, {
+      expectedInitiativeId: initiative.id,
+      expectedInitiativeRevision: initiative.revision ?? 1,
+      expectedInitiativeDigest: canonicalDigest(initiative),
+      agentModel: agentModelRequest,
     })
   }
 
