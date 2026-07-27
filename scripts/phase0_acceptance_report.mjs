@@ -12,6 +12,7 @@ import { buildIdeConformanceReport } from "./lib/ide_conformance.mjs"
 import { verifyClaudeP0P4ReceiptFile } from "./verify_claude_p0_p4_receipt.mjs"
 import { verifyCodexP0P4ReceiptFile } from "./verify_codex_p0_p4_receipt.mjs"
 import { verifyPhase0ExampleReceiptFile } from "./verify_phase0_example_receipt.mjs"
+import { verifyProviderOutputComparisonFile } from "./verify_provider_output_comparison_receipt.mjs"
 
 const execute = promisify(execFile)
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -21,7 +22,7 @@ const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
   packages: "evidence/local-packages/2026-07-27T105431Z-phase-1-p5-handoff-package.json",
   conformance: "evidence/ide-conformance/2026-07-27T105431Z-phase-1-p5-handoff-package.json",
-  example: "evidence/examples/20260727T114738Z-phase-1-claude-p0-p4-acceptance.json",
+  example: "evidence/examples/20260727T120059Z-phase-1-provider-output-comparison.json",
 }
 const gateDefinitions = [
   { id: "typecheck", command: ["npm", "run", "typecheck"], parser: parseTypecheck },
@@ -170,11 +171,13 @@ async function verifiedSources(root, paths) {
   } catch {
     fail("conformance report differs from current contract, package, host, provider, or source evidence")
   }
-  const receipt = example.value?.kind === "gaep-claude-p0-p4-acceptance-receipt"
-    ? await verifyClaudeP0P4ReceiptFile(example.resolved)
-    : example.value?.kind === "gaep-codex-p0-p4-acceptance-receipt"
-      ? await verifyCodexP0P4ReceiptFile(example.resolved)
-      : await verifyPhase0ExampleReceiptFile(example.resolved)
+  const receipt = example.value?.kind === "gaep-provider-output-comparison-receipt"
+    ? await verifyProviderOutputComparisonFile(example.resolved)
+    : example.value?.kind === "gaep-claude-p0-p4-acceptance-receipt"
+      ? await verifyClaudeP0P4ReceiptFile(example.resolved)
+      : example.value?.kind === "gaep-codex-p0-p4-acceptance-receipt"
+        ? await verifyCodexP0P4ReceiptFile(example.resolved)
+        : await verifyPhase0ExampleReceiptFile(example.resolved)
   const hostPath = conformance.value.hosts[0]?.runtimeEvidence?.source
   if (typeof hostPath !== "string" || conformance.value.hosts.some((host) => host.runtimeEvidence.source !== hostPath)) {
     fail("conformance hosts do not share one exact behavior receipt")
@@ -221,13 +224,19 @@ function knownGaps(inputs) {
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    ["gaep-codex-p0-p4-acceptance-receipt", "gaep-claude-p0-p4-acceptance-receipt"].includes(inputs.exampleKind)
+    [
+      "gaep-codex-p0-p4-acceptance-receipt",
+      "gaep-claude-p0-p4-acceptance-receipt",
+      "gaep-provider-output-comparison-receipt",
+    ].includes(inputs.exampleKind)
       ? {
           id: "phase-1-closure",
           state: "not-established",
-          basis: inputs.exampleKind === "gaep-claude-p0-p4-acceptance-receipt"
-            ? "the deterministic Claude parity workflow is local candidate evidence; live providers, dashboards, native-host acceptance and human acceptance remain incomplete"
-            : "the deterministic Codex workflow is local candidate evidence; live provider, Claude parity, dashboards, native-host acceptance and human acceptance remain incomplete",
+          basis: inputs.exampleKind === "gaep-provider-output-comparison-receipt"
+            ? "the deterministic provider comparison proves structural receipt parity only; semantic quality, live providers, dashboards, native-host acceptance and human acceptance remain incomplete"
+            : inputs.exampleKind === "gaep-claude-p0-p4-acceptance-receipt"
+              ? "the deterministic Claude parity workflow is local candidate evidence; live providers, dashboards, native-host acceptance and human acceptance remain incomplete"
+              : "the deterministic Codex workflow is local candidate evidence; live provider, Claude parity, dashboards, native-host acceptance and human acceptance remain incomplete",
         }
       : {
           id: "later-phase-reports",
@@ -249,18 +258,25 @@ export async function buildPhase0AcceptanceReport({
   validateTestEvidence(testEvidence)
   const inputs = await verifiedSources(resolve(root), paths)
   const gaps = knownGaps(inputs)
-  const p0P4 = ["gaep-codex-p0-p4-acceptance-receipt", "gaep-claude-p0-p4-acceptance-receipt"]
+  const p0P4 = [
+    "gaep-codex-p0-p4-acceptance-receipt",
+    "gaep-claude-p0-p4-acceptance-receipt",
+    "gaep-provider-output-comparison-receipt",
+  ]
     .includes(inputs.exampleKind)
   const claudeP0P4 = inputs.exampleKind === "gaep-claude-p0-p4-acceptance-receipt"
+  const providerComparison = inputs.exampleKind === "gaep-provider-output-comparison-receipt"
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
     phase: p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: claudeP0P4
-      ? "phase-1-claude-p0-p4-local"
-      : p0P4
-        ? "phase-1-codex-p0-p4-local"
-        : "phase-0-local",
+    evidenceScope: providerComparison
+      ? "phase-1-provider-output-comparison-local"
+      : claudeP0P4
+        ? "phase-1-claude-p0-p4-local"
+        : p0P4
+          ? "phase-1-codex-p0-p4-local"
+          : "phase-0-local",
     recordedAt,
     sourceCommit,
     verificationResult: "pass",
@@ -284,7 +300,7 @@ export async function buildPhase0AcceptanceReport({
       providersAccepted: inputs.conformance.summary.acceptedProviders,
       validationGatesPassed: testEvidence.length,
       validationGatesFailed: 0,
-      exampleSummaryDigest: inputs.receipt.summaryDigest,
+      exampleSummaryDigest: inputs.receipt.summaryDigest ?? inputs.receipt.comparisonDigest,
       knownGaps: gaps.length,
     },
     sources: inputs.sources,
@@ -293,7 +309,7 @@ export async function buildPhase0AcceptanceReport({
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
     claimBoundary: p0P4
-      ? `This report binds the current deterministic local ${claudeP0P4 ? "Claude" : "Codex"} P0-P4 candidate workflow to package, test, host, provider and conformance evidence. It is not live-provider or native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval.`
+      ? `This report binds the current deterministic local ${providerComparison ? "Codex/Claude provider-output comparison" : claudeP0P4 ? "Claude P0-P4 candidate workflow" : "Codex P0-P4 candidate workflow"} to package, test, host, provider and conformance evidence. It is not semantic model-quality or provider-ranking evidence, live-provider or native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval.`
       : "This report binds current local Phase 0 / 1A package, test, host, provider, conformance and example evidence. It is not native-host or live-provider acceptance, Product readiness, security approval, release authorization, deployment approval, or a later-phase report.",
   }
   return report
