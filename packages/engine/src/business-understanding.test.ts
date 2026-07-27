@@ -110,6 +110,7 @@ import { p0P4ReadinessStatusDigest } from "./p5-handoff-package.js"
 const actorId = "product-owner"
 const digest = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as const
 const fakeCodexServer = fileURLToPath(new URL("../../agent-sdk/test/fixtures/fake-codex-app-server.mjs", import.meta.url))
+const fakeClaudeStream = fileURLToPath(new URL("../../agent-sdk/test/fixtures/fake-claude-stream.mjs", import.meta.url))
 const workspaceRoot = { kind: "workspace-relative" as const, path: "." }
 
 class P0P4FakeManagedCodexAdapter implements AgentAdapter {
@@ -177,6 +178,75 @@ class P0P4FakeManagedCodexAdapter implements AgentAdapter {
     _runtimeBinding: AdapterRuntimeBinding,
   ): AgentInvocation {
     throw new Error("Deterministic P0-P4 Codex fixture is app-server only")
+  }
+}
+
+class P0P4FakeManagedClaudeAdapter implements AgentAdapter {
+  readonly id = "gaep.claude-code-cli"
+
+  constructor(private readonly executable: string) {}
+
+  async probe(): Promise<AdapterProbeResult> {
+    const capabilities = adapterCapabilitiesSnapshotSchema.parse({
+      schemaVersion: 1,
+      adapterId: this.id,
+      adapterVersion: "p1-31-test",
+      agentId: "claude-code-cli",
+      agentLabel: "Claude deterministic stream fixture",
+      runtimeVersion: "p1-31-test",
+      detected: true,
+      executionInterface: "cli-stream-json",
+      interfaceMaturity: "stable",
+      supportsResume: false,
+      supportsCancel: true,
+      supportsCheckpoints: false,
+      supportsModelDiscovery: false,
+      supportsToolSelection: false,
+      settings: [],
+      models: [{
+        id: "success",
+        label: "Deterministic Claude success fixture",
+        reasoningOptions: [],
+        inputModalities: ["text"],
+        truthClass: "provider-declared",
+        alias: false,
+      }],
+      limitations: [
+        "Deterministic local stream fixture; this does not establish live provider authentication, entitlement, reachability, model quality, usage, or cost.",
+        "The production lane remains tool-free, context-only, observation-only, and non-resumable.",
+      ],
+      observedAt: "2026-07-27T00:00:00.000Z",
+    })
+    return {
+      capabilities,
+      runtimeBinding: {
+        scope: "machine-local",
+        kind: "executable",
+        adapterId: this.id,
+        agentId: "claude-code-cli",
+        executablePath: this.executable,
+        executableFingerprint: await fingerprintExecutable(this.executable),
+      },
+    }
+  }
+
+  validateSelection(selection: AgentSelection, capabilities: AdapterCapabilities): string[] {
+    return selection.adapterId === this.id &&
+      selection.agentId === "claude-code-cli" &&
+      selection.modelId === "success" &&
+      selection.capabilityDigest === capabilityDigest(capabilities)
+      ? []
+      : ["Deterministic P0-P4 Claude selection mismatch"]
+  }
+
+  buildInvocation(
+    _selection: AgentSelection,
+    _charter: ExecutionCharter,
+    _workspacePath: string,
+    _prompt: string,
+    _runtimeBinding: AdapterRuntimeBinding,
+  ): AgentInvocation {
+    throw new Error("Deterministic P0-P4 Claude fixture is managed context-only")
   }
 }
 
@@ -8309,6 +8379,382 @@ describe("Business understanding governance", () => {
     expect(JSON.stringify(bundle)).not.toContain(workspace)
     if (process.env.GAEP_P1_30_EMIT_RECEIPT === "1") {
       process.stdout.write(`GAEP_P1_30_SEMANTIC_SUMMARY=${JSON.stringify(summary)}\n`)
+    }
+  }, 30_000)
+
+  it("executes an exact P0-P4 candidate chain through tool-free Claude stream evidence", async () => {
+    const executable = join(workspace, "fake-claude")
+    await writeFile(
+      executable,
+      `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(fakeClaudeStream)} "$@"\n`,
+    )
+    await chmod(executable, 0o700)
+    const claude = new P0P4FakeManagedClaudeAdapter(executable)
+    engine = new GaepEngine(workspace, [claude])
+
+    const classified = await engine.classifyInitiative(initiative.id, {
+      primaryType: "product-increment",
+      secondaryTypes: ["client-application"],
+      systemState: "greenfield",
+      changePosture: "new",
+      motivations: ["business-driven", "technical"],
+      characteristics: {
+        userInterface: "ui-bearing",
+        data: "data-bearing",
+        integration: "isolated",
+        interactionModes: ["interactive"],
+        exposure: "internal",
+      },
+      regulated: false,
+      policyDomains: [],
+      sensitivities: ["data"],
+      expectedLifetime: "long-lived",
+      maintenanceHorizon: "Maintain the governed Product workflow through its supported lifetime.",
+      risk: {
+        blastRadius: "localized",
+        reversibility: "reversible",
+        urgency: "normal",
+        costOfFailure: "medium",
+      },
+      dependencies: [],
+      affectedAssets: ["Governed Product context and candidate P0-P4 outputs"],
+      owner: actorId,
+      accountableAuthority: actorId,
+      confidence: {
+        level: "high",
+        basis: "The deterministic fixture defines the bounded Product, lifecycle, provider, and evidence envelope.",
+      },
+      evidence: [{ kind: "requirement", reference: "P1-31" }],
+      unresolvedQuestions: [],
+      rationale: "The acceptance fixture exercises one bounded Product increment through the governed P0-P4 and managed Claude context-only paths.",
+    }, initiative.revision ?? 1, actorId)
+    const applicability = await engine.resolveInitiativeApplicability(initiative.id, {
+      decisions: initiativeApplicabilitySubjectDefinitions.map((subject) => ({
+        subject: { ...subject },
+        status: "optional" as const,
+        rationale: `The deterministic P1-31 fixture explicitly evaluates ${subject.label} without granting approval or action authority.`,
+        sources: [{ kind: "requirement" as const, reference: "P1-31" }],
+        owner: actorId,
+        dependencies: [],
+        conditions: [],
+        reviewTriggers: ["The fixture scope, classification, policy, provider boundary, or evidence changes"],
+        approval: { state: "not-required" as const, conditions: [] },
+        relatedRecords: [],
+        relatedImplementationUnits: [],
+      })),
+      unresolvedSubjects: [],
+    }, classified.revision ?? 1, actorId)
+    initiative = await engine.updateInitiativeState(
+      applicability.id,
+      "active",
+      "Begin the deterministic P0-P4 Claude evidence workflow.",
+      actorId,
+    )
+
+    const upstream = await createP0P4ReadinessUpstream()
+    const gate = await engine.p0P4ReadinessGate.create(
+      p0P4ReadinessGateInput(upstream.evidenceRegistry, upstream.traceability),
+      actorId,
+    )
+    const handoff = await engine.p5HandoffPackage.create(await p5HandoffPackageInput(gate), actorId)
+    const governedRecords = Object.entries(upstream).map(([kind, value]) => {
+      const record = value as { id: string; revision: number }
+      return { kind, recordId: record.id, revision: record.revision, digest: canonicalDigest(value) }
+    }).sort((left, right) => left.kind.localeCompare(right.kind))
+    const governedContext = {
+      schemaVersion: 1,
+      kind: "gaep-claude-p0-p4-candidate-context",
+      product: { recordId: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+      initiative: { recordId: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative) },
+      source: reference(),
+      governedRecords,
+      readinessGate: { recordId: gate.id, revision: gate.revision, digest: canonicalDigest(gate) },
+      handoff: { recordId: handoff.id, revision: handoff.revision, digest: canonicalDigest(handoff) },
+      authorityBoundary: "candidate-context-does-not-establish-approval-readiness-handoff-acknowledgement-or-action-authority",
+    }
+    const content = JSON.stringify(governedContext)
+    const trust: ContextTrustDimensions = {
+      semanticAuthority: {
+        standing: "advisory",
+        domain: "P0-P4 candidate context",
+        owner: actorId,
+        scope: ["Deterministic P1-31 managed Claude review"],
+        precedence: 10,
+      },
+      epistemicRole: "reference",
+      sourceAuthenticity: "verified",
+      contentIntegrity: "verified",
+      confidentiality: {
+        classification: "internal",
+        purpose: "Exercise an exact tool-free Claude review of the governed P0-P4 candidate chain",
+        recipients: ["claude-code-cli"],
+        retention: "Retain with the governed acceptance fixture",
+      },
+      instructionPrivilege: "workflow-data",
+      freshness: {
+        status: "fresh",
+        assessedAt: "2026-07-27T00:00:00.000Z",
+        basis: "Constructed from exact current governed record identities and digests",
+      },
+      validity: { status: "valid", basis: "Bound to the exact current candidate chain" },
+      revisionDisposition: "current",
+      applicability: { status: "applicable", basis: "Targets this exact P1-31 managed workflow" },
+    }
+
+    const probe = await claude.probe()
+    await engine.selectAgent(probe.capabilities, "success", {}, actorId)
+    const pack = await engine.productStudio.createContextPack({
+      objective: "Provide the exact current governed P0-P4 candidate chain for one tool-free Claude review.",
+      recipient: { kind: "agent", id: "claude-code-cli" },
+      items: [{
+        id: randomUUID(),
+        source: { kind: "logical", value: "p1-31-claude-p0-p4-candidate-context" },
+        sourceRevision: gate.revision,
+        sourceDigest: canonicalDigest(content),
+        selectionReason: "The workflow must bind every created P0-P4 candidate record plus its exact readiness and handoff state.",
+        required: true,
+        content,
+        contentDigest: canonicalDigest(content),
+        trust,
+        transformations: [],
+      }],
+      omissions: [],
+      warnings: [
+        "The deterministic stream fixture verifies invocation, parsing, and governed evidence behavior, not live provider quality or availability.",
+      ],
+      conflicts: [],
+      classificationCombinationRisk: "The single internal metadata-only context contains governed identities and digests but no private Source content.",
+      sufficiencyCriteria: [
+        "All 21 created P0-P4 candidate records are represented by exact identity, revision, and digest",
+        "The exact readiness gate and P5 handoff candidates are represented without authority inflation",
+      ],
+      sufficiencyEvaluator: { kind: "system", id: "gaep.p1-31-fixture" },
+      sufficiencyAssumptions: [],
+    }, product.revision ?? 1, actorId)
+    const packRef = {
+      recordType: "context-pack" as const,
+      recordId: pack.id,
+      revision: pack.revision,
+      digest: canonicalDigest(pack),
+    }
+    const step: WorkflowStep = {
+      id: randomUUID(),
+      title: "Review exact governed P0-P4 candidate context",
+      objective: "Produce one bounded provider observation over exact candidate metadata without tools, writes, resume, or authority.",
+      responsibility: { kind: "agent", id: "claude-code-cli" },
+      contextPacks: [packRef],
+      toolDefinitions: [],
+      dependsOn: [],
+      preconditions: ["The exact Context Pack is current, internal, and sufficient"],
+      outputs: ["One normalized observation from the tool-free Claude stream transport"],
+      evidenceCriteria: ["Portable provider, event, workflow-gate, and outcome evidence is committed"],
+      retry: { maxAttempts: 1, backoffMs: 0, retryOn: [] },
+      stopConditions: ["Stop before every Tool, filesystem, approval, or external-effect request"],
+      scope: { read: [workspaceRoot], write: [], effects: [] },
+      effectEnvelope: ["observe"],
+    }
+    const draftPlan = await engine.productStudio.createWorkflowPlan({
+      title: "Claude P0-P4 deterministic acceptance workflow",
+      objective: "Exercise the exact governed P0-P4 candidate chain through the tool-free Claude stream boundary.",
+      subject: {
+        recordType: "product",
+        recordId: product.id,
+        revision: product.revision ?? 1,
+        digest: canonicalDigest(product),
+      },
+      actor: { kind: "human", id: actorId },
+      strategy: "sequential",
+      contextPacks: [packRef],
+      toolDefinitions: [],
+      steps: [step],
+    }, product.revision ?? 1, actorId)
+    const plan = await engine.productStudio.reviseWorkflowPlan(
+      draftPlan.id,
+      draftPlan.revision,
+      { state: "resolved" },
+      actorId,
+      "The exact candidate context, observation-only effect, and empty Tool/write envelope are resolved.",
+    )
+    const charter = await engine.createCharter({
+      initiativeId: initiative.id,
+      objective: "Run one tool-free Claude observation over the exact governed P0-P4 candidate context.",
+      permissions: [{ capability: "all-tools", mode: "deny", scope: [] }],
+      expectedEffects: ["observe"],
+      forbiddenActions: [
+        "Do not access tools, filesystem, browser, MCP, workspace settings, or external effects",
+        "Do not infer approval, readiness, acknowledgement, baseline, release, or action authority",
+      ],
+      stopConditions: ["Stop after the bounded provider observation or any denied capability request"],
+      requiredEvidence: [
+        "Exact governed binding digest",
+        "Normalized provider and workflow-gate events",
+        "Explicit tool-free context-only runtime warning",
+        "Explicit non-authority boundary",
+      ],
+      managedIntent: {
+        workflowPlan: {
+          recordType: "workflow-plan",
+          recordId: plan.id,
+          revision: plan.revision,
+          digest: canonicalDigest(plan),
+        },
+        contextPacks: [packRef],
+        toolDefinitions: [],
+        requestedEffects: ["observe"],
+        requestedScopes: [],
+      },
+    }, actorId)
+    await engine.confirmCharter(charter.id, actorId)
+    const preview = await engine.previewManagedReadOnlyExecution(charter.id, plan.id)
+    const receipt = await engine.executeManagedReadOnly({
+      charterId: charter.id,
+      workflowPlanId: plan.id,
+      expectedPreviewDigest: preview.previewDigest,
+      timeoutMs: 30_000,
+    }, actorId)
+    const managedRun = await engine.readManagedRun(receipt.managedRunId)
+    if (!managedRun.resultId) throw new Error("P1-31 Managed Run did not bind its result")
+    const result = await engine.readManagedRunResult(managedRun.resultId)
+    const evidence = await engine.readManagedRunEvidence(result.evidenceId)
+    const [readiness, handoffStatus, audit] = await Promise.all([
+      engine.p0P4ReadinessGate.assess(initiative.id),
+      engine.p5HandoffPackage.assess(initiative.id),
+      engine.repository.verifyAudit(),
+    ])
+    const summary = {
+      schemaVersion: 1,
+      kind: "gaep-claude-p0-p4-semantic-summary",
+      governedRecordKinds: governedRecords.map((record) => record.kind),
+      governedRecordCount: governedRecords.length,
+      readiness: {
+        result: readiness.result,
+        outputCount: readiness.outputCount,
+        applicableOutputCount: readiness.applicableOutputCount,
+        notApplicableOutputCount: readiness.notApplicableOutputCount,
+        readinessAuthorityState: gate.readinessAuthorityState,
+      },
+      handoff: {
+        state: handoffStatus.state,
+        itemCount: handoffStatus.itemCount,
+        includedItemCount: handoffStatus.includedItemCount,
+        omittedNotApplicableItemCount: handoffStatus.omittedNotApplicableItemCount,
+        acknowledgementState: handoff.acknowledgementState,
+        transferAuthorityState: handoff.transferAuthorityState,
+      },
+      execution: {
+        adapterId: receipt.adapterId,
+        agentId: receipt.agentId,
+        modelId: receipt.modelId,
+        mode: receipt.mode,
+        state: receipt.state,
+        providerDisposition: receipt.providerDisposition,
+        outcomeStatus: receipt.outcomeStatus,
+        outcomeBasis: receipt.outcomeBasis,
+        completedStepCount: receipt.completedStepCount,
+        totalStepCount: receipt.totalStepCount,
+        stagingPresent: evidence.staging !== undefined,
+        toolDefinitionCount: plan.toolDefinitions.length,
+        writeScopeCount: plan.steps.reduce((count, candidate) => count + candidate.scope.write.length, 0),
+        providerPostconditionStatus: evidence.workflow.attempts[0]?.providerPostconditionStatus,
+        postconditionAuthority: evidence.workflow.attempts[0]?.postconditionAuthority,
+        warningCodes: receipt.warnings,
+      },
+      integrity: {
+        auditValid: audit.valid,
+        previewBound: receipt.previewDigest === preview.previewDigest,
+        resultBound: managedRun.resultDigest === canonicalDigest(result) && managedRun.resultDigest === receipt.resultDigest,
+        evidenceBound: result.evidenceDigest === canonicalDigest(evidence) && result.evidenceDigest === receipt.evidenceDigest,
+        eventsBound: evidence.eventsDigest === canonicalDigest(evidence.events),
+        contextBound: pack.items[0]?.contentDigest === canonicalDigest(content),
+      },
+      authorityBoundary: receipt.authorityBoundary,
+    }
+    expect(summary).toEqual({
+      schemaVersion: 1,
+      kind: "gaep-claude-p0-p4-semantic-summary",
+      governedRecordKinds: [
+        "architecture",
+        "architectureChallengeModel",
+        "authorizationModel",
+        "baseline",
+        "boundedContextModel",
+        "business",
+        "businessRuleCatalog",
+        "capabilityMap",
+        "dataModel",
+        "decisionRegister",
+        "eventIntegrationModel",
+        "evidenceRegistry",
+        "failureRecoveryModel",
+        "operatingModel",
+        "outcome",
+        "processModel",
+        "riskRegister",
+        "securityPrivacyAssessment",
+        "stakeholder",
+        "traceability",
+        "valueStreamModel",
+      ],
+      governedRecordCount: 21,
+      readiness: {
+        result: "passed",
+        outputCount: 25,
+        applicableOutputCount: 3,
+        notApplicableOutputCount: 22,
+        readinessAuthorityState: "not-established",
+      },
+      handoff: {
+        state: "complete-for-review",
+        itemCount: 25,
+        includedItemCount: 3,
+        omittedNotApplicableItemCount: 22,
+        acknowledgementState: "not-established",
+        transferAuthorityState: "not-established",
+      },
+      execution: {
+        adapterId: "gaep.claude-code-cli",
+        agentId: "claude-code-cli",
+        modelId: "success",
+        mode: "claude-context-only",
+        state: "completed",
+        providerDisposition: "completed",
+        outcomeStatus: "satisfied",
+        outcomeBasis: "postcondition-evaluator",
+        completedStepCount: 1,
+        totalStepCount: 1,
+        stagingPresent: false,
+        toolDefinitionCount: 0,
+        writeScopeCount: 0,
+        providerPostconditionStatus: "not-assessed",
+        postconditionAuthority: "workflow-gate-evaluator",
+        warningCodes: ["runtime-warning", "provider-output-redacted"],
+      },
+      integrity: {
+        auditValid: true,
+        previewBound: true,
+        resultBound: true,
+        evidenceBound: true,
+        eventsBound: true,
+        contextBound: true,
+      },
+      authorityBoundary: "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority",
+    })
+    expect(result.warnings).toEqual(["runtime-warning", "provider-output-redacted"])
+    expect(result.outcome).toMatchObject({
+      status: "satisfied",
+      basis: "postcondition-evaluator",
+      evaluator: { kind: "human", id: actorId },
+    })
+    expect(evidence.actualEffects).toEqual([
+      expect.objectContaining({ effect: "observe", status: "observed-provisional" }),
+    ])
+    expect(JSON.stringify({ governedContext, preview, receipt, managedRun, result, evidence, summary })).not.toContain(workspace)
+
+    const bundle = await engine.productStudio.buildPortableExport()
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({ status: "compatible" })
+    expect(JSON.stringify(bundle)).not.toContain(workspace)
+    if (process.env.GAEP_P1_31_EMIT_RECEIPT === "1") {
+      process.stdout.write(`GAEP_P1_31_SEMANTIC_SUMMARY=${JSON.stringify(summary)}\n`)
     }
   }, 30_000)
 

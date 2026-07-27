@@ -279,6 +279,7 @@ interface StepRuntimeCompletion {
 interface RuntimeCompletion extends StepRuntimeCompletion {
   workflow: ManagedWorkflowExecution
   gateEvaluator: ManagedWorkflowGateEvaluator
+  outcomeEvaluator?: ManagedEvaluatorIdentity
   evidenceEvents?: ManagedEvidenceEvent[]
   persistedEventsDigest?: `sha256:${string}`
   requiresWorkflowGateEvaluator?: boolean
@@ -1121,6 +1122,13 @@ export class ManagedExecutionService {
           completed.codexReview !== undefined && completed.runtime.portable.terminalDisposition === "completed",
         )
         const latest = await this.read(managedRun.id)
+        const outcomeBasis: ManagedRunResult["outcome"]["basis"] = completed.outcomeEvaluator
+          ? "postcondition-evaluator"
+          : completed.runtime.portable.postconditionStatus === "satisfied"
+            ? "deterministic-offline-runtime"
+            : completed.runtime.portable.terminalDisposition === "completed"
+              ? "not-evaluated"
+              : "provider-failure"
         const persisted = await this.persistRuntimeResult(
           latest,
           resolved,
@@ -1129,13 +1137,11 @@ export class ManagedExecutionService {
           initialState,
           completed.terminationCause,
           completed.codexReview ? "pending" : undefined,
-          completed.runtime.portable.postconditionStatus === "satisfied"
-            ? "deterministic-offline-runtime"
-            : completed.runtime.portable.terminalDisposition === "completed"
-              ? "not-evaluated"
-              : "provider-failure",
+          outcomeBasis,
           completed.evidenceEvents,
           actorId,
+          undefined,
+          completed.outcomeEvaluator,
         )
         const providerThreadId = completed.runtime.portable.providerThreadId
         if (providerThreadId && resolved.probe.capabilities.supportsResume) {
@@ -2078,11 +2084,18 @@ export class ManagedExecutionService {
             stopConditions = await this.assessWorkflowGate({ ...gateBase, phase: "stop-conditions", criteria: step.stopConditions })
             controlledAttempt.stopConditions = stopConditions
             if (cancellationRequested) return cancelledDuringGates()
-            const completed = disposition === "completed" && postconditionStatus === "satisfied" &&
-              outputs.status === "satisfied" && evidence.status === "satisfied" && stopConditions.status === "satisfied"
+            const completed = this.workflowStepCompleted(
+              resolved,
+              disposition,
+              postconditionStatus,
+              outputs,
+              evidence,
+              stopConditions,
+            )
+            const governedPostcondition = this.workflowAttemptPostcondition(resolved, postconditionStatus, completed)
             const retryReasonCode = completed
               ? undefined
-              : this.workflowRetryReason(disposition, postconditionStatus, outputs, evidence, stopConditions)
+              : this.workflowRetryReason(resolved, disposition, postconditionStatus, outputs, evidence, stopConditions)
             const attemptState: ManagedWorkflowStepAttempt["state"] = completed
               ? "completed"
               : disposition === "unknown" || disposition === "interrupted"
@@ -2102,7 +2115,7 @@ export class ManagedExecutionService {
               eventRange: eventEnd >= eventStart ? { startSequence: eventStart, endSequence: eventEnd } : undefined,
               providerDisposition: disposition,
               terminationCause: last.terminationCause,
-              postconditionStatus,
+              ...governedPostcondition,
               retryReasonCode,
               gates: { preconditions, outputs, evidence, stopConditions },
               startedAt,
@@ -2702,17 +2715,24 @@ export class ManagedExecutionService {
         const stopConditions = await this.assessWorkflowGate({ ...gateBase, phase: "stop-conditions", criteria: step.stopConditions })
         controlledAttempt.stopConditions = stopConditions
         if (isCancellationRequested()) throw new WorkflowControlError("cancel-request")
-        const completed = disposition === "completed" && postconditionStatus === "satisfied" &&
-          outputs.status === "satisfied" && evidence.status === "satisfied" && stopConditions.status === "satisfied"
+        const completed = this.workflowStepCompleted(
+          resolved,
+          disposition,
+          postconditionStatus,
+          outputs,
+          evidence,
+          stopConditions,
+        )
+        const governedPostcondition = this.workflowAttemptPostcondition(resolved, postconditionStatus, completed)
         const retryReasonCode = completed
           ? undefined
-          : this.workflowRetryReason(disposition, postconditionStatus, outputs, evidence, stopConditions)
+          : this.workflowRetryReason(resolved, disposition, postconditionStatus, outputs, evidence, stopConditions)
         attempts.push(managedWorkflowStepAttemptSchema.parse({
           id: randomUUID(), revision: 1, stepId: step.id, stepIndex, attempt: attemptNumber,
           state: completed ? "completed" : disposition === "unknown" || disposition === "interrupted" ? "unknown" : "failed",
           dependencies: step.dependsOn, contextPacks: exactContext, tools: exactTools, effectEnvelope: step.effectEnvelope,
           eventRange: eventEnd >= eventStart ? { startSequence: eventStart, endSequence: eventEnd } : undefined,
-          providerDisposition: disposition, terminationCause: last.terminationCause, postconditionStatus, retryReasonCode,
+          providerDisposition: disposition, terminationCause: last.terminationCause, ...governedPostcondition, retryReasonCode,
           gates: { preconditions, outputs, evidence, stopConditions },
           startedAt, endedAt: new Date().toISOString(),
         }))
@@ -2813,7 +2833,7 @@ export class ManagedExecutionService {
     events: ManagedRuntimeEvent[],
     charterGates: ManagedWorkflowExecution["charterGates"] = this.unassessedCharterGates(resolved),
   ): RuntimeCompletion {
-    const workflow = managedWorkflowExecutionSchema.parse({
+    let workflow = managedWorkflowExecutionSchema.parse({
       plan: resolved.bindings.workflowPlan,
       strategy: resolved.workflowPlan.strategy,
       orderedStepIds: resolved.orderedSteps.map((step) => step.id),
@@ -2823,8 +2843,30 @@ export class ManagedExecutionService {
       terminalReasonCode,
       capabilityBoundary: "natural-language-gates-require-explicit-human-or-system-assessment",
     })
-    const completed = terminalReasonCode === "workflow-completed" &&
+    const contextOnlyOutcomeEvaluator = resolved.mode === "claude-context-only"
+      ? this.commonSatisfiedGateEvaluator([
+          ...workflow.attempts
+            .filter((attempt) => attempt.state === "completed")
+            .flatMap((attempt) => [
+              attempt.gates.preconditions,
+              attempt.gates.outputs,
+              attempt.gates.evidence,
+              attempt.gates.stopConditions,
+            ]),
+          workflow.charterGates.requiredEvidence,
+          workflow.charterGates.stopConditions,
+        ])
+      : undefined
+    const hasCompletedWorkflow = terminalReasonCode === "workflow-completed" &&
       completedStepIds.length === resolved.orderedSteps.length
+    const hasOutcomeAuthority = resolved.mode !== "claude-context-only" || contextOnlyOutcomeEvaluator !== undefined
+    if (hasCompletedWorkflow && !hasOutcomeAuthority) {
+      workflow = managedWorkflowExecutionSchema.parse({
+        ...workflow,
+        terminalReasonCode: "workflow-outcome-evaluator-inconsistent",
+      })
+    }
+    const completed = hasCompletedWorkflow && hasOutcomeAuthority
     const reviewRequired = terminalReasonCode === "apply-review-required"
     const postconditionStatus = completed
       ? "satisfied"
@@ -2852,6 +2894,7 @@ export class ManagedExecutionService {
       },
       workflow,
       gateEvaluator,
+      outcomeEvaluator: completed ? contextOnlyOutcomeEvaluator : undefined,
     }
   }
 
@@ -3083,12 +3126,18 @@ export class ManagedExecutionService {
     const outputs = await this.assessWorkflowGate({ ...gateBase, phase: "outputs", criteria: step.outputs })
     const evidence = await this.assessWorkflowGate({ ...gateBase, phase: "evidence", criteria: step.evidenceCriteria })
     const stopConditions = await this.assessWorkflowGate({ ...gateBase, phase: "stop-conditions", criteria: step.stopConditions })
-    const stepCompleted = runtime.portable.terminalDisposition === "completed" &&
-      runtime.portable.postconditionStatus === "satisfied" &&
-      outputs.status === "satisfied" && evidence.status === "satisfied" && stopConditions.status === "satisfied"
+    const stepCompleted = this.workflowStepCompleted(
+      resolved,
+      runtime.portable.terminalDisposition,
+      runtime.portable.postconditionStatus,
+      outputs,
+      evidence,
+      stopConditions,
+    )
     const retryReasonCode = stepCompleted
       ? undefined
       : this.workflowRetryReason(
+          resolved,
           runtime.portable.terminalDisposition,
           runtime.portable.postconditionStatus,
           outputs,
@@ -3253,6 +3302,7 @@ export class ManagedExecutionService {
   }
 
   private workflowRetryReason(
+    resolved: ResolvedExecution,
     disposition: ManagedTerminalDisposition,
     postconditionStatus: ManagedRunResult["outcome"]["status"],
     outputs: ManagedWorkflowGateAssessment,
@@ -3260,11 +3310,64 @@ export class ManagedExecutionService {
     stopConditions: ManagedWorkflowGateAssessment,
   ): string {
     if (disposition !== "completed") return safeEventCode(`provider-${disposition}`)
+    if (resolved.mode === "claude-context-only" && postconditionStatus === "not-assessed") {
+      if (outputs.status !== "satisfied") return "output-gate-failed"
+      if (evidence.status !== "satisfied") return "evidence-gate-failed"
+      if (stopConditions.status !== "satisfied") return "stop-boundary-gate-failed"
+      if (!this.commonSatisfiedGateEvaluator([outputs, evidence, stopConditions])) {
+        return "workflow-outcome-evaluator-inconsistent"
+      }
+    }
     if (postconditionStatus !== "satisfied") return safeEventCode(`postcondition-${postconditionStatus}`)
     if (outputs.status !== "satisfied") return "output-gate-failed"
     if (evidence.status !== "satisfied") return "evidence-gate-failed"
     if (stopConditions.status !== "satisfied") return "stop-boundary-gate-failed"
     return "workflow-step-failed"
+  }
+
+  private workflowStepCompleted(
+    resolved: ResolvedExecution,
+    disposition: ManagedTerminalDisposition,
+    postconditionStatus: ManagedRunResult["outcome"]["status"],
+    outputs: ManagedWorkflowGateAssessment,
+    evidence: ManagedWorkflowGateAssessment,
+    stopConditions: ManagedWorkflowGateAssessment,
+  ): boolean {
+    if (disposition !== "completed" ||
+        outputs.status !== "satisfied" ||
+        evidence.status !== "satisfied" ||
+        stopConditions.status !== "satisfied") {
+      return false
+    }
+    if (postconditionStatus === "satisfied") return true
+    return resolved.mode === "claude-context-only" &&
+      postconditionStatus === "not-assessed" &&
+      this.commonSatisfiedGateEvaluator([outputs, evidence, stopConditions]) !== undefined
+  }
+
+  private workflowAttemptPostcondition(
+    resolved: ResolvedExecution,
+    providerPostconditionStatus: ManagedRunResult["outcome"]["status"],
+    completed: boolean,
+  ) {
+    return completed && resolved.mode === "claude-context-only" && providerPostconditionStatus === "not-assessed"
+      ? {
+          providerPostconditionStatus,
+          postconditionStatus: "satisfied" as const,
+          postconditionAuthority: "workflow-gate-evaluator" as const,
+        }
+      : { postconditionStatus: providerPostconditionStatus }
+  }
+
+  private commonSatisfiedGateEvaluator(
+    gates: readonly ManagedWorkflowGateAssessment[],
+  ): ManagedEvaluatorIdentity | undefined {
+    if (gates.length === 0 || gates.some((gate) => gate.status !== "satisfied")) return undefined
+    const evaluator = gates[0]!.evaluator
+    const evaluatorDigest = canonicalDigest(evaluator)
+    return gates.every((gate) => canonicalDigest(gate.evaluator) === evaluatorDigest)
+      ? { ...evaluator, digest: evaluator.digest as `sha256:${string}` }
+      : undefined
   }
 
   private shouldRetryWorkflowStep(

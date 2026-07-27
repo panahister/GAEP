@@ -8,6 +8,7 @@ import {
   managedRunEvidenceSchema,
   managedRunRecordSchema,
   managedRunResultSchema,
+  managedWorkflowStepAttemptSchema,
   runSchema,
 } from "./index.js"
 
@@ -169,6 +170,67 @@ describe("managed execution portable contracts", () => {
     expect(managedRunRecordSchema.parse(managedRecord()).state).toBe("prepared")
     expect(managedRunEvidenceSchema.parse(evidence()).events).toHaveLength(1)
     expect(managedRunResultSchema.parse(result()).terminalState).toBe("completed")
+  })
+
+  it("preserves a conservative provider postcondition when one exact Workflow evaluator governs completion", () => {
+    const evaluator = { kind: "system" as const, id: "gaep.contract-evaluator", version: "1", digest }
+    const assessedGate = (phase: "preconditions" | "outputs" | "evidence" | "stop-conditions") => ({
+      phase,
+      interpretation: phase === "stop-conditions" ? "stop-boundary-complied" as const : "criteria-satisfied" as const,
+      criteriaDigest: digest,
+      status: "satisfied" as const,
+      basis: "system-evaluator" as const,
+      evidenceDigest: digest,
+      actor: { kind: "system" as const, id: evaluator.id },
+      evaluator,
+      assessedAt: "2026-01-01T00:00:01.000Z",
+    })
+    const attempt = {
+      id: id(20),
+      revision: 1,
+      stepId: id(21),
+      stepIndex: 0,
+      attempt: 1,
+      state: "completed" as const,
+      dependencies: [],
+      contextPacks: [],
+      tools: [],
+      effectEnvelope: ["observe"],
+      providerDisposition: "completed" as const,
+      terminationCause: "normal" as const,
+      providerPostconditionStatus: "not-assessed" as const,
+      postconditionStatus: "satisfied" as const,
+      postconditionAuthority: "workflow-gate-evaluator" as const,
+      gates: {
+        preconditions: assessedGate("preconditions"),
+        outputs: assessedGate("outputs"),
+        evidence: assessedGate("evidence"),
+        stopConditions: assessedGate("stop-conditions"),
+      },
+      startedAt: "2026-01-01T00:00:00.000Z",
+      endedAt: "2026-01-01T00:00:01.000Z",
+    }
+
+    expect(managedWorkflowStepAttemptSchema.parse(attempt)).toMatchObject({
+      providerPostconditionStatus: "not-assessed",
+      postconditionStatus: "satisfied",
+      postconditionAuthority: "workflow-gate-evaluator",
+    })
+    expect(managedWorkflowStepAttemptSchema.safeParse({
+      ...attempt,
+      providerPostconditionStatus: "failed",
+    }).success).toBe(false)
+    expect(managedWorkflowStepAttemptSchema.safeParse({
+      ...attempt,
+      gates: {
+        ...attempt.gates,
+        outputs: {
+          ...attempt.gates.outputs,
+          evaluator: { ...evaluator, id: "gaep.other-evaluator" },
+          actor: { kind: "system" as const, id: "gaep.other-evaluator" },
+        },
+      },
+    }).success).toBe(false)
   })
 
   it("accepts an ordered portable Workflow checkpoint chain and rejects ambiguous progress", () => {

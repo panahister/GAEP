@@ -285,7 +285,9 @@ export const managedWorkflowStepAttemptSchema = z.object({
   }).strict().optional(),
   providerDisposition: managedProviderDispositionSchema.optional(),
   terminationCause: managedTerminationCauseSchema.optional(),
+  providerPostconditionStatus: managedOutcomeStatusSchema.optional(),
   postconditionStatus: managedOutcomeStatusSchema,
+  postconditionAuthority: z.literal("workflow-gate-evaluator").optional(),
   retryReasonCode: portableCodeSchema.optional(),
   gates: z.object({
     preconditions: managedWorkflowGateAssessmentSchema,
@@ -320,6 +322,38 @@ export const managedWorkflowStepAttemptSchema = z.object({
   if (Date.parse(attempt.endedAt) < Date.parse(attempt.startedAt)) {
     context.addIssue({ code: "custom", path: ["endedAt"], message: "Workflow attempt cannot end before it starts" })
   }
+  const evaluatorGovernedPostcondition = attempt.postconditionAuthority === "workflow-gate-evaluator"
+  if (evaluatorGovernedPostcondition !== (attempt.providerPostconditionStatus !== undefined)) {
+    context.addIssue({
+      code: "custom",
+      path: ["postconditionAuthority"],
+      message: "Workflow-evaluated postconditions require the exact conservative provider postcondition status",
+    })
+  }
+  if (evaluatorGovernedPostcondition) {
+    const gates = [
+      attempt.gates.preconditions,
+      attempt.gates.outputs,
+      attempt.gates.evidence,
+      attempt.gates.stopConditions,
+    ]
+    const evaluator = gates[0]!.evaluator
+    const oneExactEvaluator = gates.every((gate) =>
+      gate.evaluator.kind === evaluator.kind &&
+      gate.evaluator.id === evaluator.id &&
+      gate.evaluator.version === evaluator.version &&
+      gate.evaluator.digest === evaluator.digest)
+    if (attempt.providerPostconditionStatus !== "not-assessed" ||
+        attempt.postconditionStatus !== "satisfied" ||
+        gates.some((gate) => gate.status !== "satisfied") ||
+        !oneExactEvaluator) {
+      context.addIssue({
+        code: "custom",
+        path: ["postconditionAuthority"],
+        message: "Workflow-evaluated completion requires a not-assessed provider status and one exact successful gate evaluator",
+      })
+    }
+  }
   if (attempt.state === "completed" && (
     attempt.gates.preconditions.status !== "satisfied" ||
     attempt.gates.outputs.status !== "satisfied" ||
@@ -328,7 +362,7 @@ export const managedWorkflowStepAttemptSchema = z.object({
     attempt.providerDisposition !== "completed" ||
     attempt.postconditionStatus !== "satisfied"
   )) {
-    context.addIssue({ code: "custom", path: ["state"], message: "A completed Workflow attempt requires every explicit gate and provider postcondition to be satisfied" })
+    context.addIssue({ code: "custom", path: ["state"], message: "A completed Workflow attempt requires every explicit gate, provider completion, and a governed satisfied postcondition" })
   }
 })
 
