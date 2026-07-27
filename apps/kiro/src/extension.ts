@@ -26,6 +26,7 @@ import {
   type P5HandoffPackageProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
+  type Phase1AgentModelDashboard,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -91,6 +92,7 @@ const commandIds = {
   phase1ChangeImpact: "gaepKiro.dashboard.phase1ChangeImpact",
   changeImpact: "gaepKiro.dashboard.changeImpact",
   agentModel: "gaepKiro.dashboard.agentModel",
+  phase1AgentModel: "gaepKiro.dashboard.phase1AgentModel",
   accessibleTables: "gaepKiro.dashboard.accessibleTables",
   initiativeEntry: "gaepKiro.initiativeEntry.inspect",
   classifyInitiative: "gaepKiro.initiativeEntry.classify",
@@ -204,6 +206,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.phase1ChangeImpact, (input?: unknown) => runUserCommand(() => showPhase1ChangeImpact(pool, input))),
     vscode.commands.registerCommand(commandIds.changeImpact, () => runUserCommand(() => showChangeImpactDashboard(pool))),
     vscode.commands.registerCommand(commandIds.agentModel, () => runUserCommand(() => showAgentModelDashboard(pool))),
+    vscode.commands.registerCommand(commandIds.phase1AgentModel, (input?: unknown) => runUserCommand(() => showPhase1AgentModelDashboard(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibleTables, () => runUserCommand(() => showAccessibleDashboardTables(pool))),
     vscode.commands.registerCommand(commandIds.initiativeEntry, (input?: unknown) => runUserCommand(() => showInitiativeEntry(pool, input))),
     vscode.commands.registerCommand(commandIds.classifyInitiative, (input?: unknown) => runUserCommand(() => classifyInitiative(pool, input))),
@@ -2100,6 +2103,59 @@ async function showAgentModelDashboard(pool: EngineClientPool): Promise<AgentMod
     "",
     "Boundary: this read-only projection cannot select or switch an agent, create a handoff, launch a Run, authorize a Tool/write/effect, approve an outcome, establish readiness, or grant release authority.",
     "Product text, Run narrative, source bytes, absolute paths, provider output, prompts, executable state, credentials, and sensitive setting values are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return dashboard
+}
+
+async function showPhase1AgentModelDashboard(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<Phase1AgentModelDashboard> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Phase 1 Agent/Model view", "Initiative ID")
+  const [product, initiative] = await Promise.all([client.readProduct(), client.readInitiative(initiativeId)])
+  const dashboard = await client.readPhase1AgentModel(product, initiative)
+  const agentModel = dashboard.agentModel
+  const selection = agentModel.selection.status === "selected" || agentModel.selection.status === "migration-required"
+    ? `${agentModel.selection.status} · ${agentModel.selection.adapterId}/${agentModel.selection.agentId}/${agentModel.selection.modelId} · ${agentModel.selection.capabilityState}`
+    : agentModel.selection.status
+  const lines = [
+    "GAEP exact Phase 1 Agent and Model execution truth",
+    "",
+    `Initiative: ${dashboard.initiative.recordId}@${dashboard.initiative.revision} · ${dashboard.initiative.state}`,
+    `Product revision: ${dashboard.product.revision}`,
+    `Selection: ${selection}`,
+    `Capabilities: ${dashboard.executionTruth.capabilities.shown}/${dashboard.executionTruth.capabilities.total} shown · ${dashboard.executionTruth.capabilities.detected} detected · ${dashboard.executionTruth.capabilities.unavailable} unavailable · ${dashboard.executionTruth.capabilities.selected} selected`,
+    `Runs: ${dashboard.executionTruth.runs.shown}/${dashboard.executionTruth.runs.total} shown · ${dashboard.executionTruth.runs.terminal} terminal · ${dashboard.executionTruth.runs.nonTerminal} non-terminal`,
+    `Managed results: ${dashboard.executionTruth.runs.resultBound} bound · ${dashboard.executionTruth.runs.actualEffectCount} recorded actual effects`,
+    `Outcomes: ${dashboard.executionTruth.runs.outcomes.satisfied} satisfied · ${dashboard.executionTruth.runs.outcomes.failed} failed · ${dashboard.executionTruth.runs.outcomes.notAssessed} not assessed · ${dashboard.executionTruth.runs.outcomes.indeterminate} indeterminate`,
+    `Handoffs: ${dashboard.executionTruth.handoffs.shown}/${dashboard.executionTruth.handoffs.total} shown · ${dashboard.executionTruth.handoffs.pendingAcknowledgement} pending acknowledgement · ${dashboard.executionTruth.handoffs.acknowledged} acknowledged`,
+    "Provider usage and cost: unavailable",
+    `Live provider quality: ${dashboard.executionTruth.liveProviderQuality}`,
+    `Semantic output quality: ${dashboard.executionTruth.semanticOutputQuality}`,
+    `Freshness: ${dashboard.freshness.state} · selection capability ${dashboard.freshness.selectionCapabilityState}`,
+    `Product Owner acceptance: ${dashboard.governance.productOwnerAcceptance}`,
+    `Snapshot digest: ${dashboard.snapshotDigest}`,
+    `Agent/Model snapshot digest: ${dashboard.source.agentModelSnapshotDigest}`,
+    "",
+    `Initiative Runs (${agentModel.limits.runs.shown}/${agentModel.limits.runs.total}):`,
+    ...agentModel.runs.map((entry) =>
+      `  ${entry.record.recordId}@${entry.record.revision} · ${entry.state} · ${entry.agent.adapterId}/${entry.agent.agentId}/${entry.agent.modelId} · managed=${entry.managed.status}`),
+    "",
+    `Initiative handoffs (${agentModel.limits.handoffs.shown}/${agentModel.limits.handoffs.total}):`,
+    ...agentModel.handoffs.map((entry) =>
+      `  ${entry.record.recordId} · Run ${entry.fromRun.recordId} -> ${entry.toSelection.adapterId}/${entry.toSelection.agentId}/${entry.toSelection.modelId} · ${entry.state}`),
+    "",
+    ...dashboard.limitations.map((limitation) => `Limit: ${limitation}`),
+    "",
+    "Boundary: this read-only Initiative-scoped projection does not establish provider readiness or quality, choose a provider, acknowledge a handoff, launch a Run, authorize effects, approve Phase 1, record Product Owner acceptance, or grant release authority.",
+    "Product text, Run narrative, provider output, prompts, source bytes, machine paths, credentials, and sensitive setting values are withheld.",
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })

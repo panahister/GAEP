@@ -47,6 +47,7 @@
     "onCommand:gaepKiro.dashboard.phase1ChangeImpact",
     "onCommand:gaepKiro.dashboard.changeImpact",
     "onCommand:gaepKiro.dashboard.agentModel",
+    "onCommand:gaepKiro.dashboard.phase1AgentModel",
     "onCommand:gaepKiro.dashboard.accessibleTables",
     "onCommand:gaepKiro.initiativeEntry.inspect",
     "onCommand:gaepKiro.initiativeEntry.classify",
@@ -138,6 +139,10 @@
       {
         "command": "gaepKiro.dashboard.agentModel",
         "title": "GAEP for Kiro: Show Agent and Model Dashboard"
+      },
+      {
+        "command": "gaepKiro.dashboard.phase1AgentModel",
+        "title": "GAEP for Kiro: Show Phase 1 Agent and Model Execution Truth"
       },
       {
         "command": "gaepKiro.dashboard.accessibleTables",

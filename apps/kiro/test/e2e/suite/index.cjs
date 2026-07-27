@@ -20,6 +20,7 @@ const commands = [
   "gaepKiro.dashboard.phase1ChangeImpact",
   "gaepKiro.dashboard.changeImpact",
   "gaepKiro.dashboard.agentModel",
+  "gaepKiro.dashboard.phase1AgentModel",
   "gaepKiro.dashboard.accessibleTables",
   "gaepKiro.initiativeEntry.inspect",
   "gaepKiro.initiativeEntry.classify",
@@ -111,6 +112,29 @@ async function run() {
   ]) assert.ok(dashboardText.includes(marker), `Agent and Model dashboard must include ${marker}`)
   assertPrivateSafe(dashboardText, workspace, fixtureProductName)
   await dashboardRequest
+
+  const phase1AgentModelRequest = vscode.commands.executeCommand(
+    "gaepKiro.dashboard.phase1AgentModel",
+    { initiativeId: "29292929-2929-4929-8929-292929292929" },
+  )
+  const phase1AgentModelDocument = await waitFor(
+    () => vscode.workspace.textDocuments.find((document) =>
+      document.getText().startsWith("GAEP exact Phase 1 Agent and Model execution truth\n")),
+    "The installed package-local engine did not return Phase 1 Agent and Model execution truth",
+    60_000,
+  )
+  const phase1AgentModelText = phase1AgentModelDocument.getText()
+  for (const marker of [
+    "Initiative: 29292929-2929-4929-8929-292929292929@1 · active",
+    "Capabilities: 2/2 shown · 1 detected · 1 unavailable · 0 selected",
+    "Runs: 0/0 shown · 0 terminal · 0 non-terminal",
+    "Live provider quality: not-assessed",
+    "Semantic output quality: not-assessed",
+    "Product Owner acceptance: not-established",
+    "Boundary: this read-only Initiative-scoped projection does not establish provider readiness or quality",
+  ]) assert.ok(phase1AgentModelText.includes(marker), `Phase 1 Agent and Model view must include ${marker}`)
+  assertPrivateSafe(phase1AgentModelText, workspace, fixtureProductName)
+  await phase1AgentModelRequest
 
   const evidenceRequest = vscode.commands.executeCommand("gaepKiro.runs.evidence")
   const evidenceDocument = await waitFor(

@@ -143,6 +143,8 @@ input.on("line", (line) => {
       return readChangeImpact(id, request.params)
     case "dashboard.agentModel":
       return readAgentModel(id, request.params)
+    case "dashboard.phase1AgentModel":
+      return readPhase1AgentModel(id, request.params)
     case "probeAgents":
       if (!exactKeys(request.params, [])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
       return writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
@@ -2270,7 +2272,7 @@ function readPhase1ChangeImpact(id, params) {
   return writeResult(id, value)
 }
 
-function readAgentModel(id, params) {
+function buildAgentModel(params) {
   const productDigest = canonicalDigest(productRecord())
   const readiness = readinessSnapshots(false)
   const expectedCapabilities = readiness.map((entry) => ({
@@ -2286,7 +2288,7 @@ function readAgentModel(id, params) {
   ]) || params.expectedProductId !== productId || params.expectedProductRevision !== 7 ||
       params.expectedProductDigest !== productDigest || canonicalDigest(params.expectedSelection) !== canonicalDigest(expectedSelection) ||
       canonicalDigest(params.expectedCapabilities) !== canonicalDigest(expectedCapabilities)) {
-    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE AGENT MODEL PARAMS")
+    return undefined
   }
   const capabilities = readiness.map((entry) => ({
     adapterId: entry.adapterId,
@@ -2375,6 +2377,86 @@ function readAgentModel(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-agent-model-digest")) value.capabilities[0].agentLabel = "Forged label"
   if (workspacePath.endsWith("bad-agent-model-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
+  return value
+}
+
+function readAgentModel(id, params) {
+  const value = buildAgentModel(params)
+  return value
+    ? writeResult(id, value)
+    : writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE AGENT MODEL PARAMS")
+}
+
+function readPhase1AgentModel(id, params) {
+  const productDigest = canonicalDigest(productRecord())
+  const initiativeDigest = canonicalDigest(initiativeState)
+  if (!exactKeys(params, [
+    "expectedInitiativeId", "expectedInitiativeRevision", "expectedInitiativeDigest", "agentModel",
+  ]) || params.expectedInitiativeId !== initiativeId ||
+      params.expectedInitiativeRevision !== initiativeState.revision ||
+      params.expectedInitiativeDigest !== initiativeDigest) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE 1 AGENT MODEL PARAMS")
+  }
+  const agentModel = buildAgentModel(params.agentModel)
+  if (!agentModel) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE 1 AGENT MODEL PARAMS")
+  const detected = agentModel.capabilities.filter((entry) => entry.detected).length
+  const selected = agentModel.capabilities.filter((entry) => entry.selected).length
+  const content = {
+    schemaVersion: 1,
+    kind: "phase-1-agent-model-dashboard",
+    phase: { id: "phase-1b-product", label: "Phase 1B — Product P0–P4" },
+    product: { recordType: "product", recordId: productId, revision: 7, digest: productDigest },
+    initiative: {
+      recordType: "initiative", recordId: initiativeId, revision: initiativeState.revision,
+      digest: initiativeDigest, state: initiativeState.state,
+    },
+    source: { agentModelSnapshotDigest: agentModel.snapshotDigest, scope: "exact-current-initiative" },
+    agentModel,
+    executionTruth: {
+      capabilities: {
+        shown: agentModel.capabilities.length, total: agentModel.limits.capabilities.total,
+        omitted: agentModel.limits.capabilities.omitted, detected,
+        unavailable: agentModel.capabilities.length - detected, selected,
+      },
+      runs: {
+        shown: 0, total: 0, omitted: 0, terminal: 0, nonTerminal: 0, managedObserved: 0,
+        resultBound: 0, actualEffectCount: 0,
+        outcomes: { satisfied: 0, failed: 0, notAssessed: 0, indeterminate: 0 },
+      },
+      managedRuns: { shown: 0, total: 0, omitted: 0 },
+      handoffs: { shown: 0, total: 0, omitted: 0, pendingAcknowledgement: 0, acknowledged: 0 },
+      providerMetrics: { usage: "unavailable", cost: "unavailable" },
+      liveProviderQuality: "not-assessed",
+      semanticOutputQuality: "not-assessed",
+    },
+    freshness: {
+      state: agentModel.freshness.state,
+      selectionCapabilityState: agentModel.freshness.selectionCapabilityState,
+      oldestCapabilityObservedAt: agentModel.freshness.oldestCapabilityObservedAt,
+      newestCapabilityObservedAt: agentModel.freshness.newestCapabilityObservedAt,
+      agentModelObservedAt: agentModel.observedAt,
+      truncated: agentModel.limits.truncated,
+      basis: "exact-initiative-scoped-agent-model-snapshot-and-declared-bounded-coverage",
+    },
+    governance: {
+      providerAccountReadiness: "not-established", providerPreference: "not-established",
+      automaticSelectionAuthority: "not-granted", handoffAcknowledgementAuthority: "not-granted",
+      runLaunchAuthority: "not-granted", effectAuthority: "not-granted",
+      phaseReadinessAuthority: "not-established", productOwnerAcceptance: "not-established",
+    },
+    observedAt: "2026-07-24T12:06:01.000Z",
+    sourceBoundary: "current-governed-product-initiative-capability-selection-run-handoff-and-managed-evidence-metadata-only",
+    privacyBoundary: "dashboard-exposes-identities-digests-counts-statuses-times-and-redacted-selection-metadata-not-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-or-machine-paths",
+    limitations: [
+      "Capability observations prove only the bounded adapter/runtime metadata recorded at observation time, not provider account readiness or service availability.",
+      "Provider usage and cost remain unavailable because no governed provider metric contract is bound.",
+    ],
+    authorityBoundary: "phase-1-agent-model-dashboard-is-read-only-observed-evidence-not-provider-quality-preference-automatic-selection-handoff-acknowledgement-run-launch-readiness-approval-effect-release-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-phase1-agent-model-count")) content.executionTruth.capabilities.total = 3
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-phase1-agent-model-digest")) value.executionTruth.capabilities.detected = 2
+  if (workspacePath.endsWith("bad-phase1-agent-model-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

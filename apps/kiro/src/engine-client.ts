@@ -25,6 +25,7 @@ import {
   p5HandoffPackageProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
+  phase1AgentModelDashboardSchema,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
@@ -54,6 +55,7 @@ import {
   type P5HandoffPackageProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
+  type Phase1AgentModelDashboard,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
@@ -822,6 +824,65 @@ export class GaepEngineClient {
         expectedSelection,
         expectedCapabilities,
       }), { product: expectedProduct, capabilities, selection })
+    })
+  }
+
+  async readPhase1AgentModel(
+    product: ProductBinding,
+    initiativeValue: Initiative,
+  ): Promise<Phase1AgentModelDashboard> {
+    const capabilities = await this.probeAgentReadiness()
+    const selection = await this.readAgentSelection()
+    return this.enqueue(async () => {
+      const productId = normalizeUuid(product.id, "Product ID")
+      const productRevision = validateProductRevision(product.revision)
+      const productDigest = product.digest.trim().toLowerCase()
+      const initiative = initiativeSchema.strict().parse(initiativeValue)
+      const initiativeId = normalizeUuid(initiative.id, "Initiative ID")
+      const initiativeRevision = validateProductRevision(initiative.revision ?? 1)
+      const initiativeDigest = canonicalDigest(initiative)
+      if (!/^sha256:[0-9a-f]{64}$/u.test(productDigest) || initiative.productId.toLowerCase() !== productId) {
+        throw new TypeError("Product and Initiative bindings must be exact")
+      }
+      const expectedSelection = selection.status === "selected"
+        ? { status: "selected" as const, selectionDigest: canonicalDigest(selection.selection) }
+        : selection.status === "migration-required"
+          ? { status: "migration-required" as const, selectionDigest: canonicalDigest(selection.portableCandidate) }
+          : { status: selection.status }
+      const expectedCapabilities = capabilities.map((entry) => ({
+        adapterId: entry.adapterId,
+        agentId: entry.agentId,
+        capabilityDigest: entry.capabilityDigest,
+      }))
+      const agentModelRequest = {
+        expectedProductId: productId,
+        expectedProductRevision: productRevision,
+        expectedProductDigest: productDigest,
+        expectedSelection,
+        expectedCapabilities,
+      }
+      const result = await this.request("dashboard.phase1AgentModel", {
+        expectedInitiativeId: initiativeId,
+        expectedInitiativeRevision: initiativeRevision,
+        expectedInitiativeDigest: initiativeDigest,
+        agentModel: agentModelRequest,
+      })
+      const parsed = phase1AgentModelDashboardSchema.safeParse(result)
+      if (!parsed.success) throw invalidHostResponse()
+      const dashboard = parsed.data
+      const expectedProduct = { ...product, id: productId, revision: productRevision, digest: productDigest }
+      const agentModel = parseAgentModelDashboard(dashboard.agentModel, {
+        product: expectedProduct,
+        capabilities,
+        selection,
+      })
+      const { snapshotDigest, ...content } = dashboard
+      if (dashboard.product.recordId.toLowerCase() !== productId || dashboard.product.revision !== productRevision ||
+          dashboard.product.digest !== productDigest || dashboard.initiative.recordId.toLowerCase() !== initiativeId ||
+          dashboard.initiative.revision !== initiativeRevision || dashboard.initiative.digest !== initiativeDigest ||
+          dashboard.source.agentModelSnapshotDigest !== agentModel.snapshotDigest ||
+          snapshotDigest !== canonicalDigest(content)) throw invalidHostResponse()
+      return dashboard
     })
   }
 

@@ -1416,6 +1416,9 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badAgentModelMetricsRoot = join(root, "bad-agent-model-metrics")
   const badAgentModelDigestRoot = join(root, "bad-agent-model-digest")
   const badAgentModelPrivateRoot = join(root, "bad-agent-model-private")
+  const badPhase1AgentModelCountRoot = join(root, "bad-phase1-agent-model-count")
+  const badPhase1AgentModelDigestRoot = join(root, "bad-phase1-agent-model-digest")
+  const badPhase1AgentModelPrivateRoot = join(root, "bad-phase1-agent-model-private")
   await Promise.all([
     workspace, bundleRoot, sourceErrorRoot, badReadinessRoot, badSelectionRoot, badRunsRoot, badHandoffRoot,
     badHandoffBindingRoot, badManagedPreviewRoot, badManagedCriterionRoot, badManagedDigestRoot, badManagedReceiptRoot,
@@ -1432,7 +1435,8 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     badChangeImpactEvidenceCuesRoot,
     badChangeImpactDigestRoot, badChangeImpactPrivateRoot, badAgentModelBindingRoot, badAgentModelCountRoot,
     badAgentModelFreshnessRoot, badAgentModelEvidenceCuesRoot, badAgentModelMetricsRoot, badAgentModelDigestRoot,
-    badAgentModelPrivateRoot,
+    badAgentModelPrivateRoot, badPhase1AgentModelCountRoot, badPhase1AgentModelDigestRoot,
+    badPhase1AgentModelPrivateRoot,
   ].map((path) => mkdir(path)))
   const client = await GaepEngineClient.create({
     workspacePath: workspace,
@@ -1624,6 +1628,40 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.equal(JSON.stringify(agentModel).includes("Example Product"), false)
     assert.equal(JSON.stringify(agentModel).includes(privateRoot), false)
     assert.equal(JSON.stringify(agentModel).includes(privateCredential), false)
+
+    const phase1AgentModel = await client.readPhase1AgentModel(product, initiative)
+    assert.equal(phase1AgentModel.initiative.recordId, initiative.id)
+    assert.equal(phase1AgentModel.source.agentModelSnapshotDigest, phase1AgentModel.agentModel.snapshotDigest)
+    assert.equal(phase1AgentModel.executionTruth.capabilities.total, 2)
+    assert.equal(phase1AgentModel.executionTruth.capabilities.detected, 1)
+    assert.equal(phase1AgentModel.executionTruth.runs.total, 0)
+    assert.equal(phase1AgentModel.executionTruth.liveProviderQuality, "not-assessed")
+    assert.equal(phase1AgentModel.executionTruth.semanticOutputQuality, "not-assessed")
+    assert.equal(phase1AgentModel.governance.runLaunchAuthority, "not-granted")
+    assert.equal(phase1AgentModel.governance.productOwnerAcceptance, "not-established")
+    assert.equal(JSON.stringify(phase1AgentModel).includes("Example Product"), false)
+    assert.equal(JSON.stringify(phase1AgentModel).includes(privateRoot), false)
+    assert.equal(JSON.stringify(phase1AgentModel).includes(privateCredential), false)
+
+    for (const workspacePath of [
+      badPhase1AgentModelCountRoot, badPhase1AgentModelDigestRoot, badPhase1AgentModelPrivateRoot,
+    ]) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        const hostileProduct = await hostileClient.readProduct()
+        const hostileInitiative = await hostileClient.readInitiative(initiative.id)
+        await assert.rejects(
+          () => hostileClient.readPhase1AgentModel(hostileProduct, hostileInitiative),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
 
     for (const workspacePath of [
       badAgentModelBindingRoot, badAgentModelCountRoot, badAgentModelFreshnessRoot,
