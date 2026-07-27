@@ -661,7 +661,11 @@ class StudioShell {
     const container = element("div")
     container.append(this.renderPageHeader(page))
     if (page.design) container.append(this.renderDesignSection(page.design, page.route))
-    container.append(this.renderTable(page.relationships), this.renderTable(page.searchResults))
+    container.append(
+      this.renderTable(page.traceabilityGraphs),
+      this.renderTable(page.relationships),
+      this.renderTable(page.searchResults),
+    )
     if (page.caveat) container.append(element("p", "prose muted", page.caveat))
     if (page.impact.length > 0) {
       const impact = element("section", "section")

@@ -19,6 +19,7 @@ import {
   type DecisionRegisterProjection,
   type RiskRegisterProjection,
   type EvidenceRegistryProjection,
+  type EndToEndTraceabilityProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1357,6 +1358,71 @@ function evidenceRegistryProjection(): EvidenceRegistryProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function endToEndTraceabilityProjection(): EndToEndTraceabilityProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "end-to-end-traceability-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    traceability: {
+      recordId: "abababab-abab-4bab-8bab-abababababab",
+      revision: 3,
+      digest: `sha256:${"c".repeat(64)}` as const,
+    },
+    nodeCount: 44,
+    relationshipCount: 12,
+    linkCount: 67,
+    transformationCount: 5,
+    verifiedLinkCount: 40,
+    proposedLinkCount: 20,
+    invalidOrHistoricalLinkCount: 7,
+    unresolvedEndpointCount: 2,
+    notAssessedSemanticCount: 6,
+    missingSpineCount: 1,
+    unknownRelationshipCount: 3,
+    unresolvedRequirementCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    state: "attention-required" as const,
+    reasons: ["One or more Trace Links have unresolved endpoints"],
+    assessedAt: "2026-07-27T02:30:00.000Z",
+    coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact-or-relationship" as const,
+    authorityBoundary: "end-to-end-traceability-status-reports-candidate-coverage-and-gaps-and-does-not-establish-relationship-truth-completeness-approval-readiness-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "end-to-end-traceability-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    traceability: {
+      id: status.traceability.recordId,
+      revision: status.traceability.revision,
+      digest: status.traceability.digest,
+      membershipDigest: `sha256:${"d".repeat(64)}` as const,
+      state: "candidate" as const,
+      nodeCount: 44,
+      relationshipCount: 12,
+      linkCount: 67,
+      transformationCount: 5,
+      updatedAt: "2026-07-27T02:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-node-content-link-rationale-transformation-detail-source-content-personal-data-secrets-or-credentials" as const,
+    authorityBoundary: "end-to-end-traceability-projection-does-not-establish-relationship-truth-completeness-approval-baseline-promotion-readiness-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1927,6 +1993,7 @@ interface HarnessOptions {
   decisionRegisterProjection?: DecisionRegisterProjection
   riskRegisterProjection?: RiskRegisterProjection
   evidenceRegistryProjection?: EvidenceRegistryProjection
+  endToEndTraceabilityProjection?: EndToEndTraceabilityProjection
   commandResult?: unknown
 }
 
@@ -2110,6 +2177,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.evidenceRegistryProjection ? {
       evidenceRegistry: {
         project: async () => options.evidenceRegistryProjection!,
+      },
+    } : {}),
+    ...(options.endToEndTraceabilityProjection ? {
+      endToEndTraceability: {
+        project: async () => options.endToEndTraceabilityProjection!,
       },
     } : {}),
   }
@@ -2712,6 +2784,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private claim statement|private evidence observation|private method|private warrant|private quality detail|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed End-to-End Traceability metadata on the native trace page", async () => {
+    const projection = endToEndTraceabilityProjection()
+    const { source } = harness({ endToEndTraceabilityProjection: projection })
+    const snapshot = await source.readSnapshot("trace")
+    expect(snapshot.page.kind === "trace" && snapshot.page.traceabilityGraphs).toMatchObject({
+      id: "end-to-end-traceability",
+      rows: [{
+        id: projection.traceability?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "3",
+          membership: projection.traceability?.membershipDigest,
+          counts: "44 nodes · 12 relationship types · 67 links · 5 transformations",
+          assessment: "attention-required",
+          gaps: "2 unresolved endpoints · 6 semantic reviews pending · 1 missing spine segments · 3 unknown relationships · 2 requirement gaps · 1 stale bindings",
+          boundary: "Candidate graph metadata only; absence does not prove no impact, and presence does not establish relationship truth, completeness, approval, baseline promotion, readiness, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private node content|private link rationale|private transformation detail|customer@example\.com|api_key/iu,
     )
   })
 

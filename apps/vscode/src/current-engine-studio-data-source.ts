@@ -46,6 +46,7 @@ import type {
   DecisionRegisterProjection,
   RiskRegisterProjection,
   EvidenceRegistryProjection,
+  EndToEndTraceabilityProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -185,6 +186,9 @@ export interface CurrentStudioEngineReader {
   evidenceRegistry?: {
     project(initiativeId: string): Promise<EvidenceRegistryProjection>
   }
+  endToEndTraceability?: {
+    project(initiativeId: string): Promise<EndToEndTraceabilityProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -242,6 +246,7 @@ interface ObservedStudioState {
   decisionRegisterProjections: Map<string, DecisionRegisterProjection>
   riskRegisterProjections: Map<string, RiskRegisterProjection>
   evidenceRegistryProjections: Map<string, EvidenceRegistryProjection>
+  endToEndTraceabilityProjections: Map<string, EndToEndTraceabilityProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1395,6 +1400,54 @@ function evidenceRegistryTable(state: ObservedStudioState): StudioTableSnapshot 
   }
 }
 
+function endToEndTraceabilityTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.endToEndTraceabilityProjections.values()].flatMap((projection) => {
+    const record = projection.traceability
+    if (!record) return []
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        state: record.state,
+        counts: `${record.nodeCount} nodes · ${record.relationshipCount} relationship types · ${record.linkCount} links · ${record.transformationCount} transformations`,
+        assessment: projection.status.state,
+        gaps: `${projection.status.unresolvedEndpointCount} unresolved endpoints · ${projection.status.notAssessedSemanticCount} semantic reviews pending · ${projection.status.missingSpineCount} missing spine segments · ${projection.status.unknownRelationshipCount} unknown relationships · ${projection.status.unresolvedRequirementCount} requirement gaps · ${projection.status.staleBindingCount} stale bindings`,
+        boundary: "Candidate graph metadata only; absence does not prove no impact, and presence does not establish relationship truth, completeness, approval, baseline promotion, readiness, or action authority.",
+      },
+      state: projection.status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "end-to-end-traceability",
+    title: "Governed End-to-End Traceability Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Traceability Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "state", label: "State" },
+      { key: "counts", label: "Privacy-safe counts" },
+      { key: "assessment", label: "Assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Coverage and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed End-to-End Traceability candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer missing relationships, prove completeness, grant approval, establish readiness, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2540,6 +2593,7 @@ function tracePage(state: ObservedStudioState): TracePageSnapshot {
     kind: "trace",
     actions: [domainControl("Create Trace link", "create-trace-link", undefined, undefined, "primary"), domainControl("Search records", "search")],
     relationships,
+    traceabilityGraphs: endToEndTraceabilityTable(state),
     impact,
     searchResults,
     ...(state.impact ? { selectedRecordId: state.impact.subject.recordId } : {}),
@@ -3175,7 +3229,12 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       riskRegisters: capTable(page.riskRegisters),
       evidenceRegistries: capTable(page.evidenceRegistries),
     }
-    case "trace": return { ...page, relationships: capTable(page.relationships), searchResults: capTable(page.searchResults) }
+    case "trace": return {
+      ...page,
+      relationships: capTable(page.relationships),
+      traceabilityGraphs: capTable(page.traceabilityGraphs),
+      searchResults: capTable(page.searchResults),
+    }
     case "agents-tools": return {
       ...page,
       adapters: capTable(page.adapters),
@@ -3901,6 +3960,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       decisionRegisterProjections: new Map(),
       riskRegisterProjections: new Map(),
       evidenceRegistryProjections: new Map(),
+      endToEndTraceabilityProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -4818,6 +4878,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "evidence-registry-unavailable",
           "Evidence Registry metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "trace" && engine.endToEndTraceability) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.endToEndTraceability!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.endToEndTraceabilityProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio End-to-End Traceability projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `end-to-end-traceability-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe End-to-End Traceability metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "end-to-end-traceability-unavailable",
+          "End-to-End Traceability metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

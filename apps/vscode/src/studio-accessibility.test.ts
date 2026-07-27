@@ -142,6 +142,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
       return {
         ...baseFor(route),
         kind: "trace",
+        traceabilityGraphs: table("end-to-end-traceability"),
         relationships: table("relationships"),
         searchResults: table("search-results"),
         impact: [{ label: "Downstream work", entries: [{ term: "Work item", value: "Verification" }] }],
