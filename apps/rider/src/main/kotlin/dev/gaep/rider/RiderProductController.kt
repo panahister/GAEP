@@ -1165,6 +1165,52 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readP5HandoffPackage(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readP5HandoffPackage(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the P5 Handoff Package was read. Refresh the exact records." }
+        return renderP5HandoffPackage(projection)
+    }
+
+    fun renderP5HandoffPackage(projection: P5HandoffPackageProjection): String = buildString {
+        appendLine("GAEP governed P5 Handoff Package candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState}")
+        appendLine("Readiness result: ${projection.readinessResult} · transfer state: ${projection.transferState}")
+        appendLine(
+            "Items: ${projection.includedItemCount} included · ${projection.referenceOnlyItemCount} exact references · " +
+                "${projection.omittedNotApplicableItemCount} candidate not applicable · ${projection.unresolvedItemCount} unresolved",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.staleOrUnknownItemCount} stale or unknown applicable items · " +
+                "${projection.lossyTransformationCount} lossy transformations · ${projection.unresolvedRequirementCount} requirements · " +
+                "${projection.conflictCount} conflicts · ${projection.unresolvedQuestionCount} questions · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.handoff?.let { record ->
+            appendLine("P5 Handoff Package candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Readiness assessment digest: ${record.readinessStatusDigest}")
+            appendLine("Candidate inventory: ${record.itemCount} items · ${record.requirementCount} requirements · ${record.deliveryMode} delivery")
+        } ?: appendLine("P5 Handoff Package candidate: not recorded")
+        appendLine()
+        appendLine("Handoff boundary: ${projection.handoffBoundary}")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: source ownership remains retained; complete for review is not acknowledgement, readiness approval, " +
+                "design approval, a Design Baseline, P5 entry, transfer authority, write authority, or action authority.",
+        )
+    }
+
     fun renderFailureRecoveryModel(projection: FailureRecoveryModelProjection): String = buildString {
         appendLine("GAEP governed Failure and Recovery Model candidate")
         appendLine()

@@ -285,6 +285,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readP5HandoffPackage(initiativeId: UUID): P5HandoffPackageProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("handoff.p5.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseP5HandoffPackageEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

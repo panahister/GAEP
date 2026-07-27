@@ -35,6 +35,7 @@ private val riskRegisterId = UUID.fromString("58585858-5858-4858-8858-5858585858
 private val evidenceRegistryId = UUID.fromString("59595959-5959-4959-8959-595959595959")
 private val endToEndTraceabilityId = UUID.fromString("60606060-6060-4060-8060-606060606060")
 private val p0P4ReadinessGateId = UUID.fromString("61616161-6161-4161-8161-616161616161")
+private val p5HandoffPackageId = UUID.fromString("62626262-6262-4262-8262-626262626262")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -208,6 +209,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "readiness.gates.snapshot" -> handleP0P4ReadinessGate(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "handoff.p5.snapshot" -> handleP5HandoffPackage(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -2297,6 +2303,88 @@ private fun handleP0P4ReadinessGate(id: Long, params: JsonObject, workspacePath:
         }
         workspacePath.endsWith("bad-readiness-gate-snapshot-private") -> {
             value.addProperty("waiverRationale", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleP5HandoffPackage(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE P5 HANDOFF PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-p5-handoff-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-27T04:00:00.000Z"
+    val handoffDigest = "sha256:${"1".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "p5-handoff-package-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "p5-handoff-package-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("handoff", JsonObject().apply {
+                addProperty("recordId", p5HandoffPackageId.toString())
+                addProperty("revision", 3)
+                addProperty("digest", handoffDigest)
+            })
+            addProperty("itemCount", 25)
+            addProperty("includedItemCount", 17)
+            addProperty("referenceOnlyItemCount", 3)
+            addProperty("omittedNotApplicableItemCount", 4)
+            addProperty("unresolvedItemCount", 1)
+            addProperty("staleOrUnknownItemCount", 2)
+            addProperty("lossyTransformationCount", 1)
+            addProperty("unresolvedRequirementCount", 2)
+            addProperty("conflictCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("readinessResult", "incomplete")
+            addProperty("transferState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("The current P0-P4 Readiness Gate evaluation has not passed") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("handoffBoundary", "handoff-transfers-exact-candidate-context-not-source-ownership-or-authority")
+            addProperty("authorityBoundary", "p5-handoff-package-status-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-or-action-authority")
+        })
+        add("handoff", JsonObject().apply {
+            addProperty("id", p5HandoffPackageId.toString())
+            addProperty("revision", 3)
+            addProperty("digest", handoffDigest)
+            addProperty("membershipDigest", "sha256:${"2".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("readinessStatusDigest", "sha256:${"3".repeat(64)}")
+            addProperty("itemCount", 25)
+            addProperty("requirementCount", 66)
+            addProperty("deliveryMode", "disconnected")
+            addProperty("updatedAt", "2026-07-27T03:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-identities-counts-statuses-and-digests-only-not-item-content-summaries-omissions-uncertainties-source-content-personal-data-secrets-credentials-or-destinations")
+        addProperty("authorityBoundary", "p5-handoff-package-projection-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-write-or-action-authority")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-p5-handoff-snapshot-digest") -> {
+            value.getAsJsonObject("handoff").addProperty("itemCount", 24)
+        }
+        workspacePath.endsWith("bad-p5-handoff-snapshot-private") -> {
+            value.addProperty("itemContent", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

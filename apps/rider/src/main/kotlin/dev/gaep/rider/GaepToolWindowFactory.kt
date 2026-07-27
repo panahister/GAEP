@@ -434,6 +434,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += p0P4ReadinessGateButton
         actions.add(p0P4ReadinessGateButton)
 
+        val p5HandoffPackageButton = JButton("Inspect P5 Handoff Package…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Item content, summaries, omissions, uncertainties, Source content, personal data, local paths, secrets, credentials, destinations, and authority are withheld.",
+                    "GAEP P5 Handoff Package",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect P5 Handoff Package", status, output, buttons) {
+                    controller.readP5HandoffPackage(initiativeId)
+                }
+            }
+        }
+        buttons += p5HandoffPackageButton
+        actions.add(p5HandoffPackageButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {

@@ -1199,6 +1199,52 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `P5 Handoff Package projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("p5-handoff-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readP5HandoffPackage(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("incomplete", projection.readinessResult)
+            assertEquals("held", projection.transferState)
+            assertEquals(25, projection.handoff?.itemCount)
+            assertEquals(66, projection.handoff?.requirementCount)
+            assertEquals("disconnected", projection.handoff?.deliveryMode)
+
+            val rendered = RiderProductController(client).readP5HandoffPackage(entryId)
+            assertTrue(rendered.contains("GAEP governed P5 Handoff Package candidate"))
+            assertTrue(rendered.contains("17 included · 3 exact references · 4 candidate not applicable · 1 unresolved"))
+            assertTrue(rendered.contains("source ownership remains retained"))
+            assertTrue(rendered.contains("complete for review is not acknowledgement"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("itemContent"))
+        }
+
+        listOf(
+            "bad-p5-handoff-snapshot-digest",
+            "bad-p5-handoff-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readP5HandoffPackage(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-p5-handoff-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readP5HandoffPackage(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

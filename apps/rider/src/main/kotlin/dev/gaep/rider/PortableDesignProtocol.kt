@@ -1589,6 +1589,46 @@ data class P0P4ReadinessGateProjection(
     val snapshotDigest: String,
 )
 
+data class P5HandoffPackageRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val readinessStatusDigest: String,
+    val itemCount: Int,
+    val requirementCount: Int,
+    val deliveryMode: String,
+)
+
+data class P5HandoffPackageProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val readinessResult: String,
+    val transferState: String,
+    val reasons: List<String>,
+    val itemCount: Int,
+    val includedItemCount: Int,
+    val referenceOnlyItemCount: Int,
+    val omittedNotApplicableItemCount: Int,
+    val unresolvedItemCount: Int,
+    val staleOrUnknownItemCount: Int,
+    val lossyTransformationCount: Int,
+    val unresolvedRequirementCount: Int,
+    val conflictCount: Int,
+    val unresolvedQuestionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val handoffBoundary: String,
+    val handoff: P5HandoffPackageRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1744,6 +1784,14 @@ internal object PortableDesignProtocol {
         "p0-p4-readiness-gate-status-is-an-evaluation-result-and-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority"
     private const val P0_P4_READINESS_GATE_BOUNDARY =
         "a-passing-gate-is-an-evaluation-result-not-permission"
+    private const val P5_HANDOFF_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-statuses-and-digests-only-not-item-content-summaries-omissions-uncertainties-source-content-personal-data-secrets-credentials-or-destinations"
+    private const val P5_HANDOFF_PROJECTION_AUTHORITY_BOUNDARY =
+        "p5-handoff-package-projection-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-write-or-action-authority"
+    private const val P5_HANDOFF_STATUS_AUTHORITY_BOUNDARY =
+        "p5-handoff-package-status-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-or-action-authority"
+    private const val P5_HANDOFF_BOUNDARY =
+        "handoff-transfers-exact-candidate-context-not-source-ownership-or-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -5519,6 +5567,148 @@ internal object PortableDesignProtocol {
             unresolvedDecisionCount, unmetConditionCount, unresolvedRequirementCount, adverseEvidenceCount,
             staleBindingCount, staleSourceReferenceCount, inconsistencyCount, unresolvedQuestionCount,
             P0_P4_READINESS_GATE_BOUNDARY, gate, snapshotDigest,
+        )
+    }
+
+    fun parseP5HandoffPackageEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): P5HandoffPackageProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("handoff"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "p5-handoff-package-projection" ||
+            projection.requireString("privacyBoundary") != P5_HANDOFF_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != P5_HANDOFF_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "itemCount", "includedItemCount", "referenceOnlyItemCount", "omittedNotApplicableItemCount",
+                "unresolvedItemCount", "staleOrUnknownItemCount", "lossyTransformationCount",
+                "unresolvedRequirementCount", "conflictCount", "unresolvedQuestionCount", "staleBindingCount",
+                "staleSourceReferenceCount", "readinessResult", "transferState", "state", "reasons", "assessedAt",
+                "handoffBoundary", "authorityBoundary",
+            ),
+            setOf("handoff"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "p5-handoff-package-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("handoffBoundary") != P5_HANDOFF_BOUNDARY ||
+            status.requireString("authorityBoundary") != P5_HANDOFF_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("handoff")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val itemCount = status.requireBoundedNonNegativeInt("itemCount", 25)
+        val includedItemCount = status.requireBoundedNonNegativeInt("includedItemCount", 25)
+        val referenceOnlyItemCount = status.requireBoundedNonNegativeInt("referenceOnlyItemCount", 25)
+        val omittedNotApplicableItemCount = status.requireBoundedNonNegativeInt("omittedNotApplicableItemCount", 25)
+        val unresolvedItemCount = status.requireBoundedNonNegativeInt("unresolvedItemCount", 25)
+        val staleOrUnknownItemCount = status.requireBoundedNonNegativeInt("staleOrUnknownItemCount", 25)
+        val lossyTransformationCount = status.requireBoundedNonNegativeInt("lossyTransformationCount", 25)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 66)
+        val conflictCount = status.requireBoundedNonNegativeInt("conflictCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        if (includedItemCount + referenceOnlyItemCount + omittedNotApplicableItemCount + unresolvedItemCount != itemCount) {
+            throw invalidResponse()
+        }
+        val readinessResult = status.requireOneOf(
+            "readinessResult",
+            setOf("blocked", "conditionally-passed", "failed", "incomplete", "not-assessed", "passed"),
+        )
+        val transferState = status.requireOneOf("transferState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = unresolvedItemCount + staleOrUnknownItemCount + unresolvedRequirementCount + conflictCount +
+            unresolvedQuestionCount + staleBindingCount + staleSourceReferenceCount
+        if ((assessmentState == "complete-for-review" &&
+                (gapCount > 0 || readinessResult != "passed" || transferState != "ready-for-human-review" || reasons.isNotEmpty())) ||
+            (assessmentState == "attention-required" && reasons.isEmpty()) ||
+            (reference == null && assessmentState != "attention-required")
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val handoff = projection.get("handoff")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "readinessStatusDigest",
+                "itemCount", "requirementCount", "deliveryMode", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = P5HandoffPackageRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireDigest("readinessStatusDigest"),
+                value.requireBoundedNonNegativeInt("itemCount", 25),
+                value.requireBoundedNonNegativeInt("requirementCount", 66),
+                value.requireOneOf("deliveryMode", setOf("disconnected", "governed-figma", "repository")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision ||
+                reference.digest != record.digest || record.itemCount != itemCount
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (handoff == null) || projection.requireInstant("observedAt") != assessedAt) {
+            throw invalidResponse()
+        }
+        return P5HandoffPackageProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, readinessResult, transferState, reasons, itemCount,
+            includedItemCount, referenceOnlyItemCount, omittedNotApplicableItemCount, unresolvedItemCount,
+            staleOrUnknownItemCount, lossyTransformationCount, unresolvedRequirementCount, conflictCount,
+            unresolvedQuestionCount, staleBindingCount, staleSourceReferenceCount, P5_HANDOFF_BOUNDARY,
+            handoff, snapshotDigest,
         )
     }
 
