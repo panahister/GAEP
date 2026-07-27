@@ -20,8 +20,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260727T133617Z-phase-1-summary-readiness-dashboard.json",
-  conformance: "evidence/ide-conformance/20260727T133617Z-phase-1-summary-readiness-dashboard.json",
+  packages: "evidence/local-packages/20260727T192110Z-phase-1-change-impact-dashboard-packages.json",
+  conformance: "evidence/ide-conformance/20260727T191909Z-phase-1-change-impact-dashboard.json",
   example: "evidence/examples/20260727T120059Z-phase-1-provider-output-comparison.json",
 }
 const gateDefinitions = [

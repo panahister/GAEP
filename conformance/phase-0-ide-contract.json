@@ -22,6 +22,7 @@
     { "id": "evidence-dashboard", "label": "Run, evidence, recovery and provider-truth dashboard" },
     { "id": "phase-dashboard-framework", "label": "Exact phase-scoped dashboard framework projection" },
     { "id": "phase1-summary-readiness-dashboard", "label": "Exact Phase 1 summary and readiness candidate projection without approval, acceptance, phase-entry, release, or action authority" },
+    { "id": "phase1-change-impact-dashboard", "label": "Exact Phase 1 Change and bounded P0-P4 impact candidate projection without impact-completeness, revalidation, approval, risk-acceptance, readiness, effect, release, write, or action authority" },
     { "id": "change-impact-dashboard", "label": "Exact current Change and impact projection" },
     { "id": "agent-model-dashboard", "label": "Exact current Agent and Model evidence projection" },
     { "id": "accessible-dashboard-tables", "label": "Accessible dashboard sorting, filtering, textual alternative, and bounded metadata export" },
@@ -62,7 +63,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260727T133617Z-phase-1-summary-readiness-dashboard-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T191909Z-phase-1-change-impact-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -117,6 +118,11 @@
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["phase1Summary = composePhase1SummaryDashboard(", "observed.p0P4ReadinessGateProjections.get(initiative.id)", "observed.p5HandoffPackageProjections.get(initiative.id)", "...(phase1Summary ? { phase1Summary } : {})"] },
           { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isPhase1SummaryDashboard", "phase1SummaryDashboardSchema.safeParse(value)", "snapshotDigest === canonicalStudioDigest(content)"] },
           { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderPhase1Summary(snapshot.phase1Summary)", "Phase 1 summary and readiness dashboard", "grants no readiness, approval, acceptance, phase-entry"] }
+        ] },
+        { "capabilityId": "phase1-change-impact-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["phase1ChangeImpact = composePhase1ChangeImpactDashboard({", "engine.p0P4ReadinessGate.readCurrent(initiative.id)", "...(phase1ChangeImpact ? { phase1ChangeImpact } : {})"] },
+          { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isPhase1ChangeImpactDashboard", "phase1ChangeImpactDashboardSchema.safeParse(value)", "value.route !== \"delivery\""] },
+          { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderPhase1ChangeImpact(snapshot.phase1ChangeImpact)", "P0–P4 governed output impact coverage", "Output owners, revalidation, Change approval, risk-acceptance authority"] }
         ] },
         { "capabilityId": "change-impact-dashboard", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["const selection: ChangeImpactDashboardRequest = {", "this.readChangeImpactDashboard(selection)", "return composeChangeImpactDashboard("] },
@@ -227,7 +233,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260727T133617Z-phase-1-summary-readiness-dashboard-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T191909Z-phase-1-change-impact-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -280,6 +286,10 @@
         { "capabilityId": "phase1-summary-readiness-dashboard", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/extension.ts", "contains": ["phase1Summary: \"gaepKiro.dashboard.phase1Summary\"", "async function showPhase1Summary", "client.readPhase1Summary(product, initiative)", "grants no readiness, approval, acceptance, phase-entry"] },
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readPhase1Summary(product: ProductBinding", "this.request(\"dashboard.phase1Summary\"", "snapshotDigest !== canonicalDigest(content)"] }
+        ] },
+        { "capabilityId": "phase1-change-impact-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["phase1ChangeImpact: \"gaepKiro.dashboard.phase1ChangeImpact\"", "async function showPhase1ChangeImpact", "client.readPhase1ChangeImpact(product, initiative, selected.change)", "grants no impact-completeness, revalidation, approval"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readPhase1ChangeImpact(", "this.request(\"dashboard.phase1ChangeImpact\"", "phase1ChangeImpactDashboardSchema.safeParse"] }
         ] },
         { "capabilityId": "change-impact-dashboard", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showChangeImpactDashboard", "client.listChangeImpactChanges(product)", "client.readChangeImpact(product, selected.change)", "grants no Change approval, risk acceptance, mutation"] },
@@ -410,7 +420,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260727T133617Z-phase-1-summary-readiness-dashboard-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T191909Z-phase-1-change-impact-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -469,6 +479,12 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readPhase1Summary(product: ProductBinding", "portableRequest(\"dashboard.phase1Summary\""] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["fun parsePhase1SummaryEnvelope(", "summary.requireExactKeys(", "snapshotDigest != canonicalDigest(digestBody)"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP exact Phase 1 summary and readiness dashboard", "Owners: unbound; no governed phase-owner assignment is bound.", "grants no readiness, approval, acceptance, phase-entry"] }
+        ] },
+        { "capabilityId": "phase1-change-impact-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Show Phase 1 Change and impact…", "controller.readPhase1ChangeImpact(initiativeId, changeId)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readPhase1ChangeImpact(", "portableRequest(\"dashboard.phase1ChangeImpact\""] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["fun parsePhase1ChangeImpactEnvelope(", "coverage.requireInt(\"revalidationNotEstablishedOutputCount\") != 25", "snapshotDigest != canonicalDigest(digestBody)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP exact Phase 1 Change and impact dashboard", "P0-P4 governed output impact coverage:", "projection grants no impact-completeness, revalidation, approval"] }
         ] },
         { "capabilityId": "change-impact-dashboard", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["private fun beginChangeImpact(", "controller.readChangeImpactContext()", "controller.readChangeImpact(context, change)"] },
@@ -623,7 +639,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260727T133617Z-phase-1-summary-readiness-dashboard-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T191909Z-phase-1-change-impact-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -688,6 +704,13 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadPhase1SummaryAsync(", "\"dashboard.phase1Summary\"", "ParsePhase1SummaryResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParsePhase1SummaryResponse(", "Phase1SummaryAuthorityBoundary", "snapshotDigest != CanonicalDigest(WithoutProperty(result, \"snapshotDigest\"))"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP exact Phase 1 summary and readiness dashboard", "Owners: unbound; no governed phase-owner assignment is bound.", "grants no readiness, approval, acceptance, phase-entry"] }
+        ] },
+        { "capabilityId": "phase1-change-impact-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Show Phase 1 Change and impact", "ShowPhase1ChangeImpactCommand"] },
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["ShowPhase1ChangeImpactCommand = new AsyncCommand(ShowPhase1ChangeImpactAsync)", "Loading exact Phase 1 Change/Impact projection"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadPhase1ChangeImpactAsync(", "\"dashboard.phase1ChangeImpact\"", "ParsePhase1ChangeImpactResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParsePhase1ChangeImpactResponse(", "NonNegative(coverage, \"revalidationNotEstablishedOutputCount\", 25) != 25", "snapshotDigest != CanonicalDigest(WithoutProperty(result, \"snapshotDigest\"))"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP exact Phase 1 Change and impact dashboard", "P0-P4 governed output impact coverage:", "projection grants no impact-completeness, revalidation, approval"] }
         ] },
         { "capabilityId": "change-impact-dashboard", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Load exact current Changes", "Show exact Change and impact", "Selection grants no Change approval, Risk acceptance, mutation"] },
