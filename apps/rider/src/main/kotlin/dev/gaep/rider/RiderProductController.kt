@@ -1160,7 +1160,7 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Gate boundary: ${projection.gateBoundary}")
         appendLine("Snapshot digest: ${projection.snapshotDigest}")
         append(
-            "Authority boundary: a readiness result does not grant approval, accept a waiver, authorize phase entry or implementation, " +
+            "Authority boundary: a readiness evaluation result does not grant approval, accept a waiver, authorize phase entry or implementation, " +
                 "promote a baseline, establish Product readiness, or authorize action.",
         )
     }
