@@ -224,6 +224,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadEndToEndTraceabilityCommand = new AsyncCommand(LoadEndToEndTraceabilityAsync);
         LoadP0P4ReadinessGateCommand = new AsyncCommand(LoadP0P4ReadinessGateAsync);
         LoadP5HandoffPackageCommand = new AsyncCommand(LoadP5HandoffPackageAsync);
+        LoadDesignApplicabilityCommand = new AsyncCommand(LoadDesignApplicabilityAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -339,6 +340,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadP5HandoffPackageCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadDesignApplicabilityCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -842,6 +846,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed P5 Handoff Package candidate",
             (controller, _, token) => controller.ReadP5HandoffPackageAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadDesignApplicabilityAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Design Applicability candidate",
+            (controller, _, token) => controller.ReadDesignApplicabilityAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

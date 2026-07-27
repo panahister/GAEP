@@ -65,6 +65,7 @@ internal static class Program
     private static readonly Guid EndToEndTraceabilityId = Guid.Parse("60606060-6060-4060-8060-606060606060");
     private static readonly Guid P0P4ReadinessGateId = Guid.Parse("61616161-6161-4161-8161-616161616161");
     private static readonly Guid P5HandoffPackageId = Guid.Parse("62626262-6262-4262-8262-626262626262");
+    private static readonly Guid DesignApplicabilityId = Guid.Parse("63636363-6363-4363-8363-636363636363");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -189,6 +190,9 @@ internal static class Program
         var badP5HandoffSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-p5-handoff-snapshot-binding");
         var badP5HandoffSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-p5-handoff-snapshot-digest");
         var badP5HandoffSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-p5-handoff-snapshot-private");
+        var badDesignApplicabilitySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-applicability-snapshot-binding");
+        var badDesignApplicabilitySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-applicability-snapshot-digest");
+        var badDesignApplicabilitySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-applicability-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -313,6 +317,9 @@ internal static class Program
         Directory.CreateDirectory(badP5HandoffSnapshotBindingRoot);
         Directory.CreateDirectory(badP5HandoffSnapshotDigestRoot);
         Directory.CreateDirectory(badP5HandoffSnapshotPrivateRoot);
+        Directory.CreateDirectory(badDesignApplicabilitySnapshotBindingRoot);
+        Directory.CreateDirectory(badDesignApplicabilitySnapshotDigestRoot);
+        Directory.CreateDirectory(badDesignApplicabilitySnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1539,6 +1546,45 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadP5HandoffPackageAsync(InitiativeId),
                 "P5 Handoff Package rejects a projection rebound to a substituted Product revision");
+        }
+
+        var designApplicabilityProjection = await client.ReadDesignApplicabilityAsync(InitiativeId);
+        Check(designApplicabilityProjection.ProductId == product.Id &&
+              designApplicabilityProjection.ProductRevision == product.Revision &&
+              designApplicabilityProjection.ProductDigest == product.Digest &&
+              designApplicabilityProjection.InitiativeId == resolved.Id &&
+              designApplicabilityProjection.InitiativeRevision == resolved.Revision &&
+              designApplicabilityProjection.InitiativeDigest == resolved.Digest &&
+              designApplicabilityProjection.AssessmentState == "attention-required" &&
+              designApplicabilityProjection.ReviewState == "held" &&
+              designApplicabilityProjection.ScopeCount == 2 &&
+              designApplicabilityProjection.DecisionCount == 8 &&
+              designApplicabilityProjection.Candidate?.ScopeCount == 2,
+            "Typed Design Applicability preserves exact Product, Initiative, assessment, and candidate coverage metadata");
+        var designApplicabilityOutput = await initiativeController.ReadDesignApplicabilityAsync(InitiativeId);
+        Check(designApplicabilityOutput.Contains("GAEP governed Design Applicability candidate", StringComparison.Ordinal) &&
+              designApplicabilityOutput.Contains("Coverage: 2 scopes · 8 explicit", StringComparison.Ordinal) &&
+              designApplicabilityOutput.Contains("silence is never not applicable", StringComparison.Ordinal) &&
+              designApplicabilityOutput.Contains("does not approve design", StringComparison.Ordinal) &&
+              !designApplicabilityOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designApplicabilityOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designApplicabilityOutput.Contains("rationale", StringComparison.Ordinal) &&
+              !designApplicabilityOutput.Contains("journey", StringComparison.OrdinalIgnoreCase),
+            "Design Applicability workflow renders privacy-safe metadata with explicit no-authority boundaries");
+        foreach (var hostileRoot in new[] { badDesignApplicabilitySnapshotDigestRoot, badDesignApplicabilitySnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignApplicabilityAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Design Applicability rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDesignApplicabilitySnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignApplicabilityAsync(InitiativeId),
+                "Design Applicability rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2813,6 +2859,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-p5-handoff-snapshot-digest";
         var badP5HandoffSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-p5-handoff-snapshot-private";
+        var badDesignApplicabilitySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-design-applicability-snapshot-binding";
+        var badDesignApplicabilitySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-design-applicability-snapshot-digest";
+        var badDesignApplicabilitySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-design-applicability-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3176,6 +3228,17 @@ internal static class Program
                         badP5HandoffSnapshotBinding,
                         badP5HandoffSnapshotDigest,
                         badP5HandoffSnapshotPrivate);
+                    break;
+                case "design.applicability.snapshot":
+                    await HandleDesignApplicabilityAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignApplicabilitySnapshotBinding,
+                        badDesignApplicabilitySnapshotDigest,
+                        badDesignApplicabilitySnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -5603,6 +5666,99 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) handoff["itemCount"] = 24;
         if (includePrivateField) result["itemContent"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignApplicabilityAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGN APPLICABILITY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T04:00:00.000Z";
+        var candidateDigest = $"sha256:{new string('4', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignApplicabilityId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('5', 64)}",
+            ["state"] = "candidate",
+            ["scopeCount"] = 2,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T03:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "design-applicability-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "design-applicability-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignApplicabilityId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["scopeCount"] = 2,
+                ["decisionCount"] = 8,
+                ["unresolvedDecisionCount"] = 1,
+                ["blockedDecisionCount"] = 0,
+                ["pendingApprovalCount"] = 1,
+                ["rejectedApprovalCount"] = 0,
+                ["unresolvedDepthCount"] = 1,
+                ["unresolvedSourceCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more target scopes remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "design-applicability-status-is-observational-and-does-not-approve-design-establish-a-baseline-grant-readiness-or-authorize-implementation-or-action",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-rationales-source-content-journeys-design-content-personal-data-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "design-applicability-projection-is-read-only-and-does-not-approve-design-establish-a-baseline-grant-readiness-or-authorize-write-implementation-or-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["scopeCount"] = 3;
+        if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

@@ -23,6 +23,7 @@ import {
   type EndToEndTraceabilityProjection,
   type P0P4ReadinessGateProjection,
   type P5HandoffPackageProjection,
+  type DesignApplicabilityProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1558,6 +1559,64 @@ function p5HandoffPackageProjection(): P5HandoffPackageProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function designApplicabilityProjection(): DesignApplicabilityProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "design-applicability-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: {
+      recordId: "cececece-cece-4ece-8ece-cececececece",
+      revision: 2,
+      digest: `sha256:${"4".repeat(64)}` as const,
+    },
+    scopeCount: 2,
+    decisionCount: 8,
+    unresolvedDecisionCount: 1,
+    blockedDecisionCount: 0,
+    pendingApprovalCount: 1,
+    rejectedApprovalCount: 0,
+    unresolvedDepthCount: 1,
+    unresolvedSourceCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more target scopes remain unresolved"],
+    assessedAt: "2026-07-28T04:00:00.000Z",
+    authorityBoundary: "design-applicability-status-is-observational-and-does-not-approve-design-establish-a-baseline-grant-readiness-or-authorize-implementation-or-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "design-applicability-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"5".repeat(64)}` as const,
+      state: "candidate" as const,
+      scopeCount: 2,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-28T03:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-rationales-source-content-journeys-design-content-personal-data-secrets-or-credentials" as const,
+    authorityBoundary: "design-applicability-projection-is-read-only-and-does-not-approve-design-establish-a-baseline-grant-readiness-or-authorize-write-implementation-or-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2203,6 +2262,7 @@ interface HarnessOptions {
   endToEndTraceabilityProjection?: EndToEndTraceabilityProjection
   p0P4ReadinessGateProjection?: P0P4ReadinessGateProjection
   p5HandoffPackageProjection?: P5HandoffPackageProjection
+  designApplicabilityProjection?: DesignApplicabilityProjection
   commandResult?: unknown
 }
 
@@ -2403,6 +2463,11 @@ function harness(options: HarnessOptions = {}) {
       p5HandoffPackage: {
         project: async () => options.p5HandoffPackageProjection!,
         readCurrent: async () => undefined,
+      },
+    } : {}),
+    ...(options.designApplicabilityProjection ? {
+      designApplicability: {
+        project: async () => options.designApplicabilityProjection!,
       },
     } : {}),
   }
@@ -2988,6 +3053,30 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private challenge content|private assumptions|private evidence|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Design Applicability metadata on the native architecture page", async () => {
+    const projection = designApplicabilityProjection()
+    const { source } = harness({ designApplicabilityProjection: projection })
+    const snapshot = await source.readSnapshot("architecture")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.at(-1)).toMatchObject({
+      id: "design-applicability",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          coverage: "2 scopes · 8 explicit UX, UI, design-work, and Figma decisions",
+          assessment: "attention-required · held",
+          gaps: "1 unresolved decisions · 0 blocked decisions · 1 pending approvals · 0 rejected approvals · 1 unresolved depths · 1 unresolved sources · 2 questions · 0 stale bindings · 1 stale Source references",
+          boundary: "Candidate guidance only; silence is never not applicable, and this does not approve design, establish a Design Baseline, grant readiness, authorize implementation, write, or action.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private rationale|private source content|private journey|customer@example\.com|api_key/iu,
     )
   })
 

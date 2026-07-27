@@ -36,6 +36,7 @@ private val evidenceRegistryId = UUID.fromString("59595959-5959-4959-8959-595959
 private val endToEndTraceabilityId = UUID.fromString("60606060-6060-4060-8060-606060606060")
 private val p0P4ReadinessGateId = UUID.fromString("61616161-6161-4161-8161-616161616161")
 private val p5HandoffPackageId = UUID.fromString("62626262-6262-4262-8262-626262626262")
+private val designApplicabilityId = UUID.fromString("63636363-6363-4363-8363-636363636363")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -214,6 +215,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "handoff.p5.snapshot" -> handleP5HandoffPackage(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.applicability.snapshot" -> handleDesignApplicability(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -2400,6 +2406,83 @@ private fun handleP5HandoffPackage(id: Long, params: JsonObject, workspacePath: 
         }
         workspacePath.endsWith("bad-p5-handoff-snapshot-private") -> {
             value.addProperty("itemContent", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDesignApplicability(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN APPLICABILITY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-design-applicability-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-28T04:00:00.000Z"
+    val candidateDigest = "sha256:${"4".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "design-applicability-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "design-applicability-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", designApplicabilityId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("scopeCount", 2)
+            addProperty("decisionCount", 8)
+            addProperty("unresolvedDecisionCount", 1)
+            addProperty("blockedDecisionCount", 0)
+            addProperty("pendingApprovalCount", 1)
+            addProperty("rejectedApprovalCount", 0)
+            addProperty("unresolvedDepthCount", 1)
+            addProperty("unresolvedSourceCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more target scopes remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("authorityBoundary", "design-applicability-status-is-observational-and-does-not-approve-design-establish-a-baseline-grant-readiness-or-authorize-implementation-or-action")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", designApplicabilityId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"5".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("scopeCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-28T03:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-identities-counts-statuses-and-digests-only-not-rationales-source-content-journeys-design-content-personal-data-secrets-or-credentials")
+        addProperty("authorityBoundary", "design-applicability-projection-is-read-only-and-does-not-approve-design-establish-a-baseline-grant-readiness-or-authorize-write-implementation-or-action")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-design-applicability-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("scopeCount", 3)
+        }
+        workspacePath.endsWith("bad-design-applicability-snapshot-private") -> {
+            value.addProperty("rationale", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

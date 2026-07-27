@@ -1398,6 +1398,55 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignApplicabilityAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignApplicabilityAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Design Applicability was read. Refresh the exact records.");
+        }
+        return RenderDesignApplicability(projection);
+    }
+
+    public static string RenderDesignApplicability(DesignApplicabilityProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Design Applicability candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine($"Coverage: {projection.ScopeCount} scopes · {projection.DecisionCount} explicit UX, UI, design-work, and Figma decisions")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedDecisionCount} unresolved decisions · {projection.BlockedDecisionCount} blocked decisions · " +
+                $"{projection.PendingApprovalCount} pending approvals · {projection.RejectedApprovalCount} rejected approvals · " +
+                $"{projection.UnresolvedDepthCount} unresolved depths · {projection.UnresolvedSourceCount} unresolved sources · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Design Applicability candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine($"Candidate inventory: {candidate.ScopeCount} scopes · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Design Applicability candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: silence is never not applicable; this candidate does not approve design, establish a Design " +
+                "Baseline, grant readiness, authorize implementation, write, or action.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

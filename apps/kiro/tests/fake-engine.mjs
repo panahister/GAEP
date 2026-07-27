@@ -50,6 +50,7 @@ const evidenceRegistryId = "52525252-5252-4252-8252-525252525252"
 const endToEndTraceabilityId = "53535353-5353-4353-8353-535353535353"
 const p0P4ReadinessGateId = "54545454-5454-4454-8454-545454545454"
 const p5HandoffPackageId = "55555555-5555-4555-8555-555555555555"
+const designApplicabilityId = "56565656-5656-4656-8656-565656565656"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -131,6 +132,8 @@ input.on("line", (line) => {
       return readP0P4ReadinessGate(id, request.params)
     case "handoff.p5.snapshot":
       return readP5HandoffPackage(id, request.params)
+    case "design.applicability.snapshot":
+      return readDesignApplicability(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -1676,6 +1679,65 @@ function readP5HandoffPackage(id, params) {
   if (workspacePath.endsWith("bad-p5-handoff-snapshot-digest")) value.handoff.itemCount = 24
   if (workspacePath.endsWith("bad-p5-handoff-snapshot-private")) {
     value.itemContent = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readDesignApplicability(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN APPLICABILITY PARAMS")
+  }
+  const candidateDigest = `sha256:${"4".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "design-applicability-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designApplicabilityId, revision: 2, digest: candidateDigest },
+    scopeCount: 2,
+    decisionCount: 8,
+    unresolvedDecisionCount: 1,
+    blockedDecisionCount: 0,
+    pendingApprovalCount: 1,
+    rejectedApprovalCount: 0,
+    unresolvedDepthCount: 1,
+    unresolvedSourceCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more target scopes remain unresolved"],
+    assessedAt: "2026-07-28T04:00:00.000Z",
+    authorityBoundary: "design-applicability-status-is-observational-and-does-not-approve-design-establish-a-baseline-grant-readiness-or-authorize-implementation-or-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "design-applicability-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designApplicabilityId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"5".repeat(64)}`,
+      state: "candidate",
+      scopeCount: 2,
+      reviewState: "held",
+      updatedAt: "2026-07-28T03:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-rationales-source-content-journeys-design-content-personal-data-secrets-or-credentials",
+    authorityBoundary: "design-applicability-projection-is-read-only-and-does-not-approve-design-establish-a-baseline-grant-readiness-or-authorize-write-implementation-or-action",
+  }
+  if (workspacePath.endsWith("bad-design-applicability-snapshot-binding")) content.initiative.id = designApplicabilityId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-design-applicability-snapshot-digest")) value.candidate.scopeCount = 3
+  if (workspacePath.endsWith("bad-design-applicability-snapshot-private")) {
+    value.rationale = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

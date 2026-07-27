@@ -1341,6 +1341,39 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "design-applicability-read-empty",
+      protocolVersion: 2,
+      method: "design.applicability.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-applicability-assess-empty",
+      protocolVersion: 2,
+      method: "design.applicability.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      scopeCount: 0,
+      decisionCount: 0,
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-approve-design"),
+    })
+    const designApplicabilityProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-applicability-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.applicability.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: designApplicabilitySnapshotDigest, ...designApplicabilityProjectionBody } = designApplicabilityProjection
+    expect(designApplicabilitySnapshotDigest).toBe(canonicalDigest(designApplicabilityProjectionBody))
+    expect(designApplicabilityProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-rationales-source-content-journeys-design-content"),
+      authorityBoundary: expect.stringContaining("does-not-approve-design"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1373,6 +1406,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "p5-handoff-v1-block",
       method: "handoff.p5.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-applicability-v1-block",
+      method: "design.applicability.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

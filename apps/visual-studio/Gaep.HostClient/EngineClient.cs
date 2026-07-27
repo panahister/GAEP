@@ -399,6 +399,20 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseP5HandoffPackageResponse(envelope, initiativeId));
     }
 
+    public async Task<DesignApplicabilityProjection> ReadDesignApplicabilityAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync(
+            "design.applicability.snapshot",
+            new Dictionary<string, object?> { ["initiativeId"] = initiativeId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseDesignApplicabilityResponse(envelope, initiativeId));
+    }
+
     public async Task<InitiativeEntryRecord> ClassifyInitiativeAsync(
         Guid initiativeId,
         long expectedInitiativeRevision,

@@ -74,6 +74,7 @@
     "onCommand:gaepKiro.endToEndTraceability.inspect",
     "onCommand:gaepKiro.p0P4ReadinessGate.inspect",
     "onCommand:gaepKiro.p5HandoffPackage.inspect",
+    "onCommand:gaepKiro.designApplicability.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -247,6 +248,10 @@
       {
         "command": "gaepKiro.p5HandoffPackage.inspect",
         "title": "GAEP for Kiro: Inspect Governed P5 Handoff Package Candidate"
+      },
+      {
+        "command": "gaepKiro.designApplicability.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Design Applicability Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

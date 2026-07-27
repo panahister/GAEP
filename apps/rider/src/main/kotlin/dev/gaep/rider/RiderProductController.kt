@@ -1211,6 +1211,47 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readDesignApplicability(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readDesignApplicability(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Design Applicability was read. Refresh the exact records." }
+        return renderDesignApplicability(projection)
+    }
+
+    fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
+        appendLine("GAEP governed Design Applicability candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine("Coverage: ${projection.scopeCount} scopes · ${projection.decisionCount} explicit UX, UI, design-work, and Figma decisions")
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedDecisionCount} unresolved decisions · ${projection.blockedDecisionCount} blocked decisions · " +
+                "${projection.pendingApprovalCount} pending approvals · ${projection.rejectedApprovalCount} rejected approvals · " +
+                "${projection.unresolvedDepthCount} unresolved depths · ${projection.unresolvedSourceCount} unresolved sources · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Design Applicability candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Candidate inventory: ${record.scopeCount} scopes · ${record.reviewState}")
+        } ?: appendLine("Design Applicability candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: silence is never not applicable; this candidate does not approve design, establish a Design Baseline, " +
+                "grant readiness, authorize implementation, write, or action.",
+        )
+    }
+
     fun renderFailureRecoveryModel(projection: FailureRecoveryModelProjection): String = buildString {
         appendLine("GAEP governed Failure and Recovery Model candidate")
         appendLine()

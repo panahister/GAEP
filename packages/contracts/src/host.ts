@@ -48,6 +48,7 @@ import { evidenceRegistryInputSchema } from "./evidence-registry.js"
 import { endToEndTraceabilityInputSchema } from "./end-to-end-traceability.js"
 import { p0P4ReadinessGateInputSchema } from "./p0-p4-readiness-gate.js"
 import { p5HandoffPackageInputSchema } from "./p5-handoff-package.js"
+import { designApplicabilityInputSchema } from "./design-applicability.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -500,6 +501,18 @@ export const hostP5HandoffPackageReviseParamsSchema = z.object({
   record: p5HandoffPackageInputSchema,
 }).strict()
 
+export const hostDesignApplicabilityCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: designApplicabilityInputSchema,
+}).strict()
+
+export const hostDesignApplicabilityReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: designApplicabilityInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -667,6 +680,11 @@ export const hostMethodSchema = z.enum([
   "handoff.p5.revise",
   "handoff.p5.assess",
   "handoff.p5.snapshot",
+  "design.applicability.read",
+  "design.applicability.create",
+  "design.applicability.revise",
+  "design.applicability.assess",
+  "design.applicability.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -843,6 +861,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("handoff.p5.revise", hostP5HandoffPackageReviseParamsSchema),
   requestVariant("handoff.p5.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("handoff.p5.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.applicability.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.applicability.create", hostDesignApplicabilityCreateParamsSchema),
+  requestVariant("design.applicability.revise", hostDesignApplicabilityReviseParamsSchema),
+  requestVariant("design.applicability.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.applicability.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

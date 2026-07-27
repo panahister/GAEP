@@ -112,6 +112,10 @@
                 Command="{Binding LoadP5HandoffPackageCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate counts, states, and digests only; source ownership remains retained and complete for review does not establish acknowledgement, approval, a Design Baseline, P5 entry, transfer authority, write authority, or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadDesignApplicabilityButton" Content="Inspect governed Design Applicability"
+                Command="{Binding LoadDesignApplicabilityCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate scope, decision, gap, state, and digest metadata only; silence is never not applicable and this does not approve design, establish a Design Baseline, grant readiness, authorize implementation, write, or action."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

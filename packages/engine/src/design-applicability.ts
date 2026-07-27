@@ -295,7 +295,7 @@ export class DesignApplicabilityService {
         reviewState: candidate.reviewState,
         updatedAt: candidate.updatedAt,
       } } : {}),
-      observedAt: new Date().toISOString(),
+      observedAt: status.assessedAt,
       privacyBoundary:
         "projection-contains-identities-counts-statuses-and-digests-only-not-rationales-source-content-journeys-design-content-personal-data-secrets-or-credentials" as const,
       authorityBoundary:

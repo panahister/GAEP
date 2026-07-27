@@ -24,6 +24,7 @@ import {
   type EndToEndTraceabilityProjection,
   type P0P4ReadinessGateProjection,
   type P5HandoffPackageProjection,
+  type DesignApplicabilityProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -119,6 +120,7 @@ const commandIds = {
   endToEndTraceability: "gaepKiro.endToEndTraceability.inspect",
   p0P4ReadinessGate: "gaepKiro.p0P4ReadinessGate.inspect",
   p5HandoffPackage: "gaepKiro.p5HandoffPackage.inspect",
+  designApplicability: "gaepKiro.designApplicability.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -233,6 +235,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.endToEndTraceability, (input?: unknown) => runUserCommand(() => showEndToEndTraceability(pool, input))),
     vscode.commands.registerCommand(commandIds.p0P4ReadinessGate, (input?: unknown) => runUserCommand(() => showP0P4ReadinessGate(pool, input))),
     vscode.commands.registerCommand(commandIds.p5HandoffPackage, (input?: unknown) => runUserCommand(() => showP5HandoffPackage(pool, input))),
+    vscode.commands.registerCommand(commandIds.designApplicability, (input?: unknown) => runUserCommand(() => showDesignApplicability(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1410,6 +1413,45 @@ async function showP5HandoffPackage(
     "",
     `Handoff boundary: ${status.handoffBoundary}`,
     "Source ownership remains retained. Complete for review is not acknowledgement, readiness approval, design approval, a Design Baseline, P5 entry, transfer authority, write authority, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDesignApplicability(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DesignApplicabilityProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Design Applicability", "Initiative ID")
+  const projection = await client.readDesignApplicability(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Design Applicability candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Coverage: ${status.scopeCount} scopes · ${status.decisionCount} explicit UX, UI, design-work, and Figma decisions`,
+    `Candidate gaps: ${status.unresolvedDecisionCount} unresolved decisions · ${status.blockedDecisionCount} blocked decisions · ${status.pendingApprovalCount} pending approvals · ${status.rejectedApprovalCount} rejected approvals · ${status.unresolvedDepthCount} unresolved depths · ${status.unresolvedSourceCount} unresolved sources · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate inventory: ${record.scopeCount} scopes · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "This candidate never treats silence as not applicable and does not approve design, establish a Design Baseline, grant readiness, authorize implementation, write, or action.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

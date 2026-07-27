@@ -51,6 +51,7 @@ import type {
   P0P4ReadinessGate,
   P5HandoffPackageProjection,
   P5HandoffPackage,
+  DesignApplicabilityProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -211,6 +212,9 @@ export interface CurrentStudioEngineReader {
     project(initiativeId: string): Promise<P5HandoffPackageProjection>
     readCurrent?(initiativeId: string): Promise<P5HandoffPackage | undefined>
   }
+  designApplicability?: {
+    project(initiativeId: string): Promise<DesignApplicabilityProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -271,6 +275,7 @@ interface ObservedStudioState {
   endToEndTraceabilityProjections: Map<string, EndToEndTraceabilityProjection>
   p0P4ReadinessGateProjections: Map<string, P0P4ReadinessGateProjection>
   p5HandoffPackageProjections: Map<string, P5HandoffPackageProjection>
+  designApplicabilityProjections: Map<string, DesignApplicabilityProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1572,6 +1577,53 @@ function p5HandoffPackageTable(state: ObservedStudioState): StudioTableSnapshot 
   }
 }
 
+function designApplicabilityTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.designApplicabilityProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        coverage: `${status.scopeCount} scopes · ${status.decisionCount} explicit UX, UI, design-work, and Figma decisions`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        gaps: `${status.unresolvedDecisionCount} unresolved decisions · ${status.blockedDecisionCount} blocked decisions · ${status.pendingApprovalCount} pending approvals · ${status.rejectedApprovalCount} rejected approvals · ${status.unresolvedDepthCount} unresolved depths · ${status.unresolvedSourceCount} unresolved sources · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate guidance only; silence is never not applicable, and this does not approve design, establish a Design Baseline, grant readiness, authorize implementation, write, or action.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "design-applicability",
+    title: "Governed Design Applicability Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "coverage", label: "Privacy-safe coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Applicability and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Design Applicability candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer UX, UI, design-work, or Figma applicability from silence and grants no design approval, baseline, readiness, implementation, write, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1582,7 +1634,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
       ...(route === "architecture"
-        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), eventIntegrationModelTable(state), failureRecoveryModelTable(state), architectureChallengeModelTable(state), architectureTable(state.architecture)]
+        ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), eventIntegrationModelTable(state), failureRecoveryModelTable(state), architectureChallengeModelTable(state), architectureTable(state.architecture), designApplicabilityTable(state)]
         : []),
     ]
     return relatedRecords.length > 0 ? { ...legacy, relatedRecords } : legacy
@@ -1607,6 +1659,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
       failureRecoveryModelTable(state),
       architectureChallengeModelTable(state),
       architectureTable(state.architecture),
+      designApplicabilityTable(state),
     )
   }
   return {
@@ -4230,6 +4283,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       endToEndTraceabilityProjections: new Map(),
       p0P4ReadinessGateProjections: new Map(),
       p5HandoffPackageProjections: new Map(),
+      designApplicabilityProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -5274,6 +5328,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "p5-handoff-package-unavailable",
           "P5 Handoff Package metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "architecture" && engine.designApplicability) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.designApplicability!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.designApplicabilityProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Design Applicability projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `design-applicability-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Design Applicability metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "design-applicability-unavailable",
+          "Design Applicability metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

@@ -23,6 +23,7 @@ import {
   endToEndTraceabilityProjectionSchema,
   p0P4ReadinessGateProjectionSchema,
   p5HandoffPackageProjectionSchema,
+  designApplicabilityProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -53,6 +54,7 @@ import {
   type EndToEndTraceabilityProjection,
   type P0P4ReadinessGateProjection,
   type P5HandoffPackageProjection,
+  type DesignApplicabilityProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -598,6 +600,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = p5HandoffPackageProjectionSchema.safeParse(
         await this.request("handoff.p5.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readDesignApplicability(initiativeValue: string): Promise<DesignApplicabilityProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = designApplicabilityProjectionSchema.safeParse(
+        await this.request("design.applicability.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

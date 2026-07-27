@@ -11,6 +11,7 @@ import {
   endToEndTraceabilitySchema,
   p0P4ReadinessGateSchema,
   p5HandoffPackageSchema,
+  designApplicabilitySchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -78,6 +79,7 @@ import {
   type EndToEndTraceability,
   type P0P4ReadinessGate,
   type P5HandoffPackage,
+  type DesignApplicability,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2149,6 +2151,16 @@ export class ProductStudioService {
       /^p5-handoff-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       p5HandoffPackageSchema,
     )
+    const designApplicability = await this.listRecords(
+      "design-applicability",
+      /^[0-9a-f-]+\.json$/i,
+      designApplicabilitySchema,
+    )
+    const designApplicabilityHistory = await this.listRecords(
+      "design-applicability-history",
+      /^design-applicability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      designApplicabilitySchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2206,6 +2218,8 @@ export class ProductStudioService {
       ...p0P4ReadinessGateHistory,
       ...p5HandoffPackages,
       ...p5HandoffPackageHistory,
+      ...designApplicability,
+      ...designApplicabilityHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2235,6 +2249,7 @@ export class ProductStudioService {
           endToEndTraceability.find((record) => record.id === id)?.informationClassification ??
           p0P4ReadinessGates.find((record) => record.id === id)?.informationClassification ??
           p5HandoffPackages.find((record) => record.id === id)?.informationClassification ??
+          designApplicability.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2429,6 +2444,13 @@ export class ProductStudioService {
       p5HandoffPackageHistory,
       (record) => `p5-handoff-package-history/p5-handoff-package-${record.id}-r${record.revision}.json`,
     )
+    append("design-applicability", "design-applicability-candidate", designApplicability)
+    append(
+      "design-applicability-history",
+      "design-applicability-candidate",
+      designApplicabilityHistory,
+      (record) => `design-applicability-history/design-applicability-${record.id}-r${record.revision}.json`,
+    )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
       "stakeholder-model-history",
@@ -2505,6 +2527,7 @@ export class ProductStudioService {
           ...systemSolutionArchitectures.map((record) => record.informationClassification),
           ...boundedContextModels.map((record) => record.informationClassification),
           ...p5HandoffPackages.map((record) => record.informationClassification),
+          ...designApplicability.map((record) => record.informationClassification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
         ])],
@@ -2789,6 +2812,14 @@ export class ProductStudioService {
           `p5-handoff-package-history/p5-handoff-package-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import P5 Handoff Package history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("design-applicability-history/")) {
+        const record = validated as DesignApplicability
+        const expectedHistoryPath =
+          `design-applicability-history/design-applicability-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Design Applicability history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3915,7 +3946,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3947,7 +3978,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -5780,6 +5811,62 @@ export class ProductStudioService {
       }
     }
 
+    const designApplicability = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-applicability/"))
+      .map(([, record]) => designApplicabilitySchema.parse(record))
+    const designApplicabilityHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-applicability-history/"))
+      .map(([, record]) => designApplicabilitySchema.parse(record))
+    validateVersionedBusinessRecords(designApplicability, designApplicabilityHistory, "Design Applicability")
+    for (const candidate of [...designApplicability, ...designApplicabilityHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        classificationBinding: candidate.classificationBinding,
+        applicabilityBinding: candidate.applicabilityBinding,
+        scopes: candidate.scopes,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Design Applicability ${candidate.id} membership digest is invalid`)
+      }
+      const boundInitiative = initiativesById.get(candidate.initiativeId)
+      if (!boundInitiative) throw new Error(`Import Design Applicability ${candidate.id} has no Initiative`)
+      if (candidate.context.initiativeRevision === (boundInitiative.revision ?? 1)) {
+        const classification = boundInitiative.classification
+        const matrix = boundInitiative.applicability
+        if (!classification || candidate.classificationBinding.digest !== canonicalDigest(classification) ||
+            candidate.classificationBinding.completenessPolicyVersion !== classification.completenessPolicyVersion ||
+            candidate.classificationBinding.completenessPolicyDigest !== classification.completenessPolicyDigest) {
+          throw new Error(`Import Design Applicability ${candidate.id} exact classification binding is unresolved`)
+        }
+        if (!matrix || candidate.applicabilityBinding.matrixRevision !== matrix.revision ||
+            candidate.applicabilityBinding.matrixDigest !== canonicalDigest(matrix) ||
+            candidate.applicabilityBinding.catalogVersion !== matrix.subjectCatalog?.catalogVersion ||
+            candidate.applicabilityBinding.catalogDigest !== matrix.subjectCatalog?.digest) {
+          throw new Error(`Import Design Applicability ${candidate.id} exact applicability binding is unresolved`)
+        }
+        for (const binding of [
+          candidate.applicabilityBinding.experienceDesign,
+          candidate.applicabilityBinding.designReferenceIntegration,
+        ]) {
+          const decision = matrix.decisions.find((entry) => entry.id === binding.decisionId)
+          if (!decision || decision.revision !== binding.revision || canonicalDigest(decision) !== binding.digest ||
+              decision.status !== binding.status || decision.subject.type !== binding.subject.type ||
+              decision.subject.key !== binding.subject.key) {
+            throw new Error(`Import Design Applicability ${candidate.id} exact general design decision binding is unresolved`)
+          }
+        }
+      }
+    }
+
     for (const change of changes) {
       if (!initiativesById.has(change.initiativeId)) throw new Error(`Import Change ${change.id} has no Initiative`)
       if (change.baseline.kind === "exact") {
@@ -6461,6 +6548,10 @@ export class ProductStudioService {
         /^p5-handoff-package-history\/p5-handoff-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "p5-handoff-package-candidate"
     }
+    if (/^design-applicability\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-applicability-history\/design-applicability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "design-applicability-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -6589,6 +6680,10 @@ export class ProductStudioService {
     if (/^p5-handoff-packages\/[0-9a-f-]+\.json$/i.test(path) ||
         /^p5-handoff-package-history\/p5-handoff-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return p5HandoffPackageSchema
+    }
+    if (/^design-applicability\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-applicability-history\/design-applicability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return designApplicabilitySchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

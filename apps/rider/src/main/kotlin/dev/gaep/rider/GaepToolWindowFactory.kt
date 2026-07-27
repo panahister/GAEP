@@ -450,6 +450,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += p5HandoffPackageButton
         actions.add(p5HandoffPackageButton)
 
+        val designApplicabilityButton = JButton("Inspect Design Applicability…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Rationales, Source content, journeys, design content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Design Applicability",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Design Applicability", status, output, buttons) {
+                    controller.readDesignApplicability(initiativeId)
+                }
+            }
+        }
+        buttons += designApplicabilityButton
+        actions.add(designApplicabilityButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {
