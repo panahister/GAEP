@@ -89,6 +89,7 @@ import { ArchitectureChallengeModelService } from "./architecture-challenge-mode
 import { DecisionRegisterService } from "./decision-register.js"
 import { RiskRegisterService } from "./risk-register.js"
 import { EvidenceRegistryService } from "./evidence-registry.js"
+import { EndToEndTraceabilityService } from "./end-to-end-traceability.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -267,6 +268,7 @@ export class GaepEngine {
   readonly decisionRegister: DecisionRegisterService
   readonly riskRegister: RiskRegisterService
   readonly evidenceRegistry: EvidenceRegistryService
+  readonly endToEndTraceability: EndToEndTraceabilityService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -471,6 +473,13 @@ export class GaepEngine {
       this.decisionRegister,
       this.riskRegister,
     )
+    this.endToEndTraceability = new EndToEndTraceabilityService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      this.evidenceRegistry,
+    )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
@@ -564,7 +573,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
@@ -585,6 +594,7 @@ export class GaepEngine {
         this.decisionRegister.healthIssues(),
         this.riskRegister.healthIssues(),
         this.evidenceRegistry.healthIssues(),
+        this.endToEndTraceability.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,
@@ -607,6 +617,7 @@ export class GaepEngine {
         ...decisionRegisterIssues,
         ...riskRegisterIssues,
         ...evidenceRegistryIssues,
+        ...traceabilityIssues,
       ]
     } catch (error) {
       domainIssues = [{

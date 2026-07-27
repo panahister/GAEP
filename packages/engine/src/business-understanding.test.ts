@@ -8,6 +8,7 @@ import {
   decisionRegisterRequirementIds,
   riskRegisterRequirementIds,
   evidenceRegistryRequirementIds,
+  endToEndTraceabilityRequirementIds,
   authorizationModelInputSchema,
   authorizationModelRequirementIds,
   eventIntegrationModelInputSchema,
@@ -36,6 +37,8 @@ import {
   type RiskRegisterInput,
   type RiskRegister,
   type EvidenceRegistryInput,
+  type EvidenceRegistry,
+  type EndToEndTraceabilityInput,
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
@@ -3249,6 +3252,133 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function endToEndTraceabilityInput(
+    riskRegister: RiskRegister,
+    evidenceRegistry: EvidenceRegistry,
+    overrides: Partial<EndToEndTraceabilityInput> = {},
+  ): EndToEndTraceabilityInput {
+    const nodeKeys = ["evidence-registry", "risk-register"]
+    const linkKeys = ["risk-register-substantiates-evidence-registry"]
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate governed end-to-end Product traceability",
+      scope: "Bind exact governed Product records through typed, attributable, versioned candidate relationships, explicit transformations, minimum-spine coverage, and uncertainty without treating graph presence as truth, completeness, approval, readiness, or action authority.",
+      evidenceRegistry: {
+        recordId: evidenceRegistry.id,
+        revision: evidenceRegistry.revision,
+        digest: canonicalDigest(evidenceRegistry),
+      },
+      nodes: [{
+        key: "evidence-registry",
+        subject: {
+          recordKind: "evidence-registry",
+          recordId: evidenceRegistry.id,
+          revision: evidenceRegistry.revision,
+          digest: canonicalDigest(evidenceRegistry),
+          elementKeys: ["current-cross-host-conformance"],
+        },
+        scope: ["Candidate claim and evidence relationships"],
+        sources: [reference()],
+        lifecycle: "current-candidate",
+        authorityState: "not-established",
+      }, {
+        key: "risk-register",
+        subject: {
+          recordKind: "risk-register",
+          recordId: riskRegister.id,
+          revision: riskRegister.revision,
+          digest: canonicalDigest(riskRegister),
+          elementKeys: ["shared-engine-correlated-failure"],
+        },
+        scope: ["Candidate shared-engine risks"],
+        sources: [reference()],
+        lifecycle: "current-candidate",
+        authorityState: "not-established",
+      }],
+      relationships: [{
+        key: "substantiates",
+        namespace: "gaep.traceability",
+        registryRevision: 1,
+        definitionDigest: digest("8"),
+        sourceKinds: ["risk-register"],
+        targetKinds: ["evidence-registry"],
+        direction: "directed",
+        inverseRelationshipKey: "is-substantiated-by",
+        transitivity: "not-transitive",
+        symmetry: "asymmetric",
+        impactBehavior: "probable",
+        sourceCardinality: "many",
+        targetCardinality: "many",
+        lifecycle: "candidate",
+        authoritativeUseState: "not-established",
+        rationale: "A candidate risk can identify the evidence needed to assess its bounded statements without making the evidence or relationship authoritative.",
+        invalidationTriggers: ["The relationship registry definition changes"],
+        authorityBoundary: "relationship-definition-is-candidate-semantics-and-does-not-by-registration-establish-a-relationship-approval-baseline-readiness-or-action-authority",
+      }],
+      links: [{
+        key: "risk-register-substantiates-evidence-registry",
+        sourceNodeKey: "risk-register",
+        targetNodeKey: "evidence-registry",
+        relationshipKey: "substantiates",
+        scope: ["Exact current candidate revisions only"],
+        rationale: "The exact Risk Register and Evidence Registry revisions share attributable source evidence and a bounded candidate relationship for local review.",
+        provenance: {
+          kind: "human-asserted",
+          actor: { kind: "human", id: actorId },
+          assertedAt: "2026-07-27T02:00:00.000Z",
+          method: "Governed trace review",
+          sourceReferences: [reference()],
+        },
+        state: "verified",
+        verification: {
+          endpointResolution: "resolved",
+          semanticFitness: "fit",
+          verifier: { kind: "human", id: actorId },
+          verifiedAt: "2026-07-27T02:01:00.000Z",
+          methodName: "Candidate semantic review",
+          methodVersion: "0.1.0",
+          rationale: "The named reviewer verified exact endpoint resolution and candidate semantic fitness for this declared scope only.",
+          authorityBoundary: "trace-verification-establishes-only-scoped-endpoint-and-semantic-assessment-not-approval-baseline-readiness-or-action-authority",
+        },
+        effectiveFrom: "2026-07-27T02:00:00.000Z",
+        invalidationConditions: ["Either exact governed endpoint changes"],
+        supersedesLinkKeys: [],
+        authoritativeUseState: "not-established",
+        authorityBoundary: "trace-link-is-a-candidate-attributable-assertion-and-does-not-by-presence-or-verification-prove-completeness-grant-approval-promote-a-baseline-establish-readiness-or-authorize-action",
+      }],
+      transformations: [],
+      traceSpine: [{
+        key: "risk-to-evidence",
+        sourceNodeKey: "risk-register",
+        targetNodeKey: "evidence-registry",
+        relationshipKey: "substantiates",
+        state: "covered-candidate",
+        linkKeys,
+        basis: "The candidate spine records the exact current Risk Register to Evidence Registry relationship without claiming graph completeness.",
+        sources: [reference()],
+        applicabilityAuthorityState: "not-established",
+      }],
+      requirementCoverage: [...endToEndTraceabilityRequirementIds]
+        .sort((left, right) => left.localeCompare(right))
+        .map((requirementId) => ({
+          requirementId,
+          state: "covered-candidate" as const,
+          nodeKeys,
+          linkKeys,
+          basis: "The candidate graph preserves exact versioned endpoints, typed relationship semantics, attributable verification, source provenance, lifecycle, coverage boundaries, and uncertainty.",
+          sources: [reference()],
+        })),
+      unknownRelationships: [],
+      unresolvedQuestions: [],
+      inconsistencies: [],
+      limitations: ["Relationship truth, completeness, approval, baseline promotion, readiness, release, deployment, and action authority remain explicitly unestablished"],
+      coverageState: "not-established",
+      ...overrides,
+    }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -6234,6 +6364,213 @@ describe("Business understanding governance", () => {
       staleBindingCount: 1,
       state: "attention-required",
     })
+  })
+
+  it("persists exact versioned End-to-End Traceability without synthesizing relationship truth or authority", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel), actorId,
+    )
+    const riskRegister = await engine.riskRegister.create(
+      riskRegisterInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister,
+      ),
+      actorId,
+    )
+    const evidenceRegistry = await engine.evidenceRegistry.create(
+      evidenceRegistryInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister, riskRegister,
+      ),
+      actorId,
+    )
+    const input = endToEndTraceabilityInput(riskRegister, evidenceRegistry)
+    const traceability = await engine.endToEndTraceability.create(input, actorId)
+
+    expect(traceability).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      evidenceRegistry: input.evidenceRegistry,
+      nodes: [{ key: "evidence-registry", authorityState: "not-established" }, { key: "risk-register" }],
+      relationships: [{ key: "substantiates", authoritativeUseState: "not-established" }],
+      links: [{
+        key: "risk-register-substantiates-evidence-registry",
+        state: "verified",
+        verification: { endpointResolution: "resolved", semanticFitness: "fit" },
+        authoritativeUseState: "not-established",
+      }],
+      coverageState: "not-established",
+      authorityBoundary: expect.stringContaining("does-not-establish-relationship-truth-completeness"),
+    })
+    expect(traceability.membershipDigest).toMatch(/^sha256:[0-9a-f]{64}$/)
+    expect(await engine.endToEndTraceability.assess(initiative.id)).toMatchObject({
+      traceability: { recordId: traceability.id, revision: 1, digest: canonicalDigest(traceability) },
+      nodeCount: 2,
+      relationshipCount: 1,
+      linkCount: 1,
+      transformationCount: 0,
+      verifiedLinkCount: 1,
+      proposedLinkCount: 0,
+      invalidOrHistoricalLinkCount: 0,
+      unresolvedEndpointCount: 0,
+      notAssessedSemanticCount: 0,
+      missingSpineCount: 0,
+      unknownRelationshipCount: 0,
+      unresolvedRequirementCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      inconsistencyCount: 0,
+      unresolvedQuestionCount: 0,
+      state: "complete-for-review",
+      reasons: [],
+      coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact-or-relationship",
+    })
+    const projection = await engine.endToEndTraceability.project(initiative.id)
+    expect(projection).toMatchObject({
+      traceability: {
+        id: traceability.id,
+        revision: 1,
+        nodeCount: 2,
+        relationshipCount: 1,
+        linkCount: 1,
+        transformationCount: 0,
+      },
+      status: { state: "complete-for-review" },
+      privacyBoundary: expect.stringContaining("not-node-content-link-rationale-transformation-detail"),
+      authorityBoundary: expect.stringContaining("does-not-establish-relationship-truth-completeness"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("The exact Risk Register and Evidence Registry")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.endToEndTraceability.revise(
+      traceability.id,
+      traceability.revision,
+      endToEndTraceabilityInput(riskRegister, evidenceRegistry, {
+        limitations: [
+          "Independent graph-completeness and relationship-truth review remains incomplete",
+          "Relationship truth, completeness, approval, baseline promotion, readiness, release, deployment, and action authority remain explicitly unestablished",
+        ],
+      }),
+      actorId,
+    )
+    expect(revised).toMatchObject({
+      id: traceability.id,
+      revision: 2,
+      predecessorDigest: canonicalDigest(traceability),
+    })
+    expect((await engine.endToEndTraceability.listHistory(traceability.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "traceability.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(traceability),
+        evidenceRegistry: input.evidenceRegistry,
+        nodeCount: 2,
+        relationshipCount: 1,
+        linkCount: 1,
+        transformationCount: 0,
+        verifiedLinkCount: 1,
+        relationshipTruthState: "not-established",
+        completenessState: "not-established",
+        approvalState: "not-established",
+        baselinePromotionState: "not-granted",
+        readinessState: "not-established",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("rejects forged Traceability endpoints, upstream bindings, secrets, and duplicate current graphs", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel), actorId,
+    )
+    const riskRegister = await engine.riskRegister.create(
+      riskRegisterInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister,
+      ),
+      actorId,
+    )
+    const evidenceRegistry = await engine.evidenceRegistry.create(
+      evidenceRegistryInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister, riskRegister,
+      ),
+      actorId,
+    )
+    const base = endToEndTraceabilityInput(riskRegister, evidenceRegistry)
+    await expect(engine.endToEndTraceability.create({
+      ...base,
+      evidenceRegistry: { ...base.evidenceRegistry, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current Evidence Registry/)
+    await expect(engine.endToEndTraceability.create({
+      ...base,
+      nodes: base.nodes.map((node) => node.key === "risk-register"
+        ? { ...node, subject: { ...node.subject, digest: digest("e") } }
+        : node),
+    }, actorId)).rejects.toThrow(/exact current governed records/)
+    await expect(engine.endToEndTraceability.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable traceability context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+    await engine.endToEndTraceability.create(base, actorId)
+    await expect(engine.endToEndTraceability.create(base, actorId))
+      .rejects.toThrow(/only one current End-to-End Traceability/)
+  })
+
+  it("reports Traceability staleness after its exact Evidence Registry changes", async () => {
+    const upstream = await createDecisionRegisterUpstream()
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel), actorId,
+    )
+    const riskRegister = await engine.riskRegister.create(
+      riskRegisterInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister,
+      ),
+      actorId,
+    )
+    const evidenceRegistry = await engine.evidenceRegistry.create(
+      evidenceRegistryInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister, riskRegister,
+      ),
+      actorId,
+    )
+    const traceability = await engine.endToEndTraceability.create(
+      endToEndTraceabilityInput(riskRegister, evidenceRegistry),
+      actorId,
+    )
+    await engine.evidenceRegistry.revise(
+      evidenceRegistry.id,
+      evidenceRegistry.revision,
+      evidenceRegistryInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister, riskRegister,
+        { limitations: [
+          "No Claim validation, Evidence sufficiency, Assurance Case conclusion, Review, Approval, Risk Acceptance, baseline promotion, readiness, release, deployment, or action authority is represented",
+          "The exact Evidence Registry changed after traceability capture",
+        ] },
+      ),
+      actorId,
+    )
+    expect(await engine.endToEndTraceability.assess(initiative.id)).toMatchObject({
+      traceability: { recordId: traceability.id },
+      staleBindingCount: 2,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "end-to-end-traceability.binding-review-required",
+      severity: "warning",
+    }))
   })
 
   it("rejects invalid capability graphs, forged trace bindings, secrets, and stale upstream context", async () => {
