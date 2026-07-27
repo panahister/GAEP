@@ -46,7 +46,8 @@
     { "id": "failure-recovery-model", "label": "Exact governed Failure and Recovery Model candidate projection without failure occurrence, retry safety, compensation or restoration, recovery success, return-to-service authority, operational readiness, baseline promotion, or action authority" },
     { "id": "architecture-challenge-model", "label": "Exact governed Architecture Challenge candidate projection without completed independent review, assurance, risk acceptance, architecture approval, operational readiness, baseline promotion, or action authority" },
     { "id": "decision-register", "label": "Exact governed Decision Register candidate projection without decision effectiveness, approval, risk acceptance, baseline promotion, operational readiness, or action authority" },
-    { "id": "risk-register", "label": "Exact governed Risk Register candidate projection without assessment fact, owner assignment, control effectiveness, risk acceptance, approval, exception, baseline promotion, operational readiness, or action authority" }
+    { "id": "risk-register", "label": "Exact governed Risk Register candidate projection without assessment fact, owner assignment, control effectiveness, risk acceptance, approval, exception, baseline promotion, operational readiness, or action authority" },
+    { "id": "evidence-registry", "label": "Exact governed Evidence Registry candidate projection without claim validation, evidence sufficiency, assurance, completed review, approval, risk acceptance, operational readiness, baseline promotion, or action authority" }
   ],
   "hosts": [
     {
@@ -57,7 +58,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T231249Z-phase-1-risk-register-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T235930Z-phase-1-evidence-registry-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -194,6 +195,9 @@
         ] },
         { "capabilityId": "risk-register", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["riskRegister?: {", "engine.riskRegister!.project(initiative.id)", "id: \"risk-register\"", "Candidate risk metadata only; no assessment fact, owner assignment, control effectiveness, risk acceptance, approval, exception, baseline promotion, operational readiness, or action authority."] }
+        ] },
+        { "capabilityId": "evidence-registry", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["evidenceRegistry?: {", "engine.evidenceRegistry!.project(initiative.id)", "id: \"evidence-registry\"", "Candidate claim-to-evidence metadata only; no claim validation, evidence sufficiency, assurance, review, approval, risk acceptance, readiness, or action authority."] }
         ] }
       ]
     },
@@ -205,7 +209,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T231249Z-phase-1-risk-register-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T235930Z-phase-1-evidence-registry-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -357,6 +361,10 @@
         { "capabilityId": "risk-register", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readRiskRegister(", "this.request(\"risk.registers.snapshot\"", "riskRegisterProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showRiskRegister", "GAEP governed Risk Register candidate", "Candidate counts:", "Authority boundary: ${projection.authorityBoundary}"] }
+        ] },
+        { "capabilityId": "evidence-registry", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readEvidenceRegistry(", "this.request(\"evidence.registries.snapshot\"", "evidenceRegistryProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showEvidenceRegistry", "GAEP governed Evidence Registry candidate", "Candidate counts:", "Authority boundary: ${projection.authorityBoundary}"] }
         ] }
       ]
     },
@@ -368,7 +376,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T231249Z-phase-1-risk-register-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T235930Z-phase-1-evidence-registry-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -544,6 +552,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readRiskRegister(", "portableRequest(\"risk.registers.snapshot\"", "parseRiskRegisterEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Risk Register candidate", "Membership digest:", "assessment fact, owner assignment, control effectiveness"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["RiskRegisterRecordView", "RISK_REGISTER_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "evidence-registry", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readEvidenceRegistry(", "portableRequest(\"evidence.registries.snapshot\"", "parseEvidenceRegistryEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Evidence Registry candidate", "Membership digest:", "claim validation, evidence sufficiency, assurance"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["EvidenceRegistryRecordView", "EVIDENCE_REGISTRY_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -555,7 +568,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/2026-07-26T231249Z-phase-1-risk-register-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/2026-07-26T235930Z-phase-1-evidence-registry-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -740,13 +753,18 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadRiskRegisterAsync(", "\"risk.registers.snapshot\"", "ParseRiskRegisterResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Risk Register candidate", "Membership digest:", "assessment fact, owner assignment, control effectiveness"] },
           { "path": "apps/visual-studio/Gaep.HostClient/RiskRegisterProtocol.cs", "contains": ["RiskRegisterRecordView", "RiskRegisterProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "evidence-registry", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadEvidenceRegistryAsync(", "\"evidence.registries.snapshot\"", "ParseEvidenceRegistryResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Evidence Registry candidate", "Membership digest:", "claim validation, evidence sufficiency, assurance"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EvidenceRegistryProtocol.cs", "contains": ["EvidenceRegistryRecordView", "EvidenceRegistryProjectionAuthorityBoundary"] }
         ] }
       ]
     }
   ],
   "providerEvidence": {
     "format": "gaep-provider-behavior-v1",
-    "reportPath": "evidence/ide-smokes/2026-07-26T231249Z-phase-1-risk-register-provider-behavior.json",
+    "reportPath": "evidence/ide-smokes/2026-07-26T235930Z-phase-1-evidence-registry-provider-behavior.json",
     "expectedKind": "gaep-phase-0-provider-behavior-evidence-v1",
     "remainingRequirements": [
       "live Codex provider request and real-account acceptance",

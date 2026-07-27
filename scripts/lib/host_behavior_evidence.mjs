@@ -109,6 +109,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/DecisionRegisterProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/RiskRegisterModels.cs",
       "apps/visual-studio/Gaep.HostClient/RiskRegisterProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/EvidenceRegistryModels.cs",
+      "apps/visual-studio/Gaep.HostClient/EvidenceRegistryProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -125,7 +127,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (375)",
+        "GAEP Visual Studio host-client tests: PASS (382)",
       ],
     }],
   },
