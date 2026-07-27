@@ -213,6 +213,9 @@ internal static class Program
         var badAgentModelEvidenceCuesRoot = Path.Combine(temporaryRoot, "bad-agent-model-evidence-cues");
         var badAgentModelDigestRoot = Path.Combine(temporaryRoot, "bad-agent-model-digest");
         var badAgentModelPrivateRoot = Path.Combine(temporaryRoot, "bad-agent-model-private");
+        var badPhase1AgentModelCountRoot = Path.Combine(temporaryRoot, "bad-phase1-agent-model-count");
+        var badPhase1AgentModelDigestRoot = Path.Combine(temporaryRoot, "bad-phase1-agent-model-digest");
+        var badPhase1AgentModelPrivateRoot = Path.Combine(temporaryRoot, "bad-phase1-agent-model-private");
         var badManagedPreviewRoot = Path.Combine(temporaryRoot, "bad-managed-preview");
         var badManagedCriterionRoot = Path.Combine(temporaryRoot, "bad-managed-criterion");
         var badManagedDigestRoot = Path.Combine(temporaryRoot, "bad-managed-digest");
@@ -334,6 +337,9 @@ internal static class Program
         Directory.CreateDirectory(badAgentModelEvidenceCuesRoot);
         Directory.CreateDirectory(badAgentModelDigestRoot);
         Directory.CreateDirectory(badAgentModelPrivateRoot);
+        Directory.CreateDirectory(badPhase1AgentModelCountRoot);
+        Directory.CreateDirectory(badPhase1AgentModelDigestRoot);
+        Directory.CreateDirectory(badPhase1AgentModelPrivateRoot);
         Directory.CreateDirectory(badManagedPreviewRoot);
         Directory.CreateDirectory(badManagedCriterionRoot);
         Directory.CreateDirectory(badManagedDigestRoot);
@@ -1738,6 +1744,48 @@ internal static class Program
                   "provider-metrics",
               ]) && agentModelTables.All(table => table.SnapshotDigest == agentModel.SnapshotDigest),
             "Accessible Agent/Model tables preserve all five exact categories and the verified snapshot digest");
+
+        var phase1AgentModel = await client.ReadPhase1AgentModelAsync(product, phase1Initiative);
+        Check(phase1AgentModel.InitiativeId == phase1Initiative.Id &&
+              phase1AgentModel.AgentModel.SnapshotDigest == agentModel.SnapshotDigest &&
+              phase1AgentModel.Capabilities.Total == 2 && phase1AgentModel.Capabilities.Detected == 1 &&
+              phase1AgentModel.Runs.Total == 0 && phase1AgentModel.LiveProviderQuality == "not-assessed" &&
+              phase1AgentModel.SemanticOutputQuality == "not-assessed" &&
+              phase1AgentModel.ProductOwnerAcceptance == "not-established",
+            "Typed Phase 1 Agent/Model projection preserves exact Initiative execution truth and absent authority");
+        var phase1AgentModelJson = JsonSerializer.Serialize(phase1AgentModel);
+        Check(!phase1AgentModelJson.Contains("Founder Product", StringComparison.Ordinal) &&
+              !phase1AgentModelJson.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !phase1AgentModelJson.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Typed Phase 1 Agent/Model projection withholds Product text, private paths, and credentials");
+        var phase1AgentModelOutput = await new ProductWorkflowController(client)
+            .ReadPhase1AgentModelAsync(InitiativeId);
+        Check(phase1AgentModelOutput.Contains("GAEP exact Phase 1 Agent and Model execution truth", StringComparison.Ordinal) &&
+              phase1AgentModelOutput.Contains("Capabilities: 2/2 shown; 1 detected; 1 unavailable", StringComparison.Ordinal) &&
+              phase1AgentModelOutput.Contains("Live provider quality: not-assessed", StringComparison.Ordinal) &&
+              phase1AgentModelOutput.Contains("Product Owner acceptance: not-established", StringComparison.Ordinal) &&
+              phase1AgentModelOutput.Contains("does not establish provider readiness or quality", StringComparison.Ordinal) &&
+              !phase1AgentModelOutput.Contains("Founder Product", StringComparison.Ordinal) &&
+              !phase1AgentModelOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !phase1AgentModelOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Phase 1 Agent/Model workflow renders Initiative execution truth with explicit no-authority boundaries");
+        foreach (var hostileRoot in new[]
+                 {
+                     badPhase1AgentModelCountRoot,
+                     badPhase1AgentModelDigestRoot,
+                     badPhase1AgentModelPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var hostileProduct = await hostileClient.ReadProductBindingAsync();
+            var hostileInitiative = await hostileClient.ReadInitiativeAsync(InitiativeId);
+            var invalidDashboard = await CaptureHostErrorAsync(
+                () => hostileClient.ReadPhase1AgentModelAsync(hostileProduct, hostileInitiative));
+            Check(invalidDashboard.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidDashboard.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidDashboard.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Phase 1 Agent/Model dashboard rejects hostile count, digest, and private-field drift");
+        }
         foreach (var hostileRoot in new[]
                  {
                      badAgentModelBindingRoot,
@@ -2789,6 +2837,9 @@ internal static class Program
         var badAgentModelEvidenceCues = Path.GetFileName(workspace) == "bad-agent-model-evidence-cues";
         var badAgentModelDigest = Path.GetFileName(workspace) == "bad-agent-model-digest";
         var badAgentModelPrivate = Path.GetFileName(workspace) == "bad-agent-model-private";
+        var badPhase1AgentModelCount = Path.GetFileName(workspace) == "bad-phase1-agent-model-count";
+        var badPhase1AgentModelDigest = Path.GetFileName(workspace) == "bad-phase1-agent-model-digest";
+        var badPhase1AgentModelPrivate = Path.GetFileName(workspace) == "bad-phase1-agent-model-private";
         var badManagedPreview = Path.GetFileName(workspace) == "bad-managed-preview";
         var badManagedCriterion = Path.GetFileName(workspace) == "bad-managed-criterion";
         var badManagedDigest = Path.GetFileName(workspace) == "bad-managed-digest";
@@ -3183,6 +3234,18 @@ internal static class Program
                         badAgentModelEvidenceCues,
                         badAgentModelDigest,
                         badAgentModelPrivate);
+                    break;
+                case "dashboard.phase1AgentModel":
+                    await HandlePhase1AgentModelAsync(
+                        id,
+                        parameters,
+                        selectedAgent,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badPhase1AgentModelCount,
+                        badPhase1AgentModelDigest,
+                        badPhase1AgentModelPrivate);
                     break;
                 case "readAgentSelection":
                     if (!HasOnlyProperties(parameters))
@@ -7266,8 +7329,7 @@ internal static class Program
         await WriteResultAsync(id, dashboard);
     }
 
-    private static async Task HandleAgentModelAsync(
-        long id,
+    private static Dictionary<string, object?>? BuildAgentModelDashboard(
         JsonElement parameters,
         Dictionary<string, object?>? selectedAgent,
         bool mismatchBinding,
@@ -7309,8 +7371,7 @@ internal static class Program
             CanonicalDigest(parameters.GetProperty("expectedCapabilities")) !=
                 CanonicalDigest(JsonSerializer.SerializeToElement(expectedCapabilities)))
         {
-            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID AGENT MODEL REQUEST");
-            return;
+            return null;
         }
         var capabilities = readiness.Select(snapshot =>
         {
@@ -7445,6 +7506,197 @@ internal static class Program
         }
         RefreshCanonicalDigest(dashboard, "snapshotDigest");
         if (invalidateDigest) capabilities[0]["agentLabel"] = "Forged label";
+        if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        return dashboard;
+    }
+
+    private static async Task HandleAgentModelAsync(
+        long id,
+        JsonElement parameters,
+        Dictionary<string, object?>? selectedAgent,
+        bool mismatchBinding,
+        bool invalidateCount,
+        bool invalidateFreshness,
+        bool invalidateMetrics,
+        bool invalidateEvidenceCues,
+        bool invalidateDigest,
+        bool includePrivateField)
+    {
+        var dashboard = BuildAgentModelDashboard(
+            parameters,
+            selectedAgent,
+            mismatchBinding,
+            invalidateCount,
+            invalidateFreshness,
+            invalidateMetrics,
+            invalidateEvidenceCues,
+            invalidateDigest,
+            includePrivateField);
+        if (dashboard is null)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID AGENT MODEL REQUEST");
+        }
+        else
+        {
+            await WriteResultAsync(id, dashboard);
+        }
+    }
+
+    private static async Task HandlePhase1AgentModelAsync(
+        long id,
+        JsonElement parameters,
+        Dictionary<string, object?>? selectedAgent,
+        long initiativeRevision,
+        Dictionary<string, object?>? initiativeClassification,
+        Dictionary<string, object?>? initiativeApplicability,
+        bool invalidateCount,
+        bool invalidateDigest,
+        bool includePrivateField)
+    {
+        var initiativeRecord = InitiativeRecord(
+            initiativeRevision,
+            initiativeClassification,
+            initiativeApplicability);
+        var initiativeDigest = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord));
+        if (!HasOnlyProperties(
+                parameters,
+                "expectedInitiativeId", "expectedInitiativeRevision", "expectedInitiativeDigest", "agentModel") ||
+            parameters.GetProperty("expectedInitiativeId").GetString() != InitiativeId.ToString("D") ||
+            parameters.GetProperty("expectedInitiativeRevision").GetInt64() != initiativeRevision ||
+            parameters.GetProperty("expectedInitiativeDigest").GetString() != initiativeDigest)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PHASE 1 AGENT MODEL REQUEST");
+            return;
+        }
+        var agentModel = BuildAgentModelDashboard(
+            parameters.GetProperty("agentModel"),
+            selectedAgent,
+            mismatchBinding: false,
+            invalidateCount: false,
+            invalidateFreshness: false,
+            invalidateMetrics: false,
+            invalidateEvidenceCues: false,
+            invalidateDigest: false,
+            includePrivateField: false);
+        if (agentModel is null)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PHASE 1 AGENT MODEL REQUEST");
+            return;
+        }
+        var capabilities = (Dictionary<string, object?>[])agentModel["capabilities"]!;
+        var detected = capabilities.LongCount(capability => Equals(capability["detected"], true));
+        var selected = capabilities.LongCount(capability => Equals(capability["selected"], true));
+        var productDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        var nestedFreshness = (Dictionary<string, object?>)agentModel["freshness"]!;
+        var dashboard = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "phase-1-agent-model-dashboard",
+            ["phase"] = new Dictionary<string, object?>
+            {
+                ["id"] = "phase-1b-product",
+                ["label"] = "Phase 1B — Product P0–P4",
+            },
+            ["product"] = ExactReference("product", ProductId, 7, productDigest),
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["recordType"] = "initiative",
+                ["recordId"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = initiativeDigest,
+                ["state"] = "active",
+            },
+            ["source"] = new Dictionary<string, object?>
+            {
+                ["agentModelSnapshotDigest"] = agentModel["snapshotDigest"],
+                ["scope"] = "exact-current-initiative",
+            },
+            ["agentModel"] = agentModel,
+            ["executionTruth"] = new Dictionary<string, object?>
+            {
+                ["capabilities"] = new Dictionary<string, object?>
+                {
+                    ["shown"] = capabilities.LongLength,
+                    ["total"] = invalidateCount ? capabilities.LongLength + 1 : capabilities.LongLength,
+                    ["omitted"] = 0,
+                    ["detected"] = detected,
+                    ["unavailable"] = capabilities.LongLength - detected,
+                    ["selected"] = selected,
+                },
+                ["runs"] = new Dictionary<string, object?>
+                {
+                    ["shown"] = 0,
+                    ["total"] = 0,
+                    ["omitted"] = 0,
+                    ["terminal"] = 0,
+                    ["nonTerminal"] = 0,
+                    ["managedObserved"] = 0,
+                    ["resultBound"] = 0,
+                    ["actualEffectCount"] = 0,
+                    ["outcomes"] = new Dictionary<string, object?>
+                    {
+                        ["satisfied"] = 0,
+                        ["failed"] = 0,
+                        ["notAssessed"] = 0,
+                        ["indeterminate"] = 0,
+                    },
+                },
+                ["managedRuns"] = AgentModelLimit(0),
+                ["handoffs"] = new Dictionary<string, object?>
+                {
+                    ["shown"] = 0,
+                    ["total"] = 0,
+                    ["omitted"] = 0,
+                    ["pendingAcknowledgement"] = 0,
+                    ["acknowledged"] = 0,
+                },
+                ["providerMetrics"] = new Dictionary<string, object?>
+                {
+                    ["usage"] = "unavailable",
+                    ["cost"] = "unavailable",
+                },
+                ["liveProviderQuality"] = "not-assessed",
+                ["semanticOutputQuality"] = "not-assessed",
+            },
+            ["freshness"] = new Dictionary<string, object?>
+            {
+                ["state"] = nestedFreshness["state"],
+                ["selectionCapabilityState"] = nestedFreshness["selectionCapabilityState"],
+                ["oldestCapabilityObservedAt"] = nestedFreshness["oldestCapabilityObservedAt"],
+                ["newestCapabilityObservedAt"] = nestedFreshness["newestCapabilityObservedAt"],
+                ["agentModelObservedAt"] = agentModel["observedAt"],
+                ["truncated"] = false,
+                ["basis"] = "exact-initiative-scoped-agent-model-snapshot-and-declared-bounded-coverage",
+            },
+            ["governance"] = new Dictionary<string, object?>
+            {
+                ["providerAccountReadiness"] = "not-established",
+                ["providerPreference"] = "not-established",
+                ["automaticSelectionAuthority"] = "not-granted",
+                ["handoffAcknowledgementAuthority"] = "not-granted",
+                ["runLaunchAuthority"] = "not-granted",
+                ["effectAuthority"] = "not-granted",
+                ["phaseReadinessAuthority"] = "not-established",
+                ["productOwnerAcceptance"] = "not-established",
+            },
+            ["observedAt"] = "2026-07-24T12:06:01.000Z",
+            ["sourceBoundary"] =
+                "current-governed-product-initiative-capability-selection-run-handoff-and-managed-evidence-metadata-only",
+            ["privacyBoundary"] =
+                "dashboard-exposes-identities-digests-counts-statuses-times-and-redacted-selection-metadata-not-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-or-machine-paths",
+            ["limitations"] = new[]
+            {
+                "Capability observations prove only bounded adapter/runtime metadata, not provider account readiness.",
+                "Provider usage and cost remain unavailable because no governed provider metric contract is bound.",
+            },
+            ["authorityBoundary"] =
+                "phase-1-agent-model-dashboard-is-read-only-observed-evidence-not-provider-quality-preference-automatic-selection-handoff-acknowledgement-run-launch-readiness-approval-effect-release-or-action-authority",
+        };
+        RefreshCanonicalDigest(dashboard, "snapshotDigest");
+        if (invalidateDigest)
+        {
+            ((Dictionary<string, object?>)((Dictionary<string, object?>)dashboard["executionTruth"]!)["capabilities"]!)["detected"] = 2;
+        }
         if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, dashboard);
     }

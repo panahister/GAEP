@@ -88,6 +88,7 @@ for (const binding of [
   "LoadChangeImpactCommand",
   "ShowChangeImpactCommand",
   "ShowAgentModelCommand",
+  "ShowPhase1AgentModelCommand",
   "AccessibleDashboardGroups",
   "SelectedAccessibleDashboardGroup",
   "LoadAccessibleTablesCommand",

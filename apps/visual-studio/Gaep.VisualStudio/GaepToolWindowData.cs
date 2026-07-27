@@ -235,6 +235,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadChangeImpactCommand = new AsyncCommand(LoadChangeImpactAsync);
         ShowChangeImpactCommand = new AsyncCommand(ShowChangeImpactAsync);
         ShowAgentModelCommand = new AsyncCommand(ShowAgentModelAsync);
+        ShowPhase1AgentModelCommand = new AsyncCommand(ShowPhase1AgentModelAsync);
         LoadAccessibleTablesCommand = new AsyncCommand(LoadAccessibleTablesAsync);
         RenderAccessibleTableCommand = new AsyncCommand(RenderAccessibleTableAsync);
         RefreshAgentReadinessCommand = new AsyncCommand(RefreshAgentReadinessAsync);
@@ -371,6 +372,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ShowAgentModelCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ShowPhase1AgentModelCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadAccessibleTablesCommand { get; }
@@ -1067,6 +1071,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact Agent and Model projection",
             (controller, _, token) => controller.ReadAgentModelAsync(token),
+            cancellationToken);
+
+    private Task ShowPhase1AgentModelAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Phase 1 Agent and Model execution truth",
+            (controller, _, token) => controller.ReadPhase1AgentModelAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadAccessibleTablesAsync(object? commandParameter, CancellationToken cancellationToken) =>

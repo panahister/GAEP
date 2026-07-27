@@ -1494,7 +1494,15 @@ internal static partial class PortableDesignProtocol
         IReadOnlyList<AgentReadinessSnapshot> expectedCapabilities,
         AgentSelectionState expectedSelection)
     {
-        var result = ReadResult(envelope);
+        return ParseAgentModelDashboard(ReadResult(envelope), expectedProduct, expectedCapabilities, expectedSelection);
+    }
+
+    private static AgentModelDashboard ParseAgentModelDashboard(
+        JsonElement result,
+        ProductBinding expectedProduct,
+        IReadOnlyList<AgentReadinessSnapshot> expectedCapabilities,
+        AgentSelectionState expectedSelection)
+    {
         if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
                 result,
                 "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs",
@@ -1642,6 +1650,270 @@ internal static partial class PortableDesignProtocol
             truncated,
             observedAt,
             "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata",
+            limitations,
+            snapshotDigest);
+    }
+
+    internal static Phase1AgentModelDashboard ParsePhase1AgentModelResponse(
+        JsonElement envelope,
+        ProductBinding expectedProduct,
+        InitiativeEntryRecord expectedInitiative,
+        IReadOnlyList<AgentReadinessSnapshot> expectedCapabilities,
+        AgentSelectionState expectedSelection)
+    {
+        var result = ReadResult(envelope);
+        if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                result,
+                "schemaVersion", "kind", "phase", "product", "initiative", "source", "agentModel",
+                "executionTruth", "freshness", "governance", "observedAt", "sourceBoundary", "privacyBoundary",
+                "limitations", "authorityBoundary", "snapshotDigest") ||
+            !result.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var schema) ||
+            schema != 1 || ParseRequiredEnum(result, "kind", "phase-1-agent-model-dashboard") !=
+            "phase-1-agent-model-dashboard" ||
+            ParseRequiredEnum(
+                result,
+                "sourceBoundary",
+                "current-governed-product-initiative-capability-selection-run-handoff-and-managed-evidence-metadata-only") !=
+            "current-governed-product-initiative-capability-selection-run-handoff-and-managed-evidence-metadata-only" ||
+            ParseRequiredEnum(
+                result,
+                "privacyBoundary",
+                "dashboard-exposes-identities-digests-counts-statuses-times-and-redacted-selection-metadata-not-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-or-machine-paths") !=
+            "dashboard-exposes-identities-digests-counts-statuses-times-and-redacted-selection-metadata-not-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-or-machine-paths" ||
+            ParseRequiredEnum(
+                result,
+                "authorityBoundary",
+                "phase-1-agent-model-dashboard-is-read-only-observed-evidence-not-provider-quality-preference-automatic-selection-handoff-acknowledgement-run-launch-readiness-approval-effect-release-or-action-authority") !=
+            "phase-1-agent-model-dashboard-is-read-only-observed-evidence-not-provider-quality-preference-automatic-selection-handoff-acknowledgement-run-launch-readiness-approval-effect-release-or-action-authority")
+        {
+            throw InvalidResponse();
+        }
+        var phase = result.GetProperty("phase");
+        if (!HasOnlyProperties(phase, "id", "label") ||
+            ParseRequiredEnum(phase, "id", "phase-1b-product") != "phase-1b-product" ||
+            ParseRequiredEnum(phase, "label", "Phase 1B — Product P0–P4") != "Phase 1B — Product P0–P4")
+        {
+            throw InvalidResponse();
+        }
+        var product = ParseAgentModelReference(result.GetProperty("product"), "product");
+        if (product.RecordId != expectedProduct.Id || product.Revision != expectedProduct.Revision ||
+            product.Digest != expectedProduct.Digest)
+        {
+            throw InvalidResponse();
+        }
+        var initiative = result.GetProperty("initiative");
+        if (!HasOnlyProperties(initiative, "recordType", "recordId", "revision", "digest", "state") ||
+            ParseRequiredEnum(initiative, "recordType", "initiative") != "initiative")
+        {
+            throw InvalidResponse();
+        }
+        var initiativeId = ParseRequiredGuid(initiative, "recordId");
+        var initiativeRevision = ParsePositiveLong(initiative, "revision");
+        var initiativeDigest = ParseRequiredDigest(initiative, "digest");
+        var initiativeState = ParseRequiredEnum(initiative, "state", "active", "blocked", "cancelled", "completed", "proposed");
+        if (initiativeId != expectedInitiative.Id || initiativeRevision != expectedInitiative.Revision ||
+            initiativeDigest != expectedInitiative.Digest || initiativeState != expectedInitiative.State ||
+            expectedInitiative.ProductId != expectedProduct.Id)
+        {
+            throw InvalidResponse();
+        }
+        var agentModelElement = result.GetProperty("agentModel");
+        var agentModel = ParseAgentModelDashboard(
+            agentModelElement,
+            expectedProduct,
+            expectedCapabilities,
+            expectedSelection);
+        if (agentModel.Runs.Any(run => run.InitiativeId != initiativeId)) throw InvalidResponse();
+        var runIds = agentModel.Runs.Select(run => run.RecordId).ToHashSet();
+        if (agentModel.Handoffs.Any(handoff => !runIds.Contains(handoff.FromRunId))) throw InvalidResponse();
+        var source = result.GetProperty("source");
+        if (!HasOnlyProperties(source, "agentModelSnapshotDigest", "scope") ||
+            ParseRequiredDigest(source, "agentModelSnapshotDigest") != agentModel.SnapshotDigest ||
+            ParseRequiredEnum(source, "scope", "exact-current-initiative") != "exact-current-initiative")
+        {
+            throw InvalidResponse();
+        }
+
+        var truth = result.GetProperty("executionTruth");
+        if (!HasOnlyProperties(
+                truth,
+                "capabilities", "runs", "managedRuns", "handoffs", "providerMetrics",
+                "liveProviderQuality", "semanticOutputQuality"))
+        {
+            throw InvalidResponse();
+        }
+        var capabilityElement = truth.GetProperty("capabilities");
+        if (!HasOnlyProperties(capabilityElement, "shown", "total", "omitted", "detected", "unavailable", "selected"))
+        {
+            throw InvalidResponse();
+        }
+        var capabilityTruth = new Phase1AgentModelCapabilityTruth(
+            ParseBoundedNonNegativeLong(capabilityElement, "shown", 1_000_000),
+            ParseBoundedNonNegativeLong(capabilityElement, "total", 1_000_000),
+            ParseBoundedNonNegativeLong(capabilityElement, "omitted", 1_000_000),
+            ParseBoundedNonNegativeLong(capabilityElement, "detected", 1_000_000),
+            ParseBoundedNonNegativeLong(capabilityElement, "unavailable", 1_000_000),
+            ParseBoundedNonNegativeLong(capabilityElement, "selected", 1));
+        var detected = agentModel.Capabilities.LongCount(capability => capability.Detected);
+        if (capabilityTruth.Shown != agentModel.CapabilityLimit.Shown ||
+            capabilityTruth.Total != agentModel.CapabilityLimit.Total ||
+            capabilityTruth.Omitted != agentModel.CapabilityLimit.Omitted ||
+            capabilityTruth.Detected != detected ||
+            capabilityTruth.Unavailable != agentModel.Capabilities.Count - detected ||
+            capabilityTruth.Selected != agentModel.Capabilities.LongCount(capability => capability.Selected) ||
+            capabilityTruth.Shown + capabilityTruth.Omitted != capabilityTruth.Total)
+        {
+            throw InvalidResponse();
+        }
+
+        var runElement = truth.GetProperty("runs");
+        if (!HasOnlyProperties(
+                runElement,
+                "shown", "total", "omitted", "terminal", "nonTerminal", "managedObserved", "resultBound",
+                "actualEffectCount", "outcomes"))
+        {
+            throw InvalidResponse();
+        }
+        var outcomeElement = runElement.GetProperty("outcomes");
+        if (!HasOnlyProperties(outcomeElement, "satisfied", "failed", "notAssessed", "indeterminate"))
+        {
+            throw InvalidResponse();
+        }
+        var outcomes = new Phase1AgentModelOutcomeTruth(
+            ParseBoundedNonNegativeLong(outcomeElement, "satisfied", 1_000_000),
+            ParseBoundedNonNegativeLong(outcomeElement, "failed", 1_000_000),
+            ParseBoundedNonNegativeLong(outcomeElement, "notAssessed", 1_000_000),
+            ParseBoundedNonNegativeLong(outcomeElement, "indeterminate", 1_000_000));
+        var runTruth = new Phase1AgentModelRunTruth(
+            ParseBoundedNonNegativeLong(runElement, "shown", 1_000_000),
+            ParseBoundedNonNegativeLong(runElement, "total", 1_000_000),
+            ParseBoundedNonNegativeLong(runElement, "omitted", 1_000_000),
+            ParseBoundedNonNegativeLong(runElement, "terminal", 1_000_000),
+            ParseBoundedNonNegativeLong(runElement, "nonTerminal", 1_000_000),
+            ParseBoundedNonNegativeLong(runElement, "managedObserved", 1_000_000),
+            ParseBoundedNonNegativeLong(runElement, "resultBound", 1_000_000),
+            ParseBoundedNonNegativeLong(runElement, "actualEffectCount", 1_000_000),
+            outcomes);
+        var terminalStates = new HashSet<string>(new[] { "completed", "failed", "cancelled" }, StringComparer.Ordinal);
+        var managed = agentModel.Runs.Select(run => run.Managed).Where(value => value.Status == "observed").ToArray();
+        var bound = managed.Where(value => value.ResultStatus == "bound").ToArray();
+        if (runTruth.Shown != agentModel.RunLimit.Shown || runTruth.Total != agentModel.RunLimit.Total ||
+            runTruth.Omitted != agentModel.RunLimit.Omitted ||
+            runTruth.Terminal != agentModel.Runs.LongCount(run => terminalStates.Contains(run.State)) ||
+            runTruth.NonTerminal != agentModel.Runs.LongCount(run => !terminalStates.Contains(run.State)) ||
+            runTruth.ManagedObserved != managed.LongLength || runTruth.ResultBound != bound.LongLength ||
+            runTruth.ActualEffectCount != bound.Sum(value => value.ActualEffectCount ?? 0) ||
+            outcomes.Satisfied != bound.LongCount(value => value.OutcomeStatus == "satisfied") ||
+            outcomes.Failed != bound.LongCount(value => value.OutcomeStatus == "failed") ||
+            outcomes.NotAssessed != bound.LongCount(value => value.OutcomeStatus == "not-assessed") ||
+            outcomes.Indeterminate != bound.LongCount(value => value.OutcomeStatus == "indeterminate") ||
+            runTruth.Shown + runTruth.Omitted != runTruth.Total)
+        {
+            throw InvalidResponse();
+        }
+        var managedRuns = ParseAgentModelLimit(truth.GetProperty("managedRuns"));
+        if (managedRuns != agentModel.ManagedRunLimit) throw InvalidResponse();
+        var handoffElement = truth.GetProperty("handoffs");
+        if (!HasOnlyProperties(handoffElement, "shown", "total", "omitted", "pendingAcknowledgement", "acknowledged"))
+        {
+            throw InvalidResponse();
+        }
+        var handoffs = new Phase1AgentModelHandoffTruth(
+            ParseBoundedNonNegativeLong(handoffElement, "shown", 1_000_000),
+            ParseBoundedNonNegativeLong(handoffElement, "total", 1_000_000),
+            ParseBoundedNonNegativeLong(handoffElement, "omitted", 1_000_000),
+            ParseBoundedNonNegativeLong(handoffElement, "pendingAcknowledgement", 1_000_000),
+            ParseBoundedNonNegativeLong(handoffElement, "acknowledged", 1_000_000));
+        var acknowledged = agentModel.Handoffs.LongCount(handoff => handoff.State == "acknowledged");
+        if (handoffs.Shown != agentModel.HandoffLimit.Shown || handoffs.Total != agentModel.HandoffLimit.Total ||
+            handoffs.Omitted != agentModel.HandoffLimit.Omitted || handoffs.Acknowledged != acknowledged ||
+            handoffs.PendingAcknowledgement != agentModel.Handoffs.Count - acknowledged ||
+            handoffs.Shown + handoffs.Omitted != handoffs.Total)
+        {
+            throw InvalidResponse();
+        }
+        var metrics = truth.GetProperty("providerMetrics");
+        if (!HasOnlyProperties(metrics, "usage", "cost") ||
+            ParseRequiredEnum(metrics, "usage", "unavailable") != "unavailable" ||
+            ParseRequiredEnum(metrics, "cost", "unavailable") != "unavailable" ||
+            ParseRequiredEnum(truth, "liveProviderQuality", "not-assessed") != "not-assessed" ||
+            ParseRequiredEnum(truth, "semanticOutputQuality", "not-assessed") != "not-assessed")
+        {
+            throw InvalidResponse();
+        }
+
+        var freshness = result.GetProperty("freshness");
+        if (!HasOnlyProperties(
+                freshness,
+                "state", "selectionCapabilityState", "oldestCapabilityObservedAt", "newestCapabilityObservedAt",
+                "agentModelObservedAt", "truncated", "basis"))
+        {
+            throw InvalidResponse();
+        }
+        var freshnessState = ParseRequiredEnum(freshness, "state", "current", "attention-required");
+        var selectionCapabilityState = ParseRequiredEnum(
+            freshness,
+            "selectionCapabilityState",
+            "current", "unselected", "stale", "migration-required", "invalid");
+        if (freshnessState != agentModel.Freshness.State ||
+            selectionCapabilityState != agentModel.Freshness.SelectionCapabilityState ||
+            ParseRequiredTimestamp(freshness, "oldestCapabilityObservedAt") !=
+            agentModel.Freshness.OldestCapabilityObservedAt ||
+            ParseRequiredTimestamp(freshness, "newestCapabilityObservedAt") !=
+            agentModel.Freshness.NewestCapabilityObservedAt ||
+            ParseRequiredTimestamp(freshness, "agentModelObservedAt") != agentModel.ObservedAt ||
+            ParseRequiredBoolean(freshness, "truncated") != agentModel.Truncated ||
+            ParseRequiredEnum(
+                freshness,
+                "basis",
+                "exact-initiative-scoped-agent-model-snapshot-and-declared-bounded-coverage") !=
+            "exact-initiative-scoped-agent-model-snapshot-and-declared-bounded-coverage")
+        {
+            throw InvalidResponse();
+        }
+        var governance = result.GetProperty("governance");
+        if (!HasOnlyProperties(
+                governance,
+                "providerAccountReadiness", "providerPreference", "automaticSelectionAuthority",
+                "handoffAcknowledgementAuthority", "runLaunchAuthority", "effectAuthority",
+                "phaseReadinessAuthority", "productOwnerAcceptance") ||
+            ParseRequiredEnum(governance, "providerAccountReadiness", "not-established") != "not-established" ||
+            ParseRequiredEnum(governance, "providerPreference", "not-established") != "not-established" ||
+            ParseRequiredEnum(governance, "automaticSelectionAuthority", "not-granted") != "not-granted" ||
+            ParseRequiredEnum(governance, "handoffAcknowledgementAuthority", "not-granted") != "not-granted" ||
+            ParseRequiredEnum(governance, "runLaunchAuthority", "not-granted") != "not-granted" ||
+            ParseRequiredEnum(governance, "effectAuthority", "not-granted") != "not-granted" ||
+            ParseRequiredEnum(governance, "phaseReadinessAuthority", "not-established") != "not-established" ||
+            ParseRequiredEnum(governance, "productOwnerAcceptance", "not-established") != "not-established")
+        {
+            throw InvalidResponse();
+        }
+        var observedAt = ParseRequiredTimestamp(result, "observedAt");
+        if (observedAt < agentModel.ObservedAt) throw InvalidResponse();
+        var limitations = ParseChangeImpactLimitations(result.GetProperty("limitations"));
+        var snapshotDigest = ParseRequiredDigest(result, "snapshotDigest");
+        if (snapshotDigest != CanonicalDigest(WithoutProperty(result, "snapshotDigest"))) throw InvalidResponse();
+        return new Phase1AgentModelDashboard(
+            product.RecordId,
+            product.Revision,
+            product.Digest,
+            initiativeId,
+            initiativeRevision,
+            initiativeDigest,
+            initiativeState,
+            agentModel,
+            capabilityTruth,
+            runTruth,
+            managedRuns,
+            handoffs,
+            freshnessState,
+            selectionCapabilityState,
+            "not-assessed",
+            "not-assessed",
+            "not-established",
+            observedAt,
+            "current-governed-product-initiative-capability-selection-run-handoff-and-managed-evidence-metadata-only",
+            "dashboard-exposes-identities-digests-counts-statuses-times-and-redacted-selection-metadata-not-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-or-machine-paths",
             limitations,
             snapshotDigest);
     }
@@ -1876,7 +2148,7 @@ internal static partial class PortableDesignProtocol
             throw InvalidResponse();
         }
         var record = ParseAgentModelReference(row.GetProperty("record"), "run");
-        _ = ParseRequiredGuid(row, "initiativeId");
+        var initiativeId = ParseRequiredGuid(row, "initiativeId");
         var agent = row.GetProperty("agent");
         if (!HasOnlyProperties(agent, "adapterId", "agentId", "modelId", "selectionDigest")) throw InvalidResponse();
         var startedAt = ParseNullableTimestamp(row.GetProperty("startedAt"));
@@ -1886,6 +2158,7 @@ internal static partial class PortableDesignProtocol
         return new AgentModelRunProjection(
             record.RecordId,
             record.Revision,
+            initiativeId,
             ParseRequiredEnum(row, "state", "prepared", "running", "paused", "completed", "failed", "cancelled", "unknown"),
             ParseRequiredPortableText(agent, "adapterId"),
             ParseRequiredPortableText(agent, "agentId"),

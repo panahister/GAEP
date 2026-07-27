@@ -656,6 +656,7 @@ public sealed record AgentModelManagedProjection(
 public sealed record AgentModelRunProjection(
     Guid RecordId,
     long Revision,
+    Guid InitiativeId,
     string State,
     string AdapterId,
     string AgentId,
@@ -695,6 +696,62 @@ public sealed record AgentModelDashboard(
     bool Truncated,
     DateTimeOffset ObservedAt,
     string SourceBoundary,
+    IReadOnlyList<string> Limitations,
+    string SnapshotDigest);
+
+public sealed record Phase1AgentModelCapabilityTruth(
+    long Shown,
+    long Total,
+    long Omitted,
+    long Detected,
+    long Unavailable,
+    long Selected);
+
+public sealed record Phase1AgentModelOutcomeTruth(
+    long Satisfied,
+    long Failed,
+    long NotAssessed,
+    long Indeterminate);
+
+public sealed record Phase1AgentModelRunTruth(
+    long Shown,
+    long Total,
+    long Omitted,
+    long Terminal,
+    long NonTerminal,
+    long ManagedObserved,
+    long ResultBound,
+    long ActualEffectCount,
+    Phase1AgentModelOutcomeTruth Outcomes);
+
+public sealed record Phase1AgentModelHandoffTruth(
+    long Shown,
+    long Total,
+    long Omitted,
+    long PendingAcknowledgement,
+    long Acknowledged);
+
+public sealed record Phase1AgentModelDashboard(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    AgentModelDashboard AgentModel,
+    Phase1AgentModelCapabilityTruth Capabilities,
+    Phase1AgentModelRunTruth Runs,
+    AgentModelLimit ManagedRuns,
+    Phase1AgentModelHandoffTruth Handoffs,
+    string FreshnessState,
+    string SelectionCapabilityState,
+    string LiveProviderQuality,
+    string SemanticOutputQuality,
+    string ProductOwnerAcceptance,
+    DateTimeOffset ObservedAt,
+    string SourceBoundary,
+    string PrivacyBoundary,
     IReadOnlyList<string> Limitations,
     string SnapshotDigest);
 

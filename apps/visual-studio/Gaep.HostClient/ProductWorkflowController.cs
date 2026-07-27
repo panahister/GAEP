@@ -1648,6 +1648,16 @@ public sealed class ProductWorkflowController(EngineClient client)
         return RenderAgentModelDashboard(await client.ReadAgentModelAsync(product, cancellationToken));
     }
 
+    public async Task<string> ReadPhase1AgentModelAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        return RenderPhase1AgentModelDashboard(
+            await client.ReadPhase1AgentModelAsync(product, initiative, cancellationToken));
+    }
+
     public async Task<IReadOnlyList<AccessibleMetadataTable>> ReadAgentModelTablesAsync(
         CancellationToken cancellationToken = default)
     {
@@ -2322,6 +2332,53 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append(
                 "Product text, Change text, Work Item text, source bytes, absolute paths, provider output, prompts, " +
                 "executable state, and credentials are withheld.")
+            .ToString();
+    }
+
+    private static string RenderPhase1AgentModelDashboard(Phase1AgentModelDashboard dashboard)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP exact Phase 1 Agent and Model execution truth")
+            .AppendLine()
+            .AppendLine($"Initiative: {dashboard.InitiativeId:D}@{dashboard.InitiativeRevision}; {dashboard.InitiativeState}")
+            .AppendLine($"Product revision: {dashboard.ProductRevision}")
+            .AppendLine(
+                $"Capabilities: {dashboard.Capabilities.Shown}/{dashboard.Capabilities.Total} shown; " +
+                $"{dashboard.Capabilities.Detected} detected; {dashboard.Capabilities.Unavailable} unavailable; " +
+                $"{dashboard.Capabilities.Selected} selected")
+            .AppendLine(
+                $"Runs: {dashboard.Runs.Shown}/{dashboard.Runs.Total} shown; {dashboard.Runs.Terminal} terminal; " +
+                $"{dashboard.Runs.NonTerminal} non-terminal")
+            .AppendLine(
+                $"Managed results: {dashboard.Runs.ResultBound} bound; " +
+                $"{dashboard.Runs.ActualEffectCount} recorded actual effects")
+            .AppendLine(
+                $"Outcomes: {dashboard.Runs.Outcomes.Satisfied} satisfied; " +
+                $"{dashboard.Runs.Outcomes.Failed} failed; {dashboard.Runs.Outcomes.NotAssessed} not assessed; " +
+                $"{dashboard.Runs.Outcomes.Indeterminate} indeterminate")
+            .AppendLine(
+                $"Handoffs: {dashboard.Handoffs.Shown}/{dashboard.Handoffs.Total} shown; " +
+                $"{dashboard.Handoffs.PendingAcknowledgement} pending acknowledgement; " +
+                $"{dashboard.Handoffs.Acknowledged} acknowledged")
+            .AppendLine("Provider usage and cost: unavailable")
+            .AppendLine($"Live provider quality: {dashboard.LiveProviderQuality}")
+            .AppendLine($"Semantic output quality: {dashboard.SemanticOutputQuality}")
+            .AppendLine(
+                $"Freshness: {dashboard.FreshnessState}; selection capability {dashboard.SelectionCapabilityState}")
+            .AppendLine($"Product Owner acceptance: {dashboard.ProductOwnerAcceptance}")
+            .AppendLine($"Snapshot digest: {dashboard.SnapshotDigest}")
+            .AppendLine();
+        foreach (var limitation in dashboard.Limitations) output.AppendLine($"Limit: {limitation}");
+        return output.AppendLine()
+            .AppendLine(
+                "Boundary: this read-only Initiative-scoped projection does not establish provider readiness or " +
+                "quality, choose a provider, acknowledge a handoff, launch a Run, authorize effects, approve " +
+                "Phase 1, record Product Owner acceptance, or grant release authority.")
+            .AppendLine(
+                "Product text, Run narrative, provider output, prompts, source bytes, machine paths, credentials, " +
+                "and sensitive setting values are withheld.")
+            .AppendLine()
+            .Append(RenderAgentModelDashboard(dashboard.AgentModel))
             .ToString();
     }
 

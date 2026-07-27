@@ -351,6 +351,9 @@
         <Button x:Name="ShowAgentModelButton" Content="Show exact Agent and model"
                 Command="{Binding ShowAgentModelCommand}" MinHeight="28" Margin="0,0,0,12"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="ShowPhase1AgentModelButton" Content="Show Phase 1 Agent and model"
+                Command="{Binding ShowPhase1AgentModelCommand}" MinHeight="28" Margin="0,0,0,12"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Accessible dashboard tables" FontWeight="SemiBold" />
         <TextBlock Text="Load strict Phase, Change/Impact, or Agent/Model metadata, then sort and filter only visible bounded columns. Rendering states exact visible, omitted, and source totals. CSV preparation writes no file and includes no hidden or omitted data."

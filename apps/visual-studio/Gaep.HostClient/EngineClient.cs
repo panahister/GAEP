@@ -671,6 +671,78 @@ public sealed class EngineClient : IAsyncDisposable
                 selection));
     }
 
+    public async Task<Phase1AgentModelDashboard> ReadPhase1AgentModelAsync(
+        ProductBinding product,
+        InitiativeEntryRecord initiative,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        ArgumentNullException.ThrowIfNull(initiative);
+        if (product.Id == Guid.Empty || initiative.Id == Guid.Empty || initiative.ProductId != product.Id)
+        {
+            throw new ArgumentException("The Initiative must target the exact current Product.", nameof(initiative));
+        }
+        PortableDesignProtocol.ValidateProductRevision(product.Revision);
+        PortableDesignProtocol.ValidateProductRevision(initiative.Revision);
+        PortableDesignProtocol.ValidateProductDigest(product.Digest);
+        PortableDesignProtocol.ValidateProductDigest(initiative.Digest);
+        var capabilities = await ProbeAgentReadinessAsync(cancellationToken);
+        var selection = await ReadAgentSelectionAsync(cancellationToken);
+        IReadOnlyDictionary<string, object?> expectedSelection = selection.Status switch
+        {
+            AgentSelectionStatus.Selected when selection.Selection is not null =>
+                new Dictionary<string, object?>
+                {
+                    ["status"] = "selected",
+                    ["selectionDigest"] = selection.Selection.SelectionDigest,
+                },
+            AgentSelectionStatus.MigrationRequired when selection.PortableCandidate is not null =>
+                new Dictionary<string, object?>
+                {
+                    ["status"] = "migration-required",
+                    ["selectionDigest"] = selection.PortableCandidate.SelectionDigest,
+                },
+            AgentSelectionStatus.Unselected => new Dictionary<string, object?> { ["status"] = "unselected" },
+            AgentSelectionStatus.Invalid => new Dictionary<string, object?> { ["status"] = "invalid" },
+            _ => throw new ArgumentException("Agent Selection state is incomplete.", nameof(product)),
+        };
+        var expectedCapabilities = capabilities
+            .OrderBy(capability => $"{capability.AdapterId}:{capability.AgentId}", StringComparer.Ordinal)
+            .Select(capability => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
+            {
+                ["adapterId"] = capability.AdapterId,
+                ["agentId"] = capability.AgentId,
+                ["capabilityDigest"] = capability.CapabilityDigest,
+            })
+            .ToArray();
+        var agentModelParams = new Dictionary<string, object?>
+        {
+            ["expectedProductId"] = product.Id,
+            ["expectedProductRevision"] = product.Revision,
+            ["expectedProductDigest"] = product.Digest,
+            ["expectedSelection"] = expectedSelection,
+            ["expectedCapabilities"] = expectedCapabilities,
+        };
+        using var response = await RequestPortableDesignAsync(
+            "dashboard.phase1AgentModel",
+            new Dictionary<string, object?>
+            {
+                ["expectedInitiativeId"] = initiative.Id,
+                ["expectedInitiativeRevision"] = initiative.Revision,
+                ["expectedInitiativeDigest"] = initiative.Digest,
+                ["agentModel"] = agentModelParams,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParsePhase1AgentModelResponse(
+                envelope,
+                product,
+                initiative,
+                capabilities,
+                selection));
+    }
+
     public async Task<IReadOnlyList<AgentReadinessSnapshot>> ProbeAgentReadinessAsync(
         CancellationToken cancellationToken = default)
     {
