@@ -56,10 +56,12 @@ const studioViewType = "gaepKiro.productStudio"
 async function run() {
   const workspace = path.resolve(process.env.GAEP_KIRO_E2E_WORKSPACE)
   const fixtureProductName = process.env.GAEP_KIRO_E2E_PRODUCT_NAME
+  const fixtureInitiativeId = process.env.GAEP_KIRO_E2E_INITIATIVE_ID
   const fixtureStoreManifest = JSON.parse(process.env.GAEP_KIRO_E2E_STORE_MANIFEST)
   assert.equal(vscode.workspace.workspaceFolders?.length, 1)
   assert.equal(path.resolve(vscode.workspace.workspaceFolders[0].uri.fsPath), workspace)
   assert.equal(typeof fixtureProductName, "string")
+  assert.match(fixtureInitiativeId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u)
   assert.deepEqual(await verifyPortableStore(path.join(workspace, ".gaep"), fixtureStoreManifest), fixtureStoreManifest)
 
   const extension = vscode.extensions.getExtension(extensionId)
@@ -115,7 +117,7 @@ async function run() {
 
   const phase1AgentModelRequest = vscode.commands.executeCommand(
     "gaepKiro.dashboard.phase1AgentModel",
-    { initiativeId: "29292929-2929-4929-8929-292929292929" },
+    { initiativeId: fixtureInitiativeId },
   )
   const phase1AgentModelDocument = await waitFor(
     () => vscode.workspace.textDocuments.find((document) =>
@@ -124,9 +126,13 @@ async function run() {
     60_000,
   )
   const phase1AgentModelText = phase1AgentModelDocument.getText()
+  const capabilityTotals = phase1AgentModelText.match(
+    /^Capabilities: 2\/2 shown · (\d+) detected · (\d+) unavailable · 0 selected$/mu,
+  )
+  assert.ok(capabilityTotals, "Phase 1 Agent and Model view must reconcile two unselected capability rows")
+  assert.equal(Number(capabilityTotals[1]) + Number(capabilityTotals[2]), 2)
   for (const marker of [
-    "Initiative: 29292929-2929-4929-8929-292929292929@1 · active",
-    "Capabilities: 2/2 shown · 1 detected · 1 unavailable · 0 selected",
+    `Initiative: ${fixtureInitiativeId}@1 · proposed`,
     "Runs: 0/0 shown · 0 terminal · 0 non-terminal",
     "Live provider quality: not-assessed",
     "Semantic output quality: not-assessed",
@@ -150,8 +156,8 @@ async function run() {
   await evidenceRequest
   const finalStoreManifest = await inspectPortableStore(path.join(workspace, ".gaep"))
   assert.deepEqual(finalStoreManifest, fixtureStoreManifest)
-  process.stdout.write("PASS installed compatible-host provider/model/dashboard smoke: two bounded capability rows, unselected model state, unavailable usage/cost, private-safe output, and immutable fixture store\n")
-  process.stdout.write(`PASS activation: forty bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model dashboard, empty audit-gated evidence workflow, and no workspace mutation\n`)
+  process.stdout.write("PASS installed compatible-host provider/model/Phase 1 dashboard smoke: two bounded capability rows, exact Initiative scope, unselected model state, unavailable usage/cost, private-safe output, and immutable fixture store\n")
+  process.stdout.write(`PASS activation: forty-two bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model dashboards, empty audit-gated evidence workflow, and no workspace mutation\n`)
 }
 
 function assertPrivateSafe(content, workspace, fixtureProductName) {

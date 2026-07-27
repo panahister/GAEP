@@ -57,7 +57,7 @@ const definitions = {
       requiredMarkers: [
         "PASS exact bounded Kiro VSIX payload and built-byte parity",
         "PASS isolated compatible-host VSIX previous-version install/upgrade/reinstall/rollback/uninstall/absence/final install",
-        "PASS installed compatible-host provider/model/dashboard smoke: two bounded capability rows, unselected model state, unavailable usage/cost, private-safe output, and immutable fixture store",
+        "PASS installed compatible-host provider/model/Phase 1 dashboard smoke: two bounded capability rows, exact Initiative scope, unselected model state, unavailable usage/cost, private-safe output, and immutable fixture store",
         "GAEP for Kiro exact installed VSIX activation smoke: PASS",
       ],
     }],
@@ -133,7 +133,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (407)",
+        "GAEP Visual Studio host-client tests: PASS (416)",
       ],
     }],
   },

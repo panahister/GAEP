@@ -45,6 +45,12 @@ try {
     exclusions: ["Live provider requests", "Credentials", "Normal user profiles", "Source workspace mutation"],
     profile: "internal-tool",
   }, "gaep.kiro-e2e-owner")
+  const fixtureInitiative = await fixtureEngine.createInitiative({
+    title: "Installed Kiro Phase 1 dashboard smoke",
+    outcome: "Exercise the exact Initiative-scoped Agent and Model execution-truth projection without granting authority.",
+    scope: ["Packaged engine metadata projection"],
+    exclusions: ["Live providers", "Run launch", "Effects", "Approval", "Release"],
+  }, "gaep.kiro-e2e-owner")
   await writeFile(join(workspace, "README.md"), "# Isolated GAEP for Kiro extension-host fixture\n", "utf8")
   const fixtureStoreManifest = await inspectPortableStore(join(workspace, ".gaep"))
   const cliEnvironment = {
@@ -114,6 +120,7 @@ try {
     extensionTestsEnv: {
       GAEP_KIRO_E2E_WORKSPACE: workspace,
       GAEP_KIRO_E2E_PRODUCT_NAME: fixtureProductName,
+      GAEP_KIRO_E2E_INITIATIVE_ID: fixtureInitiative.id,
       GAEP_KIRO_E2E_STORE_MANIFEST: JSON.stringify(fixtureStoreManifest),
       GAEP_ENGINE_EXECUTABLE: "",
       GAEP_ENGINE_SHA256: "",
