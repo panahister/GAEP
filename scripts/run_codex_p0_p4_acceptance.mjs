@@ -8,6 +8,7 @@ import {
   canonicalDigest,
   codexP0P4Limitations,
   codexP0P4TestName,
+  exactCodexTestSource,
   rawDigest,
   verifyCodexP0P4ReceiptObject,
 } from "./verify_codex_p0_p4_receipt.mjs"
@@ -58,7 +59,7 @@ export async function runCodexP0P4Acceptance() {
       id: "P1-30",
       testFile,
       testName: codexP0P4TestName,
-      testSourceDigest: rawDigest(testBytes),
+      testSourceDigest: rawDigest(exactCodexTestSource(testBytes)),
       fakeServerFile,
       fakeServerSourceDigest: rawDigest(fakeServerBytes),
     },

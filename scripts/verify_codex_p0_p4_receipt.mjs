@@ -102,6 +102,18 @@ export function rawDigest(value) {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`
 }
 
+export function exactCodexTestSource(source) {
+  const text = Buffer.isBuffer(source) ? source.toString("utf8") : String(source)
+  const marker = `  it(${JSON.stringify(codexP0P4TestName)}`
+  const start = text.indexOf(marker)
+  if (start < 0 || text.indexOf(marker, start + marker.length) >= 0) {
+    throw new Error("Codex P0-P4 test source must contain exactly one named integration")
+  }
+  const end = text.indexOf("\n\n  it(\"", start + marker.length)
+  if (end < 0) throw new Error("Codex P0-P4 test source boundary is missing")
+  return Buffer.from(text.slice(start, end), "utf8")
+}
+
 function fail(message) {
   throw new Error(`Invalid Codex P0-P4 acceptance receipt: ${message}`)
 }
@@ -128,7 +140,10 @@ async function currentSourceDigests() {
     readFile(resolve(repository, testFile)),
     readFile(resolve(repository, fakeServerFile)),
   ])
-  return { testSourceDigest: rawDigest(testBytes), fakeServerSourceDigest: rawDigest(fakeServerBytes) }
+  return {
+    testSourceDigest: rawDigest(exactCodexTestSource(testBytes)),
+    fakeServerSourceDigest: rawDigest(fakeServerBytes),
+  }
 }
 
 export async function verifyCodexP0P4ReceiptObject(receipt) {

@@ -33,7 +33,7 @@ Write a new private receipt without overwriting an existing file:
 npm run acceptance:codex-p0-p4 -- --output /path/to/new-receipt.json
 ```
 
-Verify a receipt against the current integration test and fake app-server source digests:
+Verify a receipt against the exact named integration region and fake app-server source digests:
 
 ```bash
 npm run verify:acceptance:codex-p0-p4 -- /path/to/receipt.json
