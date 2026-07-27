@@ -1,0 +1,41 @@
+namespace Gaep.HostClient;
+
+public sealed record EndToEndTraceabilityRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int NodeCount,
+    int RelationshipCount,
+    int LinkCount,
+    int TransformationCount);
+
+public sealed record EndToEndTraceabilityProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    IReadOnlyList<string> Reasons,
+    int NodeCount,
+    int RelationshipCount,
+    int LinkCount,
+    int TransformationCount,
+    int VerifiedLinkCount,
+    int ProposedLinkCount,
+    int InvalidOrHistoricalLinkCount,
+    int UnresolvedEndpointCount,
+    int NotAssessedSemanticCount,
+    int MissingSpineCount,
+    int UnknownRelationshipCount,
+    int UnresolvedRequirementCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    int InconsistencyCount,
+    int UnresolvedQuestionCount,
+    string CoverageBoundary,
+    EndToEndTraceabilityRecordView? Traceability,
+    string SnapshotDigest);

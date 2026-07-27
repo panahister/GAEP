@@ -97,6 +97,10 @@
                 Command="{Binding LoadEvidenceRegistryCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate claim, evidence, link, freshness, and gap counts only; it does not validate claims, establish evidence sufficiency or assurance, complete review, grant approval, accept risk, establish readiness, or authorize action."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadEndToEndTraceabilityButton" Content="Inspect governed End-to-End Traceability"
+                Command="{Binding LoadEndToEndTraceabilityCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate node, relationship, link, transformation, and gap counts only; absence does not prove no impact, and presence does not establish relationship truth, completeness, approval, baseline promotion, readiness, or action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

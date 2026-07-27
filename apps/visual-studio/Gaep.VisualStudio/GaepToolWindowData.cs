@@ -221,6 +221,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadDecisionRegisterCommand = new AsyncCommand(LoadDecisionRegisterAsync);
         LoadRiskRegisterCommand = new AsyncCommand(LoadRiskRegisterAsync);
         LoadEvidenceRegistryCommand = new AsyncCommand(LoadEvidenceRegistryAsync);
+        LoadEndToEndTraceabilityCommand = new AsyncCommand(LoadEndToEndTraceabilityAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -324,6 +325,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadEvidenceRegistryCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadEndToEndTraceabilityCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -800,6 +804,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Evidence Registry candidate",
             (controller, _, token) => controller.ReadEvidenceRegistryAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadEndToEndTraceabilityAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed End-to-End Traceability candidate",
+            (controller, _, token) => controller.ReadEndToEndTraceabilityAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

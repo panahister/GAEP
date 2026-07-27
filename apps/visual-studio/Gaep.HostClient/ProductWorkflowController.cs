@@ -1228,6 +1228,64 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadEndToEndTraceabilityAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadEndToEndTraceabilityAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while End-to-End Traceability was read. Refresh the exact records.");
+        }
+        return RenderEndToEndTraceability(projection);
+    }
+
+    public static string RenderEndToEndTraceability(EndToEndTraceabilityProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed End-to-End Traceability candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Assessment: {projection.AssessmentState}")
+            .AppendLine(
+                $"Coverage: {projection.NodeCount} nodes · {projection.RelationshipCount} relationship types · " +
+                $"{projection.LinkCount} links · {projection.TransformationCount} transformations")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedEndpointCount} unresolved endpoints · " +
+                $"{projection.NotAssessedSemanticCount} semantic reviews pending · " +
+                $"{projection.MissingSpineCount} missing spine segments · " +
+                $"{projection.UnknownRelationshipCount} unknown relationships · " +
+                $"{projection.UnresolvedRequirementCount} requirements · {projection.InconsistencyCount} inconsistencies · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Traceability is { } traceability)
+        {
+            output.AppendLine($"End-to-End Traceability candidate: {traceability.Id:D}@{traceability.Revision} · candidate · {traceability.Digest}")
+                .AppendLine($"Membership digest: {traceability.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate counts: {traceability.NodeCount} nodes · {traceability.RelationshipCount} relationship types · " +
+                    $"{traceability.LinkCount} links · {traceability.TransformationCount} transformations");
+        }
+        else output.AppendLine("End-to-End Traceability candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Coverage boundary: {projection.CoverageBoundary}")
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Boundary: this privacy-safe view exposes no node content, link rationale, transformation detail, Source content, " +
+                "personal data, local paths, secrets, or credentials; absence does not prove no impact or relationship, and " +
+                "presence does not establish relationship truth, completeness, approval, baseline promotion, operational " +
+                "readiness, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

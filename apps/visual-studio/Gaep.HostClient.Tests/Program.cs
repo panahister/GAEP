@@ -62,6 +62,7 @@ internal static class Program
     private static readonly Guid DecisionRegisterId = Guid.Parse("57575757-5757-4757-8757-575757575757");
     private static readonly Guid RiskRegisterId = Guid.Parse("58585858-5858-4858-8858-585858585858");
     private static readonly Guid EvidenceRegistryId = Guid.Parse("59595959-5959-4959-8959-595959595959");
+    private static readonly Guid EndToEndTraceabilityId = Guid.Parse("60606060-6060-4060-8060-606060606060");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -177,6 +178,9 @@ internal static class Program
         var badEvidenceRegistrySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-evidence-registry-snapshot-binding");
         var badEvidenceRegistrySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-evidence-registry-snapshot-digest");
         var badEvidenceRegistrySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-evidence-registry-snapshot-private");
+        var badTraceabilitySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-traceability-snapshot-binding");
+        var badTraceabilitySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-traceability-snapshot-digest");
+        var badTraceabilitySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-traceability-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -289,6 +293,9 @@ internal static class Program
         Directory.CreateDirectory(badEvidenceRegistrySnapshotBindingRoot);
         Directory.CreateDirectory(badEvidenceRegistrySnapshotDigestRoot);
         Directory.CreateDirectory(badEvidenceRegistrySnapshotPrivateRoot);
+        Directory.CreateDirectory(badTraceabilitySnapshotBindingRoot);
+        Directory.CreateDirectory(badTraceabilitySnapshotDigestRoot);
+        Directory.CreateDirectory(badTraceabilitySnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1392,6 +1399,47 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadEvidenceRegistryAsync(InitiativeId),
                 "Evidence Registry rejects a projection rebound to a substituted Product revision");
+        }
+
+        var traceabilityProjection = await client.ReadEndToEndTraceabilityAsync(InitiativeId);
+        Check(traceabilityProjection.ProductId == product.Id &&
+              traceabilityProjection.ProductRevision == product.Revision &&
+              traceabilityProjection.ProductDigest == product.Digest &&
+              traceabilityProjection.InitiativeId == resolved.Id &&
+              traceabilityProjection.InitiativeRevision == resolved.Revision &&
+              traceabilityProjection.InitiativeDigest == resolved.Digest &&
+              traceabilityProjection.AssessmentState == "attention-required" &&
+              traceabilityProjection.Traceability?.NodeCount == 44 &&
+              traceabilityProjection.Traceability?.RelationshipCount == 12 &&
+              traceabilityProjection.Traceability?.LinkCount == 67 &&
+              traceabilityProjection.Traceability?.TransformationCount == 5 &&
+              traceabilityProjection.MissingSpineCount == 1,
+            "Typed End-to-End Traceability preserves exact Product, Initiative, status, and candidate metadata");
+        var traceabilityOutput = await initiativeController.ReadEndToEndTraceabilityAsync(InitiativeId);
+        Check(traceabilityOutput.Contains("GAEP governed End-to-End Traceability candidate", StringComparison.Ordinal) &&
+              traceabilityOutput.Contains("1 missing spine segments", StringComparison.Ordinal) &&
+              traceabilityOutput.Contains(
+                  "absence-of-a-trace-link-does-not-prove-absence-of-impact-or-relationship",
+                  StringComparison.Ordinal) &&
+              traceabilityOutput.Contains("does not establish relationship truth", StringComparison.Ordinal) &&
+              !traceabilityOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !traceabilityOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !traceabilityOutput.Contains("linkRationale", StringComparison.Ordinal),
+            "End-to-End Traceability workflow renders privacy-safe metadata with explicit coverage and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badTraceabilitySnapshotDigestRoot, badTraceabilitySnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadEndToEndTraceabilityAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "End-to-End Traceability rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badTraceabilitySnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadEndToEndTraceabilityAsync(InitiativeId),
+                "End-to-End Traceability rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2568,6 +2616,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-evidence-registry-snapshot-digest";
         var badEvidenceRegistrySnapshotPrivate =
             Path.GetFileName(workspace) == "bad-evidence-registry-snapshot-private";
+        var badTraceabilitySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-traceability-snapshot-binding";
+        var badTraceabilitySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-traceability-snapshot-digest";
+        var badTraceabilitySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-traceability-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -2895,6 +2949,17 @@ internal static class Program
                         badEvidenceRegistrySnapshotBinding,
                         badEvidenceRegistrySnapshotDigest,
                         badEvidenceRegistrySnapshotPrivate);
+                    break;
+                case "traceability.graphs.snapshot":
+                    await HandleEndToEndTraceabilityAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badTraceabilitySnapshotBinding,
+                        badTraceabilitySnapshotDigest,
+                        badTraceabilitySnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -4990,6 +5055,107 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) registry["claimCount"] = 13;
         if (includePrivateField) result["claimStatement"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleEndToEndTraceabilityAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID END-TO-END TRACEABILITY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-27T00:00:00.000Z";
+        var traceabilityDigest = $"sha256:{new string('a', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var traceability = new Dictionary<string, object?>
+        {
+            ["id"] = EndToEndTraceabilityId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = traceabilityDigest,
+            ["membershipDigest"] = $"sha256:{new string('b', 64)}",
+            ["state"] = "candidate",
+            ["nodeCount"] = 44,
+            ["relationshipCount"] = 12,
+            ["linkCount"] = 67,
+            ["transformationCount"] = 5,
+            ["updatedAt"] = "2026-07-26T23:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "end-to-end-traceability-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "end-to-end-traceability-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["traceability"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = EndToEndTraceabilityId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = traceabilityDigest,
+                },
+                ["nodeCount"] = 44,
+                ["relationshipCount"] = 12,
+                ["linkCount"] = 67,
+                ["transformationCount"] = 5,
+                ["verifiedLinkCount"] = 40,
+                ["proposedLinkCount"] = 20,
+                ["invalidOrHistoricalLinkCount"] = 7,
+                ["unresolvedEndpointCount"] = 2,
+                ["notAssessedSemanticCount"] = 9,
+                ["missingSpineCount"] = 1,
+                ["unknownRelationshipCount"] = 2,
+                ["unresolvedRequirementCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 0,
+                ["inconsistencyCount"] = 0,
+                ["unresolvedQuestionCount"] = 1,
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more trace links remain explicitly not assessed" },
+                ["assessedAt"] = assessedAt,
+                ["coverageBoundary"] =
+                    "absence-of-a-trace-link-does-not-prove-absence-of-impact-or-relationship",
+                ["authorityBoundary"] =
+                    "end-to-end-traceability-status-reports-candidate-coverage-and-gaps-and-does-not-establish-relationship-truth-completeness-approval-readiness-or-action-authority",
+            },
+            ["traceability"] = traceability,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-identities-counts-statuses-and-digests-only-not-node-content-link-rationale-transformation-detail-source-content-personal-data-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "end-to-end-traceability-projection-does-not-establish-relationship-truth-completeness-approval-baseline-promotion-readiness-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) traceability["nodeCount"] = 45;
+        if (includePrivateField) result["linkRationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
