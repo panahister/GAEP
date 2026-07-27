@@ -11,6 +11,7 @@ import {
   endToEndTraceabilityRequirementIds,
   p0P4ReadinessOutputKinds,
   p0P4ReadinessRequirementIds,
+  p5HandoffRequirementIds,
   authorizationModelInputSchema,
   authorizationModelRequirementIds,
   eventIntegrationModelInputSchema,
@@ -43,6 +44,8 @@ import {
   type EndToEndTraceabilityInput,
   type EndToEndTraceability,
   type P0P4ReadinessGateInput,
+  type P0P4ReadinessGate,
+  type P5HandoffPackageInput,
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
@@ -84,6 +87,7 @@ import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { GaepEngine } from "./engine.js"
+import { p0P4ReadinessStatusDigest } from "./p5-handoff-package.js"
 
 const actorId = "product-owner"
 const digest = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as const
@@ -3470,6 +3474,72 @@ describe("Business understanding governance", () => {
       inconsistencies: [],
       limitations: ["No phase entry, implementation authorization, Product Owner acceptance, release, deployment, or action authority is represented"],
       readinessAuthorityState: "not-established",
+      ...overrides,
+    }
+  }
+
+  async function p5HandoffPackageInput(
+    gate: P0P4ReadinessGate,
+    overrides: Partial<P5HandoffPackageInput> = {},
+  ): Promise<P5HandoffPackageInput> {
+    const readinessStatus = await engine.p0P4ReadinessGate.assess(initiative.id)
+    const includedKinds = gate.outputs.filter((output) => output.applicability === "applicable")
+      .map((output) => output.outputKind).sort((left, right) => left.localeCompare(right))
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate P0-P4 to P5 experience-design handoff",
+      objective: "Transfer exact governed candidate context into P5 experience design without losing provenance, hiding limits, or creating authority.",
+      scope: "The complete canonical P0 through P4 output catalog, its exact current subjects, declared applicability, freshness, limits, and requirement coverage.",
+      readinessGate: { recordId: gate.id, revision: gate.revision, digest: canonicalDigest(gate) },
+      readinessStatusDigest: p0P4ReadinessStatusDigest(readinessStatus),
+      readinessResult: readinessStatus.result,
+      target: {
+        phase: "p5-experience-and-figma",
+        capability: "experience-design",
+        audience: { kind: "team", id: "experience-design" },
+        deliveryMode: "disconnected",
+      },
+      items: gate.outputs.map((output) => ({
+        outputKind: output.outputKind,
+        applicability: output.applicability,
+        subjects: output.subjects,
+        disposition: output.applicability === "applicable" ? "included" as const
+          : output.applicability === "not-applicable-candidate" ? "omitted-not-applicable" as const : "unresolved" as const,
+        representation: output.applicability === "applicable" ? "exact-reference" as const
+          : output.applicability === "not-applicable-candidate" ? "omitted" as const : "unresolved" as const,
+        semanticRelationship: output.applicability === "applicable" ? "exact" as const
+          : output.applicability === "not-applicable-candidate" ? "not-applicable" as const : "unresolved" as const,
+        freshness: output.freshness,
+        consumerPurpose: "Preserve the exact candidate context needed for bounded P5 experience-design review.",
+        selectionRationale: output.applicability === "applicable"
+          ? "The current readiness evaluation marks this output applicable, so its exact governed subject is included."
+          : "The current readiness evaluation marks this output not applicable, so the omission stays explicit.",
+        materialOmissions: [],
+        uncertainties: [],
+        limitations: ["The item is candidate context and does not grant approval, phase entry, design baseline, write, or action authority"],
+        sources: [reference()],
+        authorityBoundary: "handoff-item-transfers-candidate-context-only-and-does-not-transfer-source-ownership-approve-content-establish-readiness-or-authorize-action" as const,
+      })),
+      requirementCoverage: [...p5HandoffRequirementIds].sort((left, right) => left.localeCompare(right))
+        .map((requirementId) => ({
+          requirementId,
+          state: "covered-candidate" as const,
+          itemKinds: includedKinds,
+          basis: "The candidate handoff preserves exact identity, lineage, applicability, freshness, limitations, portability, and non-authority semantics.",
+          sources: [reference()],
+        })),
+      assumptions: [],
+      unresolvedQuestions: [],
+      conflicts: [],
+      limitations: ["P5 acknowledgement, design approval, baseline promotion, source ownership transfer, write authority, and action authority remain unestablished"],
+      nextActions: ["A named human P5 reviewer must inspect the exact candidate package and independently decide whether any next lifecycle action is appropriate"],
+      transferState: readinessStatus.result === "passed" ? "ready-for-human-review" : "held",
+      acknowledgementState: "not-established",
+      sourceOwnershipState: "retained",
+      transferAuthorityState: "not-established",
+      p5EntryAuthorityState: "not-established",
       ...overrides,
     }
   }
@@ -6875,6 +6945,169 @@ describe("Business understanding governance", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "p0-p4-readiness-gate.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, and revises an immutable P5 Handoff Package without granting authority", async () => {
+    const upstream = await createP0P4ReadinessUpstream()
+    const gate = await engine.p0P4ReadinessGate.create(
+      p0P4ReadinessGateInput(upstream.evidenceRegistry, upstream.traceability),
+      actorId,
+    )
+    const input = await p5HandoffPackageInput(gate)
+    const handoff = await engine.p5HandoffPackage.create(input, actorId)
+
+    expect(handoff).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      readinessGate: input.readinessGate,
+      readinessStatusDigest: input.readinessStatusDigest,
+      readinessResult: "passed",
+      target: { phase: "p5-experience-and-figma", deliveryMode: "disconnected" },
+      transferState: "ready-for-human-review",
+      acknowledgementState: "not-established",
+      sourceOwnershipState: "retained",
+      transferAuthorityState: "not-established",
+      p5EntryAuthorityState: "not-established",
+      authorityBoundary: expect.stringContaining("does-not-transfer-source-ownership"),
+    })
+    expect(handoff.membershipDigest).toMatch(/^sha256:[0-9a-f]{64}$/)
+    expect(await engine.p5HandoffPackage.assess(initiative.id)).toMatchObject({
+      handoff: { recordId: handoff.id, revision: 1, digest: canonicalDigest(handoff) },
+      itemCount: 25,
+      includedItemCount: 3,
+      referenceOnlyItemCount: 0,
+      omittedNotApplicableItemCount: 22,
+      unresolvedItemCount: 0,
+      staleOrUnknownItemCount: 0,
+      lossyTransformationCount: 0,
+      unresolvedRequirementCount: 0,
+      conflictCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      readinessResult: "passed",
+      transferState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+      handoffBoundary: "handoff-transfers-exact-candidate-context-not-source-ownership-or-authority",
+      authorityBoundary: expect.stringContaining("does-not-establish-acknowledgement-readiness-approval"),
+    })
+    const projection = await engine.p5HandoffPackage.project(initiative.id)
+    expect(projection).toMatchObject({
+      handoff: {
+        id: handoff.id,
+        revision: 1,
+        itemCount: 25,
+        requirementCount: 66,
+        deliveryMode: "disconnected",
+      },
+      status: { state: "complete-for-review", readinessResult: "passed" },
+      privacyBoundary: expect.stringContaining("not-item-content-summaries"),
+      authorityBoundary: expect.stringContaining("does-not-establish-acknowledgement-readiness-approval"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Transfer exact governed candidate context")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revisedInput = await p5HandoffPackageInput(gate, {
+      limitations: [
+        "P5 acknowledgement, design approval, baseline promotion, source ownership transfer, write authority, and action authority remain unestablished",
+        "The disconnected package still requires an independent human review before any repository or Figma interaction",
+      ],
+    })
+    const revised = await engine.p5HandoffPackage.revise(handoff.id, handoff.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: handoff.id, revision: 2, predecessorDigest: canonicalDigest(handoff) })
+    expect((await engine.p5HandoffPackage.listHistory(handoff.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "p5-handoff-package.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(handoff),
+        readinessGate: input.readinessGate,
+        readinessStatusDigest: input.readinessStatusDigest,
+        readinessResult: "passed",
+        targetPhase: "p5-experience-and-figma",
+        targetCapability: "experience-design",
+        deliveryMode: "disconnected",
+        itemCount: 25,
+        includedItemCount: 3,
+        omittedNotApplicableItemCount: 22,
+        unresolvedItemCount: 0,
+        transferState: "ready-for-human-review",
+        acknowledgementState: "not-established",
+        sourceOwnershipState: "retained",
+        transferAuthorityState: "not-established",
+        p5EntryAuthorityState: "not-established",
+        readinessAuthorityState: "not-established",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("rejects forged P5 Handoff Package readiness, subject, secret, and duplicate bindings", async () => {
+    const upstream = await createP0P4ReadinessUpstream()
+    const gate = await engine.p0P4ReadinessGate.create(
+      p0P4ReadinessGateInput(upstream.evidenceRegistry, upstream.traceability),
+      actorId,
+    )
+    const base = await p5HandoffPackageInput(gate)
+    await expect(engine.p5HandoffPackage.create({
+      ...base,
+      readinessStatusDigest: digest("e"),
+    }, actorId)).rejects.toThrow(/exact current stable readiness assessment/)
+    await expect(engine.p5HandoffPackage.create({
+      ...base,
+      items: base.items.map((item) => item.outputKind === "evidence-registry"
+        ? { ...item, subjects: item.subjects.map((subject) => ({ ...subject, digest: digest("e") })) }
+        : item),
+    }, actorId)).rejects.toThrow(/exact readiness output applicability, subjects, and freshness/)
+    await expect(engine.p5HandoffPackage.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable handoff context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+    await engine.p5HandoffPackage.create(base, actorId)
+    await expect(engine.p5HandoffPackage.create(base, actorId))
+      .rejects.toThrow(/only one current P5 Handoff Package/)
+  })
+
+  it("reports P5 Handoff Package staleness after its readiness evaluation changes", async () => {
+    const upstream = await createP0P4ReadinessUpstream()
+    const gate = await engine.p0P4ReadinessGate.create(
+      p0P4ReadinessGateInput(upstream.evidenceRegistry, upstream.traceability),
+      actorId,
+    )
+    const handoff = await engine.p5HandoffPackage.create(await p5HandoffPackageInput(gate), actorId)
+    await engine.p0P4ReadinessGate.revise(
+      gate.id,
+      gate.revision,
+      p0P4ReadinessGateInput(upstream.evidenceRegistry, upstream.traceability, {
+        limitations: [
+          "No phase entry, implementation authorization, Product Owner acceptance, release, deployment, or action authority is represented",
+          "The readiness evaluation changed after P5 handoff capture",
+        ],
+      }),
+      actorId,
+    )
+    expect(await engine.p5HandoffPackage.assess(initiative.id)).toMatchObject({
+      handoff: { recordId: handoff.id },
+      staleBindingCount: 2,
+      readinessResult: "passed",
+      state: "attention-required",
+      reasons: expect.arrayContaining([
+        "The handoff does not bind the exact current Product, Initiative, readiness evaluation, or output catalog",
+      ]),
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "p5-handoff-package.binding-review-required",
       severity: "warning",
     }))
   })

@@ -222,7 +222,8 @@ const p5HandoffPackageInputBaseSchema = z.object({
     context.addIssue({ code: "custom", path: ["requirementCoverage"], message: "Requirement coverage must contain the complete P5 Handoff Package catalog" })
   }
   const hasReviewGap = handoff.readinessResult !== "passed" ||
-    handoff.items.some((item) => item.applicability === "unresolved" || item.freshness !== "current") ||
+    handoff.items.some((item) => item.applicability === "unresolved" ||
+      (item.applicability === "applicable" && item.freshness !== "current")) ||
     handoff.requirementCoverage.some((entry) => entry.state === "unresolved") ||
     handoff.unresolvedQuestions.length > 0 || handoff.conflicts.length > 0
   if (handoff.transferState === "ready-for-human-review" && hasReviewGap) {
