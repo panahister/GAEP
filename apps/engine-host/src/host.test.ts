@@ -1307,6 +1307,40 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "p5-handoff-read-empty",
+      protocolVersion: 2,
+      method: "handoff.p5.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "p5-handoff-assess-empty",
+      protocolVersion: 2,
+      method: "handoff.p5.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      itemCount: 0,
+      readinessResult: "not-assessed",
+      transferState: "draft",
+      state: "attention-required",
+      handoffBoundary: "handoff-transfers-exact-candidate-context-not-source-ownership-or-authority",
+      authorityBoundary: expect.stringContaining("does-not-establish-acknowledgement-readiness-approval"),
+    })
+    const p5HandoffProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "p5-handoff-snapshot-empty",
+      protocolVersion: 2,
+      method: "handoff.p5.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: p5HandoffSnapshotDigest, ...p5HandoffProjectionBody } = p5HandoffProjection
+    expect(p5HandoffSnapshotDigest).toBe(canonicalDigest(p5HandoffProjectionBody))
+    expect(p5HandoffProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-item-content-summaries"),
+      authorityBoundary: expect.stringContaining("does-not-establish-acknowledgement-readiness-approval"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1333,6 +1367,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "traceability-v1-block",
       method: "traceability.graphs.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "p5-handoff-v1-block",
+      method: "handoff.p5.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

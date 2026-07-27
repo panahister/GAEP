@@ -44,6 +44,7 @@ import { riskRegisterInputSchema } from "./risk-register.js"
 import { evidenceRegistryInputSchema } from "./evidence-registry.js"
 import { endToEndTraceabilityInputSchema } from "./end-to-end-traceability.js"
 import { p0P4ReadinessGateInputSchema } from "./p0-p4-readiness-gate.js"
+import { p5HandoffPackageInputSchema } from "./p5-handoff-package.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -484,6 +485,18 @@ export const hostP0P4ReadinessGateReviseParamsSchema = z.object({
   record: p0P4ReadinessGateInputSchema,
 }).strict()
 
+export const hostP5HandoffPackageCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: p5HandoffPackageInputSchema,
+}).strict()
+
+export const hostP5HandoffPackageReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: p5HandoffPackageInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -640,6 +653,11 @@ export const hostMethodSchema = z.enum([
   "readiness.gates.revise",
   "readiness.gates.assess",
   "readiness.gates.snapshot",
+  "handoff.p5.read",
+  "handoff.p5.create",
+  "handoff.p5.revise",
+  "handoff.p5.assess",
+  "handoff.p5.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -808,6 +826,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("readiness.gates.revise", hostP0P4ReadinessGateReviseParamsSchema),
   requestVariant("readiness.gates.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("readiness.gates.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("handoff.p5.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("handoff.p5.create", hostP5HandoffPackageCreateParamsSchema),
+  requestVariant("handoff.p5.revise", hostP5HandoffPackageReviseParamsSchema),
+  requestVariant("handoff.p5.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("handoff.p5.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
