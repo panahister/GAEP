@@ -20,6 +20,7 @@ import {
   type RiskRegisterProjection,
   type EvidenceRegistryProjection,
   type EndToEndTraceabilityProjection,
+  type P0P4ReadinessGateProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1423,6 +1424,75 @@ function endToEndTraceabilityProjection(): EndToEndTraceabilityProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function p0P4ReadinessGateProjection(): P0P4ReadinessGateProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "p0-p4-readiness-gate-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    gate: {
+      recordId: "bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc",
+      revision: 2,
+      digest: `sha256:${"e".repeat(64)}` as const,
+    },
+    outputCount: 25,
+    applicableOutputCount: 20,
+    notApplicableOutputCount: 4,
+    unresolvedApplicabilityCount: 1,
+    satisfiedOutputCount: 17,
+    conditionalOutputCount: 1,
+    incompleteOutputCount: 1,
+    failedOutputCount: 1,
+    blockedOutputCount: 0,
+    staleOrUnknownOutputCount: 1,
+    pendingOrInvalidWaiverCount: 1,
+    unresolvedDecisionCount: 2,
+    unmetConditionCount: 1,
+    unresolvedRequirementCount: 2,
+    adverseEvidenceCount: 1,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 1,
+    result: "failed" as const,
+    reasons: ["The exact Evidence Registry contains adverse evidence"],
+    assessedAt: "2026-07-27T03:30:00.000Z",
+    gateBoundary: "a-passing-gate-is-an-evaluation-result-not-permission" as const,
+    authorityBoundary: "p0-p4-readiness-gate-status-is-an-evaluation-result-and-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "p0-p4-readiness-gate-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    gate: {
+      id: status.gate.recordId,
+      revision: status.gate.revision,
+      digest: status.gate.digest,
+      membershipDigest: `sha256:${"f".repeat(64)}` as const,
+      state: "candidate" as const,
+      evaluationDefinitionDigest: `sha256:${"a".repeat(64)}` as const,
+      outputCount: 25,
+      waiverCount: 1,
+      unresolvedDecisionCount: 2,
+      conditionCount: 1,
+      updatedAt: "2026-07-27T03:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-results-and-digests-only-not-output-content-criteria-findings-waiver-rationale-decision-content-evidence-content-source-content-personal-data-secrets-or-credentials" as const,
+    authorityBoundary: "p0-p4-readiness-gate-projection-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -1994,6 +2064,7 @@ interface HarnessOptions {
   riskRegisterProjection?: RiskRegisterProjection
   evidenceRegistryProjection?: EvidenceRegistryProjection
   endToEndTraceabilityProjection?: EndToEndTraceabilityProjection
+  p0P4ReadinessGateProjection?: P0P4ReadinessGateProjection
   commandResult?: unknown
 }
 
@@ -2182,6 +2253,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.endToEndTraceabilityProjection ? {
       endToEndTraceability: {
         project: async () => options.endToEndTraceabilityProjection!,
+      },
+    } : {}),
+    ...(options.p0P4ReadinessGateProjection ? {
+      p0P4ReadinessGate: {
+        project: async () => options.p0P4ReadinessGateProjection!,
       },
     } : {}),
   }
@@ -2808,6 +2884,35 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private node content|private link rationale|private transformation detail|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed P0-P4 Readiness Gate metadata without turning a result into permission", async () => {
+    const projection = p0P4ReadinessGateProjection()
+    const { source } = harness({ p0P4ReadinessGateProjection: projection })
+    const snapshot = await source.readSnapshot("trace")
+    expect(snapshot.page.kind === "trace" && snapshot.page.readinessGates).toMatchObject({
+      id: "p0-p4-readiness-gates",
+      rows: [{
+        id: projection.gate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.gate?.membershipDigest,
+          definition: projection.gate?.evaluationDefinitionDigest,
+          outputs: "17/20 applicable satisfied · 4 candidate not applicable",
+          assessment: "failed",
+          gaps: "0 blocked · 1 failed · 1 incomplete · 1 conditional · 1 unresolved applicability · 1 waiver gaps · 2 open decisions · 1 unmet conditions · 1 adverse evidence · 1 stale bindings",
+          boundary: expect.stringContaining("passing gate is an evaluation result, not permission"),
+        },
+        state: "failed",
+        actions: [],
+      }],
+    })
+    expect(snapshot.page).not.toHaveProperty("approved")
+    expect(snapshot.page).not.toHaveProperty("ready")
+    expect(JSON.stringify(snapshot.page)).not.toMatch(
+      /private output content|private waiver rationale|private decision content|private evidence content|customer@example\.com|api_key/iu,
     )
   })
 

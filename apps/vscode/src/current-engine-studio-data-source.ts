@@ -47,6 +47,7 @@ import type {
   RiskRegisterProjection,
   EvidenceRegistryProjection,
   EndToEndTraceabilityProjection,
+  P0P4ReadinessGateProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -189,6 +190,9 @@ export interface CurrentStudioEngineReader {
   endToEndTraceability?: {
     project(initiativeId: string): Promise<EndToEndTraceabilityProjection>
   }
+  p0P4ReadinessGate?: {
+    project(initiativeId: string): Promise<P0P4ReadinessGateProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -247,6 +251,7 @@ interface ObservedStudioState {
   riskRegisterProjections: Map<string, RiskRegisterProjection>
   evidenceRegistryProjections: Map<string, EvidenceRegistryProjection>
   endToEndTraceabilityProjections: Map<string, EndToEndTraceabilityProjection>
+  p0P4ReadinessGateProjections: Map<string, P0P4ReadinessGateProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1448,6 +1453,55 @@ function endToEndTraceabilityTable(state: ObservedStudioState): StudioTableSnaps
   }
 }
 
+function p0P4ReadinessGateTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.p0P4ReadinessGateProjections.values()].flatMap((projection) => {
+    const record = projection.gate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        definition: record.evaluationDefinitionDigest,
+        outputs: `${status.satisfiedOutputCount}/${status.applicableOutputCount} applicable satisfied · ${status.notApplicableOutputCount} candidate not applicable`,
+        assessment: status.result,
+        gaps: `${status.blockedOutputCount} blocked · ${status.failedOutputCount} failed · ${status.incompleteOutputCount} incomplete · ${status.conditionalOutputCount} conditional · ${status.unresolvedApplicabilityCount} unresolved applicability · ${status.pendingOrInvalidWaiverCount} waiver gaps · ${status.unresolvedDecisionCount} open decisions · ${status.unmetConditionCount} unmet conditions · ${status.adverseEvidenceCount} adverse evidence · ${status.staleBindingCount} stale bindings`,
+        boundary: "A passing gate is an evaluation result, not permission; it does not grant approval, accept waivers, authorize phase entry or implementation, promote a baseline, establish readiness, or authorize action.",
+      },
+      state: status.result,
+      actions: [],
+    }]
+  })
+  return {
+    id: "p0-p4-readiness-gates",
+    title: "Governed P0-P4 Readiness Gate Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Gate Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "definition", label: "Evaluation definition digest" },
+      { key: "outputs", label: "Privacy-safe output counts" },
+      { key: "assessment", label: "Evaluation result" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Gate and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed P0-P4 Readiness Gate candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer readiness, grant approval, accept waivers, authorize phase entry or implementation, promote a baseline, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2594,6 +2648,7 @@ function tracePage(state: ObservedStudioState): TracePageSnapshot {
     actions: [domainControl("Create Trace link", "create-trace-link", undefined, undefined, "primary"), domainControl("Search records", "search")],
     relationships,
     traceabilityGraphs: endToEndTraceabilityTable(state),
+    readinessGates: p0P4ReadinessGateTable(state),
     impact,
     searchResults,
     ...(state.impact ? { selectedRecordId: state.impact.subject.recordId } : {}),
@@ -3233,6 +3288,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       ...page,
       relationships: capTable(page.relationships),
       traceabilityGraphs: capTable(page.traceabilityGraphs),
+      readinessGates: capTable(page.readinessGates),
       searchResults: capTable(page.searchResults),
     }
     case "agents-tools": return {
@@ -3961,6 +4017,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       riskRegisterProjections: new Map(),
       evidenceRegistryProjections: new Map(),
       endToEndTraceabilityProjections: new Map(),
+      p0P4ReadinessGateProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -4920,6 +4977,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "end-to-end-traceability-unavailable",
           "End-to-End Traceability metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "trace" && engine.p0P4ReadinessGate) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.p0P4ReadinessGate!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.p0P4ReadinessGateProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio P0-P4 Readiness Gate projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `p0-p4-readiness-gate-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe P0-P4 Readiness Gate metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "p0-p4-readiness-gate-unavailable",
+          "P0-P4 Readiness Gate metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
