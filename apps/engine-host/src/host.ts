@@ -185,6 +185,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "evidence.registries.revise",
   "evidence.registries.assess",
   "evidence.registries.snapshot",
+  "traceability.graphs.read",
+  "traceability.graphs.create",
+  "traceability.graphs.revise",
+  "traceability.graphs.assess",
+  "traceability.graphs.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1143,6 +1148,21 @@ export class EngineHost {
         return this.engine.evidenceRegistry.assess(request.params.initiativeId)
       case "evidence.registries.snapshot":
         return this.engine.evidenceRegistry.project(request.params.initiativeId)
+      case "traceability.graphs.read":
+        return await this.engine.endToEndTraceability.readCurrent(request.params.initiativeId) ?? null
+      case "traceability.graphs.create":
+        return this.engine.endToEndTraceability.create(request.params.record, actorId(request.params.actorId))
+      case "traceability.graphs.revise":
+        return this.engine.endToEndTraceability.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "traceability.graphs.assess":
+        return this.engine.endToEndTraceability.assess(request.params.initiativeId)
+      case "traceability.graphs.snapshot":
+        return this.engine.endToEndTraceability.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

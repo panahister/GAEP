@@ -1239,6 +1239,41 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "traceability-read-empty",
+      protocolVersion: 2,
+      method: "traceability.graphs.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "traceability-assess-empty",
+      protocolVersion: 2,
+      method: "traceability.graphs.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      nodeCount: 0,
+      relationshipCount: 0,
+      linkCount: 0,
+      transformationCount: 0,
+      state: "attention-required",
+      coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact-or-relationship",
+      authorityBoundary: expect.stringContaining("does-not-establish-relationship-truth-completeness"),
+    })
+    const traceabilityProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "traceability-snapshot-empty",
+      protocolVersion: 2,
+      method: "traceability.graphs.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: traceabilitySnapshotDigest, ...traceabilityProjectionBody } = traceabilityProjection
+    expect(traceabilitySnapshotDigest).toBe(canonicalDigest(traceabilityProjectionBody))
+    expect(traceabilityProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-node-content-link-rationale-transformation-detail"),
+      authorityBoundary: expect.stringContaining("does-not-establish-relationship-truth-completeness"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1259,6 +1294,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "evidence-registry-v1-block",
       method: "evidence.registries.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "traceability-v1-block",
+      method: "traceability.graphs.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
@@ -1428,6 +1469,24 @@ describe("engine host protocol", () => {
           assuranceEstablished: true,
           approved: true,
           riskAccepted: true,
+          baselinePromoted: true,
+          ready: true,
+          actionAuthorized: true,
+        },
+      },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "traceability-extra-authority",
+      protocolVersion: 2,
+      method: "traceability.graphs.create",
+      params: {
+        actorId: "gaep.host-test",
+        record: {
+          initiativeId,
+          relationshipTrue: true,
+          graphComplete: true,
+          approved: true,
           baselinePromoted: true,
           ready: true,
           actionAuthorized: true,

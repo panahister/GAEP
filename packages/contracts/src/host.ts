@@ -42,6 +42,7 @@ import { architectureChallengeModelInputSchema } from "./architecture-challenge-
 import { decisionRegisterInputSchema } from "./decision-register.js"
 import { riskRegisterInputSchema } from "./risk-register.js"
 import { evidenceRegistryInputSchema } from "./evidence-registry.js"
+import { endToEndTraceabilityInputSchema } from "./end-to-end-traceability.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -458,6 +459,18 @@ export const hostEvidenceRegistryReviseParamsSchema = z.object({
   record: evidenceRegistryInputSchema,
 }).strict()
 
+export const hostEndToEndTraceabilityCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: endToEndTraceabilityInputSchema,
+}).strict()
+
+export const hostEndToEndTraceabilityReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: endToEndTraceabilityInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
@@ -604,6 +617,11 @@ export const hostMethodSchema = z.enum([
   "evidence.registries.revise",
   "evidence.registries.assess",
   "evidence.registries.snapshot",
+  "traceability.graphs.read",
+  "traceability.graphs.create",
+  "traceability.graphs.revise",
+  "traceability.graphs.assess",
+  "traceability.graphs.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -762,6 +780,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("evidence.registries.revise", hostEvidenceRegistryReviseParamsSchema),
   requestVariant("evidence.registries.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("evidence.registries.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("traceability.graphs.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("traceability.graphs.create", hostEndToEndTraceabilityCreateParamsSchema),
+  requestVariant("traceability.graphs.revise", hostEndToEndTraceabilityReviseParamsSchema),
+  requestVariant("traceability.graphs.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("traceability.graphs.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
