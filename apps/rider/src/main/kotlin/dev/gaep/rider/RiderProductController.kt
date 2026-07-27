@@ -1121,6 +1121,50 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readP0P4ReadinessGate(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readP0P4ReadinessGate(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while the P0-P4 Readiness Gate was read. Refresh the exact records." }
+        return renderP0P4ReadinessGate(projection)
+    }
+
+    fun renderP0P4ReadinessGate(projection: P0P4ReadinessGateProjection): String = buildString {
+        appendLine("GAEP governed P0-P4 Readiness Gate candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Evaluation result: ${projection.result}")
+        appendLine("Outputs: ${projection.satisfiedOutputCount}/${projection.applicableOutputCount} applicable satisfied · ${projection.notApplicableOutputCount} candidate not applicable · ${projection.unresolvedApplicabilityCount} unresolved applicability")
+        appendLine(
+            "Candidate gaps: ${projection.blockedOutputCount} blocked · ${projection.failedOutputCount} failed · " +
+                "${projection.incompleteOutputCount} incomplete · ${projection.conditionalOutputCount} conditional · " +
+                "${projection.staleOrUnknownOutputCount} stale or unknown · ${projection.pendingOrInvalidWaiverCount} waiver gaps · " +
+                "${projection.unresolvedDecisionCount} open decisions · ${projection.unmetConditionCount} unmet conditions · " +
+                "${projection.unresolvedRequirementCount} requirements · ${projection.adverseEvidenceCount} adverse evidence · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.gate?.let { record ->
+            appendLine("P0-P4 Readiness Gate candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Evaluation definition digest: ${record.evaluationDefinitionDigest}")
+            appendLine("Candidate inventory: ${record.outputCount} outputs · ${record.waiverCount} waivers · ${record.unresolvedDecisionCount} open decisions · ${record.conditionCount} conditions")
+        } ?: appendLine("P0-P4 Readiness Gate candidate: not recorded")
+        appendLine()
+        appendLine("Gate boundary: ${projection.gateBoundary}")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: a readiness result does not grant approval, accept a waiver, authorize phase entry or implementation, " +
+                "promote a baseline, establish Product readiness, or authorize action.",
+        )
+    }
+
     fun renderFailureRecoveryModel(projection: FailureRecoveryModelProjection): String = buildString {
         appendLine("GAEP governed Failure and Recovery Model candidate")
         appendLine()

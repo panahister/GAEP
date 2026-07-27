@@ -34,6 +34,7 @@ private val decisionRegisterId = UUID.fromString("57575757-5757-4757-8757-575757
 private val riskRegisterId = UUID.fromString("58585858-5858-4858-8858-585858585858")
 private val evidenceRegistryId = UUID.fromString("59595959-5959-4959-8959-595959595959")
 private val endToEndTraceabilityId = UUID.fromString("60606060-6060-4060-8060-606060606060")
+private val p0P4ReadinessGateId = UUID.fromString("61616161-6161-4161-8161-616161616161")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -202,6 +203,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "traceability.graphs.snapshot" -> handleEndToEndTraceability(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "readiness.gates.snapshot" -> handleP0P4ReadinessGate(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -2194,6 +2200,103 @@ private fun handleEndToEndTraceability(id: Long, params: JsonObject, workspacePa
         }
         workspacePath.endsWith("bad-traceability-snapshot-private") -> {
             value.addProperty("linkRationale", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleP0P4ReadinessGate(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE READINESS GATE PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-readiness-gate-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-27T03:30:00.000Z"
+    val gateDigest = "sha256:${"c".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "p0-p4-readiness-gate-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "p0-p4-readiness-gate-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("gate", JsonObject().apply {
+                addProperty("recordId", p0P4ReadinessGateId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", gateDigest)
+            })
+            addProperty("outputCount", 25)
+            addProperty("applicableOutputCount", 20)
+            addProperty("notApplicableOutputCount", 4)
+            addProperty("unresolvedApplicabilityCount", 1)
+            addProperty("satisfiedOutputCount", 17)
+            addProperty("conditionalOutputCount", 1)
+            addProperty("incompleteOutputCount", 1)
+            addProperty("failedOutputCount", 1)
+            addProperty("blockedOutputCount", 0)
+            addProperty("staleOrUnknownOutputCount", 1)
+            addProperty("pendingOrInvalidWaiverCount", 1)
+            addProperty("unresolvedDecisionCount", 2)
+            addProperty("unmetConditionCount", 1)
+            addProperty("unresolvedRequirementCount", 2)
+            addProperty("adverseEvidenceCount", 1)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("inconsistencyCount", 0)
+            addProperty("unresolvedQuestionCount", 1)
+            addProperty("result", "failed")
+            add("reasons", JsonArray().apply { add("The exact Evidence Registry contains adverse evidence") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("gateBoundary", "a-passing-gate-is-an-evaluation-result-not-permission")
+            addProperty(
+                "authorityBoundary",
+                "p0-p4-readiness-gate-status-is-an-evaluation-result-and-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority",
+            )
+        })
+        add("gate", JsonObject().apply {
+            addProperty("id", p0P4ReadinessGateId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", gateDigest)
+            addProperty("membershipDigest", "sha256:${"d".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("evaluationDefinitionDigest", "sha256:${"e".repeat(64)}")
+            addProperty("outputCount", 25)
+            addProperty("waiverCount", 1)
+            addProperty("unresolvedDecisionCount", 2)
+            addProperty("conditionCount", 1)
+            addProperty("updatedAt", "2026-07-27T03:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-identities-counts-results-and-digests-only-not-output-content-criteria-findings-waiver-rationale-decision-content-evidence-content-source-content-personal-data-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "p0-p4-readiness-gate-projection-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-readiness-gate-snapshot-digest") -> {
+            value.getAsJsonObject("gate").addProperty("outputCount", 24)
+        }
+        workspacePath.endsWith("bad-readiness-gate-snapshot-private") -> {
+            value.addProperty("waiverRationale", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

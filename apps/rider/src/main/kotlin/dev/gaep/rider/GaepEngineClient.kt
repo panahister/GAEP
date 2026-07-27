@@ -276,6 +276,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readP0P4ReadinessGate(initiativeId: UUID): P0P4ReadinessGateProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("readiness.gates.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseP0P4ReadinessGateEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

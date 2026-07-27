@@ -1154,6 +1154,51 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `P0 P4 Readiness Gate projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("readiness-gate-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readP0P4ReadinessGate(entryId)
+            assertEquals("failed", projection.result)
+            assertEquals(25, projection.gate?.outputCount)
+            assertEquals(17, projection.satisfiedOutputCount)
+            assertEquals(2, projection.unresolvedDecisionCount)
+            assertEquals("a-passing-gate-is-an-evaluation-result-not-permission", projection.gateBoundary)
+
+            val rendered = RiderProductController(client).readP0P4ReadinessGate(entryId)
+            assertTrue(rendered.contains("GAEP governed P0-P4 Readiness Gate candidate"))
+            assertTrue(rendered.contains("17/20 applicable satisfied · 4 candidate not applicable"))
+            assertTrue(rendered.contains("1 adverse evidence · 1 stale bindings"))
+            assertTrue(rendered.contains("evaluation result does not grant approval"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("waiverRationale"))
+        }
+
+        listOf(
+            "bad-readiness-gate-snapshot-digest",
+            "bad-readiness-gate-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readP0P4ReadinessGate(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-readiness-gate-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readP0P4ReadinessGate(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

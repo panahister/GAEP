@@ -1543,6 +1543,52 @@ data class EndToEndTraceabilityProjection(
     val snapshotDigest: String,
 )
 
+data class P0P4ReadinessGateRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val evaluationDefinitionDigest: String,
+    val outputCount: Int,
+    val waiverCount: Int,
+    val unresolvedDecisionCount: Int,
+    val conditionCount: Int,
+)
+
+data class P0P4ReadinessGateProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val result: String,
+    val reasons: List<String>,
+    val outputCount: Int,
+    val applicableOutputCount: Int,
+    val notApplicableOutputCount: Int,
+    val unresolvedApplicabilityCount: Int,
+    val satisfiedOutputCount: Int,
+    val conditionalOutputCount: Int,
+    val incompleteOutputCount: Int,
+    val failedOutputCount: Int,
+    val blockedOutputCount: Int,
+    val staleOrUnknownOutputCount: Int,
+    val pendingOrInvalidWaiverCount: Int,
+    val unresolvedDecisionCount: Int,
+    val unmetConditionCount: Int,
+    val unresolvedRequirementCount: Int,
+    val adverseEvidenceCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val inconsistencyCount: Int,
+    val unresolvedQuestionCount: Int,
+    val gateBoundary: String,
+    val gate: P0P4ReadinessGateRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1690,6 +1736,14 @@ internal object PortableDesignProtocol {
         "end-to-end-traceability-status-reports-candidate-coverage-and-gaps-and-does-not-establish-relationship-truth-completeness-approval-readiness-or-action-authority"
     private const val END_TO_END_TRACEABILITY_COVERAGE_BOUNDARY =
         "absence-of-a-trace-link-does-not-prove-absence-of-impact-or-relationship"
+    private const val P0_P4_READINESS_GATE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-identities-counts-results-and-digests-only-not-output-content-criteria-findings-waiver-rationale-decision-content-evidence-content-source-content-personal-data-secrets-or-credentials"
+    private const val P0_P4_READINESS_GATE_PROJECTION_AUTHORITY_BOUNDARY =
+        "p0-p4-readiness-gate-projection-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority"
+    private const val P0_P4_READINESS_GATE_STATUS_AUTHORITY_BOUNDARY =
+        "p0-p4-readiness-gate-status-is-an-evaluation-result-and-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority"
+    private const val P0_P4_READINESS_GATE_BOUNDARY =
+        "a-passing-gate-is-an-evaluation-result-not-permission"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -5310,6 +5364,161 @@ internal object PortableDesignProtocol {
             unresolvedEndpointCount, notAssessedSemanticCount, missingSpineCount, unknownRelationshipCount,
             unresolvedRequirementCount, staleBindingCount, staleSourceReferenceCount, inconsistencyCount,
             unresolvedQuestionCount, coverageBoundary, traceability, snapshotDigest,
+        )
+    }
+
+    fun parseP0P4ReadinessGateEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): P0P4ReadinessGateProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("gate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "p0-p4-readiness-gate-projection" ||
+            projection.requireString("privacyBoundary") != P0_P4_READINESS_GATE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != P0_P4_READINESS_GATE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "outputCount", "applicableOutputCount", "notApplicableOutputCount", "unresolvedApplicabilityCount",
+                "satisfiedOutputCount", "conditionalOutputCount", "incompleteOutputCount", "failedOutputCount",
+                "blockedOutputCount", "staleOrUnknownOutputCount", "pendingOrInvalidWaiverCount",
+                "unresolvedDecisionCount", "unmetConditionCount", "unresolvedRequirementCount",
+                "adverseEvidenceCount", "staleBindingCount", "staleSourceReferenceCount", "inconsistencyCount",
+                "unresolvedQuestionCount", "result", "reasons", "assessedAt", "gateBoundary", "authorityBoundary",
+            ),
+            setOf("gate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "p0-p4-readiness-gate-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("gateBoundary") != P0_P4_READINESS_GATE_BOUNDARY ||
+            status.requireString("authorityBoundary") != P0_P4_READINESS_GATE_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("gate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val outputCount = status.requireBoundedNonNegativeInt("outputCount", 25)
+        val applicableOutputCount = status.requireBoundedNonNegativeInt("applicableOutputCount", 25)
+        val notApplicableOutputCount = status.requireBoundedNonNegativeInt("notApplicableOutputCount", 25)
+        val unresolvedApplicabilityCount = status.requireBoundedNonNegativeInt("unresolvedApplicabilityCount", 25)
+        val satisfiedOutputCount = status.requireBoundedNonNegativeInt("satisfiedOutputCount", 25)
+        val conditionalOutputCount = status.requireBoundedNonNegativeInt("conditionalOutputCount", 25)
+        val incompleteOutputCount = status.requireBoundedNonNegativeInt("incompleteOutputCount", 25)
+        val failedOutputCount = status.requireBoundedNonNegativeInt("failedOutputCount", 25)
+        val blockedOutputCount = status.requireBoundedNonNegativeInt("blockedOutputCount", 25)
+        val staleOrUnknownOutputCount = status.requireBoundedNonNegativeInt("staleOrUnknownOutputCount", 25)
+        val pendingOrInvalidWaiverCount = status.requireBoundedNonNegativeInt("pendingOrInvalidWaiverCount", 512)
+        val unresolvedDecisionCount = status.requireBoundedNonNegativeInt("unresolvedDecisionCount", 512)
+        val unmetConditionCount = status.requireBoundedNonNegativeInt("unmetConditionCount", 512)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 37)
+        val adverseEvidenceCount = status.requireBoundedNonNegativeInt("adverseEvidenceCount", 32_768)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val inconsistencyCount = status.requireBoundedNonNegativeInt("inconsistencyCount", 512)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        if (applicableOutputCount + notApplicableOutputCount + unresolvedApplicabilityCount != outputCount ||
+            satisfiedOutputCount + conditionalOutputCount + incompleteOutputCount + failedOutputCount +
+            blockedOutputCount + notApplicableOutputCount > outputCount
+        ) throw invalidResponse()
+        val result = status.requireOneOf(
+            "result",
+            setOf("blocked", "conditionally-passed", "failed", "incomplete", "not-assessed", "passed"),
+        )
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = unresolvedApplicabilityCount + conditionalOutputCount + incompleteOutputCount +
+            failedOutputCount + blockedOutputCount + staleOrUnknownOutputCount + pendingOrInvalidWaiverCount +
+            unresolvedDecisionCount + unmetConditionCount + unresolvedRequirementCount + adverseEvidenceCount +
+            staleBindingCount + staleSourceReferenceCount + inconsistencyCount + unresolvedQuestionCount
+        if ((result == "passed" && (gapCount > 0 || satisfiedOutputCount != applicableOutputCount || reasons.isNotEmpty())) ||
+            (result != "passed" && reasons.isEmpty()) ||
+            (result == "conditionally-passed" &&
+                (conditionalOutputCount == 0 || failedOutputCount > 0 || blockedOutputCount > 0)) ||
+            (reference == null && result != "not-assessed")
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val gate = projection.get("gate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "evaluationDefinitionDigest",
+                "outputCount", "waiverCount", "unresolvedDecisionCount", "conditionCount", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = P0P4ReadinessGateRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireDigest("evaluationDefinitionDigest"),
+                value.requireBoundedNonNegativeInt("outputCount", 25),
+                value.requireBoundedNonNegativeInt("waiverCount", 512),
+                value.requireBoundedNonNegativeInt("unresolvedDecisionCount", 512),
+                value.requireBoundedNonNegativeInt("conditionCount", 512),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision ||
+                reference.digest != record.digest || record.outputCount != outputCount ||
+                record.unresolvedDecisionCount != unresolvedDecisionCount
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (gate == null) || projection.requireInstant("observedAt") != assessedAt) {
+            throw invalidResponse()
+        }
+        return P0P4ReadinessGateProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, result, reasons, outputCount, applicableOutputCount, notApplicableOutputCount,
+            unresolvedApplicabilityCount, satisfiedOutputCount, conditionalOutputCount, incompleteOutputCount,
+            failedOutputCount, blockedOutputCount, staleOrUnknownOutputCount, pendingOrInvalidWaiverCount,
+            unresolvedDecisionCount, unmetConditionCount, unresolvedRequirementCount, adverseEvidenceCount,
+            staleBindingCount, staleSourceReferenceCount, inconsistencyCount, unresolvedQuestionCount,
+            P0_P4_READINESS_GATE_BOUNDARY, gate, snapshotDigest,
         )
     }
 

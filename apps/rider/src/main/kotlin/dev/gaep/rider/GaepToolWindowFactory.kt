@@ -418,6 +418,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += endToEndTraceabilityButton
         actions.add(endToEndTraceabilityButton)
 
+        val p0P4ReadinessGateButton = JButton("Inspect P0-P4 Readiness Gate…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Output content, criteria, findings, waiver rationale, decision content, Evidence content, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP P0-P4 Readiness Gate",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect P0-P4 Readiness Gate", status, output, buttons) {
+                    controller.readP0P4ReadinessGate(initiativeId)
+                }
+            }
+        }
+        buttons += p0P4ReadinessGateButton
+        actions.add(p0P4ReadinessGateButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val changeImpactButton = JButton("Show Change and impact…").apply {
