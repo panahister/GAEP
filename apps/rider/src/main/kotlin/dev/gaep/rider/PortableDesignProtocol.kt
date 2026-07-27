@@ -325,6 +325,7 @@ data class AgentModelManagedProjection(
 data class AgentModelRunProjection(
     val recordId: UUID,
     val revision: Long,
+    val initiativeId: UUID,
     val state: String,
     val adapterId: String,
     val agentId: String,
@@ -367,6 +368,67 @@ data class AgentModelDashboard(
     val truncated: Boolean,
     val observedAt: Instant,
     val sourceBoundary: String,
+    val limitations: List<String>,
+    val snapshotDigest: String,
+)
+
+data class Phase1AgentModelCapabilityTruth(
+    val shown: Long,
+    val total: Long,
+    val omitted: Long,
+    val detected: Long,
+    val unavailable: Long,
+    val selected: Long,
+)
+
+data class Phase1AgentModelOutcomeTruth(
+    val satisfied: Long,
+    val failed: Long,
+    val notAssessed: Long,
+    val indeterminate: Long,
+)
+
+data class Phase1AgentModelRunTruth(
+    val shown: Long,
+    val total: Long,
+    val omitted: Long,
+    val terminal: Long,
+    val nonTerminal: Long,
+    val managedObserved: Long,
+    val resultBound: Long,
+    val actualEffectCount: Long,
+    val outcomes: Phase1AgentModelOutcomeTruth,
+)
+
+data class Phase1AgentModelHandoffTruth(
+    val shown: Long,
+    val total: Long,
+    val omitted: Long,
+    val pendingAcknowledgement: Long,
+    val acknowledged: Long,
+)
+
+data class Phase1AgentModelDashboard(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val agentModel: AgentModelDashboard,
+    val capabilities: Phase1AgentModelCapabilityTruth,
+    val runs: Phase1AgentModelRunTruth,
+    val managedRuns: AgentModelLimit,
+    val handoffs: Phase1AgentModelHandoffTruth,
+    val freshnessState: String,
+    val selectionCapabilityState: String,
+    val liveProviderQuality: String,
+    val semanticOutputQuality: String,
+    val productOwnerAcceptance: String,
+    val observedAt: Instant,
+    val sourceBoundary: String,
+    val privacyBoundary: String,
     val limitations: List<String>,
     val snapshotDigest: String,
 )
@@ -6550,7 +6612,20 @@ internal object PortableDesignProtocol {
         expectedCapabilities: List<AgentReadinessSnapshot>,
         expectedSelection: AgentSelectionState,
     ): AgentModelDashboard {
-        val dashboard = readResult(envelope).requireObject()
+        return parseAgentModelDashboard(
+            readResult(envelope).requireObject(),
+            expectedProduct,
+            expectedCapabilities,
+            expectedSelection,
+        )
+    }
+
+    private fun parseAgentModelDashboard(
+        dashboard: JsonObject,
+        expectedProduct: ProductBinding,
+        expectedCapabilities: List<AgentReadinessSnapshot>,
+        expectedSelection: AgentSelectionState,
+    ): AgentModelDashboard {
         dashboard.requireExactKeys(
             "schemaVersion", "kind", "product", "capabilities", "selection", "runs", "handoffs",
             "providerMetrics", "freshness", "evidenceCues", "limits", "observedAt", "sourceBoundary", "limitations",
@@ -6684,6 +6759,200 @@ internal object PortableDesignProtocol {
             sourceBoundary = "current-governed-agent-selection-run-handoff-and-managed-evidence-metadata",
             limitations = limitations,
             snapshotDigest = snapshotDigest,
+        )
+    }
+
+    fun parsePhase1AgentModelEnvelope(
+        envelope: JsonObject,
+        expectedProduct: ProductBinding,
+        expectedInitiative: InitiativeEntryRecord,
+        expectedCapabilities: List<AgentReadinessSnapshot>,
+        expectedSelection: AgentSelectionState,
+    ): Phase1AgentModelDashboard {
+        val dashboard = readResult(envelope).requireObject()
+        dashboard.requireExactKeys(
+            "schemaVersion", "kind", "phase", "product", "initiative", "source", "agentModel",
+            "executionTruth", "freshness", "governance", "observedAt", "sourceBoundary", "privacyBoundary",
+            "limitations", "authorityBoundary", "snapshotDigest",
+        )
+        if (dashboard.requireInt("schemaVersion") != 1 ||
+            dashboard.requireString("kind") != "phase-1-agent-model-dashboard" ||
+            dashboard.requireString("sourceBoundary") !=
+            "current-governed-product-initiative-capability-selection-run-handoff-and-managed-evidence-metadata-only" ||
+            dashboard.requireString("privacyBoundary") !=
+            "dashboard-exposes-identities-digests-counts-statuses-times-and-redacted-selection-metadata-not-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-or-machine-paths" ||
+            dashboard.requireString("authorityBoundary") !=
+            "phase-1-agent-model-dashboard-is-read-only-observed-evidence-not-provider-quality-preference-automatic-selection-handoff-acknowledgement-run-launch-readiness-approval-effect-release-or-action-authority"
+        ) throw invalidResponse()
+        val phase = dashboard.get("phase").requireObject()
+        phase.requireExactKeys("id", "label")
+        if (phase.requireString("id") != "phase-1b-product" ||
+            phase.requireString("label") != "Phase 1B — Product P0–P4"
+        ) throw invalidResponse()
+        val product = parseAgentModelReference(dashboard.get("product"), "product")
+        if (product.recordId != expectedProduct.id || product.revision != expectedProduct.revision ||
+            product.digest != expectedProduct.digest
+        ) throw invalidResponse()
+        val initiative = dashboard.get("initiative").requireObject()
+        initiative.requireExactKeys("recordType", "recordId", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("recordId")
+        val initiativeRevision = initiative.requireLong("revision")
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("active", "blocked", "cancelled", "completed", "proposed"))
+        if (initiative.requireString("recordType") != "initiative" || initiativeId != expectedInitiative.id ||
+            initiativeRevision != expectedInitiative.revision || initiativeDigest != expectedInitiative.digest ||
+            initiativeState != expectedInitiative.state || expectedInitiative.productId != expectedProduct.id
+        ) throw invalidResponse()
+
+        val rawAgentModel = dashboard.get("agentModel").requireObject()
+        val agentModel = parseAgentModelDashboard(rawAgentModel, expectedProduct, expectedCapabilities, expectedSelection)
+        if (agentModel.runs.any { it.initiativeId != initiativeId }) throw invalidResponse()
+        val runIds = agentModel.runs.map { it.recordId }.toSet()
+        if (agentModel.handoffs.any { it.fromRunId !in runIds }) throw invalidResponse()
+        val source = dashboard.get("source").requireObject()
+        source.requireExactKeys("agentModelSnapshotDigest", "scope")
+        if (source.requireDigest("agentModelSnapshotDigest") != agentModel.snapshotDigest ||
+            source.requireString("scope") != "exact-current-initiative"
+        ) throw invalidResponse()
+
+        val truth = dashboard.get("executionTruth").requireObject()
+        truth.requireExactKeys(
+            "capabilities", "runs", "managedRuns", "handoffs", "providerMetrics",
+            "liveProviderQuality", "semanticOutputQuality",
+        )
+        val capabilityTruth = truth.get("capabilities").requireObject().let { value ->
+            value.requireExactKeys("shown", "total", "omitted", "detected", "unavailable", "selected")
+            Phase1AgentModelCapabilityTruth(
+                value.requireBoundedNonNegativeLong("shown", 1_000_000),
+                value.requireBoundedNonNegativeLong("total", 1_000_000),
+                value.requireBoundedNonNegativeLong("omitted", 1_000_000),
+                value.requireBoundedNonNegativeLong("detected", 1_000_000),
+                value.requireBoundedNonNegativeLong("unavailable", 1_000_000),
+                value.requireBoundedNonNegativeLong("selected", 1),
+            )
+        }
+        val detected = agentModel.capabilities.count { it.detected }.toLong()
+        if (capabilityTruth.shown != agentModel.capabilityLimit.shown ||
+            capabilityTruth.total != agentModel.capabilityLimit.total ||
+            capabilityTruth.omitted != agentModel.capabilityLimit.omitted ||
+            capabilityTruth.detected != detected ||
+            capabilityTruth.unavailable != agentModel.capabilities.size.toLong() - detected ||
+            capabilityTruth.selected != agentModel.capabilities.count { it.selected }.toLong() ||
+            capabilityTruth.shown + capabilityTruth.omitted != capabilityTruth.total
+        ) throw invalidResponse()
+
+        val runTruthObject = truth.get("runs").requireObject()
+        runTruthObject.requireExactKeys(
+            "shown", "total", "omitted", "terminal", "nonTerminal", "managedObserved", "resultBound",
+            "actualEffectCount", "outcomes",
+        )
+        val outcomeObject = runTruthObject.get("outcomes").requireObject()
+        outcomeObject.requireExactKeys("satisfied", "failed", "notAssessed", "indeterminate")
+        val outcomes = Phase1AgentModelOutcomeTruth(
+            outcomeObject.requireBoundedNonNegativeLong("satisfied", 1_000_000),
+            outcomeObject.requireBoundedNonNegativeLong("failed", 1_000_000),
+            outcomeObject.requireBoundedNonNegativeLong("notAssessed", 1_000_000),
+            outcomeObject.requireBoundedNonNegativeLong("indeterminate", 1_000_000),
+        )
+        val runTruth = Phase1AgentModelRunTruth(
+            runTruthObject.requireBoundedNonNegativeLong("shown", 1_000_000),
+            runTruthObject.requireBoundedNonNegativeLong("total", 1_000_000),
+            runTruthObject.requireBoundedNonNegativeLong("omitted", 1_000_000),
+            runTruthObject.requireBoundedNonNegativeLong("terminal", 1_000_000),
+            runTruthObject.requireBoundedNonNegativeLong("nonTerminal", 1_000_000),
+            runTruthObject.requireBoundedNonNegativeLong("managedObserved", 1_000_000),
+            runTruthObject.requireBoundedNonNegativeLong("resultBound", 1_000_000),
+            runTruthObject.requireBoundedNonNegativeLong("actualEffectCount", 1_000_000),
+            outcomes,
+        )
+        val terminalStates = setOf("completed", "failed", "cancelled")
+        val managed = agentModel.runs.map { it.managed }.filter { it.status == "observed" }
+        val bound = managed.filter { it.resultStatus == "bound" }
+        if (runTruth.shown != agentModel.runLimit.shown || runTruth.total != agentModel.runLimit.total ||
+            runTruth.omitted != agentModel.runLimit.omitted ||
+            runTruth.terminal != agentModel.runs.count { it.state in terminalStates }.toLong() ||
+            runTruth.nonTerminal != agentModel.runs.count { it.state !in terminalStates }.toLong() ||
+            runTruth.managedObserved != managed.size.toLong() || runTruth.resultBound != bound.size.toLong() ||
+            runTruth.actualEffectCount != bound.sumOf { it.actualEffectCount ?: 0L } ||
+            outcomes.satisfied != bound.count { it.outcomeStatus == "satisfied" }.toLong() ||
+            outcomes.failed != bound.count { it.outcomeStatus == "failed" }.toLong() ||
+            outcomes.notAssessed != bound.count { it.outcomeStatus == "not-assessed" }.toLong() ||
+            outcomes.indeterminate != bound.count { it.outcomeStatus == "indeterminate" }.toLong() ||
+            runTruth.shown + runTruth.omitted != runTruth.total
+        ) throw invalidResponse()
+
+        val managedRuns = parseAgentModelLimit(truth.get("managedRuns"))
+        if (managedRuns != agentModel.managedRunLimit) throw invalidResponse()
+        val handoffObject = truth.get("handoffs").requireObject()
+        handoffObject.requireExactKeys("shown", "total", "omitted", "pendingAcknowledgement", "acknowledged")
+        val handoffs = Phase1AgentModelHandoffTruth(
+            handoffObject.requireBoundedNonNegativeLong("shown", 1_000_000),
+            handoffObject.requireBoundedNonNegativeLong("total", 1_000_000),
+            handoffObject.requireBoundedNonNegativeLong("omitted", 1_000_000),
+            handoffObject.requireBoundedNonNegativeLong("pendingAcknowledgement", 1_000_000),
+            handoffObject.requireBoundedNonNegativeLong("acknowledged", 1_000_000),
+        )
+        val acknowledged = agentModel.handoffs.count { it.state == "acknowledged" }.toLong()
+        if (handoffs.shown != agentModel.handoffLimit.shown || handoffs.total != agentModel.handoffLimit.total ||
+            handoffs.omitted != agentModel.handoffLimit.omitted || handoffs.acknowledged != acknowledged ||
+            handoffs.pendingAcknowledgement != agentModel.handoffs.size.toLong() - acknowledged ||
+            handoffs.shown + handoffs.omitted != handoffs.total
+        ) throw invalidResponse()
+        val metrics = truth.get("providerMetrics").requireObject()
+        metrics.requireExactKeys("usage", "cost")
+        if (metrics.requireString("usage") != "unavailable" || metrics.requireString("cost") != "unavailable" ||
+            truth.requireString("liveProviderQuality") != "not-assessed" ||
+            truth.requireString("semanticOutputQuality") != "not-assessed"
+        ) throw invalidResponse()
+
+        val freshness = dashboard.get("freshness").requireObject()
+        freshness.requireExactKeys(
+            "state", "selectionCapabilityState", "oldestCapabilityObservedAt", "newestCapabilityObservedAt",
+            "agentModelObservedAt", "truncated", "basis",
+        )
+        val freshnessState = freshness.requireOneOf("state", setOf("current", "attention-required"))
+        val selectionCapabilityState = freshness.requireOneOf(
+            "selectionCapabilityState", setOf("current", "unselected", "stale", "migration-required", "invalid"),
+        )
+        if (freshnessState != agentModel.freshness.state ||
+            selectionCapabilityState != agentModel.freshness.selectionCapabilityState ||
+            freshness.requireInstant("oldestCapabilityObservedAt") != agentModel.freshness.oldestCapabilityObservedAt ||
+            freshness.requireInstant("newestCapabilityObservedAt") != agentModel.freshness.newestCapabilityObservedAt ||
+            freshness.requireInstant("agentModelObservedAt") != agentModel.observedAt ||
+            freshness.requireBoolean("truncated") != agentModel.truncated ||
+            freshness.requireString("basis") !=
+            "exact-initiative-scoped-agent-model-snapshot-and-declared-bounded-coverage"
+        ) throw invalidResponse()
+        val governance = dashboard.get("governance").requireObject()
+        governance.requireExactKeys(
+            "providerAccountReadiness", "providerPreference", "automaticSelectionAuthority",
+            "handoffAcknowledgementAuthority", "runLaunchAuthority", "effectAuthority",
+            "phaseReadinessAuthority", "productOwnerAcceptance",
+        )
+        if (governance.requireString("providerAccountReadiness") != "not-established" ||
+            governance.requireString("providerPreference") != "not-established" ||
+            governance.requireString("automaticSelectionAuthority") != "not-granted" ||
+            governance.requireString("handoffAcknowledgementAuthority") != "not-granted" ||
+            governance.requireString("runLaunchAuthority") != "not-granted" ||
+            governance.requireString("effectAuthority") != "not-granted" ||
+            governance.requireString("phaseReadinessAuthority") != "not-established" ||
+            governance.requireString("productOwnerAcceptance") != "not-established"
+        ) throw invalidResponse()
+        val observedAt = dashboard.requireInstant("observedAt")
+        if (observedAt.isBefore(agentModel.observedAt)) throw invalidResponse()
+        val limitations = parseChangeImpactLimitations(dashboard.get("limitations"))
+        val snapshotDigest = dashboard.requireDigest("snapshotDigest")
+        val digestBody = dashboard.deepCopy().apply { remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+        return Phase1AgentModelDashboard(
+            product.recordId, product.revision, product.digest,
+            initiativeId, initiativeRevision, initiativeDigest, initiativeState,
+            agentModel, capabilityTruth, runTruth, managedRuns, handoffs,
+            freshnessState, selectionCapabilityState, "not-assessed", "not-assessed", "not-established",
+            observedAt,
+            "current-governed-product-initiative-capability-selection-run-handoff-and-managed-evidence-metadata-only",
+            "dashboard-exposes-identities-digests-counts-statuses-times-and-redacted-selection-metadata-not-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-or-machine-paths",
+            limitations, snapshotDigest,
         )
     }
 
@@ -9004,6 +9273,7 @@ internal object PortableDesignProtocol {
         return AgentModelRunProjection(
             recordId = record.recordId,
             revision = record.revision,
+            initiativeId = row.requireNonEmptyUuid("initiativeId"),
             state = row.requireOneOf(
                 "state",
                 setOf("prepared", "running", "paused", "completed", "failed", "cancelled", "unknown"),
@@ -9012,10 +9282,7 @@ internal object PortableDesignProtocol {
             agentId = agent.requirePortableText("agentId", minimum = 1),
             modelId = agent.requirePortableText("modelId", minimum = 1),
             managed = parseAgentModelManaged(row.get("managed")),
-        ).also {
-            row.requireNonEmptyUuid("initiativeId")
-            agent.requireDigest("selectionDigest")
-        }
+        ).also { agent.requireDigest("selectionDigest") }
     }
 
     private fun parseAgentModelManaged(value: JsonElement?): AgentModelManagedProjection {

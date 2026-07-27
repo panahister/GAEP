@@ -500,6 +500,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
 
         addAction("Show Agent and model") { controller.readAgentModel() }
 
+        val phase1AgentModelButton = JButton("Show Phase 1 Agent and model…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Provider output, prompts, Run narrative, evidence content, machine paths, credentials, and authority are withheld.",
+                    "GAEP Phase 1 Agent and Model",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Show Phase 1 Agent and model", status, output, buttons) {
+                    controller.readPhase1AgentModel(initiativeId)
+                }
+            }
+        }
+        buttons += phase1AgentModelButton
+        actions.add(phase1AgentModelButton)
+
         val accessibleTablesButton = JButton("Browse accessible dashboard tables…").apply {
             addActionListener {
                 beginAccessibleDashboardTables(project, controller, status, output, buttons)

@@ -511,6 +511,68 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readPhase1AgentModel(
+        product: ProductBinding,
+        initiative: InitiativeEntryRecord,
+    ): Phase1AgentModelDashboard {
+        PortableDesignProtocol.validateProductId(product.id)
+        PortableDesignProtocol.validateProductRevision(product.revision)
+        PortableDesignProtocol.validateProductRevision(initiative.revision)
+        require(initiative.productId == product.id) { "Initiative must target the exact current Product" }
+        require(Regex("^sha256:[0-9a-f]{64}$").matches(product.digest) &&
+            Regex("^sha256:[0-9a-f]{64}$").matches(initiative.digest)) {
+            "Product and Initiative digests must be SHA-256"
+        }
+        val capabilities = probeAgentReadiness()
+        val selection = readAgentSelection()
+        val expectedSelection = JsonObject().apply {
+            when (selection) {
+                AgentSelectionState.Unselected -> addProperty("status", "unselected")
+                AgentSelectionState.Invalid -> addProperty("status", "invalid")
+                is AgentSelectionState.Selected -> {
+                    addProperty("status", "selected")
+                    addProperty("selectionDigest", selection.selection.selectionDigest)
+                }
+                is AgentSelectionState.MigrationRequired -> {
+                    addProperty("status", "migration-required")
+                    addProperty("selectionDigest", selection.portableCandidate.selectionDigest)
+                }
+            }
+        }
+        val expectedCapabilities = JsonArray().apply {
+            capabilities.sortedBy { "${it.adapterId}:${it.agentId}" }.forEach { capability ->
+                add(JsonObject().apply {
+                    addProperty("adapterId", capability.adapterId)
+                    addProperty("agentId", capability.agentId)
+                    addProperty("capabilityDigest", capability.capabilityDigest)
+                })
+            }
+        }
+        val agentModelParams = JsonObject().apply {
+            addProperty("expectedProductId", product.id.toString())
+            addProperty("expectedProductRevision", product.revision)
+            addProperty("expectedProductDigest", product.digest)
+            add("expectedSelection", expectedSelection)
+            add("expectedCapabilities", expectedCapabilities)
+        }
+        val params = JsonObject().apply {
+            addProperty("expectedInitiativeId", initiative.id.toString())
+            addProperty("expectedInitiativeRevision", initiative.revision)
+            addProperty("expectedInitiativeDigest", initiative.digest)
+            add("agentModel", agentModelParams)
+        }
+        return portableRequest("dashboard.phase1AgentModel", params) { envelope ->
+            PortableDesignProtocol.parsePhase1AgentModelEnvelope(
+                envelope,
+                expectedProduct = product,
+                expectedInitiative = initiative,
+                expectedCapabilities = capabilities,
+                expectedSelection = selection,
+            )
+        }
+    }
+
+    @Synchronized
     fun probeAgentReadiness(): List<AgentReadinessSnapshot> = portableRequest(
         "probeAgents",
         JsonObject(),

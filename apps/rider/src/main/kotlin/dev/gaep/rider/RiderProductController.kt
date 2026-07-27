@@ -1364,6 +1364,12 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         return renderAgentModelDashboard(client.readAgentModel(product))
     }
 
+    fun readPhase1AgentModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        return renderPhase1AgentModelDashboard(client.readPhase1AgentModel(product, initiative))
+    }
+
     fun readAgentModelTables(): List<AccessibleMetadataTable> {
         val product = client.readProductBinding()
         return AccessibleDashboardTables.agentModel(client.readAgentModel(product))
@@ -1893,6 +1899,58 @@ internal class RiderProductController(private val client: GaepEngineClient) {
             "Product text, Change text, Work Item text, source bytes, absolute paths, provider output, prompts, " +
                 "executable state, and credentials are withheld.",
         )
+    }
+
+    private fun renderPhase1AgentModelDashboard(dashboard: Phase1AgentModelDashboard): String = buildString {
+        appendLine("GAEP exact Phase 1 Agent and Model execution truth")
+        appendLine()
+        appendLine(
+            "Initiative: ${dashboard.initiativeId}@${dashboard.initiativeRevision}; ${dashboard.initiativeState}",
+        )
+        appendLine("Product revision: ${dashboard.productRevision}")
+        appendLine(
+            "Capabilities: ${dashboard.capabilities.shown}/${dashboard.capabilities.total} shown; " +
+                "${dashboard.capabilities.detected} detected; ${dashboard.capabilities.unavailable} unavailable; " +
+                "${dashboard.capabilities.selected} selected",
+        )
+        appendLine(
+            "Runs: ${dashboard.runs.shown}/${dashboard.runs.total} shown; ${dashboard.runs.terminal} terminal; " +
+                "${dashboard.runs.nonTerminal} non-terminal",
+        )
+        appendLine(
+            "Managed results: ${dashboard.runs.resultBound} bound; " +
+                "${dashboard.runs.actualEffectCount} recorded actual effects",
+        )
+        appendLine(
+            "Outcomes: ${dashboard.runs.outcomes.satisfied} satisfied; ${dashboard.runs.outcomes.failed} failed; " +
+                "${dashboard.runs.outcomes.notAssessed} not assessed; " +
+                "${dashboard.runs.outcomes.indeterminate} indeterminate",
+        )
+        appendLine(
+            "Handoffs: ${dashboard.handoffs.shown}/${dashboard.handoffs.total} shown; " +
+                "${dashboard.handoffs.pendingAcknowledgement} pending acknowledgement; " +
+                "${dashboard.handoffs.acknowledged} acknowledged",
+        )
+        appendLine("Provider usage and cost: unavailable")
+        appendLine("Live provider quality: ${dashboard.liveProviderQuality}")
+        appendLine("Semantic output quality: ${dashboard.semanticOutputQuality}")
+        appendLine("Freshness: ${dashboard.freshnessState}; selection capability ${dashboard.selectionCapabilityState}")
+        appendLine("Product Owner acceptance: ${dashboard.productOwnerAcceptance}")
+        appendLine("Snapshot digest: ${dashboard.snapshotDigest}")
+        appendLine()
+        dashboard.limitations.forEach { appendLine("Limit: $it") }
+        appendLine()
+        appendLine(
+            "Boundary: this read-only Initiative-scoped projection does not establish provider readiness or quality, " +
+                "choose a provider, acknowledge a handoff, launch a Run, authorize effects, approve Phase 1, " +
+                "record Product Owner acceptance, or grant release authority.",
+        )
+        appendLine(
+            "Product text, Run narrative, provider output, prompts, source bytes, machine paths, credentials, and " +
+                "sensitive setting values are withheld.",
+        )
+        appendLine()
+        append(renderAgentModelDashboard(dashboard.agentModel))
     }
 
     private fun renderAgentModelDashboard(dashboard: AgentModelDashboard): String = buildString {

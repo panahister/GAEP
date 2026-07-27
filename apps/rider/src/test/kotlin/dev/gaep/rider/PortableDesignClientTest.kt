@@ -1293,6 +1293,9 @@ class PortableDesignClientTest {
         val badAgentModelMetricsRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-metrics"))
         val badAgentModelDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-digest"))
         val badAgentModelPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-agent-model-private"))
+        val badPhase1AgentModelCountRoot = Files.createDirectory(temporaryRoot.resolve("bad-phase1-agent-model-count"))
+        val badPhase1AgentModelDigestRoot = Files.createDirectory(temporaryRoot.resolve("bad-phase1-agent-model-digest"))
+        val badPhase1AgentModelPrivateRoot = Files.createDirectory(temporaryRoot.resolve("bad-phase1-agent-model-private"))
         val executable = createFakeEngineLauncher(temporaryRoot)
         GaepEngineClient(temporaryRoot, executable.toString()).use { client ->
             val productId = UUID.fromString("11111111-1111-4111-8111-111111111111")
@@ -1519,6 +1522,44 @@ class PortableDesignClientTest {
                 agentModelTables.map { it.id },
             )
             assertTrue(agentModelTables.all { it.snapshotDigest == agentModel.snapshotDigest })
+
+            val phase1AgentModel = client.readPhase1AgentModel(product, initiative)
+            assertEquals(initiative.id, phase1AgentModel.initiativeId)
+            assertEquals(phase1AgentModel.agentModel.snapshotDigest, agentModel.snapshotDigest)
+            assertEquals(2, phase1AgentModel.capabilities.total)
+            assertEquals(1, phase1AgentModel.capabilities.detected)
+            assertEquals(0, phase1AgentModel.runs.total)
+            assertEquals("not-assessed", phase1AgentModel.liveProviderQuality)
+            assertEquals("not-assessed", phase1AgentModel.semanticOutputQuality)
+            assertEquals("not-established", phase1AgentModel.productOwnerAcceptance)
+            assertFalse(Gson().toJson(phase1AgentModel).contains("Founder Product"))
+            assertFalse(Gson().toJson(phase1AgentModel).contains(privateRoot))
+            assertFalse(Gson().toJson(phase1AgentModel).contains(privateCredential))
+            val phase1AgentModelView = RiderProductController(client).readPhase1AgentModel(entryId)
+            assertTrue(phase1AgentModelView.contains("GAEP exact Phase 1 Agent and Model execution truth"))
+            assertTrue(phase1AgentModelView.contains("Capabilities: 2/2 shown; 1 detected; 1 unavailable"))
+            assertTrue(phase1AgentModelView.contains("Live provider quality: not-assessed"))
+            assertTrue(phase1AgentModelView.contains("Product Owner acceptance: not-established"))
+            assertTrue(phase1AgentModelView.contains("does not establish provider readiness or quality"))
+            assertFalse(phase1AgentModelView.contains("Founder Product"))
+            assertFalse(phase1AgentModelView.contains(privateRoot))
+            assertFalse(phase1AgentModelView.contains(privateCredential))
+
+            listOf(
+                badPhase1AgentModelCountRoot,
+                badPhase1AgentModelDigestRoot,
+                badPhase1AgentModelPrivateRoot,
+            ).forEach { root ->
+                GaepEngineClient(root, executable.toString()).use { hostileClient ->
+                    val hostileProduct = hostileClient.readProductBinding()
+                    val hostileInitiative = hostileClient.readInitiative(entryId)
+                    val invalidDashboard = hostError {
+                        hostileClient.readPhase1AgentModel(hostileProduct, hostileInitiative)
+                    }
+                    assertEquals("HOST_RESPONSE_INVALID", invalidDashboard.kind)
+                    assertPrivateTextWithheld(invalidDashboard)
+                }
+            }
 
             listOf(
                 badAgentModelBindingRoot,

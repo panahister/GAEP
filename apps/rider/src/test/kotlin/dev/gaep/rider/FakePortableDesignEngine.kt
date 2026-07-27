@@ -248,6 +248,11 @@ fun main(arguments: Array<String>) {
                 request.getAsJsonObject("params"),
                 workspacePath,
             )
+            "dashboard.phase1AgentModel" -> handlePhase1AgentModel(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
             "probeAgents" -> writeResult(id, readinessSnapshots(workspacePath.endsWith("bad-readiness")))
             "readAgentSelection" -> {
                 if (workspacePath.endsWith("bad-selection")) {
@@ -3228,7 +3233,7 @@ private fun changeArtifact(workItem: JsonObject, locator: JsonObject): JsonObjec
     add("locator", locator)
 }
 
-private fun handleAgentModel(id: Long, params: JsonObject, workspacePath: String) {
+private fun buildAgentModel(params: JsonObject, workspacePath: String): JsonObject? {
     val productDigest = canonicalDigest(productRecord())
     val readiness = readinessSnapshots(false).asJsonArray
     val expectedCapabilities = JsonArray().apply {
@@ -3260,8 +3265,7 @@ private fun handleAgentModel(id: Long, params: JsonObject, workspacePath: String
         canonicalDigest(params.get("expectedSelection")) != canonicalDigest(expectedSelection) ||
         canonicalDigest(params.get("expectedCapabilities")) != canonicalDigest(expectedCapabilities)
     ) {
-        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE AGENT MODEL PARAMS")
-        return
+        return null
     }
     val capabilities = JsonArray().apply {
         readiness.map { entry ->
@@ -3411,6 +3415,146 @@ private fun handleAgentModel(id: Long, params: JsonObject, workspacePath: String
         response.getAsJsonArray("capabilities")[0].asJsonObject.addProperty("agentLabel", "Forged label")
     }
     if (workspacePath.endsWith("bad-agent-model-private")) {
+        response.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+    }
+    return response
+}
+
+private fun handleAgentModel(id: Long, params: JsonObject, workspacePath: String) {
+    val response = buildAgentModel(params, workspacePath)
+    if (response == null) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE AGENT MODEL PARAMS")
+    } else {
+        writeResult(id, response)
+    }
+}
+
+private fun handlePhase1AgentModel(id: Long, params: JsonObject, workspacePath: String) {
+    val initiativeDigest = canonicalDigest(initiativeState)
+    if (params.keySet() != setOf(
+            "expectedInitiativeId", "expectedInitiativeRevision", "expectedInitiativeDigest", "agentModel",
+        ) || params.get("expectedInitiativeId").asString != initiativeId.toString() ||
+        params.get("expectedInitiativeRevision").asLong != initiativeState.get("revision").asLong ||
+        params.get("expectedInitiativeDigest").asString != initiativeDigest
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE 1 AGENT MODEL PARAMS")
+        return
+    }
+    val agentModel = buildAgentModel(params.getAsJsonObject("agentModel"), workspacePath)
+    if (agentModel == null) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE 1 AGENT MODEL PARAMS")
+        return
+    }
+    val capabilities = agentModel.getAsJsonArray("capabilities")
+    val detected = capabilities.count { it.asJsonObject.get("detected").asBoolean }
+    val selected = capabilities.count { it.asJsonObject.get("selected").asBoolean }
+    val productDigest = canonicalDigest(productRecord())
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "phase-1-agent-model-dashboard")
+        add("phase", JsonObject().apply {
+            addProperty("id", "phase-1b-product")
+            addProperty("label", "Phase 1B — Product P0–P4")
+        })
+        add("product", exactReference("product", productId, 7, productDigest))
+        add("initiative", JsonObject().apply {
+            addProperty("recordType", "initiative")
+            addProperty("recordId", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", initiativeDigest)
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("source", JsonObject().apply {
+            addProperty("agentModelSnapshotDigest", agentModel.get("snapshotDigest").asString)
+            addProperty("scope", "exact-current-initiative")
+        })
+        add("agentModel", agentModel)
+        add("executionTruth", JsonObject().apply {
+            add("capabilities", JsonObject().apply {
+                addProperty("shown", capabilities.size())
+                addProperty("total", capabilities.size())
+                addProperty("omitted", 0)
+                addProperty("detected", detected)
+                addProperty("unavailable", capabilities.size() - detected)
+                addProperty("selected", selected)
+            })
+            add("runs", JsonObject().apply {
+                addProperty("shown", 0)
+                addProperty("total", 0)
+                addProperty("omitted", 0)
+                addProperty("terminal", 0)
+                addProperty("nonTerminal", 0)
+                addProperty("managedObserved", 0)
+                addProperty("resultBound", 0)
+                addProperty("actualEffectCount", 0)
+                add("outcomes", JsonObject().apply {
+                    addProperty("satisfied", 0)
+                    addProperty("failed", 0)
+                    addProperty("notAssessed", 0)
+                    addProperty("indeterminate", 0)
+                })
+            })
+            add("managedRuns", agentModel.getAsJsonObject("limits").getAsJsonObject("managedRuns").deepCopy())
+            add("handoffs", JsonObject().apply {
+                addProperty("shown", 0)
+                addProperty("total", 0)
+                addProperty("omitted", 0)
+                addProperty("pendingAcknowledgement", 0)
+                addProperty("acknowledged", 0)
+            })
+            add("providerMetrics", JsonObject().apply {
+                addProperty("usage", "unavailable")
+                addProperty("cost", "unavailable")
+            })
+            addProperty("liveProviderQuality", "not-assessed")
+            addProperty("semanticOutputQuality", "not-assessed")
+        })
+        add("freshness", JsonObject().apply {
+            val nested = agentModel.getAsJsonObject("freshness")
+            addProperty("state", nested.get("state").asString)
+            addProperty("selectionCapabilityState", nested.get("selectionCapabilityState").asString)
+            addProperty("oldestCapabilityObservedAt", nested.get("oldestCapabilityObservedAt").asString)
+            addProperty("newestCapabilityObservedAt", nested.get("newestCapabilityObservedAt").asString)
+            addProperty("agentModelObservedAt", agentModel.get("observedAt").asString)
+            addProperty("truncated", nested.get("truncated").asBoolean)
+            addProperty("basis", "exact-initiative-scoped-agent-model-snapshot-and-declared-bounded-coverage")
+        })
+        add("governance", JsonObject().apply {
+            addProperty("providerAccountReadiness", "not-established")
+            addProperty("providerPreference", "not-established")
+            addProperty("automaticSelectionAuthority", "not-granted")
+            addProperty("handoffAcknowledgementAuthority", "not-granted")
+            addProperty("runLaunchAuthority", "not-granted")
+            addProperty("effectAuthority", "not-granted")
+            addProperty("phaseReadinessAuthority", "not-established")
+            addProperty("productOwnerAcceptance", "not-established")
+        })
+        addProperty("observedAt", "2026-07-24T12:06:01.000Z")
+        addProperty(
+            "sourceBoundary",
+            "current-governed-product-initiative-capability-selection-run-handoff-and-managed-evidence-metadata-only",
+        )
+        addProperty(
+            "privacyBoundary",
+            "dashboard-exposes-identities-digests-counts-statuses-times-and-redacted-selection-metadata-not-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-or-machine-paths",
+        )
+        add("limitations", JsonArray().apply {
+            add("Capability observations prove only bounded adapter/runtime metadata, not provider account readiness.")
+            add("Provider usage and cost remain unavailable because no governed provider metric contract is bound.")
+        })
+        addProperty(
+            "authorityBoundary",
+            "phase-1-agent-model-dashboard-is-read-only-observed-evidence-not-provider-quality-preference-automatic-selection-handoff-acknowledgement-run-launch-readiness-approval-effect-release-or-action-authority",
+        )
+    }
+    if (workspacePath.endsWith("bad-phase1-agent-model-count")) {
+        content.getAsJsonObject("executionTruth").getAsJsonObject("capabilities").addProperty("total", 3)
+    }
+    val response = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-phase1-agent-model-digest")) {
+        response.getAsJsonObject("executionTruth").getAsJsonObject("capabilities").addProperty("detected", 2)
+    }
+    if (workspacePath.endsWith("bad-phase1-agent-model-private")) {
         response.addProperty("sourceRoot", "$privateRoot/$privateCredential")
     }
     writeResult(id, response)
