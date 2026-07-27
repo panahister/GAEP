@@ -266,11 +266,16 @@ export async function buildPhase0AcceptanceReport({
     .includes(inputs.exampleKind)
   const claudeP0P4 = inputs.exampleKind === "gaep-claude-p0-p4-acceptance-receipt"
   const providerComparison = inputs.exampleKind === "gaep-provider-output-comparison-receipt"
+  const phase1AgentModelDashboard = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "phase1-agent-model-dashboard" && capability.state === "implemented"))
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
     phase: p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: providerComparison
+    evidenceScope: phase1AgentModelDashboard
+      ? "phase-1-agent-model-dashboard-local"
+      : providerComparison
       ? "phase-1-provider-output-comparison-local"
       : claudeP0P4
         ? "phase-1-claude-p0-p4-local"
@@ -308,7 +313,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: p0P4
+    claimBoundary: phase1AgentModelDashboard
+      ? "This report binds the current exact Phase 1 Agent and Model execution-truth dashboard to package, test, host, deterministic provider-comparison and conformance evidence. It is not live-provider quality or provider-ranking evidence, automatic-selection authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : p0P4
       ? `This report binds the current deterministic local ${providerComparison ? "Codex/Claude provider-output comparison" : claudeP0P4 ? "Claude P0-P4 candidate workflow" : "Codex P0-P4 candidate workflow"} to package, test, host, provider and conformance evidence. It is not semantic model-quality or provider-ranking evidence, live-provider or native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval.`
       : "This report binds current local Phase 0 / 1A package, test, host, provider, conformance and example evidence. It is not native-host or live-provider acceptance, Product readiness, security approval, release authorization, deployment approval, or a later-phase report.",
   }
