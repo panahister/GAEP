@@ -21,6 +21,7 @@ import {
   riskRegisterProjectionSchema,
   evidenceRegistryProjectionSchema,
   endToEndTraceabilityProjectionSchema,
+  p0P4ReadinessGateProjectionSchema,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
@@ -46,6 +47,7 @@ import {
   type RiskRegisterProjection,
   type EvidenceRegistryProjection,
   type EndToEndTraceabilityProjection,
+  type P0P4ReadinessGateProjection,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
@@ -554,6 +556,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = endToEndTraceabilityProjectionSchema.safeParse(
         await this.request("traceability.graphs.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readP0P4ReadinessGate(initiativeValue: string): Promise<P0P4ReadinessGateProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = p0P4ReadinessGateProjectionSchema.safeParse(
+        await this.request("readiness.gates.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

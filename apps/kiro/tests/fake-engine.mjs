@@ -48,6 +48,7 @@ const decisionRegisterId = "50505050-5050-4050-8050-505050505050"
 const riskRegisterId = "51515151-5151-4151-8151-515151515151"
 const evidenceRegistryId = "52525252-5252-4252-8252-525252525252"
 const endToEndTraceabilityId = "53535353-5353-4353-8353-535353535353"
+const p0P4ReadinessGateId = "54545454-5454-4454-8454-545454545454"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -125,6 +126,8 @@ input.on("line", (line) => {
       return readEvidenceRegistry(id, request.params)
     case "traceability.graphs.snapshot":
       return readEndToEndTraceability(id, request.params)
+    case "readiness.gates.snapshot":
+      return readP0P4ReadinessGate(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -1530,6 +1533,76 @@ function readEndToEndTraceability(id, params) {
   if (workspacePath.endsWith("bad-traceability-snapshot-digest")) value.traceability.nodeCount = 45
   if (workspacePath.endsWith("bad-traceability-snapshot-private")) {
     value.linkRationale = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readP0P4ReadinessGate(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE READINESS GATE PARAMS")
+  }
+  const gateDigest = `sha256:${"c".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "p0-p4-readiness-gate-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    gate: { recordId: p0P4ReadinessGateId, revision: 2, digest: gateDigest },
+    outputCount: 25,
+    applicableOutputCount: 20,
+    notApplicableOutputCount: 4,
+    unresolvedApplicabilityCount: 1,
+    satisfiedOutputCount: 17,
+    conditionalOutputCount: 1,
+    incompleteOutputCount: 1,
+    failedOutputCount: 1,
+    blockedOutputCount: 0,
+    staleOrUnknownOutputCount: 1,
+    pendingOrInvalidWaiverCount: 1,
+    unresolvedDecisionCount: 2,
+    unmetConditionCount: 1,
+    unresolvedRequirementCount: 2,
+    adverseEvidenceCount: 1,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    inconsistencyCount: 0,
+    unresolvedQuestionCount: 1,
+    result: "failed",
+    reasons: ["The exact Evidence Registry contains adverse evidence"],
+    assessedAt: "2026-07-27T03:30:00.000Z",
+    gateBoundary: "a-passing-gate-is-an-evaluation-result-not-permission",
+    authorityBoundary: "p0-p4-readiness-gate-status-is-an-evaluation-result-and-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "p0-p4-readiness-gate-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    gate: {
+      id: p0P4ReadinessGateId,
+      revision: 2,
+      digest: gateDigest,
+      membershipDigest: `sha256:${"d".repeat(64)}`,
+      state: "candidate",
+      evaluationDefinitionDigest: `sha256:${"e".repeat(64)}`,
+      outputCount: 25,
+      waiverCount: 1,
+      unresolvedDecisionCount: 2,
+      conditionCount: 1,
+      updatedAt: "2026-07-27T03:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-results-and-digests-only-not-output-content-criteria-findings-waiver-rationale-decision-content-evidence-content-source-content-personal-data-secrets-or-credentials",
+    authorityBoundary: "p0-p4-readiness-gate-projection-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-readiness-gate-snapshot-binding")) content.initiative.id = p0P4ReadinessGateId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-readiness-gate-snapshot-digest")) value.gate.outputCount = 24
+  if (workspacePath.endsWith("bad-readiness-gate-snapshot-private")) {
+    value.waiverRationale = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

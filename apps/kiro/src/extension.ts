@@ -22,6 +22,7 @@ import {
   type RiskRegisterProjection,
   type EvidenceRegistryProjection,
   type EndToEndTraceabilityProjection,
+  type P0P4ReadinessGateProjection,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -109,6 +110,7 @@ const commandIds = {
   riskRegister: "gaepKiro.riskRegister.inspect",
   evidenceRegistry: "gaepKiro.evidenceRegistry.inspect",
   endToEndTraceability: "gaepKiro.endToEndTraceability.inspect",
+  p0P4ReadinessGate: "gaepKiro.p0P4ReadinessGate.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -218,6 +220,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.riskRegister, (input?: unknown) => runUserCommand(() => showRiskRegister(pool, input))),
     vscode.commands.registerCommand(commandIds.evidenceRegistry, (input?: unknown) => runUserCommand(() => showEvidenceRegistry(pool, input))),
     vscode.commands.registerCommand(commandIds.endToEndTraceability, (input?: unknown) => runUserCommand(() => showEndToEndTraceability(pool, input))),
+    vscode.commands.registerCommand(commandIds.p0P4ReadinessGate, (input?: unknown) => runUserCommand(() => showP0P4ReadinessGate(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1313,6 +1316,46 @@ async function showEndToEndTraceability(
     ] : []),
     "",
     `Coverage boundary: ${status.coverageBoundary}`,
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showP0P4ReadinessGate(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<P0P4ReadinessGateProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the P0-P4 Readiness Gate candidate", "Initiative ID")
+  const projection = await client.readP0P4ReadinessGate(initiativeId)
+  const status = projection.status
+  const record = projection.gate
+  const lines = [
+    "GAEP governed P0-P4 Readiness Gate candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Evaluation result: ${status.result}`,
+    `Outputs: ${status.satisfiedOutputCount}/${status.applicableOutputCount} applicable satisfied · ${status.notApplicableOutputCount} candidate not applicable · ${status.unresolvedApplicabilityCount} unresolved applicability`,
+    `Candidate gaps: ${status.blockedOutputCount} blocked · ${status.failedOutputCount} failed · ${status.incompleteOutputCount} incomplete · ${status.conditionalOutputCount} conditional · ${status.staleOrUnknownOutputCount} stale or unknown · ${status.pendingOrInvalidWaiverCount} waiver gaps · ${status.unresolvedDecisionCount} open decisions · ${status.unmetConditionCount} unmet conditions · ${status.unresolvedRequirementCount} requirements · ${status.adverseEvidenceCount} adverse evidence · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Evaluation definition digest: ${record.evaluationDefinitionDigest}`,
+      `Candidate inventory: ${record.outputCount} outputs · ${record.waiverCount} waivers · ${record.unresolvedDecisionCount} open decisions · ${record.conditionCount} conditions`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    `Gate boundary: ${status.gateBoundary}`,
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

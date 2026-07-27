@@ -1267,6 +1267,53 @@ test("protocol-v2 End-to-End Traceability projection is exact, private-safe, and
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 P0-P4 Readiness Gate projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-readiness-gate-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-readiness-gate-snapshot-binding",
+    "bad-readiness-gate-snapshot-digest",
+    "bad-readiness-gate-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readP0P4ReadinessGate(initiativeId)
+    assert.equal(projection.status.result, "failed")
+    assert.equal(projection.gate?.outputCount, 25)
+    assert.equal(projection.status.satisfiedOutputCount, 17)
+    assert.equal(projection.status.unresolvedDecisionCount, 2)
+    assert.equal(projection.status.gateBoundary, "a-passing-gate-is-an-evaluation-result-not-permission")
+    assert.equal(
+      projection.authorityBoundary,
+      "p0-p4-readiness-gate-projection-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"waiverRationale":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readP0P4ReadinessGate(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")
