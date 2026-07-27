@@ -21,6 +21,7 @@ import {
   type EvidenceRegistryProjection,
   type EndToEndTraceabilityProjection,
   type P0P4ReadinessGateProjection,
+  type P5HandoffPackageProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1493,6 +1494,69 @@ function p0P4ReadinessGateProjection(): P0P4ReadinessGateProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function p5HandoffPackageProjection(): P5HandoffPackageProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "p5-handoff-package-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    handoff: {
+      recordId: "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd",
+      revision: 3,
+      digest: `sha256:${"1".repeat(64)}` as const,
+    },
+    itemCount: 25,
+    includedItemCount: 17,
+    referenceOnlyItemCount: 3,
+    omittedNotApplicableItemCount: 4,
+    unresolvedItemCount: 1,
+    staleOrUnknownItemCount: 2,
+    lossyTransformationCount: 1,
+    unresolvedRequirementCount: 2,
+    conflictCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    readinessResult: "incomplete" as const,
+    transferState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["The current P0-P4 Readiness Gate evaluation has not passed"],
+    assessedAt: "2026-07-27T04:00:00.000Z",
+    handoffBoundary: "handoff-transfers-exact-candidate-context-not-source-ownership-or-authority" as const,
+    authorityBoundary: "p5-handoff-package-status-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "p5-handoff-package-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    handoff: {
+      id: status.handoff.recordId,
+      revision: status.handoff.revision,
+      digest: status.handoff.digest,
+      membershipDigest: `sha256:${"2".repeat(64)}` as const,
+      state: "candidate" as const,
+      readinessStatusDigest: `sha256:${"3".repeat(64)}` as const,
+      itemCount: 25,
+      requirementCount: 66,
+      deliveryMode: "disconnected" as const,
+      updatedAt: "2026-07-27T03:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-item-content-summaries-omissions-uncertainties-source-content-personal-data-secrets-credentials-or-destinations" as const,
+    authorityBoundary: "p5-handoff-package-projection-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 const selection: AgentSelection = {
   schemaVersion: 2,
   adapterId: "codex-adapter",
@@ -2065,6 +2129,7 @@ interface HarnessOptions {
   evidenceRegistryProjection?: EvidenceRegistryProjection
   endToEndTraceabilityProjection?: EndToEndTraceabilityProjection
   p0P4ReadinessGateProjection?: P0P4ReadinessGateProjection
+  p5HandoffPackageProjection?: P5HandoffPackageProjection
   commandResult?: unknown
 }
 
@@ -2258,6 +2323,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.p0P4ReadinessGateProjection ? {
       p0P4ReadinessGate: {
         project: async () => options.p0P4ReadinessGateProjection!,
+      },
+    } : {}),
+    ...(options.p5HandoffPackageProjection ? {
+      p5HandoffPackage: {
+        project: async () => options.p5HandoffPackageProjection!,
       },
     } : {}),
   }
@@ -2913,6 +2983,37 @@ describe("current-engine Product Studio data source", () => {
     expect(snapshot.page).not.toHaveProperty("ready")
     expect(JSON.stringify(snapshot.page)).not.toMatch(
       /private output content|private waiver rationale|private decision content|private evidence content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed P5 Handoff Package metadata without synthesizing transfer or design authority", async () => {
+    const projection = p5HandoffPackageProjection()
+    const { source } = harness({ p5HandoffPackageProjection: projection })
+    const snapshot = await source.readSnapshot("trace")
+    expect(snapshot.page.kind === "trace" && snapshot.page.p5Handoffs).toMatchObject({
+      id: "p5-handoff-packages",
+      rows: [{
+        id: projection.handoff?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "3",
+          membership: projection.handoff?.membershipDigest,
+          readiness: projection.handoff?.readinessStatusDigest,
+          delivery: "disconnected",
+          items: "17 included · 3 exact references · 4 explicit N/A · 1 unresolved",
+          assessment: "attention-required · readiness incomplete · transfer held",
+          gaps: "2 stale/unknown applicable items · 1 lossy transformations · 2 requirement gaps · 1 conflicts · 2 open questions · 1 stale bindings",
+          boundary: expect.stringContaining("does not establish acknowledgement"),
+        },
+        state: "attention-required",
+        actions: [],
+      }],
+    })
+    expect(snapshot.page).not.toHaveProperty("acknowledged")
+    expect(snapshot.page).not.toHaveProperty("approved")
+    expect(snapshot.page).not.toHaveProperty("p5EntryAuthorized")
+    expect(JSON.stringify(snapshot.page)).not.toMatch(
+      /private item content|private omission|private uncertainty|customer@example\.com|api_key/iu,
     )
   })
 

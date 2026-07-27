@@ -663,6 +663,7 @@ class StudioShell {
     if (page.design) container.append(this.renderDesignSection(page.design, page.route))
     container.append(
       this.renderTable(page.readinessGates),
+      this.renderTable(page.p5Handoffs),
       this.renderTable(page.traceabilityGraphs),
       this.renderTable(page.relationships),
       this.renderTable(page.searchResults),

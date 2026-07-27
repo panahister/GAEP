@@ -311,6 +311,7 @@ export interface TracePageSnapshot extends StudioPageBase {
   relationships: StudioTableSnapshot
   traceabilityGraphs: StudioTableSnapshot
   readinessGates: StudioTableSnapshot
+  p5Handoffs: StudioTableSnapshot
   selectedRecordId?: string
   impact: TraceImpactGroup[]
   caveat?: string
@@ -1317,9 +1318,10 @@ function isRisksDecisionsPage(page: Record<string, unknown>): boolean {
 
 function isTracePage(page: Record<string, unknown>): boolean {
   return hasOnlyKeys(page, [
-    "kind", "route", "title", "purpose", "source", "actions", "design", "relationships", "traceabilityGraphs", "readinessGates", "selectedRecordId", "impact", "caveat", "searchResults",
+    "kind", "route", "title", "purpose", "source", "actions", "design", "relationships", "traceabilityGraphs", "readinessGates", "p5Handoffs", "selectedRecordId", "impact", "caveat", "searchResults",
   ]) && isPageBase(page, "trace") && page.kind === "trace" && isTableSnapshot(page.relationships) &&
-    isTableSnapshot(page.traceabilityGraphs) && isTableSnapshot(page.readinessGates) && isTableSnapshot(page.searchResults) && isOptionalString(page.selectedRecordId) && isOptionalString(page.caveat) && Array.isArray(page.impact) && page.impact.length <= 100 &&
+    isTableSnapshot(page.traceabilityGraphs) && isTableSnapshot(page.readinessGates) &&
+    isTableSnapshot(page.p5Handoffs) && isTableSnapshot(page.searchResults) && isOptionalString(page.selectedRecordId) && isOptionalString(page.caveat) && Array.isArray(page.impact) && page.impact.length <= 100 &&
     page.impact.every((group) => isRecord(group) && hasOnlyKeys(group, ["label", "entries"]) && isNonEmptyString(group.label) &&
       Array.isArray(group.entries) && group.entries.length <= 10_000 && group.entries.every(isDefinitionEntry))
 }

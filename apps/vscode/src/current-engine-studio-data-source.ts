@@ -48,6 +48,7 @@ import type {
   EvidenceRegistryProjection,
   EndToEndTraceabilityProjection,
   P0P4ReadinessGateProjection,
+  P5HandoffPackageProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -193,6 +194,9 @@ export interface CurrentStudioEngineReader {
   p0P4ReadinessGate?: {
     project(initiativeId: string): Promise<P0P4ReadinessGateProjection>
   }
+  p5HandoffPackage?: {
+    project(initiativeId: string): Promise<P5HandoffPackageProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -252,6 +256,7 @@ interface ObservedStudioState {
   evidenceRegistryProjections: Map<string, EvidenceRegistryProjection>
   endToEndTraceabilityProjections: Map<string, EndToEndTraceabilityProjection>
   p0P4ReadinessGateProjections: Map<string, P0P4ReadinessGateProjection>
+  p5HandoffPackageProjections: Map<string, P5HandoffPackageProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1502,6 +1507,57 @@ function p0P4ReadinessGateTable(state: ObservedStudioState): StudioTableSnapshot
   }
 }
 
+function p5HandoffPackageTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.p5HandoffPackageProjections.values()].flatMap((projection) => {
+    const record = projection.handoff
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        readiness: record.readinessStatusDigest,
+        delivery: record.deliveryMode,
+        items: `${status.includedItemCount} included · ${status.referenceOnlyItemCount} exact references · ${status.omittedNotApplicableItemCount} explicit N/A · ${status.unresolvedItemCount} unresolved`,
+        assessment: `${status.state} · readiness ${status.readinessResult} · transfer ${status.transferState}`,
+        gaps: `${status.staleOrUnknownItemCount} stale/unknown applicable items · ${status.lossyTransformationCount} lossy transformations · ${status.unresolvedRequirementCount} requirement gaps · ${status.conflictCount} conflicts · ${status.unresolvedQuestionCount} open questions · ${status.staleBindingCount} stale bindings`,
+        boundary: "Candidate context transfer only; source ownership remains retained and this does not establish acknowledgement, readiness, approval, a design baseline, P5 entry, transfer authority, write authority, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "p5-handoff-packages",
+    title: "Governed P5 Handoff Package Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Handoff Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "readiness", label: "Readiness assessment digest" },
+      { key: "delivery", label: "Delivery mode" },
+      { key: "items", label: "Privacy-safe item counts" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Handoff and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed P5 Handoff Package candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer acknowledgement, transfer source ownership, establish approval or a design baseline, authorize P5 entry, write to a destination, or authorize action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2649,6 +2705,7 @@ function tracePage(state: ObservedStudioState): TracePageSnapshot {
     relationships,
     traceabilityGraphs: endToEndTraceabilityTable(state),
     readinessGates: p0P4ReadinessGateTable(state),
+    p5Handoffs: p5HandoffPackageTable(state),
     impact,
     searchResults,
     ...(state.impact ? { selectedRecordId: state.impact.subject.recordId } : {}),
@@ -3289,6 +3346,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       relationships: capTable(page.relationships),
       traceabilityGraphs: capTable(page.traceabilityGraphs),
       readinessGates: capTable(page.readinessGates),
+      p5Handoffs: capTable(page.p5Handoffs),
       searchResults: capTable(page.searchResults),
     }
     case "agents-tools": return {
@@ -4018,6 +4076,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       evidenceRegistryProjections: new Map(),
       endToEndTraceabilityProjections: new Map(),
       p0P4ReadinessGateProjections: new Map(),
+      p5HandoffPackageProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -5019,6 +5078,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "p0-p4-readiness-gate-unavailable",
           "P0-P4 Readiness Gate metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "trace" && engine.p5HandoffPackage) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.p5HandoffPackage!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.p5HandoffPackageProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio P5 Handoff Package projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `p5-handoff-package-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe P5 Handoff Package metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "p5-handoff-package-unavailable",
+          "P5 Handoff Package metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

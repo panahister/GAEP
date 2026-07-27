@@ -142,6 +142,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
       return {
         ...baseFor(route),
         kind: "trace",
+        p5Handoffs: table("p5-handoff-packages"),
         readinessGates: table("p0-p4-readiness-gates"),
         traceabilityGraphs: table("end-to-end-traceability"),
         relationships: table("relationships"),
