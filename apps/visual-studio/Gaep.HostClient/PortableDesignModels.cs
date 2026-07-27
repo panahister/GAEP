@@ -74,6 +74,36 @@ public sealed record PhaseDashboardFramework(
     IReadOnlyList<string> Limitations,
     string CompositionDigest);
 
+public sealed record Phase1SummaryDashboard(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string PhaseState,
+    long DeclaredGapCount,
+    int AttentionSignalCount,
+    string ReadinessResult,
+    long ReadinessSatisfiedOutputs,
+    long ReadinessApplicableOutputs,
+    long ReadinessTotalOutputs,
+    long ReadinessGapCount,
+    string HandoffState,
+    string HandoffTransferState,
+    long HandoffIncludedItems,
+    long HandoffTotalItems,
+    long HandoffGapCount,
+    string FreshnessState,
+    long StaleBindingCount,
+    long StaleSourceReferenceCount,
+    DateTimeOffset ObservedAt,
+    string SourceBoundary,
+    string PrivacyBoundary,
+    IReadOnlyList<string> Limitations,
+    string SnapshotDigest);
+
 public sealed record ChangeImpactChangeReference(
     Guid RecordId,
     long Revision,

@@ -1398,6 +1398,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
   const badDashboardEvidenceCuesRoot = join(root, "bad-dashboard-evidence-cues")
   const badDashboardDigestRoot = join(root, "bad-dashboard-digest")
   const badDashboardPrivateRoot = join(root, "bad-dashboard-private")
+  const badPhase1SummaryDigestRoot = join(root, "bad-phase1-summary-digest")
   const badChangeCatalogBindingRoot = join(root, "bad-change-catalog-binding")
   const badChangeCatalogDigestRoot = join(root, "bad-change-catalog-digest")
   const badChangeCatalogPrivateRoot = join(root, "bad-change-catalog-private")
@@ -1424,6 +1425,7 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     badManagedTransitionPrivateRoot, staleManagedReviewRoot, badDashboardBindingRoot, badDashboardApplicabilityRoot,
     badDashboardEvidenceCuesRoot,
     badDashboardDigestRoot, badDashboardPrivateRoot, badChangeCatalogBindingRoot, badChangeCatalogDigestRoot,
+    badPhase1SummaryDigestRoot,
     badChangeCatalogPrivateRoot, badChangeImpactBindingRoot, badChangeImpactCountRoot, badChangeImpactFreshnessRoot,
     badChangeImpactEvidenceCuesRoot,
     badChangeImpactDigestRoot, badChangeImpactPrivateRoot, badAgentModelBindingRoot, badAgentModelCountRoot,
@@ -1460,6 +1462,35 @@ test("protocol-v2 client imports, lists, and exact-reads metadata without author
     assert.equal(JSON.stringify(dashboard).includes("Example Product"), false)
     assert.equal(JSON.stringify(dashboard).includes(privateRoot), false)
     assert.equal(JSON.stringify(dashboard).includes(privateCredential), false)
+    const initiative = await client.readInitiative("29292929-2929-4929-8929-292929292929")
+    const phase1Summary = await client.readPhase1Summary(product, initiative)
+    assert.equal(phase1Summary.initiative.recordId, initiative.id)
+    assert.equal(phase1Summary.phaseStatus.state, "attention-required")
+    assert.equal(phase1Summary.phaseStatus.attentionSignalCount, 2)
+    assert.equal(phase1Summary.phaseStatus.declaredGapCount, 0)
+    assert.equal(phase1Summary.readiness.result, "not-assessed")
+    assert.equal(phase1Summary.owners.state, "unbound")
+    assert.equal(JSON.stringify(phase1Summary).includes("Example Product"), false)
+    assert.equal(JSON.stringify(phase1Summary).includes(privateRoot), false)
+    assert.equal(JSON.stringify(phase1Summary).includes(privateCredential), false)
+
+    for (const workspacePath of [badPhase1SummaryDigestRoot, badDashboardPrivateRoot]) {
+      const hostileClient = await GaepEngineClient.create({
+        workspacePath,
+        engineExecutable: process.execPath,
+        engineArgumentsPrefix: [fakeEngine],
+      })
+      try {
+        const hostileProduct = await hostileClient.readProduct()
+        const hostileInitiative = await hostileClient.readInitiative("29292929-2929-4929-8929-292929292929")
+        await assert.rejects(
+          () => hostileClient.readPhase1Summary(hostileProduct, hostileInitiative),
+          (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+        )
+      } finally {
+        await hostileClient.dispose()
+      }
+    }
 
     for (const workspacePath of [
       badDashboardBindingRoot, badDashboardApplicabilityRoot, badDashboardEvidenceCuesRoot,

@@ -60,11 +60,17 @@ import type {
   WorkflowPlan,
   WorkspaceHealthIssue,
   DeliveryPhaseId,
+  Phase1SummaryDashboard,
   PhaseDashboardFramework,
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
 import { canonicalDigest, capabilityDigest } from "@gaep/agent-sdk"
-import { composeAgentModelDashboard, composeChangeImpactDashboard, composePhaseDashboardFramework } from "@gaep/engine"
+import {
+  composeAgentModelDashboard,
+  composeChangeImpactDashboard,
+  composePhase1SummaryDashboard,
+  composePhaseDashboardFramework,
+} from "@gaep/engine"
 import type {
   ManagedRunListPage,
   ManagedRunListPageInput,
@@ -3733,14 +3739,46 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       ? portableDesignSnapshotInspector(observed.selectedPortableDesignSnapshot)
       : this.selectedRecordId ? inspectorFor(observed, this.selectedRecordId) : undefined
     const sections = sectionsFor(observed)
+    const deliveryPhase = this.context.deliveryPhase()
     const dashboard: PhaseDashboardFramework | undefined = observed.product
       ? composePhaseDashboardFramework(observed.product, {
-          phase: this.context.deliveryPhase(),
+          phase: deliveryPhase,
           expectedProductId: observed.product.id,
           expectedProductRevision: observed.product.revision ?? 1,
           expectedProductDigest: canonicalDigest(observed.product),
         })
       : undefined
+    let phase1Summary: Phase1SummaryDashboard | undefined
+    if (observed.product) {
+      const initiative = currentInitiative(observed.initiatives)
+      const readiness = initiative ? observed.p0P4ReadinessGateProjections.get(initiative.id) : undefined
+      const handoff = initiative ? observed.p5HandoffPackageProjections.get(initiative.id) : undefined
+      if (initiative && readiness && handoff) {
+        try {
+          phase1Summary = composePhase1SummaryDashboard(
+            observed.product,
+            initiative,
+            readiness,
+            handoff,
+            {
+              expectedProductId: observed.product.id,
+              expectedProductRevision: observed.product.revision ?? 1,
+              expectedProductDigest: canonicalDigest(observed.product),
+              expectedInitiativeId: initiative.id,
+              expectedInitiativeRevision: initiative.revision ?? 1,
+              expectedInitiativeDigest: canonicalDigest(initiative),
+            },
+          )
+        } catch (error) {
+          this.context.logDiagnostic("Product Studio exact Phase 1 summary composition failed; stale or private detail was withheld", error)
+          observed.issues.push(issue(
+            "phase-1-summary-unavailable",
+            "The Phase 1 summary could not be revalidated against the exact current Product, Initiative, readiness, and handoff projections.",
+            "warning",
+          ))
+        }
+      }
+    }
     this.offeredProductRevision = observed.product?.revision ?? (observed.product ? 1 : undefined)
     return {
       protocolVersion: studioProtocolVersion,
@@ -3756,6 +3794,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       navigation: sections,
       surface: surfaceFor(route, this.context, observed),
       ...(dashboard ? { dashboard } : {}),
+      ...(phase1Summary ? { phase1Summary } : {}),
       ...(changeImpact ? { changeImpact } : {}),
       ...(agentModel ? { agentModel } : {}),
       page: page.page,
@@ -4094,6 +4133,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     }
     if (!this.context.trusted() || !this.context.workspace() || !this.context.engine()) return empty
     const engine = this.context.engine()!
+    const phase1SummaryRequired = ["phase-1b-product", "phase-1c-acceptance"].includes(this.context.deliveryPhase())
     try {
       empty.product = await engine.readProduct()
       empty.productState = "available"
@@ -5040,7 +5080,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "trace" && engine.p0P4ReadinessGate) {
+    if ((route === "trace" || phase1SummaryRequired) && engine.p0P4ReadinessGate) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.p0P4ReadinessGate!.project(initiative.id)),
@@ -5082,7 +5122,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "trace" && engine.p5HandoffPackage) {
+    if ((route === "trace" || phase1SummaryRequired) && engine.p5HandoffPackage) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.p5HandoffPackage!.project(initiative.id)),

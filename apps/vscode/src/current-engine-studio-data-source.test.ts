@@ -17,6 +17,7 @@ import {
   type FailureRecoveryModelProjection,
   type ArchitectureChallengeModelProjection,
   type DecisionRegisterProjection,
+  type DeliveryPhaseId,
   type RiskRegisterProjection,
   type EvidenceRegistryProjection,
   type EndToEndTraceabilityProjection,
@@ -2083,6 +2084,7 @@ function capability(overrides: Partial<AdapterCapabilities>): AdapterCapabilitie
 }
 
 interface HarnessOptions {
+  deliveryPhase?: DeliveryPhaseId
   trusted?: boolean
   withWorkspace?: boolean
   withProduct?: boolean
@@ -2333,7 +2335,7 @@ function harness(options: HarnessOptions = {}) {
   }
   const context: CurrentEngineStudioContext = {
     contextGeneration: () => contextGeneration,
-    deliveryPhase: () => "phase-0-1a-foundation",
+    deliveryPhase: () => options.deliveryPhase ?? "phase-0-1a-foundation",
     trusted: () => options.trusted ?? true,
     workspace: () => options.withWorkspace === false ? undefined : ({ name: "Example Product", path: workspacePath }),
     engine: () => engine,
@@ -2446,6 +2448,38 @@ describe("current-engine Product Studio data source", () => {
     const { snapshotDigest, ...agentModelContent } = agentModel
     expect(snapshotDigest).toBe(canonicalDigest(agentModelContent))
     expect(JSON.stringify(agentModel)).not.toContain("must-redact")
+  })
+
+  it("composes an exact Phase 1 summary from current Initiative readiness and handoff projections", async () => {
+    const { source, diagnostics } = harness({
+      p0P4ReadinessGateProjection: p0P4ReadinessGateProjection(),
+      p5HandoffPackageProjection: p5HandoffPackageProjection(),
+    })
+    const snapshot = await source.readSnapshot("trace")
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.phase1Summary).toMatchObject({
+      kind: "phase-1-summary-readiness-dashboard",
+      product: { recordId: product.id, revision: product.revision },
+      initiative: { recordId: initiative.id, revision: initiative.revision, state: initiative.state },
+      phaseStatus: {
+        state: "attention-required",
+        productOwnerAcceptance: "not-established",
+        readinessAuthority: "not-established",
+        phaseEntryAuthority: "not-established",
+      },
+      owners: { state: "unbound", boundOwnerCount: 0 },
+    })
+    const summary = snapshot.phase1Summary
+    if (!summary) throw new Error("Expected an exact Phase 1 summary")
+    const { snapshotDigest, ...content } = summary
+    expect(snapshotDigest).toBe(canonicalDigest(content))
+    const tampered = structuredClone(snapshot)
+    if (!tampered.phase1Summary) throw new Error("Expected a Phase 1 summary to tamper")
+    tampered.phase1Summary.limitations[0] = "Tampered after digest composition."
+    expect(isStudioSnapshot(tampered)).toBe(false)
+    expect(JSON.stringify(summary)).not.toContain(product.name)
+    expect(JSON.stringify(summary)).not.toContain(initiative.title)
+    expect(diagnostics).toEqual([])
   })
 
   it("projects exact privacy-safe Source, candidate Baseline, and Provenance metadata on Delivery", async () => {

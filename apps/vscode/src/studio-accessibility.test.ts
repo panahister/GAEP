@@ -323,6 +323,7 @@ function snapshot(route: StudioRoute, revision: number): StudioSnapshot {
       authorityBoundary: "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence",
       compositionDigest: `sha256:${"b".repeat(64)}`,
     },
+    ...(route === "readiness" ? { phase1Summary: phase1SummaryDashboard() } : {}),
     page: pageFor(route),
     inspector: route === "trace" ? {
       title: "Trace record",
@@ -333,6 +334,103 @@ function snapshot(route: StudioRoute, revision: number): StudioSnapshot {
     } : undefined,
     footer: { draftState: "saved-locally", sourceRevision: 2, validationSummary: "Schema valid" },
   }
+}
+
+function phase1SummaryDashboard(): NonNullable<StudioSnapshot["phase1Summary"]> {
+  const readinessGaps = {
+    applicability: 0,
+    conditional: 0,
+    incomplete: 0,
+    failed: 0,
+    blocked: 0,
+    staleOrUnknown: 0,
+    waivers: 0,
+    decisions: 0,
+    conditions: 0,
+    requirements: 0,
+    adverseEvidence: 0,
+    bindings: 0,
+    sourceReferences: 0,
+    inconsistencies: 0,
+    questions: 0,
+    total: 0,
+  }
+  const handoffGaps = {
+    unresolvedItems: 0,
+    staleOrUnknownItems: 0,
+    requirements: 0,
+    conflicts: 0,
+    questions: 0,
+    bindings: 0,
+    sourceReferences: 0,
+    total: 0,
+  }
+  const content: Omit<NonNullable<StudioSnapshot["phase1Summary"]>, "snapshotDigest"> = {
+    schemaVersion: 1,
+    kind: "phase-1-summary-readiness-dashboard",
+    phase: { id: "phase-1b-product", label: "Phase 1B — Product P0–P4" },
+    product: {
+      recordType: "product",
+      recordId: "00000000-0000-4000-8000-000000000001",
+      revision: 2,
+      digest: `sha256:${"a".repeat(64)}`,
+    },
+    initiative: {
+      recordType: "initiative",
+      recordId: "00000000-0000-4000-8000-000000000002",
+      revision: 3,
+      digest: `sha256:${"c".repeat(64)}`,
+      state: "active",
+    },
+    readiness: {
+      snapshotDigest: `sha256:${"d".repeat(64)}`,
+      result: "not-assessed",
+      assessedAt: "2026-07-27T00:00:00.000Z",
+      outputs: { total: 0, applicable: 0, notApplicable: 0, unresolvedApplicability: 0, satisfied: 0 },
+      gaps: readinessGaps,
+      reasonCount: 1,
+      attentionRequired: true,
+      authorityBoundary: "readiness-result-is-evaluation-only-not-permission-or-product-readiness",
+    },
+    handoff: {
+      snapshotDigest: `sha256:${"e".repeat(64)}`,
+      state: "attention-required",
+      transferState: "draft",
+      assessedAt: "2026-07-27T00:00:01.000Z",
+      items: { total: 0, included: 0, referenceOnly: 0, omittedNotApplicable: 0, unresolved: 0 },
+      gaps: handoffGaps,
+      reasonCount: 1,
+      attentionRequired: true,
+      authorityBoundary: "handoff-status-is-candidate-context-only-not-transfer-or-phase-entry-authority",
+    },
+    phaseStatus: {
+      state: "attention-required",
+      declaredGapCount: 0,
+      attentionSignalCount: 2,
+      productOwnerAcceptance: "not-established",
+      readinessAuthority: "not-established",
+      phaseEntryAuthority: "not-established",
+    },
+    owners: { state: "unbound", boundOwnerCount: 0, basis: "no-governed-phase-owner-assignment-is-bound" },
+    freshness: {
+      state: "current",
+      readinessObservedAt: "2026-07-27T00:00:02.000Z",
+      handoffObservedAt: "2026-07-27T00:00:03.000Z",
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      basis: "exact-current-projections-and-declared-binding-freshness",
+    },
+    evidenceCues: {
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
+    observedAt: "2026-07-27T00:00:04.000Z",
+    sourceBoundary: "current-governed-product-initiative-readiness-and-handoff-projections-only",
+    privacyBoundary: "summary-exposes-identities-counts-statuses-times-and-digests-not-narrative-findings-evidence-source-content-personal-data-secrets-or-credentials",
+    limitations: ["Phase ownership remains unbound until a governed phase-owner assignment record is available."],
+    authorityBoundary: "phase-1-summary-is-read-only-candidate-evidence-not-readiness-approval-acceptance-phase-entry-release-or-action-authority",
+  }
+  return { ...content, snapshotDigest: canonicalDigest(content) }
 }
 
 function changeImpactDashboard(): NonNullable<StudioSnapshot["changeImpact"]> {
@@ -524,6 +622,11 @@ describe("Product Studio rendered accessibility", () => {
       expect(dom.window.document.body.textContent, route).toMatch(/Confidence: not assessed/i)
       expect(dom.window.document.body.textContent, route).toMatch(/Unknown — governed decision required/)
       expect(dom.window.document.body.textContent, route).toMatch(/does not prove phase approval, readiness, acceptance, or applicability/)
+      if (route === "readiness") {
+        expect(dom.window.document.querySelector('[aria-label="Phase 1 summary and readiness dashboard"]')).not.toBeNull()
+        expect(dom.window.document.body.textContent).toMatch(/Owners: unbound/)
+        expect(dom.window.document.body.textContent).toMatch(/Product Owner acceptance, readiness authority, and phase-entry authority are not established/)
+      }
       for (const element of dom.window.document.querySelectorAll<HTMLElement>("[tabindex]")) {
         expect(Number(element.getAttribute("tabindex")), `${route}: ${element.outerHTML}`).toBeLessThanOrEqual(0)
       }

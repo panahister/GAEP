@@ -452,6 +452,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
 
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
+        val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Narrative, findings, evidence content, owners, local paths, credentials, and authority are withheld.",
+                    "GAEP Phase 1 Summary",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Show Phase 1 summary", status, output, buttons) {
+                    controller.readPhase1Summary(initiativeId)
+                }
+            }
+        }
+        buttons += phase1SummaryButton
+        actions.add(phase1SummaryButton)
+
         val changeImpactButton = JButton("Show Change and impact…").apply {
             addActionListener {
                 beginChangeImpact(project, controller, status, output, buttons)

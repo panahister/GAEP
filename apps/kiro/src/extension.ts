@@ -24,6 +24,7 @@ import {
   type EndToEndTraceabilityProjection,
   type P0P4ReadinessGateProjection,
   type P5HandoffPackageProjection,
+  type Phase1SummaryDashboard,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -85,6 +86,7 @@ const commandIds = {
   evidence: "gaepKiro.runs.evidence",
   stagedReview: "gaepKiro.runs.stagedReview",
   dashboard: "gaepKiro.dashboard.phase",
+  phase1Summary: "gaepKiro.dashboard.phase1Summary",
   changeImpact: "gaepKiro.dashboard.changeImpact",
   agentModel: "gaepKiro.dashboard.agentModel",
   accessibleTables: "gaepKiro.dashboard.accessibleTables",
@@ -196,6 +198,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.evidence, () => runUserCommand(() => showManagedEvidenceDashboard(pool))),
     vscode.commands.registerCommand(commandIds.stagedReview, () => runUserCommand(() => reviewManagedStagedChanges(pool))),
     vscode.commands.registerCommand(commandIds.dashboard, () => runUserCommand(() => showPhaseDashboard(pool))),
+    vscode.commands.registerCommand(commandIds.phase1Summary, (input?: unknown) => runUserCommand(() => showPhase1Summary(pool, input))),
     vscode.commands.registerCommand(commandIds.changeImpact, () => runUserCommand(() => showChangeImpactDashboard(pool))),
     vscode.commands.registerCommand(commandIds.agentModel, () => runUserCommand(() => showAgentModelDashboard(pool))),
     vscode.commands.registerCommand(commandIds.accessibleTables, () => runUserCommand(() => showAccessibleDashboardTables(pool))),
@@ -1884,6 +1887,39 @@ async function showPhaseDashboard(pool: EngineClientPool): Promise<PhaseDashboar
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })
   return dashboard
+}
+
+async function showPhase1Summary(pool: EngineClientPool, input: unknown): Promise<Phase1SummaryDashboard> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Phase 1 summary", "Initiative ID")
+  const [product, initiative] = await Promise.all([client.readProduct(), client.readInitiative(initiativeId)])
+  const summary = await client.readPhase1Summary(product, initiative)
+  const lines = [
+    "GAEP exact Phase 1 summary and readiness dashboard",
+    "",
+    `Initiative: ${summary.initiative.recordId} · revision ${summary.initiative.revision} · ${summary.initiative.state}`,
+    `Phase state: ${summary.phaseStatus.state}`,
+    `Declared gap indicators: ${summary.phaseStatus.declaredGapCount} · attention signals: ${summary.phaseStatus.attentionSignalCount}`,
+    `P0-P4 readiness: ${summary.readiness.result} · ${summary.readiness.outputs.satisfied}/${summary.readiness.outputs.applicable} applicable outputs satisfied · ${summary.readiness.gaps.total} declared gaps`,
+    `P5 handoff: ${summary.handoff.state} · ${summary.handoff.transferState} · ${summary.handoff.items.included}/${summary.handoff.items.total} items included · ${summary.handoff.gaps.total} declared gaps`,
+    `Freshness: ${summary.freshness.state} · ${summary.freshness.staleBindingCount} stale bindings · ${summary.freshness.staleSourceReferenceCount} stale Source references`,
+    "Owners: unbound; no governed phase-owner assignment is bound.",
+    "Product Owner acceptance: not established · readiness authority: not established · phase-entry authority: not established",
+    `Snapshot digest: ${summary.snapshotDigest}`,
+    `Source: ${summary.sourceBoundary}`,
+    `Privacy: ${summary.privacyBoundary}`,
+    "",
+    ...summary.limitations.map((limitation) => `Limit: ${limitation}`),
+    "",
+    "Boundary: this read-only candidate summary grants no readiness, approval, acceptance, phase-entry, release, Run, Tool, write, or action authority.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return summary
 }
 
 async function showChangeImpactDashboard(pool: EngineClientPool): Promise<ChangeImpactDashboard> {

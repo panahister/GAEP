@@ -373,6 +373,26 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readPhase1Summary(product: ProductBinding, initiative: InitiativeEntryRecord): Phase1SummaryDashboard {
+        PortableDesignProtocol.validateProductId(product.id)
+        PortableDesignProtocol.validateProductRevision(product.revision)
+        require(Regex("^sha256:[0-9a-f]{64}$").matches(product.digest)) { "Product digest must be SHA-256" }
+        require(initiative.productId == product.id) { "Initiative must target the exact current Product" }
+        PortableDesignProtocol.validateProductRevision(initiative.revision)
+        val params = JsonObject().apply {
+            addProperty("expectedProductId", product.id.toString())
+            addProperty("expectedProductRevision", product.revision)
+            addProperty("expectedProductDigest", product.digest)
+            addProperty("expectedInitiativeId", initiative.id.toString())
+            addProperty("expectedInitiativeRevision", initiative.revision)
+            addProperty("expectedInitiativeDigest", initiative.digest)
+        }
+        return portableRequest("dashboard.phase1Summary", params) { envelope ->
+            PortableDesignProtocol.parsePhase1SummaryEnvelope(envelope, product, initiative)
+        }
+    }
+
+    @Synchronized
     fun listChangeImpactChanges(product: ProductBinding): ChangeImpactChangeCatalog {
         PortableDesignProtocol.validateProductId(product.id)
         PortableDesignProtocol.validateProductRevision(product.revision)

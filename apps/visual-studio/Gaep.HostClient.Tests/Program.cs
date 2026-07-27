@@ -1561,6 +1561,20 @@ internal static class Program
               phaseTables.Single().Rows.Count == 3 &&
               phaseTables.Single().SnapshotDigest == dashboard.CompositionDigest,
             "Accessible Phase tables preserve the exact panel rows and composition digest");
+        var phase1Initiative = await client.ReadInitiativeAsync(InitiativeId);
+        var phase1Summary = await client.ReadPhase1SummaryAsync(product, phase1Initiative);
+        Check(phase1Summary.InitiativeId == InitiativeId && phase1Summary.PhaseState == "attention-required" &&
+              phase1Summary.AttentionSignalCount == 2 && phase1Summary.DeclaredGapCount == 0 &&
+              phase1Summary.ReadinessResult == "not-assessed" && phase1Summary.FreshnessState == "current",
+            "Typed Phase 1 summary preserves exact Initiative binding and conservative governed signals");
+        var phase1Output = await new ProductWorkflowController(client).ReadPhase1SummaryAsync(InitiativeId);
+        Check(phase1Output.Contains("GAEP exact Phase 1 summary and readiness dashboard", StringComparison.Ordinal) &&
+              phase1Output.Contains("Owners: unbound", StringComparison.Ordinal) &&
+              phase1Output.Contains("grants no readiness, approval, acceptance", StringComparison.Ordinal) &&
+              !phase1Output.Contains("Founder Product", StringComparison.Ordinal) &&
+              !phase1Output.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !phase1Output.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Phase 1 summary workflow renders only exact bounded metadata and explicit no-authority state");
         foreach (var hostileRoot in new[]
                  {
                      badDashboardBindingRoot,
@@ -3097,6 +3111,14 @@ internal static class Program
                         badDashboardEvidenceCues,
                         badDashboardDigest,
                         badDashboardPrivate);
+                    break;
+                case "dashboard.phase1Summary":
+                    await HandlePhase1SummaryAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability);
                     break;
                 case "dashboard.changeImpact.changes":
                     await HandleChangeImpactCatalogAsync(
@@ -6687,6 +6709,119 @@ internal static class Program
         }
         if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, dashboard);
+    }
+
+    private static async Task HandlePhase1SummaryAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability)
+    {
+        var productDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var initiativeDigest = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord));
+        if (!HasOnlyProperties(
+                parameters,
+                "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+                "expectedInitiativeRevision", "expectedInitiativeDigest") ||
+            parameters.GetProperty("expectedProductId").GetString() != ProductId.ToString("D") ||
+            parameters.GetProperty("expectedProductRevision").GetInt64() != 7 ||
+            parameters.GetProperty("expectedProductDigest").GetString() != productDigest ||
+            parameters.GetProperty("expectedInitiativeId").GetString() != InitiativeId.ToString("D") ||
+            parameters.GetProperty("expectedInitiativeRevision").GetInt64() != initiativeRevision ||
+            parameters.GetProperty("expectedInitiativeDigest").GetString() != initiativeDigest)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PHASE1 SUMMARY REQUEST");
+            return;
+        }
+
+        static Dictionary<string, object?> ReadinessGaps() => new()
+        {
+            ["applicability"] = 0, ["conditional"] = 0, ["incomplete"] = 0, ["failed"] = 0,
+            ["blocked"] = 0, ["staleOrUnknown"] = 0, ["waivers"] = 0, ["decisions"] = 0,
+            ["conditions"] = 0, ["requirements"] = 0, ["adverseEvidence"] = 0, ["bindings"] = 0,
+            ["sourceReferences"] = 0, ["inconsistencies"] = 0, ["questions"] = 0, ["total"] = 0,
+        };
+        static Dictionary<string, object?> HandoffGaps() => new()
+        {
+            ["unresolvedItems"] = 0, ["staleOrUnknownItems"] = 0, ["requirements"] = 0, ["conflicts"] = 0,
+            ["questions"] = 0, ["bindings"] = 0, ["sourceReferences"] = 0, ["total"] = 0,
+        };
+
+        var summary = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "phase-1-summary-readiness-dashboard",
+            ["phase"] = new Dictionary<string, object?>
+            {
+                ["id"] = "phase-1b-product",
+                ["label"] = "Phase 1B — Product P0–P4",
+            },
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["recordType"] = "product", ["recordId"] = ProductId.ToString("D"), ["revision"] = 7,
+                ["digest"] = productDigest,
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["recordType"] = "initiative", ["recordId"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision, ["digest"] = initiativeDigest, ["state"] = "active",
+            },
+            ["readiness"] = new Dictionary<string, object?>
+            {
+                ["snapshotDigest"] = $"sha256:{new string('1', 64)}", ["result"] = "not-assessed",
+                ["assessedAt"] = "2026-07-27T12:00:00.000Z",
+                ["outputs"] = new Dictionary<string, object?>
+                {
+                    ["total"] = 0, ["applicable"] = 0, ["notApplicable"] = 0,
+                    ["unresolvedApplicability"] = 0, ["satisfied"] = 0,
+                },
+                ["gaps"] = ReadinessGaps(), ["reasonCount"] = 1, ["attentionRequired"] = true,
+                ["authorityBoundary"] = "readiness-result-is-evaluation-only-not-permission-or-product-readiness",
+            },
+            ["handoff"] = new Dictionary<string, object?>
+            {
+                ["snapshotDigest"] = $"sha256:{new string('2', 64)}", ["state"] = "attention-required",
+                ["transferState"] = "draft", ["assessedAt"] = "2026-07-27T12:00:01.000Z",
+                ["items"] = new Dictionary<string, object?>
+                {
+                    ["total"] = 0, ["included"] = 0, ["referenceOnly"] = 0,
+                    ["omittedNotApplicable"] = 0, ["unresolved"] = 0,
+                },
+                ["gaps"] = HandoffGaps(), ["reasonCount"] = 1, ["attentionRequired"] = true,
+                ["authorityBoundary"] = "handoff-status-is-candidate-context-only-not-transfer-or-phase-entry-authority",
+            },
+            ["phaseStatus"] = new Dictionary<string, object?>
+            {
+                ["state"] = "attention-required", ["declaredGapCount"] = 0, ["attentionSignalCount"] = 2,
+                ["productOwnerAcceptance"] = "not-established", ["readinessAuthority"] = "not-established",
+                ["phaseEntryAuthority"] = "not-established",
+            },
+            ["owners"] = new Dictionary<string, object?>
+            {
+                ["state"] = "unbound", ["boundOwnerCount"] = 0,
+                ["basis"] = "no-governed-phase-owner-assignment-is-bound",
+            },
+            ["freshness"] = new Dictionary<string, object?>
+            {
+                ["state"] = "current", ["readinessObservedAt"] = "2026-07-27T12:00:02.000Z",
+                ["handoffObservedAt"] = "2026-07-27T12:00:03.000Z", ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 0,
+                ["basis"] = "exact-current-projections-and-declared-binding-freshness",
+            },
+            ["evidenceCues"] = DashboardEvidenceCues("current"),
+            ["observedAt"] = "2026-07-27T12:00:04.000Z",
+            ["sourceBoundary"] = "current-governed-product-initiative-readiness-and-handoff-projections-only",
+            ["privacyBoundary"] = "summary-exposes-identities-counts-statuses-times-and-digests-not-narrative-findings-evidence-source-content-personal-data-secrets-or-credentials",
+            ["limitations"] = new[]
+            {
+                "Phase ownership remains unbound until a governed phase-owner assignment record is available.",
+            },
+            ["authorityBoundary"] = "phase-1-summary-is-read-only-candidate-evidence-not-readiness-approval-acceptance-phase-entry-release-or-action-authority",
+        };
+        RefreshCanonicalDigest(summary, "snapshotDigest");
+        await WriteResultAsync(id, summary);
     }
 
     private static Dictionary<string, object?> PhaseDashboardPanel(

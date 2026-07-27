@@ -1359,6 +1359,22 @@ class PortableDesignClientTest {
             assertEquals(3, phaseTables.single().rows.size)
             assertEquals(dashboard.compositionDigest, phaseTables.single().snapshotDigest)
 
+            val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+            val initiative = client.readInitiative(entryId)
+            val phase1Summary = client.readPhase1Summary(product, initiative)
+            assertEquals(entryId, phase1Summary.initiativeId)
+            assertEquals("attention-required", phase1Summary.phaseState)
+            assertEquals(2, phase1Summary.attentionSignalCount)
+            assertEquals(0, phase1Summary.declaredGapCount)
+            assertEquals("not-assessed", phase1Summary.readinessResult)
+            val phase1View = RiderProductController(client).readPhase1Summary(entryId)
+            assertTrue(phase1View.contains("GAEP exact Phase 1 summary and readiness dashboard"))
+            assertTrue(phase1View.contains("Owners: unbound"))
+            assertTrue(phase1View.contains("grants no readiness, approval, acceptance"))
+            assertFalse(phase1View.contains("Founder Product"))
+            assertFalse(phase1View.contains(privateRoot))
+            assertFalse(phase1View.contains(privateCredential))
+
             listOf(
                 badDashboardBindingRoot,
                 badDashboardApplicabilityRoot,

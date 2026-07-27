@@ -21,6 +21,7 @@
     { "id": "staged-effectful-review", "label": "Preview, review, apply or discard workflow" },
     { "id": "evidence-dashboard", "label": "Run, evidence, recovery and provider-truth dashboard" },
     { "id": "phase-dashboard-framework", "label": "Exact phase-scoped dashboard framework projection" },
+    { "id": "phase1-summary-readiness-dashboard", "label": "Exact Phase 1 summary and readiness candidate projection without approval, acceptance, phase-entry, release, or action authority" },
     { "id": "change-impact-dashboard", "label": "Exact current Change and impact projection" },
     { "id": "agent-model-dashboard", "label": "Exact current Agent and Model evidence projection" },
     { "id": "accessible-dashboard-tables", "label": "Accessible dashboard sorting, filtering, textual alternative, and bounded metadata export" },
@@ -111,6 +112,11 @@
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["composePhaseDashboardFramework(observed.product", "phase: this.context.deliveryPhase()", "...(dashboard ? { dashboard } : {})"] },
           { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isPhaseDashboardFramework", "value.catalogVersion !== \"gaep-phase-dashboards-v1\"", "panel.id !== expected[index]", "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"] },
           { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderPhaseDashboard(snapshot.dashboard)", "Exact Product revision", "This projection does not prove phase approval, readiness, acceptance, or applicability"] }
+        ] },
+        { "capabilityId": "phase1-summary-readiness-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["phase1Summary = composePhase1SummaryDashboard(", "observed.p0P4ReadinessGateProjections.get(initiative.id)", "observed.p5HandoffPackageProjections.get(initiative.id)", "...(phase1Summary ? { phase1Summary } : {})"] },
+          { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isPhase1SummaryDashboard", "phase1SummaryDashboardSchema.safeParse(value)", "snapshotDigest === canonicalStudioDigest(content)"] },
+          { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderPhase1Summary(snapshot.phase1Summary)", "Phase 1 summary and readiness dashboard", "grants no readiness, approval, acceptance, phase-entry"] }
         ] },
         { "capabilityId": "change-impact-dashboard", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["const selection: ChangeImpactDashboardRequest = {", "this.readChangeImpactDashboard(selection)", "return composeChangeImpactDashboard("] },
@@ -270,6 +276,10 @@
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showPhaseDashboard", "client.readPhaseDashboard(product, \"phase-0-1a-foundation\")", "grants no mutation, applicability, phase-entry"] },
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readPhaseDashboard(product: ProductBinding", "this.request(\"dashboard.framework\"", "expectedProductDigest: productDigest"] },
           { "path": "apps/kiro/src/protocol.ts", "contains": ["parsePhaseDashboardFramework", "requireExactKeys(framework", "compositionDigest !== canonicalDigest(content)", "parsePhaseDashboardPanel"] }
+        ] },
+        { "capabilityId": "phase1-summary-readiness-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["phase1Summary: \"gaepKiro.dashboard.phase1Summary\"", "async function showPhase1Summary", "client.readPhase1Summary(product, initiative)", "grants no readiness, approval, acceptance, phase-entry"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readPhase1Summary(product: ProductBinding", "this.request(\"dashboard.phase1Summary\"", "snapshotDigest !== canonicalDigest(content)"] }
         ] },
         { "capabilityId": "change-impact-dashboard", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showChangeImpactDashboard", "client.listChangeImpactChanges(product)", "client.readChangeImpact(product, selected.change)", "grants no Change approval, risk acceptance, mutation"] },
@@ -453,6 +463,12 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readPhaseDashboard(", "portableRequest(\"dashboard.framework\"", "expectedProductDigest"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["parsePhaseDashboardEnvelope(", "phaseDashboardPanelCatalog", "compositionDigest != canonicalDigest(digestBody)", "parsePhaseDashboardPanel"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP phase-scoped dashboard framework", "grants no mutation, applicability, phase-entry"] }
+        ] },
+        { "capabilityId": "phase1-summary-readiness-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Show Phase 1 summary…", "controller.readPhase1Summary(initiativeId)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readPhase1Summary(product: ProductBinding", "portableRequest(\"dashboard.phase1Summary\""] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["fun parsePhase1SummaryEnvelope(", "summary.requireExactKeys(", "snapshotDigest != canonicalDigest(digestBody)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP exact Phase 1 summary and readiness dashboard", "Owners: unbound; no governed phase-owner assignment is bound.", "grants no readiness, approval, acceptance, phase-entry"] }
         ] },
         { "capabilityId": "change-impact-dashboard", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["private fun beginChangeImpact(", "controller.readChangeImpactContext()", "controller.readChangeImpact(context, change)"] },
@@ -665,6 +681,13 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadPhaseDashboardAsync(", "\"dashboard.framework\"", "[\"expectedProductDigest\"] = product.Digest"] },
           { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParsePhaseDashboardResponse(", "PhaseDashboardPanelCatalog", "compositionDigest != CanonicalDigest(compositionBody)", "ParsePhaseDashboardPanel"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP phase-scoped dashboard framework", "It grants no mutation, applicability, ", "phase-entry, approval"] }
+        ] },
+        { "capabilityId": "phase1-summary-readiness-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Show Phase 1 summary and readiness", "ShowPhase1SummaryCommand"] },
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowData.cs", "contains": ["ShowPhase1SummaryCommand = new AsyncCommand(ShowPhase1SummaryAsync)", "Loading exact Phase 1 summary"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadPhase1SummaryAsync(", "\"dashboard.phase1Summary\"", "ParsePhase1SummaryResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/PortableDesignProtocol.cs", "contains": ["ParsePhase1SummaryResponse(", "Phase1SummaryAuthorityBoundary", "snapshotDigest != CanonicalDigest(WithoutProperty(result, \"snapshotDigest\"))"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP exact Phase 1 summary and readiness dashboard", "Owners: unbound; no governed phase-owner assignment is bound.", "grants no readiness, approval, acceptance, phase-entry"] }
         ] },
         { "capabilityId": "change-impact-dashboard", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Load exact current Changes", "Show exact Change and impact", "Selection grants no Change approval, Risk acceptance, mutation"] },

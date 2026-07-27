@@ -93,6 +93,37 @@ data class PhaseDashboardFramework(
     val compositionDigest: String,
 )
 
+data class Phase1SummaryDashboard(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val phaseState: String,
+    val declaredGapCount: Long,
+    val attentionSignalCount: Int,
+    val readinessResult: String,
+    val readinessSatisfiedOutputs: Long,
+    val readinessApplicableOutputs: Long,
+    val readinessTotalOutputs: Long,
+    val readinessGapCount: Long,
+    val handoffState: String,
+    val handoffTransferState: String,
+    val handoffIncludedItems: Long,
+    val handoffTotalItems: Long,
+    val handoffGapCount: Long,
+    val freshnessState: String,
+    val staleBindingCount: Long,
+    val staleSourceReferenceCount: Long,
+    val observedAt: Instant,
+    val sourceBoundary: String,
+    val privacyBoundary: String,
+    val limitations: List<String>,
+    val snapshotDigest: String,
+)
+
 data class ChangeImpactChangeReference(
     val recordId: UUID,
     val revision: Long,
@@ -1812,6 +1843,12 @@ internal object PortableDesignProtocol {
         "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup."
     private const val PHASE_DASHBOARD_AUTHORITY_BOUNDARY =
         "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"
+    private const val PHASE1_SUMMARY_AUTHORITY_BOUNDARY =
+        "phase-1-summary-is-read-only-candidate-evidence-not-readiness-approval-acceptance-phase-entry-release-or-action-authority"
+    private const val PHASE1_SUMMARY_SOURCE_BOUNDARY =
+        "current-governed-product-initiative-readiness-and-handoff-projections-only"
+    private const val PHASE1_SUMMARY_PRIVACY_BOUNDARY =
+        "summary-exposes-identities-counts-statuses-times-and-digests-not-narrative-findings-evidence-source-content-personal-data-secrets-or-credentials"
     private const val CHANGE_CATALOG_AUTHORITY_BOUNDARY =
         "change-catalog-selection-does-not-approve-change-or-authorize-effects"
     private const val CHANGE_DASHBOARD_AUTHORITY_BOUNDARY =
@@ -5790,6 +5827,203 @@ internal object PortableDesignProtocol {
             sourceBoundary = "governed-repository-and-engine-only",
             limitations = limitations,
             compositionDigest = compositionDigest,
+        )
+    }
+
+    fun parsePhase1SummaryEnvelope(
+        envelope: JsonObject,
+        expectedProduct: ProductBinding,
+        expectedInitiative: InitiativeEntryRecord,
+    ): Phase1SummaryDashboard {
+        val summary = readResult(envelope).requireObject()
+        summary.requireExactKeys(
+            "schemaVersion", "kind", "phase", "product", "initiative", "readiness", "handoff", "phaseStatus",
+            "owners", "freshness", "evidenceCues", "observedAt", "sourceBoundary", "privacyBoundary", "limitations",
+            "authorityBoundary", "snapshotDigest",
+        )
+        if (summary.requireInt("schemaVersion") != 1 ||
+            summary.requireString("kind") != "phase-1-summary-readiness-dashboard" ||
+            summary.requireString("sourceBoundary") != PHASE1_SUMMARY_SOURCE_BOUNDARY ||
+            summary.requireString("privacyBoundary") != PHASE1_SUMMARY_PRIVACY_BOUNDARY ||
+            summary.requireString("authorityBoundary") != PHASE1_SUMMARY_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+
+        val phase = summary.get("phase").requireObject()
+        phase.requireExactKeys("id", "label")
+        if (phase.requireString("id") != "phase-1b-product" ||
+            phase.requireString("label") != "Phase 1B — Product P0–P4"
+        ) throw invalidResponse()
+
+        val product = summary.get("product").requireObject()
+        product.requireExactKeys("recordType", "recordId", "revision", "digest")
+        val productId = parseUuid(product.requireString("recordId"))
+        val productRevision = product.requireLong("revision")
+        val productDigest = product.requireDigest("digest")
+        if (product.requireString("recordType") != "product" || productId != expectedProduct.id ||
+            productRevision != expectedProduct.revision || productDigest != expectedProduct.digest
+        ) throw invalidResponse()
+
+        val initiative = summary.get("initiative").requireObject()
+        initiative.requireExactKeys("recordType", "recordId", "revision", "digest", "state")
+        val initiativeId = parseUuid(initiative.requireString("recordId"))
+        val initiativeRevision = initiative.requireLong("revision")
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireString("state")
+        if (initiative.requireString("recordType") != "initiative" || initiativeId != expectedInitiative.id ||
+            initiativeRevision != expectedInitiative.revision || initiativeDigest != expectedInitiative.digest ||
+            initiativeState != expectedInitiative.state || expectedInitiative.productId != expectedProduct.id ||
+            initiativeState !in setOf("active", "blocked", "cancelled", "completed", "proposed")
+        ) throw invalidResponse()
+
+        fun validateOptionalReference(container: JsonObject, key: String): Boolean {
+            val value = container.get(key) ?: return false
+            val reference = value.requireObject()
+            reference.requireExactKeys("recordId", "revision", "digest")
+            if (parseUuid(reference.requireString("recordId")) == UUID(0, 0) ||
+                reference.requireLong("revision") !in 1..MAX_SAFE_PRODUCT_REVISION
+            ) throw invalidResponse()
+            reference.requireDigest("digest")
+            return true
+        }
+
+        fun reconciledGapTotal(gaps: JsonObject, fields: List<String>): Long {
+            gaps.requireExactKeys(*(fields + "total").toTypedArray())
+            val expected = fields.sumOf { field -> gaps.requireLong(field).also { if (it < 0) throw invalidResponse() } }
+            val declared = gaps.requireLong("total")
+            if (declared < 0 || declared != expected) throw invalidResponse()
+            return declared
+        }
+
+        val readiness = summary.get("readiness").requireObject()
+        readiness.requireKeys(
+            setOf("snapshotDigest", "result", "assessedAt", "outputs", "gaps", "reasonCount", "attentionRequired", "authorityBoundary"),
+            setOf("gate"),
+        )
+        readiness.requireDigest("snapshotDigest")
+        val readinessResult = readiness.requireString("result")
+        if (readinessResult !in setOf("blocked", "conditionally-passed", "failed", "incomplete", "not-assessed", "passed") ||
+            readiness.requireString("authorityBoundary") !=
+            "readiness-result-is-evaluation-only-not-permission-or-product-readiness"
+        ) throw invalidResponse()
+        val hasGate = validateOptionalReference(readiness, "gate")
+        val readinessAssessedAt = parseInstant(readiness.get("assessedAt"))
+        val outputs = readiness.get("outputs").requireObject()
+        outputs.requireExactKeys("total", "applicable", "notApplicable", "unresolvedApplicability", "satisfied")
+        val readinessTotal = outputs.requireLong("total")
+        val readinessApplicable = outputs.requireLong("applicable")
+        val readinessNotApplicable = outputs.requireLong("notApplicable")
+        val readinessUnresolved = outputs.requireLong("unresolvedApplicability")
+        val readinessSatisfied = outputs.requireLong("satisfied")
+        if (listOf(readinessTotal, readinessApplicable, readinessNotApplicable, readinessUnresolved, readinessSatisfied)
+                .any { it !in 0..25 } ||
+            readinessApplicable + readinessNotApplicable + readinessUnresolved != readinessTotal ||
+            readinessSatisfied > readinessApplicable
+        ) throw invalidResponse()
+        val readinessGapCount = reconciledGapTotal(
+            readiness.get("gaps").requireObject(),
+            listOf(
+                "applicability", "conditional", "incomplete", "failed", "blocked", "staleOrUnknown", "waivers",
+                "decisions", "conditions", "requirements", "adverseEvidence", "bindings", "sourceReferences",
+                "inconsistencies", "questions",
+            ),
+        )
+        if (readiness.requireLong("reasonCount") < 0) throw invalidResponse()
+        val readinessAttention = readinessResult != "passed" || readinessGapCount > 0 || !hasGate
+        if (readiness.requireBoolean("attentionRequired") != readinessAttention) throw invalidResponse()
+
+        val handoff = summary.get("handoff").requireObject()
+        handoff.requireKeys(
+            setOf("snapshotDigest", "state", "transferState", "assessedAt", "items", "gaps", "reasonCount", "attentionRequired", "authorityBoundary"),
+            setOf("package"),
+        )
+        handoff.requireDigest("snapshotDigest")
+        val handoffState = handoff.requireString("state")
+        val handoffTransferState = handoff.requireString("transferState")
+        if (handoffState !in setOf("attention-required", "complete-for-review") ||
+            handoffTransferState !in setOf("draft", "held", "ready-for-human-review") ||
+            handoff.requireString("authorityBoundary") !=
+            "handoff-status-is-candidate-context-only-not-transfer-or-phase-entry-authority"
+        ) throw invalidResponse()
+        val hasHandoff = validateOptionalReference(handoff, "package")
+        val handoffAssessedAt = parseInstant(handoff.get("assessedAt"))
+        val items = handoff.get("items").requireObject()
+        items.requireExactKeys("total", "included", "referenceOnly", "omittedNotApplicable", "unresolved")
+        val handoffTotal = items.requireLong("total")
+        val handoffIncluded = items.requireLong("included")
+        val handoffReferenceOnly = items.requireLong("referenceOnly")
+        val handoffOmitted = items.requireLong("omittedNotApplicable")
+        val handoffUnresolved = items.requireLong("unresolved")
+        if (listOf(handoffTotal, handoffIncluded, handoffReferenceOnly, handoffOmitted, handoffUnresolved)
+                .any { it !in 0..25 } ||
+            handoffIncluded + handoffReferenceOnly + handoffOmitted + handoffUnresolved != handoffTotal
+        ) throw invalidResponse()
+        val handoffGapCount = reconciledGapTotal(
+            handoff.get("gaps").requireObject(),
+            listOf("unresolvedItems", "staleOrUnknownItems", "requirements", "conflicts", "questions", "bindings", "sourceReferences"),
+        )
+        if (handoff.requireLong("reasonCount") < 0) throw invalidResponse()
+        val handoffAttention = handoffState != "complete-for-review" || handoffGapCount > 0 || !hasHandoff
+        if (handoff.requireBoolean("attentionRequired") != handoffAttention) throw invalidResponse()
+
+        val freshness = summary.get("freshness").requireObject()
+        freshness.requireExactKeys(
+            "state", "readinessObservedAt", "handoffObservedAt", "staleBindingCount", "staleSourceReferenceCount", "basis",
+        )
+        val staleBindingCount = freshness.requireLong("staleBindingCount")
+        val staleSourceReferenceCount = freshness.requireLong("staleSourceReferenceCount")
+        val freshnessAttention = staleBindingCount > 0 || staleSourceReferenceCount > 0
+        val freshnessState = freshness.requireString("state")
+        if (staleBindingCount < 0 || staleSourceReferenceCount < 0 ||
+            freshness.requireString("basis") != "exact-current-projections-and-declared-binding-freshness" ||
+            (freshnessState == "attention-required") != freshnessAttention ||
+            freshnessState !in setOf("current", "attention-required")
+        ) throw invalidResponse()
+        val readinessObservedAt = parseInstant(freshness.get("readinessObservedAt"))
+        val handoffObservedAt = parseInstant(freshness.get("handoffObservedAt"))
+
+        val phaseStatus = summary.get("phaseStatus").requireObject()
+        phaseStatus.requireExactKeys(
+            "state", "declaredGapCount", "attentionSignalCount", "productOwnerAcceptance", "readinessAuthority",
+            "phaseEntryAuthority",
+        )
+        val declaredGapCount = phaseStatus.requireLong("declaredGapCount")
+        val attentionSignalCount = phaseStatus.requireInt("attentionSignalCount")
+        val expectedAttentionSignals = listOf(readinessAttention, handoffAttention, freshnessAttention).count { it }
+        val expectedPhaseState = if (expectedAttentionSignals == 0) "candidate-complete-for-human-review" else "attention-required"
+        val phaseState = phaseStatus.requireString("state")
+        if (declaredGapCount != readinessGapCount + handoffGapCount || attentionSignalCount != expectedAttentionSignals ||
+            phaseState != expectedPhaseState || phaseStatus.requireString("productOwnerAcceptance") != "not-established" ||
+            phaseStatus.requireString("readinessAuthority") != "not-established" ||
+            phaseStatus.requireString("phaseEntryAuthority") != "not-established"
+        ) throw invalidResponse()
+
+        val owners = summary.get("owners").requireObject()
+        owners.requireExactKeys("state", "boundOwnerCount", "basis")
+        if (owners.requireString("state") != "unbound" || owners.requireInt("boundOwnerCount") != 0 ||
+            owners.requireString("basis") != "no-governed-phase-owner-assignment-is-bound"
+        ) throw invalidResponse()
+        parseDashboardEvidenceCues(summary.get("evidenceCues"), if (freshnessAttention) "potentially-stale" else "current")
+
+        val observedAt = parseInstant(summary.get("observedAt"))
+        if (readinessAssessedAt > observedAt || handoffAssessedAt > observedAt ||
+            readinessObservedAt > observedAt || handoffObservedAt > observedAt
+        ) throw invalidResponse()
+        val limitationsElement = summary.get("limitations")
+        if (limitationsElement == null || !limitationsElement.isJsonArray || limitationsElement.asJsonArray.size() !in 1..8) {
+            throw invalidResponse()
+        }
+        val limitations = limitationsElement.asJsonArray.map { value ->
+            portableText(value.requireString(), minimum = 4).also { if (it.length > 1_000) throw invalidResponse() }
+        }
+        val snapshotDigest = summary.requireDigest("snapshotDigest")
+        val digestBody = summary.deepCopy().apply { remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+        return Phase1SummaryDashboard(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState,
+            phaseState, declaredGapCount, attentionSignalCount, readinessResult, readinessSatisfied, readinessApplicable,
+            readinessTotal, readinessGapCount, handoffState, handoffTransferState, handoffIncluded, handoffTotal,
+            handoffGapCount, freshnessState, staleBindingCount, staleSourceReferenceCount, observedAt,
+            PHASE1_SUMMARY_SOURCE_BOUNDARY, PHASE1_SUMMARY_PRIVACY_BOUNDARY, limitations, snapshotDigest,
         )
     }
 

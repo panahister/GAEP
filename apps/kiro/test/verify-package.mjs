@@ -145,9 +145,10 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 39 ||
-      new Set(commands.map((command) => command.command)).size !== commands.length) {
-    fail("package command inventory must contain 39 unique commands")
+  if (!Array.isArray(commands) || commands.length !== 40 ||
+      new Set(commands.map((command) => command.command)).size !== commands.length ||
+      !commands.some((command) => command.command === "gaepKiro.dashboard.phase1Summary")) {
+    fail("package command inventory must contain 40 unique commands including the Phase 1 summary")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))

@@ -133,6 +133,8 @@ input.on("line", (line) => {
       return readP5HandoffPackage(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
+    case "dashboard.phase1Summary":
+      return readPhase1Summary(id, request.params)
     case "dashboard.changeImpact.changes":
       return readChangeCatalog(id, request.params)
     case "dashboard.changeImpact":
@@ -1942,6 +1944,96 @@ function readPhaseDashboard(id, params) {
   if (workspacePath.endsWith("bad-dashboard-evidence-cues")) content.evidenceCues.freshness = "unknown"
   const value = { ...content, compositionDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-dashboard-digest")) value.panels[0].title = "Forged dashboard title"
+  if (workspacePath.endsWith("bad-dashboard-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readPhase1Summary(id, params) {
+  const productDigest = canonicalDigest(productRecord())
+  const initiativeDigest = canonicalDigest(initiativeState)
+  if (!exactKeys(params, [
+    "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+    "expectedInitiativeRevision", "expectedInitiativeDigest",
+  ])) return writeError(id, -32_602, "PHASE1_KEYS_INVALID", "Phase 1 summary request keys are invalid")
+  if (params.expectedProductId !== productId || params.expectedProductRevision !== 7 ||
+      params.expectedProductDigest !== productDigest) {
+    return writeError(id, -32_602, "PHASE1_PRODUCT_INVALID", "Phase 1 summary Product binding is invalid")
+  }
+  if (params.expectedInitiativeId !== initiativeId || params.expectedInitiativeRevision !== initiativeState.revision ||
+      params.expectedInitiativeDigest !== initiativeDigest) {
+    return writeError(id, -32_602, "PHASE1_INITIATIVE_INVALID", "Phase 1 summary Initiative binding is invalid")
+  }
+  const readinessGaps = Object.fromEntries([
+    "applicability", "conditional", "incomplete", "failed", "blocked", "staleOrUnknown", "waivers",
+    "decisions", "conditions", "requirements", "adverseEvidence", "bindings", "sourceReferences",
+    "inconsistencies", "questions", "total",
+  ].map((key) => [key, 0]))
+  const handoffGaps = Object.fromEntries([
+    "unresolvedItems", "staleOrUnknownItems", "requirements", "conflicts", "questions", "bindings",
+    "sourceReferences", "total",
+  ].map((key) => [key, 0]))
+  const content = {
+    schemaVersion: 1,
+    kind: "phase-1-summary-readiness-dashboard",
+    phase: { id: "phase-1b-product", label: "Phase 1B — Product P0–P4" },
+    product: { recordType: "product", recordId: productId, revision: 7, digest: productDigest },
+    initiative: {
+      recordType: "initiative",
+      recordId: initiativeId,
+      revision: initiativeState.revision,
+      digest: initiativeDigest,
+      state: initiativeState.state,
+    },
+    readiness: {
+      snapshotDigest: `sha256:${"1".repeat(64)}`,
+      result: "not-assessed",
+      assessedAt: "2026-07-27T12:00:00.000Z",
+      outputs: { total: 0, applicable: 0, notApplicable: 0, unresolvedApplicability: 0, satisfied: 0 },
+      gaps: readinessGaps,
+      reasonCount: 1,
+      attentionRequired: true,
+      authorityBoundary: "readiness-result-is-evaluation-only-not-permission-or-product-readiness",
+    },
+    handoff: {
+      snapshotDigest: `sha256:${"2".repeat(64)}`,
+      state: "attention-required",
+      transferState: "draft",
+      assessedAt: "2026-07-27T12:00:01.000Z",
+      items: { total: 0, included: 0, referenceOnly: 0, omittedNotApplicable: 0, unresolved: 0 },
+      gaps: handoffGaps,
+      reasonCount: 1,
+      attentionRequired: true,
+      authorityBoundary: "handoff-status-is-candidate-context-only-not-transfer-or-phase-entry-authority",
+    },
+    phaseStatus: {
+      state: "attention-required",
+      declaredGapCount: 0,
+      attentionSignalCount: 2,
+      productOwnerAcceptance: "not-established",
+      readinessAuthority: "not-established",
+      phaseEntryAuthority: "not-established",
+    },
+    owners: { state: "unbound", boundOwnerCount: 0, basis: "no-governed-phase-owner-assignment-is-bound" },
+    freshness: {
+      state: "current",
+      readinessObservedAt: "2026-07-27T12:00:02.000Z",
+      handoffObservedAt: "2026-07-27T12:00:03.000Z",
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      basis: "exact-current-projections-and-declared-binding-freshness",
+    },
+    evidenceCues: {
+      freshness: "current",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
+    observedAt: "2026-07-27T12:00:04.000Z",
+    sourceBoundary: "current-governed-product-initiative-readiness-and-handoff-projections-only",
+    privacyBoundary: "summary-exposes-identities-counts-statuses-times-and-digests-not-narrative-findings-evidence-source-content-personal-data-secrets-or-credentials",
+    limitations: ["Phase ownership remains unbound until a governed phase-owner assignment record is available."],
+    authorityBoundary: "phase-1-summary-is-read-only-candidate-evidence-not-readiness-approval-acceptance-phase-entry-release-or-action-authority",
+  }
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-phase1-summary-digest")) value.phaseStatus.state = "candidate-complete"
   if (workspacePath.endsWith("bad-dashboard-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }

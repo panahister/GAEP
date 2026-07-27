@@ -27,8 +27,10 @@ import {
   composeChangeImpactChangeCatalog,
   composeChangeImpactDashboard,
   composePhaseDashboardFramework,
+  composePhase1SummaryDashboard,
   DashboardProductBindingError,
   GaepEngine,
+  Phase1SummaryBindingError,
 } from "@gaep/engine"
 import { z, ZodError } from "zod"
 
@@ -72,6 +74,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "managed.review.apply",
   "managed.review.discard",
   "dashboard.framework",
+  "dashboard.phase1Summary",
   "dashboard.changeImpact.changes",
   "dashboard.changeImpact",
   "dashboard.agentModel",
@@ -596,6 +599,35 @@ export class EngineHost {
               -32_039,
               "DASHBOARD_PRODUCT_CONTEXT_CHANGED",
               "The Product changed before the dashboard framework was composed; reload the current Product",
+            )
+          }
+          throw error
+        }
+      }
+      case "dashboard.phase1Summary": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_046,
+            "PHASE1_SUMMARY_AUDIT_INVALID",
+            "The audit chain is invalid or unavailable; no Phase 1 summary was composed",
+          )
+        }
+        const initiativeId = request.params.expectedInitiativeId
+        const [product, initiative, readiness, handoff] = await Promise.all([
+          this.engine.readProduct(),
+          this.engine.readInitiative(initiativeId),
+          this.engine.p0P4ReadinessGate.project(initiativeId),
+          this.engine.p5HandoffPackage.project(initiativeId),
+        ])
+        try {
+          return composePhase1SummaryDashboard(product, initiative, readiness, handoff, request.params)
+        } catch (error) {
+          if (error instanceof Phase1SummaryBindingError) {
+            throw new HostRpcError(
+              -32_047,
+              "PHASE1_SUMMARY_CONTEXT_CHANGED",
+              "The Product, Initiative, readiness, or handoff context changed before the Phase 1 summary was composed; reload the exact governed projections",
             )
           }
           throw error

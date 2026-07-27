@@ -2170,6 +2170,68 @@ describe("engine host protocol", () => {
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
   })
 
+  it("composes an exact Initiative-bound Phase 1 summary without synthesizing readiness or owners", async () => {
+    const { initiativeId } = await createProductAndInitiative()
+    const [product, initiative] = await Promise.all([
+      host.engine.readProduct(),
+      host.engine.readInitiative(initiativeId),
+    ])
+    const params = {
+      expectedProductId: product.id,
+      expectedProductRevision: product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(product),
+      expectedInitiativeId: initiative.id,
+      expectedInitiativeRevision: initiative.revision ?? 1,
+      expectedInitiativeDigest: canonicalDigest(initiative),
+    }
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "dashboard.phase1Summary",
+      params,
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+
+    const result = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 2,
+      protocolVersion: 2,
+      method: "dashboard.phase1Summary",
+      params,
+    }) as Record<string, unknown>
+    expect(result).toMatchObject({
+      kind: "phase-1-summary-readiness-dashboard",
+      product: { recordId: product.id, revision: product.revision ?? 1 },
+      initiative: { recordId: initiative.id, revision: initiative.revision ?? 1 },
+      phaseStatus: {
+        state: "attention-required",
+        productOwnerAcceptance: "not-established",
+        readinessAuthority: "not-established",
+        phaseEntryAuthority: "not-established",
+      },
+      owners: { state: "unbound", boundOwnerCount: 0 },
+      authorityBoundary: "phase-1-summary-is-read-only-candidate-evidence-not-readiness-approval-acceptance-phase-entry-release-or-action-authority",
+    })
+    expect(JSON.stringify(result)).not.toContain(workspace)
+    expect(JSON.stringify(result)).not.toContain(product.name)
+    expect(JSON.stringify(result)).not.toContain(initiative.title)
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 3,
+      protocolVersion: 2,
+      method: "dashboard.phase1Summary",
+      params: { ...params, expectedInitiativeDigest: `sha256:${"0".repeat(64)}` },
+    })).rejects.toMatchObject({ kind: "PHASE1_SUMMARY_CONTEXT_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 4,
+      protocolVersion: 2,
+      method: "dashboard.phase1Summary",
+      params: { ...params, ready: true, owner: "caller" },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+  })
+
   it("composes a bounded Change/Impact dashboard from exact current Product and Change bindings", async () => {
     const { initiativeId } = await createProductAndInitiative()
     const product = await host.engine.readProduct()

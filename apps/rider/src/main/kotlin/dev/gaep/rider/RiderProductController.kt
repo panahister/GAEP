@@ -1311,6 +1311,15 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         return renderPhaseDashboard(client.readPhaseDashboard(product))
     }
 
+    fun readPhase1Summary(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        require(initiative.productId == product.id) {
+            "The Initiative does not target the exact current Product. Reload the Product and Initiative."
+        }
+        return renderPhase1Summary(client.readPhase1Summary(product, initiative))
+    }
+
     fun readPhaseDashboardTables(): List<AccessibleMetadataTable> {
         val product = client.readProductBinding()
         return AccessibleDashboardTables.phase(client.readPhaseDashboard(product))
@@ -1719,6 +1728,38 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
         append(
             "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.",
+        )
+    }
+
+    private fun renderPhase1Summary(summary: Phase1SummaryDashboard): String = buildString {
+        appendLine("GAEP exact Phase 1 summary and readiness dashboard")
+        appendLine()
+        appendLine("Initiative: ${summary.initiativeId} · revision ${summary.initiativeRevision} · ${summary.initiativeState}")
+        appendLine("Phase state: ${summary.phaseState}")
+        appendLine("Declared gap indicators: ${summary.declaredGapCount} · attention signals: ${summary.attentionSignalCount}")
+        appendLine(
+            "P0-P4 readiness: ${summary.readinessResult} · ${summary.readinessSatisfiedOutputs}/" +
+                "${summary.readinessApplicableOutputs} applicable outputs satisfied · ${summary.readinessGapCount} declared gaps",
+        )
+        appendLine(
+            "P5 handoff: ${summary.handoffState} · ${summary.handoffTransferState} · ${summary.handoffIncludedItems}/" +
+                "${summary.handoffTotalItems} items included · ${summary.handoffGapCount} declared gaps",
+        )
+        appendLine(
+            "Freshness: ${summary.freshnessState} · ${summary.staleBindingCount} stale bindings · " +
+                "${summary.staleSourceReferenceCount} stale Source references",
+        )
+        appendLine("Owners: unbound; no governed phase-owner assignment is bound.")
+        appendLine("Product Owner acceptance: not established · readiness authority: not established · phase-entry authority: not established")
+        appendLine("Snapshot digest: ${summary.snapshotDigest}")
+        appendLine("Source: ${summary.sourceBoundary}")
+        appendLine("Privacy: ${summary.privacyBoundary}")
+        appendLine()
+        summary.limitations.forEach { appendLine("Limit: $it") }
+        appendLine()
+        append(
+            "Boundary: this read-only candidate summary grants no readiness, approval, acceptance, phase-entry, " +
+                "release, Run, Tool, write, or action authority.",
         )
     }
 

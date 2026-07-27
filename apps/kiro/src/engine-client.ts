@@ -23,6 +23,7 @@ import {
   endToEndTraceabilityProjectionSchema,
   p0P4ReadinessGateProjectionSchema,
   p5HandoffPackageProjectionSchema,
+  phase1SummaryDashboardSchema,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
@@ -50,6 +51,7 @@ import {
   type EndToEndTraceabilityProjection,
   type P0P4ReadinessGateProjection,
   type P5HandoffPackageProjection,
+  type Phase1SummaryDashboard,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
@@ -678,6 +680,35 @@ export class GaepEngineClient {
         expectedProductRevision: productRevision,
         expectedProductDigest: productDigest,
       }), expected)
+    })
+  }
+
+  readPhase1Summary(product: ProductBinding, initiativeValue: Initiative): Promise<Phase1SummaryDashboard> {
+    return this.enqueue(async () => {
+      const productId = normalizeUuid(product.id, "Product ID")
+      const productRevision = validateProductRevision(product.revision)
+      const productDigest = product.digest.trim().toLowerCase()
+      if (!/^sha256:[0-9a-f]{64}$/u.test(productDigest)) throw new TypeError("Product digest must be SHA-256")
+      const initiative = initiativeSchema.parse(initiativeValue)
+      const initiativeRevision = validateProductRevision(initiative.revision ?? 1)
+      const initiativeDigest = canonicalDigest(initiative)
+      if (initiative.productId.toLowerCase() !== productId) throw invalidHostResponse()
+      const parsed = phase1SummaryDashboardSchema.safeParse(await this.request("dashboard.phase1Summary", {
+        expectedProductId: productId,
+        expectedProductRevision: productRevision,
+        expectedProductDigest: productDigest,
+        expectedInitiativeId: initiative.id,
+        expectedInitiativeRevision: initiativeRevision,
+        expectedInitiativeDigest: initiativeDigest,
+      }))
+      if (!parsed.success) throw invalidHostResponse()
+      const { snapshotDigest, ...content } = parsed.data
+      if (snapshotDigest !== canonicalDigest(content) || parsed.data.product.recordId.toLowerCase() !== productId ||
+          parsed.data.product.revision !== productRevision || parsed.data.product.digest !== productDigest ||
+          parsed.data.initiative.recordId.toLowerCase() !== initiative.id.toLowerCase() ||
+          parsed.data.initiative.revision !== initiativeRevision || parsed.data.initiative.digest !== initiativeDigest ||
+          parsed.data.initiative.state !== initiative.state) throw invalidHostResponse()
+      return parsed.data
     })
   }
 

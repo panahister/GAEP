@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 
-import type { AgentModelDashboard, ChangeImpactDashboard, PhaseDashboardFramework } from "@gaep/contracts"
+import type { AgentModelDashboard, ChangeImpactDashboard, Phase1SummaryDashboard, PhaseDashboardFramework } from "@gaep/contracts"
 
 import {
   isStudioAction,
@@ -210,6 +210,7 @@ class StudioShell {
     if (snapshot.surface.kind === "ready") {
       main.append(this.renderPage(snapshot))
       if (snapshot.dashboard) main.append(this.renderPhaseDashboard(snapshot.dashboard))
+      if (snapshot.phase1Summary) main.append(this.renderPhase1Summary(snapshot.phase1Summary))
       if (snapshot.changeImpact) main.append(this.renderChangeImpactDashboard(snapshot.changeImpact))
       if (snapshot.agentModel) main.append(this.renderAgentModelDashboard(snapshot.agentModel))
     }
@@ -1043,6 +1044,77 @@ class StudioShell {
       actions: [],
     }))
     section.append(this.renderStringList("Projection limits", dashboard.limitations))
+    return section
+  }
+
+  private renderPhase1Summary(summary: Phase1SummaryDashboard): HTMLElement {
+    const section = element("section", "section phase1-summary-dashboard")
+    section.setAttribute("aria-label", "Phase 1 summary and readiness dashboard")
+    const state = summary.phaseStatus.state === "candidate-complete-for-human-review"
+      ? "Candidate complete for human review"
+      : "Attention required"
+    section.append(
+      element("h3", undefined, "Phase 1 summary and readiness"),
+      element(
+        "p",
+        "prose",
+        `${state}. ${summary.phaseStatus.declaredGapCount} declared gap indicators and ${summary.phaseStatus.attentionSignalCount} attention signals are present.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        `Exact Product revision ${summary.product.revision}; exact Initiative revision ${summary.initiative.revision}; observed ${summary.observedAt}.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        `Freshness: ${summary.freshness.state}. Owners: unbound because no governed phase-owner assignment is bound. Product Owner acceptance, readiness authority, and phase-entry authority are not established.`,
+      ),
+    )
+    section.append(this.renderTable({
+      id: "phase1-summary-readiness",
+      title: "Governed Phase 1 signals",
+      columns: [
+        { key: "signal", label: "Signal" },
+        { key: "state", label: "State" },
+        { key: "coverage", label: "Coverage" },
+        { key: "gaps", label: "Declared gaps" },
+        { key: "freshness", label: "Observed" },
+      ],
+      rows: [
+        {
+          id: "phase1-readiness",
+          cells: {
+            signal: "P0–P4 readiness evaluation",
+            state: summary.readiness.result,
+            coverage: `${summary.readiness.outputs.satisfied}/${summary.readiness.outputs.applicable} applicable outputs satisfied; ${summary.readiness.outputs.total} total`,
+            gaps: String(summary.readiness.gaps.total),
+            freshness: summary.readiness.assessedAt,
+          },
+          actions: [],
+        },
+        {
+          id: "phase1-handoff",
+          cells: {
+            signal: "P5 handoff package",
+            state: `${summary.handoff.state}; ${summary.handoff.transferState}`,
+            coverage: `${summary.handoff.items.included}/${summary.handoff.items.total} items included`,
+            gaps: String(summary.handoff.gaps.total),
+            freshness: summary.handoff.assessedAt,
+          },
+          actions: [],
+        },
+      ],
+      actions: [],
+    }))
+    section.append(
+      this.renderStringList("Projection limits", summary.limitations),
+      element(
+        "p",
+        "prose muted",
+        "This read-only candidate summary grants no readiness, approval, acceptance, phase-entry, release, Run, Tool, write, or action authority.",
+      ),
+    )
     return section
   }
 

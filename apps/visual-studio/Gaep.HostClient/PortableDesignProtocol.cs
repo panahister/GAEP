@@ -33,6 +33,12 @@ internal static partial class PortableDesignProtocol
     private const string ManagedReviewCleanupBoundary = "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup.";
     private const string PhaseDashboardAuthorityBoundary =
         "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence";
+    private const string Phase1SummaryAuthorityBoundary =
+        "phase-1-summary-is-read-only-candidate-evidence-not-readiness-approval-acceptance-phase-entry-release-or-action-authority";
+    private const string Phase1SummarySourceBoundary =
+        "current-governed-product-initiative-readiness-and-handoff-projections-only";
+    private const string Phase1SummaryPrivacyBoundary =
+        "summary-exposes-identities-counts-statuses-times-and-digests-not-narrative-findings-evidence-source-content-personal-data-secrets-or-credentials";
     private const string ChangeCatalogAuthorityBoundary =
         "change-catalog-selection-does-not-approve-change-or-authorize-effects";
     private const string ChangeDashboardAuthorityBoundary =
@@ -426,6 +432,220 @@ internal static partial class PortableDesignProtocol
             "governed-repository-and-engine-only",
             Array.AsReadOnly(limitations.ToArray()),
             compositionDigest);
+    }
+
+    internal static Phase1SummaryDashboard ParsePhase1SummaryResponse(
+        JsonElement envelope,
+        ProductBinding expectedProduct,
+        InitiativeEntryRecord expectedInitiative)
+    {
+        var result = ReadResult(envelope);
+        if (result.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                result,
+                "schemaVersion", "kind", "phase", "product", "initiative", "readiness", "handoff", "phaseStatus",
+                "owners", "freshness", "evidenceCues", "observedAt", "sourceBoundary", "privacyBoundary", "limitations",
+                "authorityBoundary", "snapshotDigest") ||
+            !result.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var schema) || schema != 1 ||
+            ParseRequiredEnum(result, "kind", "phase-1-summary-readiness-dashboard") != "phase-1-summary-readiness-dashboard" ||
+            ParseRequiredEnum(result, "sourceBoundary", Phase1SummarySourceBoundary) != Phase1SummarySourceBoundary ||
+            ParseRequiredEnum(result, "privacyBoundary", Phase1SummaryPrivacyBoundary) != Phase1SummaryPrivacyBoundary ||
+            ParseRequiredEnum(result, "authorityBoundary", Phase1SummaryAuthorityBoundary) != Phase1SummaryAuthorityBoundary)
+        {
+            throw InvalidResponse();
+        }
+
+        var phase = result.GetProperty("phase");
+        if (phase.ValueKind != JsonValueKind.Object || !HasOnlyProperties(phase, "id", "label") ||
+            ParseRequiredEnum(phase, "id", "phase-1b-product") != "phase-1b-product" ||
+            ParseRequiredPortableText(phase, "label") != "Phase 1B — Product P0–P4") throw InvalidResponse();
+
+        var product = result.GetProperty("product");
+        if (product.ValueKind != JsonValueKind.Object || !HasOnlyProperties(product, "recordType", "recordId", "revision", "digest") ||
+            ParseRequiredEnum(product, "recordType", "product") != "product") throw InvalidResponse();
+        var productId = ParseRequiredGuid(product, "recordId");
+        var productRevision = ParsePositiveLong(product, "revision");
+        var productDigest = ParseRequiredDigest(product, "digest");
+        if (productId != expectedProduct.Id || productRevision != expectedProduct.Revision || productDigest != expectedProduct.Digest)
+        {
+            throw InvalidResponse();
+        }
+
+        var initiative = result.GetProperty("initiative");
+        if (initiative.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(initiative, "recordType", "recordId", "revision", "digest", "state") ||
+            ParseRequiredEnum(initiative, "recordType", "initiative") != "initiative") throw InvalidResponse();
+        var initiativeId = ParseRequiredGuid(initiative, "recordId");
+        var initiativeRevision = ParsePositiveLong(initiative, "revision");
+        var initiativeDigest = ParseRequiredDigest(initiative, "digest");
+        var initiativeState = ParseRequiredEnum(initiative, "state", "active", "blocked", "cancelled", "completed", "proposed");
+        if (initiativeId != expectedInitiative.Id || initiativeRevision != expectedInitiative.Revision ||
+            initiativeDigest != expectedInitiative.Digest || initiativeState != expectedInitiative.State ||
+            expectedInitiative.ProductId != expectedProduct.Id) throw InvalidResponse();
+
+        static long NonNegative(JsonElement element, string name, long maximum = long.MaxValue)
+        {
+            if (!element.TryGetProperty(name, out var value) || !value.TryGetInt64(out var parsed) || parsed < 0 || parsed > maximum)
+            {
+                throw InvalidResponse();
+            }
+            return parsed;
+        }
+
+        static bool ValidateOptionalReference(JsonElement container, string name)
+        {
+            if (!container.TryGetProperty(name, out var reference)) return false;
+            if (reference.ValueKind != JsonValueKind.Object || !HasOnlyProperties(reference, "recordId", "revision", "digest"))
+            {
+                throw InvalidResponse();
+            }
+            ParseRequiredGuid(reference, "recordId");
+            ParsePositiveLong(reference, "revision");
+            ParseRequiredDigest(reference, "digest");
+            return true;
+        }
+
+        static long ReconciledGapTotal(JsonElement gaps, params string[] fields)
+        {
+            if (gaps.ValueKind != JsonValueKind.Object || !HasOnlyProperties(gaps, fields.Append("total").ToArray()))
+            {
+                throw InvalidResponse();
+            }
+            var expected = fields.Aggregate(0L, (sum, field) => checked(sum + NonNegative(gaps, field)));
+            var declared = NonNegative(gaps, "total");
+            if (declared != expected) throw InvalidResponse();
+            return declared;
+        }
+
+        var readiness = result.GetProperty("readiness");
+        if (readiness.ValueKind != JsonValueKind.Object || !HasRequiredAndAllowedProperties(
+                readiness,
+                ["snapshotDigest", "result", "assessedAt", "outputs", "gaps", "reasonCount", "attentionRequired", "authorityBoundary"],
+                ["gate"]) ||
+            ParseRequiredEnum(readiness, "authorityBoundary", "readiness-result-is-evaluation-only-not-permission-or-product-readiness") !=
+            "readiness-result-is-evaluation-only-not-permission-or-product-readiness") throw InvalidResponse();
+        ParseRequiredDigest(readiness, "snapshotDigest");
+        var readinessResult = ParseRequiredEnum(
+            readiness, "result", "blocked", "conditionally-passed", "failed", "incomplete", "not-assessed", "passed");
+        var hasGate = ValidateOptionalReference(readiness, "gate");
+        var readinessAssessedAt = ParseRequiredTimestamp(readiness, "assessedAt");
+        var outputs = readiness.GetProperty("outputs");
+        if (outputs.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(outputs, "total", "applicable", "notApplicable", "unresolvedApplicability", "satisfied"))
+        {
+            throw InvalidResponse();
+        }
+        var readinessTotal = NonNegative(outputs, "total", 25);
+        var readinessApplicable = NonNegative(outputs, "applicable", 25);
+        var readinessNotApplicable = NonNegative(outputs, "notApplicable", 25);
+        var readinessUnresolved = NonNegative(outputs, "unresolvedApplicability", 25);
+        var readinessSatisfied = NonNegative(outputs, "satisfied", 25);
+        if (readinessApplicable + readinessNotApplicable + readinessUnresolved != readinessTotal ||
+            readinessSatisfied > readinessApplicable) throw InvalidResponse();
+        var readinessGapCount = ReconciledGapTotal(
+            readiness.GetProperty("gaps"),
+            "applicability", "conditional", "incomplete", "failed", "blocked", "staleOrUnknown", "waivers",
+            "decisions", "conditions", "requirements", "adverseEvidence", "bindings", "sourceReferences",
+            "inconsistencies", "questions");
+        NonNegative(readiness, "reasonCount");
+        var readinessAttention = readinessResult != "passed" || readinessGapCount > 0 || !hasGate;
+        if (ParseRequiredBoolean(readiness, "attentionRequired") != readinessAttention) throw InvalidResponse();
+
+        var handoff = result.GetProperty("handoff");
+        if (handoff.ValueKind != JsonValueKind.Object || !HasRequiredAndAllowedProperties(
+                handoff,
+                ["snapshotDigest", "state", "transferState", "assessedAt", "items", "gaps", "reasonCount", "attentionRequired", "authorityBoundary"],
+                ["package"]) ||
+            ParseRequiredEnum(handoff, "authorityBoundary", "handoff-status-is-candidate-context-only-not-transfer-or-phase-entry-authority") !=
+            "handoff-status-is-candidate-context-only-not-transfer-or-phase-entry-authority") throw InvalidResponse();
+        ParseRequiredDigest(handoff, "snapshotDigest");
+        var handoffState = ParseRequiredEnum(handoff, "state", "attention-required", "complete-for-review");
+        var handoffTransferState = ParseRequiredEnum(handoff, "transferState", "draft", "held", "ready-for-human-review");
+        var hasHandoff = ValidateOptionalReference(handoff, "package");
+        var handoffAssessedAt = ParseRequiredTimestamp(handoff, "assessedAt");
+        var items = handoff.GetProperty("items");
+        if (items.ValueKind != JsonValueKind.Object ||
+            !HasOnlyProperties(items, "total", "included", "referenceOnly", "omittedNotApplicable", "unresolved"))
+        {
+            throw InvalidResponse();
+        }
+        var handoffTotal = NonNegative(items, "total", 25);
+        var handoffIncluded = NonNegative(items, "included", 25);
+        var handoffReferenceOnly = NonNegative(items, "referenceOnly", 25);
+        var handoffOmitted = NonNegative(items, "omittedNotApplicable", 25);
+        var handoffUnresolved = NonNegative(items, "unresolved", 25);
+        if (handoffIncluded + handoffReferenceOnly + handoffOmitted + handoffUnresolved != handoffTotal) throw InvalidResponse();
+        var handoffGapCount = ReconciledGapTotal(
+            handoff.GetProperty("gaps"),
+            "unresolvedItems", "staleOrUnknownItems", "requirements", "conflicts", "questions", "bindings", "sourceReferences");
+        NonNegative(handoff, "reasonCount");
+        var handoffAttention = handoffState != "complete-for-review" || handoffGapCount > 0 || !hasHandoff;
+        if (ParseRequiredBoolean(handoff, "attentionRequired") != handoffAttention) throw InvalidResponse();
+
+        var freshness = result.GetProperty("freshness");
+        if (freshness.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                freshness,
+                "state", "readinessObservedAt", "handoffObservedAt", "staleBindingCount", "staleSourceReferenceCount", "basis") ||
+            ParseRequiredEnum(freshness, "basis", "exact-current-projections-and-declared-binding-freshness") !=
+            "exact-current-projections-and-declared-binding-freshness") throw InvalidResponse();
+        var staleBindingCount = NonNegative(freshness, "staleBindingCount");
+        var staleSourceReferenceCount = NonNegative(freshness, "staleSourceReferenceCount");
+        var freshnessAttention = staleBindingCount > 0 || staleSourceReferenceCount > 0;
+        var freshnessState = ParseRequiredEnum(freshness, "state", "current", "attention-required");
+        if ((freshnessState == "attention-required") != freshnessAttention) throw InvalidResponse();
+        var readinessObservedAt = ParseRequiredTimestamp(freshness, "readinessObservedAt");
+        var handoffObservedAt = ParseRequiredTimestamp(freshness, "handoffObservedAt");
+
+        var phaseStatus = result.GetProperty("phaseStatus");
+        if (phaseStatus.ValueKind != JsonValueKind.Object || !HasOnlyProperties(
+                phaseStatus,
+                "state", "declaredGapCount", "attentionSignalCount", "productOwnerAcceptance", "readinessAuthority",
+                "phaseEntryAuthority")) throw InvalidResponse();
+        var declaredGapCount = NonNegative(phaseStatus, "declaredGapCount");
+        var attentionSignalCount = checked((int)NonNegative(phaseStatus, "attentionSignalCount", 3));
+        var expectedAttentionSignals = new[] { readinessAttention, handoffAttention, freshnessAttention }.Count(value => value);
+        var expectedPhaseState = expectedAttentionSignals == 0 ? "candidate-complete-for-human-review" : "attention-required";
+        var phaseState = ParseRequiredEnum(phaseStatus, "state", "attention-required", "candidate-complete-for-human-review");
+        if (declaredGapCount != readinessGapCount + handoffGapCount || attentionSignalCount != expectedAttentionSignals ||
+            phaseState != expectedPhaseState || ParseRequiredEnum(phaseStatus, "productOwnerAcceptance", "not-established") != "not-established" ||
+            ParseRequiredEnum(phaseStatus, "readinessAuthority", "not-established") != "not-established" ||
+            ParseRequiredEnum(phaseStatus, "phaseEntryAuthority", "not-established") != "not-established") throw InvalidResponse();
+
+        var owners = result.GetProperty("owners");
+        if (owners.ValueKind != JsonValueKind.Object || !HasOnlyProperties(owners, "state", "boundOwnerCount", "basis") ||
+            ParseRequiredEnum(owners, "state", "unbound") != "unbound" || NonNegative(owners, "boundOwnerCount", 0) != 0 ||
+            ParseRequiredEnum(owners, "basis", "no-governed-phase-owner-assignment-is-bound") !=
+            "no-governed-phase-owner-assignment-is-bound") throw InvalidResponse();
+        ParseDashboardEvidenceCues(result.GetProperty("evidenceCues"), freshnessAttention ? "potentially-stale" : "current");
+
+        var observedAt = ParseRequiredTimestamp(result, "observedAt");
+        if (readinessAssessedAt > observedAt || handoffAssessedAt > observedAt ||
+            readinessObservedAt > observedAt || handoffObservedAt > observedAt) throw InvalidResponse();
+        var limitationsElement = result.GetProperty("limitations");
+        if (limitationsElement.ValueKind != JsonValueKind.Array || limitationsElement.GetArrayLength() is < 1 or > 8)
+        {
+            throw InvalidResponse();
+        }
+        var limitations = limitationsElement.EnumerateArray().Select(value =>
+        {
+            if (value.ValueKind != JsonValueKind.String || !ValidPortableText(value.GetString(), minimum: 4, maximum: 1_000))
+            {
+                throw InvalidResponse();
+            }
+            return value.GetString()!;
+        }).ToArray();
+        var snapshotDigest = ParseRequiredDigest(result, "snapshotDigest");
+        var digestBody = JsonSerializer.SerializeToElement(
+            result.EnumerateObject()
+                .Where(property => property.Name != "snapshotDigest")
+                .ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal));
+        if (snapshotDigest != CanonicalDigest(digestBody)) throw InvalidResponse();
+
+        return new Phase1SummaryDashboard(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState,
+            phaseState, declaredGapCount, attentionSignalCount, readinessResult, readinessSatisfied, readinessApplicable,
+            readinessTotal, readinessGapCount, handoffState, handoffTransferState, handoffIncluded, handoffTotal,
+            handoffGapCount, freshnessState, staleBindingCount, staleSourceReferenceCount, observedAt,
+            Phase1SummarySourceBoundary, Phase1SummaryPrivacyBoundary, Array.AsReadOnly(limitations), snapshotDigest);
     }
 
     private static PhaseDashboardPanel ParsePhaseDashboardPanel(JsonElement panel, string expectedId)

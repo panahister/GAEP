@@ -488,6 +488,38 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParsePhaseDashboardResponse(envelope, phase, product));
     }
 
+    public async Task<Phase1SummaryDashboard> ReadPhase1SummaryAsync(
+        ProductBinding product,
+        InitiativeEntryRecord initiative,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        ArgumentNullException.ThrowIfNull(initiative);
+        if (product.Id == Guid.Empty || initiative.Id == Guid.Empty || initiative.ProductId != product.Id)
+        {
+            throw new ArgumentException("The Initiative must target the exact current Product.", nameof(initiative));
+        }
+        PortableDesignProtocol.ValidateProductRevision(product.Revision);
+        PortableDesignProtocol.ValidateProductRevision(initiative.Revision);
+        PortableDesignProtocol.ValidateProductDigest(product.Digest);
+        PortableDesignProtocol.ValidateProductDigest(initiative.Digest);
+        using var response = await RequestPortableDesignAsync(
+            "dashboard.phase1Summary",
+            new Dictionary<string, object?>
+            {
+                ["expectedProductId"] = product.Id,
+                ["expectedProductRevision"] = product.Revision,
+                ["expectedProductDigest"] = product.Digest,
+                ["expectedInitiativeId"] = initiative.Id,
+                ["expectedInitiativeRevision"] = initiative.Revision,
+                ["expectedInitiativeDigest"] = initiative.Digest,
+            },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParsePhase1SummaryResponse(envelope, product, initiative));
+    }
+
     public async Task<ChangeImpactChangeCatalog> ListChangeImpactChangesAsync(
         ProductBinding product,
         CancellationToken cancellationToken = default)

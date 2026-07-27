@@ -223,6 +223,11 @@ fun main(arguments: Array<String>) {
                 request.getAsJsonObject("params"),
                 workspacePath,
             )
+            "dashboard.phase1Summary" -> handlePhase1Summary(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
             "dashboard.changeImpact.changes" -> handleChangeImpactCatalog(
                 id,
                 request.getAsJsonObject("params"),
@@ -2684,6 +2689,123 @@ private fun handlePhaseDashboard(id: Long, params: JsonObject, workspacePath: St
     if (workspacePath.endsWith("bad-dashboard-private")) {
         value.addProperty("sourceRoot", "$privateRoot/$privateCredential")
     }
+    writeResult(id, value)
+}
+
+private fun handlePhase1Summary(id: Long, params: JsonObject, workspacePath: String) {
+    val productDigest = canonicalDigest(productRecord())
+    val initiativeRevision = initiativeState.get("revision").asLong
+    val initiativeDigest = canonicalDigest(initiativeState)
+    if (params.keySet() != setOf(
+            "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+            "expectedInitiativeRevision", "expectedInitiativeDigest",
+        ) || params.get("expectedProductId").asString != productId.toString() ||
+        params.get("expectedProductRevision").asLong != 7L || params.get("expectedProductDigest").asString != productDigest ||
+        params.get("expectedInitiativeId").asString != initiativeId.toString() ||
+        params.get("expectedInitiativeRevision").asLong != initiativeRevision ||
+        params.get("expectedInitiativeDigest").asString != initiativeDigest
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE1 SUMMARY PARAMS")
+        return
+    }
+    fun readinessGaps() = JsonObject().apply {
+        listOf(
+            "applicability", "conditional", "incomplete", "failed", "blocked", "staleOrUnknown", "waivers",
+            "decisions", "conditions", "requirements", "adverseEvidence", "bindings", "sourceReferences",
+            "inconsistencies", "questions", "total",
+        ).forEach { addProperty(it, 0) }
+    }
+    fun handoffGaps() = JsonObject().apply {
+        listOf(
+            "unresolvedItems", "staleOrUnknownItems", "requirements", "conflicts", "questions", "bindings",
+            "sourceReferences", "total",
+        ).forEach { addProperty(it, 0) }
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "phase-1-summary-readiness-dashboard")
+        add("phase", JsonObject().apply {
+            addProperty("id", "phase-1b-product")
+            addProperty("label", "Phase 1B — Product P0–P4")
+        })
+        add("product", JsonObject().apply {
+            addProperty("recordType", "product")
+            addProperty("recordId", productId.toString())
+            addProperty("revision", 7)
+            addProperty("digest", productDigest)
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("recordType", "initiative")
+            addProperty("recordId", initiativeId.toString())
+            addProperty("revision", initiativeRevision)
+            addProperty("digest", initiativeDigest)
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("readiness", JsonObject().apply {
+            addProperty("snapshotDigest", "sha256:${"1".repeat(64)}")
+            addProperty("result", "not-assessed")
+            addProperty("assessedAt", "2026-07-27T12:00:00.000Z")
+            add("outputs", JsonObject().apply {
+                addProperty("total", 0)
+                addProperty("applicable", 0)
+                addProperty("notApplicable", 0)
+                addProperty("unresolvedApplicability", 0)
+                addProperty("satisfied", 0)
+            })
+            add("gaps", readinessGaps())
+            addProperty("reasonCount", 1)
+            addProperty("attentionRequired", true)
+            addProperty("authorityBoundary", "readiness-result-is-evaluation-only-not-permission-or-product-readiness")
+        })
+        add("handoff", JsonObject().apply {
+            addProperty("snapshotDigest", "sha256:${"2".repeat(64)}")
+            addProperty("state", "attention-required")
+            addProperty("transferState", "draft")
+            addProperty("assessedAt", "2026-07-27T12:00:01.000Z")
+            add("items", JsonObject().apply {
+                addProperty("total", 0)
+                addProperty("included", 0)
+                addProperty("referenceOnly", 0)
+                addProperty("omittedNotApplicable", 0)
+                addProperty("unresolved", 0)
+            })
+            add("gaps", handoffGaps())
+            addProperty("reasonCount", 1)
+            addProperty("attentionRequired", true)
+            addProperty("authorityBoundary", "handoff-status-is-candidate-context-only-not-transfer-or-phase-entry-authority")
+        })
+        add("phaseStatus", JsonObject().apply {
+            addProperty("state", "attention-required")
+            addProperty("declaredGapCount", 0)
+            addProperty("attentionSignalCount", 2)
+            addProperty("productOwnerAcceptance", "not-established")
+            addProperty("readinessAuthority", "not-established")
+            addProperty("phaseEntryAuthority", "not-established")
+        })
+        add("owners", JsonObject().apply {
+            addProperty("state", "unbound")
+            addProperty("boundOwnerCount", 0)
+            addProperty("basis", "no-governed-phase-owner-assignment-is-bound")
+        })
+        add("freshness", JsonObject().apply {
+            addProperty("state", "current")
+            addProperty("readinessObservedAt", "2026-07-27T12:00:02.000Z")
+            addProperty("handoffObservedAt", "2026-07-27T12:00:03.000Z")
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 0)
+            addProperty("basis", "exact-current-projections-and-declared-binding-freshness")
+        })
+        add("evidenceCues", dashboardEvidenceCues("current"))
+        addProperty("observedAt", "2026-07-27T12:00:04.000Z")
+        addProperty("sourceBoundary", "current-governed-product-initiative-readiness-and-handoff-projections-only")
+        addProperty("privacyBoundary", "summary-exposes-identities-counts-statuses-times-and-digests-not-narrative-findings-evidence-source-content-personal-data-secrets-or-credentials")
+        add("limitations", JsonArray().apply {
+            add("Phase ownership remains unbound until a governed phase-owner assignment record is available.")
+        })
+        addProperty("authorityBoundary", "phase-1-summary-is-read-only-candidate-evidence-not-readiness-approval-acceptance-phase-entry-release-or-action-authority")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-dashboard-private")) value.addProperty("sourceRoot", "$privateRoot/$privateCredential")
     writeResult(id, value)
 }
 

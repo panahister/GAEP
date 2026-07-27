@@ -230,6 +230,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         ClearInitiativeDraftCommand = new AsyncCommand(ClearInitiativeDraftAsync);
         ResolveInitiativeApplicabilityCommand = new AsyncCommand(ResolveInitiativeApplicabilityAsync);
         ShowPhaseDashboardCommand = new AsyncCommand(ShowPhaseDashboardAsync);
+        ShowPhase1SummaryCommand = new AsyncCommand(ShowPhase1SummaryAsync);
         LoadChangeImpactCommand = new AsyncCommand(LoadChangeImpactAsync);
         ShowChangeImpactCommand = new AsyncCommand(ShowChangeImpactAsync);
         ShowAgentModelCommand = new AsyncCommand(ShowAgentModelAsync);
@@ -354,6 +355,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ShowPhaseDashboardCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ShowPhase1SummaryCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadChangeImpactCommand { get; }
@@ -992,6 +996,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading Phase 0/1A dashboards",
             (controller, _, token) => controller.ReadPhaseDashboardAsync(token),
+            cancellationToken);
+
+    private Task ShowPhase1SummaryAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Phase 1 summary",
+            (controller, _, token) => controller.ReadPhase1SummaryAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadChangeImpactAsync(object? commandParameter, CancellationToken cancellationToken) =>

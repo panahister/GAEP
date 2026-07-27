@@ -1552,6 +1552,20 @@ public sealed class ProductWorkflowController(EngineClient client)
             cancellationToken));
     }
 
+    public async Task<string> ReadPhase1SummaryAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        if (initiative.ProductId != product.Id)
+        {
+            throw new ArgumentException("The Initiative does not target the exact current Product. Reload the Product and Initiative.");
+        }
+        return RenderPhase1Summary(await client.ReadPhase1SummaryAsync(product, initiative, cancellationToken));
+    }
+
     public async Task<IReadOnlyList<AccessibleMetadataTable>> ReadPhaseDashboardTablesAsync(
         CancellationToken cancellationToken = default)
     {
@@ -2127,6 +2141,38 @@ public sealed class ProductWorkflowController(EngineClient client)
                 "phase-entry, approval, readiness, acceptance, release, Run, Tool, or effect authority.")
             .Append(
                 "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.")
+            .ToString();
+    }
+
+    private static string RenderPhase1Summary(Phase1SummaryDashboard summary)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP exact Phase 1 summary and readiness dashboard")
+            .AppendLine()
+            .AppendLine($"Initiative: {summary.InitiativeId:D} · revision {summary.InitiativeRevision} · {summary.InitiativeState}")
+            .AppendLine($"Phase state: {summary.PhaseState}")
+            .AppendLine($"Declared gap indicators: {summary.DeclaredGapCount} · attention signals: {summary.AttentionSignalCount}")
+            .AppendLine(
+                $"P0-P4 readiness: {summary.ReadinessResult} · {summary.ReadinessSatisfiedOutputs}/" +
+                $"{summary.ReadinessApplicableOutputs} applicable outputs satisfied · {summary.ReadinessGapCount} declared gaps")
+            .AppendLine(
+                $"P5 handoff: {summary.HandoffState} · {summary.HandoffTransferState} · {summary.HandoffIncludedItems}/" +
+                $"{summary.HandoffTotalItems} items included · {summary.HandoffGapCount} declared gaps")
+            .AppendLine(
+                $"Freshness: {summary.FreshnessState} · {summary.StaleBindingCount} stale bindings · " +
+                $"{summary.StaleSourceReferenceCount} stale Source references")
+            .AppendLine("Owners: unbound; no governed phase-owner assignment is bound.")
+            .AppendLine("Product Owner acceptance: not established · readiness authority: not established · phase-entry authority: not established")
+            .AppendLine($"Snapshot digest: {summary.SnapshotDigest}")
+            .AppendLine($"Source: {summary.SourceBoundary}")
+            .AppendLine($"Privacy: {summary.PrivacyBoundary}")
+            .AppendLine();
+        foreach (var limitation in summary.Limitations) output.AppendLine($"Limit: {limitation}");
+        return output
+            .AppendLine()
+            .Append(
+                "Boundary: this read-only candidate summary grants no readiness, approval, acceptance, phase-entry, " +
+                "release, Run, Tool, write, or action authority.")
             .ToString();
     }
 
