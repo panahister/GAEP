@@ -49,6 +49,7 @@ const riskRegisterId = "51515151-5151-4151-8151-515151515151"
 const evidenceRegistryId = "52525252-5252-4252-8252-525252525252"
 const endToEndTraceabilityId = "53535353-5353-4353-8353-535353535353"
 const p0P4ReadinessGateId = "54545454-5454-4454-8454-545454545454"
+const p5HandoffPackageId = "55555555-5555-4555-8555-555555555555"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -128,6 +129,8 @@ input.on("line", (line) => {
       return readEndToEndTraceability(id, request.params)
     case "readiness.gates.snapshot":
       return readP0P4ReadinessGate(id, request.params)
+    case "handoff.p5.snapshot":
+      return readP5HandoffPackage(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -1603,6 +1606,70 @@ function readP0P4ReadinessGate(id, params) {
   if (workspacePath.endsWith("bad-readiness-gate-snapshot-digest")) value.gate.outputCount = 24
   if (workspacePath.endsWith("bad-readiness-gate-snapshot-private")) {
     value.waiverRationale = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readP5HandoffPackage(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE P5 HANDOFF PARAMS")
+  }
+  const handoffDigest = `sha256:${"1".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "p5-handoff-package-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    handoff: { recordId: p5HandoffPackageId, revision: 3, digest: handoffDigest },
+    itemCount: 25,
+    includedItemCount: 17,
+    referenceOnlyItemCount: 3,
+    omittedNotApplicableItemCount: 4,
+    unresolvedItemCount: 1,
+    staleOrUnknownItemCount: 2,
+    lossyTransformationCount: 1,
+    unresolvedRequirementCount: 2,
+    conflictCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    readinessResult: "incomplete",
+    transferState: "held",
+    state: "attention-required",
+    reasons: ["The current P0-P4 Readiness Gate evaluation has not passed"],
+    assessedAt: "2026-07-27T04:00:00.000Z",
+    handoffBoundary: "handoff-transfers-exact-candidate-context-not-source-ownership-or-authority",
+    authorityBoundary: "p5-handoff-package-status-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "p5-handoff-package-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    handoff: {
+      id: p5HandoffPackageId,
+      revision: 3,
+      digest: handoffDigest,
+      membershipDigest: `sha256:${"2".repeat(64)}`,
+      state: "candidate",
+      readinessStatusDigest: `sha256:${"3".repeat(64)}`,
+      itemCount: 25,
+      requirementCount: 66,
+      deliveryMode: "disconnected",
+      updatedAt: "2026-07-27T03:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-item-content-summaries-omissions-uncertainties-source-content-personal-data-secrets-credentials-or-destinations",
+    authorityBoundary: "p5-handoff-package-projection-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-p5-handoff-snapshot-binding")) content.initiative.id = p5HandoffPackageId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-p5-handoff-snapshot-digest")) value.handoff.itemCount = 24
+  if (workspacePath.endsWith("bad-p5-handoff-snapshot-private")) {
+    value.itemContent = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

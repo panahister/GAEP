@@ -22,6 +22,7 @@ import {
   evidenceRegistryProjectionSchema,
   endToEndTraceabilityProjectionSchema,
   p0P4ReadinessGateProjectionSchema,
+  p5HandoffPackageProjectionSchema,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
@@ -48,6 +49,7 @@ import {
   type EvidenceRegistryProjection,
   type EndToEndTraceabilityProjection,
   type P0P4ReadinessGateProjection,
+  type P5HandoffPackageProjection,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
@@ -573,6 +575,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = p0P4ReadinessGateProjectionSchema.safeParse(
         await this.request("readiness.gates.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readP5HandoffPackage(initiativeValue: string): Promise<P5HandoffPackageProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = p5HandoffPackageProjectionSchema.safeParse(
+        await this.request("handoff.p5.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

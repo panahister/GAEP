@@ -23,6 +23,7 @@ import {
   type EvidenceRegistryProjection,
   type EndToEndTraceabilityProjection,
   type P0P4ReadinessGateProjection,
+  type P5HandoffPackageProjection,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -111,6 +112,7 @@ const commandIds = {
   evidenceRegistry: "gaepKiro.evidenceRegistry.inspect",
   endToEndTraceability: "gaepKiro.endToEndTraceability.inspect",
   p0P4ReadinessGate: "gaepKiro.p0P4ReadinessGate.inspect",
+  p5HandoffPackage: "gaepKiro.p5HandoffPackage.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -221,6 +223,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.evidenceRegistry, (input?: unknown) => runUserCommand(() => showEvidenceRegistry(pool, input))),
     vscode.commands.registerCommand(commandIds.endToEndTraceability, (input?: unknown) => runUserCommand(() => showEndToEndTraceability(pool, input))),
     vscode.commands.registerCommand(commandIds.p0P4ReadinessGate, (input?: unknown) => runUserCommand(() => showP0P4ReadinessGate(pool, input))),
+    vscode.commands.registerCommand(commandIds.p5HandoffPackage, (input?: unknown) => runUserCommand(() => showP5HandoffPackage(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1356,6 +1359,48 @@ async function showP0P4ReadinessGate(
     ] : []),
     "",
     `Gate boundary: ${status.gateBoundary}`,
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showP5HandoffPackage(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<P5HandoffPackageProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the P5 Handoff Package candidate", "Initiative ID")
+  const projection = await client.readP5HandoffPackage(initiativeId)
+  const status = projection.status
+  const record = projection.handoff
+  const lines = [
+    "GAEP governed P5 Handoff Package candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state}`,
+    `Readiness result: ${status.readinessResult} · transfer state: ${status.transferState}`,
+    `Items: ${status.includedItemCount} included · ${status.referenceOnlyItemCount} exact references · ${status.omittedNotApplicableItemCount} candidate not applicable · ${status.unresolvedItemCount} unresolved`,
+    `Candidate gaps: ${status.staleOrUnknownItemCount} stale or unknown applicable items · ${status.lossyTransformationCount} lossy transformations · ${status.unresolvedRequirementCount} requirements · ${status.conflictCount} conflicts · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Readiness assessment digest: ${record.readinessStatusDigest}`,
+      `Candidate inventory: ${record.itemCount} items · ${record.requirementCount} requirements · ${record.deliveryMode} delivery`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    `Handoff boundary: ${status.handoffBoundary}`,
+    "Source ownership remains retained. Complete for review is not acknowledgement, readiness approval, design approval, a Design Baseline, P5 entry, transfer authority, write authority, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

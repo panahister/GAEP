@@ -1314,6 +1314,56 @@ test("protocol-v2 P0-P4 Readiness Gate projection is exact, private-safe, and no
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 P5 Handoff Package projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-p5-handoff-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-p5-handoff-snapshot-binding",
+    "bad-p5-handoff-snapshot-digest",
+    "bad-p5-handoff-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readP5HandoffPackage(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.readinessResult, "incomplete")
+    assert.equal(projection.status.transferState, "held")
+    assert.equal(projection.handoff?.itemCount, 25)
+    assert.equal(projection.handoff?.requirementCount, 66)
+    assert.equal(projection.handoff?.deliveryMode, "disconnected")
+    assert.equal(
+      projection.authorityBoundary,
+      "p5-handoff-package-projection-does-not-establish-acknowledgement-readiness-approval-design-baseline-p5-entry-transfer-write-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"itemContent":'), false)
+    assert.equal(serialized.includes('"acknowledged":'), false)
+    assert.equal(serialized.includes('"approved":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readP5HandoffPackage(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")
