@@ -20,6 +20,7 @@ import {
   decisionRegisterProjectionSchema,
   riskRegisterProjectionSchema,
   evidenceRegistryProjectionSchema,
+  endToEndTraceabilityProjectionSchema,
   initiativeApplicabilityMatrixInputSchema,
   initiativeClassificationInputSchema,
   initiativeEntryAssessmentSchema,
@@ -44,6 +45,7 @@ import {
   type DecisionRegisterProjection,
   type RiskRegisterProjection,
   type EvidenceRegistryProjection,
+  type EndToEndTraceabilityProjection,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InitiativeEntryAssessment,
@@ -535,6 +537,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = evidenceRegistryProjectionSchema.safeParse(
         await this.request("evidence.registries.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readEndToEndTraceability(initiativeValue: string): Promise<EndToEndTraceabilityProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = endToEndTraceabilityProjectionSchema.safeParse(
+        await this.request("traceability.graphs.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

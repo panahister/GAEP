@@ -68,6 +68,7 @@
     "onCommand:gaepKiro.decisionRegister.inspect",
     "onCommand:gaepKiro.riskRegister.inspect",
     "onCommand:gaepKiro.evidenceRegistry.inspect",
+    "onCommand:gaepKiro.endToEndTraceability.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -217,6 +218,10 @@
       {
         "command": "gaepKiro.evidenceRegistry.inspect",
         "title": "GAEP for Kiro: Inspect Governed Evidence Registry Candidate"
+      },
+      {
+        "command": "gaepKiro.endToEndTraceability.inspect",
+        "title": "GAEP for Kiro: Inspect Governed End-to-End Traceability Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

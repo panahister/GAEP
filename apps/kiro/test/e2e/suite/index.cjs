@@ -41,6 +41,7 @@ const commands = [
   "gaepKiro.decisionRegister.inspect",
   "gaepKiro.riskRegister.inspect",
   "gaepKiro.evidenceRegistry.inspect",
+  "gaepKiro.endToEndTraceability.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",

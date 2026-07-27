@@ -47,6 +47,7 @@ const architectureChallengeModelId = "49494949-4949-4949-8949-494949494949"
 const decisionRegisterId = "50505050-5050-4050-8050-505050505050"
 const riskRegisterId = "51515151-5151-4151-8151-515151515151"
 const evidenceRegistryId = "52525252-5252-4252-8252-525252525252"
+const endToEndTraceabilityId = "53535353-5353-4353-8353-535353535353"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -122,6 +123,8 @@ input.on("line", (line) => {
       return readRiskRegister(id, request.params)
     case "evidence.registries.snapshot":
       return readEvidenceRegistry(id, request.params)
+    case "traceability.graphs.snapshot":
+      return readEndToEndTraceability(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.changeImpact.changes":
@@ -1461,6 +1464,72 @@ function readEvidenceRegistry(id, params) {
   if (workspacePath.endsWith("bad-evidence-registry-snapshot-digest")) value.registry.claimCount = 13
   if (workspacePath.endsWith("bad-evidence-registry-snapshot-private")) {
     value.claimStatement = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readEndToEndTraceability(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE TRACEABILITY PARAMS")
+  }
+  const traceabilityDigest = `sha256:${"a".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "end-to-end-traceability-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    traceability: { recordId: endToEndTraceabilityId, revision: 3, digest: traceabilityDigest },
+    nodeCount: 44,
+    relationshipCount: 12,
+    linkCount: 67,
+    transformationCount: 5,
+    verifiedLinkCount: 40,
+    proposedLinkCount: 20,
+    invalidOrHistoricalLinkCount: 7,
+    unresolvedEndpointCount: 2,
+    notAssessedSemanticCount: 6,
+    missingSpineCount: 1,
+    unknownRelationshipCount: 3,
+    unresolvedRequirementCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 0,
+    inconsistencyCount: 1,
+    unresolvedQuestionCount: 2,
+    state: "attention-required",
+    reasons: ["One or more Trace Links have unresolved endpoints"],
+    assessedAt: "2026-07-27T02:30:00.000Z",
+    coverageBoundary: "absence-of-a-trace-link-does-not-prove-absence-of-impact-or-relationship",
+    authorityBoundary: "end-to-end-traceability-status-reports-candidate-coverage-and-gaps-and-does-not-establish-relationship-truth-completeness-approval-readiness-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "end-to-end-traceability-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    traceability: {
+      id: endToEndTraceabilityId,
+      revision: 3,
+      digest: traceabilityDigest,
+      membershipDigest: `sha256:${"b".repeat(64)}`,
+      state: "candidate",
+      nodeCount: 44,
+      relationshipCount: 12,
+      linkCount: 67,
+      transformationCount: 5,
+      updatedAt: "2026-07-27T02:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-identities-counts-statuses-and-digests-only-not-node-content-link-rationale-transformation-detail-source-content-personal-data-secrets-or-credentials",
+    authorityBoundary: "end-to-end-traceability-projection-does-not-establish-relationship-truth-completeness-approval-baseline-promotion-readiness-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-traceability-snapshot-binding")) content.initiative.id = endToEndTraceabilityId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-traceability-snapshot-digest")) value.traceability.nodeCount = 45
+  if (workspacePath.endsWith("bad-traceability-snapshot-private")) {
+    value.linkRationale = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

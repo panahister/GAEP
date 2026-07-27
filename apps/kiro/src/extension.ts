@@ -21,6 +21,7 @@ import {
   type DecisionRegisterProjection,
   type RiskRegisterProjection,
   type EvidenceRegistryProjection,
+  type EndToEndTraceabilityProjection,
   type Initiative,
   type InitiativeEntryAssessment,
   type InitiativeEntryWorkflowUi,
@@ -107,6 +108,7 @@ const commandIds = {
   decisionRegister: "gaepKiro.decisionRegister.inspect",
   riskRegister: "gaepKiro.riskRegister.inspect",
   evidenceRegistry: "gaepKiro.evidenceRegistry.inspect",
+  endToEndTraceability: "gaepKiro.endToEndTraceability.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -215,6 +217,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.decisionRegister, (input?: unknown) => runUserCommand(() => showDecisionRegister(pool, input))),
     vscode.commands.registerCommand(commandIds.riskRegister, (input?: unknown) => runUserCommand(() => showRiskRegister(pool, input))),
     vscode.commands.registerCommand(commandIds.evidenceRegistry, (input?: unknown) => runUserCommand(() => showEvidenceRegistry(pool, input))),
+    vscode.commands.registerCommand(commandIds.endToEndTraceability, (input?: unknown) => runUserCommand(() => showEndToEndTraceability(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1271,6 +1274,45 @@ async function showEvidenceRegistry(
       `Updated: ${record.updatedAt}`,
     ] : []),
     "",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showEndToEndTraceability(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<EndToEndTraceabilityProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the End-to-End Traceability candidate", "Initiative ID")
+  const projection = await client.readEndToEndTraceability(initiativeId)
+  const status = projection.status
+  const record = projection.traceability
+  const lines = [
+    "GAEP governed End-to-End Traceability candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Assessment: ${status.state}`,
+    `Coverage: ${status.nodeCount} nodes · ${status.relationshipCount} relationship types · ${status.linkCount} links · ${status.transformationCount} transformations`,
+    `Candidate gaps: ${status.unresolvedEndpointCount} unresolved endpoints · ${status.notAssessedSemanticCount} semantic reviews pending · ${status.missingSpineCount} missing spine segments · ${status.unknownRelationshipCount} unknown relationships · ${status.unresolvedRequirementCount} requirements · ${status.inconsistencyCount} inconsistencies · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate counts: ${record.nodeCount} nodes · ${record.relationshipCount} relationship types · ${record.linkCount} links · ${record.transformationCount} transformations`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    `Coverage boundary: ${status.coverageBoundary}`,
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,
