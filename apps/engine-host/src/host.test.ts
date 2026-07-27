@@ -2425,7 +2425,7 @@ describe("engine host protocol", () => {
 
   it("composes an exact Agent/Model dashboard from cached capability and selection observations", async () => {
     await mockCodex()
-    const { productId } = await createProductAndInitiative()
+    const { productId, initiativeId } = await createProductAndInitiative()
     const capabilities = await host.dispatch({
       jsonrpc: "2.0",
       id: 60,
@@ -2493,6 +2493,66 @@ describe("engine host protocol", () => {
     })
     expect(JSON.stringify(dashboard)).not.toContain(workspace)
     expect(JSON.stringify(dashboard)).not.toContain(product.name)
+
+    const initiative = await host.engine.readInitiative(initiativeId)
+    const phase1Params = {
+      expectedInitiativeId: initiative.id,
+      expectedInitiativeRevision: initiative.revision ?? 1,
+      expectedInitiativeDigest: canonicalDigest(initiative),
+      agentModel: params,
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 68,
+      protocolVersion: 1,
+      method: "dashboard.phase1AgentModel",
+      params: phase1Params,
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    const phase1 = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 69,
+      protocolVersion: 2,
+      method: "dashboard.phase1AgentModel",
+      params: phase1Params,
+    }) as Record<string, unknown>
+    expect(phase1).toMatchObject({
+      kind: "phase-1-agent-model-dashboard",
+      product: { recordId: productId, revision: product.revision },
+      initiative: { recordId: initiativeId, revision: initiative.revision, state: "active" },
+      source: { scope: "exact-current-initiative" },
+      agentModel: {
+        kind: "agent-model-dashboard",
+        selection: { status: "selected", adapterId: "gaep.codex-cli", modelId: "gpt-test" },
+        limits: { runs: { total: 0 }, handoffs: { total: 0 }, managedRuns: { total: 0 } },
+      },
+      executionTruth: {
+        runs: { shown: 0, total: 0, omitted: 0 },
+        handoffs: { shown: 0, total: 0, omitted: 0 },
+        liveProviderQuality: "not-assessed",
+        semanticOutputQuality: "not-assessed",
+      },
+      governance: {
+        automaticSelectionAuthority: "not-granted",
+        runLaunchAuthority: "not-granted",
+        productOwnerAcceptance: "not-established",
+      },
+    })
+    expect(JSON.stringify(phase1)).not.toContain(workspace)
+    expect(JSON.stringify(phase1)).not.toContain(product.name)
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 70,
+      protocolVersion: 2,
+      method: "dashboard.phase1AgentModel",
+      params: { ...phase1Params, expectedInitiativeDigest: `sha256:${"0".repeat(64)}` },
+    })).rejects.toMatchObject({ kind: "PHASE1_AGENT_MODEL_CONTEXT_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 71,
+      protocolVersion: 2,
+      method: "dashboard.phase1AgentModel",
+      params: { ...phase1Params, authorizeLaunch: true },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
 
     await expect(host.dispatch({
       jsonrpc: "2.0",

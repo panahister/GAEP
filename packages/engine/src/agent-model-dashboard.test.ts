@@ -21,6 +21,10 @@ import {
   composeAgentModelDashboard,
   type AgentModelDashboardSources,
 } from "./agent-model-dashboard.js"
+import {
+  composePhase1AgentModelDashboard,
+  Phase1AgentModelBindingError,
+} from "./phase1-agent-model-dashboard.js"
 
 const id = (tail: number): string => `00000000-0000-4000-8000-${tail.toString().padStart(12, "0")}`
 const digest = `sha256:${"a".repeat(64)}`
@@ -405,5 +409,61 @@ describe("Agent/Model dashboard composition", () => {
       ...content,
       limits: { ...content.limits, runs: { ...content.limits.runs, total: 2 } },
     })).toThrow()
+  })
+
+  it("binds the exact Initiative to a conservative Phase 1 execution-truth projection", () => {
+    const agentModel = composeAgentModelDashboard(sources(), requestFor(), observedAt)
+    const phase1 = composePhase1AgentModelDashboard(product, initiativeSnapshot, agentModel, {
+      expectedInitiativeId: initiativeSnapshot.id,
+      expectedInitiativeRevision: initiativeSnapshot.revision,
+      expectedInitiativeDigest: canonicalDigest(initiativeSnapshot),
+      agentModel: requestFor(),
+    }, "2026-07-24T03:00:03.000Z")
+    expect(phase1.initiative).toMatchObject({ recordId: initiativeSnapshot.id, revision: 1, state: "active" })
+    expect(phase1.executionTruth).toMatchObject({
+      capabilities: { shown: 2, detected: 1, unavailable: 1, selected: 1 },
+      runs: {
+        shown: 1,
+        terminal: 1,
+        managedObserved: 1,
+        resultBound: 1,
+        actualEffectCount: 0,
+        outcomes: { satisfied: 1, failed: 0, notAssessed: 0, indeterminate: 0 },
+      },
+      handoffs: { shown: 1, pendingAcknowledgement: 1, acknowledged: 0 },
+      liveProviderQuality: "not-assessed",
+      semanticOutputQuality: "not-assessed",
+    })
+    expect(phase1.governance).toMatchObject({
+      providerPreference: "not-established",
+      automaticSelectionAuthority: "not-granted",
+      runLaunchAuthority: "not-granted",
+      productOwnerAcceptance: "not-established",
+    })
+    const { snapshotDigest, ...content } = phase1
+    expect(snapshotDigest).toBe(canonicalDigest(content))
+  })
+
+  it("rejects a stale Initiative binding and cross-Initiative Run scope", () => {
+    const agentModel = composeAgentModelDashboard(sources(), requestFor(), observedAt)
+    const phaseRequest = {
+      expectedInitiativeId: initiativeSnapshot.id,
+      expectedInitiativeRevision: initiativeSnapshot.revision,
+      expectedInitiativeDigest: canonicalDigest(initiativeSnapshot),
+      agentModel: requestFor(),
+    }
+    expect(() => composePhase1AgentModelDashboard(product, initiativeSnapshot, agentModel, {
+      ...phaseRequest,
+      expectedInitiativeDigest: digest,
+    })).toThrow(Phase1AgentModelBindingError)
+    const rebound = {
+      ...agentModel,
+      runs: agentModel.runs.map((entry) => ({ ...entry, initiativeId: id(99) })),
+    }
+    const { snapshotDigest: _snapshotDigest, ...reboundContent } = rebound
+    expect(() => composePhase1AgentModelDashboard(product, initiativeSnapshot, {
+      ...reboundContent,
+      snapshotDigest: canonicalDigest(reboundContent),
+    }, phaseRequest)).toThrow(Phase1AgentModelBindingError)
   })
 })

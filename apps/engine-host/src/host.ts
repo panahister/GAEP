@@ -27,10 +27,12 @@ import {
   composeChangeImpactChangeCatalog,
   composeChangeImpactDashboard,
   composePhaseDashboardFramework,
+  composePhase1AgentModelDashboard,
   composePhase1SummaryDashboard,
   composePhase1ChangeImpactDashboard,
   DashboardProductBindingError,
   GaepEngine,
+  Phase1AgentModelBindingError,
   Phase1SummaryBindingError,
   Phase1ChangeImpactBindingError,
 } from "@gaep/engine"
@@ -81,6 +83,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "dashboard.changeImpact.changes",
   "dashboard.changeImpact",
   "dashboard.agentModel",
+  "dashboard.phase1AgentModel",
   "productStudio.designReadiness",
   "productStudio.search",
   "productStudio.exportBuild",
@@ -896,6 +899,76 @@ export class EngineHost {
             -32_048,
             "AGENT_MODEL_DASHBOARD_INVALID",
             "The current Agent/Model dashboard sources could not be verified",
+          )
+        }
+      }
+      case "dashboard.phase1AgentModel": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_050,
+            "PHASE1_AGENT_MODEL_AUDIT_INVALID",
+            "The audit chain is invalid or unavailable; no Phase 1 Agent/Model dashboard was composed",
+          )
+        }
+        try {
+          const capabilities = this.boundCapabilitySnapshots(request.params.agentModel.expectedCapabilities)
+          const [product, initiative, selection, allRuns, allHandoffs, allManagedRuns] = await Promise.all([
+            this.engine.readProduct(),
+            this.engine.readInitiative(request.params.expectedInitiativeId),
+            this.engine.readSelectionState(),
+            this.engine.listRuns(),
+            this.engine.listHandoffs(),
+            this.engine.listManagedRuns(),
+          ])
+          const initiativeId = initiative.id.toLowerCase()
+          const runs = allRuns.filter((run) => run.initiativeId.toLowerCase() === initiativeId)
+          const handoffs = allHandoffs.filter((handoff) => handoff.initiativeId.toLowerCase() === initiativeId)
+          const managedRecords = allManagedRuns.filter((record) => record.initiativeId.toLowerCase() === initiativeId)
+          const managedRuns = await Promise.all(managedRecords.map(async (record) => {
+            if (!record.resultId) return { record }
+            const result = await this.engine.readManagedRunResult(record.resultId)
+            const evidence = await this.engine.readManagedRunEvidence(result.evidenceId)
+            return { record, result, evidence }
+          }))
+          const agentModel = composeAgentModelDashboard({
+            product,
+            capabilities,
+            selection,
+            runs,
+            handoffs,
+            handoffTotal: handoffs.length,
+            managedRuns,
+            managedRunTotal: managedRuns.length,
+          }, request.params.agentModel)
+          return composePhase1AgentModelDashboard(product, initiative, agentModel, request.params)
+        } catch (error) {
+          if (error instanceof AgentModelCapabilityBindingError) {
+            throw new HostRpcError(
+              -32_046,
+              "AGENT_MODEL_CAPABILITIES_CHANGED",
+              "Agent capabilities changed before the dashboard was composed; probe the current agents again",
+            )
+          }
+          if (error instanceof AgentModelSelectionBindingError) {
+            throw new HostRpcError(
+              -32_047,
+              "AGENT_MODEL_SELECTION_CHANGED",
+              "The Agent Selection changed before the dashboard was composed; reload the current selection",
+            )
+          }
+          if (error instanceof Phase1AgentModelBindingError || error instanceof AgentModelProductBindingError) {
+            throw new HostRpcError(
+              -32_051,
+              "PHASE1_AGENT_MODEL_CONTEXT_CHANGED",
+              "The Product or Initiative changed before the Phase 1 Agent/Model dashboard was composed; reload the current context",
+            )
+          }
+          if (error instanceof HostRpcError) throw error
+          throw new HostRpcError(
+            -32_052,
+            "PHASE1_AGENT_MODEL_DASHBOARD_INVALID",
+            "The current Phase 1 Agent/Model dashboard sources could not be verified",
           )
         }
       }

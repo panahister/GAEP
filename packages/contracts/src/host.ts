@@ -17,6 +17,7 @@ import {
 } from "./dashboard.js"
 import { phase1SummaryDashboardRequestSchema } from "./phase1-summary-dashboard.js"
 import { phase1ChangeImpactDashboardRequestSchema } from "./phase1-change-impact-dashboard.js"
+import { phase1AgentModelDashboardRequestSchema } from "./phase1-agent-model-dashboard.js"
 import { effectDescriptorSchema, toolPermissionSchema } from "./execution.js"
 import {
   initiativeApplicabilityMatrixInputSchema,
@@ -505,6 +506,7 @@ export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDas
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
 export const hostChangeImpactDashboardParamsSchema = changeImpactDashboardRequestSchema
 export const hostAgentModelDashboardParamsSchema = agentModelDashboardRequestSchema
+export const hostPhase1AgentModelDashboardParamsSchema = phase1AgentModelDashboardRequestSchema
 
 export const hostMethodSchema = z.enum([
   "ping",
@@ -538,6 +540,7 @@ export const hostMethodSchema = z.enum([
   "dashboard.changeImpact.changes",
   "dashboard.changeImpact",
   "dashboard.agentModel",
+  "dashboard.phase1AgentModel",
   "verifyAudit",
   "productStudio.designReadiness",
   "productStudio.search",
@@ -713,6 +716,7 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("dashboard.changeImpact.changes", hostChangeImpactChangeCatalogParamsSchema),
   requestVariant("dashboard.changeImpact", hostChangeImpactDashboardParamsSchema),
   requestVariant("dashboard.agentModel", hostAgentModelDashboardParamsSchema),
+  requestVariant("dashboard.phase1AgentModel", hostPhase1AgentModelDashboardParamsSchema),
   requestVariant("verifyAudit", hostNoParamsSchema.default({})),
   requestVariant("productStudio.designReadiness", z.object({ productId: z.string().uuid() }).strict()),
   requestVariant("productStudio.search", hostSearchProductStudioParamsSchema),
