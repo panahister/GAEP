@@ -46,6 +46,7 @@ import {
   type P0P4ReadinessGateInput,
   type P0P4ReadinessGate,
   type P5HandoffPackageInput,
+  type P5HandoffPackage,
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
@@ -7296,6 +7297,10 @@ describe("Business understanding governance", () => {
       p0P4ReadinessGateInput(evidenceRegistry, traceability),
       actorId,
     )
+    const p5HandoffPackage = await engine.p5HandoffPackage.create(
+      await p5HandoffPackageInput(readinessGate),
+      actorId,
+    )
     const bundle = await engine.productStudio.buildPortableExport()
     expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
       `business-understanding/${business.id}.json`,
@@ -7338,6 +7343,8 @@ describe("Business understanding governance", () => {
       `end-to-end-traceability-history/end-to-end-traceability-${traceability.id}-r1.json`,
       `p0-p4-readiness-gates/${readinessGate.id}.json`,
       `p0-p4-readiness-gate-history/p0-p4-readiness-gate-${readinessGate.id}-r1.json`,
+      `p5-handoff-packages/${p5HandoffPackage.id}.json`,
+      `p5-handoff-package-history/p5-handoff-package-${p5HandoffPackage.id}-r1.json`,
       `stakeholder-models/${stakeholder.id}.json`,
       `stakeholder-model-history/stakeholder-model-${stakeholder.id}-r1.json`,
       `outcome-models/${outcome.id}.json`,
@@ -7347,6 +7354,49 @@ describe("Business understanding governance", () => {
       status: "compatible",
       importMutation: "not-performed",
     })
+
+    const forgeP5ReadinessGate = (content: unknown) => {
+      const record = content as P5HandoffPackage
+      const readinessGateReference = { ...record.readinessGate, digest: digest("f") }
+      return {
+        ...record,
+        readinessGate: readinessGateReference,
+        membershipDigest: canonicalDigest({
+          informationClassification: record.informationClassification,
+          title: record.title,
+          objective: record.objective,
+          scope: record.scope,
+          readinessGate: readinessGateReference,
+          readinessStatusDigest: record.readinessStatusDigest,
+          readinessResult: record.readinessResult,
+          target: record.target,
+          items: record.items,
+          requirementCoverage: record.requirementCoverage,
+          assumptions: record.assumptions,
+          unresolvedQuestions: record.unresolvedQuestions,
+          conflicts: record.conflicts,
+          limitations: record.limitations,
+          nextActions: record.nextActions,
+          transferState: record.transferState,
+          acknowledgementState: record.acknowledgementState,
+          sourceOwnershipState: record.sourceOwnershipState,
+          transferAuthorityState: record.transferAuthorityState,
+          p5EntryAuthorityState: record.p5EntryAuthorityState,
+        }),
+      }
+    }
+    let forgedP5Binding = replacePortableRecord(
+      bundle,
+      `p5-handoff-packages/${p5HandoffPackage.id}.json`,
+      forgeP5ReadinessGate,
+    )
+    forgedP5Binding = replacePortableRecord(
+      forgedP5Binding,
+      `p5-handoff-package-history/p5-handoff-package-${p5HandoffPackage.id}-r1.json`,
+      forgeP5ReadinessGate,
+    )
+    await expect(engine.productStudio.previewImportBundle(forgedP5Binding))
+      .rejects.toThrow(/P5 Handoff Package .* exact P0-P4 Readiness Gate reference is unresolved/)
 
     const forgeProcessValueStream = (content: unknown) => {
       const record = content as ProcessModel

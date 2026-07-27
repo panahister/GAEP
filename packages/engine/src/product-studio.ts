@@ -10,6 +10,7 @@ import {
   evidenceRegistrySchema,
   endToEndTraceabilitySchema,
   p0P4ReadinessGateSchema,
+  p5HandoffPackageSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -76,6 +77,7 @@ import {
   type EvidenceRegistry,
   type EndToEndTraceability,
   type P0P4ReadinessGate,
+  type P5HandoffPackage,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2137,6 +2139,16 @@ export class ProductStudioService {
       /^p0-p4-readiness-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       p0P4ReadinessGateSchema,
     )
+    const p5HandoffPackages = await this.listRecords(
+      "p5-handoff-packages",
+      /^[0-9a-f-]+\.json$/i,
+      p5HandoffPackageSchema,
+    )
+    const p5HandoffPackageHistory = await this.listRecords(
+      "p5-handoff-package-history",
+      /^p5-handoff-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      p5HandoffPackageSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2192,6 +2204,8 @@ export class ProductStudioService {
       ...endToEndTraceabilityHistory,
       ...p0P4ReadinessGates,
       ...p0P4ReadinessGateHistory,
+      ...p5HandoffPackages,
+      ...p5HandoffPackageHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2220,6 +2234,7 @@ export class ProductStudioService {
           evidenceRegistries.find((record) => record.id === id)?.informationClassification ??
           endToEndTraceability.find((record) => record.id === id)?.informationClassification ??
           p0P4ReadinessGates.find((record) => record.id === id)?.informationClassification ??
+          p5HandoffPackages.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2407,6 +2422,13 @@ export class ProductStudioService {
       p0P4ReadinessGateHistory,
       (record) => `p0-p4-readiness-gate-history/p0-p4-readiness-gate-${record.id}-r${record.revision}.json`,
     )
+    append("p5-handoff-packages", "p5-handoff-package-candidate", p5HandoffPackages)
+    append(
+      "p5-handoff-package-history",
+      "p5-handoff-package-candidate",
+      p5HandoffPackageHistory,
+      (record) => `p5-handoff-package-history/p5-handoff-package-${record.id}-r${record.revision}.json`,
+    )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
       "stakeholder-model-history",
@@ -2482,6 +2504,7 @@ export class ProductStudioService {
           ...businessCapabilityMaps.map((record) => record.informationClassification),
           ...systemSolutionArchitectures.map((record) => record.informationClassification),
           ...boundedContextModels.map((record) => record.informationClassification),
+          ...p5HandoffPackages.map((record) => record.informationClassification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
         ])],
@@ -2758,6 +2781,14 @@ export class ProductStudioService {
           `p0-p4-readiness-gate-history/p0-p4-readiness-gate-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import P0-P4 Readiness Gate history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("p5-handoff-package-history/")) {
+        const record = validated as P5HandoffPackage
+        const expectedHistoryPath =
+          `p5-handoff-package-history/p5-handoff-package-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import P5 Handoff Package history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3884,7 +3915,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3916,7 +3947,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -5575,7 +5606,7 @@ export class ProductStudioService {
     const p0P4ReadinessGateHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("p0-p4-readiness-gate-history/"))
       .map(([, record]) => p0P4ReadinessGateSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactP0P4ReadinessGates = validateVersionedBusinessRecords(
       p0P4ReadinessGates,
       p0P4ReadinessGateHistory,
       "P0-P4 Readiness Gate",
@@ -5697,6 +5728,55 @@ export class ProductStudioService {
       }
       if (gate.membershipDigest !== canonicalDigest(expectedMembership)) {
         throw new Error(`Import P0-P4 Readiness Gate ${gate.id} membership digest is invalid`)
+      }
+    }
+
+    const p5HandoffPackages = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("p5-handoff-packages/"))
+      .map(([, record]) => p5HandoffPackageSchema.parse(record))
+    const p5HandoffPackageHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("p5-handoff-package-history/"))
+      .map(([, record]) => p5HandoffPackageSchema.parse(record))
+    validateVersionedBusinessRecords(p5HandoffPackages, p5HandoffPackageHistory, "P5 Handoff Package")
+    for (const handoff of [...p5HandoffPackages, ...p5HandoffPackageHistory]) {
+      const gate = exactP0P4ReadinessGates.get(
+        `${handoff.readinessGate.recordId}:${handoff.readinessGate.revision}:${handoff.readinessGate.digest}`,
+      )
+      if (!gate || gate.initiativeId !== handoff.initiativeId || gate.productId !== handoff.productId) {
+        throw new Error(`Import P5 Handoff Package ${handoff.id} exact P0-P4 Readiness Gate reference is unresolved`)
+      }
+      const outputByKind = new Map(gate.outputs.map((output) => [output.outputKind, output]))
+      for (const item of handoff.items) {
+        const output = outputByKind.get(item.outputKind)
+        if (!output || item.applicability !== output.applicability || item.freshness !== output.freshness ||
+            canonicalDigest(item.subjects) !== canonicalDigest(output.subjects)) {
+          throw new Error(`Import P5 Handoff Package ${handoff.id} does not preserve an exact readiness output binding`)
+        }
+      }
+      const expectedMembership = {
+        informationClassification: handoff.informationClassification,
+        title: handoff.title,
+        objective: handoff.objective,
+        scope: handoff.scope,
+        readinessGate: handoff.readinessGate,
+        readinessStatusDigest: handoff.readinessStatusDigest,
+        readinessResult: handoff.readinessResult,
+        target: handoff.target,
+        items: handoff.items,
+        requirementCoverage: handoff.requirementCoverage,
+        assumptions: handoff.assumptions,
+        unresolvedQuestions: handoff.unresolvedQuestions,
+        conflicts: handoff.conflicts,
+        limitations: handoff.limitations,
+        nextActions: handoff.nextActions,
+        transferState: handoff.transferState,
+        acknowledgementState: handoff.acknowledgementState,
+        sourceOwnershipState: handoff.sourceOwnershipState,
+        transferAuthorityState: handoff.transferAuthorityState,
+        p5EntryAuthorityState: handoff.p5EntryAuthorityState,
+      }
+      if (handoff.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import P5 Handoff Package ${handoff.id} membership digest is invalid`)
       }
     }
 
@@ -6377,6 +6457,10 @@ export class ProductStudioService {
         /^p0-p4-readiness-gate-history\/p0-p4-readiness-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "p0-p4-readiness-gate-candidate"
     }
+    if (/^p5-handoff-packages\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^p5-handoff-package-history\/p5-handoff-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "p5-handoff-package-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -6501,6 +6585,10 @@ export class ProductStudioService {
     if (/^p0-p4-readiness-gates\/[0-9a-f-]+\.json$/i.test(path) ||
         /^p0-p4-readiness-gate-history\/p0-p4-readiness-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return p0P4ReadinessGateSchema
+    }
+    if (/^p5-handoff-packages\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^p5-handoff-package-history\/p5-handoff-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return p5HandoffPackageSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
