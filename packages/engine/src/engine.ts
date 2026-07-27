@@ -90,6 +90,7 @@ import { DecisionRegisterService } from "./decision-register.js"
 import { RiskRegisterService } from "./risk-register.js"
 import { EvidenceRegistryService } from "./evidence-registry.js"
 import { EndToEndTraceabilityService } from "./end-to-end-traceability.js"
+import { P0P4ReadinessGateService } from "./p0-p4-readiness-gate.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -269,6 +270,7 @@ export class GaepEngine {
   readonly riskRegister: RiskRegisterService
   readonly evidenceRegistry: EvidenceRegistryService
   readonly endToEndTraceability: EndToEndTraceabilityService
+  readonly p0P4ReadinessGate: P0P4ReadinessGateService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -480,6 +482,14 @@ export class GaepEngine {
       this.sourceGovernance,
       this.evidenceRegistry,
     )
+    this.p0P4ReadinessGate = new P0P4ReadinessGateService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      this.evidenceRegistry,
+      this.endToEndTraceability,
+    )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
@@ -595,6 +605,7 @@ export class GaepEngine {
         this.riskRegister.healthIssues(),
         this.evidenceRegistry.healthIssues(),
         this.endToEndTraceability.healthIssues(),
+        this.p0P4ReadinessGate.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,

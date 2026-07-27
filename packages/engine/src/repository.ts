@@ -19,6 +19,7 @@ import {
   riskRegisterSchema,
   evidenceRegistrySchema,
   endToEndTraceabilitySchema,
+  p0P4ReadinessGateSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -137,6 +138,8 @@ const directoryNames = [
   "evidence-registry-history",
   "end-to-end-traceability",
   "end-to-end-traceability-history",
+  "p0-p4-readiness-gates",
+  "p0-p4-readiness-gate-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -940,6 +943,8 @@ export class GaepRepository {
       ["end-to-end-traceability", /^[0-9a-f-]+\.json$/i],
       ["evidence-registry-history", /^evidence-registry-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["end-to-end-traceability-history", /^end-to-end-traceability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["p0-p4-readiness-gates", /^[0-9a-f-]+\.json$/i],
+      ["p0-p4-readiness-gate-history", /^p0-p4-readiness-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1099,6 +1104,10 @@ export class GaepRepository {
     if (/^end-to-end-traceability\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^end-to-end-traceability-history\/end-to-end-traceability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, endToEndTraceabilitySchema)
+    }
+    if (/^p0-p4-readiness-gates\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^p0-p4-readiness-gate-history\/p0-p4-readiness-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, p0P4ReadinessGateSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

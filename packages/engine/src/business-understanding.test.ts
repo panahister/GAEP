@@ -9,6 +9,8 @@ import {
   riskRegisterRequirementIds,
   evidenceRegistryRequirementIds,
   endToEndTraceabilityRequirementIds,
+  p0P4ReadinessOutputKinds,
+  p0P4ReadinessRequirementIds,
   authorizationModelInputSchema,
   authorizationModelRequirementIds,
   eventIntegrationModelInputSchema,
@@ -40,6 +42,7 @@ import {
   type EvidenceRegistry,
   type EndToEndTraceabilityInput,
   type EndToEndTraceability,
+  type P0P4ReadinessGateInput,
   type BoundedContextModel,
   type AuthorizationModel,
   type AuthorizationModelInput,
@@ -3380,6 +3383,123 @@ describe("Business understanding governance", () => {
     }
   }
 
+  function p0P4ReadinessGateInput(
+    evidenceRegistry: EvidenceRegistry,
+    traceability: EndToEndTraceability,
+    overrides: Partial<P0P4ReadinessGateInput> = {},
+  ): P0P4ReadinessGateInput {
+    const mandatory = new Set(["end-to-end-traceability", "evidence-registry", "initiative-entry"])
+    const recordKind = {
+      "end-to-end-traceability": "end-to-end-traceability-candidate",
+      "evidence-registry": "evidence-registry",
+      "initiative-entry": "initiative",
+    } as const
+    const subject = {
+      "end-to-end-traceability": {
+        recordKind: recordKind["end-to-end-traceability"], recordId: traceability.id,
+        revision: traceability.revision, digest: canonicalDigest(traceability),
+      },
+      "evidence-registry": {
+        recordKind: recordKind["evidence-registry"], recordId: evidenceRegistry.id,
+        revision: evidenceRegistry.revision, digest: canonicalDigest(evidenceRegistry),
+      },
+      "initiative-entry": {
+        recordKind: recordKind["initiative-entry"], recordId: initiative.id,
+        revision: initiative.revision ?? 1, digest: canonicalDigest(initiative),
+      },
+    } as const
+    const applicableOutputs = ["end-to-end-traceability", "evidence-registry", "initiative-entry"] as const
+    return {
+      initiativeId: initiative.id,
+      context: context(),
+      informationClassification: "internal",
+      title: "Candidate P0-P4 readiness evaluation",
+      scope: "Evaluate the exact applicable P0 through P4 governed output revisions for this Initiative without granting readiness or authority.",
+      evaluationDefinition: {
+        id: "p0-p4-readiness-v1",
+        version: "1.0.0",
+        digest: digest("a"),
+        criteria: ["Applicable outputs have exact current evidence", "Blocking findings remain visible"],
+        expectedEvidence: ["Exact Evidence Registry entries", "Exact governed output revisions"],
+        evaluatorRequirements: ["Current Product and Initiative access", "Read-only governed record access"],
+        independenceRequirements: ["Approval remains outside the evaluator", "Evaluation remains separate from authoring"],
+        failureBehavior: "Missing, stale, failed, unavailable or inconclusive evidence keeps the gate from passing.",
+        invalidationTriggers: ["Applicable output revision changes", "Evidence freshness or policy changes"],
+        authorityBoundary: "evaluation-definition-does-not-grant-approval-readiness-authorization-or-action-authority",
+      },
+      evidenceRegistry: {
+        recordId: evidenceRegistry.id, revision: evidenceRegistry.revision, digest: canonicalDigest(evidenceRegistry),
+      },
+      traceability: {
+        recordId: traceability.id, revision: traceability.revision, digest: canonicalDigest(traceability),
+      },
+      outputs: p0P4ReadinessOutputKinds.map((outputKind) => {
+        const applicable = mandatory.has(outputKind)
+        return {
+          outputKind,
+          applicability: applicable ? "applicable" as const : "not-applicable-candidate" as const,
+          subjects: applicable ? [subject[outputKind as keyof typeof subject]] : [],
+          evaluationState: applicable ? "satisfied" as const : "not-applicable-candidate" as const,
+          freshness: applicable ? "current" as const : "unknown" as const,
+          evidenceItemKeys: applicable ? ["local-conformance-receipt"] : [],
+          waiverKeys: [],
+          blockers: [],
+          conditions: [],
+          findings: [],
+          assessedBy: { kind: "human" as const, id: actorId },
+          assessedAt: "2026-07-27T02:00:00.000Z",
+          basis: applicable
+            ? "The named human evaluator records candidate satisfaction for the exact output and evidence revisions only."
+            : "The candidate applicability review records this output as not applicable without granting authority.",
+          sources: [reference()],
+          authorityBoundary: "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority" as const,
+        }
+      }),
+      waivers: [],
+      unresolvedDecisions: [],
+      conditions: [],
+      requirementCoverage: [...p0P4ReadinessRequirementIds].sort((left, right) => left.localeCompare(right))
+        .map((requirementId) => ({
+          requirementId,
+          state: "covered-candidate" as const,
+          outputKinds: [...applicableOutputs],
+          basis: "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+          sources: [reference()],
+        })),
+      unresolvedQuestions: [],
+      inconsistencies: [],
+      limitations: ["No phase entry, implementation authorization, Product Owner acceptance, release, deployment, or action authority is represented"],
+      readinessAuthorityState: "not-established",
+      ...overrides,
+    }
+  }
+
+  async function createP0P4ReadinessUpstream() {
+    const upstream = await createDecisionRegisterUpstream()
+    const decisionRegister = await engine.decisionRegister.create(
+      decisionRegisterInput(upstream.operatingModel, upstream.architectureChallengeModel), actorId,
+    )
+    const riskRegister = await engine.riskRegister.create(
+      riskRegisterInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister,
+      ),
+      actorId,
+    )
+    const evidenceRegistry = await engine.evidenceRegistry.create(
+      evidenceRegistryInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, decisionRegister, riskRegister,
+      ),
+      actorId,
+    )
+    const traceability = await engine.endToEndTraceability.create(
+      endToEndTraceabilityInput(riskRegister, evidenceRegistry),
+      actorId,
+    )
+    return { ...upstream, decisionRegister, riskRegister, evidenceRegistry, traceability }
+  }
+
   it("persists exact versioned candidate context and reports a complete-for-review assessment", async () => {
     const { business, stakeholder, outcome } = await createCompleteModel()
 
@@ -6570,6 +6690,191 @@ describe("Business understanding governance", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "end-to-end-traceability.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, and revises an immutable P0-P4 Readiness Gate without granting authority", async () => {
+    const { evidenceRegistry, traceability } = await createP0P4ReadinessUpstream()
+    const input = p0P4ReadinessGateInput(evidenceRegistry, traceability)
+    const gate = await engine.p0P4ReadinessGate.create(input, actorId)
+
+    expect(gate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      evidenceRegistry: input.evidenceRegistry,
+      traceability: input.traceability,
+      outputs: expect.arrayContaining([
+        expect.objectContaining({ outputKind: "end-to-end-traceability", applicability: "applicable", evaluationState: "satisfied" }),
+        expect.objectContaining({ outputKind: "evidence-registry", applicability: "applicable", evaluationState: "satisfied" }),
+        expect.objectContaining({ outputKind: "initiative-entry", applicability: "applicable", evaluationState: "satisfied" }),
+      ]),
+      readinessAuthorityState: "not-established",
+      authorityBoundary: expect.stringContaining("does-not-establish-readiness-approval"),
+    })
+    expect(gate.membershipDigest).toMatch(/^sha256:[0-9a-f]{64}$/)
+    expect(await engine.p0P4ReadinessGate.assess(initiative.id)).toMatchObject({
+      gate: { recordId: gate.id, revision: 1, digest: canonicalDigest(gate) },
+      outputCount: 25,
+      applicableOutputCount: 3,
+      notApplicableOutputCount: 22,
+      unresolvedApplicabilityCount: 0,
+      satisfiedOutputCount: 3,
+      conditionalOutputCount: 0,
+      incompleteOutputCount: 0,
+      failedOutputCount: 0,
+      blockedOutputCount: 0,
+      staleOrUnknownOutputCount: 0,
+      pendingOrInvalidWaiverCount: 0,
+      unresolvedDecisionCount: 0,
+      unmetConditionCount: 0,
+      unresolvedRequirementCount: 0,
+      adverseEvidenceCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      result: "passed",
+      reasons: [],
+      gateBoundary: "a-passing-gate-is-an-evaluation-result-not-permission",
+      authorityBoundary: expect.stringContaining("does-not-establish-readiness-approval"),
+    })
+    const projection = await engine.p0P4ReadinessGate.project(initiative.id)
+    expect(projection).toMatchObject({
+      gate: {
+        id: gate.id,
+        revision: 1,
+        outputCount: 25,
+        waiverCount: 0,
+        unresolvedDecisionCount: 0,
+        conditionCount: 0,
+      },
+      status: { result: "passed", gateBoundary: "a-passing-gate-is-an-evaluation-result-not-permission" },
+      privacyBoundary: expect.stringContaining("not-output-content-criteria-findings"),
+      authorityBoundary: expect.stringContaining("does-not-establish-readiness-approval"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Applicable outputs have exact current evidence")
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+
+    const revised = await engine.p0P4ReadinessGate.revise(
+      gate.id,
+      gate.revision,
+      p0P4ReadinessGateInput(evidenceRegistry, traceability, {
+        limitations: [
+          "Independent readiness review remains incomplete even when the deterministic candidate evaluation passes",
+          "No phase entry, implementation authorization, Product Owner acceptance, release, deployment, or action authority is represented",
+        ],
+      }),
+      actorId,
+    )
+    expect(revised).toMatchObject({ id: gate.id, revision: 2, predecessorDigest: canonicalDigest(gate) })
+    expect((await engine.p0P4ReadinessGate.listHistory(gate.id)).map((record) => record.revision)).toEqual([2, 1])
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "readiness-gate.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(gate),
+        evaluationDefinitionDigest: input.evaluationDefinition.digest,
+        evidenceRegistry: input.evidenceRegistry,
+        traceability: input.traceability,
+        outputCount: 25,
+        applicableOutputCount: 3,
+        notApplicableOutputCount: 22,
+        unresolvedApplicabilityCount: 0,
+        waiverCount: 0,
+        unresolvedDecisionCount: 0,
+        conditionCount: 0,
+        unresolvedRequirementCount: 0,
+        gateResultState: "not-established-until-assessed",
+        readinessState: "not-established",
+        approvalState: "not-established",
+        waiverAcceptanceState: "not-established",
+        phaseEntryState: "not-granted",
+        implementationAuthorizationState: "not-granted",
+        baselinePromotionState: "not-granted",
+        actionAuthorityState: "not-granted",
+        gateBoundary: "a-passing-gate-is-an-evaluation-result-not-permission",
+      },
+    })
+  })
+
+  it("rejects forged P0-P4 Readiness Gate bindings, secrets, unverifiable conditions, and duplicate current gates", async () => {
+    const { evidenceRegistry, traceability } = await createP0P4ReadinessUpstream()
+    const base = p0P4ReadinessGateInput(evidenceRegistry, traceability)
+    await expect(engine.p0P4ReadinessGate.create({
+      ...base,
+      traceability: { ...base.traceability, digest: digest("e") },
+    }, actorId)).rejects.toThrow(/exact current End-to-End Traceability/)
+    await expect(engine.p0P4ReadinessGate.create({
+      ...base,
+      outputs: base.outputs.map((output) => output.outputKind === "evidence-registry"
+        ? { ...output, subjects: output.subjects.map((subject) => ({ ...subject, digest: digest("e") })) }
+        : output),
+    }, actorId)).rejects.toThrow(/exact current governed subject/)
+    await expect(engine.p0P4ReadinessGate.create({
+      ...base,
+      outputs: base.outputs.map((output) => output.outputKind === "initiative-entry"
+        ? { ...output, evidenceItemKeys: ["unknown-evidence"] }
+        : output),
+    }, actorId)).rejects.toThrow(/unknown Evidence Item/)
+    await expect(engine.p0P4ReadinessGate.create({
+      ...base,
+      scope: "api_key=sk-live-abcdefghijklmnopqrstuvwxyz123456 is not portable readiness context",
+    }, actorId)).rejects.toThrow(/secret-shaped/)
+    await expect(engine.p0P4ReadinessGate.create({
+      ...base,
+      conditions: [{
+        key: "unverifiable-approval-condition",
+        source: "approval",
+        outputKinds: ["initiative-entry"],
+        owner: { kind: "human", id: actorId },
+        dueOrTrigger: "Before any phase entry",
+        validation: "An exact current independently verified approval record must satisfy the declared condition.",
+        consequence: "The candidate remains incomplete and grants no phase-entry or implementation authority.",
+        state: "pending",
+        sourceReference: {
+          recordKind: "approval-determination",
+          recordId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          revision: 1,
+          digest: digest("a"),
+        },
+      }],
+    }, actorId)).rejects.toThrow(/condition does not bind an exact current governed source record/)
+    await engine.p0P4ReadinessGate.create(base, actorId)
+    await expect(engine.p0P4ReadinessGate.create(base, actorId))
+      .rejects.toThrow(/only one current P0-P4 Readiness Gate/)
+  })
+
+  it("reports P0-P4 Readiness Gate staleness after an exact governed output changes", async () => {
+    const upstream = await createP0P4ReadinessUpstream()
+    const gate = await engine.p0P4ReadinessGate.create(
+      p0P4ReadinessGateInput(upstream.evidenceRegistry, upstream.traceability),
+      actorId,
+    )
+    await engine.evidenceRegistry.revise(
+      upstream.evidenceRegistry.id,
+      upstream.evidenceRegistry.revision,
+      evidenceRegistryInput(
+        upstream.operatingModel, upstream.architectureChallengeModel,
+        upstream.securityPrivacyAssessment, upstream.decisionRegister, upstream.riskRegister,
+        { limitations: [
+          "No Claim validation, Evidence sufficiency, Assurance Case conclusion, Review, Approval, Risk Acceptance, baseline promotion, readiness, release, deployment, or action authority is represented",
+          "The exact Evidence Registry changed after the P0-P4 readiness evaluation was captured",
+        ] },
+      ),
+      actorId,
+    )
+    expect(await engine.p0P4ReadinessGate.assess(initiative.id)).toMatchObject({
+      gate: { recordId: gate.id },
+      staleBindingCount: 2,
+      result: "incomplete",
+      reasons: expect.arrayContaining(["The readiness evaluation does not bind exact current governed records"]),
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "p0-p4-readiness-gate.binding-review-required",
       severity: "warning",
     }))
   })
