@@ -583,7 +583,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
@@ -629,6 +629,7 @@ export class GaepEngine {
         ...riskRegisterIssues,
         ...evidenceRegistryIssues,
         ...traceabilityIssues,
+        ...p0P4ReadinessGateIssues,
       ]
     } catch (error) {
       domainIssues = [{
