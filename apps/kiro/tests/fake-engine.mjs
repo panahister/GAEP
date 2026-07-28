@@ -57,6 +57,7 @@ const informationArchitectureId = "59595959-5959-4959-8959-595959595959"
 const screenStateInventoryId = "60606060-6060-4060-8060-606060606060"
 const designRequirementsId = "61616161-6161-4161-8161-616161616161"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
+const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -152,6 +153,8 @@ input.on("line", (line) => {
       return readDesignRequirements(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
+    case "design.accessibilityRules.snapshot":
+      return readAccessibilityDesignRules(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2136,6 +2139,74 @@ function readDesignSystemTokenContract(id, params) {
   if (workspacePath.endsWith("bad-design-system-token-contract-snapshot-digest")) value.candidate.tokenCount = 49
   if (workspacePath.endsWith("bad-design-system-token-contract-snapshot-private")) {
     value.tokenValue = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readAccessibilityDesignRules(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE ACCESSIBILITY DESIGN RULES PARAMS")
+  }
+  const candidateDigest = `sha256:${"3".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "accessibility-design-rules-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: accessibilityDesignRulesId, revision: 2, digest: candidateDigest },
+    targetCount: 12,
+    ruleCount: 18,
+    checkCount: 24,
+    applicableRuleCount: 14,
+    notApplicableRuleCount: 2,
+    unresolvedRuleCount: 2,
+    notAssessedCheckCount: 4,
+    evidenceRecordedCheckCount: 3,
+    humanReviewedCheckCount: 17,
+    contradictedCheckCount: 1,
+    representedRequirementCount: 10,
+    unresolvedRequirementCount: 2,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    catalogCompletenessState: "not-assessed",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more accessibility rules retain unresolved applicability or impact"],
+    assessedAt: "2026-07-28T14:30:00.000Z",
+    authorityBoundary: "accessibility-design-rules-status-is-observational-and-does-not-establish-accessibility-conformance-rule-or-check-validity-legal-compliance-ownership-design-approval-baseline-readiness-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "accessibility-design-rules-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: accessibilityDesignRulesId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"4".repeat(64)}`,
+      state: "candidate",
+      targetCount: 12,
+      ruleCount: 18,
+      checkCount: 24,
+      representedRequirementCount: 10,
+      reviewState: "held",
+      updatedAt: "2026-07-28T14:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-rule-procedures-evidence-requirement-source-design-or-personal-content-secrets-or-credentials",
+    authorityBoundary: "accessibility-design-rules-projection-is-read-only-and-does-not-establish-accessibility-conformance-rule-or-check-validity-legal-compliance-ownership-design-approval-baseline-readiness-implementation-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-accessibility-design-rules-snapshot-binding")) content.initiative.id = accessibilityDesignRulesId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-accessibility-design-rules-snapshot-digest")) value.candidate.ruleCount = 19
+  if (workspacePath.endsWith("bad-accessibility-design-rules-snapshot-private")) {
+    value.ruleProcedure = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

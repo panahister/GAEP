@@ -58,6 +58,7 @@ import type {
   ScreenStateInventoryProjection,
   DesignRequirementsProjection,
   DesignSystemTokenContractProjection,
+  AccessibilityDesignRulesProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -239,6 +240,9 @@ export interface CurrentStudioEngineReader {
   designSystemTokenContract?: {
     project(initiativeId: string): Promise<DesignSystemTokenContractProjection>
   }
+  accessibilityDesignRules?: {
+    project(initiativeId: string): Promise<AccessibilityDesignRulesProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -306,6 +310,7 @@ interface ObservedStudioState {
   screenStateInventoryProjections: Map<string, ScreenStateInventoryProjection>
   designRequirementsProjections: Map<string, DesignRequirementsProjection>
   designSystemTokenContractProjections: Map<string, DesignSystemTokenContractProjection>
+  accessibilityDesignRulesProjections: Map<string, AccessibilityDesignRulesProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1950,6 +1955,59 @@ function designSystemTokenContractTable(state: ObservedStudioState): StudioTable
   }
 }
 
+function accessibilityDesignRulesTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.accessibilityDesignRulesProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        inventory: `${status.targetCount} targets · ${status.ruleCount} rules · ${status.checkCount} checks`,
+        rules: `${status.applicableRuleCount} applicable · ${status.notApplicableRuleCount} not applicable · ${status.unresolvedRuleCount} unresolved`,
+        checks: `${status.humanReviewedCheckCount} human-reviewed · ${status.evidenceRecordedCheckCount} evidence-recorded · ${status.notAssessedCheckCount} not assessed · ${status.contradictedCheckCount} contradicted`,
+        coverage: `${status.representedRequirementCount} represented requirements · ${status.unresolvedRequirementCount} unresolved requirements`,
+        assessment: `${status.state} · ${status.reviewState} · ${status.catalogCompletenessState}`,
+        gaps: `${status.unresolvedOwnershipCount} ownership gaps · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no rule procedures, evidence, requirements, Source, design, or personal content and no accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "accessibility-design-rules",
+    title: "Governed Accessibility Design Rules Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "rules", label: "Rule applicability" },
+      { key: "checks", label: "Check evidence" },
+      { key: "coverage", label: "Requirement coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Accessibility Design Rules candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1971,7 +2029,12 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
   if (route === "users-jobs") relatedRecords.push(
     designPersonaRoleTable(state), userJourneyTable(state), informationArchitectureTable(state), screenStateInventoryTable(state),
   )
-  if (route === "scope") relatedRecords.push(requirementsTable(state.requirements), designRequirementsTable(state), designSystemTokenContractTable(state))
+  if (route === "scope") relatedRecords.push(
+    requirementsTable(state.requirements),
+    designRequirementsTable(state),
+    designSystemTokenContractTable(state),
+    accessibilityDesignRulesTable(state),
+  )
   if (route === "architecture") {
     relatedRecords.push(
       businessCapabilityMapTable(state),
@@ -4620,6 +4683,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       screenStateInventoryProjections: new Map(),
       designRequirementsProjections: new Map(),
       designSystemTokenContractProjections: new Map(),
+      accessibilityDesignRulesProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -5958,6 +6022,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "design-system-token-contract-unavailable",
           "Design System and Token Contract metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.accessibilityDesignRules) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.accessibilityDesignRules!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.accessibilityDesignRulesProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Accessibility Design Rules projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `accessibility-design-rules-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Accessibility Design Rules metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "accessibility-design-rules-unavailable",
+          "Accessibility Design Rules metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

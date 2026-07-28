@@ -81,6 +81,7 @@
     "onCommand:gaepKiro.screenStateInventory.inspect",
     "onCommand:gaepKiro.designRequirements.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
+    "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -282,6 +283,10 @@
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",
         "title": "GAEP for Kiro: Inspect Governed Design System and Token Contract Candidate"
+      },
+      {
+        "command": "gaepKiro.accessibilityDesignRules.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Accessibility Design Rules Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

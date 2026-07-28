@@ -31,6 +31,7 @@ import {
   type ScreenStateInventoryProjection,
   type DesignRequirementsProjection,
   type DesignSystemTokenContractProjection,
+  type AccessibilityDesignRulesProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -133,6 +134,7 @@ const commandIds = {
   screenStateInventory: "gaepKiro.screenStateInventory.inspect",
   designRequirements: "gaepKiro.designRequirements.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
+  accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -254,6 +256,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.screenStateInventory, (input?: unknown) => runUserCommand(() => showScreenStateInventory(pool, input))),
     vscode.commands.registerCommand(commandIds.designRequirements, (input?: unknown) => runUserCommand(() => showDesignRequirements(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
+    vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1713,6 +1716,48 @@ async function showDesignSystemTokenContract(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and digests only; this does not establish system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showAccessibilityDesignRules(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<AccessibilityDesignRulesProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Accessibility Design Rules", "Initiative ID")
+  const projection = await client.readAccessibilityDesignRules(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Accessibility Design Rules candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState} · catalog: ${status.catalogCompletenessState}`,
+    `Inventory: ${status.targetCount} targets · ${status.ruleCount} rules · ${status.checkCount} checks`,
+    `Rule applicability: ${status.applicableRuleCount} applicable · ${status.notApplicableRuleCount} not applicable · ${status.unresolvedRuleCount} unresolved`,
+    `Check evidence: ${status.humanReviewedCheckCount} human-reviewed · ${status.evidenceRecordedCheckCount} evidence-recorded · ${status.notAssessedCheckCount} not assessed · ${status.contradictedCheckCount} contradicted`,
+    `Requirement coverage: ${status.representedRequirementCount} represented · ${status.unresolvedRequirementCount} unresolved`,
+    `Candidate gaps: ${status.unresolvedOwnershipCount} ownership · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate inventory: ${record.targetCount} targets · ${record.ruleCount} rules · ${record.checkCount} checks · ${record.representedRequirementCount} represented requirements · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and digests only; this does not establish accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

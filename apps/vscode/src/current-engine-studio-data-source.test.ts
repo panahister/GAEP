@@ -30,6 +30,7 @@ import {
   type ScreenStateInventoryProjection,
   type DesignRequirementsProjection,
   type DesignSystemTokenContractProjection,
+  type AccessibilityDesignRulesProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1950,6 +1951,64 @@ function designSystemTokenContractProjection(): DesignSystemTokenContractProject
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function accessibilityDesignRulesProjection(): AccessibilityDesignRulesProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "accessibility-design-rules-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "b5b5b5b5-b5b5-45b5-85b5-b5b5b5b5b5b5", revision: 2, digest: `sha256:${"3".repeat(64)}` as const },
+    targetCount: 12,
+    ruleCount: 18,
+    checkCount: 24,
+    applicableRuleCount: 14,
+    notApplicableRuleCount: 2,
+    unresolvedRuleCount: 2,
+    notAssessedCheckCount: 4,
+    evidenceRecordedCheckCount: 3,
+    humanReviewedCheckCount: 17,
+    contradictedCheckCount: 1,
+    representedRequirementCount: 10,
+    unresolvedRequirementCount: 2,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    catalogCompletenessState: "not-assessed" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more accessibility rules retain unresolved applicability or impact"],
+    assessedAt: "2026-07-28T14:30:00.000Z",
+    authorityBoundary: "accessibility-design-rules-status-is-observational-and-does-not-establish-accessibility-conformance-rule-or-check-validity-legal-compliance-ownership-design-approval-baseline-readiness-implementation-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "accessibility-design-rules-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"4".repeat(64)}` as const,
+      state: "candidate" as const,
+      targetCount: 12,
+      ruleCount: 18,
+      checkCount: 24,
+      representedRequirementCount: 10,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-28T14:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-rule-procedures-evidence-requirement-source-design-or-personal-content-secrets-or-credentials" as const,
+    authorityBoundary: "accessibility-design-rules-projection-is-read-only-and-does-not-establish-accessibility-conformance-rule-or-check-validity-legal-compliance-ownership-design-approval-baseline-readiness-implementation-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2602,6 +2661,7 @@ interface HarnessOptions {
   screenStateInventoryProjection?: ScreenStateInventoryProjection
   designRequirementsProjection?: DesignRequirementsProjection
   designSystemTokenContractProjection?: DesignSystemTokenContractProjection
+  accessibilityDesignRulesProjection?: AccessibilityDesignRulesProjection
   commandResult?: unknown
 }
 
@@ -2837,6 +2897,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.designSystemTokenContractProjection ? {
       designSystemTokenContract: {
         project: async () => options.designSystemTokenContractProjection!,
+      },
+    } : {}),
+    ...(options.accessibilityDesignRulesProjection ? {
+      accessibilityDesignRules: {
+        project: async () => options.accessibilityDesignRulesProjection!,
       },
     } : {}),
   }
@@ -3597,6 +3662,33 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private token value|private component content|private requirement|private source content|private design content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Accessibility Design Rules metadata on the native scope page", async () => {
+    const projection = accessibilityDesignRulesProjection()
+    const { source } = harness({ accessibilityDesignRulesProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "accessibility-design-rules")).toMatchObject({
+      id: "accessibility-design-rules",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          inventory: "12 targets · 18 rules · 24 checks",
+          rules: "14 applicable · 2 not applicable · 2 unresolved",
+          checks: "17 human-reviewed · 3 evidence-recorded · 4 not assessed · 1 contradicted",
+          coverage: "10 represented requirements · 2 unresolved requirements",
+          assessment: "attention-required · held · not-assessed",
+          gaps: "1 ownership gaps · 3 questions · 0 stale bindings · 2 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no rule procedures, evidence, requirements, Source, design, or personal content and no accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private rule procedure|private evidence|private requirement|private source content|private design content|customer@example\.com|api_key/iu,
     )
   })
 
