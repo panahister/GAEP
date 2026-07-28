@@ -13,6 +13,8 @@ import {
   type DesignApplicability,
   type DesignApplicabilityInput,
   type DesignRequirementsInput,
+  type DesignRequirements,
+  type DesignSystemTokenContractInput,
   type DesignPersonaRoleModelInput,
   type DesignPersonaRoleModel,
   type ExactSourceReference,
@@ -1073,6 +1075,129 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function createDesignSystemTokenContractPrerequisites() {
+    const { inventory, outcomeModel, requirement, workItem } = await createDesignRequirementsPrerequisites()
+    const requirements = await engine.designRequirements.create(
+      await designRequirementsInput(outcomeModel, inventory, requirement, workItem), actorId,
+    )
+    return { inventory, requirement, requirements }
+  }
+
+  async function designSystemTokenContractInput(
+    inventory: ScreenStateInventory,
+    requirement: Awaited<ReturnType<typeof engine.productStudio.readRequirement>>,
+    requirements: DesignRequirements,
+    overrides: Partial<DesignSystemTokenContractInput> = {},
+  ): Promise<DesignSystemTokenContractInput> {
+    const owner = { state: "assigned-candidate" as const, owner: { kind: "role" as const, id: "product-designer" } }
+    const reviewed = { reviewedBy: { kind: "human" as const, id: actorId }, reviewedAt: "2026-07-28T12:30:00.000Z" }
+    return {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: "internal",
+      title: "Customer portal Design System and Token Contract candidate",
+      designApplicability: {
+        recordId: applicability.id,
+        revision: applicability.revision,
+        digest: canonicalDigest(applicability),
+        membershipDigest: applicability.membershipDigest,
+      },
+      screenStateInventory: {
+        recordId: inventory.id,
+        revision: inventory.revision,
+        digest: canonicalDigest(inventory),
+        membershipDigest: inventory.membershipDigest,
+      },
+      designRequirements: {
+        recordId: requirements.id,
+        revision: requirements.revision,
+        digest: canonicalDigest(requirements),
+        membershipDigest: requirements.membershipDigest,
+      },
+      designSystems: [{
+        key: "customer-portal",
+        name: "GAEP product interface system",
+        disposition: "reuse-approved",
+        approvedReference: {
+          scopeKind: "client-application",
+          scopeId: "customer-portal",
+          name: "GAEP product interface system",
+        },
+        ownership: owner,
+        sources: [reference()],
+        limitations: ["The approved reference and candidate ownership do not establish design-system validity or authority"],
+      }],
+      tokens: [{
+        path: "color.action.primary",
+        designSystemKey: "customer-portal",
+        origin: "candidate-declared",
+        type: "color",
+        valueDigest: digest("9"),
+        ownership: owner,
+        requirementKeys: [requirement.key],
+        platformKeys: ["responsive-web"],
+        screenKeys: ["release-review"],
+        accessibilityImpact: "human-reviewed",
+        ...reviewed,
+        sources: [reference()],
+      }],
+      variableCollections: [{
+        key: "portal-theme",
+        designSystemKey: "customer-portal",
+        ownership: owner,
+        variableKeys: ["action-primary"],
+        platformKeys: ["responsive-web"],
+        sources: [reference()],
+      }],
+      variables: [{
+        key: "action-primary",
+        collectionKey: "portal-theme",
+        designSystemKey: "customer-portal",
+        state: "bound-to-token",
+        tokenPath: "color.action.primary",
+        ownership: owner,
+        requirementKeys: [requirement.key],
+        sources: [reference()],
+      }],
+      components: [{
+        key: "release-review-card",
+        designSystemKey: "customer-portal",
+        disposition: "candidate-new",
+        ownership: owner,
+        tokenPaths: ["color.action.primary"],
+        variableKeys: ["action-primary"],
+        requirementKeys: [requirement.key],
+        platformKeys: ["responsive-web"],
+        screenKeys: ["release-review"],
+        stateKeys: ["review-default", "review-error", "review-loading"],
+        variantKeys: ["review-wide"],
+        accessibilityEvidenceState: "human-reviewed",
+        ...reviewed,
+        sources: [reference()],
+      }],
+      requirementCoverage: [{
+        requirementKey: requirement.key,
+        state: "represented",
+        tokenPaths: ["color.action.primary"],
+        variableKeys: ["action-primary"],
+        componentKeys: ["release-review-card"],
+        rationale: "The exact candidate token, variable, and component links represent this current Design Requirement.",
+        sources: [reference()],
+      }],
+      catalogCompletenessState: "candidate-complete",
+      unresolvedQuestions: [],
+      limitations: ["Design-system, token, variable, component, ownership, accessibility, approval, baseline, readiness, implementation, and action authority remain not established"],
+      reviewState: "ready-for-human-review",
+      designSystemValidityState: "not-established",
+      ownershipAuthorityState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-established",
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -1805,6 +1930,168 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "design-requirements.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, and revises an exact Design System and Token Contract without validity, ownership, accessibility, approval, baseline, readiness, or action authority", async () => {
+    const { inventory, requirement, requirements } = await createDesignSystemTokenContractPrerequisites()
+    const candidate = await engine.designSystemTokenContract.create(
+      await designSystemTokenContractInput(inventory, requirement, requirements), actorId,
+    )
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      designSystems: [{ disposition: "reuse-approved", ownership: { state: "assigned-candidate" } }],
+      tokens: [{ origin: "candidate-declared", accessibilityImpact: "human-reviewed" }],
+      variableCollections: [{ variableKeys: ["action-primary"] }],
+      variables: [{ state: "bound-to-token", tokenPath: "color.action.primary" }],
+      components: [{ disposition: "candidate-new", accessibilityEvidenceState: "human-reviewed" }],
+      designSystemValidityState: "not-established",
+      ownershipAuthorityState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-established",
+      authorityBoundary: expect.stringContaining("does-not-establish-design-system-token-variable-or-component-validity"),
+    })
+    expect(await engine.designSystemTokenContract.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      designSystemCount: 1,
+      tokenCount: 1,
+      variableCollectionCount: 1,
+      variableCount: 1,
+      componentCount: 1,
+      representedRequirementCount: 1,
+      unresolvedRequirementCount: 0,
+      unresolvedOwnershipCount: 0,
+      unresolvedCatalogItemCount: 0,
+      accessibilityReviewGapCount: 0,
+      staleBindingCount: 0,
+      stalePortableSnapshotCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      catalogCompletenessState: "candidate-complete",
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.designSystemTokenContract.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        designSystemCount: 1,
+        tokenCount: 1,
+        variableCollectionCount: 1,
+        variableCount: 1,
+        componentCount: 1,
+        representedRequirementCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-token-values-component-content-requirement-source-design-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-design-system-token-variable-or-component-validity"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("color.action.primary")
+    expect(JSON.stringify(projection)).not.toContain("release-review-card")
+
+    const revisedInput = await designSystemTokenContractInput(inventory, requirement, requirements, {
+      limitations: [
+        "Design-system, token, variable, component, ownership, accessibility, approval, baseline, readiness, implementation, and action authority remain not established",
+        "The catalog remains subject to independent accountable human validation",
+      ].sort(),
+    })
+    const revised = await engine.designSystemTokenContract.revise(candidate.id, candidate.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.designSystemTokenContract.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `design-system-token-contracts/${candidate.id}.json`,
+      `design-system-token-contracts-history/design-system-token-contract-${candidate.id}-r1.json`,
+      `design-system-token-contracts-history/design-system-token-contract-${candidate.id}-r2.json`,
+    ]))
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "design-system-token-contract.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        designApplicability: revised.designApplicability,
+        screenStateInventory: revised.screenStateInventory,
+        designRequirements: revised.designRequirements,
+        designSystemCount: 1,
+        tokenCount: 1,
+        variableCollectionCount: 1,
+        variableCount: 1,
+        componentCount: 1,
+        catalogCompletenessState: "candidate-complete",
+        reviewState: "ready-for-human-review",
+        designSystemValidityState: "not-established",
+        ownershipAuthorityState: "not-established",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-established",
+        tokenVariableComponentValidityState: "not-established",
+        accessibilityValidityState: "not-established",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("fails Design System and Token Contract closed on stale dependencies, unknown approved systems, targets, or requirement coverage", async () => {
+    const { inventory, requirement, requirements } = await createDesignSystemTokenContractPrerequisites()
+    const staleRequirements = await designSystemTokenContractInput(inventory, requirement, requirements, {
+      designRequirements: {
+        recordId: requirements.id,
+        revision: requirements.revision,
+        digest: digest("f"),
+        membershipDigest: requirements.membershipDigest,
+      },
+    })
+    await expect(engine.designSystemTokenContract.create(staleRequirements, actorId)).rejects.toThrow("exact current Design Requirements")
+
+    const unknownApprovedSystem = await designSystemTokenContractInput(inventory, requirement, requirements)
+    unknownApprovedSystem.designSystems[0]!.approvedReference!.name = "Unknown Design System"
+    await expect(engine.designSystemTokenContract.create(unknownApprovedSystem, actorId)).rejects.toThrow("exact current Design Applicability")
+
+    const unknownScreen = await designSystemTokenContractInput(inventory, requirement, requirements)
+    unknownScreen.tokens[0]!.screenKeys = ["unknown-screen"]
+    await expect(engine.designSystemTokenContract.create(unknownScreen, actorId)).rejects.toThrow("exact current governed catalog")
+
+    const candidate = await engine.designSystemTokenContract.create(
+      await designSystemTokenContractInput(inventory, requirement, requirements), actorId,
+    )
+    const revisedRequirementsInput = await designRequirementsInput(
+      await engine.businessUnderstanding.readCurrentOutcomeModel(initiative.id) as OutcomeModel,
+      inventory,
+      requirement,
+      await engine.productStudio.readWorkItem(requirements.requirements[0]!.backlog.workItems[0]!.recordId),
+      { limitations: [
+        "Requirement validity, catalog completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, and action authority remain not established",
+        "The current Design Requirements revision changed after the token contract candidate was created",
+      ].sort() },
+    )
+    await engine.designRequirements.revise(requirements.id, requirements.revision, revisedRequirementsInput, actorId)
+    expect(await engine.designSystemTokenContract.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "design-system-token-contract.binding-review-required",
       severity: "warning",
     }))
   })

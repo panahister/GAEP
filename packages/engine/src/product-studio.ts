@@ -17,6 +17,7 @@ import {
   informationArchitectureModelSchema,
   screenStateInventorySchema,
   designRequirementsSchema,
+  designSystemTokenContractSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -90,6 +91,7 @@ import {
   type InformationArchitectureModel,
   type ScreenStateInventory,
   type DesignRequirements,
+  type DesignSystemTokenContract,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2221,6 +2223,23 @@ export class ProductStudioService {
       /^design-requirements-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       designRequirementsSchema,
     )
+    const designSystemTokenContracts = await this.listRecords(
+      "design-system-token-contracts",
+      /^[0-9a-f-]+\.json$/i,
+      designSystemTokenContractSchema,
+    )
+    const designSystemTokenContractHistory = await this.listRecords(
+      "design-system-token-contracts-history",
+      /^design-system-token-contract-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      designSystemTokenContractSchema,
+    )
+    const portableDesignSnapshotIds = [...new Set([
+      ...designSystemTokenContracts,
+      ...designSystemTokenContractHistory,
+    ].flatMap((record) => record.portableDesignSnapshot ? [record.portableDesignSnapshot.bundleId] : []))].sort()
+    const portableDesignSnapshots = await Promise.all(
+      portableDesignSnapshotIds.map((bundleId) => this.readPortableDesignSnapshot(bundleId)),
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2290,12 +2309,17 @@ export class ProductStudioService {
       ...screenStateInventoryHistory,
       ...designRequirements,
       ...designRequirementsHistory,
+      ...designSystemTokenContracts,
+      ...designSystemTokenContractHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
       ...outcomeModelHistory,
     ].filter((record) => ["confidential", "restricted"].includes(record.informationClassification))
       .map((record) => record.id))
+    for (const snapshot of portableDesignSnapshots) {
+      if (["confidential", "restricted"].includes(snapshot.classification)) sensitiveBusinessRecordIds.add(snapshot.bundleId)
+    }
     const sensitiveRecordIds = new Set([
       ...sensitiveContextIds,
       ...sensitiveSourceIds,
@@ -2325,6 +2349,8 @@ export class ProductStudioService {
           informationArchitectureModels.find((record) => record.id === id)?.informationClassification ??
           screenStateInventories.find((record) => record.id === id)?.informationClassification ??
           designRequirements.find((record) => record.id === id)?.informationClassification ??
+          designSystemTokenContracts.find((record) => record.id === id)?.informationClassification ??
+          portableDesignSnapshots.find((record) => record.bundleId === id)?.classification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2561,6 +2587,19 @@ export class ProductStudioService {
       designRequirementsHistory,
       (record) => `design-requirements-history/design-requirements-${record.id}-r${record.revision}.json`,
     )
+    append("design-system-token-contracts", "design-system-token-contract-candidate", designSystemTokenContracts)
+    append(
+      "design-system-token-contracts-history",
+      "design-system-token-contract-candidate",
+      designSystemTokenContractHistory,
+      (record) => `design-system-token-contracts-history/design-system-token-contract-${record.id}-r${record.revision}.json`,
+    )
+    append(
+      "candidates",
+      "portable-design-snapshot",
+      portableDesignSnapshots,
+      (record) => `candidates/${this.portableDesignSnapshotFilename(record.bundleId)}`,
+    )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
       "stakeholder-model-history",
@@ -2643,6 +2682,8 @@ export class ProductStudioService {
           ...informationArchitectureModels.map((record) => record.informationClassification),
           ...screenStateInventories.map((record) => record.informationClassification),
           ...designRequirements.map((record) => record.informationClassification),
+          ...designSystemTokenContracts.map((record) => record.informationClassification),
+          ...portableDesignSnapshots.map((record) => record.classification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
         ])],
@@ -2975,6 +3016,21 @@ export class ProductStudioService {
           `design-requirements-history/design-requirements-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Design Requirements history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("design-system-token-contracts-history/")) {
+        const record = validated as DesignSystemTokenContract
+        const expectedHistoryPath =
+          `design-system-token-contracts-history/design-system-token-contract-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Design System and Token Contract history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("candidates/portable-design-")) {
+        const record = validated as PortableDesignImportResult
+        const expectedPath = `candidates/${this.portableDesignSnapshotFilename(record.bundleId)}`
+        if (member.path !== expectedPath) {
+          throw new Error(`Import portable design snapshot filename does not match its bundle identity: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3723,6 +3779,7 @@ export class ProductStudioService {
 
   private validatePortableMember(path: string, content: unknown): unknown {
     const validated = this.portableSchemaForPath(path).parse(content)
+    if (/^candidates\/portable-design-/.test(path)) return this.validatePortableDesignSnapshot(validated)
     if (/^product-history\//.test(path)) {
       const revision = validated as ProductRevision
       if (revision.productDigest !== canonicalDigest(revision.product)) {
@@ -4101,7 +4158,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4133,7 +4190,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -6399,7 +6456,7 @@ export class ProductStudioService {
     const designRequirementsHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("design-requirements-history/"))
       .map(([, record]) => designRequirementsSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactDesignRequirements = validateVersionedBusinessRecords(
       designRequirements, designRequirementsHistory, "Design Requirements",
     )
     for (const candidate of [...designRequirements, ...designRequirementsHistory]) {
@@ -6465,6 +6522,143 @@ export class ProductStudioService {
           const change = changesById.get(workItem.changeId)
           if (workItem.productId !== candidate.productId || change?.initiativeId !== candidate.initiativeId) {
             throw new Error(`Import Design Requirements ${candidate.id} Work Item is outside its exact Initiative backlog`)
+          }
+        }
+      }
+    }
+
+    const portableDesignSnapshots = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("candidates/portable-design-"))
+      .map(([, record]) => this.validatePortableDesignSnapshot(record))
+    const portableDesignSnapshotById = new Map(portableDesignSnapshots.map((record) => [record.bundleId, record]))
+    const designSystemTokenContracts = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-system-token-contracts/"))
+      .map(([, record]) => designSystemTokenContractSchema.parse(record))
+    const designSystemTokenContractHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-system-token-contracts-history/"))
+      .map(([, record]) => designSystemTokenContractSchema.parse(record))
+    validateVersionedBusinessRecords(
+      designSystemTokenContracts, designSystemTokenContractHistory, "Design System and Token Contract",
+    )
+    for (const candidate of [...designSystemTokenContracts, ...designSystemTokenContractHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        designApplicability: candidate.designApplicability,
+        screenStateInventory: candidate.screenStateInventory,
+        designRequirements: candidate.designRequirements,
+        portableDesignSnapshot: candidate.portableDesignSnapshot,
+        designSystems: candidate.designSystems,
+        tokens: candidate.tokens,
+        variableCollections: candidate.variableCollections,
+        variables: candidate.variables,
+        components: candidate.components,
+        requirementCoverage: candidate.requirementCoverage,
+        catalogCompletenessState: candidate.catalogCompletenessState,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        designSystemValidityState: candidate.designSystemValidityState,
+        ownershipAuthorityState: candidate.ownershipAuthorityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Design System and Token Contract ${candidate.id} membership digest is invalid`)
+      }
+      const applicability = exactDesignApplicability.get(
+        `${candidate.designApplicability.recordId}:${candidate.designApplicability.revision}:${candidate.designApplicability.digest}`,
+      )
+      const inventory = exactScreenStateInventories.get(
+        `${candidate.screenStateInventory.recordId}:${candidate.screenStateInventory.revision}:${candidate.screenStateInventory.digest}`,
+      )
+      const requirements = exactDesignRequirements.get(
+        `${candidate.designRequirements.recordId}:${candidate.designRequirements.revision}:${candidate.designRequirements.digest}`,
+      )
+      if (!applicability || applicability.initiativeId !== candidate.initiativeId ||
+          applicability.membershipDigest !== candidate.designApplicability.membershipDigest) {
+        throw new Error(`Import Design System and Token Contract ${candidate.id} exact Design Applicability binding is unresolved`)
+      }
+      if (!inventory || inventory.initiativeId !== candidate.initiativeId ||
+          inventory.membershipDigest !== candidate.screenStateInventory.membershipDigest) {
+        throw new Error(`Import Design System and Token Contract ${candidate.id} exact Screen and State Inventory binding is unresolved`)
+      }
+      if (!requirements || requirements.initiativeId !== candidate.initiativeId ||
+          requirements.membershipDigest !== candidate.designRequirements.membershipDigest) {
+        throw new Error(`Import Design System and Token Contract ${candidate.id} exact Design Requirements binding is unresolved`)
+      }
+      const approvedSystems = new Set(applicability.scopes.flatMap((scope) => scope.approvedDesignSystems.map((name) =>
+        `${scope.scope.kind}:${scope.scope.id}:${name}`)))
+      if (candidate.designSystems.some((system) => system.approvedReference && !approvedSystems.has(
+        `${system.approvedReference.scopeKind}:${system.approvedReference.scopeId}:${system.approvedReference.name}`))) {
+        throw new Error(`Import Design System and Token Contract ${candidate.id} has an unresolved approved Design System reference`)
+      }
+      const requirementKeys = requirements.requirements.map((entry) => entry.key).sort((left, right) => left.localeCompare(right))
+      if (canonicalDigest(requirementKeys) !== canonicalDigest(candidate.requirementCoverage.map((entry) => entry.requirementKey))) {
+        throw new Error(`Import Design System and Token Contract ${candidate.id} does not cover every exact current Design Requirement`)
+      }
+      const targetSets = {
+        requirementKeys: new Set(requirementKeys),
+        platformKeys: new Set(inventory.platforms.filter((entry) => entry.supportState === "targeted").map((entry) => entry.key)),
+        screenKeys: new Set(inventory.screens.map((entry) => entry.key)),
+        stateKeys: new Set(inventory.states.map((entry) => entry.key)),
+        variantKeys: new Set(inventory.variants.map((entry) => entry.key)),
+      }
+      for (const token of candidate.tokens) {
+        if (token.requirementKeys.some((key) => !targetSets.requirementKeys.has(key)) ||
+            token.platformKeys.some((key) => !targetSets.platformKeys.has(key)) ||
+            token.screenKeys.some((key) => !targetSets.screenKeys.has(key))) {
+          throw new Error(`Import Design System and Token Contract ${candidate.id} has unresolved Token targets`)
+        }
+      }
+      for (const variable of candidate.variables) {
+        if (variable.requirementKeys.some((key) => !targetSets.requirementKeys.has(key))) {
+          throw new Error(`Import Design System and Token Contract ${candidate.id} has unresolved Variable Requirement targets`)
+        }
+      }
+      for (const component of candidate.components) {
+        if (component.requirementKeys.some((key) => !targetSets.requirementKeys.has(key)) ||
+            component.platformKeys.some((key) => !targetSets.platformKeys.has(key)) ||
+            component.screenKeys.some((key) => !targetSets.screenKeys.has(key)) ||
+            component.stateKeys.some((key) => !targetSets.stateKeys.has(key)) ||
+            component.variantKeys.some((key) => !targetSets.variantKeys.has(key))) {
+          throw new Error(`Import Design System and Token Contract ${candidate.id} has unresolved Component targets`)
+        }
+      }
+      const imported = candidate.tokens.some((entry) => entry.origin === "imported-snapshot") ||
+        candidate.components.some((entry) => entry.disposition === "imported-snapshot")
+      const snapshot = candidate.portableDesignSnapshot
+        ? portableDesignSnapshotById.get(candidate.portableDesignSnapshot.bundleId)
+        : undefined
+      if (imported && !snapshot) {
+        throw new Error(`Import Design System and Token Contract ${candidate.id} imported catalog lacks its exact portable design snapshot`)
+      }
+      if (candidate.portableDesignSnapshot && (!snapshot || snapshot.productId !== candidate.productId ||
+          snapshot.initiativeId !== candidate.initiativeId ||
+          snapshot.snapshotDigest !== candidate.portableDesignSnapshot.snapshotDigest ||
+          snapshot.evidence.evidenceDigest !== candidate.portableDesignSnapshot.evidenceDigest ||
+          snapshot.sourceReview.status !== candidate.portableDesignSnapshot.sourceReviewStatus)) {
+        throw new Error(`Import Design System and Token Contract ${candidate.id} portable design snapshot binding is unresolved`)
+      }
+      if (snapshot) {
+        const tokens = new Map(snapshot.tokens.map((entry) => [`${entry.artifactId}:${entry.path}`, entry]))
+        for (const token of candidate.tokens.filter((entry) => entry.origin === "imported-snapshot")) {
+          const reference = token.importedToken!
+          const importedToken = tokens.get(`${reference.artifactId}:${reference.path}`)
+          if (!importedToken || importedToken.type !== reference.type || importedToken.valueDigest !== reference.valueDigest) {
+            throw new Error(`Import Design System and Token Contract ${candidate.id} imported Token binding is unresolved`)
+          }
+        }
+        const components = new Map(snapshot.artifacts.filter((entry) => entry.kind === "component")
+          .map((entry) => [entry.id, entry]))
+        for (const component of candidate.components.filter((entry) => entry.disposition === "imported-snapshot")) {
+          const reference = component.importedComponent!
+          if (components.get(reference.artifactId)?.digest !== reference.digest) {
+            throw new Error(`Import Design System and Token Contract ${candidate.id} imported Component binding is unresolved`)
           }
         }
       }
@@ -7175,6 +7369,11 @@ export class ProductStudioService {
         /^design-requirements-history\/design-requirements-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "design-requirements-candidate"
     }
+    if (/^design-system-token-contracts\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-system-token-contracts-history\/design-system-token-contract-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "design-system-token-contract-candidate"
+    }
+    if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -7328,6 +7527,11 @@ export class ProductStudioService {
         /^design-requirements-history\/design-requirements-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return designRequirementsSchema
     }
+    if (/^design-system-token-contracts\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-system-token-contracts-history\/design-system-token-contract-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return designSystemTokenContractSchema
+    }
+    if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return stakeholderModelSchema

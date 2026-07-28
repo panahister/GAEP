@@ -27,6 +27,7 @@ import {
   informationArchitectureModelSchema,
   screenStateInventorySchema,
   designRequirementsSchema,
+  designSystemTokenContractSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -161,6 +162,8 @@ const directoryNames = [
   "screen-state-inventory-history",
   "design-requirements",
   "design-requirements-history",
+  "design-system-token-contracts",
+  "design-system-token-contracts-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -980,6 +983,8 @@ export class GaepRepository {
       ["screen-state-inventory-history", /^screen-state-inventory-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["design-requirements", /^[0-9a-f-]+\.json$/i],
       ["design-requirements-history", /^design-requirements-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["design-system-token-contracts", /^[0-9a-f-]+\.json$/i],
+      ["design-system-token-contracts-history", /^design-system-token-contract-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1171,6 +1176,10 @@ export class GaepRepository {
     if (/^design-requirements\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^design-requirements-history\/design-requirements-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, designRequirementsSchema)
+    }
+    if (/^design-system-token-contracts\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^design-system-token-contracts-history\/design-system-token-contract-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, designSystemTokenContractSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
