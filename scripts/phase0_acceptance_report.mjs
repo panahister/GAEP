@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260728T115846Z-phase-2-design-requirements-packages.json",
-  conformance: "evidence/ide-conformance/20260728T115846Z-phase-2-design-requirements.json",
+  packages: "evidence/local-packages/20260728T124152Z-phase-2-design-system-token-contract-packages.json",
+  conformance: "evidence/ide-conformance/20260728T124152Z-phase-2-design-system-token-contract.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    designRequirements
+    designSystemTokenContract
+      ? {
+          id: "phase-2-design-system-token-contract-closure",
+          state: "not-established",
+          basis: "the governed Design System and Token Contract candidate is implemented locally across the shared engine and four host projections; real Product research, attributable human design-system, token, variable, component, ownership, accessibility and requirement-coverage review, native-host interaction, design-system and catalog validation, design approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : designRequirements
       ? {
           id: "phase-2-design-requirements-closure",
           state: "not-established",
@@ -317,6 +323,9 @@ export async function buildPhase0AcceptanceReport({
   const designRequirements = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-requirements" && capability.state === "implemented"))
+  const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -324,6 +333,7 @@ export async function buildPhase0AcceptanceReport({
     informationArchitecture,
     screenStateInventory,
     designRequirements,
+    designSystemTokenContract,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -341,8 +351,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: designRequirements
+    phase: designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: designSystemTokenContract
+      ? "phase-2-design-system-token-contract-local"
+      : designRequirements
       ? "phase-2-design-requirements-local"
       : screenStateInventory
       ? "phase-2-screen-state-inventory-local"
@@ -396,7 +408,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: designRequirements
+    claimBoundary: designSystemTokenContract
+      ? "This report binds the exact governed Design System and Token Contract candidate lifecycle, exact Product, Initiative, Design Applicability, Screen and State Inventory, Design Requirements and optional portable-design snapshot dependencies, bounded Design System, Token, Variable Collection, Variable, Component, candidate-ownership, requirement-coverage and accessibility-review metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish Design System, Token, Variable or Component validity, ownership authority, accessibility validity, design approval, a Design Baseline, real Product research, readiness, implementation, write or action authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : designRequirements
       ? "This report binds the exact governed Design Requirements candidate lifecycle, exact Product, Initiative, Outcome Model and Screen and State Inventory dependencies, current Requirement records, exact Initiative Work Items, bounded outcome coverage, design targets, backlog dispositions and evidence, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish requirement validity, completeness, priority approval, satisfaction, backlog commitment, design approval, a Design Baseline, real Product research, implementation or action authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : screenStateInventory
       ? "This report binds the exact governed Screen and State Inventory candidate lifecycle, exact Product, Initiative and Information Architecture dependencies, bounded platform targets, screens, entry/default/degraded/failure/recovery states, variants, exact navigation-route and design-scope coverage, evidence, accessibility, privacy, data-use and fallback semantics, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not prove UI completeness, platform parity, state reachability, interaction quality or accessibility, validate every route or scope, approve a design or platform target, establish a Design Baseline, prove real Product research, grant implementation authority, or establish native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
