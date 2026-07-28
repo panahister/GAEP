@@ -61,6 +61,7 @@ const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
 const manualFigmaExecutionPathId = "65656565-6565-4565-8565-656565656565"
 const figmaMcpCapabilityDiscoveryId = "66666666-6666-4666-8666-666666666666"
+const figmaReadSnapshotId = "67676767-6767-4767-8767-676767676767"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -164,6 +165,8 @@ input.on("line", (line) => {
       return readManualFigmaExecutionPath(id, request.params)
     case "design.figmaMcpCapabilityDiscovery.snapshot":
       return readFigmaMcpCapabilityDiscovery(id, request.params)
+    case "design.figmaReadSnapshot.snapshot":
+      return readFigmaReadSnapshot(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2425,6 +2428,72 @@ function readFigmaMcpCapabilityDiscovery(id, params) {
   if (workspacePath.endsWith("bad-figma-mcp-capability-discovery-snapshot-digest")) value.candidate.toolCount = 8
   if (workspacePath.endsWith("bad-figma-mcp-capability-discovery-snapshot-private")) {
     value.toolNames = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readFigmaReadSnapshot(id, params) {
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"b".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "figma-read-snapshot-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: figmaReadSnapshotId, revision: 2, digest: candidateDigest },
+    fileCount: 2,
+    componentCount: 12,
+    variableCollectionCount: 3,
+    variableCount: 18,
+    sourceRecordedItemCount: 5,
+    humanReviewedItemCount: 25,
+    notAssessedItemCount: 5,
+    staleFileCount: 1,
+    unknownFreshnessFileCount: 1,
+    unresolvedTypeCount: 2,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    snapshotCompletenessState: "partial",
+    provenanceState: "partial",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more source-recorded snapshot observations require human review"],
+    assessedAt: "2026-07-28T20:30:00.000Z",
+    authorityBoundary: "figma-read-snapshot-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-authorize-write-validate-or-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "figma-read-snapshot-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: figmaReadSnapshotId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"c".repeat(64)}`,
+      state: "candidate",
+      fileCount: 2,
+      componentCount: 12,
+      variableCollectionCount: 3,
+      variableCount: 18,
+      reviewState: "held",
+      updatedAt: "2026-07-28T20:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-file-component-variable-names-external-identities-values-source-content-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "figma-read-snapshot-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-authorize-write-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-figma-read-snapshot-binding")) content.initiative.id = figmaReadSnapshotId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-figma-read-snapshot-digest")) value.candidate.fileCount = 3
+  if (workspacePath.endsWith("bad-figma-read-snapshot-private")) {
+    value.fileNames = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

@@ -35,6 +35,7 @@ import {
   type ResponsiveMultiPlatformTargetsProjection,
   type ManualFigmaExecutionPathProjection,
   type FigmaMcpCapabilityDiscoveryProjection,
+  type FigmaReadSnapshotProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -141,6 +142,7 @@ const commandIds = {
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
   manualFigmaExecutionPath: "gaepKiro.manualFigmaExecutionPath.inspect",
   figmaMcpCapabilityDiscovery: "gaepKiro.figmaMcpCapabilityDiscovery.inspect",
+  figmaReadSnapshot: "gaepKiro.figmaReadSnapshot.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -266,6 +268,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
     vscode.commands.registerCommand(commandIds.manualFigmaExecutionPath, (input?: unknown) => runUserCommand(() => showManualFigmaExecutionPath(pool, input))),
     vscode.commands.registerCommand(commandIds.figmaMcpCapabilityDiscovery, (input?: unknown) => runUserCommand(() => showFigmaMcpCapabilityDiscovery(pool, input))),
+    vscode.commands.registerCommand(commandIds.figmaReadSnapshot, (input?: unknown) => runUserCommand(() => showFigmaReadSnapshot(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1894,6 +1897,48 @@ async function showFigmaMcpCapabilityDiscovery(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and digests only; this does not connect to or call Figma, request credentials, grant permissions, establish live tool availability or compatibility, authorize writes, approve design, establish a baseline or readiness, or authorize implementation or action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showFigmaReadSnapshot(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<FigmaReadSnapshotProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Figma Read Snapshot", "Initiative ID")
+  const projection = await client.readFigmaReadSnapshot(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Figma Read Snapshot candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Catalogs: snapshot ${status.snapshotCompletenessState} · provenance ${status.provenanceState}`,
+    `Inventory: ${status.fileCount} files · ${status.componentCount} components · ${status.variableCollectionCount} variable collections · ${status.variableCount} variables`,
+    `Evidence: ${status.humanReviewedItemCount} human-reviewed · ${status.sourceRecordedItemCount} source-recorded · ${status.notAssessedItemCount} not assessed`,
+    `Freshness and type gaps: ${status.staleFileCount} stale at capture · ${status.unknownFreshnessFileCount} unknown freshness · ${status.unresolvedTypeCount} unresolved variable types`,
+    `Candidate gaps: ${status.unresolvedOwnershipCount} ownership · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate inventory: ${record.fileCount} files · ${record.componentCount} components · ${record.variableCollectionCount} variable collections · ${record.variableCount} variables · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and digests only; this does not connect to or call Figma, request credentials, grant permissions, prove external completeness, authorize writes, validate or approve design, establish a baseline or readiness, or authorize implementation or action.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,
