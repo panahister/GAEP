@@ -41,6 +41,7 @@ private val designPersonaRoleId = UUID.fromString("64646464-6464-4464-8464-64646
 private val userJourneyId = UUID.fromString("65656565-6565-4565-8565-656565656565")
 private val informationArchitectureId = UUID.fromString("66666666-6666-4666-8666-666666666666")
 private val screenStateInventoryId = UUID.fromString("67676767-6767-4767-8767-676767676767")
+private val designRequirementsId = UUID.fromString("68686868-6868-4868-8868-686868686868")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -244,6 +245,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.screenStateInventory.snapshot" -> handleScreenStateInventory(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.requirements.snapshot" -> handleDesignRequirements(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -2847,6 +2853,99 @@ private fun handleScreenStateInventory(id: Long, params: JsonObject, workspacePa
         }
         workspacePath.endsWith("bad-screen-state-inventory-snapshot-private") -> {
             value.addProperty("screenLabel", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDesignRequirements(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN REQUIREMENTS PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-design-requirements-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-28T12:30:00.000Z"
+    val candidateDigest = "sha256:${"e".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "design-requirements-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "design-requirements-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", designRequirementsId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("requirementCount", 12)
+            addProperty("mustPriorityCount", 5)
+            addProperty("representedOutcomeCount", 4)
+            addProperty("unresolvedOutcomeCount", 1)
+            addProperty("linkedBacklogRequirementCount", 8)
+            addProperty("notPlannedRequirementCount", 2)
+            addProperty("unresolvedBacklogRequirementCount", 2)
+            addProperty("workItemCount", 10)
+            addProperty("weakEvidenceRequirementCount", 3)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleDomainReferenceCount", 1)
+            addProperty("staleSourceReferenceCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("catalogCompletenessState", "not-assessed")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply {
+                add("One or more Design Requirements retain unresolved outcome or backlog coverage")
+            })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "design-requirements-status-is-observational-and-does-not-establish-requirement-validity-completeness-priority-approval-satisfaction-backlog-commitment-design-approval-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", designRequirementsId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"f".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("requirementCount", 12)
+            addProperty("representedOutcomeCount", 4)
+            addProperty("workItemCount", 10)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-28T12:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-requirement-outcome-work-item-design-target-source-or-personal-content-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "design-requirements-projection-is-read-only-and-does-not-establish-requirement-validity-completeness-priority-approval-satisfaction-backlog-commitment-design-approval-readiness-implementation-or-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-design-requirements-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("requirementCount", 13)
+        }
+        workspacePath.endsWith("bad-design-requirements-snapshot-private") -> {
+            value.addProperty("requirementStatement", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

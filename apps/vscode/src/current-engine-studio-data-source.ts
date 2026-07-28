@@ -56,6 +56,7 @@ import type {
   UserJourneyModelProjection,
   InformationArchitectureModelProjection,
   ScreenStateInventoryProjection,
+  DesignRequirementsProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -231,6 +232,9 @@ export interface CurrentStudioEngineReader {
   screenStateInventory?: {
     project(initiativeId: string): Promise<ScreenStateInventoryProjection>
   }
+  designRequirements?: {
+    project(initiativeId: string): Promise<DesignRequirementsProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -296,6 +300,7 @@ interface ObservedStudioState {
   userJourneyProjections: Map<string, UserJourneyModelProjection>
   informationArchitectureProjections: Map<string, InformationArchitectureModelProjection>
   screenStateInventoryProjections: Map<string, ScreenStateInventoryProjection>
+  designRequirementsProjections: Map<string, DesignRequirementsProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1842,6 +1847,55 @@ function screenStateInventoryTable(state: ObservedStudioState): StudioTableSnaps
   }
 }
 
+function designRequirementsTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.designRequirementsProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        inventory: `${status.requirementCount} requirements · ${status.mustPriorityCount} must-priority · ${status.workItemCount} Work Items`,
+        coverage: `${status.representedOutcomeCount} represented outcomes · ${status.unresolvedOutcomeCount} unresolved outcomes · ${status.linkedBacklogRequirementCount} backlog-linked · ${status.notPlannedRequirementCount} not planned`,
+        assessment: `${status.state} · ${status.reviewState} · ${status.catalogCompletenessState}`,
+        gaps: `${status.unresolvedBacklogRequirementCount} unresolved backlog links · ${status.weakEvidenceRequirementCount} weak-evidence requirements · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleDomainReferenceCount} stale domain references · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no requirement, outcome, target, Work Item, Source, or personal content and no validity, completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, write, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "design-requirements",
+    title: "Governed Design Requirements Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "coverage", label: "Outcome and backlog coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Design Requirements candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer requirement validity, completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, write, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1863,7 +1917,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
   if (route === "users-jobs") relatedRecords.push(
     designPersonaRoleTable(state), userJourneyTable(state), informationArchitectureTable(state), screenStateInventoryTable(state),
   )
-  if (route === "scope") relatedRecords.push(requirementsTable(state.requirements))
+  if (route === "scope") relatedRecords.push(requirementsTable(state.requirements), designRequirementsTable(state))
   if (route === "architecture") {
     relatedRecords.push(
       businessCapabilityMapTable(state),
@@ -4510,6 +4564,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       userJourneyProjections: new Map(),
       informationArchitectureProjections: new Map(),
       screenStateInventoryProjections: new Map(),
+      designRequirementsProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -5764,6 +5819,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "screen-state-inventory-unavailable",
           "Screen and State Inventory metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.designRequirements) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.designRequirements!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.designRequirementsProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Design Requirements projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `design-requirements-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Design Requirements metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "design-requirements-unavailable",
+          "Design Requirements metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

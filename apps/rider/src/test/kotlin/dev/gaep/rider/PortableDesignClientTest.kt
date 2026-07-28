@@ -1472,6 +1472,53 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Design Requirements projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("design-requirements-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDesignRequirements(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("not-assessed", projection.catalogCompletenessState)
+            assertEquals(12, projection.requirementCount)
+            assertEquals(5, projection.mustPriorityCount)
+            assertEquals(4, projection.representedOutcomeCount)
+            assertEquals(10, projection.candidate?.workItemCount)
+
+            val rendered = RiderProductController(client).readDesignRequirements(entryId)
+            assertTrue(rendered.contains("GAEP governed Design Requirements candidate"))
+            assertTrue(rendered.contains("12 requirements · 5 must-priority · 10 Work Items"))
+            assertTrue(rendered.contains("3 weak-evidence requirements"))
+            assertTrue(rendered.contains("no requirement validity"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("requirementStatement"))
+        }
+
+        listOf(
+            "bad-design-requirements-snapshot-digest",
+            "bad-design-requirements-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDesignRequirements(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-design-requirements-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDesignRequirements(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

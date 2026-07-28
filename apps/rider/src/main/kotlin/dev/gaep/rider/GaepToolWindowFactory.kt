@@ -530,6 +530,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += screenStateInventoryButton
         actions.add(screenStateInventoryButton)
 
+        val designRequirementsButton = JButton("Inspect Design Requirements…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Requirement, outcome, Work Item, design target, Source, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Design Requirements",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Design Requirements", status, output, buttons) {
+                    controller.readDesignRequirements(initiativeId)
+                }
+            }
+        }
+        buttons += designRequirementsButton
+        actions.add(designRequirementsButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

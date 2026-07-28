@@ -1418,6 +1418,66 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readDesignRequirements(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readDesignRequirements(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Design Requirements were read. Refresh the exact records." }
+        return renderDesignRequirements(projection)
+    }
+
+    fun renderDesignRequirements(projection: DesignRequirementsProjection): String = buildString {
+        appendLine("GAEP governed Design Requirements candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine(
+            "Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState} · " +
+                "catalog: ${projection.catalogCompletenessState}",
+        )
+        appendLine(
+            "Inventory: ${projection.requirementCount} requirements · ${projection.mustPriorityCount} must-priority · " +
+                "${projection.workItemCount} Work Items",
+        )
+        appendLine(
+            "Outcome coverage: ${projection.representedOutcomeCount} represented · " +
+                "${projection.unresolvedOutcomeCount} unresolved",
+        )
+        appendLine(
+            "Backlog disposition: ${projection.linkedBacklogRequirementCount} linked · " +
+                "${projection.notPlannedRequirementCount} not planned · " +
+                "${projection.unresolvedBacklogRequirementCount} unresolved",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.weakEvidenceRequirementCount} weak-evidence requirements · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleDomainReferenceCount} stale domain references · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Design Requirements candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate inventory: ${record.requirementCount} requirements · " +
+                    "${record.representedOutcomeCount} represented outcomes · ${record.workItemCount} Work Items · " +
+                    record.reviewState,
+            )
+        } ?: appendLine("Design Requirements candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and digests only; no requirement validity, " +
+                "completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, " +
+                "implementation, write, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

@@ -70,6 +70,7 @@ internal static class Program
     private static readonly Guid UserJourneyId = Guid.Parse("65656565-6565-4565-8565-656565656565");
     private static readonly Guid InformationArchitectureId = Guid.Parse("66666666-6666-4666-8666-666666666666");
     private static readonly Guid ScreenStateInventoryId = Guid.Parse("67676767-6767-4767-8767-676767676767");
+    private static readonly Guid DesignRequirementsId = Guid.Parse("68686868-6868-4868-8868-686868686868");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -209,6 +210,9 @@ internal static class Program
         var badScreenStateInventorySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-screen-state-inventory-snapshot-binding");
         var badScreenStateInventorySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-screen-state-inventory-snapshot-digest");
         var badScreenStateInventorySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-screen-state-inventory-snapshot-private");
+        var badDesignRequirementsSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-requirements-snapshot-binding");
+        var badDesignRequirementsSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-requirements-snapshot-digest");
+        var badDesignRequirementsSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-requirements-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -348,6 +352,9 @@ internal static class Program
         Directory.CreateDirectory(badScreenStateInventorySnapshotBindingRoot);
         Directory.CreateDirectory(badScreenStateInventorySnapshotDigestRoot);
         Directory.CreateDirectory(badScreenStateInventorySnapshotPrivateRoot);
+        Directory.CreateDirectory(badDesignRequirementsSnapshotBindingRoot);
+        Directory.CreateDirectory(badDesignRequirementsSnapshotDigestRoot);
+        Directory.CreateDirectory(badDesignRequirementsSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1782,6 +1789,49 @@ internal static class Program
                 "Screen and State Inventory rejects a projection rebound to a substituted Product revision");
         }
 
+        var designRequirementsProjection = await client.ReadDesignRequirementsAsync(InitiativeId);
+        Check(designRequirementsProjection.ProductId == product.Id &&
+              designRequirementsProjection.ProductRevision == product.Revision &&
+              designRequirementsProjection.ProductDigest == product.Digest &&
+              designRequirementsProjection.InitiativeId == resolved.Id &&
+              designRequirementsProjection.InitiativeRevision == resolved.Revision &&
+              designRequirementsProjection.InitiativeDigest == resolved.Digest &&
+              designRequirementsProjection.AssessmentState == "attention-required" &&
+              designRequirementsProjection.ReviewState == "held" &&
+              designRequirementsProjection.CatalogCompletenessState == "not-assessed" &&
+              designRequirementsProjection.RequirementCount == 12 &&
+              designRequirementsProjection.MustPriorityCount == 5 &&
+              designRequirementsProjection.RepresentedOutcomeCount == 4 &&
+              designRequirementsProjection.Candidate?.WorkItemCount == 10,
+            "Typed Design Requirements preserves exact Product, Initiative, assessment, outcome, backlog, and privacy-safe inventory metadata");
+        var designRequirementsOutput = await initiativeController.ReadDesignRequirementsAsync(InitiativeId);
+        Check(designRequirementsOutput.Contains("GAEP governed Design Requirements candidate", StringComparison.Ordinal) &&
+              designRequirementsOutput.Contains("12 requirements · 5 must-priority · 10 Work Items", StringComparison.Ordinal) &&
+              designRequirementsOutput.Contains("3 weak-evidence requirements", StringComparison.Ordinal) &&
+              designRequirementsOutput.Contains("no requirement validity", StringComparison.Ordinal) &&
+              !designRequirementsOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designRequirementsOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designRequirementsOutput.Contains("requirementStatement", StringComparison.Ordinal) &&
+              !designRequirementsOutput.Contains("private requirement", StringComparison.OrdinalIgnoreCase),
+            "Design Requirements workflow renders privacy-safe metadata with explicit no-validity and no-authority boundaries");
+        foreach (var hostileRoot in new[] {
+                     badDesignRequirementsSnapshotDigestRoot, badDesignRequirementsSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignRequirementsAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Design Requirements rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDesignRequirementsSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignRequirementsAsync(InitiativeId),
+                "Design Requirements rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3084,6 +3134,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-screen-state-inventory-snapshot-digest";
         var badScreenStateInventorySnapshotPrivate =
             Path.GetFileName(workspace) == "bad-screen-state-inventory-snapshot-private";
+        var badDesignRequirementsSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-design-requirements-snapshot-binding";
+        var badDesignRequirementsSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-design-requirements-snapshot-digest";
+        var badDesignRequirementsSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-design-requirements-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3502,6 +3558,17 @@ internal static class Program
                         badScreenStateInventorySnapshotBinding,
                         badScreenStateInventorySnapshotDigest,
                         badScreenStateInventorySnapshotPrivate);
+                    break;
+                case "design.requirements.snapshot":
+                    await HandleDesignRequirementsAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignRequirementsSnapshotBinding,
+                        badDesignRequirementsSnapshotDigest,
+                        badDesignRequirementsSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -6404,6 +6471,104 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["screenCount"] = 10;
         if (includePrivateField) result["screenLabel"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignRequirementsAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGN REQUIREMENTS");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T12:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('e', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignRequirementsId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('f', 64)}",
+            ["state"] = "candidate",
+            ["requirementCount"] = 12,
+            ["representedOutcomeCount"] = 4,
+            ["workItemCount"] = 10,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T12:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "design-requirements-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "design-requirements-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignRequirementsId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["requirementCount"] = 12,
+                ["mustPriorityCount"] = 5,
+                ["representedOutcomeCount"] = 4,
+                ["unresolvedOutcomeCount"] = 1,
+                ["linkedBacklogRequirementCount"] = 8,
+                ["notPlannedRequirementCount"] = 2,
+                ["unresolvedBacklogRequirementCount"] = 2,
+                ["workItemCount"] = 10,
+                ["weakEvidenceRequirementCount"] = 3,
+                ["staleBindingCount"] = 0,
+                ["staleDomainReferenceCount"] = 1,
+                ["staleSourceReferenceCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["catalogCompletenessState"] = "not-assessed",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Design Requirements retain unresolved outcome or backlog coverage" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "design-requirements-status-is-observational-and-does-not-establish-requirement-validity-completeness-priority-approval-satisfaction-backlog-commitment-design-approval-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-requirement-outcome-work-item-design-target-source-or-personal-content-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "design-requirements-projection-is-read-only-and-does-not-establish-requirement-validity-completeness-priority-approval-satisfaction-backlog-commitment-design-approval-readiness-implementation-or-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["requirementCount"] = 13;
+        if (includePrivateField) result["requirementStatement"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

@@ -28,6 +28,7 @@ import {
   type UserJourneyModelProjection,
   type InformationArchitectureModelProjection,
   type ScreenStateInventoryProjection,
+  type DesignRequirementsProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1836,6 +1837,60 @@ function screenStateInventoryProjection(): ScreenStateInventoryProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function designRequirementsProjection(): DesignRequirementsProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "design-requirements-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "f3f3f3f3-f3f3-43f3-83f3-f3f3f3f3f3f3", revision: 2, digest: `sha256:${"e".repeat(64)}` as const },
+    requirementCount: 12,
+    mustPriorityCount: 5,
+    representedOutcomeCount: 4,
+    unresolvedOutcomeCount: 1,
+    linkedBacklogRequirementCount: 8,
+    notPlannedRequirementCount: 2,
+    unresolvedBacklogRequirementCount: 2,
+    workItemCount: 10,
+    weakEvidenceRequirementCount: 3,
+    staleBindingCount: 0,
+    staleDomainReferenceCount: 1,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    catalogCompletenessState: "not-assessed" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more Design Requirements retain unresolved outcome or backlog coverage"],
+    assessedAt: "2026-07-28T12:30:00.000Z",
+    authorityBoundary: "design-requirements-status-is-observational-and-does-not-establish-requirement-validity-completeness-priority-approval-satisfaction-backlog-commitment-design-approval-readiness-implementation-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "design-requirements-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"f".repeat(64)}` as const,
+      state: "candidate" as const,
+      requirementCount: 12,
+      representedOutcomeCount: 4,
+      workItemCount: 10,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-28T12:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-requirement-outcome-work-item-design-target-source-or-personal-content-secrets-or-credentials" as const,
+    authorityBoundary: "design-requirements-projection-is-read-only-and-does-not-establish-requirement-validity-completeness-priority-approval-satisfaction-backlog-commitment-design-approval-readiness-implementation-or-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2486,6 +2541,7 @@ interface HarnessOptions {
   userJourneyProjection?: UserJourneyModelProjection
   informationArchitectureProjection?: InformationArchitectureModelProjection
   screenStateInventoryProjection?: ScreenStateInventoryProjection
+  designRequirementsProjection?: DesignRequirementsProjection
   commandResult?: unknown
 }
 
@@ -2711,6 +2767,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.screenStateInventoryProjection ? {
       screenStateInventory: {
         project: async () => options.screenStateInventoryProjection!,
+      },
+    } : {}),
+    ...(options.designRequirementsProjection ? {
+      designRequirements: {
+        project: async () => options.designRequirementsProjection!,
       },
     } : {}),
   }
@@ -3421,6 +3482,31 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private screen label|private state|private variant|private route|private persona|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Design Requirements metadata on the native scope page", async () => {
+    const projection = designRequirementsProjection()
+    const { source } = harness({ designRequirementsProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "design-requirements")).toMatchObject({
+      id: "design-requirements",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          inventory: "12 requirements · 5 must-priority · 10 Work Items",
+          coverage: "4 represented outcomes · 1 unresolved outcomes · 8 backlog-linked · 2 not planned",
+          assessment: "attention-required · held · not-assessed",
+          gaps: "2 unresolved backlog links · 3 weak-evidence requirements · 2 questions · 0 stale bindings · 1 stale domain references · 1 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no requirement, outcome, target, Work Item, Source, or personal content and no validity, completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, write, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private requirement|private outcome|private work item|private design target|private source content|customer@example\.com|api_key/iu,
     )
   })
 

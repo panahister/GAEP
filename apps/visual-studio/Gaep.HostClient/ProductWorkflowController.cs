@@ -1657,6 +1657,68 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignRequirementsAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignRequirementsAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Design Requirements were read. Refresh the exact records.");
+        }
+        return RenderDesignRequirements(projection);
+    }
+
+    public static string RenderDesignRequirements(DesignRequirementsProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Design Requirements candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine(
+                $"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState} · " +
+                $"catalog: {projection.CatalogCompletenessState}")
+            .AppendLine(
+                $"Inventory: {projection.RequirementCount} requirements · {projection.MustPriorityCount} must-priority · " +
+                $"{projection.WorkItemCount} Work Items")
+            .AppendLine($"Outcome coverage: {projection.RepresentedOutcomeCount} represented · {projection.UnresolvedOutcomeCount} unresolved")
+            .AppendLine(
+                $"Backlog disposition: {projection.LinkedBacklogRequirementCount} linked · " +
+                $"{projection.NotPlannedRequirementCount} not planned · {projection.UnresolvedBacklogRequirementCount} unresolved")
+            .AppendLine(
+                $"Candidate gaps: {projection.WeakEvidenceRequirementCount} weak-evidence requirements · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleDomainReferenceCount} stale domain references · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Design Requirements candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {candidate.RequirementCount} requirements · " +
+                    $"{candidate.RepresentedOutcomeCount} represented outcomes · {candidate.WorkItemCount} Work Items · " +
+                    candidate.ReviewState);
+        }
+        else output.AppendLine("Design Requirements candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and digests only; no requirement validity, " +
+                "completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, " +
+                "implementation, write, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

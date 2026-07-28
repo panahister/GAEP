@@ -145,7 +145,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 47 ||
+  if (!Array.isArray(commands) || commands.length !== 48 ||
       new Set(commands.map((command) => command.command)).size !== commands.length ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1Summary") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1ChangeImpact") ||
@@ -154,8 +154,9 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.designPersonasRoles.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.userJourneys.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.informationArchitecture.inspect") ||
-      !commands.some((command) => command.command === "gaepKiro.screenStateInventory.inspect")) {
-    fail("package command inventory must contain 47 unique commands including all three Phase 1 dashboards, Design Applicability, Design Personas and Roles, User Journeys, Information Architecture, and Screen and State Inventory")
+      !commands.some((command) => command.command === "gaepKiro.screenStateInventory.inspect") ||
+      !commands.some((command) => command.command === "gaepKiro.designRequirements.inspect")) {
+    fail("package command inventory must contain 48 unique commands including all three Phase 1 dashboards, Design Applicability, Design Personas and Roles, User Journeys, Information Architecture, Screen and State Inventory, and Design Requirements")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))

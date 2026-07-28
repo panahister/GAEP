@@ -52,6 +52,7 @@ const commands = [
   "gaepKiro.userJourneys.inspect",
   "gaepKiro.informationArchitecture.inspect",
   "gaepKiro.screenStateInventory.inspect",
+  "gaepKiro.designRequirements.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",

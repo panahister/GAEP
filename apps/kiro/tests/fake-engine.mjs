@@ -55,6 +55,7 @@ const designPersonaRoleId = "57575757-5757-4757-8757-575757575757"
 const userJourneyId = "58585858-5858-4858-8858-585858585858"
 const informationArchitectureId = "59595959-5959-4959-8959-595959595959"
 const screenStateInventoryId = "60606060-6060-4060-8060-606060606060"
+const designRequirementsId = "61616161-6161-4161-8161-616161616161"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -146,6 +147,8 @@ input.on("line", (line) => {
       return readInformationArchitectureModel(id, request.params)
     case "design.screenStateInventory.snapshot":
       return readScreenStateInventory(id, request.params)
+    case "design.requirements.snapshot":
+      return readDesignRequirements(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -1998,6 +2001,70 @@ function readScreenStateInventory(id, params) {
   if (workspacePath.endsWith("bad-screen-state-inventory-snapshot-digest")) value.candidate.screenCount = 9
   if (workspacePath.endsWith("bad-screen-state-inventory-snapshot-private")) {
     value.screenLabel = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readDesignRequirements(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN REQUIREMENTS PARAMS")
+  }
+  const candidateDigest = `sha256:${"e".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "design-requirements-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designRequirementsId, revision: 2, digest: candidateDigest },
+    requirementCount: 12,
+    mustPriorityCount: 5,
+    representedOutcomeCount: 4,
+    unresolvedOutcomeCount: 1,
+    linkedBacklogRequirementCount: 8,
+    notPlannedRequirementCount: 2,
+    unresolvedBacklogRequirementCount: 2,
+    workItemCount: 10,
+    weakEvidenceRequirementCount: 3,
+    staleBindingCount: 0,
+    staleDomainReferenceCount: 1,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    catalogCompletenessState: "not-assessed",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Design Requirements retain unresolved outcome or backlog coverage"],
+    assessedAt: "2026-07-28T12:30:00.000Z",
+    authorityBoundary: "design-requirements-status-is-observational-and-does-not-establish-requirement-validity-completeness-priority-approval-satisfaction-backlog-commitment-design-approval-readiness-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "design-requirements-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designRequirementsId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"f".repeat(64)}`,
+      state: "candidate",
+      requirementCount: 12,
+      representedOutcomeCount: 4,
+      workItemCount: 10,
+      reviewState: "held",
+      updatedAt: "2026-07-28T12:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-requirement-outcome-work-item-design-target-source-or-personal-content-secrets-or-credentials",
+    authorityBoundary: "design-requirements-projection-is-read-only-and-does-not-establish-requirement-validity-completeness-priority-approval-satisfaction-backlog-commitment-design-approval-readiness-implementation-or-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-design-requirements-snapshot-binding")) content.initiative.id = designRequirementsId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-design-requirements-snapshot-digest")) value.candidate.requirementCount = 13
+  if (workspacePath.endsWith("bad-design-requirements-snapshot-private")) {
+    value.requirementStatement = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

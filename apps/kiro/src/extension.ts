@@ -29,6 +29,7 @@ import {
   type UserJourneyModelProjection,
   type InformationArchitectureModelProjection,
   type ScreenStateInventoryProjection,
+  type DesignRequirementsProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -129,6 +130,7 @@ const commandIds = {
   userJourney: "gaepKiro.userJourneys.inspect",
   informationArchitecture: "gaepKiro.informationArchitecture.inspect",
   screenStateInventory: "gaepKiro.screenStateInventory.inspect",
+  designRequirements: "gaepKiro.designRequirements.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -248,6 +250,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.userJourney, (input?: unknown) => runUserCommand(() => showUserJourneyModel(pool, input))),
     vscode.commands.registerCommand(commandIds.informationArchitecture, (input?: unknown) => runUserCommand(() => showInformationArchitectureModel(pool, input))),
     vscode.commands.registerCommand(commandIds.screenStateInventory, (input?: unknown) => runUserCommand(() => showScreenStateInventory(pool, input))),
+    vscode.commands.registerCommand(commandIds.designRequirements, (input?: unknown) => runUserCommand(() => showDesignRequirements(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1626,6 +1629,47 @@ async function showScreenStateInventory(
     ] : []),
     "",
     "Candidate platform, screen, state, and variant metadata only; this does not prove UI completeness, platform parity, state reachability, interaction quality, or accessibility, approve design, grant readiness, authorize write, or authorize action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDesignRequirements(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DesignRequirementsProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Design Requirements", "Initiative ID")
+  const projection = await client.readDesignRequirements(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Design Requirements candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState} · catalog: ${status.catalogCompletenessState}`,
+    `Inventory: ${status.requirementCount} requirements · ${status.mustPriorityCount} must-priority · ${status.workItemCount} Work Items`,
+    `Outcome coverage: ${status.representedOutcomeCount} represented · ${status.unresolvedOutcomeCount} unresolved`,
+    `Backlog disposition: ${status.linkedBacklogRequirementCount} linked · ${status.notPlannedRequirementCount} not planned · ${status.unresolvedBacklogRequirementCount} unresolved`,
+    `Candidate gaps: ${status.weakEvidenceRequirementCount} weak-evidence requirements · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleDomainReferenceCount} stale domain references · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate inventory: ${record.requirementCount} requirements · ${record.representedOutcomeCount} represented outcomes · ${record.workItemCount} Work Items · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and digests only; this does not establish requirement validity, completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, write, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,
