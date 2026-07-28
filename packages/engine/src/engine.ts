@@ -101,6 +101,7 @@ import { DesignRequirementsService } from "./design-requirements.js"
 import { DesignSystemTokenContractService } from "./design-system-token-contract.js"
 import { AccessibilityDesignRulesService } from "./accessibility-design-rules.js"
 import { ResponsiveMultiPlatformTargetsService } from "./responsive-multi-platform-targets.js"
+import { ManualFigmaExecutionPathService } from "./manual-figma-execution-path.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -291,6 +292,7 @@ export class GaepEngine {
   readonly designSystemTokenContract: DesignSystemTokenContractService
   readonly accessibilityDesignRules: AccessibilityDesignRulesService
   readonly responsiveMultiPlatformTargets: ResponsiveMultiPlatformTargetsService
+  readonly manualFigmaExecutionPath: ManualFigmaExecutionPathService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -593,6 +595,18 @@ export class GaepEngine {
       this.designSystemTokenContract,
       this.accessibilityDesignRules,
     )
+    this.manualFigmaExecutionPath = new ManualFigmaExecutionPathService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      this.designApplicability,
+      this.screenStateInventory,
+      this.designRequirements,
+      this.designSystemTokenContract,
+      this.accessibilityDesignRules,
+      this.responsiveMultiPlatformTargets,
+    )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
@@ -686,7 +700,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
@@ -719,6 +733,7 @@ export class GaepEngine {
         this.designSystemTokenContract.healthIssues(),
         this.accessibilityDesignRules.healthIssues(),
         this.responsiveMultiPlatformTargets.healthIssues(),
+        this.manualFigmaExecutionPath.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,
@@ -753,6 +768,7 @@ export class GaepEngine {
         ...designSystemTokenContractIssues,
         ...accessibilityDesignRulesIssues,
         ...responsiveMultiPlatformTargetsIssues,
+        ...manualFigmaExecutionPathIssues,
       ]
     } catch (error) {
       domainIssues = [{

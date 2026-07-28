@@ -5,6 +5,9 @@ import { join } from "node:path"
 import {
   designParticipantCategoryValues,
   designRoleKindValues,
+  manualFigmaHandoffArtifactKinds,
+  manualFigmaInstructionKinds,
+  manualFigmaReturnArtifactKinds,
   userJourneyPathKindValues,
   initiativeApplicabilitySubjectDefinitions,
   stakeholderCategoryValues,
@@ -26,6 +29,7 @@ import {
   type InitiativeClassificationInput,
   type InformationArchitectureModelInput,
   type InformationArchitectureModel,
+  type ManualFigmaExecutionPathInput,
   type OutcomeModel,
   type OutcomeModelInput,
   type Product,
@@ -34,6 +38,7 @@ import {
   type ScreenStateInventoryInput,
   type ScreenStateInventory,
   type ResponsiveMultiPlatformTargetsInput,
+  type ResponsiveMultiPlatformTargets,
   type StakeholderModel,
   type StakeholderModelInput,
   type UserJourneyModelInput,
@@ -1430,6 +1435,133 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function createManualFigmaExecutionPathPrerequisites() {
+    const applicabilityInput = designApplicabilityInput()
+    applicabilityInput.scopes[0]!.designSource.modes = ["figma-design", "repository-native"]
+    applicability = await engine.designApplicability.revise(
+      applicability.id, applicability.revision, applicabilityInput, actorId,
+    )
+    const { inventory, requirement, requirements, designSystem, accessibility } =
+      await createResponsiveMultiPlatformTargetsPrerequisites()
+    const responsive = await engine.responsiveMultiPlatformTargets.create(
+      await responsiveMultiPlatformTargetsInput(inventory, requirement, requirements, designSystem, accessibility), actorId,
+    )
+    return { inventory, requirement, requirements, designSystem, accessibility, responsive }
+  }
+
+  async function manualFigmaExecutionPathInput(
+    inventory: ScreenStateInventory,
+    requirement: Awaited<ReturnType<typeof engine.productStudio.readRequirement>>,
+    requirements: DesignRequirements,
+    designSystem: DesignSystemTokenContract,
+    accessibility: AccessibilityDesignRules,
+    responsive: ResponsiveMultiPlatformTargets,
+    overrides: Partial<ManualFigmaExecutionPathInput> = {},
+  ): Promise<ManualFigmaExecutionPathInput> {
+    const scopeKey = "customer-portal"
+    const checkKinds = [
+      "accessibility-reviewed",
+      "handoff-manifest-digest-verified",
+      "handoff-package-digest-verified",
+      "handoff-path-contained",
+      "instructions-reviewed",
+      "privacy-reviewed",
+      "responsive-targets-reviewed",
+      "return-contract-reviewed",
+    ] as const
+    return {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: "internal",
+      title: "Customer portal Manual Figma Execution Path candidate",
+      designApplicability: {
+        recordId: applicability.id, revision: applicability.revision,
+        digest: canonicalDigest(applicability), membershipDigest: applicability.membershipDigest,
+      },
+      screenStateInventory: {
+        recordId: inventory.id, revision: inventory.revision,
+        digest: canonicalDigest(inventory), membershipDigest: inventory.membershipDigest,
+      },
+      designRequirements: {
+        recordId: requirements.id, revision: requirements.revision,
+        digest: canonicalDigest(requirements), membershipDigest: requirements.membershipDigest,
+      },
+      designSystemTokenContract: {
+        recordId: designSystem.id, revision: designSystem.revision,
+        digest: canonicalDigest(designSystem), membershipDigest: designSystem.membershipDigest,
+      },
+      accessibilityDesignRules: {
+        recordId: accessibility.id, revision: accessibility.revision,
+        digest: canonicalDigest(accessibility), membershipDigest: accessibility.membershipDigest,
+      },
+      responsiveMultiPlatformTargets: {
+        recordId: responsive.id, revision: responsive.revision,
+        digest: canonicalDigest(responsive), membershipDigest: responsive.membershipDigest,
+      },
+      scopes: [{
+        key: scopeKey,
+        designScopeKey: scopeKey,
+        figmaMode: "figma-design",
+        executionMode: "manual-disconnected",
+        handoffLocation: "design-handoff/customer-portal",
+        handoffManifestDigest: digest("c"),
+        handoffPackageDigest: digest("d"),
+        includedArtifacts: [...manualFigmaHandoffArtifactKinds],
+        requiredReturns: [...manualFigmaReturnArtifactKinds],
+        instructionStepKeys: ["export-return", "handoff", "human-review", "manual-figma-execution", "prepare"],
+        ownership: { state: "assigned-candidate", owner: { kind: "role", id: "product-designer" } },
+        sources: [reference()],
+        limitations: ["This candidate location and digest set does not prove that a handoff bundle exists or was executed"],
+      }],
+      instructions: manualFigmaInstructionKinds.map((kind, index) => ({
+        key: kind,
+        sequence: index + 1,
+        kind,
+        scopeKeys: [scopeKey],
+        instruction: `Perform the ${kind} stage against the exact digest-bound candidate metadata without treating guidance as execution authority.`,
+        requiredInputs: kind === "prepare" ? [] : ["design-brief" as const],
+        expectedOutputs: kind === "export-return" ? [...manualFigmaReturnArtifactKinds] : [],
+        humanActionRequired: kind === "manual-figma-execution",
+        completionState: "not-executed" as const,
+        actionAuthorityState: "not-granted" as const,
+        sources: [reference()],
+      })),
+      checks: checkKinds.map((kind) => ({
+        key: kind,
+        scopeKey,
+        kind,
+        evidenceState: "human-reviewed" as const,
+        observation: "evidence-supports" as const,
+        evidenceDigests: [digest("e")],
+        reviewedBy: { kind: "human" as const, id: actorId },
+        reviewedAt: "2026-07-28T18:00:00.000Z",
+        procedure: `Review the ${kind} candidate control against its exact governed inputs and recorded evidence without claiming Figma execution.`,
+        sources: [reference()],
+      })),
+      requirementCoverage: [{
+        requirementKey: requirement.key,
+        state: "represented",
+        scopeKeys: [scopeKey],
+        rationale: "The exact current Design Requirement is represented in the digest-bound manual Figma execution guidance scope.",
+        sources: [reference()],
+      }],
+      guideCatalogState: "candidate-complete",
+      handoffCatalogState: "candidate-complete",
+      returnContractState: "candidate-complete",
+      unresolvedQuestions: [],
+      limitations: ["Figma connection, execution, returned-design review, approval, baseline, readiness, implementation, and action authority remain not established"],
+      reviewState: "ready-for-human-review",
+      figmaConnectionState: "disconnected-only",
+      figmaExecutionState: "not-executed",
+      figmaWriteAuthorityState: "not-granted",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -2658,6 +2790,196 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "responsive-multi-platform-targets.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, and revises an exact disconnected Manual Figma Execution Path without connection, execution, approval, readiness, or action authority", async () => {
+    const { inventory, requirement, requirements, designSystem, accessibility, responsive } =
+      await createManualFigmaExecutionPathPrerequisites()
+    const candidate = await engine.manualFigmaExecutionPath.create(
+      await manualFigmaExecutionPathInput(
+        inventory, requirement, requirements, designSystem, accessibility, responsive,
+      ),
+      actorId,
+    )
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      scopes: [{
+        designScopeKey: "customer-portal",
+        figmaMode: "figma-design",
+        executionMode: "manual-disconnected",
+        ownership: { state: "assigned-candidate" },
+      }],
+      instructions: [
+        { kind: "prepare", completionState: "not-executed", actionAuthorityState: "not-granted" },
+        { kind: "handoff" },
+        { kind: "manual-figma-execution", humanActionRequired: true },
+        { kind: "export-return" },
+        { kind: "human-review" },
+      ],
+      figmaConnectionState: "disconnected-only",
+      figmaExecutionState: "not-executed",
+      figmaWriteAuthorityState: "not-granted",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+      authorityBoundary: expect.stringContaining("does-not-connect-to-figma-execute-design-actions"),
+    })
+    expect(await engine.manualFigmaExecutionPath.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      scopeCount: 1,
+      instructionCount: 5,
+      checkCount: 8,
+      notAssessedCheckCount: 0,
+      evidenceRecordedCheckCount: 0,
+      humanReviewedCheckCount: 8,
+      contradictedCheckCount: 0,
+      representedRequirementCount: 1,
+      unresolvedRequirementCount: 0,
+      unresolvedOwnershipCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      guideCatalogState: "candidate-complete",
+      handoffCatalogState: "candidate-complete",
+      returnContractState: "candidate-complete",
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.manualFigmaExecutionPath.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        scopeCount: 1,
+        instructionCount: 5,
+        checkCount: 8,
+        representedRequirementCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-handoff-content-instructions-figma-identifiers-returned-design"),
+      authorityBoundary: expect.stringContaining("does-not-connect-to-figma-prove-execution"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("design-handoff/customer-portal")
+    expect(JSON.stringify(projection)).not.toContain("Perform the prepare stage")
+
+    const revisedInput = await manualFigmaExecutionPathInput(
+      inventory, requirement, requirements, designSystem, accessibility, responsive,
+      { limitations: [
+        "Figma connection, execution, returned-design review, approval, baseline, readiness, implementation, and action authority remain not established",
+        "The candidate manual guide remains subject to independent attributable human review before any external action",
+      ].sort((left, right) => left.localeCompare(right)) },
+    )
+    const revised = await engine.manualFigmaExecutionPath.revise(candidate.id, candidate.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.manualFigmaExecutionPath.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `manual-figma-execution-paths/${candidate.id}.json`,
+      `manual-figma-execution-path-history/manual-figma-execution-path-${candidate.id}-r1.json`,
+      `manual-figma-execution-path-history/manual-figma-execution-path-${candidate.id}-r2.json`,
+    ]))
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "manual-figma-execution-path.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        designApplicability: revised.designApplicability,
+        screenStateInventory: revised.screenStateInventory,
+        designRequirements: revised.designRequirements,
+        designSystemTokenContract: revised.designSystemTokenContract,
+        accessibilityDesignRules: revised.accessibilityDesignRules,
+        responsiveMultiPlatformTargets: revised.responsiveMultiPlatformTargets,
+        scopeCount: 1,
+        instructionCount: 5,
+        checkCount: 8,
+        guideCatalogState: "candidate-complete",
+        handoffCatalogState: "candidate-complete",
+        returnContractState: "candidate-complete",
+        reviewState: "ready-for-human-review",
+        figmaConnectionState: "disconnected-only",
+        figmaExecutionState: "not-executed",
+        figmaWriteAuthorityState: "not-granted",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-granted",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("fails Manual Figma Execution Path closed on stale prerequisites, unknown Figma scopes, incomplete checks, or mismatched Requirement coverage", async () => {
+    const { inventory, requirement, requirements, designSystem, accessibility, responsive } =
+      await createManualFigmaExecutionPathPrerequisites()
+    const staleResponsive = await manualFigmaExecutionPathInput(
+      inventory, requirement, requirements, designSystem, accessibility, responsive,
+      { responsiveMultiPlatformTargets: {
+        recordId: responsive.id,
+        revision: responsive.revision,
+        digest: digest("f"),
+        membershipDigest: responsive.membershipDigest,
+      } },
+    )
+    await expect(engine.manualFigmaExecutionPath.create(staleResponsive, actorId))
+      .rejects.toThrow("exact current responsiveMultiPlatformTargets")
+
+    const unknownScope = await manualFigmaExecutionPathInput(
+      inventory, requirement, requirements, designSystem, accessibility, responsive,
+    )
+    unknownScope.scopes[0]!.designScopeKey = "unknown-scope"
+    await expect(engine.manualFigmaExecutionPath.create(unknownScope, actorId))
+      .rejects.toThrow("material Figma applicability")
+
+    const incompleteChecks = await manualFigmaExecutionPathInput(
+      inventory, requirement, requirements, designSystem, accessibility, responsive,
+    )
+    incompleteChecks.checks.pop()
+    await expect(engine.manualFigmaExecutionPath.create(incompleteChecks, actorId))
+      .rejects.toThrow("every canonical check")
+
+    const mismatchedCoverage = await manualFigmaExecutionPathInput(
+      inventory, requirement, requirements, designSystem, accessibility, responsive,
+    )
+    mismatchedCoverage.requirementCoverage = []
+    await expect(engine.manualFigmaExecutionPath.create(mismatchedCoverage, actorId))
+      .rejects.toThrow("every exact current Design Requirement")
+
+    const candidate = await engine.manualFigmaExecutionPath.create(
+      await manualFigmaExecutionPathInput(
+        inventory, requirement, requirements, designSystem, accessibility, responsive,
+      ),
+      actorId,
+    )
+    const applicabilityInput = designApplicabilityInput()
+    applicabilityInput.scopes[0]!.designSource.modes = ["figma-design", "figma-make", "repository-native"]
+    applicability = await engine.designApplicability.revise(
+      applicability.id, applicability.revision, applicabilityInput, actorId,
+    )
+    expect(await engine.manualFigmaExecutionPath.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "manual-figma-execution-path.binding-review-required",
       severity: "warning",
     }))
   })

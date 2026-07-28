@@ -20,6 +20,7 @@ import {
   designSystemTokenContractSchema,
   accessibilityDesignRulesSchema,
   responsiveMultiPlatformTargetsSchema,
+  manualFigmaExecutionPathSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -96,6 +97,7 @@ import {
   type DesignSystemTokenContract,
   type AccessibilityDesignRules,
   type ResponsiveMultiPlatformTargets,
+  type ManualFigmaExecutionPath,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2257,6 +2259,16 @@ export class ProductStudioService {
       /^responsive-multi-platform-targets-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       responsiveMultiPlatformTargetsSchema,
     )
+    const manualFigmaExecutionPaths = await this.listRecords(
+      "manual-figma-execution-paths",
+      /^[0-9a-f-]+\.json$/i,
+      manualFigmaExecutionPathSchema,
+    )
+    const manualFigmaExecutionPathHistory = await this.listRecords(
+      "manual-figma-execution-path-history",
+      /^manual-figma-execution-path-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      manualFigmaExecutionPathSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2339,6 +2351,8 @@ export class ProductStudioService {
       ...accessibilityDesignRulesHistory,
       ...responsiveMultiPlatformTargets,
       ...responsiveMultiPlatformTargetsHistory,
+      ...manualFigmaExecutionPaths,
+      ...manualFigmaExecutionPathHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2380,6 +2394,7 @@ export class ProductStudioService {
           designSystemTokenContracts.find((record) => record.id === id)?.informationClassification ??
           accessibilityDesignRules.find((record) => record.id === id)?.informationClassification ??
           responsiveMultiPlatformTargets.find((record) => record.id === id)?.informationClassification ??
+          manualFigmaExecutionPaths.find((record) => record.id === id)?.informationClassification ??
           portableDesignSnapshots.find((record) => record.bundleId === id)?.classification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
@@ -2638,6 +2653,13 @@ export class ProductStudioService {
       responsiveMultiPlatformTargetsHistory,
       (record) => `responsive-multi-platform-targets-history/responsive-multi-platform-targets-${record.id}-r${record.revision}.json`,
     )
+    append("manual-figma-execution-paths", "manual-figma-execution-path-candidate", manualFigmaExecutionPaths)
+    append(
+      "manual-figma-execution-path-history",
+      "manual-figma-execution-path-candidate",
+      manualFigmaExecutionPathHistory,
+      (record) => `manual-figma-execution-path-history/manual-figma-execution-path-${record.id}-r${record.revision}.json`,
+    )
     append(
       "candidates",
       "portable-design-snapshot",
@@ -2729,6 +2751,7 @@ export class ProductStudioService {
           ...designSystemTokenContracts.map((record) => record.informationClassification),
           ...accessibilityDesignRules.map((record) => record.informationClassification),
           ...responsiveMultiPlatformTargets.map((record) => record.informationClassification),
+          ...manualFigmaExecutionPaths.map((record) => record.informationClassification),
           ...portableDesignSnapshots.map((record) => record.classification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
@@ -3086,6 +3109,14 @@ export class ProductStudioService {
           `responsive-multi-platform-targets-history/responsive-multi-platform-targets-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Responsive and Multi-Platform Targets history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("manual-figma-execution-path-history/")) {
+        const record = validated as ManualFigmaExecutionPath
+        const expectedHistoryPath =
+          `manual-figma-execution-path-history/manual-figma-execution-path-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Manual Figma Execution Path history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4220,7 +4251,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4252,7 +4283,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -6832,7 +6863,7 @@ export class ProductStudioService {
     const responsiveMultiPlatformTargetsHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("responsive-multi-platform-targets-history/"))
       .map(([, record]) => responsiveMultiPlatformTargetsSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactResponsiveMultiPlatformTargets = validateVersionedBusinessRecords(
       responsiveMultiPlatformTargets, responsiveMultiPlatformTargetsHistory, "Responsive and Multi-Platform Targets",
     )
     for (const candidate of [...responsiveMultiPlatformTargets, ...responsiveMultiPlatformTargetsHistory]) {
@@ -6947,6 +6978,138 @@ export class ProductStudioService {
             (check.breakpointKey !== undefined && !behavior.breakpointKeys.includes(check.breakpointKey))) {
           throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} has an unresolved governed check`)
         }
+      }
+    }
+
+    const manualFigmaExecutionPaths = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("manual-figma-execution-paths/"))
+      .map(([, record]) => manualFigmaExecutionPathSchema.parse(record))
+    const manualFigmaExecutionPathHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("manual-figma-execution-path-history/"))
+      .map(([, record]) => manualFigmaExecutionPathSchema.parse(record))
+    validateVersionedBusinessRecords(
+      manualFigmaExecutionPaths, manualFigmaExecutionPathHistory, "Manual Figma Execution Path",
+    )
+    for (const candidate of [...manualFigmaExecutionPaths, ...manualFigmaExecutionPathHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        designApplicability: candidate.designApplicability,
+        screenStateInventory: candidate.screenStateInventory,
+        designRequirements: candidate.designRequirements,
+        designSystemTokenContract: candidate.designSystemTokenContract,
+        accessibilityDesignRules: candidate.accessibilityDesignRules,
+        responsiveMultiPlatformTargets: candidate.responsiveMultiPlatformTargets,
+        scopes: candidate.scopes,
+        instructions: candidate.instructions,
+        checks: candidate.checks,
+        requirementCoverage: candidate.requirementCoverage,
+        guideCatalogState: candidate.guideCatalogState,
+        handoffCatalogState: candidate.handoffCatalogState,
+        returnContractState: candidate.returnContractState,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        figmaConnectionState: candidate.figmaConnectionState,
+        figmaExecutionState: candidate.figmaExecutionState,
+        figmaWriteAuthorityState: candidate.figmaWriteAuthorityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Manual Figma Execution Path ${candidate.id} membership digest is invalid`)
+      }
+      const applicability = exactDesignApplicability.get(
+        `${candidate.designApplicability.recordId}:${candidate.designApplicability.revision}:${candidate.designApplicability.digest}`,
+      )
+      const inventory = exactScreenStateInventories.get(
+        `${candidate.screenStateInventory.recordId}:${candidate.screenStateInventory.revision}:${candidate.screenStateInventory.digest}`,
+      )
+      const requirements = exactDesignRequirements.get(
+        `${candidate.designRequirements.recordId}:${candidate.designRequirements.revision}:${candidate.designRequirements.digest}`,
+      )
+      const designSystem = exactDesignSystemTokenContracts.get(
+        `${candidate.designSystemTokenContract.recordId}:${candidate.designSystemTokenContract.revision}:${candidate.designSystemTokenContract.digest}`,
+      )
+      const accessibility = exactAccessibilityDesignRules.get(
+        `${candidate.accessibilityDesignRules.recordId}:${candidate.accessibilityDesignRules.revision}:${candidate.accessibilityDesignRules.digest}`,
+      )
+      const responsive = exactResponsiveMultiPlatformTargets.get(
+        `${candidate.responsiveMultiPlatformTargets.recordId}:${candidate.responsiveMultiPlatformTargets.revision}:${candidate.responsiveMultiPlatformTargets.digest}`,
+      )
+      const exactBindings = [
+        [applicability, candidate.designApplicability.membershipDigest],
+        [inventory, candidate.screenStateInventory.membershipDigest],
+        [requirements, candidate.designRequirements.membershipDigest],
+        [designSystem, candidate.designSystemTokenContract.membershipDigest],
+        [accessibility, candidate.accessibilityDesignRules.membershipDigest],
+        [responsive, candidate.responsiveMultiPlatformTargets.membershipDigest],
+      ] as const
+      if (exactBindings.some(([record, membershipDigest]) =>
+        !record || record.initiativeId !== candidate.initiativeId || record.membershipDigest !== membershipDigest)) {
+        throw new Error(`Import Manual Figma Execution Path ${candidate.id} has an unresolved exact governed binding`)
+      }
+      const applicableScopes = new Map(applicability!.scopes.flatMap((scope) => {
+        const figma = scope.decisions.find((decision) => decision.aspect === "figma")
+        if (!figma || !["already-satisfied", "conditionally-required", "optional", "recommended", "required", "reused"]
+          .includes(figma.status)) return []
+        const modes = scope.designSource.modes.filter((mode) => mode === "figma-design" || mode === "figma-make")
+        return modes.length > 0 ? [[scope.scope.id, new Set(modes)] as const] : []
+      }))
+      for (const scope of candidate.scopes) {
+        const modes = applicableScopes.get(scope.designScopeKey)
+        if (!modes?.has(scope.figmaMode)) {
+          throw new Error(`Import Manual Figma Execution Path ${candidate.id} has an unresolved material Figma scope`)
+        }
+        const instructionKeys = candidate.instructions.filter((step) => step.scopeKeys.includes(scope.key))
+          .map((step) => step.key).sort((left, right) => left.localeCompare(right))
+        if (canonicalDigest(instructionKeys) !== canonicalDigest(scope.instructionStepKeys)) {
+          throw new Error(`Import Manual Figma Execution Path ${candidate.id} instruction links are not reciprocal`)
+        }
+        if (candidate.guideCatalogState === "candidate-complete") {
+          const instructionKinds = candidate.instructions.filter((step) => step.scopeKeys.includes(scope.key))
+            .map((step) => step.kind)
+          const requiredKinds = ["prepare", "handoff", "manual-figma-execution", "export-return", "human-review"]
+          if (canonicalDigest(instructionKinds) !== canonicalDigest(requiredKinds)) {
+            throw new Error(`Import Manual Figma Execution Path ${candidate.id} has incomplete governed scope instructions`)
+          }
+        }
+        if (candidate.reviewState === "ready-for-human-review") {
+          const checkKinds = candidate.checks.filter((check) => check.scopeKey === scope.key)
+            .map((check) => check.kind).sort((left, right) => left.localeCompare(right))
+          const requiredCheckKinds = [
+            "accessibility-reviewed",
+            "handoff-manifest-digest-verified",
+            "handoff-package-digest-verified",
+            "handoff-path-contained",
+            "instructions-reviewed",
+            "privacy-reviewed",
+            "responsive-targets-reviewed",
+            "return-contract-reviewed",
+          ]
+          if (canonicalDigest(checkKinds) !== canonicalDigest(requiredCheckKinds)) {
+            throw new Error(`Import Manual Figma Execution Path ${candidate.id} has incomplete governed scope checks`)
+          }
+        }
+      }
+      if (new Set(candidate.scopes.map((scope) => scope.handoffLocation)).size !== candidate.scopes.length) {
+        throw new Error(`Import Manual Figma Execution Path ${candidate.id} has duplicate handoff locations`)
+      }
+      if (candidate.guideCatalogState === "candidate-complete" &&
+          candidate.handoffCatalogState === "candidate-complete" && candidate.returnContractState === "candidate-complete" &&
+          canonicalDigest(candidate.scopes.map((scope) => scope.designScopeKey).sort((left, right) => left.localeCompare(right))) !==
+          canonicalDigest([...applicableScopes.keys()].sort((left, right) => left.localeCompare(right)))) {
+        throw new Error(`Import Manual Figma Execution Path ${candidate.id} does not cover every exact material Figma scope`)
+      }
+      const requirementKeys = requirements!.requirements.map((entry) => entry.key)
+        .sort((left, right) => left.localeCompare(right))
+      if (canonicalDigest(requirementKeys) !==
+          canonicalDigest(candidate.requirementCoverage.map((entry) => entry.requirementKey))) {
+        throw new Error(`Import Manual Figma Execution Path ${candidate.id} does not cover every exact current Design Requirement`)
       }
     }
 
@@ -7667,6 +7830,10 @@ export class ProductStudioService {
         /^responsive-multi-platform-targets-history\/responsive-multi-platform-targets-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "responsive-multi-platform-targets-candidate"
     }
+    if (/^manual-figma-execution-paths\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^manual-figma-execution-path-history\/manual-figma-execution-path-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "manual-figma-execution-path-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -7832,6 +7999,10 @@ export class ProductStudioService {
     if (/^responsive-multi-platform-targets\/[0-9a-f-]+\.json$/i.test(path) ||
         /^responsive-multi-platform-targets-history\/responsive-multi-platform-targets-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return responsiveMultiPlatformTargetsSchema
+    }
+    if (/^manual-figma-execution-paths\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^manual-figma-execution-path-history\/manual-figma-execution-path-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return manualFigmaExecutionPathSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
