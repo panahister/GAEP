@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260728T191549Z-phase-2-figma-mcp-capability-discovery-packages.json",
-  conformance: "evidence/ide-conformance/20260728T191549Z-phase-2-figma-mcp-capability-discovery.json",
+  packages: "evidence/local-packages/20260728T201030Z-phase-2-figma-read-snapshot-packages.json",
+  conformance: "evidence/ide-conformance/20260728T201030Z-phase-2-figma-read-snapshot.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    figmaMcpCapabilityDiscovery
+    figmaReadSnapshot
+      ? {
+          id: "phase-2-figma-read-snapshot-closure",
+          state: "not-established",
+          basis: "the governed Figma Read Snapshot candidate is implemented locally across the shared engine and four host projections; real Product research, attributable human file, component, variable-collection, variable, provenance, freshness, type, evidence and ownership review, a live Figma connection or request, credential and permission workflows, external completeness validation, write authorization, native-host interaction, design review and approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : figmaMcpCapabilityDiscovery
       ? {
           id: "phase-2-figma-mcp-capability-discovery-closure",
           state: "not-established",
@@ -362,6 +368,9 @@ export async function buildPhase0AcceptanceReport({
   const figmaMcpCapabilityDiscovery = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "figma-mcp-capability-discovery" && capability.state === "implemented"))
+  const figmaReadSnapshot = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "figma-read-snapshot" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -374,6 +383,7 @@ export async function buildPhase0AcceptanceReport({
     responsiveMultiPlatformTargets,
     manualFigmaExecutionPath,
     figmaMcpCapabilityDiscovery,
+    figmaReadSnapshot,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -391,8 +401,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: figmaMcpCapabilityDiscovery
+    phase: figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: figmaReadSnapshot
+      ? "phase-2-figma-read-snapshot-local"
+      : figmaMcpCapabilityDiscovery
       ? "phase-2-figma-mcp-capability-discovery-local"
       : manualFigmaExecutionPath
       ? "phase-2-manual-figma-execution-path-local"
@@ -456,7 +468,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: figmaMcpCapabilityDiscovery
+    claimBoundary: figmaReadSnapshot
+      ? "This report binds the exact governed Figma Read Snapshot candidate lifecycle, exact Product, Initiative, Design Applicability, Design System and Token Contract, Figma MCP Capability Discovery and Sources dependencies, bounded file, component, variable-collection, variable, external-version, provenance, freshness, evidence-state, type-gap, candidate-ownership and gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not connect to or call Figma, request credentials, grant permissions, prove external completeness, authorize writes, validate or approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : figmaMcpCapabilityDiscovery
       ? "This report binds the exact governed Figma MCP Capability Discovery candidate lifecycle, exact Product, Initiative, Design Applicability, Manual Figma Execution Path and Sources dependencies, bounded adapter, tool, advertised-availability, read/write effect, schema digest, permission requirement, capability limit, version, evidence-state, candidate-ownership and gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not connect to or call Figma, request credentials, grant permissions, establish live tool availability or compatibility, authorize writes, approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : manualFigmaExecutionPath
       ? "This report binds the exact governed Manual Figma Execution Path candidate lifecycle, exact Product, Initiative, Design Applicability, Screen and State Inventory, Design Requirements, Design System and Token Contract, Accessibility Design Rules, Responsive and Multi-Platform Targets and Sources dependencies, bounded scope, ordered human instruction, handoff and return-contract catalogs, review-check, evidence-state, candidate-ownership and requirement-coverage metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not connect to Figma, prove manual execution or returned-design completeness, grant write authority, establish check validity or accessibility conformance, approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
