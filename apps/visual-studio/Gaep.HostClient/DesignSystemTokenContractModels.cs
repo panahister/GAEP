@@ -1,0 +1,43 @@
+namespace Gaep.HostClient;
+
+public sealed record DesignSystemTokenContractRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int DesignSystemCount,
+    int TokenCount,
+    int VariableCollectionCount,
+    int VariableCount,
+    int ComponentCount,
+    int RepresentedRequirementCount,
+    string ReviewState);
+
+public sealed record DesignSystemTokenContractProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    string ReviewState,
+    string CatalogCompletenessState,
+    IReadOnlyList<string> Reasons,
+    int DesignSystemCount,
+    int TokenCount,
+    int VariableCollectionCount,
+    int VariableCount,
+    int ComponentCount,
+    int RepresentedRequirementCount,
+    int UnresolvedRequirementCount,
+    int UnresolvedOwnershipCount,
+    int UnresolvedCatalogItemCount,
+    int AccessibilityReviewGapCount,
+    int StaleBindingCount,
+    int StalePortableSnapshotCount,
+    int StaleSourceReferenceCount,
+    int UnresolvedQuestionCount,
+    DesignSystemTokenContractRecordView? Candidate,
+    string SnapshotDigest);

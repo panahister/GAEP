@@ -1478,6 +1478,65 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readDesignSystemTokenContract(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readDesignSystemTokenContract(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Design System and Token Contract was read. Refresh the exact records." }
+        return renderDesignSystemTokenContract(projection)
+    }
+
+    fun renderDesignSystemTokenContract(projection: DesignSystemTokenContractProjection): String = buildString {
+        appendLine("GAEP governed Design System and Token Contract candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine(
+            "Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState} · " +
+                "catalog: ${projection.catalogCompletenessState}",
+        )
+        appendLine(
+            "Inventory: ${projection.designSystemCount} systems · ${projection.tokenCount} tokens · " +
+                "${projection.variableCollectionCount} collections · ${projection.variableCount} variables · " +
+                "${projection.componentCount} components",
+        )
+        appendLine(
+            "Requirement coverage: ${projection.representedRequirementCount} represented · " +
+                "${projection.unresolvedRequirementCount} unresolved",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedOwnershipCount} ownership · " +
+                "${projection.unresolvedCatalogItemCount} catalog · " +
+                "${projection.accessibilityReviewGapCount} accessibility review · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.stalePortableSnapshotCount} stale portable snapshots · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Design System and Token Contract candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate inventory: ${record.designSystemCount} systems · ${record.tokenCount} tokens · " +
+                    "${record.variableCollectionCount} collections · ${record.variableCount} variables · " +
+                    "${record.componentCount} components · ${record.representedRequirementCount} represented requirements · " +
+                    record.reviewState,
+            )
+        } ?: appendLine("Design System and Token Contract candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and digests only; no system, token, variable, " +
+                "or component validity, ownership authority, accessibility validation, design approval, baseline, " +
+                "readiness, implementation, write, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

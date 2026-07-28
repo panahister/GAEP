@@ -29,6 +29,7 @@ import {
   informationArchitectureModelProjectionSchema,
   screenStateInventoryProjectionSchema,
   designRequirementsProjectionSchema,
+  designSystemTokenContractProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -65,6 +66,7 @@ import {
   type InformationArchitectureModelProjection,
   type ScreenStateInventoryProjection,
   type DesignRequirementsProjection,
+  type DesignSystemTokenContractProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -712,6 +714,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = designRequirementsProjectionSchema.safeParse(
         await this.request("design.requirements.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readDesignSystemTokenContract(initiativeValue: string): Promise<DesignSystemTokenContractProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = designSystemTokenContractProjectionSchema.safeParse(
+        await this.request("design.systemTokenContract.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

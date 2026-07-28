@@ -29,6 +29,7 @@ import {
   type InformationArchitectureModelProjection,
   type ScreenStateInventoryProjection,
   type DesignRequirementsProjection,
+  type DesignSystemTokenContractProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1891,6 +1892,64 @@ function designRequirementsProjection(): DesignRequirementsProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "design-system-token-contract-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "a4a4a4a4-a4a4-44a4-84a4-a4a4a4a4a4a4", revision: 2, digest: `sha256:${"1".repeat(64)}` as const },
+    designSystemCount: 2,
+    tokenCount: 48,
+    variableCollectionCount: 3,
+    variableCount: 19,
+    componentCount: 12,
+    representedRequirementCount: 10,
+    unresolvedRequirementCount: 2,
+    unresolvedOwnershipCount: 1,
+    unresolvedCatalogItemCount: 3,
+    accessibilityReviewGapCount: 4,
+    staleBindingCount: 0,
+    stalePortableSnapshotCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 2,
+    catalogCompletenessState: "not-assessed" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more Design Systems, Tokens, Variables, or Components remain unresolved"],
+    assessedAt: "2026-07-28T13:30:00.000Z",
+    authorityBoundary: "design-system-token-contract-status-is-observational-and-does-not-establish-design-system-token-variable-or-component-validity-ownership-authority-accessibility-design-approval-baseline-readiness-implementation-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "design-system-token-contract-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"2".repeat(64)}` as const,
+      state: "candidate" as const,
+      designSystemCount: 2,
+      tokenCount: 48,
+      variableCollectionCount: 3,
+      variableCount: 19,
+      componentCount: 12,
+      representedRequirementCount: 10,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-28T13:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials" as const,
+    authorityBoundary: "design-system-token-contract-projection-is-read-only-and-does-not-establish-design-system-token-variable-or-component-validity-ownership-authority-accessibility-design-approval-baseline-readiness-implementation-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2542,6 +2601,7 @@ interface HarnessOptions {
   informationArchitectureProjection?: InformationArchitectureModelProjection
   screenStateInventoryProjection?: ScreenStateInventoryProjection
   designRequirementsProjection?: DesignRequirementsProjection
+  designSystemTokenContractProjection?: DesignSystemTokenContractProjection
   commandResult?: unknown
 }
 
@@ -2772,6 +2832,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.designRequirementsProjection ? {
       designRequirements: {
         project: async () => options.designRequirementsProjection!,
+      },
+    } : {}),
+    ...(options.designSystemTokenContractProjection ? {
+      designSystemTokenContract: {
+        project: async () => options.designSystemTokenContractProjection!,
       },
     } : {}),
   }
@@ -3507,6 +3572,31 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private requirement|private outcome|private work item|private design target|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Design System and Token Contract metadata on the native scope page", async () => {
+    const projection = designSystemTokenContractProjection()
+    const { source } = harness({ designSystemTokenContractProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "design-system-token-contract")).toMatchObject({
+      id: "design-system-token-contract",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          inventory: "2 systems · 48 tokens · 3 collections · 19 variables · 12 components",
+          coverage: "10 represented requirements · 2 unresolved requirements",
+          assessment: "attention-required · held · not-assessed",
+          gaps: "1 ownership gaps · 3 unresolved catalog items · 4 accessibility review gaps · 2 questions · 0 stale bindings · 1 stale portable snapshots · 2 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no token values, component content, requirements, Source, design, or personal content and no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private token value|private component content|private requirement|private source content|private design content|customer@example\.com|api_key/iu,
     )
   })
 

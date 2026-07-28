@@ -30,6 +30,7 @@ import {
   type InformationArchitectureModelProjection,
   type ScreenStateInventoryProjection,
   type DesignRequirementsProjection,
+  type DesignSystemTokenContractProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -131,6 +132,7 @@ const commandIds = {
   informationArchitecture: "gaepKiro.informationArchitecture.inspect",
   screenStateInventory: "gaepKiro.screenStateInventory.inspect",
   designRequirements: "gaepKiro.designRequirements.inspect",
+  designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -251,6 +253,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.informationArchitecture, (input?: unknown) => runUserCommand(() => showInformationArchitectureModel(pool, input))),
     vscode.commands.registerCommand(commandIds.screenStateInventory, (input?: unknown) => runUserCommand(() => showScreenStateInventory(pool, input))),
     vscode.commands.registerCommand(commandIds.designRequirements, (input?: unknown) => runUserCommand(() => showDesignRequirements(pool, input))),
+    vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1670,6 +1673,46 @@ async function showDesignRequirements(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and digests only; this does not establish requirement validity, completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, write, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDesignSystemTokenContract(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DesignSystemTokenContractProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Design System and Token Contract", "Initiative ID")
+  const projection = await client.readDesignSystemTokenContract(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Design System and Token Contract candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState} · catalog: ${status.catalogCompletenessState}`,
+    `Inventory: ${status.designSystemCount} systems · ${status.tokenCount} tokens · ${status.variableCollectionCount} collections · ${status.variableCount} variables · ${status.componentCount} components`,
+    `Requirement coverage: ${status.representedRequirementCount} represented · ${status.unresolvedRequirementCount} unresolved`,
+    `Candidate gaps: ${status.unresolvedOwnershipCount} ownership · ${status.unresolvedCatalogItemCount} catalog · ${status.accessibilityReviewGapCount} accessibility review · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.stalePortableSnapshotCount} stale portable snapshots · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate inventory: ${record.designSystemCount} systems · ${record.tokenCount} tokens · ${record.variableCollectionCount} collections · ${record.variableCount} variables · ${record.componentCount} components · ${record.representedRequirementCount} represented requirements · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and digests only; this does not establish system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

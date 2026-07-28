@@ -56,6 +56,7 @@ const userJourneyId = "58585858-5858-4858-8858-585858585858"
 const informationArchitectureId = "59595959-5959-4959-8959-595959595959"
 const screenStateInventoryId = "60606060-6060-4060-8060-606060606060"
 const designRequirementsId = "61616161-6161-4161-8161-616161616161"
+const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -149,6 +150,8 @@ input.on("line", (line) => {
       return readScreenStateInventory(id, request.params)
     case "design.requirements.snapshot":
       return readDesignRequirements(id, request.params)
+    case "design.systemTokenContract.snapshot":
+      return readDesignSystemTokenContract(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2065,6 +2068,74 @@ function readDesignRequirements(id, params) {
   if (workspacePath.endsWith("bad-design-requirements-snapshot-digest")) value.candidate.requirementCount = 13
   if (workspacePath.endsWith("bad-design-requirements-snapshot-private")) {
     value.requirementStatement = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readDesignSystemTokenContract(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN SYSTEM TOKEN CONTRACT PARAMS")
+  }
+  const candidateDigest = `sha256:${"1".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "design-system-token-contract-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designSystemTokenContractId, revision: 2, digest: candidateDigest },
+    designSystemCount: 2,
+    tokenCount: 48,
+    variableCollectionCount: 3,
+    variableCount: 19,
+    componentCount: 12,
+    representedRequirementCount: 10,
+    unresolvedRequirementCount: 2,
+    unresolvedOwnershipCount: 1,
+    unresolvedCatalogItemCount: 3,
+    accessibilityReviewGapCount: 4,
+    staleBindingCount: 0,
+    stalePortableSnapshotCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 2,
+    catalogCompletenessState: "not-assessed",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Design Systems, Tokens, Variables, or Components remain unresolved"],
+    assessedAt: "2026-07-28T13:30:00.000Z",
+    authorityBoundary: "design-system-token-contract-status-is-observational-and-does-not-establish-design-system-token-variable-or-component-validity-ownership-authority-accessibility-design-approval-baseline-readiness-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "design-system-token-contract-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designSystemTokenContractId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"2".repeat(64)}`,
+      state: "candidate",
+      designSystemCount: 2,
+      tokenCount: 48,
+      variableCollectionCount: 3,
+      variableCount: 19,
+      componentCount: 12,
+      representedRequirementCount: 10,
+      reviewState: "held",
+      updatedAt: "2026-07-28T13:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials",
+    authorityBoundary: "design-system-token-contract-projection-is-read-only-and-does-not-establish-design-system-token-variable-or-component-validity-ownership-authority-accessibility-design-approval-baseline-readiness-implementation-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-design-system-token-contract-snapshot-binding")) content.initiative.id = designSystemTokenContractId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-design-system-token-contract-snapshot-digest")) value.candidate.tokenCount = 49
+  if (workspacePath.endsWith("bad-design-system-token-contract-snapshot-private")) {
+    value.tokenValue = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

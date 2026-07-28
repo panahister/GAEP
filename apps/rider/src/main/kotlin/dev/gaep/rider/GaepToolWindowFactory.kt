@@ -546,6 +546,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += designRequirementsButton
         actions.add(designRequirementsButton)
 
+        val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Token values, component content, requirements, Source, design, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Design System and Token Contract",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Design System and Token Contract", status, output, buttons) {
+                    controller.readDesignSystemTokenContract(initiativeId)
+                }
+            }
+        }
+        buttons += designSystemTokenContractButton
+        actions.add(designSystemTokenContractButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

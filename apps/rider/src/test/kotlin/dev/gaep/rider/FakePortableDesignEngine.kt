@@ -42,6 +42,7 @@ private val userJourneyId = UUID.fromString("65656565-6565-4565-8565-65656565656
 private val informationArchitectureId = UUID.fromString("66666666-6666-4666-8666-666666666666")
 private val screenStateInventoryId = UUID.fromString("67676767-6767-4767-8767-676767676767")
 private val designRequirementsId = UUID.fromString("68686868-6868-4868-8868-686868686868")
+private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -250,6 +251,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.requirements.snapshot" -> handleDesignRequirements(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.systemTokenContract.snapshot" -> handleDesignSystemTokenContract(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -2946,6 +2952,103 @@ private fun handleDesignRequirements(id: Long, params: JsonObject, workspacePath
         }
         workspacePath.endsWith("bad-design-requirements-snapshot-private") -> {
             value.addProperty("requirementStatement", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDesignSystemTokenContract(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN SYSTEM TOKEN CONTRACT PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-design-system-token-contract-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-28T13:30:00.000Z"
+    val candidateDigest = "sha256:${"1".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "design-system-token-contract-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "design-system-token-contract-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", designSystemTokenContractId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("designSystemCount", 2)
+            addProperty("tokenCount", 48)
+            addProperty("variableCollectionCount", 3)
+            addProperty("variableCount", 19)
+            addProperty("componentCount", 12)
+            addProperty("representedRequirementCount", 10)
+            addProperty("unresolvedRequirementCount", 2)
+            addProperty("unresolvedOwnershipCount", 1)
+            addProperty("unresolvedCatalogItemCount", 3)
+            addProperty("accessibilityReviewGapCount", 4)
+            addProperty("staleBindingCount", 0)
+            addProperty("stalePortableSnapshotCount", 1)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("catalogCompletenessState", "not-assessed")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply {
+                add("One or more Design Systems, Tokens, Variables, or Components remain unresolved")
+            })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "design-system-token-contract-status-is-observational-and-does-not-establish-design-system-token-variable-or-component-validity-ownership-authority-accessibility-design-approval-baseline-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", designSystemTokenContractId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"2".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("designSystemCount", 2)
+            addProperty("tokenCount", 48)
+            addProperty("variableCollectionCount", 3)
+            addProperty("variableCount", 19)
+            addProperty("componentCount", 12)
+            addProperty("representedRequirementCount", 10)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-28T13:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "design-system-token-contract-projection-is-read-only-and-does-not-establish-design-system-token-variable-or-component-validity-ownership-authority-accessibility-design-approval-baseline-readiness-implementation-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-design-system-token-contract-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("tokenCount", 49)
+        }
+        workspacePath.endsWith("bad-design-system-token-contract-snapshot-private") -> {
+            value.addProperty("tokenValue", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

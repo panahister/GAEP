@@ -1519,6 +1519,54 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("design-system-token-contract-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDesignSystemTokenContract(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("not-assessed", projection.catalogCompletenessState)
+            assertEquals(2, projection.designSystemCount)
+            assertEquals(48, projection.tokenCount)
+            assertEquals(19, projection.variableCount)
+            assertEquals(12, projection.componentCount)
+            assertEquals(10, projection.candidate?.representedRequirementCount)
+
+            val rendered = RiderProductController(client).readDesignSystemTokenContract(entryId)
+            assertTrue(rendered.contains("GAEP governed Design System and Token Contract candidate"))
+            assertTrue(rendered.contains("2 systems · 48 tokens · 3 collections · 19 variables · 12 components"))
+            assertTrue(rendered.contains("4 accessibility review"))
+            assertTrue(rendered.contains("no system, token, variable"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("tokenValue"))
+        }
+
+        listOf(
+            "bad-design-system-token-contract-snapshot-digest",
+            "bad-design-system-token-contract-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDesignSystemTokenContract(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-design-system-token-contract-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDesignSystemTokenContract(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

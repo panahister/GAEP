@@ -1719,6 +1719,71 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignSystemTokenContractAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignSystemTokenContractAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Design System and Token Contract was read. Refresh the exact records.");
+        }
+        return RenderDesignSystemTokenContract(projection);
+    }
+
+    public static string RenderDesignSystemTokenContract(DesignSystemTokenContractProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Design System and Token Contract candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine(
+                $"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState} · " +
+                $"catalog: {projection.CatalogCompletenessState}")
+            .AppendLine(
+                $"Inventory: {projection.DesignSystemCount} systems · {projection.TokenCount} tokens · " +
+                $"{projection.VariableCollectionCount} collections · {projection.VariableCount} variables · " +
+                $"{projection.ComponentCount} components")
+            .AppendLine(
+                $"Requirement coverage: {projection.RepresentedRequirementCount} represented · " +
+                $"{projection.UnresolvedRequirementCount} unresolved")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedOwnershipCount} ownership · " +
+                $"{projection.UnresolvedCatalogItemCount} catalog · " +
+                $"{projection.AccessibilityReviewGapCount} accessibility review · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StalePortableSnapshotCount} stale portable snapshots · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Design System and Token Contract candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {candidate.DesignSystemCount} systems · {candidate.TokenCount} tokens · " +
+                    $"{candidate.VariableCollectionCount} collections · {candidate.VariableCount} variables · " +
+                    $"{candidate.ComponentCount} components · {candidate.RepresentedRequirementCount} represented requirements · " +
+                    candidate.ReviewState);
+        }
+        else output.AppendLine("Design System and Token Contract candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and digests only; no system, token, variable, " +
+                "or component validity, ownership authority, accessibility validation, design approval, baseline, " +
+                "readiness, implementation, write, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

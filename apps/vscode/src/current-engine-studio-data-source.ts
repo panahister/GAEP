@@ -57,6 +57,7 @@ import type {
   InformationArchitectureModelProjection,
   ScreenStateInventoryProjection,
   DesignRequirementsProjection,
+  DesignSystemTokenContractProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -235,6 +236,9 @@ export interface CurrentStudioEngineReader {
   designRequirements?: {
     project(initiativeId: string): Promise<DesignRequirementsProjection>
   }
+  designSystemTokenContract?: {
+    project(initiativeId: string): Promise<DesignSystemTokenContractProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -301,6 +305,7 @@ interface ObservedStudioState {
   informationArchitectureProjections: Map<string, InformationArchitectureModelProjection>
   screenStateInventoryProjections: Map<string, ScreenStateInventoryProjection>
   designRequirementsProjections: Map<string, DesignRequirementsProjection>
+  designSystemTokenContractProjections: Map<string, DesignSystemTokenContractProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1896,6 +1901,55 @@ function designRequirementsTable(state: ObservedStudioState): StudioTableSnapsho
   }
 }
 
+function designSystemTokenContractTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.designSystemTokenContractProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        inventory: `${status.designSystemCount} systems · ${status.tokenCount} tokens · ${status.variableCollectionCount} collections · ${status.variableCount} variables · ${status.componentCount} components`,
+        coverage: `${status.representedRequirementCount} represented requirements · ${status.unresolvedRequirementCount} unresolved requirements`,
+        assessment: `${status.state} · ${status.reviewState} · ${status.catalogCompletenessState}`,
+        gaps: `${status.unresolvedOwnershipCount} ownership gaps · ${status.unresolvedCatalogItemCount} unresolved catalog items · ${status.accessibilityReviewGapCount} accessibility review gaps · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.stalePortableSnapshotCount} stale portable snapshots · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no token values, component content, requirements, Source, design, or personal content and no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "design-system-token-contract",
+    title: "Governed Design System and Token Contract Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "coverage", label: "Requirement coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Design System and Token Contract candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1917,7 +1971,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
   if (route === "users-jobs") relatedRecords.push(
     designPersonaRoleTable(state), userJourneyTable(state), informationArchitectureTable(state), screenStateInventoryTable(state),
   )
-  if (route === "scope") relatedRecords.push(requirementsTable(state.requirements), designRequirementsTable(state))
+  if (route === "scope") relatedRecords.push(requirementsTable(state.requirements), designRequirementsTable(state), designSystemTokenContractTable(state))
   if (route === "architecture") {
     relatedRecords.push(
       businessCapabilityMapTable(state),
@@ -4565,6 +4619,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       informationArchitectureProjections: new Map(),
       screenStateInventoryProjections: new Map(),
       designRequirementsProjections: new Map(),
+      designSystemTokenContractProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -5861,6 +5916,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "design-requirements-unavailable",
           "Design Requirements metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.designSystemTokenContract) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.designSystemTokenContract!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.designSystemTokenContractProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Design System and Token Contract projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `design-system-token-contract-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Design System and Token Contract metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "design-system-token-contract-unavailable",
+          "Design System and Token Contract metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

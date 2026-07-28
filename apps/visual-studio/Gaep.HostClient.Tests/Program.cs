@@ -71,6 +71,7 @@ internal static class Program
     private static readonly Guid InformationArchitectureId = Guid.Parse("66666666-6666-4666-8666-666666666666");
     private static readonly Guid ScreenStateInventoryId = Guid.Parse("67676767-6767-4767-8767-676767676767");
     private static readonly Guid DesignRequirementsId = Guid.Parse("68686868-6868-4868-8868-686868686868");
+    private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -213,6 +214,9 @@ internal static class Program
         var badDesignRequirementsSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-requirements-snapshot-binding");
         var badDesignRequirementsSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-requirements-snapshot-digest");
         var badDesignRequirementsSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-requirements-snapshot-private");
+        var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
+        var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
+        var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -355,6 +359,9 @@ internal static class Program
         Directory.CreateDirectory(badDesignRequirementsSnapshotBindingRoot);
         Directory.CreateDirectory(badDesignRequirementsSnapshotDigestRoot);
         Directory.CreateDirectory(badDesignRequirementsSnapshotPrivateRoot);
+        Directory.CreateDirectory(badDesignSystemTokenContractSnapshotBindingRoot);
+        Directory.CreateDirectory(badDesignSystemTokenContractSnapshotDigestRoot);
+        Directory.CreateDirectory(badDesignSystemTokenContractSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1832,6 +1839,49 @@ internal static class Program
                 "Design Requirements rejects a projection rebound to a substituted Product revision");
         }
 
+        var designSystemTokenContractProjection = await client.ReadDesignSystemTokenContractAsync(InitiativeId);
+        Check(designSystemTokenContractProjection.ProductId == product.Id &&
+              designSystemTokenContractProjection.ProductRevision == product.Revision &&
+              designSystemTokenContractProjection.ProductDigest == product.Digest &&
+              designSystemTokenContractProjection.InitiativeId == resolved.Id &&
+              designSystemTokenContractProjection.InitiativeRevision == resolved.Revision &&
+              designSystemTokenContractProjection.InitiativeDigest == resolved.Digest &&
+              designSystemTokenContractProjection.AssessmentState == "attention-required" &&
+              designSystemTokenContractProjection.ReviewState == "held" &&
+              designSystemTokenContractProjection.CatalogCompletenessState == "not-assessed" &&
+              designSystemTokenContractProjection.DesignSystemCount == 2 &&
+              designSystemTokenContractProjection.TokenCount == 48 &&
+              designSystemTokenContractProjection.VariableCount == 19 &&
+              designSystemTokenContractProjection.ComponentCount == 12 &&
+              designSystemTokenContractProjection.Candidate?.RepresentedRequirementCount == 10,
+            "Typed Design System and Token Contract preserves exact Product, Initiative, assessment, coverage, and privacy-safe inventory metadata");
+        var designSystemTokenContractOutput = await initiativeController.ReadDesignSystemTokenContractAsync(InitiativeId);
+        Check(designSystemTokenContractOutput.Contains("GAEP governed Design System and Token Contract candidate", StringComparison.Ordinal) &&
+              designSystemTokenContractOutput.Contains("2 systems · 48 tokens · 3 collections · 19 variables · 12 components", StringComparison.Ordinal) &&
+              designSystemTokenContractOutput.Contains("4 accessibility review", StringComparison.Ordinal) &&
+              designSystemTokenContractOutput.Contains("no system, token, variable", StringComparison.Ordinal) &&
+              !designSystemTokenContractOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designSystemTokenContractOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designSystemTokenContractOutput.Contains("tokenValue", StringComparison.Ordinal),
+            "Design System and Token Contract workflow renders privacy-safe metadata with explicit no-validity and no-authority boundaries");
+        foreach (var hostileRoot in new[] {
+                     badDesignSystemTokenContractSnapshotDigestRoot, badDesignSystemTokenContractSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignSystemTokenContractAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Design System and Token Contract rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDesignSystemTokenContractSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignSystemTokenContractAsync(InitiativeId),
+                "Design System and Token Contract rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3140,6 +3190,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-design-requirements-snapshot-digest";
         var badDesignRequirementsSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-design-requirements-snapshot-private";
+        var badDesignSystemTokenContractSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
+        var badDesignSystemTokenContractSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-digest";
+        var badDesignSystemTokenContractSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3569,6 +3625,17 @@ internal static class Program
                         badDesignRequirementsSnapshotBinding,
                         badDesignRequirementsSnapshotDigest,
                         badDesignRequirementsSnapshotPrivate);
+                    break;
+                case "design.systemTokenContract.snapshot":
+                    await HandleDesignSystemTokenContractAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignSystemTokenContractSnapshotBinding,
+                        badDesignSystemTokenContractSnapshotDigest,
+                        badDesignSystemTokenContractSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -6569,6 +6636,108 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["requirementCount"] = 13;
         if (includePrivateField) result["requirementStatement"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignSystemTokenContractAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGN SYSTEM TOKEN CONTRACT");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T13:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('1', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignSystemTokenContractId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('2', 64)}",
+            ["state"] = "candidate",
+            ["designSystemCount"] = 2,
+            ["tokenCount"] = 48,
+            ["variableCollectionCount"] = 3,
+            ["variableCount"] = 19,
+            ["componentCount"] = 12,
+            ["representedRequirementCount"] = 10,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T13:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "design-system-token-contract-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "design-system-token-contract-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignSystemTokenContractId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["designSystemCount"] = 2,
+                ["tokenCount"] = 48,
+                ["variableCollectionCount"] = 3,
+                ["variableCount"] = 19,
+                ["componentCount"] = 12,
+                ["representedRequirementCount"] = 10,
+                ["unresolvedRequirementCount"] = 2,
+                ["unresolvedOwnershipCount"] = 1,
+                ["unresolvedCatalogItemCount"] = 3,
+                ["accessibilityReviewGapCount"] = 4,
+                ["staleBindingCount"] = 0,
+                ["stalePortableSnapshotCount"] = 1,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 2,
+                ["catalogCompletenessState"] = "not-assessed",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Design Systems, Tokens, Variables, or Components remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "design-system-token-contract-status-is-observational-and-does-not-establish-design-system-token-variable-or-component-validity-ownership-authority-accessibility-design-approval-baseline-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "design-system-token-contract-projection-is-read-only-and-does-not-establish-design-system-token-variable-or-component-validity-ownership-authority-accessibility-design-approval-baseline-readiness-implementation-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["tokenCount"] = 49;
+        if (includePrivateField) result["tokenValue"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
