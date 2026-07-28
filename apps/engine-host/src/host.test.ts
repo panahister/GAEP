@@ -1742,6 +1742,61 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "figma-mcp-capability-discovery-read-empty",
+      protocolVersion: 2,
+      method: "design.figmaMcpCapabilityDiscovery.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "figma-mcp-capability-discovery-assess-empty",
+      protocolVersion: 2,
+      method: "design.figmaMcpCapabilityDiscovery.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      toolCount: 0,
+      advertisedToolCount: 0,
+      unavailableToolCount: 0,
+      unknownAvailabilityCount: 0,
+      readToolCount: 0,
+      writeToolCount: 0,
+      unknownEffectCount: 0,
+      notAssessedToolCount: 0,
+      sourceRecordedToolCount: 0,
+      humanReviewedToolCount: 0,
+      unresolvedPermissionCount: 0,
+      unresolvedLimitCount: 0,
+      unresolvedVersionCount: 0,
+      unresolvedOwnershipCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      catalogState: "not-assessed",
+      permissionModelState: "not-assessed",
+      limitCatalogState: "not-assessed",
+      versionCatalogState: "not-assessed",
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-connect-to-or-call-figma"),
+    })
+    const figmaMcpCapabilityDiscoveryProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "figma-mcp-capability-discovery-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.figmaMcpCapabilityDiscovery.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: figmaMcpCapabilityDiscoverySnapshotDigest,
+      ...figmaMcpCapabilityDiscoveryProjectionBody
+    } = figmaMcpCapabilityDiscoveryProjection
+    expect(figmaMcpCapabilityDiscoverySnapshotDigest).toBe(canonicalDigest(figmaMcpCapabilityDiscoveryProjectionBody))
+    expect(figmaMcpCapabilityDiscoveryProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-tool-names-schemas-permissions-limits-versions"),
+      authorityBoundary: expect.stringContaining("does-not-connect-to-or-call-figma"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1834,6 +1889,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "manual-figma-execution-path-v1-block",
       method: "design.manualFigmaExecutionPath.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "figma-mcp-capability-discovery-v1-block",
+      method: "design.figmaMcpCapabilityDiscovery.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

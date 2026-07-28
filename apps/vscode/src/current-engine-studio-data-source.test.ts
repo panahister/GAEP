@@ -33,6 +33,7 @@ import {
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
   type ManualFigmaExecutionPathProjection,
+  type FigmaMcpCapabilityDiscoveryProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2129,6 +2130,68 @@ function manualFigmaExecutionPathProjection(): ManualFigmaExecutionPathProjectio
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function figmaMcpCapabilityDiscoveryProjection(): FigmaMcpCapabilityDiscoveryProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "figma-mcp-capability-discovery-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "e8e8e8e8-e8e8-48e8-88e8-e8e8e8e8e8e8", revision: 2, digest: `sha256:${"8".repeat(64)}` as const },
+    toolCount: 7,
+    advertisedToolCount: 5,
+    unavailableToolCount: 1,
+    unknownAvailabilityCount: 1,
+    readToolCount: 3,
+    writeToolCount: 2,
+    unknownEffectCount: 1,
+    notAssessedToolCount: 1,
+    sourceRecordedToolCount: 2,
+    humanReviewedToolCount: 4,
+    unresolvedPermissionCount: 2,
+    unresolvedLimitCount: 1,
+    unresolvedVersionCount: 3,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    catalogState: "candidate-observation-complete" as const,
+    permissionModelState: "candidate-separated" as const,
+    limitCatalogState: "not-assessed" as const,
+    versionCatalogState: "not-assessed" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more source-recorded candidate observations require human review"],
+    assessedAt: "2026-07-28T19:30:00.000Z",
+    authorityBoundary: "figma-mcp-capability-discovery-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "figma-mcp-capability-discovery-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"9".repeat(64)}` as const,
+      state: "candidate" as const,
+      toolCount: status.toolCount,
+      advertisedToolCount: status.advertisedToolCount,
+      readToolCount: status.readToolCount,
+      writeToolCount: status.writeToolCount,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-28T19:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-tool-names-schemas-permissions-limits-versions-source-content-personal-content-secrets-credentials-or-figma-content" as const,
+    authorityBoundary: "figma-mcp-capability-discovery-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2784,6 +2847,7 @@ interface HarnessOptions {
   accessibilityDesignRulesProjection?: AccessibilityDesignRulesProjection
   responsiveMultiPlatformTargetsProjection?: ResponsiveMultiPlatformTargetsProjection
   manualFigmaExecutionPathProjection?: ManualFigmaExecutionPathProjection
+  figmaMcpCapabilityDiscoveryProjection?: FigmaMcpCapabilityDiscoveryProjection
   commandResult?: unknown
 }
 
@@ -3034,6 +3098,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.manualFigmaExecutionPathProjection ? {
       manualFigmaExecutionPath: {
         project: async () => options.manualFigmaExecutionPathProjection!,
+      },
+    } : {}),
+    ...(options.figmaMcpCapabilityDiscoveryProjection ? {
+      figmaMcpCapabilityDiscovery: {
+        project: async () => options.figmaMcpCapabilityDiscoveryProjection!,
       },
     } : {}),
   }
@@ -3874,6 +3943,33 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private handoff content|private instructions|private figma identifiers|private returned design|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Figma MCP Capability Discovery metadata on the native scope page", async () => {
+    const projection = figmaMcpCapabilityDiscoveryProjection()
+    const { source } = harness({ figmaMcpCapabilityDiscoveryProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "figma-mcp-capability-discovery")).toMatchObject({
+      id: "figma-mcp-capability-discovery",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          inventory: "7 tool observations · 5 advertised · 1 not advertised · 1 unknown",
+          effects: "3 read · 2 write · 1 unknown",
+          evidence: "4 human-reviewed · 2 source-recorded · 1 not assessed",
+          catalogs: "permissions candidate-separated · limits not-assessed · versions not-assessed",
+          assessment: "attention-required · held · catalog candidate-observation-complete",
+          gaps: "2 permission gaps · 1 limit gaps · 3 version gaps · 1 ownership gaps · 3 questions · 0 stale bindings · 2 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no tool names, schemas, permissions, limits, versions, Source, personal, secret, credential, or Figma content and no Figma connection or call, credential request, permission grant, compatibility claim, write authority, design approval, baseline, readiness, implementation, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private tool name|private schema|private permission|private limit|private version|private source content|private figma content|customer@example\.com|api_key/iu,
     )
   })
 

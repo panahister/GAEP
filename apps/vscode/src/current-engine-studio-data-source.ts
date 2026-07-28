@@ -61,6 +61,7 @@ import type {
   AccessibilityDesignRulesProjection,
   ResponsiveMultiPlatformTargetsProjection,
   ManualFigmaExecutionPathProjection,
+  FigmaMcpCapabilityDiscoveryProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -251,6 +252,9 @@ export interface CurrentStudioEngineReader {
   manualFigmaExecutionPath?: {
     project(initiativeId: string): Promise<ManualFigmaExecutionPathProjection>
   }
+  figmaMcpCapabilityDiscovery?: {
+    project(initiativeId: string): Promise<FigmaMcpCapabilityDiscoveryProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -321,6 +325,7 @@ interface ObservedStudioState {
   accessibilityDesignRulesProjections: Map<string, AccessibilityDesignRulesProjection>
   responsiveMultiPlatformTargetsProjections: Map<string, ResponsiveMultiPlatformTargetsProjection>
   manualFigmaExecutionPathProjections: Map<string, ManualFigmaExecutionPathProjection>
+  figmaMcpCapabilityDiscoveryProjections: Map<string, FigmaMcpCapabilityDiscoveryProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2122,6 +2127,59 @@ function manualFigmaExecutionPathTable(state: ObservedStudioState): StudioTableS
   }
 }
 
+function figmaMcpCapabilityDiscoveryTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.figmaMcpCapabilityDiscoveryProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        inventory: `${status.toolCount} tool observations · ${status.advertisedToolCount} advertised · ${status.unavailableToolCount} not advertised · ${status.unknownAvailabilityCount} unknown`,
+        effects: `${status.readToolCount} read · ${status.writeToolCount} write · ${status.unknownEffectCount} unknown`,
+        evidence: `${status.humanReviewedToolCount} human-reviewed · ${status.sourceRecordedToolCount} source-recorded · ${status.notAssessedToolCount} not assessed`,
+        catalogs: `permissions ${status.permissionModelState} · limits ${status.limitCatalogState} · versions ${status.versionCatalogState}`,
+        assessment: `${status.state} · ${status.reviewState} · catalog ${status.catalogState}`,
+        gaps: `${status.unresolvedPermissionCount} permission gaps · ${status.unresolvedLimitCount} limit gaps · ${status.unresolvedVersionCount} version gaps · ${status.unresolvedOwnershipCount} ownership gaps · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no tool names, schemas, permissions, limits, versions, Source, personal, secret, credential, or Figma content and no Figma connection or call, credential request, permission grant, compatibility claim, write authority, design approval, baseline, readiness, implementation, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "figma-mcp-capability-discovery",
+    title: "Governed Figma MCP Capability Discovery Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "effects", label: "Effect separation" },
+      { key: "evidence", label: "Evidence state" },
+      { key: "catalogs", label: "Candidate catalogs" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Figma MCP Capability Discovery candidate",
+        "Create the source-backed candidate through the governed engine workflow. This view does not connect to or call Figma, request credentials, grant permissions, establish live tool availability or compatibility, authorize writes, approve design, establish a baseline or readiness, or authorize implementation or action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2150,6 +2208,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     accessibilityDesignRulesTable(state),
     responsiveMultiPlatformTargetsTable(state),
     manualFigmaExecutionPathTable(state),
+    figmaMcpCapabilityDiscoveryTable(state),
   )
   if (route === "architecture") {
     relatedRecords.push(
@@ -4802,6 +4861,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       accessibilityDesignRulesProjections: new Map(),
       responsiveMultiPlatformTargetsProjections: new Map(),
       manualFigmaExecutionPathProjections: new Map(),
+      figmaMcpCapabilityDiscoveryProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -6266,6 +6326,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "manual-figma-execution-path-unavailable",
           "Manual Figma Execution Path metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.figmaMcpCapabilityDiscovery) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.figmaMcpCapabilityDiscovery!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.figmaMcpCapabilityDiscoveryProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Figma MCP Capability Discovery projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `figma-mcp-capability-discovery-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Figma MCP Capability Discovery metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "figma-mcp-capability-discovery-unavailable",
+          "Figma MCP Capability Discovery metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

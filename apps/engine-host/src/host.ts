@@ -259,6 +259,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.manualFigmaExecutionPath.revise",
   "design.manualFigmaExecutionPath.assess",
   "design.manualFigmaExecutionPath.snapshot",
+  "design.figmaMcpCapabilityDiscovery.read",
+  "design.figmaMcpCapabilityDiscovery.create",
+  "design.figmaMcpCapabilityDiscovery.revise",
+  "design.figmaMcpCapabilityDiscovery.assess",
+  "design.figmaMcpCapabilityDiscovery.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1621,6 +1626,24 @@ export class EngineHost {
         return this.engine.manualFigmaExecutionPath.assess(request.params.initiativeId)
       case "design.manualFigmaExecutionPath.snapshot":
         return this.engine.manualFigmaExecutionPath.project(request.params.initiativeId)
+      case "design.figmaMcpCapabilityDiscovery.read":
+        return await this.engine.figmaMcpCapabilityDiscovery.readCurrent(request.params.initiativeId) ?? null
+      case "design.figmaMcpCapabilityDiscovery.create":
+        return this.engine.figmaMcpCapabilityDiscovery.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.figmaMcpCapabilityDiscovery.revise":
+        return this.engine.figmaMcpCapabilityDiscovery.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.figmaMcpCapabilityDiscovery.assess":
+        return this.engine.figmaMcpCapabilityDiscovery.assess(request.params.initiativeId)
+      case "design.figmaMcpCapabilityDiscovery.snapshot":
+        return this.engine.figmaMcpCapabilityDiscovery.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {
