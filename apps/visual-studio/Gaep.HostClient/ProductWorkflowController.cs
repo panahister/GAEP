@@ -1849,6 +1849,74 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadResponsiveMultiPlatformTargetsAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadResponsiveMultiPlatformTargetsAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Responsive and Multi-Platform Targets were read. Refresh the exact records.");
+        }
+        return RenderResponsiveMultiPlatformTargets(projection);
+    }
+
+    public static string RenderResponsiveMultiPlatformTargets(ResponsiveMultiPlatformTargetsProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Responsive and Multi-Platform Targets candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Catalogs: targets {projection.TargetCatalogState} · breakpoints {projection.BreakpointCatalogState} · " +
+                $"behaviors {projection.BehaviorCatalogState}")
+            .AppendLine(
+                $"Inventory: {projection.PlatformTargetCount} platform targets · {projection.BreakpointCount} breakpoints · " +
+                $"{projection.BehaviorCount} behaviors · {projection.CheckCount} checks")
+            .AppendLine(
+                $"Behavior applicability: {projection.ApplicableBehaviorCount} applicable · " +
+                $"{projection.UnresolvedBehaviorCount} unresolved")
+            .AppendLine(
+                $"Check evidence: {projection.HumanReviewedCheckCount} human-reviewed · " +
+                $"{projection.EvidenceRecordedCheckCount} evidence-recorded · {projection.NotAssessedCheckCount} not assessed · " +
+                $"{projection.ContradictedCheckCount} contradicted")
+            .AppendLine(
+                $"Requirement coverage: {projection.RepresentedRequirementCount} represented · " +
+                $"{projection.UnresolvedRequirementCount} unresolved")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedOwnershipCount} ownership · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Responsive and Multi-Platform Targets candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {candidate.PlatformTargetCount} platform targets · {candidate.BreakpointCount} breakpoints · " +
+                    $"{candidate.BehaviorCount} behaviors · {candidate.CheckCount} checks · " +
+                    $"{candidate.RepresentedRequirementCount} represented requirements · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Responsive and Multi-Platform Targets candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and digests only; no responsive completeness, " +
+                "platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, " +
+                "design approval, baseline, readiness, implementation, write, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

@@ -144,6 +144,10 @@
                 Command="{Binding LoadAccessibilityDesignRulesCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds rule procedures, evidence, requirements, Source, design, and personal content, and does not establish accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadResponsiveMultiPlatformTargetsButton" Content="Inspect governed Responsive and Multi-Platform Targets"
+                Command="{Binding LoadResponsiveMultiPlatformTargetsCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds breakpoint rules, behavior procedures, evidence, requirements, Source, design, and personal content, and does not establish responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

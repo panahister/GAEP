@@ -1596,6 +1596,70 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readResponsiveMultiPlatformTargets(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readResponsiveMultiPlatformTargets(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Responsive and Multi-Platform Targets were read. Refresh the exact records." }
+        return renderResponsiveMultiPlatformTargets(projection)
+    }
+
+    fun renderResponsiveMultiPlatformTargets(projection: ResponsiveMultiPlatformTargetsProjection): String = buildString {
+        appendLine("GAEP governed Responsive and Multi-Platform Targets candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine(
+            "Catalogs: targets ${projection.targetCatalogState} · breakpoints ${projection.breakpointCatalogState} · " +
+                "behaviors ${projection.behaviorCatalogState}",
+        )
+        appendLine(
+            "Inventory: ${projection.platformTargetCount} platform targets · ${projection.breakpointCount} breakpoints · " +
+                "${projection.behaviorCount} behaviors · ${projection.checkCount} checks",
+        )
+        appendLine(
+            "Behavior applicability: ${projection.applicableBehaviorCount} applicable · " +
+                "${projection.unresolvedBehaviorCount} unresolved",
+        )
+        appendLine(
+            "Check evidence: ${projection.humanReviewedCheckCount} human-reviewed · " +
+                "${projection.evidenceRecordedCheckCount} evidence-recorded · ${projection.notAssessedCheckCount} not assessed · " +
+                "${projection.contradictedCheckCount} contradicted",
+        )
+        appendLine(
+            "Requirement coverage: ${projection.representedRequirementCount} represented · " +
+                "${projection.unresolvedRequirementCount} unresolved",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedOwnershipCount} ownership · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Responsive and Multi-Platform Targets candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate inventory: ${record.platformTargetCount} platform targets · ${record.breakpointCount} breakpoints · " +
+                    "${record.behaviorCount} behaviors · ${record.checkCount} checks · " +
+                    "${record.representedRequirementCount} represented requirements · ${record.reviewState}",
+            )
+        } ?: appendLine("Responsive and Multi-Platform Targets candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and digests only; no responsive completeness, " +
+                "platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, " +
+                "design approval, baseline, readiness, implementation, write, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

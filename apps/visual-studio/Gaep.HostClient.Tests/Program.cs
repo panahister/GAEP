@@ -73,6 +73,7 @@ internal static class Program
     private static readonly Guid DesignRequirementsId = Guid.Parse("68686868-6868-4868-8868-686868686868");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
+    private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -221,6 +222,9 @@ internal static class Program
         var badAccessibilityDesignRulesSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-accessibility-design-rules-snapshot-binding");
         var badAccessibilityDesignRulesSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-accessibility-design-rules-snapshot-digest");
         var badAccessibilityDesignRulesSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-accessibility-design-rules-snapshot-private");
+        var badResponsiveMultiPlatformTargetsSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-responsive-multi-platform-targets-snapshot-binding");
+        var badResponsiveMultiPlatformTargetsSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-responsive-multi-platform-targets-snapshot-digest");
+        var badResponsiveMultiPlatformTargetsSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-responsive-multi-platform-targets-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -369,6 +373,9 @@ internal static class Program
         Directory.CreateDirectory(badAccessibilityDesignRulesSnapshotBindingRoot);
         Directory.CreateDirectory(badAccessibilityDesignRulesSnapshotDigestRoot);
         Directory.CreateDirectory(badAccessibilityDesignRulesSnapshotPrivateRoot);
+        Directory.CreateDirectory(badResponsiveMultiPlatformTargetsSnapshotBindingRoot);
+        Directory.CreateDirectory(badResponsiveMultiPlatformTargetsSnapshotDigestRoot);
+        Directory.CreateDirectory(badResponsiveMultiPlatformTargetsSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1932,6 +1939,52 @@ internal static class Program
                 "Accessibility Design Rules rejects a projection rebound to a substituted Product revision");
         }
 
+        var responsiveMultiPlatformTargetsProjection = await client.ReadResponsiveMultiPlatformTargetsAsync(InitiativeId);
+        Check(responsiveMultiPlatformTargetsProjection.ProductId == product.Id &&
+              responsiveMultiPlatformTargetsProjection.ProductRevision == product.Revision &&
+              responsiveMultiPlatformTargetsProjection.ProductDigest == product.Digest &&
+              responsiveMultiPlatformTargetsProjection.InitiativeId == resolved.Id &&
+              responsiveMultiPlatformTargetsProjection.InitiativeRevision == resolved.Revision &&
+              responsiveMultiPlatformTargetsProjection.InitiativeDigest == resolved.Digest &&
+              responsiveMultiPlatformTargetsProjection.AssessmentState == "attention-required" &&
+              responsiveMultiPlatformTargetsProjection.ReviewState == "held" &&
+              responsiveMultiPlatformTargetsProjection.TargetCatalogState == "candidate-complete" &&
+              responsiveMultiPlatformTargetsProjection.BreakpointCatalogState == "not-assessed" &&
+              responsiveMultiPlatformTargetsProjection.BehaviorCatalogState == "not-assessed" &&
+              responsiveMultiPlatformTargetsProjection.PlatformTargetCount == 3 &&
+              responsiveMultiPlatformTargetsProjection.BreakpointCount == 5 &&
+              responsiveMultiPlatformTargetsProjection.BehaviorCount == 14 &&
+              responsiveMultiPlatformTargetsProjection.CheckCount == 22 &&
+              responsiveMultiPlatformTargetsProjection.HumanReviewedCheckCount == 17 &&
+              responsiveMultiPlatformTargetsProjection.Candidate?.RepresentedRequirementCount == 10,
+            "Typed Responsive and Multi-Platform Targets preserves exact Product, Initiative, assessment, coverage, and privacy-safe inventory metadata");
+        var responsiveMultiPlatformTargetsOutput = await initiativeController.ReadResponsiveMultiPlatformTargetsAsync(InitiativeId);
+        Check(responsiveMultiPlatformTargetsOutput.Contains("GAEP governed Responsive and Multi-Platform Targets candidate", StringComparison.Ordinal) &&
+              responsiveMultiPlatformTargetsOutput.Contains("3 platform targets · 5 breakpoints · 14 behaviors · 22 checks", StringComparison.Ordinal) &&
+              responsiveMultiPlatformTargetsOutput.Contains("17 human-reviewed", StringComparison.Ordinal) &&
+              responsiveMultiPlatformTargetsOutput.Contains("no responsive completeness", StringComparison.Ordinal) &&
+              !responsiveMultiPlatformTargetsOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !responsiveMultiPlatformTargetsOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !responsiveMultiPlatformTargetsOutput.Contains("behaviorProcedure", StringComparison.Ordinal),
+            "Responsive and Multi-Platform Targets workflow renders privacy-safe metadata with explicit no-completeness and no-authority boundaries");
+        foreach (var hostileRoot in new[] {
+                     badResponsiveMultiPlatformTargetsSnapshotDigestRoot, badResponsiveMultiPlatformTargetsSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadResponsiveMultiPlatformTargetsAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Responsive and Multi-Platform Targets rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badResponsiveMultiPlatformTargetsSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadResponsiveMultiPlatformTargetsAsync(InitiativeId),
+                "Responsive and Multi-Platform Targets rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3252,6 +3305,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-accessibility-design-rules-snapshot-digest";
         var badAccessibilityDesignRulesSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-accessibility-design-rules-snapshot-private";
+        var badResponsiveMultiPlatformTargetsSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-responsive-multi-platform-targets-snapshot-binding";
+        var badResponsiveMultiPlatformTargetsSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-responsive-multi-platform-targets-snapshot-digest";
+        var badResponsiveMultiPlatformTargetsSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-responsive-multi-platform-targets-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3703,6 +3762,17 @@ internal static class Program
                         badAccessibilityDesignRulesSnapshotBinding,
                         badAccessibilityDesignRulesSnapshotDigest,
                         badAccessibilityDesignRulesSnapshotPrivate);
+                    break;
+                case "design.responsiveMultiPlatformTargets.snapshot":
+                    await HandleResponsiveMultiPlatformTargetsAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badResponsiveMultiPlatformTargetsSnapshotBinding,
+                        badResponsiveMultiPlatformTargetsSnapshotDigest,
+                        badResponsiveMultiPlatformTargetsSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -6907,6 +6977,111 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["ruleCount"] = 19;
         if (includePrivateField) result["ruleProcedure"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleResponsiveMultiPlatformTargetsAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID RESPONSIVE MULTI PLATFORM TARGETS");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T15:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('5', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = ResponsiveMultiPlatformTargetsId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('6', 64)}",
+            ["state"] = "candidate",
+            ["platformTargetCount"] = 3,
+            ["breakpointCount"] = 5,
+            ["behaviorCount"] = 14,
+            ["checkCount"] = 22,
+            ["representedRequirementCount"] = 10,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T15:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "responsive-multi-platform-targets-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "responsive-multi-platform-targets-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = ResponsiveMultiPlatformTargetsId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["platformTargetCount"] = 3,
+                ["breakpointCount"] = 5,
+                ["behaviorCount"] = 14,
+                ["checkCount"] = 22,
+                ["applicableBehaviorCount"] = 12,
+                ["unresolvedBehaviorCount"] = 2,
+                ["notAssessedCheckCount"] = 3,
+                ["evidenceRecordedCheckCount"] = 2,
+                ["humanReviewedCheckCount"] = 17,
+                ["contradictedCheckCount"] = 1,
+                ["representedRequirementCount"] = 10,
+                ["unresolvedRequirementCount"] = 2,
+                ["unresolvedOwnershipCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["targetCatalogState"] = "candidate-complete",
+                ["breakpointCatalogState"] = "not-assessed",
+                ["behaviorCatalogState"] = "not-assessed",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "Responsive behavior and breakpoint catalogs retain unresolved review gaps" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "responsive-multi-platform-targets-status-is-observational-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-breakpoint-rules-behavior-procedures-evidence-requirement-source-design-or-personal-content-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "responsive-multi-platform-targets-projection-is-read-only-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["behaviorCount"] = 15;
+        if (includePrivateField) result["behaviorProcedure"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

@@ -366,6 +366,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readResponsiveMultiPlatformTargets(initiativeId: UUID): ResponsiveMultiPlatformTargetsProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("design.responsiveMultiPlatformTargets.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseResponsiveMultiPlatformTargetsEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

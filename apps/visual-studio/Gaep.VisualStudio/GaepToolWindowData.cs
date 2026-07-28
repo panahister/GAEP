@@ -232,6 +232,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadDesignRequirementsCommand = new AsyncCommand(LoadDesignRequirementsAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
+        LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -371,6 +372,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadAccessibilityDesignRulesCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadResponsiveMultiPlatformTargetsCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -922,6 +926,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Accessibility Design Rules candidate",
             (controller, _, token) => controller.ReadAccessibilityDesignRulesAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadResponsiveMultiPlatformTargetsAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Responsive and Multi-Platform Targets candidate",
+            (controller, _, token) => controller.ReadResponsiveMultiPlatformTargetsAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

@@ -44,6 +44,7 @@ private val screenStateInventoryId = UUID.fromString("67676767-6767-4767-8767-67
 private val designRequirementsId = UUID.fromString("68686868-6868-4868-8868-686868686868")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
+private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -262,6 +263,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.accessibilityRules.snapshot" -> handleAccessibilityDesignRules(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.responsiveMultiPlatformTargets.snapshot" -> handleResponsiveMultiPlatformTargets(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3152,6 +3158,106 @@ private fun handleAccessibilityDesignRules(id: Long, params: JsonObject, workspa
         }
         workspacePath.endsWith("bad-accessibility-design-rules-snapshot-private") -> {
             value.addProperty("ruleProcedure", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleResponsiveMultiPlatformTargets(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE RESPONSIVE MULTI PLATFORM TARGETS PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-responsive-multi-platform-targets-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-28T15:30:00.000Z"
+    val candidateDigest = "sha256:${"5".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "responsive-multi-platform-targets-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "responsive-multi-platform-targets-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", responsiveMultiPlatformTargetsId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("platformTargetCount", 3)
+            addProperty("breakpointCount", 5)
+            addProperty("behaviorCount", 14)
+            addProperty("checkCount", 22)
+            addProperty("applicableBehaviorCount", 12)
+            addProperty("unresolvedBehaviorCount", 2)
+            addProperty("notAssessedCheckCount", 3)
+            addProperty("evidenceRecordedCheckCount", 2)
+            addProperty("humanReviewedCheckCount", 17)
+            addProperty("contradictedCheckCount", 1)
+            addProperty("representedRequirementCount", 10)
+            addProperty("unresolvedRequirementCount", 2)
+            addProperty("unresolvedOwnershipCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("targetCatalogState", "candidate-complete")
+            addProperty("breakpointCatalogState", "not-assessed")
+            addProperty("behaviorCatalogState", "not-assessed")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply {
+                add("Responsive behavior and breakpoint catalogs retain unresolved review gaps")
+            })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "responsive-multi-platform-targets-status-is-observational-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", responsiveMultiPlatformTargetsId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"6".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("platformTargetCount", 3)
+            addProperty("breakpointCount", 5)
+            addProperty("behaviorCount", 14)
+            addProperty("checkCount", 22)
+            addProperty("representedRequirementCount", 10)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-28T15:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-breakpoint-rules-behavior-procedures-evidence-requirement-source-design-or-personal-content-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "responsive-multi-platform-targets-projection-is-read-only-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-responsive-multi-platform-targets-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("behaviorCount", 15)
+        }
+        workspacePath.endsWith("bad-responsive-multi-platform-targets-snapshot-private") -> {
+            value.addProperty("behaviorProcedure", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

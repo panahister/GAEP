@@ -578,6 +578,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += accessibilityDesignRulesButton
         actions.add(accessibilityDesignRulesButton)
 
+        val responsiveMultiPlatformTargetsButton = JButton("Inspect Responsive and Multi-Platform Targets…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Breakpoint rules, behavior procedures, evidence, requirements, Source, design, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Responsive and Multi-Platform Targets",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Responsive and Multi-Platform Targets", status, output, buttons) {
+                    controller.readResponsiveMultiPlatformTargets(initiativeId)
+                }
+            }
+        }
+        buttons += responsiveMultiPlatformTargetsButton
+        actions.add(responsiveMultiPlatformTargetsButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {
