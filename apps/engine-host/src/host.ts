@@ -254,6 +254,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.responsiveMultiPlatformTargets.revise",
   "design.responsiveMultiPlatformTargets.assess",
   "design.responsiveMultiPlatformTargets.snapshot",
+  "design.manualFigmaExecutionPath.read",
+  "design.manualFigmaExecutionPath.create",
+  "design.manualFigmaExecutionPath.revise",
+  "design.manualFigmaExecutionPath.assess",
+  "design.manualFigmaExecutionPath.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1598,6 +1603,24 @@ export class EngineHost {
         return this.engine.responsiveMultiPlatformTargets.assess(request.params.initiativeId)
       case "design.responsiveMultiPlatformTargets.snapshot":
         return this.engine.responsiveMultiPlatformTargets.project(request.params.initiativeId)
+      case "design.manualFigmaExecutionPath.read":
+        return await this.engine.manualFigmaExecutionPath.readCurrent(request.params.initiativeId) ?? null
+      case "design.manualFigmaExecutionPath.create":
+        return this.engine.manualFigmaExecutionPath.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.manualFigmaExecutionPath.revise":
+        return this.engine.manualFigmaExecutionPath.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.manualFigmaExecutionPath.assess":
+        return this.engine.manualFigmaExecutionPath.assess(request.params.initiativeId)
+      case "design.manualFigmaExecutionPath.snapshot":
+        return this.engine.manualFigmaExecutionPath.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

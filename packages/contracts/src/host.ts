@@ -57,6 +57,7 @@ import { designRequirementsInputSchema } from "./design-requirements.js"
 import { designSystemTokenContractInputSchema } from "./design-system-token-contract.js"
 import { accessibilityDesignRulesInputSchema } from "./accessibility-design-rules.js"
 import { responsiveMultiPlatformTargetsInputSchema } from "./responsive-multi-platform-targets.js"
+import { manualFigmaExecutionPathInputSchema } from "./manual-figma-execution-path.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -617,6 +618,18 @@ export const hostResponsiveMultiPlatformTargetsReviseParamsSchema = z.object({
   record: responsiveMultiPlatformTargetsInputSchema,
 }).strict()
 
+export const hostManualFigmaExecutionPathCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: manualFigmaExecutionPathInputSchema,
+}).strict()
+
+export const hostManualFigmaExecutionPathReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: manualFigmaExecutionPathInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -829,6 +842,11 @@ export const hostMethodSchema = z.enum([
   "design.responsiveMultiPlatformTargets.revise",
   "design.responsiveMultiPlatformTargets.assess",
   "design.responsiveMultiPlatformTargets.snapshot",
+  "design.manualFigmaExecutionPath.read",
+  "design.manualFigmaExecutionPath.create",
+  "design.manualFigmaExecutionPath.revise",
+  "design.manualFigmaExecutionPath.assess",
+  "design.manualFigmaExecutionPath.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1050,6 +1068,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.responsiveMultiPlatformTargets.revise", hostResponsiveMultiPlatformTargetsReviseParamsSchema),
   requestVariant("design.responsiveMultiPlatformTargets.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.responsiveMultiPlatformTargets.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.manualFigmaExecutionPath.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.manualFigmaExecutionPath.create", hostManualFigmaExecutionPathCreateParamsSchema),
+  requestVariant("design.manualFigmaExecutionPath.revise", hostManualFigmaExecutionPathReviseParamsSchema),
+  requestVariant("design.manualFigmaExecutionPath.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.manualFigmaExecutionPath.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

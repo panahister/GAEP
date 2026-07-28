@@ -32,6 +32,7 @@ import {
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
+  type ManualFigmaExecutionPathProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2071,6 +2072,63 @@ function responsiveMultiPlatformTargetsProjection(): ResponsiveMultiPlatformTarg
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function manualFigmaExecutionPathProjection(): ManualFigmaExecutionPathProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "manual-figma-execution-path-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "d7d7d7d7-d7d7-47d7-87d7-d7d7d7d7d7d7", revision: 2, digest: `sha256:${"7".repeat(64)}` as const },
+    scopeCount: 3,
+    instructionCount: 5,
+    checkCount: 24,
+    notAssessedCheckCount: 4,
+    evidenceRecordedCheckCount: 2,
+    humanReviewedCheckCount: 18,
+    contradictedCheckCount: 1,
+    representedRequirementCount: 10,
+    unresolvedRequirementCount: 2,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    guideCatalogState: "candidate-complete" as const,
+    handoffCatalogState: "candidate-complete" as const,
+    returnContractState: "not-assessed" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["The manual return contract is not marked candidate-complete"],
+    assessedAt: "2026-07-28T18:30:00.000Z",
+    authorityBoundary: "manual-figma-execution-path-status-is-observational-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "manual-figma-execution-path-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"8".repeat(64)}` as const,
+      state: "candidate" as const,
+      scopeCount: 3,
+      instructionCount: 5,
+      checkCount: 24,
+      representedRequirementCount: 10,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-28T18:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-handoff-content-instructions-figma-identifiers-returned-design-source-or-personal-content-secrets-or-credentials" as const,
+    authorityBoundary: "manual-figma-execution-path-projection-is-read-only-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2725,6 +2783,7 @@ interface HarnessOptions {
   designSystemTokenContractProjection?: DesignSystemTokenContractProjection
   accessibilityDesignRulesProjection?: AccessibilityDesignRulesProjection
   responsiveMultiPlatformTargetsProjection?: ResponsiveMultiPlatformTargetsProjection
+  manualFigmaExecutionPathProjection?: ManualFigmaExecutionPathProjection
   commandResult?: unknown
 }
 
@@ -2970,6 +3029,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.responsiveMultiPlatformTargetsProjection ? {
       responsiveMultiPlatformTargets: {
         project: async () => options.responsiveMultiPlatformTargetsProjection!,
+      },
+    } : {}),
+    ...(options.manualFigmaExecutionPathProjection ? {
+      manualFigmaExecutionPath: {
+        project: async () => options.manualFigmaExecutionPathProjection!,
       },
     } : {}),
   }
@@ -3784,6 +3848,32 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private breakpoint rule|private behavior procedure|private evidence|private requirement|private source content|private design content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Manual Figma Execution Path metadata on the native scope page", async () => {
+    const projection = manualFigmaExecutionPathProjection()
+    const { source } = harness({ manualFigmaExecutionPathProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "manual-figma-execution-path")).toMatchObject({
+      id: "manual-figma-execution-path",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          inventory: "3 scopes · 5 instruction stages · 24 checks",
+          checks: "18 human-reviewed · 2 evidence-recorded · 4 not assessed · 1 contradicted",
+          coverage: "10 represented requirements · 2 unresolved requirements",
+          assessment: "attention-required · held · guide candidate-complete · handoff candidate-complete · return not-assessed",
+          gaps: "1 ownership gaps · 3 questions · 0 stale bindings · 2 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no handoff content, instructions, Figma identifiers, returned design, evidence, requirements, Source, or personal content and no Figma connection, execution, return completeness, write authority, design approval, baseline, readiness, implementation, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private handoff content|private instructions|private figma identifiers|private returned design|private source content|customer@example\.com|api_key/iu,
     )
   })
 

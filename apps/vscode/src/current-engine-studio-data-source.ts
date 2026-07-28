@@ -60,6 +60,7 @@ import type {
   DesignSystemTokenContractProjection,
   AccessibilityDesignRulesProjection,
   ResponsiveMultiPlatformTargetsProjection,
+  ManualFigmaExecutionPathProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -247,6 +248,9 @@ export interface CurrentStudioEngineReader {
   responsiveMultiPlatformTargets?: {
     project(initiativeId: string): Promise<ResponsiveMultiPlatformTargetsProjection>
   }
+  manualFigmaExecutionPath?: {
+    project(initiativeId: string): Promise<ManualFigmaExecutionPathProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -316,6 +320,7 @@ interface ObservedStudioState {
   designSystemTokenContractProjections: Map<string, DesignSystemTokenContractProjection>
   accessibilityDesignRulesProjections: Map<string, AccessibilityDesignRulesProjection>
   responsiveMultiPlatformTargetsProjections: Map<string, ResponsiveMultiPlatformTargetsProjection>
+  manualFigmaExecutionPathProjections: Map<string, ManualFigmaExecutionPathProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2066,6 +2071,57 @@ function responsiveMultiPlatformTargetsTable(state: ObservedStudioState): Studio
   }
 }
 
+function manualFigmaExecutionPathTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.manualFigmaExecutionPathProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        inventory: `${status.scopeCount} scopes · ${status.instructionCount} instruction stages · ${status.checkCount} checks`,
+        checks: `${status.humanReviewedCheckCount} human-reviewed · ${status.evidenceRecordedCheckCount} evidence-recorded · ${status.notAssessedCheckCount} not assessed · ${status.contradictedCheckCount} contradicted`,
+        coverage: `${status.representedRequirementCount} represented requirements · ${status.unresolvedRequirementCount} unresolved requirements`,
+        assessment: `${status.state} · ${status.reviewState} · guide ${status.guideCatalogState} · handoff ${status.handoffCatalogState} · return ${status.returnContractState}`,
+        gaps: `${status.unresolvedOwnershipCount} ownership gaps · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no handoff content, instructions, Figma identifiers, returned design, evidence, requirements, Source, or personal content and no Figma connection, execution, return completeness, write authority, design approval, baseline, readiness, implementation, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "manual-figma-execution-path",
+    title: "Governed Manual Figma Execution Path Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "checks", label: "Check evidence" },
+      { key: "coverage", label: "Requirement coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Manual Figma Execution Path candidate",
+        "Create the candidate through the governed engine workflow. This view does not connect to Figma, prove execution or return completeness, grant write authority, approve design, establish a baseline or readiness, or authorize implementation or action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2093,6 +2149,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     designSystemTokenContractTable(state),
     accessibilityDesignRulesTable(state),
     responsiveMultiPlatformTargetsTable(state),
+    manualFigmaExecutionPathTable(state),
   )
   if (route === "architecture") {
     relatedRecords.push(
@@ -4744,6 +4801,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       designSystemTokenContractProjections: new Map(),
       accessibilityDesignRulesProjections: new Map(),
       responsiveMultiPlatformTargetsProjections: new Map(),
+      manualFigmaExecutionPathProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -6166,6 +6224,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "responsive-multi-platform-targets-unavailable",
           "Responsive and Multi-Platform Targets metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.manualFigmaExecutionPath) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.manualFigmaExecutionPath!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.manualFigmaExecutionPathProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Manual Figma Execution Path projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `manual-figma-execution-path-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Manual Figma Execution Path metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "manual-figma-execution-path-unavailable",
+          "Manual Figma Execution Path metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

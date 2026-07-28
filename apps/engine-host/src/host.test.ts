@@ -1692,6 +1692,56 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "manual-figma-execution-path-read-empty",
+      protocolVersion: 2,
+      method: "design.manualFigmaExecutionPath.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "manual-figma-execution-path-assess-empty",
+      protocolVersion: 2,
+      method: "design.manualFigmaExecutionPath.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      scopeCount: 0,
+      instructionCount: 0,
+      checkCount: 0,
+      notAssessedCheckCount: 0,
+      evidenceRecordedCheckCount: 0,
+      humanReviewedCheckCount: 0,
+      contradictedCheckCount: 0,
+      representedRequirementCount: 0,
+      unresolvedRequirementCount: 0,
+      unresolvedOwnershipCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      guideCatalogState: "not-assessed",
+      handoffCatalogState: "not-assessed",
+      returnContractState: "not-assessed",
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-connect-to-figma-prove-execution"),
+    })
+    const manualFigmaExecutionPathProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "manual-figma-execution-path-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.manualFigmaExecutionPath.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: manualFigmaExecutionPathSnapshotDigest,
+      ...manualFigmaExecutionPathProjectionBody
+    } = manualFigmaExecutionPathProjection
+    expect(manualFigmaExecutionPathSnapshotDigest).toBe(canonicalDigest(manualFigmaExecutionPathProjectionBody))
+    expect(manualFigmaExecutionPathProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-handoff-content-instructions-figma-identifiers-returned-design"),
+      authorityBoundary: expect.stringContaining("does-not-connect-to-figma-prove-execution"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1778,6 +1828,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "responsive-multi-platform-targets-v1-block",
       method: "design.responsiveMultiPlatformTargets.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "manual-figma-execution-path-v1-block",
+      method: "design.manualFigmaExecutionPath.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
