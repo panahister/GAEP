@@ -1289,6 +1289,50 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Design Personas and Roles projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("design-persona-role-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDesignPersonaRoleModel(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals(2, projection.personaCount)
+            assertEquals(1, projection.designRoleCount)
+            assertEquals(2, projection.candidate?.personaCount)
+
+            val rendered = RiderProductController(client).readDesignPersonaRoleModel(entryId)
+            assertTrue(rendered.contains("GAEP governed Design Personas and Roles candidate"))
+            assertTrue(rendered.contains("2 personas · 1 design roles · 4/5 participant categories · 1/4 role kinds"))
+            assertTrue(rendered.contains("no persona validation"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("personaBehavior"))
+        }
+
+        listOf(
+            "bad-design-persona-role-snapshot-digest",
+            "bad-design-persona-role-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDesignPersonaRoleModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-design-persona-role-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDesignPersonaRoleModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

@@ -466,6 +466,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += designApplicabilityButton
         actions.add(designApplicabilityButton)
 
+        val designPersonaRoleButton = JButton("Inspect Design Personas and Roles…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Persona content, behaviors, constraints, Source content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Design Personas and Roles",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Design Personas and Roles", status, output, buttons) {
+                    controller.readDesignPersonaRoleModel(initiativeId)
+                }
+            }
+        }
+        buttons += designPersonaRoleButton
+        actions.add(designPersonaRoleButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

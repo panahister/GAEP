@@ -25,6 +25,7 @@ import {
   type P0P4ReadinessGateProjection,
   type P5HandoffPackageProjection,
   type DesignApplicabilityProjection,
+  type DesignPersonaRoleModelProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -121,6 +122,7 @@ const commandIds = {
   p0P4ReadinessGate: "gaepKiro.p0P4ReadinessGate.inspect",
   p5HandoffPackage: "gaepKiro.p5HandoffPackage.inspect",
   designApplicability: "gaepKiro.designApplicability.inspect",
+  designPersonaRole: "gaepKiro.designPersonasRoles.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -236,6 +238,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.p0P4ReadinessGate, (input?: unknown) => runUserCommand(() => showP0P4ReadinessGate(pool, input))),
     vscode.commands.registerCommand(commandIds.p5HandoffPackage, (input?: unknown) => runUserCommand(() => showP5HandoffPackage(pool, input))),
     vscode.commands.registerCommand(commandIds.designApplicability, (input?: unknown) => runUserCommand(() => showDesignApplicability(pool, input))),
+    vscode.commands.registerCommand(commandIds.designPersonaRole, (input?: unknown) => runUserCommand(() => showDesignPersonaRoleModel(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1452,6 +1455,46 @@ async function showDesignApplicability(
     ] : []),
     "",
     "This candidate never treats silence as not applicable and does not approve design, establish a Design Baseline, grant readiness, authorize implementation, write, or action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDesignPersonaRoleModel(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DesignPersonaRoleModelProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Design Personas and Roles", "Initiative ID")
+  const projection = await client.readDesignPersonaRoleModel(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Design Personas and Roles candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Coverage: ${status.personaCount} personas · ${status.designRoleCount} design roles · ${status.representedParticipantCategoryCount}/5 participant categories · ${status.representedRoleKindCount}/4 role kinds`,
+    `Persona evidence: ${status.humanReviewedPersonaCount} human-reviewed · ${status.weakEvidencePersonaCount} weak-evidence`,
+    `Candidate gaps: ${status.unresolvedParticipantCategoryCount} unresolved participant categories · ${status.unresolvedRoleKindCount} unresolved role kinds · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate inventory: ${record.personaCount} personas · ${record.designRoleCount} design roles · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Purpose-limited candidate persona hypotheses and design responsibilities only; this does not validate personas, appoint roles, verify competence, approve design, grant readiness, authorize write, or authorize action.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

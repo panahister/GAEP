@@ -12,6 +12,7 @@ import {
   p0P4ReadinessGateSchema,
   p5HandoffPackageSchema,
   designApplicabilitySchema,
+  designPersonaRoleModelSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -80,6 +81,7 @@ import {
   type P0P4ReadinessGate,
   type P5HandoffPackage,
   type DesignApplicability,
+  type DesignPersonaRoleModel,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2161,6 +2163,16 @@ export class ProductStudioService {
       /^design-applicability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       designApplicabilitySchema,
     )
+    const designPersonaRoleModels = await this.listRecords(
+      "design-persona-role-models",
+      /^[0-9a-f-]+\.json$/i,
+      designPersonaRoleModelSchema,
+    )
+    const designPersonaRoleModelHistory = await this.listRecords(
+      "design-persona-role-model-history",
+      /^design-persona-role-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      designPersonaRoleModelSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2220,6 +2232,8 @@ export class ProductStudioService {
       ...p5HandoffPackageHistory,
       ...designApplicability,
       ...designApplicabilityHistory,
+      ...designPersonaRoleModels,
+      ...designPersonaRoleModelHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2250,6 +2264,7 @@ export class ProductStudioService {
           p0P4ReadinessGates.find((record) => record.id === id)?.informationClassification ??
           p5HandoffPackages.find((record) => record.id === id)?.informationClassification ??
           designApplicability.find((record) => record.id === id)?.informationClassification ??
+          designPersonaRoleModels.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2451,6 +2466,13 @@ export class ProductStudioService {
       designApplicabilityHistory,
       (record) => `design-applicability-history/design-applicability-${record.id}-r${record.revision}.json`,
     )
+    append("design-persona-role-models", "design-persona-role-candidate", designPersonaRoleModels)
+    append(
+      "design-persona-role-model-history",
+      "design-persona-role-candidate",
+      designPersonaRoleModelHistory,
+      (record) => `design-persona-role-model-history/design-persona-role-${record.id}-r${record.revision}.json`,
+    )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
       "stakeholder-model-history",
@@ -2528,6 +2550,7 @@ export class ProductStudioService {
           ...boundedContextModels.map((record) => record.informationClassification),
           ...p5HandoffPackages.map((record) => record.informationClassification),
           ...designApplicability.map((record) => record.informationClassification),
+          ...designPersonaRoleModels.map((record) => record.informationClassification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
         ])],
@@ -2820,6 +2843,14 @@ export class ProductStudioService {
           `design-applicability-history/design-applicability-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Design Applicability history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("design-persona-role-model-history/")) {
+        const record = validated as DesignPersonaRoleModel
+        const expectedHistoryPath =
+          `design-persona-role-model-history/design-persona-role-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Design Persona and Role history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -3946,7 +3977,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -3978,7 +4009,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -5817,7 +5848,11 @@ export class ProductStudioService {
     const designApplicabilityHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("design-applicability-history/"))
       .map(([, record]) => designApplicabilitySchema.parse(record))
-    validateVersionedBusinessRecords(designApplicability, designApplicabilityHistory, "Design Applicability")
+    const exactDesignApplicability = validateVersionedBusinessRecords(
+      designApplicability,
+      designApplicabilityHistory,
+      "Design Applicability",
+    )
     for (const candidate of [...designApplicability, ...designApplicabilityHistory]) {
       const expectedMembership = {
         initiativeId: candidate.initiativeId,
@@ -5864,6 +5899,97 @@ export class ProductStudioService {
             throw new Error(`Import Design Applicability ${candidate.id} exact general design decision binding is unresolved`)
           }
         }
+      }
+    }
+
+    const designPersonaRoleModels = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-persona-role-models/"))
+      .map(([, record]) => designPersonaRoleModelSchema.parse(record))
+    const designPersonaRoleModelHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-persona-role-model-history/"))
+      .map(([, record]) => designPersonaRoleModelSchema.parse(record))
+    validateVersionedBusinessRecords(
+      designPersonaRoleModels,
+      designPersonaRoleModelHistory,
+      "Design Persona and Role Model",
+    )
+    for (const candidate of [...designPersonaRoleModels, ...designPersonaRoleModelHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        stakeholderModel: candidate.stakeholderModel,
+        designApplicability: candidate.designApplicability,
+        personas: candidate.personas,
+        participantCoverage: candidate.participantCoverage,
+        designRoles: candidate.designRoles,
+        roleCoverage: candidate.roleCoverage,
+        contestability: candidate.contestability,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        personaValidationState: candidate.personaValidationState,
+        roleAppointmentState: candidate.roleAppointmentState,
+        designApprovalState: candidate.designApprovalState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Design Persona and Role Model ${candidate.id} membership digest is invalid`)
+      }
+      const stakeholder = exactStakeholderModels.get(
+        `${candidate.stakeholderModel.recordId}:${candidate.stakeholderModel.revision}:${candidate.stakeholderModel.digest}`,
+      )
+      if (!stakeholder || stakeholder.initiativeId !== candidate.initiativeId) {
+        throw new Error(`Import Design Persona and Role Model ${candidate.id} exact Stakeholder Model binding is unresolved`)
+      }
+      const applicability = exactDesignApplicability.get(
+        `${candidate.designApplicability.recordId}:${candidate.designApplicability.revision}:${candidate.designApplicability.digest}`,
+      )
+      if (!applicability || applicability.initiativeId !== candidate.initiativeId ||
+          applicability.membershipDigest !== candidate.designApplicability.membershipDigest) {
+        throw new Error(`Import Design Persona and Role Model ${candidate.id} exact Design Applicability binding is unresolved`)
+      }
+      const stakeholderKeys = new Set(stakeholder.stakeholders.map((entry) => entry.key))
+      const referencedStakeholderKeys = new Set([
+        ...candidate.personas.flatMap((persona) => persona.stakeholderKeys),
+        ...candidate.designRoles.flatMap((role) => role.stakeholderKeys),
+        candidate.contestability.ownerStakeholderKey,
+      ])
+      if ([...referencedStakeholderKeys].some((key) => !stakeholderKeys.has(key))) {
+        throw new Error(`Import Design Persona and Role Model ${candidate.id} contains an unresolved stakeholder key`)
+      }
+      const scopeKeys = new Set(applicability.scopes.map((scope) => `${scope.scope.kind}.${scope.scope.id}`))
+      const referencedScopeKeys = new Set([
+        ...candidate.personas.flatMap((persona) => persona.designScopeKeys),
+        ...candidate.designRoles.flatMap((role) => role.designScopeKeys),
+      ])
+      if ([...referencedScopeKeys].some((key) => !scopeKeys.has(key))) {
+        throw new Error(`Import Design Persona and Role Model ${candidate.id} contains an unresolved Design Applicability scope key`)
+      }
+      const designWorkStatuses = applicability.scopes.map((scope) =>
+        scope.decisions.find((decision) => decision.aspect === "design-work")?.status ?? "awaiting-human-decision")
+      const materialStatuses = new Set([
+        "required", "recommended", "optional", "conditionally-required", "already-satisfied", "reused",
+      ])
+      const disposition = designWorkStatuses.every((status) => status === "not-applicable")
+        ? "not-applicable"
+        : designWorkStatuses.some((status) => materialStatuses.has(status))
+          ? "material"
+          : "unresolved"
+      const participantCoverage = new Map(candidate.participantCoverage.map((entry) => [entry.category, entry.status]))
+      const productDesignerCoverage = candidate.roleCoverage.find((entry) => entry.kind === "product-designer")?.status
+      if (disposition === "material" && (([
+        "affected-contributor", "change-owner", "reviewer", "workspace-steward",
+      ] as const).some((category) => participantCoverage.get(category) !== "represented") ||
+        productDesignerCoverage !== "represented")) {
+        throw new Error(`Import Design Persona and Role Model ${candidate.id} does not cover applicable design participants and Product Designer responsibility`)
+      }
+      if (disposition === "not-applicable" && productDesignerCoverage !== "not-applicable") {
+        throw new Error(`Import Design Persona and Role Model ${candidate.id} contradicts not-applicable design work`)
+      }
+      if (disposition === "unresolved" && productDesignerCoverage !== "unresolved") {
+        throw new Error(`Import Design Persona and Role Model ${candidate.id} contradicts unresolved design work`)
       }
     }
 
@@ -6552,6 +6678,10 @@ export class ProductStudioService {
         /^design-applicability-history\/design-applicability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "design-applicability-candidate"
     }
+    if (/^design-persona-role-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-persona-role-model-history\/design-persona-role-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "design-persona-role-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -6684,6 +6814,10 @@ export class ProductStudioService {
     if (/^design-applicability\/[0-9a-f-]+\.json$/i.test(path) ||
         /^design-applicability-history\/design-applicability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return designApplicabilitySchema
+    }
+    if (/^design-persona-role-models\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-persona-role-model-history\/design-persona-role-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return designPersonaRoleModelSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

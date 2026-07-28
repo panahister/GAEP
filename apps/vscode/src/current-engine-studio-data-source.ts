@@ -52,6 +52,7 @@ import type {
   P5HandoffPackageProjection,
   P5HandoffPackage,
   DesignApplicabilityProjection,
+  DesignPersonaRoleModelProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -215,6 +216,9 @@ export interface CurrentStudioEngineReader {
   designApplicability?: {
     project(initiativeId: string): Promise<DesignApplicabilityProjection>
   }
+  designPersonaRoleModel?: {
+    project(initiativeId: string): Promise<DesignPersonaRoleModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -276,6 +280,7 @@ interface ObservedStudioState {
   p0P4ReadinessGateProjections: Map<string, P0P4ReadinessGateProjection>
   p5HandoffPackageProjections: Map<string, P5HandoffPackageProjection>
   designApplicabilityProjections: Map<string, DesignApplicabilityProjection>
+  designPersonaRoleProjections: Map<string, DesignPersonaRoleModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1624,6 +1629,55 @@ function designApplicabilityTable(state: ObservedStudioState): StudioTableSnapsh
   }
 }
 
+function designPersonaRoleTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.designPersonaRoleProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        coverage: `${status.personaCount} personas · ${status.designRoleCount} design roles · ${status.representedParticipantCategoryCount}/5 participant categories · ${status.representedRoleKindCount}/4 role kinds`,
+        evidence: `${status.humanReviewedPersonaCount} human-reviewed personas · ${status.weakEvidencePersonaCount} weak-evidence personas`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        gaps: `${status.unresolvedParticipantCategoryCount} unresolved participant categories · ${status.unresolvedRoleKindCount} unresolved role kinds · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Purpose-limited candidate persona hypotheses and design responsibilities only; no persona validation, role appointment, competence verification, design approval, readiness, write, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "design-persona-role-model",
+    title: "Governed Design Personas and Roles Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "coverage", label: "Privacy-safe coverage" },
+      { key: "evidence", label: "Persona evidence state" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Design Personas and Roles candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer persona validation, role appointment, competence, design approval, readiness, write, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1633,6 +1687,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const legacy = legacyForm(route, state.product)
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
+      ...(route === "users-jobs" ? [designPersonaRoleTable(state)] : []),
       ...(route === "architecture"
         ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), eventIntegrationModelTable(state), failureRecoveryModelTable(state), architectureChallengeModelTable(state), architectureTable(state.architecture), designApplicabilityTable(state)]
         : []),
@@ -1641,6 +1696,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
   }
   const relatedRecords: StudioTableSnapshot[] = []
   if (businessTable) relatedRecords.push(businessTable)
+  if (route === "users-jobs") relatedRecords.push(designPersonaRoleTable(state))
   if (route === "scope") relatedRecords.push(requirementsTable(state.requirements))
   if (route === "architecture") {
     relatedRecords.push(
@@ -4284,6 +4340,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       p0P4ReadinessGateProjections: new Map(),
       p5HandoffPackageProjections: new Map(),
       designApplicabilityProjections: new Map(),
+      designPersonaRoleProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -5370,6 +5427,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "design-applicability-unavailable",
           "Design Applicability metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "users-jobs" && engine.designPersonaRoleModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.designPersonaRoleModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.designPersonaRoleProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Design Persona and Role projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `design-persona-role-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Design Persona and Role metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "design-persona-role-unavailable",
+          "Design Persona and Role metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

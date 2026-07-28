@@ -1796,6 +1796,42 @@ data class DesignApplicabilityProjection(
     val snapshotDigest: String,
 )
 
+data class DesignPersonaRoleRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val personaCount: Int,
+    val designRoleCount: Int,
+    val reviewState: String,
+)
+
+data class DesignPersonaRoleProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val personaCount: Int,
+    val designRoleCount: Int,
+    val representedParticipantCategoryCount: Int,
+    val unresolvedParticipantCategoryCount: Int,
+    val representedRoleKindCount: Int,
+    val unresolvedRoleKindCount: Int,
+    val weakEvidencePersonaCount: Int,
+    val humanReviewedPersonaCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: DesignPersonaRoleRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -1965,6 +2001,12 @@ internal object PortableDesignProtocol {
         "design-applicability-projection-is-read-only-and-does-not-approve-design-establish-a-baseline-grant-readiness-or-authorize-write-implementation-or-action"
     private const val DESIGN_APPLICABILITY_STATUS_AUTHORITY_BOUNDARY =
         "design-applicability-status-is-observational-and-does-not-approve-design-establish-a-baseline-grant-readiness-or-authorize-implementation-or-action"
+    private const val DESIGN_PERSONA_ROLE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-digests-only-not-persona-content-behaviors-constraints-source-content-personal-data-secrets-or-credentials"
+    private const val DESIGN_PERSONA_ROLE_PROJECTION_AUTHORITY_BOUNDARY =
+        "design-persona-role-projection-is-read-only-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-write-or-action"
+    private const val DESIGN_PERSONA_ROLE_STATUS_AUTHORITY_BOUNDARY =
+        "design-persona-role-status-is-observational-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -6052,6 +6094,138 @@ internal object PortableDesignProtocol {
             unresolvedDecisionCount, blockedDecisionCount, pendingApprovalCount, rejectedApprovalCount,
             unresolvedDepthCount, unresolvedSourceCount, staleBindingCount, staleSourceReferenceCount,
             unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseDesignPersonaRoleEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): DesignPersonaRoleProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "design-persona-role-projection" ||
+            projection.requireString("privacyBoundary") != DESIGN_PERSONA_ROLE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != DESIGN_PERSONA_ROLE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "personaCount", "designRoleCount", "representedParticipantCategoryCount",
+                "unresolvedParticipantCategoryCount", "representedRoleKindCount", "unresolvedRoleKindCount",
+                "weakEvidencePersonaCount", "humanReviewedPersonaCount", "staleBindingCount",
+                "staleSourceReferenceCount", "unresolvedQuestionCount", "reviewState", "state", "reasons",
+                "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "design-persona-role-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != DESIGN_PERSONA_ROLE_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val personaCount = status.requireBoundedNonNegativeInt("personaCount", 256)
+        val designRoleCount = status.requireBoundedNonNegativeInt("designRoleCount", 256)
+        val representedParticipantCategoryCount = status.requireBoundedNonNegativeInt("representedParticipantCategoryCount", 5)
+        val unresolvedParticipantCategoryCount = status.requireBoundedNonNegativeInt("unresolvedParticipantCategoryCount", 5)
+        val representedRoleKindCount = status.requireBoundedNonNegativeInt("representedRoleKindCount", 4)
+        val unresolvedRoleKindCount = status.requireBoundedNonNegativeInt("unresolvedRoleKindCount", 4)
+        val weakEvidencePersonaCount = status.requireBoundedNonNegativeInt("weakEvidencePersonaCount", 256)
+        val humanReviewedPersonaCount = status.requireBoundedNonNegativeInt("humanReviewedPersonaCount", 256)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        if (weakEvidencePersonaCount > personaCount || humanReviewedPersonaCount > personaCount) throw invalidResponse()
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = unresolvedParticipantCategoryCount + unresolvedRoleKindCount + weakEvidencePersonaCount +
+            staleBindingCount + staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (gapCount > 0 || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || reference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "personaCount", "designRoleCount",
+                "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = DesignPersonaRoleRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("personaCount", 256),
+                value.requireBoundedNonNegativeInt("designRoleCount", 256),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision ||
+                reference.digest != record.digest || record.personaCount != personaCount ||
+                record.designRoleCount != designRoleCount || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) {
+            throw invalidResponse()
+        }
+        return DesignPersonaRoleProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, reasons, personaCount, designRoleCount,
+            representedParticipantCategoryCount, unresolvedParticipantCategoryCount, representedRoleKindCount,
+            unresolvedRoleKindCount, weakEvidencePersonaCount, humanReviewedPersonaCount, staleBindingCount,
+            staleSourceReferenceCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 

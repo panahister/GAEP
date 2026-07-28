@@ -66,6 +66,7 @@ internal static class Program
     private static readonly Guid P0P4ReadinessGateId = Guid.Parse("61616161-6161-4161-8161-616161616161");
     private static readonly Guid P5HandoffPackageId = Guid.Parse("62626262-6262-4262-8262-626262626262");
     private static readonly Guid DesignApplicabilityId = Guid.Parse("63636363-6363-4363-8363-636363636363");
+    private static readonly Guid DesignPersonaRoleId = Guid.Parse("64646464-6464-4464-8464-646464646464");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -193,6 +194,9 @@ internal static class Program
         var badDesignApplicabilitySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-applicability-snapshot-binding");
         var badDesignApplicabilitySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-applicability-snapshot-digest");
         var badDesignApplicabilitySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-applicability-snapshot-private");
+        var badDesignPersonaRoleSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-persona-role-snapshot-binding");
+        var badDesignPersonaRoleSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-persona-role-snapshot-digest");
+        var badDesignPersonaRoleSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-persona-role-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -320,6 +324,9 @@ internal static class Program
         Directory.CreateDirectory(badDesignApplicabilitySnapshotBindingRoot);
         Directory.CreateDirectory(badDesignApplicabilitySnapshotDigestRoot);
         Directory.CreateDirectory(badDesignApplicabilitySnapshotPrivateRoot);
+        Directory.CreateDirectory(badDesignPersonaRoleSnapshotBindingRoot);
+        Directory.CreateDirectory(badDesignPersonaRoleSnapshotDigestRoot);
+        Directory.CreateDirectory(badDesignPersonaRoleSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1585,6 +1592,45 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadDesignApplicabilityAsync(InitiativeId),
                 "Design Applicability rejects a projection rebound to a substituted Product revision");
+        }
+
+        var designPersonaRoleProjection = await client.ReadDesignPersonaRoleModelAsync(InitiativeId);
+        Check(designPersonaRoleProjection.ProductId == product.Id &&
+              designPersonaRoleProjection.ProductRevision == product.Revision &&
+              designPersonaRoleProjection.ProductDigest == product.Digest &&
+              designPersonaRoleProjection.InitiativeId == resolved.Id &&
+              designPersonaRoleProjection.InitiativeRevision == resolved.Revision &&
+              designPersonaRoleProjection.InitiativeDigest == resolved.Digest &&
+              designPersonaRoleProjection.AssessmentState == "attention-required" &&
+              designPersonaRoleProjection.ReviewState == "held" &&
+              designPersonaRoleProjection.PersonaCount == 2 &&
+              designPersonaRoleProjection.DesignRoleCount == 1 &&
+              designPersonaRoleProjection.Candidate?.PersonaCount == 2,
+            "Typed Design Personas and Roles preserves exact Product, Initiative, assessment, and privacy-safe coverage metadata");
+        var designPersonaRoleOutput = await initiativeController.ReadDesignPersonaRoleModelAsync(InitiativeId);
+        Check(designPersonaRoleOutput.Contains("GAEP governed Design Personas and Roles candidate", StringComparison.Ordinal) &&
+              designPersonaRoleOutput.Contains("Coverage: 2 personas · 1 design roles · 4/5 participant categories", StringComparison.Ordinal) &&
+              designPersonaRoleOutput.Contains("no persona validation", StringComparison.Ordinal) &&
+              designPersonaRoleOutput.Contains("role appointment", StringComparison.Ordinal) &&
+              !designPersonaRoleOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designPersonaRoleOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designPersonaRoleOutput.Contains("personaBehavior", StringComparison.Ordinal) &&
+              !designPersonaRoleOutput.Contains("constraints", StringComparison.OrdinalIgnoreCase),
+            "Design Personas and Roles workflow renders privacy-safe metadata with explicit no-validation and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badDesignPersonaRoleSnapshotDigestRoot, badDesignPersonaRoleSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignPersonaRoleModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Design Personas and Roles rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDesignPersonaRoleSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignPersonaRoleModelAsync(InitiativeId),
+                "Design Personas and Roles rejects a projection rebound to a substituted Product revision");
         }
 
         var dashboard = await client.ReadPhaseDashboardAsync(product);
@@ -2865,6 +2911,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-design-applicability-snapshot-digest";
         var badDesignApplicabilitySnapshotPrivate =
             Path.GetFileName(workspace) == "bad-design-applicability-snapshot-private";
+        var badDesignPersonaRoleSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-design-persona-role-snapshot-binding";
+        var badDesignPersonaRoleSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-design-persona-role-snapshot-digest";
+        var badDesignPersonaRoleSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-design-persona-role-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3239,6 +3291,17 @@ internal static class Program
                         badDesignApplicabilitySnapshotBinding,
                         badDesignApplicabilitySnapshotDigest,
                         badDesignApplicabilitySnapshotPrivate);
+                    break;
+                case "design.personas.roles.snapshot":
+                    await HandleDesignPersonaRoleAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignPersonaRoleSnapshotBinding,
+                        badDesignPersonaRoleSnapshotDigest,
+                        badDesignPersonaRoleSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -5759,6 +5822,100 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["scopeCount"] = 3;
         if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignPersonaRoleAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGN PERSONA ROLE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T08:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('6', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignPersonaRoleId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('7', 64)}",
+            ["state"] = "candidate",
+            ["personaCount"] = 2,
+            ["designRoleCount"] = 1,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T08:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "design-persona-role-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "design-persona-role-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignPersonaRoleId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["personaCount"] = 2,
+                ["designRoleCount"] = 1,
+                ["representedParticipantCategoryCount"] = 4,
+                ["unresolvedParticipantCategoryCount"] = 1,
+                ["representedRoleKindCount"] = 1,
+                ["unresolvedRoleKindCount"] = 1,
+                ["weakEvidencePersonaCount"] = 1,
+                ["humanReviewedPersonaCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more design participant categories remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "design-persona-role-status-is-observational-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-action",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-persona-content-behaviors-constraints-source-content-personal-data-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "design-persona-role-projection-is-read-only-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-write-or-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["personaCount"] = 3;
+        if (includePrivateField) result["personaBehavior"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

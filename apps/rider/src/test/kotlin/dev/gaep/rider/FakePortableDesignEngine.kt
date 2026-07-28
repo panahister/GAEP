@@ -37,6 +37,7 @@ private val endToEndTraceabilityId = UUID.fromString("60606060-6060-4060-8060-60
 private val p0P4ReadinessGateId = UUID.fromString("61616161-6161-4161-8161-616161616161")
 private val p5HandoffPackageId = UUID.fromString("62626262-6262-4262-8262-626262626262")
 private val designApplicabilityId = UUID.fromString("63636363-6363-4363-8363-636363636363")
+private val designPersonaRoleId = UUID.fromString("64646464-6464-4464-8464-646464646464")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -220,6 +221,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.applicability.snapshot" -> handleDesignApplicability(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.personas.roles.snapshot" -> handleDesignPersonaRoleModel(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -2483,6 +2489,84 @@ private fun handleDesignApplicability(id: Long, params: JsonObject, workspacePat
         }
         workspacePath.endsWith("bad-design-applicability-snapshot-private") -> {
             value.addProperty("rationale", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDesignPersonaRoleModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN PERSONA ROLE PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-design-persona-role-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-28T08:30:00.000Z"
+    val candidateDigest = "sha256:${"6".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "design-persona-role-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "design-persona-role-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", designPersonaRoleId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("personaCount", 2)
+            addProperty("designRoleCount", 1)
+            addProperty("representedParticipantCategoryCount", 4)
+            addProperty("unresolvedParticipantCategoryCount", 1)
+            addProperty("representedRoleKindCount", 1)
+            addProperty("unresolvedRoleKindCount", 1)
+            addProperty("weakEvidencePersonaCount", 1)
+            addProperty("humanReviewedPersonaCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more design participant categories remain unresolved") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("authorityBoundary", "design-persona-role-status-is-observational-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-action")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", designPersonaRoleId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"7".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("personaCount", 2)
+            addProperty("designRoleCount", 1)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-28T08:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-digests-only-not-persona-content-behaviors-constraints-source-content-personal-data-secrets-or-credentials")
+        addProperty("authorityBoundary", "design-persona-role-projection-is-read-only-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-write-or-action")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-design-persona-role-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("personaCount", 3)
+        }
+        workspacePath.endsWith("bad-design-persona-role-snapshot-private") -> {
+            value.addProperty("personaBehavior", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

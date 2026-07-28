@@ -48,6 +48,7 @@ const commands = [
   "gaepKiro.p0P4ReadinessGate.inspect",
   "gaepKiro.p5HandoffPackage.inspect",
   "gaepKiro.designApplicability.inspect",
+  "gaepKiro.designPersonasRoles.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",

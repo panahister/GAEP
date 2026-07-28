@@ -225,6 +225,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadP0P4ReadinessGateCommand = new AsyncCommand(LoadP0P4ReadinessGateAsync);
         LoadP5HandoffPackageCommand = new AsyncCommand(LoadP5HandoffPackageAsync);
         LoadDesignApplicabilityCommand = new AsyncCommand(LoadDesignApplicabilityAsync);
+        LoadDesignPersonaRoleCommand = new AsyncCommand(LoadDesignPersonaRoleAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -343,6 +344,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadDesignApplicabilityCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadDesignPersonaRoleCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -852,6 +856,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Design Applicability candidate",
             (controller, _, token) => controller.ReadDesignApplicabilityAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadDesignPersonaRoleAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Design Personas and Roles candidate",
+            (controller, _, token) => controller.ReadDesignPersonaRoleModelAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

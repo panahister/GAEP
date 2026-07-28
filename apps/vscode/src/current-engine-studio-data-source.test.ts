@@ -24,6 +24,7 @@ import {
   type P0P4ReadinessGateProjection,
   type P5HandoffPackageProjection,
   type DesignApplicabilityProjection,
+  type DesignPersonaRoleModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1617,6 +1618,65 @@ function designApplicabilityProjection(): DesignApplicabilityProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function designPersonaRoleProjection(): DesignPersonaRoleModelProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "design-persona-role-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: {
+      recordId: "dededede-dede-4ede-8ede-dededededede",
+      revision: 2,
+      digest: `sha256:${"6".repeat(64)}` as const,
+    },
+    personaCount: 2,
+    designRoleCount: 1,
+    representedParticipantCategoryCount: 4,
+    unresolvedParticipantCategoryCount: 1,
+    representedRoleKindCount: 1,
+    unresolvedRoleKindCount: 1,
+    weakEvidencePersonaCount: 1,
+    humanReviewedPersonaCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more design participant categories remain unresolved"],
+    assessedAt: "2026-07-28T08:30:00.000Z",
+    authorityBoundary: "design-persona-role-status-is-observational-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "design-persona-role-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: {
+      id: initiative.id,
+      revision: initiative.revision ?? 1,
+      digest: canonicalDigest(initiative),
+      state: initiative.state,
+    },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"7".repeat(64)}` as const,
+      state: "candidate" as const,
+      personaCount: 2,
+      designRoleCount: 1,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-28T08:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-persona-content-behaviors-constraints-source-content-personal-data-secrets-or-credentials" as const,
+    authorityBoundary: "design-persona-role-projection-is-read-only-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-write-or-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2263,6 +2323,7 @@ interface HarnessOptions {
   p0P4ReadinessGateProjection?: P0P4ReadinessGateProjection
   p5HandoffPackageProjection?: P5HandoffPackageProjection
   designApplicabilityProjection?: DesignApplicabilityProjection
+  designPersonaRoleProjection?: DesignPersonaRoleModelProjection
   commandResult?: unknown
 }
 
@@ -2468,6 +2529,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.designApplicabilityProjection ? {
       designApplicability: {
         project: async () => options.designApplicabilityProjection!,
+      },
+    } : {}),
+    ...(options.designPersonaRoleProjection ? {
+      designPersonaRoleModel: {
+        project: async () => options.designPersonaRoleProjection!,
       },
     } : {}),
   }
@@ -3077,6 +3143,31 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private rationale|private source content|private journey|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Design Personas and Roles metadata on the native users and jobs page", async () => {
+    const projection = designPersonaRoleProjection()
+    const { source } = harness({ designPersonaRoleProjection: projection })
+    const snapshot = await source.readSnapshot("users-jobs")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.at(-1)).toMatchObject({
+      id: "design-persona-role-model",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          coverage: "2 personas · 1 design roles · 4/5 participant categories · 1/4 role kinds",
+          evidence: "1 human-reviewed personas · 1 weak-evidence personas",
+          assessment: "attention-required · held",
+          gaps: "1 unresolved participant categories · 1 unresolved role kinds · 2 questions · 0 stale bindings · 1 stale Source references",
+          boundary: "Purpose-limited candidate persona hypotheses and design responsibilities only; no persona validation, role appointment, competence verification, design approval, readiness, write, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private persona behavior|private constraints|private source content|pilot-change-owner|customer@example\.com|api_key/iu,
     )
   })
 

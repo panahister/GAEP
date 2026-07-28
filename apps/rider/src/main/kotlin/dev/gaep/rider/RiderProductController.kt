@@ -1224,6 +1224,53 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         return renderDesignApplicability(projection)
     }
 
+    fun readDesignPersonaRoleModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readDesignPersonaRoleModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Design Personas and Roles were read. Refresh the exact records." }
+        return renderDesignPersonaRoleModel(projection)
+    }
+
+    fun renderDesignPersonaRoleModel(projection: DesignPersonaRoleProjection): String = buildString {
+        appendLine("GAEP governed Design Personas and Roles candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine(
+            "Coverage: ${projection.personaCount} personas · ${projection.designRoleCount} design roles · " +
+                "${projection.representedParticipantCategoryCount}/5 participant categories · " +
+                "${projection.representedRoleKindCount}/4 role kinds",
+        )
+        appendLine(
+            "Persona evidence: ${projection.humanReviewedPersonaCount} human-reviewed · " +
+                "${projection.weakEvidencePersonaCount} weak-evidence",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedParticipantCategoryCount} unresolved participant categories · " +
+                "${projection.unresolvedRoleKindCount} unresolved role kinds · ${projection.unresolvedQuestionCount} questions · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Design Personas and Roles candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Candidate inventory: ${record.personaCount} personas · ${record.designRoleCount} design roles · ${record.reviewState}")
+        } ?: appendLine("Design Personas and Roles candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: purpose-limited candidate persona hypotheses and responsibilities only; no persona validation, " +
+                "role appointment, competence verification, design approval, readiness, write, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

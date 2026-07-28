@@ -1374,6 +1374,39 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "design-persona-role-read-empty",
+      protocolVersion: 2,
+      method: "design.personas.roles.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-persona-role-assess-empty",
+      protocolVersion: 2,
+      method: "design.personas.roles.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      personaCount: 0,
+      designRoleCount: 0,
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-validate-personas-appoint-roles"),
+    })
+    const designPersonaRoleProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-persona-role-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.personas.roles.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: designPersonaRoleSnapshotDigest, ...designPersonaRoleProjectionBody } = designPersonaRoleProjection
+    expect(designPersonaRoleSnapshotDigest).toBe(canonicalDigest(designPersonaRoleProjectionBody))
+    expect(designPersonaRoleProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-persona-content-behaviors-constraints"),
+      authorityBoundary: expect.stringContaining("does-not-validate-personas-appoint-roles"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1412,6 +1445,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "design-applicability-v1-block",
       method: "design.applicability.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-persona-role-v1-block",
+      method: "design.personas.roles.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

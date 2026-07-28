@@ -1447,6 +1447,58 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignPersonaRoleModelAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignPersonaRoleModelAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Design Personas and Roles were read. Refresh the exact records.");
+        }
+        return RenderDesignPersonaRoleModel(projection);
+    }
+
+    public static string RenderDesignPersonaRoleModel(DesignPersonaRoleProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Design Personas and Roles candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Coverage: {projection.PersonaCount} personas · {projection.DesignRoleCount} design roles · " +
+                $"{projection.RepresentedParticipantCategoryCount}/5 participant categories · {projection.RepresentedRoleKindCount}/4 role kinds")
+            .AppendLine(
+                $"Persona evidence: {projection.HumanReviewedPersonaCount} human-reviewed · " +
+                $"{projection.WeakEvidencePersonaCount} weak-evidence")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedParticipantCategoryCount} unresolved participant categories · " +
+                $"{projection.UnresolvedRoleKindCount} unresolved role kinds · {projection.UnresolvedQuestionCount} questions · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Design Personas and Roles candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine($"Candidate inventory: {candidate.PersonaCount} personas · {candidate.DesignRoleCount} design roles · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Design Personas and Roles candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: purpose-limited candidate persona hypotheses and responsibilities only; no persona validation, " +
+                "role appointment, competence verification, design approval, readiness, write, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

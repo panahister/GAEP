@@ -49,6 +49,7 @@ import { endToEndTraceabilityInputSchema } from "./end-to-end-traceability.js"
 import { p0P4ReadinessGateInputSchema } from "./p0-p4-readiness-gate.js"
 import { p5HandoffPackageInputSchema } from "./p5-handoff-package.js"
 import { designApplicabilityInputSchema } from "./design-applicability.js"
+import { designPersonaRoleModelInputSchema } from "./design-persona-role-model.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -513,6 +514,18 @@ export const hostDesignApplicabilityReviseParamsSchema = z.object({
   record: designApplicabilityInputSchema,
 }).strict()
 
+export const hostDesignPersonaRoleCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: designPersonaRoleModelInputSchema,
+}).strict()
+
+export const hostDesignPersonaRoleReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: designPersonaRoleModelInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -685,6 +698,11 @@ export const hostMethodSchema = z.enum([
   "design.applicability.revise",
   "design.applicability.assess",
   "design.applicability.snapshot",
+  "design.personas.roles.read",
+  "design.personas.roles.create",
+  "design.personas.roles.revise",
+  "design.personas.roles.assess",
+  "design.personas.roles.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -866,6 +884,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.applicability.revise", hostDesignApplicabilityReviseParamsSchema),
   requestVariant("design.applicability.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.applicability.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.personas.roles.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.personas.roles.create", hostDesignPersonaRoleCreateParamsSchema),
+  requestVariant("design.personas.roles.revise", hostDesignPersonaRoleReviseParamsSchema),
+  requestVariant("design.personas.roles.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.personas.roles.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

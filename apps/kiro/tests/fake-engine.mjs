@@ -51,6 +51,7 @@ const endToEndTraceabilityId = "53535353-5353-4353-8353-535353535353"
 const p0P4ReadinessGateId = "54545454-5454-4454-8454-545454545454"
 const p5HandoffPackageId = "55555555-5555-4555-8555-555555555555"
 const designApplicabilityId = "56565656-5656-4656-8656-565656565656"
+const designPersonaRoleId = "57575757-5757-4757-8757-575757575757"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -134,6 +135,8 @@ input.on("line", (line) => {
       return readP5HandoffPackage(id, request.params)
     case "design.applicability.snapshot":
       return readDesignApplicability(id, request.params)
+    case "design.personas.roles.snapshot":
+      return readDesignPersonaRoleModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -1738,6 +1741,66 @@ function readDesignApplicability(id, params) {
   if (workspacePath.endsWith("bad-design-applicability-snapshot-digest")) value.candidate.scopeCount = 3
   if (workspacePath.endsWith("bad-design-applicability-snapshot-private")) {
     value.rationale = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readDesignPersonaRoleModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN PERSONA ROLE PARAMS")
+  }
+  const candidateDigest = `sha256:${"6".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "design-persona-role-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designPersonaRoleId, revision: 2, digest: candidateDigest },
+    personaCount: 2,
+    designRoleCount: 1,
+    representedParticipantCategoryCount: 4,
+    unresolvedParticipantCategoryCount: 1,
+    representedRoleKindCount: 1,
+    unresolvedRoleKindCount: 1,
+    weakEvidencePersonaCount: 1,
+    humanReviewedPersonaCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more design participant categories remain unresolved"],
+    assessedAt: "2026-07-28T08:30:00.000Z",
+    authorityBoundary: "design-persona-role-status-is-observational-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "design-persona-role-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designPersonaRoleId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"7".repeat(64)}`,
+      state: "candidate",
+      personaCount: 2,
+      designRoleCount: 1,
+      reviewState: "held",
+      updatedAt: "2026-07-28T08:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-persona-content-behaviors-constraints-source-content-personal-data-secrets-or-credentials",
+    authorityBoundary: "design-persona-role-projection-is-read-only-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-write-or-action",
+  }
+  if (workspacePath.endsWith("bad-design-persona-role-snapshot-binding")) content.initiative.id = designPersonaRoleId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-design-persona-role-snapshot-digest")) value.candidate.personaCount = 3
+  if (workspacePath.endsWith("bad-design-persona-role-snapshot-private")) {
+    value.personaBehavior = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

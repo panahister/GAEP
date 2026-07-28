@@ -145,13 +145,14 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 43 ||
+  if (!Array.isArray(commands) || commands.length !== 44 ||
       new Set(commands.map((command) => command.command)).size !== commands.length ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1Summary") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1ChangeImpact") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1AgentModel") ||
-      !commands.some((command) => command.command === "gaepKiro.designApplicability.inspect")) {
-    fail("package command inventory must contain 43 unique commands including all three Phase 1 dashboards and Design Applicability")
+      !commands.some((command) => command.command === "gaepKiro.designApplicability.inspect") ||
+      !commands.some((command) => command.command === "gaepKiro.designPersonasRoles.inspect")) {
+    fail("package command inventory must contain 44 unique commands including all three Phase 1 dashboards, Design Applicability, and Design Personas and Roles")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))

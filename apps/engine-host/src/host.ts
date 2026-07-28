@@ -214,6 +214,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.applicability.revise",
   "design.applicability.assess",
   "design.applicability.snapshot",
+  "design.personas.roles.read",
+  "design.personas.roles.create",
+  "design.personas.roles.revise",
+  "design.personas.roles.assess",
+  "design.personas.roles.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1423,6 +1428,21 @@ export class EngineHost {
         return this.engine.designApplicability.assess(request.params.initiativeId)
       case "design.applicability.snapshot":
         return this.engine.designApplicability.project(request.params.initiativeId)
+      case "design.personas.roles.read":
+        return await this.engine.designPersonaRoleModel.readCurrent(request.params.initiativeId) ?? null
+      case "design.personas.roles.create":
+        return this.engine.designPersonaRoleModel.create(request.params.record, actorId(request.params.actorId))
+      case "design.personas.roles.revise":
+        return this.engine.designPersonaRoleModel.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.personas.roles.assess":
+        return this.engine.designPersonaRoleModel.assess(request.params.initiativeId)
+      case "design.personas.roles.snapshot":
+        return this.engine.designPersonaRoleModel.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

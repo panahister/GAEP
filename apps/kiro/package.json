@@ -75,6 +75,7 @@
     "onCommand:gaepKiro.p0P4ReadinessGate.inspect",
     "onCommand:gaepKiro.p5HandoffPackage.inspect",
     "onCommand:gaepKiro.designApplicability.inspect",
+    "onCommand:gaepKiro.designPersonasRoles.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -252,6 +253,10 @@
       {
         "command": "gaepKiro.designApplicability.inspect",
         "title": "GAEP for Kiro: Inspect Governed Design Applicability Candidate"
+      },
+      {
+        "command": "gaepKiro.designPersonasRoles.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Design Personas and Roles Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",
