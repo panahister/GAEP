@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260728T083917Z-phase-2-user-journeys-packages.json",
-  conformance: "evidence/ide-conformance/20260728T083917Z-phase-2-user-journeys.json",
+  packages: "evidence/local-packages/20260728T103228Z-phase-2-information-architecture-packages.json",
+  conformance: "evidence/ide-conformance/20260728T103228Z-phase-2-information-architecture.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    userJourneys
+    informationArchitecture
+      ? {
+          id: "phase-2-information-architecture-closure",
+          state: "not-established",
+          basis: "the governed Information Architecture candidate is implemented locally across the shared engine and four host projections; real Product research, attributable human findability, comprehension and accessibility validation, content validation and design-scope review, native-host interaction, design approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : userJourneys
       ? {
           id: "phase-2-user-journeys-closure",
           state: "not-established",
@@ -290,7 +296,10 @@ export async function buildPhase0AcceptanceReport({
   const userJourneys = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "user-journeys" && capability.state === "implemented"))
-  const gaps = knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys })
+  const informationArchitecture = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "information-architecture" && capability.state === "implemented"))
+  const gaps = knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
     "gaep-claude-p0-p4-acceptance-receipt",
@@ -307,8 +316,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: userJourneys
+    phase: informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: informationArchitecture
+      ? "phase-2-information-architecture-local"
+      : userJourneys
       ? "phase-2-user-journeys-local"
       : designPersonasRoles
       ? "phase-2-design-personas-roles-local"
@@ -356,7 +367,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: userJourneys
+    claimBoundary: informationArchitecture
+      ? "This report binds the exact governed Information Architecture candidate lifecycle, exact Product, Initiative, Design Applicability, Design Personas and Roles and User Journeys dependencies, canonical cycle-free content hierarchy, routes, exact design-scope and journey-touchpoint coverage, findability, comprehension and accessibility evidence states, privacy and data-use constraints, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not prove findability, comprehension or accessibility, validate content, approve a design scope or design, establish a Design Baseline, prove real Product research, grant implementation authority, or establish native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : userJourneys
       ? "This report binds the exact governed User Journeys candidate lifecycle, exact Design Applicability and Design Personas and Roles dependencies, explicit primary, success, failure and recovery path structure, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not prove observed behavior, validate a journey, approve a scope exception or design, establish a Design Baseline, prove real Product research, grant implementation authority, or establish native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : designPersonasRoles
       ? "This report binds the exact governed Design Personas and Roles candidate lifecycle, evidence-backed persona hypotheses, explicit design-role responsibilities, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not validate a persona, appoint a role, verify competence or authority, approve design, establish a Design Baseline, prove real Product research, grant implementation authority, or establish native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
