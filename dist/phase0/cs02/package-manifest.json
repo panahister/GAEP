@@ -3,8 +3,8 @@
   "changeSetId": "GAEP-P0-CS02",
   "version": "0.2.0",
   "sourceIdentity": {
-    "sourceTreeDigest": "sha256:54f409287540d3f81bb748f0c6e99670514f49c4a759d453098dcd5f067c1cc5",
-    "baseCommit": "e038136408a6ba18a835574789821bb3674a95f7",
+    "sourceTreeDigest": "sha256:f5075af8840b4c12b08685d4d3317751b605788299dc7b66f1034913d12e19f1",
+    "baseCommit": "0f7b48d8aade93885fc96681cddd5ba8f334996a",
     "dirty": false
   },
   "artifacts": [
@@ -14,16 +14,16 @@
       "ideHost": "vscode",
       "targetIdeRange": "vscode ^1.103.0",
       "sourceIdentity": {
-        "sourceTreeDigest": "sha256:54f409287540d3f81bb748f0c6e99670514f49c4a759d453098dcd5f067c1cc5",
-        "baseCommit": "e038136408a6ba18a835574789821bb3674a95f7",
+        "sourceTreeDigest": "sha256:f5075af8840b4c12b08685d4d3317751b605788299dc7b66f1034913d12e19f1",
+        "baseCommit": "0f7b48d8aade93885fc96681cddd5ba8f334996a",
         "dirty": false
       },
       "artifactPath": "dist/phase0/cs02/gaep-vscode-0.2.0.vsix",
-      "artifactSha256": "sha256:43dbc715037f38eeb2c889fa505015b4d702437da1bc3a28620a235175f4b2e8",
+      "artifactSha256": "sha256:05ba0d2891b1770527e70eba287004ea6cccd8abf803e728720c910fe0e9e87c",
       "buildState": "built",
       "installTestState": "not-run",
       "workflowTestState": "not-run",
-      "observedAt": "2026-07-28T08:07:22.214Z",
+      "observedAt": "2026-07-28T08:47:34.051Z",
       "evidenceSource": "scripts/build_cs02_release.mjs",
       "knownLimitation": null
     },
@@ -33,16 +33,16 @@
       "ideHost": "kiro",
       "targetIdeRange": "kiro compatible",
       "sourceIdentity": {
-        "sourceTreeDigest": "sha256:54f409287540d3f81bb748f0c6e99670514f49c4a759d453098dcd5f067c1cc5",
-        "baseCommit": "e038136408a6ba18a835574789821bb3674a95f7",
+        "sourceTreeDigest": "sha256:f5075af8840b4c12b08685d4d3317751b605788299dc7b66f1034913d12e19f1",
+        "baseCommit": "0f7b48d8aade93885fc96681cddd5ba8f334996a",
         "dirty": false
       },
       "artifactPath": "dist/phase0/cs02/gaep-kiro-0.2.0.vsix",
-      "artifactSha256": "sha256:610502902c5896aef026a12975fd52f59c3a6041f7898036cedb821fb47944e3",
+      "artifactSha256": "sha256:d382668d1d69ed731c7828a059c0fb72e99474775f0ae82bee38c4fb4f9a4338",
       "buildState": "built",
       "installTestState": "not-run",
       "workflowTestState": "not-run",
-      "observedAt": "2026-07-28T08:07:22.215Z",
+      "observedAt": "2026-07-28T08:47:34.052Z",
       "evidenceSource": "scripts/build_cs02_release.mjs",
       "knownLimitation": "Kiro not installed in this environment; install/workflow remain not-run"
     },
@@ -52,8 +52,8 @@
       "ideHost": "visual-studio",
       "targetIdeRange": "VS [17.8,18.0)",
       "sourceIdentity": {
-        "sourceTreeDigest": "sha256:54f409287540d3f81bb748f0c6e99670514f49c4a759d453098dcd5f067c1cc5",
-        "baseCommit": "e038136408a6ba18a835574789821bb3674a95f7",
+        "sourceTreeDigest": "sha256:f5075af8840b4c12b08685d4d3317751b605788299dc7b66f1034913d12e19f1",
+        "baseCommit": "0f7b48d8aade93885fc96681cddd5ba8f334996a",
         "dirty": false
       },
       "artifactPath": "dist/phase0/cs02/Gaep.VisualStudio-0.2.0.vsix",
@@ -61,7 +61,7 @@
       "buildState": "not-built",
       "installTestState": "pending-environment",
       "workflowTestState": "pending-environment",
-      "observedAt": "2026-07-28T08:07:22.215Z",
+      "observedAt": "2026-07-28T08:47:34.052Z",
       "evidenceSource": "scripts/build_cs02_release.mjs",
       "notBuiltReason": "requires-windows-visual-studio",
       "knownLimitation": null
@@ -72,8 +72,8 @@
       "ideHost": "rider",
       "targetIdeRange": "Rider 2025.3 (darwin-arm64)",
       "sourceIdentity": {
-        "sourceTreeDigest": "sha256:54f409287540d3f81bb748f0c6e99670514f49c4a759d453098dcd5f067c1cc5",
-        "baseCommit": "e038136408a6ba18a835574789821bb3674a95f7",
+        "sourceTreeDigest": "sha256:f5075af8840b4c12b08685d4d3317751b605788299dc7b66f1034913d12e19f1",
+        "baseCommit": "0f7b48d8aade93885fc96681cddd5ba8f334996a",
         "dirty": false
       },
       "artifactPath": "dist/phase0/cs02/gaep-rider-0.2.0.zip",
@@ -81,7 +81,7 @@
       "buildState": "not-built",
       "installTestState": "pending-environment",
       "workflowTestState": "pending-environment",
-      "observedAt": "2026-07-28T08:07:22.215Z",
+      "observedAt": "2026-07-28T08:47:34.052Z",
       "evidenceSource": "scripts/build_cs02_release.mjs",
       "notBuiltReason": "requires-jdk21",
       "knownLimitation": null
