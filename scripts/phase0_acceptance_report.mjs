@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260728T173618Z-phase-2-responsive-multi-platform-targets-packages.json",
-  conformance: "evidence/ide-conformance/20260728T173618Z-phase-2-responsive-multi-platform-targets.json",
+  packages: "evidence/local-packages/20260728T182709Z-phase-2-manual-figma-execution-path-packages.json",
+  conformance: "evidence/ide-conformance/20260728T182709Z-phase-2-manual-figma-execution-path.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    responsiveMultiPlatformTargets
+    manualFigmaExecutionPath
+      ? {
+          id: "phase-2-manual-figma-execution-path-closure",
+          state: "not-established",
+          basis: "the governed Manual Figma Execution Path candidate is implemented locally across the shared engine and four host projections; real Product research, attributable human scope, instruction, handoff, return-contract, review-check, evidence-state, ownership and requirement-coverage review, actual manual Figma execution, returned-design completeness, native-host interaction, design review and approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : responsiveMultiPlatformTargets
       ? {
           id: "phase-2-responsive-multi-platform-targets-closure",
           state: "not-established",
@@ -344,6 +350,9 @@ export async function buildPhase0AcceptanceReport({
   const responsiveMultiPlatformTargets = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "responsive-multi-platform-targets" && capability.state === "implemented"))
+  const manualFigmaExecutionPath = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "manual-figma-execution-path" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -354,6 +363,7 @@ export async function buildPhase0AcceptanceReport({
     designSystemTokenContract,
     accessibilityDesignRules,
     responsiveMultiPlatformTargets,
+    manualFigmaExecutionPath,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -371,8 +381,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: responsiveMultiPlatformTargets
+    phase: manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: manualFigmaExecutionPath
+      ? "phase-2-manual-figma-execution-path-local"
+      : responsiveMultiPlatformTargets
       ? "phase-2-responsive-multi-platform-targets-local"
       : accessibilityDesignRules
       ? "phase-2-accessibility-design-rules-local"
@@ -432,7 +444,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: responsiveMultiPlatformTargets
+    claimBoundary: manualFigmaExecutionPath
+      ? "This report binds the exact governed Manual Figma Execution Path candidate lifecycle, exact Product, Initiative, Design Applicability, Screen and State Inventory, Design Requirements, Design System and Token Contract, Accessibility Design Rules, Responsive and Multi-Platform Targets and Sources dependencies, bounded scope, ordered human instruction, handoff and return-contract catalogs, review-check, evidence-state, candidate-ownership and requirement-coverage metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not connect to Figma, prove manual execution or returned-design completeness, grant write authority, establish check validity or accessibility conformance, approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : responsiveMultiPlatformTargets
       ? "This report binds the exact governed Responsive and Multi-Platform Targets candidate lifecycle, exact Product, Initiative, Screen and State Inventory, Design Requirements, Design System and Token Contract, Accessibility Design Rules and Sources dependencies, bounded platform-target, breakpoint, responsive-behavior, design-check, evidence-state, candidate-ownership and requirement-coverage metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish responsive completeness, platform parity, Breakpoint or Responsive Behavior validity, accessibility conformance, ownership authority, design approval, a Design Baseline, real Product research, readiness, implementation, write or action authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : accessibilityDesignRules
       ? "This report binds the exact governed Accessibility Design Rules candidate lifecycle, exact Product, Initiative, Screen and State Inventory, Design Requirements, Design System and Token Contract, Sources and optional portable-design snapshot dependencies, bounded candidate target, rule, design-check, evidence-state, candidate-ownership and requirement-coverage metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish accessibility conformance, Rule or Design Check validity, legal compliance, ownership authority, design approval, a Design Baseline, real Product research, readiness, implementation, write or action authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."

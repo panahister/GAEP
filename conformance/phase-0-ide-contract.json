@@ -62,7 +62,8 @@
     { "id": "design-requirements", "label": "Exact governed Design Requirements candidate projection with bounded requirement, outcome, design-target and Initiative-backlog metadata, without requirement validity, completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, write, or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
-    { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" }
+    { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
+    { "id": "manual-figma-execution-path", "label": "Exact governed Manual Figma Execution Path candidate projection with bounded scope, ordered human instruction, handoff/return catalog, review-check, evidence-state and requirement-coverage metadata, without a Figma connection, execution or returned-design completeness, write authority, design approval, baseline, readiness, implementation, or action authority" }
   ],
   "hosts": [
     {
@@ -73,7 +74,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T173618Z-phase-2-responsive-multi-platform-targets-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T182709Z-phase-2-manual-figma-execution-path-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -264,6 +265,9 @@
         ] },
         { "capabilityId": "responsive-multi-platform-targets", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["responsiveMultiPlatformTargets?: {", "engine.responsiveMultiPlatformTargets!.project(initiative.id)", "id: \"responsive-multi-platform-targets\"", "no responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority."] }
+        ] },
+        { "capabilityId": "manual-figma-execution-path", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["manualFigmaExecutionPath?: {", "engine.manualFigmaExecutionPath!.project(initiative.id)", "id: \"manual-figma-execution-path\"", "does not connect to Figma, prove execution or return completeness, grant write authority, approve design, establish a baseline or readiness, or authorize implementation or action."] }
         ] }
       ]
     },
@@ -275,7 +279,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T173618Z-phase-2-responsive-multi-platform-targets-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T182709Z-phase-2-manual-figma-execution-path-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -491,6 +495,10 @@
         { "capabilityId": "responsive-multi-platform-targets", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readResponsiveMultiPlatformTargets(", "this.request(\"design.responsiveMultiPlatformTargets.snapshot\"", "responsiveMultiPlatformTargetsProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showResponsiveMultiPlatformTargets", "GAEP governed Responsive and Multi-Platform Targets candidate", "does not establish responsive completeness, platform parity, breakpoint or behavior validity"] }
+        ] },
+        { "capabilityId": "manual-figma-execution-path", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readManualFigmaExecutionPath(", "this.request(\"design.manualFigmaExecutionPath.snapshot\"", "manualFigmaExecutionPathProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showManualFigmaExecutionPath", "GAEP governed Manual Figma Execution Path candidate", "does not connect to Figma, prove execution or returned-design completeness"] }
         ] }
       ]
     },
@@ -502,7 +510,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T173618Z-phase-2-responsive-multi-platform-targets-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T182709Z-phase-2-manual-figma-execution-path-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -761,6 +769,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readResponsiveMultiPlatformTargets(", "portableRequest(\"design.responsiveMultiPlatformTargets.snapshot\"", "parseResponsiveMultiPlatformTargetsEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Responsive and Multi-Platform Targets candidate", "no responsive completeness", "platform parity"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["ResponsiveMultiPlatformTargetsProjection", "RESPONSIVE_MULTI_PLATFORM_TARGETS_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "manual-figma-execution-path", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readManualFigmaExecutionPath(", "portableRequest(\"design.manualFigmaExecutionPath.snapshot\"", "parseManualFigmaExecutionPathEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Manual Figma Execution Path candidate", "no Figma connection", "execution or returned-design completeness"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["ManualFigmaExecutionPathProjection", "MANUAL_FIGMA_EXECUTION_PATH_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -772,7 +785,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T173618Z-phase-2-responsive-multi-platform-targets-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T182709Z-phase-2-manual-figma-execution-path-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1043,6 +1056,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadResponsiveMultiPlatformTargetsAsync(", "\"design.responsiveMultiPlatformTargets.snapshot\"", "ParseResponsiveMultiPlatformTargetsResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Responsive and Multi-Platform Targets candidate", "no responsive completeness", "platform parity"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ResponsiveMultiPlatformTargetsProtocol.cs", "contains": ["ResponsiveMultiPlatformTargetsProjection", "ResponsiveMultiPlatformTargetsProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "manual-figma-execution-path", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadManualFigmaExecutionPathAsync(", "\"design.manualFigmaExecutionPath.snapshot\"", "ParseManualFigmaExecutionPathResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Manual Figma Execution Path candidate", "no Figma connection", "execution or returned-design completeness"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ManualFigmaExecutionPathProtocol.cs", "contains": ["ManualFigmaExecutionPathProjection", "ManualFigmaExecutionPathProjectionAuthorityBoundary"] }
         ] }
       ]
     }

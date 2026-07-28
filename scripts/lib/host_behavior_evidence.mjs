@@ -135,6 +135,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/AccessibilityDesignRulesProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/ResponsiveMultiPlatformTargetsModels.cs",
       "apps/visual-studio/Gaep.HostClient/ResponsiveMultiPlatformTargetsProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/ManualFigmaExecutionPathModels.cs",
+      "apps/visual-studio/Gaep.HostClient/ManualFigmaExecutionPathProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -151,7 +153,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (479)",
+        "GAEP Visual Studio host-client tests: PASS (486)",
       ],
     }],
   },
