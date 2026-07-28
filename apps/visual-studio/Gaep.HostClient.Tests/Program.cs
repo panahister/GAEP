@@ -74,6 +74,7 @@ internal static class Program
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
+    private static readonly Guid ManualFigmaExecutionPathId = Guid.Parse("72727272-7272-4272-8272-727272727272");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -225,6 +226,9 @@ internal static class Program
         var badResponsiveMultiPlatformTargetsSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-responsive-multi-platform-targets-snapshot-binding");
         var badResponsiveMultiPlatformTargetsSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-responsive-multi-platform-targets-snapshot-digest");
         var badResponsiveMultiPlatformTargetsSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-responsive-multi-platform-targets-snapshot-private");
+        var badManualFigmaExecutionPathSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-manual-figma-execution-path-snapshot-binding");
+        var badManualFigmaExecutionPathSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-manual-figma-execution-path-snapshot-digest");
+        var badManualFigmaExecutionPathSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-manual-figma-execution-path-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -376,6 +380,9 @@ internal static class Program
         Directory.CreateDirectory(badResponsiveMultiPlatformTargetsSnapshotBindingRoot);
         Directory.CreateDirectory(badResponsiveMultiPlatformTargetsSnapshotDigestRoot);
         Directory.CreateDirectory(badResponsiveMultiPlatformTargetsSnapshotPrivateRoot);
+        Directory.CreateDirectory(badManualFigmaExecutionPathSnapshotBindingRoot);
+        Directory.CreateDirectory(badManualFigmaExecutionPathSnapshotDigestRoot);
+        Directory.CreateDirectory(badManualFigmaExecutionPathSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1985,6 +1992,51 @@ internal static class Program
                 "Responsive and Multi-Platform Targets rejects a projection rebound to a substituted Product revision");
         }
 
+        var manualFigmaExecutionPathProjection = await client.ReadManualFigmaExecutionPathAsync(InitiativeId);
+        Check(manualFigmaExecutionPathProjection.ProductId == product.Id &&
+              manualFigmaExecutionPathProjection.ProductRevision == product.Revision &&
+              manualFigmaExecutionPathProjection.ProductDigest == product.Digest &&
+              manualFigmaExecutionPathProjection.InitiativeId == resolved.Id &&
+              manualFigmaExecutionPathProjection.InitiativeRevision == resolved.Revision &&
+              manualFigmaExecutionPathProjection.InitiativeDigest == resolved.Digest &&
+              manualFigmaExecutionPathProjection.AssessmentState == "attention-required" &&
+              manualFigmaExecutionPathProjection.ReviewState == "held" &&
+              manualFigmaExecutionPathProjection.GuideCatalogState == "candidate-complete" &&
+              manualFigmaExecutionPathProjection.HandoffCatalogState == "candidate-complete" &&
+              manualFigmaExecutionPathProjection.ReturnContractState == "not-assessed" &&
+              manualFigmaExecutionPathProjection.ScopeCount == 3 &&
+              manualFigmaExecutionPathProjection.InstructionCount == 5 &&
+              manualFigmaExecutionPathProjection.CheckCount == 24 &&
+              manualFigmaExecutionPathProjection.HumanReviewedCheckCount == 19 &&
+              manualFigmaExecutionPathProjection.Candidate?.RepresentedRequirementCount == 10,
+            "Typed Manual Figma Execution Path preserves exact Product, Initiative, assessment, coverage, and privacy-safe inventory metadata");
+        var manualFigmaExecutionPathOutput = await initiativeController.ReadManualFigmaExecutionPathAsync(InitiativeId);
+        Check(manualFigmaExecutionPathOutput.Contains("GAEP governed Manual Figma Execution Path candidate", StringComparison.Ordinal) &&
+              manualFigmaExecutionPathOutput.Contains("3 scopes · 5 instruction stages · 24 checks", StringComparison.Ordinal) &&
+              manualFigmaExecutionPathOutput.Contains("19 human-reviewed", StringComparison.Ordinal) &&
+              manualFigmaExecutionPathOutput.Contains("no Figma connection", StringComparison.Ordinal) &&
+              !manualFigmaExecutionPathOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !manualFigmaExecutionPathOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !manualFigmaExecutionPathOutput.Contains("handoffContent", StringComparison.Ordinal),
+            "Manual Figma Execution Path workflow renders privacy-safe metadata with explicit disconnected and no-authority boundaries");
+        foreach (var hostileRoot in new[] {
+                     badManualFigmaExecutionPathSnapshotDigestRoot, badManualFigmaExecutionPathSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadManualFigmaExecutionPathAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Manual Figma Execution Path rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badManualFigmaExecutionPathSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadManualFigmaExecutionPathAsync(InitiativeId),
+                "Manual Figma Execution Path rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3311,6 +3363,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-responsive-multi-platform-targets-snapshot-digest";
         var badResponsiveMultiPlatformTargetsSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-responsive-multi-platform-targets-snapshot-private";
+        var badManualFigmaExecutionPathSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-manual-figma-execution-path-snapshot-binding";
+        var badManualFigmaExecutionPathSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-manual-figma-execution-path-snapshot-digest";
+        var badManualFigmaExecutionPathSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-manual-figma-execution-path-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3773,6 +3831,17 @@ internal static class Program
                         badResponsiveMultiPlatformTargetsSnapshotBinding,
                         badResponsiveMultiPlatformTargetsSnapshotDigest,
                         badResponsiveMultiPlatformTargetsSnapshotPrivate);
+                    break;
+                case "design.manualFigmaExecutionPath.snapshot":
+                    await HandleManualFigmaExecutionPathAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badManualFigmaExecutionPathSnapshotBinding,
+                        badManualFigmaExecutionPathSnapshotDigest,
+                        badManualFigmaExecutionPathSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -7082,6 +7151,107 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["behaviorCount"] = 15;
         if (includePrivateField) result["behaviorProcedure"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleManualFigmaExecutionPathAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MANUAL FIGMA EXECUTION PATH");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T18:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('7', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = ManualFigmaExecutionPathId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('8', 64)}",
+            ["state"] = "candidate",
+            ["scopeCount"] = 3,
+            ["instructionCount"] = 5,
+            ["checkCount"] = 24,
+            ["representedRequirementCount"] = 10,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T18:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "manual-figma-execution-path-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "manual-figma-execution-path-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = ManualFigmaExecutionPathId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["scopeCount"] = 3,
+                ["instructionCount"] = 5,
+                ["checkCount"] = 24,
+                ["notAssessedCheckCount"] = 3,
+                ["evidenceRecordedCheckCount"] = 2,
+                ["humanReviewedCheckCount"] = 19,
+                ["contradictedCheckCount"] = 1,
+                ["representedRequirementCount"] = 10,
+                ["unresolvedRequirementCount"] = 2,
+                ["unresolvedOwnershipCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["guideCatalogState"] = "candidate-complete",
+                ["handoffCatalogState"] = "candidate-complete",
+                ["returnContractState"] = "not-assessed",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "The manual return contract retains unresolved review gaps" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "manual-figma-execution-path-status-is-observational-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-handoff-content-instructions-figma-identifiers-returned-design-source-or-personal-content-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "manual-figma-execution-path-projection-is-read-only-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["scopeCount"] = 4;
+        if (includePrivateField) result["handoffContent"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

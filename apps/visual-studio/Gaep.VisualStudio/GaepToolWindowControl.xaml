@@ -148,6 +148,10 @@
                 Command="{Binding LoadResponsiveMultiPlatformTargetsCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds breakpoint rules, behavior procedures, evidence, requirements, Source, design, and personal content, and does not establish responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadManualFigmaExecutionPathButton" Content="Inspect governed Manual Figma Execution Path"
+                Command="{Binding LoadManualFigmaExecutionPathCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds handoff content, instructions, Figma identifiers, returned design, evidence, requirements, Source, design, and personal content, and does not connect to Figma, prove execution or return completeness, grant write authority, approve design, establish a baseline or readiness, or authorize implementation or action."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

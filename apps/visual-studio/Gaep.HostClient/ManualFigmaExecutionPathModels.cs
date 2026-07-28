@@ -1,0 +1,42 @@
+namespace Gaep.HostClient;
+
+public sealed record ManualFigmaExecutionPathRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int ScopeCount,
+    int InstructionCount,
+    int CheckCount,
+    int RepresentedRequirementCount,
+    string ReviewState);
+
+public sealed record ManualFigmaExecutionPathProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    string ReviewState,
+    string GuideCatalogState,
+    string HandoffCatalogState,
+    string ReturnContractState,
+    IReadOnlyList<string> Reasons,
+    int ScopeCount,
+    int InstructionCount,
+    int CheckCount,
+    int NotAssessedCheckCount,
+    int EvidenceRecordedCheckCount,
+    int HumanReviewedCheckCount,
+    int ContradictedCheckCount,
+    int RepresentedRequirementCount,
+    int UnresolvedRequirementCount,
+    int UnresolvedOwnershipCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    int UnresolvedQuestionCount,
+    ManualFigmaExecutionPathRecordView? Candidate,
+    string SnapshotDigest);
