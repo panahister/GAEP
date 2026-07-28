@@ -75,6 +75,7 @@ internal static class Program
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
     private static readonly Guid ManualFigmaExecutionPathId = Guid.Parse("72727272-7272-4272-8272-727272727272");
+    private static readonly Guid FigmaMcpCapabilityDiscoveryId = Guid.Parse("73737373-7373-4373-8373-737373737373");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -229,6 +230,9 @@ internal static class Program
         var badManualFigmaExecutionPathSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-manual-figma-execution-path-snapshot-binding");
         var badManualFigmaExecutionPathSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-manual-figma-execution-path-snapshot-digest");
         var badManualFigmaExecutionPathSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-manual-figma-execution-path-snapshot-private");
+        var badFigmaMcpCapabilityDiscoverySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-figma-mcp-capability-discovery-snapshot-binding");
+        var badFigmaMcpCapabilityDiscoverySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-figma-mcp-capability-discovery-snapshot-digest");
+        var badFigmaMcpCapabilityDiscoverySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-figma-mcp-capability-discovery-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -383,6 +387,9 @@ internal static class Program
         Directory.CreateDirectory(badManualFigmaExecutionPathSnapshotBindingRoot);
         Directory.CreateDirectory(badManualFigmaExecutionPathSnapshotDigestRoot);
         Directory.CreateDirectory(badManualFigmaExecutionPathSnapshotPrivateRoot);
+        Directory.CreateDirectory(badFigmaMcpCapabilityDiscoverySnapshotBindingRoot);
+        Directory.CreateDirectory(badFigmaMcpCapabilityDiscoverySnapshotDigestRoot);
+        Directory.CreateDirectory(badFigmaMcpCapabilityDiscoverySnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2037,6 +2044,53 @@ internal static class Program
                 "Manual Figma Execution Path rejects a projection rebound to a substituted Product revision");
         }
 
+        var figmaMcpCapabilityDiscoveryProjection = await client.ReadFigmaMcpCapabilityDiscoveryAsync(InitiativeId);
+        Check(figmaMcpCapabilityDiscoveryProjection.ProductId == product.Id &&
+              figmaMcpCapabilityDiscoveryProjection.ProductRevision == product.Revision &&
+              figmaMcpCapabilityDiscoveryProjection.ProductDigest == product.Digest &&
+              figmaMcpCapabilityDiscoveryProjection.InitiativeId == resolved.Id &&
+              figmaMcpCapabilityDiscoveryProjection.InitiativeRevision == resolved.Revision &&
+              figmaMcpCapabilityDiscoveryProjection.InitiativeDigest == resolved.Digest &&
+              figmaMcpCapabilityDiscoveryProjection.AssessmentState == "attention-required" &&
+              figmaMcpCapabilityDiscoveryProjection.ReviewState == "held" &&
+              figmaMcpCapabilityDiscoveryProjection.CatalogState == "candidate-observation-complete" &&
+              figmaMcpCapabilityDiscoveryProjection.PermissionModelState == "candidate-separated" &&
+              figmaMcpCapabilityDiscoveryProjection.LimitCatalogState == "not-assessed" &&
+              figmaMcpCapabilityDiscoveryProjection.VersionCatalogState == "not-assessed" &&
+              figmaMcpCapabilityDiscoveryProjection.ToolCount == 7 &&
+              figmaMcpCapabilityDiscoveryProjection.AdvertisedToolCount == 5 &&
+              figmaMcpCapabilityDiscoveryProjection.ReadToolCount == 3 &&
+              figmaMcpCapabilityDiscoveryProjection.WriteToolCount == 2 &&
+              figmaMcpCapabilityDiscoveryProjection.HumanReviewedToolCount == 4 &&
+              figmaMcpCapabilityDiscoveryProjection.Candidate?.ToolCount == 7,
+            "Typed Figma MCP Capability Discovery preserves exact Product, Initiative, assessment, catalog, and privacy-safe inventory metadata");
+        var figmaMcpCapabilityDiscoveryOutput = await initiativeController.ReadFigmaMcpCapabilityDiscoveryAsync(InitiativeId);
+        Check(figmaMcpCapabilityDiscoveryOutput.Contains("GAEP governed Figma MCP Capability Discovery candidate", StringComparison.Ordinal) &&
+              figmaMcpCapabilityDiscoveryOutput.Contains("7 tool observations · 5 advertised", StringComparison.Ordinal) &&
+              figmaMcpCapabilityDiscoveryOutput.Contains("4 human-reviewed", StringComparison.Ordinal) &&
+              figmaMcpCapabilityDiscoveryOutput.Contains("no Figma connection or call", StringComparison.Ordinal) &&
+              !figmaMcpCapabilityDiscoveryOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !figmaMcpCapabilityDiscoveryOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !figmaMcpCapabilityDiscoveryOutput.Contains("toolNames", StringComparison.Ordinal),
+            "Figma MCP Capability Discovery workflow renders privacy-safe metadata with explicit disconnected and no-authority boundaries");
+        foreach (var hostileRoot in new[] {
+                     badFigmaMcpCapabilityDiscoverySnapshotDigestRoot, badFigmaMcpCapabilityDiscoverySnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadFigmaMcpCapabilityDiscoveryAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Figma MCP Capability Discovery rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badFigmaMcpCapabilityDiscoverySnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadFigmaMcpCapabilityDiscoveryAsync(InitiativeId),
+                "Figma MCP Capability Discovery rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3369,6 +3423,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-manual-figma-execution-path-snapshot-digest";
         var badManualFigmaExecutionPathSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-manual-figma-execution-path-snapshot-private";
+        var badFigmaMcpCapabilityDiscoverySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-figma-mcp-capability-discovery-snapshot-binding";
+        var badFigmaMcpCapabilityDiscoverySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-figma-mcp-capability-discovery-snapshot-digest";
+        var badFigmaMcpCapabilityDiscoverySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-figma-mcp-capability-discovery-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3842,6 +3902,17 @@ internal static class Program
                         badManualFigmaExecutionPathSnapshotBinding,
                         badManualFigmaExecutionPathSnapshotDigest,
                         badManualFigmaExecutionPathSnapshotPrivate);
+                    break;
+                case "design.figmaMcpCapabilityDiscovery.snapshot":
+                    await HandleFigmaMcpCapabilityDiscoveryAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badFigmaMcpCapabilityDiscoverySnapshotBinding,
+                        badFigmaMcpCapabilityDiscoverySnapshotDigest,
+                        badFigmaMcpCapabilityDiscoverySnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -7252,6 +7323,112 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["scopeCount"] = 4;
         if (includePrivateField) result["handoffContent"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleFigmaMcpCapabilityDiscoveryAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID FIGMA MCP CAPABILITY DISCOVERY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T19:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('9', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = FigmaMcpCapabilityDiscoveryId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('a', 64)}",
+            ["state"] = "candidate",
+            ["toolCount"] = 7,
+            ["advertisedToolCount"] = 5,
+            ["readToolCount"] = 3,
+            ["writeToolCount"] = 2,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T19:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "figma-mcp-capability-discovery-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "figma-mcp-capability-discovery-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = FigmaMcpCapabilityDiscoveryId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["toolCount"] = 7,
+                ["advertisedToolCount"] = 5,
+                ["unavailableToolCount"] = 1,
+                ["unknownAvailabilityCount"] = 1,
+                ["readToolCount"] = 3,
+                ["writeToolCount"] = 2,
+                ["unknownEffectCount"] = 1,
+                ["notAssessedToolCount"] = 1,
+                ["sourceRecordedToolCount"] = 2,
+                ["humanReviewedToolCount"] = 4,
+                ["unresolvedPermissionCount"] = 2,
+                ["unresolvedLimitCount"] = 1,
+                ["unresolvedVersionCount"] = 3,
+                ["unresolvedOwnershipCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["catalogState"] = "candidate-observation-complete",
+                ["permissionModelState"] = "candidate-separated",
+                ["limitCatalogState"] = "not-assessed",
+                ["versionCatalogState"] = "not-assessed",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more source-recorded candidate observations require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "figma-mcp-capability-discovery-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-tool-names-schemas-permissions-limits-versions-source-content-personal-content-secrets-credentials-or-figma-content",
+            ["authorityBoundary"] =
+                "figma-mcp-capability-discovery-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["toolCount"] = 8;
+        if (includePrivateField) result["toolNames"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

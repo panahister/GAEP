@@ -234,6 +234,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
         LoadManualFigmaExecutionPathCommand = new AsyncCommand(LoadManualFigmaExecutionPathAsync);
+        LoadFigmaMcpCapabilityDiscoveryCommand = new AsyncCommand(LoadFigmaMcpCapabilityDiscoveryAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -377,6 +378,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     [DataMember]
     public IAsyncCommand LoadResponsiveMultiPlatformTargetsCommand { get; }
     public IAsyncCommand LoadManualFigmaExecutionPathCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadFigmaMcpCapabilityDiscoveryCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -940,6 +944,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Manual Figma Execution Path candidate",
             (controller, _, token) => controller.ReadManualFigmaExecutionPathAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadFigmaMcpCapabilityDiscoveryAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Figma MCP Capability Discovery candidate",
+            (controller, _, token) => controller.ReadFigmaMcpCapabilityDiscoveryAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

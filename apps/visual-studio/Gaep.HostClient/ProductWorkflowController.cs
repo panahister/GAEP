@@ -1982,6 +1982,70 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadFigmaMcpCapabilityDiscoveryAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadFigmaMcpCapabilityDiscoveryAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Figma MCP Capability Discovery was read. Refresh the exact records.");
+        }
+        return RenderFigmaMcpCapabilityDiscovery(projection);
+    }
+
+    public static string RenderFigmaMcpCapabilityDiscovery(FigmaMcpCapabilityDiscoveryProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Figma MCP Capability Discovery candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Catalogs: tools {projection.CatalogState} · permissions {projection.PermissionModelState} · " +
+                $"limits {projection.LimitCatalogState} · versions {projection.VersionCatalogState}")
+            .AppendLine(
+                $"Inventory: {projection.ToolCount} tool observations · {projection.AdvertisedToolCount} advertised · " +
+                $"{projection.UnavailableToolCount} not advertised · {projection.UnknownAvailabilityCount} unknown")
+            .AppendLine(
+                $"Effects: {projection.ReadToolCount} read · {projection.WriteToolCount} write · " +
+                $"{projection.UnknownEffectCount} unknown")
+            .AppendLine(
+                $"Evidence: {projection.HumanReviewedToolCount} human-reviewed · " +
+                $"{projection.SourceRecordedToolCount} source-recorded · {projection.NotAssessedToolCount} not assessed")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedPermissionCount} permissions · {projection.UnresolvedLimitCount} limits · " +
+                $"{projection.UnresolvedVersionCount} versions · {projection.UnresolvedOwnershipCount} ownership · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Figma MCP Capability Discovery candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {candidate.ToolCount} tools · {candidate.AdvertisedToolCount} advertised · " +
+                    $"{candidate.ReadToolCount} read · {candidate.WriteToolCount} write · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Figma MCP Capability Discovery candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and digests only; no Figma connection or call, " +
+                "credential request, permission grant, live availability or compatibility claim, write authority, design approval, " +
+                "baseline, readiness, implementation, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,
