@@ -1511,6 +1511,56 @@ test("protocol-v2 User Journey projection is exact, private-safe, and non-author
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Information Architecture projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-information-architecture-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-information-architecture-snapshot-binding",
+    "bad-information-architecture-snapshot-digest",
+    "bad-information-architecture-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readInformationArchitectureModel(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.nodeCount, 6)
+    assert.equal(projection.status.rootNodeCount, 2)
+    assert.equal(projection.status.routeCount, 8)
+    assert.equal(projection.candidate?.nodeCount, 6)
+    assert.equal(
+      projection.authorityBoundary,
+      "information-architecture-projection-is-read-only-and-does-not-prove-findability-comprehension-or-accessibility-validate-content-approve-design-grant-readiness-or-authorize-write-or-action",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"nodeLabel":'), false)
+    assert.equal(serialized.includes('"contentNodes":'), false)
+    assert.equal(serialized.includes('"navigationRoutes":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readInformationArchitectureModel(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

@@ -54,6 +54,7 @@ import type {
   DesignApplicabilityProjection,
   DesignPersonaRoleModelProjection,
   UserJourneyModelProjection,
+  InformationArchitectureModelProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -223,6 +224,9 @@ export interface CurrentStudioEngineReader {
   userJourneyModel?: {
     project(initiativeId: string): Promise<UserJourneyModelProjection>
   }
+  informationArchitectureModel?: {
+    project(initiativeId: string): Promise<InformationArchitectureModelProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -286,6 +290,7 @@ interface ObservedStudioState {
   designApplicabilityProjections: Map<string, DesignApplicabilityProjection>
   designPersonaRoleProjections: Map<string, DesignPersonaRoleModelProjection>
   userJourneyProjections: Map<string, UserJourneyModelProjection>
+  informationArchitectureProjections: Map<string, InformationArchitectureModelProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1734,6 +1739,55 @@ function userJourneyTable(state: ObservedStudioState): StudioTableSnapshot {
   }
 }
 
+function informationArchitectureTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.informationArchitectureProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        inventory: `${status.nodeCount} nodes · ${status.rootNodeCount} roots · ${status.routeCount} routes`,
+        coverage: `${status.representedScopeCount} represented scopes · ${status.unresolvedScopeCount} unresolved scopes`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        gaps: `${status.weakEvidenceNodeCount} weak-evidence nodes · ${status.weakEvidenceRouteCount} weak-evidence routes · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate hierarchy, content-model, and route metadata only; no findability, comprehension, accessibility, content, or design validation, readiness, write, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "information-architecture-model",
+    title: "Governed Information Architecture Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "coverage", label: "Scope coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Information Architecture candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer findability, comprehension, accessibility, content or design validation, readiness, write, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1743,7 +1797,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const legacy = legacyForm(route, state.product)
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
-      ...(route === "users-jobs" ? [designPersonaRoleTable(state), userJourneyTable(state)] : []),
+      ...(route === "users-jobs" ? [designPersonaRoleTable(state), userJourneyTable(state), informationArchitectureTable(state)] : []),
       ...(route === "architecture"
         ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), eventIntegrationModelTable(state), failureRecoveryModelTable(state), architectureChallengeModelTable(state), architectureTable(state.architecture), designApplicabilityTable(state)]
         : []),
@@ -1752,7 +1806,9 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
   }
   const relatedRecords: StudioTableSnapshot[] = []
   if (businessTable) relatedRecords.push(businessTable)
-  if (route === "users-jobs") relatedRecords.push(designPersonaRoleTable(state), userJourneyTable(state))
+  if (route === "users-jobs") relatedRecords.push(
+    designPersonaRoleTable(state), userJourneyTable(state), informationArchitectureTable(state),
+  )
   if (route === "scope") relatedRecords.push(requirementsTable(state.requirements))
   if (route === "architecture") {
     relatedRecords.push(
@@ -4398,6 +4454,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       designApplicabilityProjections: new Map(),
       designPersonaRoleProjections: new Map(),
       userJourneyProjections: new Map(),
+      informationArchitectureProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -5568,6 +5625,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "user-journey-unavailable",
           "User Journey metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "users-jobs" && engine.informationArchitectureModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.informationArchitectureModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.informationArchitectureProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Information Architecture projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `information-architecture-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Information Architecture metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "information-architecture-unavailable",
+          "Information Architecture metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

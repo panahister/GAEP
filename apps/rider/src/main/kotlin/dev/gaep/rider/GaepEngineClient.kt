@@ -321,6 +321,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readInformationArchitectureModel(initiativeId: UUID): InformationArchitectureProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("design.informationArchitecture.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseInformationArchitectureEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

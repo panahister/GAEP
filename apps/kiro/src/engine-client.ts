@@ -26,6 +26,7 @@ import {
   designApplicabilityProjectionSchema,
   designPersonaRoleModelProjectionSchema,
   userJourneyModelProjectionSchema,
+  informationArchitectureModelProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -59,6 +60,7 @@ import {
   type DesignApplicabilityProjection,
   type DesignPersonaRoleModelProjection,
   type UserJourneyModelProjection,
+  type InformationArchitectureModelProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -655,6 +657,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = userJourneyModelProjectionSchema.safeParse(
         await this.request("design.journeys.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readInformationArchitectureModel(initiativeValue: string): Promise<InformationArchitectureModelProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = informationArchitectureModelProjectionSchema.safeParse(
+        await this.request("design.informationArchitecture.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

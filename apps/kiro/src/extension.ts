@@ -27,6 +27,7 @@ import {
   type DesignApplicabilityProjection,
   type DesignPersonaRoleModelProjection,
   type UserJourneyModelProjection,
+  type InformationArchitectureModelProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -125,6 +126,7 @@ const commandIds = {
   designApplicability: "gaepKiro.designApplicability.inspect",
   designPersonaRole: "gaepKiro.designPersonasRoles.inspect",
   userJourney: "gaepKiro.userJourneys.inspect",
+  informationArchitecture: "gaepKiro.informationArchitecture.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -242,6 +244,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.designApplicability, (input?: unknown) => runUserCommand(() => showDesignApplicability(pool, input))),
     vscode.commands.registerCommand(commandIds.designPersonaRole, (input?: unknown) => runUserCommand(() => showDesignPersonaRoleModel(pool, input))),
     vscode.commands.registerCommand(commandIds.userJourney, (input?: unknown) => runUserCommand(() => showUserJourneyModel(pool, input))),
+    vscode.commands.registerCommand(commandIds.informationArchitecture, (input?: unknown) => runUserCommand(() => showInformationArchitectureModel(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1539,6 +1542,46 @@ async function showUserJourneyModel(
     ] : []),
     "",
     "Candidate journey structure and coverage metadata only; this does not prove observed behavior, validate journeys, approve design, grant readiness, authorize write, or authorize action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showInformationArchitectureModel(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<InformationArchitectureModelProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Information Architecture", "Initiative ID")
+  const projection = await client.readInformationArchitectureModel(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Information Architecture candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Inventory: ${status.nodeCount} nodes · ${status.rootNodeCount} roots · ${status.routeCount} routes`,
+    `Scope coverage: ${status.representedScopeCount} represented · ${status.unresolvedScopeCount} unresolved`,
+    `Candidate gaps: ${status.weakEvidenceNodeCount} weak-evidence nodes · ${status.weakEvidenceRouteCount} weak-evidence routes · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate inventory: ${record.nodeCount} nodes · ${record.rootNodeCount} roots · ${record.routeCount} routes · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate hierarchy, content-model, and route metadata only; this does not prove findability, comprehension, or accessibility, validate content, approve design, grant readiness, authorize write, or authorize action.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

@@ -227,6 +227,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadDesignApplicabilityCommand = new AsyncCommand(LoadDesignApplicabilityAsync);
         LoadDesignPersonaRoleCommand = new AsyncCommand(LoadDesignPersonaRoleAsync);
         LoadUserJourneyCommand = new AsyncCommand(LoadUserJourneyAsync);
+        LoadInformationArchitectureCommand = new AsyncCommand(LoadInformationArchitectureAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -351,6 +352,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadUserJourneyCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadInformationArchitectureCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -872,6 +876,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed User Journeys candidate",
             (controller, _, token) => controller.ReadUserJourneyModelAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadInformationArchitectureAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Information Architecture candidate",
+            (controller, _, token) => controller.ReadInformationArchitectureModelAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

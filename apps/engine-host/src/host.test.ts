@@ -1444,6 +1444,43 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "information-architecture-read-empty",
+      protocolVersion: 2,
+      method: "design.informationArchitecture.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "information-architecture-assess-empty",
+      protocolVersion: 2,
+      method: "design.informationArchitecture.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      nodeCount: 0,
+      rootNodeCount: 0,
+      routeCount: 0,
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-prove-findability-comprehension-or-accessibility"),
+    })
+    const informationArchitectureProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "information-architecture-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.informationArchitecture.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: informationArchitectureSnapshotDigest,
+      ...informationArchitectureProjectionBody
+    } = informationArchitectureProjection
+    expect(informationArchitectureSnapshotDigest).toBe(canonicalDigest(informationArchitectureProjectionBody))
+    expect(informationArchitectureProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-node-route-content-persona-source-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-prove-findability-comprehension-or-accessibility"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1494,6 +1531,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "user-journey-v1-block",
       method: "design.journeys.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "information-architecture-v1-block",
+      method: "design.informationArchitecture.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

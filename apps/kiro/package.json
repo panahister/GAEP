@@ -77,6 +77,7 @@
     "onCommand:gaepKiro.designApplicability.inspect",
     "onCommand:gaepKiro.designPersonasRoles.inspect",
     "onCommand:gaepKiro.userJourneys.inspect",
+    "onCommand:gaepKiro.informationArchitecture.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -262,6 +263,10 @@
       {
         "command": "gaepKiro.userJourneys.inspect",
         "title": "GAEP for Kiro: Inspect Governed User Journeys Candidate"
+      },
+      {
+        "command": "gaepKiro.informationArchitecture.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Information Architecture Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

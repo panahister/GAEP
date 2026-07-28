@@ -1317,6 +1317,51 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readInformationArchitectureModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readInformationArchitectureModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Information Architecture was read. Refresh the exact records." }
+        return renderInformationArchitectureModel(projection)
+    }
+
+    fun renderInformationArchitectureModel(projection: InformationArchitectureProjection): String = buildString {
+        appendLine("GAEP governed Information Architecture candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine("Inventory: ${projection.nodeCount} nodes · ${projection.rootNodeCount} roots · ${projection.routeCount} routes")
+        appendLine(
+            "Scope coverage: ${projection.representedScopeCount} represented · ${projection.unresolvedScopeCount} unresolved",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.weakEvidenceNodeCount} weak-evidence nodes · " +
+                "${projection.weakEvidenceRouteCount} weak-evidence routes · ${projection.unresolvedQuestionCount} questions · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Information Architecture candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate inventory: ${record.nodeCount} nodes · ${record.rootNodeCount} roots · " +
+                    "${record.routeCount} routes · ${record.reviewState}",
+            )
+        } ?: appendLine("Information Architecture candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate hierarchy, content-model, and route metadata only; no findability, " +
+                "comprehension, accessibility, or content validation, design approval, readiness, write, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

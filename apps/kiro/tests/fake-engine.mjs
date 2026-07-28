@@ -53,6 +53,7 @@ const p5HandoffPackageId = "55555555-5555-4555-8555-555555555555"
 const designApplicabilityId = "56565656-5656-4656-8656-565656565656"
 const designPersonaRoleId = "57575757-5757-4757-8757-575757575757"
 const userJourneyId = "58585858-5858-4858-8858-585858585858"
+const informationArchitectureId = "59595959-5959-4959-8959-595959595959"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -140,6 +141,8 @@ input.on("line", (line) => {
       return readDesignPersonaRoleModel(id, request.params)
     case "design.journeys.snapshot":
       return readUserJourneyModel(id, request.params)
+    case "design.informationArchitecture.snapshot":
+      return readInformationArchitectureModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -1865,6 +1868,68 @@ function readUserJourneyModel(id, params) {
   if (workspacePath.endsWith("bad-user-journey-snapshot-digest")) value.candidate.journeyCount = 3
   if (workspacePath.endsWith("bad-user-journey-snapshot-private")) {
     value.journeyStep = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readInformationArchitectureModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE INFORMATION ARCHITECTURE PARAMS")
+  }
+  const candidateDigest = `sha256:${"a".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "information-architecture-model-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: informationArchitectureId, revision: 2, digest: candidateDigest },
+    nodeCount: 6,
+    rootNodeCount: 2,
+    routeCount: 8,
+    representedScopeCount: 1,
+    unresolvedScopeCount: 1,
+    weakEvidenceNodeCount: 2,
+    weakEvidenceRouteCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Design Applicability scopes have unresolved Information Architecture coverage"],
+    assessedAt: "2026-07-28T10:30:00.000Z",
+    authorityBoundary: "information-architecture-status-is-observational-and-does-not-prove-findability-comprehension-or-accessibility-validate-content-approve-design-grant-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "information-architecture-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: informationArchitectureId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"b".repeat(64)}`,
+      state: "candidate",
+      nodeCount: 6,
+      rootNodeCount: 2,
+      routeCount: 8,
+      reviewState: "held",
+      updatedAt: "2026-07-28T10:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-node-route-content-persona-source-or-personal-content-secrets-or-credentials",
+    authorityBoundary: "information-architecture-projection-is-read-only-and-does-not-prove-findability-comprehension-or-accessibility-validate-content-approve-design-grant-readiness-or-authorize-write-or-action",
+  }
+  if (workspacePath.endsWith("bad-information-architecture-snapshot-binding")) {
+    content.initiative.id = informationArchitectureId
+  }
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-information-architecture-snapshot-digest")) value.candidate.nodeCount = 7
+  if (workspacePath.endsWith("bad-information-architecture-snapshot-private")) {
+    value.nodeLabel = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

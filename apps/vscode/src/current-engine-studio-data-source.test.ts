@@ -26,6 +26,7 @@ import {
   type DesignApplicabilityProjection,
   type DesignPersonaRoleModelProjection,
   type UserJourneyModelProjection,
+  type InformationArchitectureModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1729,6 +1730,56 @@ function userJourneyProjection(): UserJourneyModelProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function informationArchitectureProjection(): InformationArchitectureModelProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "information-architecture-model-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1", revision: 2, digest: `sha256:${"a".repeat(64)}` as const },
+    nodeCount: 6,
+    rootNodeCount: 2,
+    routeCount: 8,
+    representedScopeCount: 1,
+    unresolvedScopeCount: 1,
+    weakEvidenceNodeCount: 2,
+    weakEvidenceRouteCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more Design Applicability scopes have unresolved Information Architecture coverage"],
+    assessedAt: "2026-07-28T10:30:00.000Z",
+    authorityBoundary: "information-architecture-status-is-observational-and-does-not-prove-findability-comprehension-or-accessibility-validate-content-approve-design-grant-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "information-architecture-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"b".repeat(64)}` as const,
+      state: "candidate" as const,
+      nodeCount: 6,
+      rootNodeCount: 2,
+      routeCount: 8,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-28T10:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-node-route-content-persona-source-or-personal-content-secrets-or-credentials" as const,
+    authorityBoundary: "information-architecture-projection-is-read-only-and-does-not-prove-findability-comprehension-or-accessibility-validate-content-approve-design-grant-readiness-or-authorize-write-or-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2377,6 +2428,7 @@ interface HarnessOptions {
   designApplicabilityProjection?: DesignApplicabilityProjection
   designPersonaRoleProjection?: DesignPersonaRoleModelProjection
   userJourneyProjection?: UserJourneyModelProjection
+  informationArchitectureProjection?: InformationArchitectureModelProjection
   commandResult?: unknown
 }
 
@@ -2592,6 +2644,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.userJourneyProjection ? {
       userJourneyModel: {
         project: async () => options.userJourneyProjection!,
+      },
+    } : {}),
+    ...(options.informationArchitectureProjection ? {
+      informationArchitectureModel: {
+        project: async () => options.informationArchitectureProjection!,
       },
     } : {}),
   }
@@ -3233,7 +3290,7 @@ describe("current-engine Product Studio data source", () => {
     const projection = userJourneyProjection()
     const { source } = harness({ userJourneyProjection: projection })
     const snapshot = await source.readSnapshot("users-jobs")
-    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.at(-1)).toMatchObject({
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "user-journey-model")).toMatchObject({
       id: "user-journey-model",
       rows: [{
         id: projection.candidate?.id,
@@ -3252,6 +3309,31 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private journey step|private touchpoint|private persona|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Information Architecture metadata on the native users and jobs page", async () => {
+    const projection = informationArchitectureProjection()
+    const { source } = harness({ informationArchitectureProjection: projection })
+    const snapshot = await source.readSnapshot("users-jobs")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "information-architecture-model")).toMatchObject({
+      id: "information-architecture-model",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          inventory: "6 nodes · 2 roots · 8 routes",
+          coverage: "1 represented scopes · 1 unresolved scopes",
+          assessment: "attention-required · held",
+          gaps: "2 weak-evidence nodes · 1 weak-evidence routes · 2 questions · 0 stale bindings · 1 stale Source references",
+          boundary: "Candidate hierarchy, content-model, and route metadata only; no findability, comprehension, accessibility, content, or design validation, readiness, write, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private node label|private route purpose|private persona|private source content|customer@example\.com|api_key/iu,
     )
   })
 

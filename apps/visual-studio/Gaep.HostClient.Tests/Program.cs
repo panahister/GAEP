@@ -68,6 +68,7 @@ internal static class Program
     private static readonly Guid DesignApplicabilityId = Guid.Parse("63636363-6363-4363-8363-636363636363");
     private static readonly Guid DesignPersonaRoleId = Guid.Parse("64646464-6464-4464-8464-646464646464");
     private static readonly Guid UserJourneyId = Guid.Parse("65656565-6565-4565-8565-656565656565");
+    private static readonly Guid InformationArchitectureId = Guid.Parse("66666666-6666-4666-8666-666666666666");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -201,6 +202,9 @@ internal static class Program
         var badUserJourneySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-user-journey-snapshot-binding");
         var badUserJourneySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-user-journey-snapshot-digest");
         var badUserJourneySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-user-journey-snapshot-private");
+        var badInformationArchitectureSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-information-architecture-snapshot-binding");
+        var badInformationArchitectureSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-information-architecture-snapshot-digest");
+        var badInformationArchitectureSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-information-architecture-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -334,6 +338,9 @@ internal static class Program
         Directory.CreateDirectory(badUserJourneySnapshotBindingRoot);
         Directory.CreateDirectory(badUserJourneySnapshotDigestRoot);
         Directory.CreateDirectory(badUserJourneySnapshotPrivateRoot);
+        Directory.CreateDirectory(badInformationArchitectureSnapshotBindingRoot);
+        Directory.CreateDirectory(badInformationArchitectureSnapshotDigestRoot);
+        Directory.CreateDirectory(badInformationArchitectureSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1682,6 +1689,49 @@ internal static class Program
                 "User Journeys rejects a projection rebound to a substituted Product revision");
         }
 
+        var informationArchitectureProjection = await client.ReadInformationArchitectureModelAsync(InitiativeId);
+        Check(informationArchitectureProjection.ProductId == product.Id &&
+              informationArchitectureProjection.ProductRevision == product.Revision &&
+              informationArchitectureProjection.ProductDigest == product.Digest &&
+              informationArchitectureProjection.InitiativeId == resolved.Id &&
+              informationArchitectureProjection.InitiativeRevision == resolved.Revision &&
+              informationArchitectureProjection.InitiativeDigest == resolved.Digest &&
+              informationArchitectureProjection.AssessmentState == "attention-required" &&
+              informationArchitectureProjection.ReviewState == "held" &&
+              informationArchitectureProjection.NodeCount == 6 &&
+              informationArchitectureProjection.RootNodeCount == 2 &&
+              informationArchitectureProjection.RouteCount == 8 &&
+              informationArchitectureProjection.Candidate?.NodeCount == 6,
+            "Typed Information Architecture preserves exact Product, Initiative, assessment, and privacy-safe hierarchy metadata");
+        var informationArchitectureOutput = await initiativeController.ReadInformationArchitectureModelAsync(InitiativeId);
+        Check(informationArchitectureOutput.Contains("GAEP governed Information Architecture candidate", StringComparison.Ordinal) &&
+              informationArchitectureOutput.Contains("Inventory: 6 nodes · 2 roots · 8 routes", StringComparison.Ordinal) &&
+              informationArchitectureOutput.Contains("2 weak-evidence nodes · 1 weak-evidence routes", StringComparison.Ordinal) &&
+              informationArchitectureOutput.Contains("no findability", StringComparison.Ordinal) &&
+              informationArchitectureOutput.Contains("content validation", StringComparison.Ordinal) &&
+              !informationArchitectureOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !informationArchitectureOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !informationArchitectureOutput.Contains("nodeLabel", StringComparison.Ordinal) &&
+              !informationArchitectureOutput.Contains("private route", StringComparison.OrdinalIgnoreCase),
+            "Information Architecture workflow renders privacy-safe metadata with explicit no-validation and no-authority boundaries");
+        foreach (var hostileRoot in new[] {
+                     badInformationArchitectureSnapshotDigestRoot, badInformationArchitectureSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadInformationArchitectureModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Information Architecture rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badInformationArchitectureSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadInformationArchitectureModelAsync(InitiativeId),
+                "Information Architecture rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -2972,6 +3022,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-user-journey-snapshot-digest";
         var badUserJourneySnapshotPrivate =
             Path.GetFileName(workspace) == "bad-user-journey-snapshot-private";
+        var badInformationArchitectureSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-information-architecture-snapshot-binding";
+        var badInformationArchitectureSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-information-architecture-snapshot-digest";
+        var badInformationArchitectureSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-information-architecture-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3368,6 +3424,17 @@ internal static class Program
                         badUserJourneySnapshotBinding,
                         badUserJourneySnapshotDigest,
                         badUserJourneySnapshotPrivate);
+                    break;
+                case "design.informationArchitecture.snapshot":
+                    await HandleInformationArchitectureAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badInformationArchitectureSnapshotBinding,
+                        badInformationArchitectureSnapshotDigest,
+                        badInformationArchitectureSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -6077,6 +6144,100 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["journeyCount"] = 3;
         if (includePrivateField) result["journeyStep"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleInformationArchitectureAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID INFORMATION ARCHITECTURE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T10:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('a', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = InformationArchitectureId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('b', 64)}",
+            ["state"] = "candidate",
+            ["nodeCount"] = 6,
+            ["rootNodeCount"] = 2,
+            ["routeCount"] = 8,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T10:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "information-architecture-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "information-architecture-model-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = InformationArchitectureId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["nodeCount"] = 6,
+                ["rootNodeCount"] = 2,
+                ["routeCount"] = 8,
+                ["representedScopeCount"] = 1,
+                ["unresolvedScopeCount"] = 1,
+                ["weakEvidenceNodeCount"] = 2,
+                ["weakEvidenceRouteCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Design Applicability scopes have unresolved Information Architecture coverage" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "information-architecture-status-is-observational-and-does-not-prove-findability-comprehension-or-accessibility-validate-content-approve-design-grant-readiness-or-authorize-action",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-node-route-content-persona-source-or-personal-content-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "information-architecture-projection-is-read-only-and-does-not-prove-findability-comprehension-or-accessibility-validate-content-approve-design-grant-readiness-or-authorize-write-or-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["nodeCount"] = 7;
+        if (includePrivateField) result["nodeLabel"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
