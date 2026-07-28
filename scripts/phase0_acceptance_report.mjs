@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260728T142800Z-phase-2-accessibility-design-rules-packages.json",
-  conformance: "evidence/ide-conformance/20260728T142800Z-phase-2-accessibility-design-rules.json",
+  packages: "evidence/local-packages/20260728T173618Z-phase-2-responsive-multi-platform-targets-packages.json",
+  conformance: "evidence/ide-conformance/20260728T173618Z-phase-2-responsive-multi-platform-targets.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    accessibilityDesignRules
+    responsiveMultiPlatformTargets
+      ? {
+          id: "phase-2-responsive-multi-platform-targets-closure",
+          state: "not-established",
+          basis: "the governed Responsive and Multi-Platform Targets candidate is implemented locally across the shared engine and four host projections; real Product research, attributable human platform-target, breakpoint, behavior, check, evidence-state, ownership and requirement-coverage review, native-host interaction, responsive and platform-parity testing, breakpoint and behavior validation, accessibility testing, design approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : accessibilityDesignRules
       ? {
           id: "phase-2-accessibility-design-rules-closure",
           state: "not-established",
@@ -335,6 +341,9 @@ export async function buildPhase0AcceptanceReport({
   const accessibilityDesignRules = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "accessibility-design-rules" && capability.state === "implemented"))
+  const responsiveMultiPlatformTargets = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "responsive-multi-platform-targets" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -344,6 +353,7 @@ export async function buildPhase0AcceptanceReport({
     designRequirements,
     designSystemTokenContract,
     accessibilityDesignRules,
+    responsiveMultiPlatformTargets,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -361,8 +371,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: accessibilityDesignRules
+    phase: responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: responsiveMultiPlatformTargets
+      ? "phase-2-responsive-multi-platform-targets-local"
+      : accessibilityDesignRules
       ? "phase-2-accessibility-design-rules-local"
       : designSystemTokenContract
       ? "phase-2-design-system-token-contract-local"
@@ -420,7 +432,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: accessibilityDesignRules
+    claimBoundary: responsiveMultiPlatformTargets
+      ? "This report binds the exact governed Responsive and Multi-Platform Targets candidate lifecycle, exact Product, Initiative, Screen and State Inventory, Design Requirements, Design System and Token Contract, Accessibility Design Rules and Sources dependencies, bounded platform-target, breakpoint, responsive-behavior, design-check, evidence-state, candidate-ownership and requirement-coverage metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish responsive completeness, platform parity, Breakpoint or Responsive Behavior validity, accessibility conformance, ownership authority, design approval, a Design Baseline, real Product research, readiness, implementation, write or action authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : accessibilityDesignRules
       ? "This report binds the exact governed Accessibility Design Rules candidate lifecycle, exact Product, Initiative, Screen and State Inventory, Design Requirements, Design System and Token Contract, Sources and optional portable-design snapshot dependencies, bounded candidate target, rule, design-check, evidence-state, candidate-ownership and requirement-coverage metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish accessibility conformance, Rule or Design Check validity, legal compliance, ownership authority, design approval, a Design Baseline, real Product research, readiness, implementation, write or action authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : designSystemTokenContract
       ? "This report binds the exact governed Design System and Token Contract candidate lifecycle, exact Product, Initiative, Design Applicability, Screen and State Inventory, Design Requirements and optional portable-design snapshot dependencies, bounded Design System, Token, Variable Collection, Variable, Component, candidate-ownership, requirement-coverage and accessibility-review metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish Design System, Token, Variable or Component validity, ownership authority, accessibility validity, design approval, a Design Baseline, real Product research, readiness, implementation, write or action authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
