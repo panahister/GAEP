@@ -1271,6 +1271,52 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readUserJourneyModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readUserJourneyModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while User Journeys were read. Refresh the exact records." }
+        return renderUserJourneyModel(projection)
+    }
+
+    fun renderUserJourneyModel(projection: UserJourneyProjection): String = buildString {
+        appendLine("GAEP governed User Journeys candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine("Inventory: ${projection.journeyCount} journeys · ${projection.touchpointCount} touchpoints")
+        appendLine(
+            "Paths: ${projection.primaryPathCount} primary · ${projection.successPathCount} success · " +
+                "${projection.failurePathCount} failure · ${projection.recoveryPathCount} recovery",
+        )
+        appendLine(
+            "Scope coverage: ${projection.representedScopeCount} represented · ${projection.unresolvedScopeCount} unresolved",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.weakEvidencePathCount} weak-evidence paths · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("User Journeys candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Candidate inventory: ${record.journeyCount} journeys · ${record.touchpointCount} touchpoints · ${record.reviewState}")
+        } ?: appendLine("User Journeys candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate journey structure and coverage metadata only; no observed-behavior proof, " +
+                "journey validation, design approval, readiness, write, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

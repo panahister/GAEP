@@ -1499,6 +1499,57 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadUserJourneyModelAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadUserJourneyModelAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while User Journeys were read. Refresh the exact records.");
+        }
+        return RenderUserJourneyModel(projection);
+    }
+
+    public static string RenderUserJourneyModel(UserJourneyProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed User Journeys candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine($"Inventory: {projection.JourneyCount} journeys · {projection.TouchpointCount} touchpoints")
+            .AppendLine(
+                $"Paths: {projection.PrimaryPathCount} primary · {projection.SuccessPathCount} success · " +
+                $"{projection.FailurePathCount} failure · {projection.RecoveryPathCount} recovery")
+            .AppendLine($"Scope coverage: {projection.RepresentedScopeCount} represented · {projection.UnresolvedScopeCount} unresolved")
+            .AppendLine(
+                $"Candidate gaps: {projection.WeakEvidencePathCount} weak-evidence paths · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"User Journeys candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine($"Candidate inventory: {candidate.JourneyCount} journeys · {candidate.TouchpointCount} touchpoints · {candidate.ReviewState}");
+        }
+        else output.AppendLine("User Journeys candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate journey structure and coverage metadata only; no observed-behavior proof, " +
+                "journey validation, design approval, readiness, write, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

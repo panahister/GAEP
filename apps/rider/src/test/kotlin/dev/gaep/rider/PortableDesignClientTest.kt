@@ -1333,6 +1333,53 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `User Journey projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("user-journey-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readUserJourneyModel(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals(2, projection.journeyCount)
+            assertEquals(3, projection.touchpointCount)
+            assertEquals(2, projection.failurePathCount)
+            assertEquals(2, projection.recoveryPathCount)
+            assertEquals(2, projection.candidate?.journeyCount)
+
+            val rendered = RiderProductController(client).readUserJourneyModel(entryId)
+            assertTrue(rendered.contains("GAEP governed User Journeys candidate"))
+            assertTrue(rendered.contains("2 journeys · 3 touchpoints"))
+            assertTrue(rendered.contains("2 primary · 2 success · 2 failure · 2 recovery"))
+            assertTrue(rendered.contains("no observed-behavior proof"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("journeyStep"))
+        }
+
+        listOf(
+            "bad-user-journey-snapshot-digest",
+            "bad-user-journey-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readUserJourneyModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-user-journey-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readUserJourneyModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

@@ -52,6 +52,7 @@ const p0P4ReadinessGateId = "54545454-5454-4454-8454-545454545454"
 const p5HandoffPackageId = "55555555-5555-4555-8555-555555555555"
 const designApplicabilityId = "56565656-5656-4656-8656-565656565656"
 const designPersonaRoleId = "57575757-5757-4757-8757-575757575757"
+const userJourneyId = "58585858-5858-4858-8858-585858585858"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -137,6 +138,8 @@ input.on("line", (line) => {
       return readDesignApplicability(id, request.params)
     case "design.personas.roles.snapshot":
       return readDesignPersonaRoleModel(id, request.params)
+    case "design.journeys.snapshot":
+      return readUserJourneyModel(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -1801,6 +1804,67 @@ function readDesignPersonaRoleModel(id, params) {
   if (workspacePath.endsWith("bad-design-persona-role-snapshot-digest")) value.candidate.personaCount = 3
   if (workspacePath.endsWith("bad-design-persona-role-snapshot-private")) {
     value.personaBehavior = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readUserJourneyModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE USER JOURNEY PARAMS")
+  }
+  const candidateDigest = `sha256:${"8".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "user-journey-model-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: userJourneyId, revision: 2, digest: candidateDigest },
+    journeyCount: 2,
+    touchpointCount: 3,
+    primaryPathCount: 2,
+    successPathCount: 2,
+    failurePathCount: 2,
+    recoveryPathCount: 2,
+    representedScopeCount: 1,
+    unresolvedScopeCount: 1,
+    weakEvidencePathCount: 2,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Design Applicability scopes have unresolved User Journey coverage"],
+    assessedAt: "2026-07-28T09:30:00.000Z",
+    authorityBoundary: "user-journey-model-status-is-observational-and-does-not-prove-observed-behavior-validate-journeys-approve-design-grant-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "user-journey-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: userJourneyId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"9".repeat(64)}`,
+      state: "candidate",
+      journeyCount: 2,
+      touchpointCount: 3,
+      reviewState: "held",
+      updatedAt: "2026-07-28T09:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-journey-step-touchpoint-persona-source-or-personal-content-secrets-or-credentials",
+    authorityBoundary: "user-journey-model-projection-is-read-only-and-does-not-prove-observed-behavior-validate-journeys-approve-design-grant-readiness-or-authorize-write-or-action",
+  }
+  if (workspacePath.endsWith("bad-user-journey-snapshot-binding")) content.initiative.id = userJourneyId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-user-journey-snapshot-digest")) value.candidate.journeyCount = 3
+  if (workspacePath.endsWith("bad-user-journey-snapshot-private")) {
+    value.journeyStep = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

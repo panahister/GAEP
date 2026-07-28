@@ -25,6 +25,7 @@ import {
   p5HandoffPackageProjectionSchema,
   designApplicabilityProjectionSchema,
   designPersonaRoleModelProjectionSchema,
+  userJourneyModelProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -57,6 +58,7 @@ import {
   type P5HandoffPackageProjection,
   type DesignApplicabilityProjection,
   type DesignPersonaRoleModelProjection,
+  type UserJourneyModelProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -636,6 +638,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = designPersonaRoleModelProjectionSchema.safeParse(
         await this.request("design.personas.roles.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readUserJourneyModel(initiativeValue: string): Promise<UserJourneyModelProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = userJourneyModelProjectionSchema.safeParse(
+        await this.request("design.journeys.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

@@ -427,6 +427,20 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseDesignPersonaRoleResponse(envelope, initiativeId));
     }
 
+    public async Task<UserJourneyProjection> ReadUserJourneyModelAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync(
+            "design.journeys.snapshot",
+            new Dictionary<string, object?> { ["initiativeId"] = initiativeId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseUserJourneyResponse(envelope, initiativeId));
+    }
+
     public async Task<InitiativeEntryRecord> ClassifyInitiativeAsync(
         Guid initiativeId,
         long expectedInitiativeRevision,

@@ -76,6 +76,7 @@
     "onCommand:gaepKiro.p5HandoffPackage.inspect",
     "onCommand:gaepKiro.designApplicability.inspect",
     "onCommand:gaepKiro.designPersonasRoles.inspect",
+    "onCommand:gaepKiro.userJourneys.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -257,6 +258,10 @@
       {
         "command": "gaepKiro.designPersonasRoles.inspect",
         "title": "GAEP for Kiro: Inspect Governed Design Personas and Roles Candidate"
+      },
+      {
+        "command": "gaepKiro.userJourneys.inspect",
+        "title": "GAEP for Kiro: Inspect Governed User Journeys Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

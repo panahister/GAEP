@@ -1407,6 +1407,43 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "user-journey-read-empty",
+      protocolVersion: 2,
+      method: "design.journeys.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "user-journey-assess-empty",
+      protocolVersion: 2,
+      method: "design.journeys.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      journeyCount: 0,
+      touchpointCount: 0,
+      primaryPathCount: 0,
+      successPathCount: 0,
+      failurePathCount: 0,
+      recoveryPathCount: 0,
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-prove-observed-behavior-validate-journeys"),
+    })
+    const userJourneyProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "user-journey-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.journeys.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: userJourneySnapshotDigest, ...userJourneyProjectionBody } = userJourneyProjection
+    expect(userJourneySnapshotDigest).toBe(canonicalDigest(userJourneyProjectionBody))
+    expect(userJourneyProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-journey-step-touchpoint-persona-source-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-prove-observed-behavior-validate-journeys"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1451,6 +1488,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "design-persona-role-v1-block",
       method: "design.personas.roles.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "user-journey-v1-block",
+      method: "design.journeys.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

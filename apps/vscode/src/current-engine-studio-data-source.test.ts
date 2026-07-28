@@ -25,6 +25,7 @@ import {
   type P5HandoffPackageProjection,
   type DesignApplicabilityProjection,
   type DesignPersonaRoleModelProjection,
+  type UserJourneyModelProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1677,6 +1678,57 @@ function designPersonaRoleProjection(): DesignPersonaRoleModelProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function userJourneyProjection(): UserJourneyModelProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "user-journey-model-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "efefefef-efef-4fef-8fef-efefefefefef", revision: 2, digest: `sha256:${"8".repeat(64)}` as const },
+    journeyCount: 2,
+    touchpointCount: 3,
+    primaryPathCount: 2,
+    successPathCount: 2,
+    failurePathCount: 2,
+    recoveryPathCount: 2,
+    representedScopeCount: 1,
+    unresolvedScopeCount: 1,
+    weakEvidencePathCount: 2,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more Design Applicability scopes have unresolved User Journey coverage"],
+    assessedAt: "2026-07-28T09:30:00.000Z",
+    authorityBoundary: "user-journey-model-status-is-observational-and-does-not-prove-observed-behavior-validate-journeys-approve-design-grant-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "user-journey-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"9".repeat(64)}` as const,
+      state: "candidate" as const,
+      journeyCount: 2,
+      touchpointCount: 3,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-28T09:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-journey-step-touchpoint-persona-source-or-personal-content-secrets-or-credentials" as const,
+    authorityBoundary: "user-journey-model-projection-is-read-only-and-does-not-prove-observed-behavior-validate-journeys-approve-design-grant-readiness-or-authorize-write-or-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2324,6 +2376,7 @@ interface HarnessOptions {
   p5HandoffPackageProjection?: P5HandoffPackageProjection
   designApplicabilityProjection?: DesignApplicabilityProjection
   designPersonaRoleProjection?: DesignPersonaRoleModelProjection
+  userJourneyProjection?: UserJourneyModelProjection
   commandResult?: unknown
 }
 
@@ -2534,6 +2587,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.designPersonaRoleProjection ? {
       designPersonaRoleModel: {
         project: async () => options.designPersonaRoleProjection!,
+      },
+    } : {}),
+    ...(options.userJourneyProjection ? {
+      userJourneyModel: {
+        project: async () => options.userJourneyProjection!,
       },
     } : {}),
   }
@@ -3150,7 +3208,7 @@ describe("current-engine Product Studio data source", () => {
     const projection = designPersonaRoleProjection()
     const { source } = harness({ designPersonaRoleProjection: projection })
     const snapshot = await source.readSnapshot("users-jobs")
-    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.at(-1)).toMatchObject({
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "design-persona-role-model")).toMatchObject({
       id: "design-persona-role-model",
       rows: [{
         id: projection.candidate?.id,
@@ -3168,6 +3226,32 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private persona behavior|private constraints|private source content|pilot-change-owner|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed User Journey metadata on the native users and jobs page", async () => {
+    const projection = userJourneyProjection()
+    const { source } = harness({ userJourneyProjection: projection })
+    const snapshot = await source.readSnapshot("users-jobs")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.at(-1)).toMatchObject({
+      id: "user-journey-model",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          inventory: "2 journeys · 3 touchpoints",
+          paths: "2 primary · 2 success · 2 failure · 2 recovery",
+          coverage: "1 represented scopes · 1 unresolved scopes",
+          assessment: "attention-required · held",
+          gaps: "2 weak-evidence paths · 2 questions · 0 stale bindings · 1 stale Source references",
+          boundary: "Candidate journey structure and coverage metadata only; no observed-behavior proof, journey validation, design approval, readiness, write, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private journey step|private touchpoint|private persona|private source content|customer@example\.com|api_key/iu,
     )
   })
 

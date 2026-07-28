@@ -1832,6 +1832,43 @@ data class DesignPersonaRoleProjection(
     val snapshotDigest: String,
 )
 
+data class UserJourneyRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val journeyCount: Int,
+    val touchpointCount: Int,
+    val reviewState: String,
+)
+
+data class UserJourneyProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val journeyCount: Int,
+    val touchpointCount: Int,
+    val primaryPathCount: Int,
+    val successPathCount: Int,
+    val failurePathCount: Int,
+    val recoveryPathCount: Int,
+    val representedScopeCount: Int,
+    val unresolvedScopeCount: Int,
+    val weakEvidencePathCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: UserJourneyRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -2007,6 +2044,12 @@ internal object PortableDesignProtocol {
         "design-persona-role-projection-is-read-only-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-write-or-action"
     private const val DESIGN_PERSONA_ROLE_STATUS_AUTHORITY_BOUNDARY =
         "design-persona-role-status-is-observational-and-does-not-validate-personas-appoint-roles-verify-competence-approve-design-grant-readiness-or-authorize-action"
+    private const val USER_JOURNEY_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-digests-only-not-journey-step-touchpoint-persona-source-or-personal-content-secrets-or-credentials"
+    private const val USER_JOURNEY_PROJECTION_AUTHORITY_BOUNDARY =
+        "user-journey-model-projection-is-read-only-and-does-not-prove-observed-behavior-validate-journeys-approve-design-grant-readiness-or-authorize-write-or-action"
+    private const val USER_JOURNEY_STATUS_AUTHORITY_BOUNDARY =
+        "user-journey-model-status-is-observational-and-does-not-prove-observed-behavior-validate-journeys-approve-design-grant-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -6226,6 +6269,137 @@ internal object PortableDesignProtocol {
             representedParticipantCategoryCount, unresolvedParticipantCategoryCount, representedRoleKindCount,
             unresolvedRoleKindCount, weakEvidencePersonaCount, humanReviewedPersonaCount, staleBindingCount,
             staleSourceReferenceCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseUserJourneyEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): UserJourneyProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "user-journey-model-projection" ||
+            projection.requireString("privacyBoundary") != USER_JOURNEY_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != USER_JOURNEY_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) {
+            throw invalidResponse()
+        }
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf(
+            "state",
+            setOf("proposed", "active", "blocked", "completed", "cancelled"),
+        )
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "journeyCount", "touchpointCount", "primaryPathCount", "successPathCount", "failurePathCount",
+                "recoveryPathCount", "representedScopeCount", "unresolvedScopeCount", "weakEvidencePathCount",
+                "staleBindingCount", "staleSourceReferenceCount", "unresolvedQuestionCount", "reviewState", "state",
+                "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "user-journey-model-status" ||
+            status.requireNonEmptyUuid("productId") != productId ||
+            status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId ||
+            status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != USER_JOURNEY_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val journeyCount = status.requireBoundedNonNegativeInt("journeyCount", 256)
+        val touchpointCount = status.requireBoundedNonNegativeInt("touchpointCount", 262_144)
+        val primaryPathCount = status.requireBoundedNonNegativeInt("primaryPathCount", 262_144)
+        val successPathCount = status.requireBoundedNonNegativeInt("successPathCount", 262_144)
+        val failurePathCount = status.requireBoundedNonNegativeInt("failurePathCount", 262_144)
+        val recoveryPathCount = status.requireBoundedNonNegativeInt("recoveryPathCount", 262_144)
+        val representedScopeCount = status.requireBoundedNonNegativeInt("representedScopeCount", 1_024)
+        val unresolvedScopeCount = status.requireBoundedNonNegativeInt("unresolvedScopeCount", 1_024)
+        val weakEvidencePathCount = status.requireBoundedNonNegativeInt("weakEvidencePathCount", 262_144)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) {
+            throw invalidResponse()
+        }
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = unresolvedScopeCount + weakEvidencePathCount + staleBindingCount +
+            staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (gapCount > 0 || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || reference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "journeyCount", "touchpointCount",
+                "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = UserJourneyRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("journeyCount", 256),
+                value.requireBoundedNonNegativeInt("touchpointCount", 262_144),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision ||
+                reference.digest != record.digest || record.journeyCount != journeyCount ||
+                record.touchpointCount != touchpointCount || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) {
+            throw invalidResponse()
+        }
+        return UserJourneyProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, reasons, journeyCount, touchpointCount,
+            primaryPathCount, successPathCount, failurePathCount, recoveryPathCount, representedScopeCount,
+            unresolvedScopeCount, weakEvidencePathCount, staleBindingCount, staleSourceReferenceCount,
+            unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 

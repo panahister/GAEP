@@ -779,6 +779,17 @@ describe("Design Persona and Role service", () => {
     expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
     expect((await engine.userJourneyModel.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
 
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `user-journey-models/${candidate.id}.json`,
+      `user-journey-model-history/user-journey-${candidate.id}-r1.json`,
+      `user-journey-model-history/user-journey-${candidate.id}-r2.json`,
+    ]))
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
     const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
       .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
     expect(events.at(-1)).toMatchObject({

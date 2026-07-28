@@ -67,6 +67,7 @@ internal static class Program
     private static readonly Guid P5HandoffPackageId = Guid.Parse("62626262-6262-4262-8262-626262626262");
     private static readonly Guid DesignApplicabilityId = Guid.Parse("63636363-6363-4363-8363-636363636363");
     private static readonly Guid DesignPersonaRoleId = Guid.Parse("64646464-6464-4464-8464-646464646464");
+    private static readonly Guid UserJourneyId = Guid.Parse("65656565-6565-4565-8565-656565656565");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -197,6 +198,9 @@ internal static class Program
         var badDesignPersonaRoleSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-persona-role-snapshot-binding");
         var badDesignPersonaRoleSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-persona-role-snapshot-digest");
         var badDesignPersonaRoleSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-persona-role-snapshot-private");
+        var badUserJourneySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-user-journey-snapshot-binding");
+        var badUserJourneySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-user-journey-snapshot-digest");
+        var badUserJourneySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-user-journey-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -327,6 +331,9 @@ internal static class Program
         Directory.CreateDirectory(badDesignPersonaRoleSnapshotBindingRoot);
         Directory.CreateDirectory(badDesignPersonaRoleSnapshotDigestRoot);
         Directory.CreateDirectory(badDesignPersonaRoleSnapshotPrivateRoot);
+        Directory.CreateDirectory(badUserJourneySnapshotBindingRoot);
+        Directory.CreateDirectory(badUserJourneySnapshotDigestRoot);
+        Directory.CreateDirectory(badUserJourneySnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1633,6 +1640,48 @@ internal static class Program
                 "Design Personas and Roles rejects a projection rebound to a substituted Product revision");
         }
 
+        var userJourneyProjection = await client.ReadUserJourneyModelAsync(InitiativeId);
+        Check(userJourneyProjection.ProductId == product.Id &&
+              userJourneyProjection.ProductRevision == product.Revision &&
+              userJourneyProjection.ProductDigest == product.Digest &&
+              userJourneyProjection.InitiativeId == resolved.Id &&
+              userJourneyProjection.InitiativeRevision == resolved.Revision &&
+              userJourneyProjection.InitiativeDigest == resolved.Digest &&
+              userJourneyProjection.AssessmentState == "attention-required" &&
+              userJourneyProjection.ReviewState == "held" &&
+              userJourneyProjection.JourneyCount == 2 &&
+              userJourneyProjection.TouchpointCount == 3 &&
+              userJourneyProjection.FailurePathCount == 2 &&
+              userJourneyProjection.RecoveryPathCount == 2 &&
+              userJourneyProjection.Candidate?.JourneyCount == 2,
+            "Typed User Journeys preserves exact Product, Initiative, assessment, and privacy-safe path metadata");
+        var userJourneyOutput = await initiativeController.ReadUserJourneyModelAsync(InitiativeId);
+        Check(userJourneyOutput.Contains("GAEP governed User Journeys candidate", StringComparison.Ordinal) &&
+              userJourneyOutput.Contains("Inventory: 2 journeys · 3 touchpoints", StringComparison.Ordinal) &&
+              userJourneyOutput.Contains("2 primary · 2 success · 2 failure · 2 recovery", StringComparison.Ordinal) &&
+              userJourneyOutput.Contains("no observed-behavior proof", StringComparison.Ordinal) &&
+              userJourneyOutput.Contains("journey validation", StringComparison.Ordinal) &&
+              !userJourneyOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !userJourneyOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !userJourneyOutput.Contains("journeyStep", StringComparison.Ordinal) &&
+              !userJourneyOutput.Contains("touchpoint content", StringComparison.OrdinalIgnoreCase),
+            "User Journeys workflow renders privacy-safe metadata with explicit no-validation and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badUserJourneySnapshotDigestRoot, badUserJourneySnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadUserJourneyModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "User Journeys rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badUserJourneySnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadUserJourneyModelAsync(InitiativeId),
+                "User Journeys rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -2917,6 +2966,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-design-persona-role-snapshot-digest";
         var badDesignPersonaRoleSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-design-persona-role-snapshot-private";
+        var badUserJourneySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-user-journey-snapshot-binding";
+        var badUserJourneySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-user-journey-snapshot-digest";
+        var badUserJourneySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-user-journey-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3302,6 +3357,17 @@ internal static class Program
                         badDesignPersonaRoleSnapshotBinding,
                         badDesignPersonaRoleSnapshotDigest,
                         badDesignPersonaRoleSnapshotPrivate);
+                    break;
+                case "design.journeys.snapshot":
+                    await HandleUserJourneyAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badUserJourneySnapshotBinding,
+                        badUserJourneySnapshotDigest,
+                        badUserJourneySnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -5916,6 +5982,101 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["personaCount"] = 3;
         if (includePrivateField) result["personaBehavior"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleUserJourneyAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID USER JOURNEY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T09:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('8', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = UserJourneyId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('9', 64)}",
+            ["state"] = "candidate",
+            ["journeyCount"] = 2,
+            ["touchpointCount"] = 3,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T09:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "user-journey-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "user-journey-model-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = UserJourneyId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["journeyCount"] = 2,
+                ["touchpointCount"] = 3,
+                ["primaryPathCount"] = 2,
+                ["successPathCount"] = 2,
+                ["failurePathCount"] = 2,
+                ["recoveryPathCount"] = 2,
+                ["representedScopeCount"] = 1,
+                ["unresolvedScopeCount"] = 1,
+                ["weakEvidencePathCount"] = 2,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Design Applicability scopes have unresolved User Journey coverage" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "user-journey-model-status-is-observational-and-does-not-prove-observed-behavior-validate-journeys-approve-design-grant-readiness-or-authorize-action",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-journey-step-touchpoint-persona-source-or-personal-content-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "user-journey-model-projection-is-read-only-and-does-not-prove-observed-behavior-validate-journeys-approve-design-grant-readiness-or-authorize-write-or-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["journeyCount"] = 3;
+        if (includePrivateField) result["journeyStep"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

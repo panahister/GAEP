@@ -38,6 +38,7 @@ private val p0P4ReadinessGateId = UUID.fromString("61616161-6161-4161-8161-61616
 private val p5HandoffPackageId = UUID.fromString("62626262-6262-4262-8262-626262626262")
 private val designApplicabilityId = UUID.fromString("63636363-6363-4363-8363-636363636363")
 private val designPersonaRoleId = UUID.fromString("64646464-6464-4464-8464-646464646464")
+private val userJourneyId = UUID.fromString("65656565-6565-4565-8565-656565656565")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -226,6 +227,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.personas.roles.snapshot" -> handleDesignPersonaRoleModel(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.journeys.snapshot" -> handleUserJourneyModel(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -2567,6 +2573,85 @@ private fun handleDesignPersonaRoleModel(id: Long, params: JsonObject, workspace
         }
         workspacePath.endsWith("bad-design-persona-role-snapshot-private") -> {
             value.addProperty("personaBehavior", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleUserJourneyModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE USER JOURNEY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-user-journey-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-28T09:30:00.000Z"
+    val candidateDigest = "sha256:${"8".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "user-journey-model-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "user-journey-model-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", userJourneyId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("journeyCount", 2)
+            addProperty("touchpointCount", 3)
+            addProperty("primaryPathCount", 2)
+            addProperty("successPathCount", 2)
+            addProperty("failurePathCount", 2)
+            addProperty("recoveryPathCount", 2)
+            addProperty("representedScopeCount", 1)
+            addProperty("unresolvedScopeCount", 1)
+            addProperty("weakEvidencePathCount", 2)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Design Applicability scopes have unresolved User Journey coverage") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("authorityBoundary", "user-journey-model-status-is-observational-and-does-not-prove-observed-behavior-validate-journeys-approve-design-grant-readiness-or-authorize-action")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", userJourneyId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"9".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("journeyCount", 2)
+            addProperty("touchpointCount", 3)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-28T09:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-digests-only-not-journey-step-touchpoint-persona-source-or-personal-content-secrets-or-credentials")
+        addProperty("authorityBoundary", "user-journey-model-projection-is-read-only-and-does-not-prove-observed-behavior-validate-journeys-approve-design-grant-readiness-or-authorize-write-or-action")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-user-journey-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("journeyCount", 3)
+        }
+        workspacePath.endsWith("bad-user-journey-snapshot-private") -> {
+            value.addProperty("journeyStep", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)
