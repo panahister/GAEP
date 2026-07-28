@@ -264,6 +264,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.figmaMcpCapabilityDiscovery.revise",
   "design.figmaMcpCapabilityDiscovery.assess",
   "design.figmaMcpCapabilityDiscovery.snapshot",
+  "design.figmaReadSnapshot.read",
+  "design.figmaReadSnapshot.create",
+  "design.figmaReadSnapshot.revise",
+  "design.figmaReadSnapshot.assess",
+  "design.figmaReadSnapshot.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1644,6 +1649,24 @@ export class EngineHost {
         return this.engine.figmaMcpCapabilityDiscovery.assess(request.params.initiativeId)
       case "design.figmaMcpCapabilityDiscovery.snapshot":
         return this.engine.figmaMcpCapabilityDiscovery.project(request.params.initiativeId)
+      case "design.figmaReadSnapshot.read":
+        return await this.engine.figmaReadSnapshot.readCurrent(request.params.initiativeId) ?? null
+      case "design.figmaReadSnapshot.create":
+        return this.engine.figmaReadSnapshot.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.figmaReadSnapshot.revise":
+        return this.engine.figmaReadSnapshot.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.figmaReadSnapshot.assess":
+        return this.engine.figmaReadSnapshot.assess(request.params.initiativeId)
+      case "design.figmaReadSnapshot.snapshot":
+        return this.engine.figmaReadSnapshot.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

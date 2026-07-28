@@ -59,6 +59,7 @@ import { accessibilityDesignRulesInputSchema } from "./accessibility-design-rule
 import { responsiveMultiPlatformTargetsInputSchema } from "./responsive-multi-platform-targets.js"
 import { manualFigmaExecutionPathInputSchema } from "./manual-figma-execution-path.js"
 import { figmaMcpCapabilityDiscoveryInputSchema } from "./figma-mcp-capability-discovery.js"
+import { figmaReadSnapshotInputSchema } from "./figma-read-snapshot.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -643,6 +644,18 @@ export const hostFigmaMcpCapabilityDiscoveryReviseParamsSchema = z.object({
   record: figmaMcpCapabilityDiscoveryInputSchema,
 }).strict()
 
+export const hostFigmaReadSnapshotCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: figmaReadSnapshotInputSchema,
+}).strict()
+
+export const hostFigmaReadSnapshotReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: figmaReadSnapshotInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -865,6 +878,11 @@ export const hostMethodSchema = z.enum([
   "design.figmaMcpCapabilityDiscovery.revise",
   "design.figmaMcpCapabilityDiscovery.assess",
   "design.figmaMcpCapabilityDiscovery.snapshot",
+  "design.figmaReadSnapshot.read",
+  "design.figmaReadSnapshot.create",
+  "design.figmaReadSnapshot.revise",
+  "design.figmaReadSnapshot.assess",
+  "design.figmaReadSnapshot.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1096,6 +1114,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.figmaMcpCapabilityDiscovery.revise", hostFigmaMcpCapabilityDiscoveryReviseParamsSchema),
   requestVariant("design.figmaMcpCapabilityDiscovery.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.figmaMcpCapabilityDiscovery.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.figmaReadSnapshot.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.figmaReadSnapshot.create", hostFigmaReadSnapshotCreateParamsSchema),
+  requestVariant("design.figmaReadSnapshot.revise", hostFigmaReadSnapshotReviseParamsSchema),
+  requestVariant("design.figmaReadSnapshot.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.figmaReadSnapshot.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
