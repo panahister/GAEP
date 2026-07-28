@@ -56,6 +56,7 @@ const commands = [
   "gaepKiro.designSystemTokenContract.inspect",
   "gaepKiro.accessibilityDesignRules.inspect",
   "gaepKiro.responsiveMultiPlatformTargets.inspect",
+  "gaepKiro.manualFigmaExecutionPath.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",

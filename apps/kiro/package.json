@@ -83,6 +83,7 @@
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
+    "onCommand:gaepKiro.manualFigmaExecutionPath.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -292,6 +293,10 @@
       {
         "command": "gaepKiro.responsiveMultiPlatformTargets.inspect",
         "title": "GAEP for Kiro: Inspect Governed Responsive and Multi-Platform Targets Candidate"
+      },
+      {
+        "command": "gaepKiro.manualFigmaExecutionPath.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Manual Figma Execution Path Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

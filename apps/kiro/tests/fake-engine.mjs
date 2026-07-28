@@ -59,6 +59,7 @@ const designRequirementsId = "61616161-6161-4161-8161-616161616161"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
+const manualFigmaExecutionPathId = "65656565-6565-4565-8565-656565656565"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -158,6 +159,8 @@ input.on("line", (line) => {
       return readAccessibilityDesignRules(id, request.params)
     case "design.responsiveMultiPlatformTargets.snapshot":
       return readResponsiveMultiPlatformTargets(id, request.params)
+    case "design.manualFigmaExecutionPath.snapshot":
+      return readManualFigmaExecutionPath(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2281,6 +2284,73 @@ function readResponsiveMultiPlatformTargets(id, params) {
   if (workspacePath.endsWith("bad-responsive-multi-platform-targets-snapshot-digest")) value.candidate.behaviorCount = 15
   if (workspacePath.endsWith("bad-responsive-multi-platform-targets-snapshot-private")) {
     value.behaviorProcedure = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readManualFigmaExecutionPath(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MANUAL FIGMA EXECUTION PATH PARAMS")
+  }
+  const candidateDigest = `sha256:${"7".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "manual-figma-execution-path-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: manualFigmaExecutionPathId, revision: 2, digest: candidateDigest },
+    scopeCount: 3,
+    instructionCount: 5,
+    checkCount: 24,
+    notAssessedCheckCount: 3,
+    evidenceRecordedCheckCount: 2,
+    humanReviewedCheckCount: 19,
+    contradictedCheckCount: 1,
+    representedRequirementCount: 10,
+    unresolvedRequirementCount: 2,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    guideCatalogState: "candidate-complete",
+    handoffCatalogState: "candidate-complete",
+    returnContractState: "not-assessed",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["The manual return contract retains unresolved review gaps"],
+    assessedAt: "2026-07-28T18:30:00.000Z",
+    authorityBoundary: "manual-figma-execution-path-status-is-observational-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "manual-figma-execution-path-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: manualFigmaExecutionPathId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"8".repeat(64)}`,
+      state: "candidate",
+      scopeCount: 3,
+      instructionCount: 5,
+      checkCount: 24,
+      representedRequirementCount: 10,
+      reviewState: "held",
+      updatedAt: "2026-07-28T18:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-handoff-content-instructions-figma-identifiers-returned-design-source-or-personal-content-secrets-or-credentials",
+    authorityBoundary: "manual-figma-execution-path-projection-is-read-only-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-manual-figma-execution-path-snapshot-binding")) content.initiative.id = manualFigmaExecutionPathId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-manual-figma-execution-path-snapshot-digest")) value.candidate.scopeCount = 4
+  if (workspacePath.endsWith("bad-manual-figma-execution-path-snapshot-private")) {
+    value.handoffContent = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
