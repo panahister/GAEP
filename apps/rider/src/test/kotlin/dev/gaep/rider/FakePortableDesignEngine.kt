@@ -47,6 +47,7 @@ private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-807
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
 private val manualFigmaExecutionPathId = UUID.fromString("72727272-7272-4272-8272-727272727272")
 private val figmaMcpCapabilityDiscoveryId = UUID.fromString("73737373-7373-4373-8373-737373737373")
+private val figmaReadSnapshotId = UUID.fromString("74747474-7474-4474-8474-747474747474")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -280,6 +281,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.figmaMcpCapabilityDiscovery.snapshot" -> handleFigmaMcpCapabilityDiscovery(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.figmaReadSnapshot.snapshot" -> handleFigmaReadSnapshot(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3463,6 +3469,100 @@ private fun handleFigmaMcpCapabilityDiscovery(id: Long, params: JsonObject, work
         }
         workspacePath.endsWith("bad-figma-mcp-capability-discovery-snapshot-private") -> {
             value.addProperty("toolNames", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleFigmaReadSnapshot(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE FIGMA READ SNAPSHOT PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-figma-read-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-28T20:30:00.000Z"
+    val candidateDigest = "sha256:${"b".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "figma-read-snapshot-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "figma-read-snapshot-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", figmaReadSnapshotId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("fileCount", 2)
+            addProperty("componentCount", 12)
+            addProperty("variableCollectionCount", 3)
+            addProperty("variableCount", 18)
+            addProperty("sourceRecordedItemCount", 5)
+            addProperty("humanReviewedItemCount", 25)
+            addProperty("notAssessedItemCount", 5)
+            addProperty("staleFileCount", 1)
+            addProperty("unknownFreshnessFileCount", 1)
+            addProperty("unresolvedTypeCount", 2)
+            addProperty("unresolvedOwnershipCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("snapshotCompletenessState", "partial")
+            addProperty("provenanceState", "partial")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more source-recorded snapshot observations require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "figma-read-snapshot-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-authorize-write-validate-or-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", figmaReadSnapshotId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"c".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("fileCount", 2)
+            addProperty("componentCount", 12)
+            addProperty("variableCollectionCount", 3)
+            addProperty("variableCount", 18)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-28T20:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-file-component-variable-names-external-identities-values-source-content-personal-content-secrets-credentials-or-permissions",
+        )
+        addProperty(
+            "authorityBoundary",
+            "figma-read-snapshot-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-authorize-write-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-figma-read-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("fileCount", 3)
+        }
+        workspacePath.endsWith("bad-figma-read-snapshot-private") -> {
+            value.addProperty("fileNames", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

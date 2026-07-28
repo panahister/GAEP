@@ -1779,6 +1779,60 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readFigmaReadSnapshot(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readFigmaReadSnapshot(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Figma Read Snapshot was read. Refresh the exact records." }
+        return renderFigmaReadSnapshot(projection)
+    }
+
+    fun renderFigmaReadSnapshot(projection: FigmaReadSnapshotProjection): String = buildString {
+        appendLine("GAEP governed Figma Read Snapshot candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine("Catalogs: snapshot ${projection.snapshotCompletenessState} · provenance ${projection.provenanceState}")
+        appendLine(
+            "Inventory: ${projection.fileCount} files · ${projection.componentCount} components · " +
+                "${projection.variableCollectionCount} variable collections · ${projection.variableCount} variables",
+        )
+        appendLine(
+            "Evidence: ${projection.humanReviewedItemCount} human-reviewed · " +
+                "${projection.sourceRecordedItemCount} source-recorded · ${projection.notAssessedItemCount} not assessed",
+        )
+        appendLine(
+            "Freshness and type gaps: ${projection.staleFileCount} stale at capture · " +
+                "${projection.unknownFreshnessFileCount} unknown freshness · ${projection.unresolvedTypeCount} unresolved variable types",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedOwnershipCount} ownership · ${projection.unresolvedQuestionCount} questions · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Figma Read Snapshot candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate inventory: ${record.fileCount} files · ${record.componentCount} components · " +
+                    "${record.variableCollectionCount} variable collections · ${record.variableCount} variables · ${record.reviewState}",
+            )
+        } ?: appendLine("Figma Read Snapshot candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and digests only; no Figma connection or call, " +
+                "credential request, permission grant, external completeness claim, write authority, design validation or approval, " +
+                "baseline, readiness, implementation, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

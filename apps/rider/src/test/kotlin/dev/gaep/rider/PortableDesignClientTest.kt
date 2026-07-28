@@ -1768,6 +1768,56 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Figma Read Snapshot projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("figma-read-snapshot-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readFigmaReadSnapshot(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("partial", projection.snapshotCompletenessState)
+            assertEquals("partial", projection.provenanceState)
+            assertEquals(2, projection.fileCount)
+            assertEquals(12, projection.componentCount)
+            assertEquals(3, projection.variableCollectionCount)
+            assertEquals(18, projection.variableCount)
+            assertEquals(25, projection.humanReviewedItemCount)
+            assertEquals(2, projection.candidate?.fileCount)
+
+            val rendered = RiderProductController(client).readFigmaReadSnapshot(entryId)
+            assertTrue(rendered.contains("GAEP governed Figma Read Snapshot candidate"))
+            assertTrue(rendered.contains("2 files · 12 components · 3 variable collections · 18 variables"))
+            assertTrue(rendered.contains("25 human-reviewed"))
+            assertTrue(rendered.contains("no Figma connection or call"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("fileNames"))
+        }
+
+        listOf(
+            "bad-figma-read-snapshot-digest",
+            "bad-figma-read-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readFigmaReadSnapshot(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-figma-read-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readFigmaReadSnapshot(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

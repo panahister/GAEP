@@ -626,6 +626,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += figmaMcpCapabilityDiscoveryButton
         actions.add(figmaMcpCapabilityDiscoveryButton)
 
+        val figmaReadSnapshotButton = JButton("Inspect Figma Read Snapshot…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Figma file, component, collection, variable, external identity, value, Source, personal data, local paths, secrets, credentials, permissions, and authority are withheld.",
+                    "GAEP Figma Read Snapshot",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Figma Read Snapshot", status, output, buttons) {
+                    controller.readFigmaReadSnapshot(initiativeId)
+                }
+            }
+        }
+        buttons += figmaReadSnapshotButton
+        actions.add(figmaReadSnapshotButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

@@ -2212,6 +2212,49 @@ data class FigmaMcpCapabilityDiscoveryProjection(
     val snapshotDigest: String,
 )
 
+data class FigmaReadSnapshotRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val fileCount: Int,
+    val componentCount: Int,
+    val variableCollectionCount: Int,
+    val variableCount: Int,
+    val reviewState: String,
+)
+
+data class FigmaReadSnapshotProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val snapshotCompletenessState: String,
+    val provenanceState: String,
+    val reasons: List<String>,
+    val fileCount: Int,
+    val componentCount: Int,
+    val variableCollectionCount: Int,
+    val variableCount: Int,
+    val sourceRecordedItemCount: Int,
+    val humanReviewedItemCount: Int,
+    val notAssessedItemCount: Int,
+    val staleFileCount: Int,
+    val unknownFreshnessFileCount: Int,
+    val unresolvedTypeCount: Int,
+    val unresolvedOwnershipCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: FigmaReadSnapshotRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -2441,6 +2484,12 @@ internal object PortableDesignProtocol {
         "figma-mcp-capability-discovery-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority"
     private const val FIGMA_MCP_CAPABILITY_DISCOVERY_STATUS_AUTHORITY_BOUNDARY =
         "figma-mcp-capability-discovery-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-or-action-authority"
+    private const val FIGMA_READ_SNAPSHOT_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-file-component-variable-names-external-identities-values-source-content-personal-content-secrets-credentials-or-permissions"
+    private const val FIGMA_READ_SNAPSHOT_PROJECTION_AUTHORITY_BOUNDARY =
+        "figma-read-snapshot-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-authorize-write-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority"
+    private const val FIGMA_READ_SNAPSHOT_STATUS_AUTHORITY_BOUNDARY =
+        "figma-read-snapshot-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-authorize-write-validate-or-approve-design-establish-a-baseline-readiness-implementation-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -7848,6 +7897,141 @@ internal object PortableDesignProtocol {
             unknownAvailabilityCount, readToolCount, writeToolCount, unknownEffectCount, notAssessedToolCount,
             sourceRecordedToolCount, humanReviewedToolCount, unresolvedPermissionCount, unresolvedLimitCount,
             unresolvedVersionCount, unresolvedOwnershipCount, staleBindingCount, staleSourceReferenceCount,
+            unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseFigmaReadSnapshotEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): FigmaReadSnapshotProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "figma-read-snapshot-projection" ||
+            projection.requireString("privacyBoundary") != FIGMA_READ_SNAPSHOT_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != FIGMA_READ_SNAPSHOT_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "fileCount", "componentCount", "variableCollectionCount", "variableCount",
+                "sourceRecordedItemCount", "humanReviewedItemCount", "notAssessedItemCount",
+                "staleFileCount", "unknownFreshnessFileCount", "unresolvedTypeCount", "unresolvedOwnershipCount",
+                "staleBindingCount", "staleSourceReferenceCount", "unresolvedQuestionCount",
+                "snapshotCompletenessState", "provenanceState", "reviewState", "state", "reasons", "assessedAt",
+                "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "figma-read-snapshot-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != FIGMA_READ_SNAPSHOT_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val fileCount = status.requireBoundedNonNegativeInt("fileCount", 256)
+        val componentCount = status.requireBoundedNonNegativeInt("componentCount", 16_384)
+        val variableCollectionCount = status.requireBoundedNonNegativeInt("variableCollectionCount", 1_024)
+        val variableCount = status.requireBoundedNonNegativeInt("variableCount", 16_384)
+        val sourceRecordedItemCount = status.requireBoundedNonNegativeInt("sourceRecordedItemCount", 33_792)
+        val humanReviewedItemCount = status.requireBoundedNonNegativeInt("humanReviewedItemCount", 33_792)
+        val notAssessedItemCount = status.requireBoundedNonNegativeInt("notAssessedItemCount", 33_792)
+        val staleFileCount = status.requireBoundedNonNegativeInt("staleFileCount", 256)
+        val unknownFreshnessFileCount = status.requireBoundedNonNegativeInt("unknownFreshnessFileCount", 256)
+        val unresolvedTypeCount = status.requireBoundedNonNegativeInt("unresolvedTypeCount", 16_384)
+        val unresolvedOwnershipCount = status.requireBoundedNonNegativeInt("unresolvedOwnershipCount", 1)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val snapshotCompletenessState = status.requireOneOf(
+            "snapshotCompletenessState", setOf("candidate-observation-complete", "partial", "not-assessed"),
+        )
+        val provenanceState = status.requireOneOf("provenanceState", setOf("exact", "partial", "not-assessed"))
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = sourceRecordedItemCount + notAssessedItemCount + staleFileCount + unknownFreshnessFileCount +
+            unresolvedTypeCount + unresolvedOwnershipCount + staleBindingCount + staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (gapCount > 0 || fileCount == 0 || componentCount == 0 || variableCollectionCount == 0 ||
+                    variableCount == 0 || snapshotCompletenessState != "candidate-observation-complete" ||
+                    provenanceState != "exact" || reviewState != "ready-for-human-review" ||
+                    reasons.isNotEmpty() || reference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "fileCount", "componentCount",
+                "variableCollectionCount", "variableCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = FigmaReadSnapshotRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("fileCount", 256),
+                value.requireBoundedNonNegativeInt("componentCount", 16_384),
+                value.requireBoundedNonNegativeInt("variableCollectionCount", 1_024),
+                value.requireBoundedNonNegativeInt("variableCount", 16_384),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.fileCount != fileCount || record.componentCount != componentCount ||
+                record.variableCollectionCount != variableCollectionCount || record.variableCount != variableCount ||
+                record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return FigmaReadSnapshotProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, snapshotCompletenessState, provenanceState, reasons,
+            fileCount, componentCount, variableCollectionCount, variableCount, sourceRecordedItemCount,
+            humanReviewedItemCount, notAssessedItemCount, staleFileCount, unknownFreshnessFileCount,
+            unresolvedTypeCount, unresolvedOwnershipCount, staleBindingCount, staleSourceReferenceCount,
             unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
