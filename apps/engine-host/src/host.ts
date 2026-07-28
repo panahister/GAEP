@@ -239,6 +239,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.requirements.revise",
   "design.requirements.assess",
   "design.requirements.snapshot",
+  "design.systemTokenContract.read",
+  "design.systemTokenContract.create",
+  "design.systemTokenContract.revise",
+  "design.systemTokenContract.assess",
+  "design.systemTokenContract.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1529,6 +1534,24 @@ export class EngineHost {
         return this.engine.designRequirements.assess(request.params.initiativeId)
       case "design.requirements.snapshot":
         return this.engine.designRequirements.project(request.params.initiativeId)
+      case "design.systemTokenContract.read":
+        return await this.engine.designSystemTokenContract.readCurrent(request.params.initiativeId) ?? null
+      case "design.systemTokenContract.create":
+        return this.engine.designSystemTokenContract.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.systemTokenContract.revise":
+        return this.engine.designSystemTokenContract.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.systemTokenContract.assess":
+        return this.engine.designSystemTokenContract.assess(request.params.initiativeId)
+      case "design.systemTokenContract.snapshot":
+        return this.engine.designSystemTokenContract.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

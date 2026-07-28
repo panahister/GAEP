@@ -1559,6 +1559,47 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "design-system-token-contract-read-empty",
+      protocolVersion: 2,
+      method: "design.systemTokenContract.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-system-token-contract-assess-empty",
+      protocolVersion: 2,
+      method: "design.systemTokenContract.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      designSystemCount: 0,
+      tokenCount: 0,
+      variableCollectionCount: 0,
+      variableCount: 0,
+      componentCount: 0,
+      representedRequirementCount: 0,
+      unresolvedRequirementCount: 0,
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-design-system-token-variable-or-component-validity"),
+    })
+    const designSystemTokenContractProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-system-token-contract-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.systemTokenContract.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: designSystemTokenContractSnapshotDigest,
+      ...designSystemTokenContractProjectionBody
+    } = designSystemTokenContractProjection
+    expect(designSystemTokenContractSnapshotDigest).toBe(canonicalDigest(designSystemTokenContractProjectionBody))
+    expect(designSystemTokenContractProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-token-values-component-content-requirement-source-design-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-design-system-token-variable-or-component-validity"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1627,6 +1668,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "design-requirements-v1-block",
       method: "design.requirements.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-system-token-contract-v1-block",
+      method: "design.systemTokenContract.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

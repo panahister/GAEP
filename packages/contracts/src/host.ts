@@ -54,6 +54,7 @@ import { userJourneyModelInputSchema } from "./user-journey-model.js"
 import { informationArchitectureModelInputSchema } from "./information-architecture-model.js"
 import { screenStateInventoryInputSchema } from "./screen-state-inventory.js"
 import { designRequirementsInputSchema } from "./design-requirements.js"
+import { designSystemTokenContractInputSchema } from "./design-system-token-contract.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -578,6 +579,18 @@ export const hostDesignRequirementsReviseParamsSchema = z.object({
   record: designRequirementsInputSchema,
 }).strict()
 
+export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: designSystemTokenContractInputSchema,
+}).strict()
+
+export const hostDesignSystemTokenContractReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: designSystemTokenContractInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -775,6 +788,11 @@ export const hostMethodSchema = z.enum([
   "design.requirements.revise",
   "design.requirements.assess",
   "design.requirements.snapshot",
+  "design.systemTokenContract.read",
+  "design.systemTokenContract.create",
+  "design.systemTokenContract.revise",
+  "design.systemTokenContract.assess",
+  "design.systemTokenContract.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -981,6 +999,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.requirements.revise", hostDesignRequirementsReviseParamsSchema),
   requestVariant("design.requirements.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.requirements.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.systemTokenContract.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.systemTokenContract.create", hostDesignSystemTokenContractCreateParamsSchema),
+  requestVariant("design.systemTokenContract.revise", hostDesignSystemTokenContractReviseParamsSchema),
+  requestVariant("design.systemTokenContract.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.systemTokenContract.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
