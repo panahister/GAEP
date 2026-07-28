@@ -55,7 +55,8 @@
     { "id": "p0-p4-readiness-gate", "label": "Exact governed P0-P4 Readiness Gate candidate evaluation with an explicit passing-is-not-permission boundary and without readiness, approval, waiver acceptance, phase-entry or implementation authorization, baseline promotion, or action authority" },
     { "id": "p5-handoff-package", "label": "Exact governed P5 Handoff Package candidate projection with retained source ownership and without acknowledgement, readiness, approval, Design Baseline, P5 entry, transfer, write, or action authority" },
     { "id": "design-applicability", "label": "Exact governed Design Applicability candidate projection with explicit UX, UI, design-work and Figma decisions and depth, without inferred not-applicable state, design approval, Design Baseline, readiness, implementation, write, or action authority" },
-    { "id": "design-personas-roles", "label": "Exact governed Design Personas and Roles candidate projection with purpose-limited evidence states and Product Designer responsibilities, without persona validation, role appointment, competence verification, design approval, readiness, write, or action authority" }
+    { "id": "design-personas-roles", "label": "Exact governed Design Personas and Roles candidate projection with purpose-limited evidence states and Product Designer responsibilities, without persona validation, role appointment, competence verification, design approval, readiness, write, or action authority" },
+    { "id": "user-journeys", "label": "Exact governed User Journeys candidate projection with bounded journey, touchpoint, path and scope-coverage metadata, without observed-behavior proof, journey validation, design approval, readiness, write, or action authority" }
   ],
   "hosts": [
     {
@@ -66,7 +67,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T075736Z-phase-2-design-personas-roles-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T083917Z-phase-2-user-journeys-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -236,6 +237,9 @@
         ] },
         { "capabilityId": "design-personas-roles", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designPersonaRoleModel?: {", "engine.designPersonaRoleModel!.project(initiative.id)", "id: \"design-persona-role-model\"", "no persona validation, role appointment, competence verification, design approval, readiness, write, or action authority."] }
+        ] },
+        { "capabilityId": "user-journeys", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["userJourneyModel?: {", "engine.userJourneyModel!.project(initiative.id)", "id: \"user-journey-model\"", "no observed-behavior proof, journey validation, design approval, readiness, write, or action authority."] }
         ] }
       ]
     },
@@ -247,7 +251,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T075736Z-phase-2-design-personas-roles-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T083917Z-phase-2-user-journeys-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -435,6 +439,10 @@
         { "capabilityId": "design-personas-roles", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignPersonaRoleModel(", "this.request(\"design.personas.roles.snapshot\"", "designPersonaRoleModelProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignPersonaRoleModel", "GAEP governed Design Personas and Roles candidate", "does not validate personas, appoint roles, verify competence"] }
+        ] },
+        { "capabilityId": "user-journeys", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readUserJourneyModel(", "this.request(\"design.journeys.snapshot\"", "userJourneyModelProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showUserJourneyModel", "GAEP governed User Journeys candidate", "does not prove observed behavior, validate journeys, approve design"] }
         ] }
       ]
     },
@@ -446,7 +454,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T075736Z-phase-2-design-personas-roles-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T083917Z-phase-2-user-journeys-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -670,6 +678,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignPersonaRoleModel(", "portableRequest(\"design.personas.roles.snapshot\"", "parseDesignPersonaRoleEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design Personas and Roles candidate", "no persona validation", "role appointment"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DesignPersonaRoleProjection", "DESIGN_PERSONA_ROLE_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "user-journeys", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readUserJourneyModel(", "portableRequest(\"design.journeys.snapshot\"", "parseUserJourneyEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed User Journeys candidate", "no observed-behavior proof", "journey validation"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["UserJourneyProjection", "USER_JOURNEY_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -681,7 +694,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T075736Z-phase-2-design-personas-roles-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T083917Z-phase-2-user-journeys-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -917,6 +930,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignPersonaRoleModelAsync(", "\"design.personas.roles.snapshot\"", "ParseDesignPersonaRoleResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Design Personas and Roles candidate", "no persona validation", "role appointment"] },
           { "path": "apps/visual-studio/Gaep.HostClient/DesignPersonaRoleProtocol.cs", "contains": ["DesignPersonaRoleProjection", "DesignPersonaRoleProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "user-journeys", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadUserJourneyModelAsync(", "\"design.journeys.snapshot\"", "ParseUserJourneyResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed User Journeys candidate", "no observed-behavior proof", "journey validation"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/UserJourneyProtocol.cs", "contains": ["UserJourneyProjection", "UserJourneyProjectionAuthorityBoundary"] }
         ] }
       ]
     }
