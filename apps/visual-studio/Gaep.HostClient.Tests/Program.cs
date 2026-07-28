@@ -76,6 +76,7 @@ internal static class Program
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
     private static readonly Guid ManualFigmaExecutionPathId = Guid.Parse("72727272-7272-4272-8272-727272727272");
     private static readonly Guid FigmaMcpCapabilityDiscoveryId = Guid.Parse("73737373-7373-4373-8373-737373737373");
+    private static readonly Guid FigmaReadSnapshotId = Guid.Parse("74747474-7474-4474-8474-747474747474");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -233,6 +234,9 @@ internal static class Program
         var badFigmaMcpCapabilityDiscoverySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-figma-mcp-capability-discovery-snapshot-binding");
         var badFigmaMcpCapabilityDiscoverySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-figma-mcp-capability-discovery-snapshot-digest");
         var badFigmaMcpCapabilityDiscoverySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-figma-mcp-capability-discovery-snapshot-private");
+        var badFigmaReadSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-figma-read-snapshot-binding");
+        var badFigmaReadSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-figma-read-snapshot-digest");
+        var badFigmaReadSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-figma-read-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -390,6 +394,9 @@ internal static class Program
         Directory.CreateDirectory(badFigmaMcpCapabilityDiscoverySnapshotBindingRoot);
         Directory.CreateDirectory(badFigmaMcpCapabilityDiscoverySnapshotDigestRoot);
         Directory.CreateDirectory(badFigmaMcpCapabilityDiscoverySnapshotPrivateRoot);
+        Directory.CreateDirectory(badFigmaReadSnapshotBindingRoot);
+        Directory.CreateDirectory(badFigmaReadSnapshotDigestRoot);
+        Directory.CreateDirectory(badFigmaReadSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2091,6 +2098,49 @@ internal static class Program
                 "Figma MCP Capability Discovery rejects a projection rebound to a substituted Product revision");
         }
 
+        var figmaReadSnapshotProjection = await client.ReadFigmaReadSnapshotAsync(InitiativeId);
+        Check(figmaReadSnapshotProjection.ProductId == product.Id &&
+              figmaReadSnapshotProjection.ProductRevision == product.Revision &&
+              figmaReadSnapshotProjection.ProductDigest == product.Digest &&
+              figmaReadSnapshotProjection.InitiativeId == resolved.Id &&
+              figmaReadSnapshotProjection.InitiativeRevision == resolved.Revision &&
+              figmaReadSnapshotProjection.InitiativeDigest == resolved.Digest &&
+              figmaReadSnapshotProjection.AssessmentState == "attention-required" &&
+              figmaReadSnapshotProjection.ReviewState == "held" &&
+              figmaReadSnapshotProjection.SnapshotCompletenessState == "partial" &&
+              figmaReadSnapshotProjection.ProvenanceState == "partial" &&
+              figmaReadSnapshotProjection.FileCount == 2 &&
+              figmaReadSnapshotProjection.ComponentCount == 12 &&
+              figmaReadSnapshotProjection.VariableCollectionCount == 3 &&
+              figmaReadSnapshotProjection.VariableCount == 18 &&
+              figmaReadSnapshotProjection.HumanReviewedItemCount == 25 &&
+              figmaReadSnapshotProjection.Candidate?.FileCount == 2,
+            "Typed Figma Read Snapshot preserves exact Product, Initiative, assessment, catalog, and privacy-safe inventory metadata");
+        var figmaReadSnapshotOutput = await initiativeController.ReadFigmaReadSnapshotAsync(InitiativeId);
+        Check(figmaReadSnapshotOutput.Contains("GAEP governed Figma Read Snapshot candidate", StringComparison.Ordinal) &&
+              figmaReadSnapshotOutput.Contains("2 files · 12 components · 3 variable collections · 18 variables", StringComparison.Ordinal) &&
+              figmaReadSnapshotOutput.Contains("25 human-reviewed", StringComparison.Ordinal) &&
+              figmaReadSnapshotOutput.Contains("no Figma connection or call", StringComparison.Ordinal) &&
+              !figmaReadSnapshotOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !figmaReadSnapshotOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !figmaReadSnapshotOutput.Contains("fileNames", StringComparison.Ordinal),
+            "Figma Read Snapshot workflow renders privacy-safe metadata with explicit disconnected and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badFigmaReadSnapshotDigestRoot, badFigmaReadSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadFigmaReadSnapshotAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Figma Read Snapshot rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badFigmaReadSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadFigmaReadSnapshotAsync(InitiativeId),
+                "Figma Read Snapshot rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3429,6 +3479,9 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-figma-mcp-capability-discovery-snapshot-digest";
         var badFigmaMcpCapabilityDiscoverySnapshotPrivate =
             Path.GetFileName(workspace) == "bad-figma-mcp-capability-discovery-snapshot-private";
+        var badFigmaReadSnapshotBinding = Path.GetFileName(workspace) == "bad-figma-read-snapshot-binding";
+        var badFigmaReadSnapshotDigest = Path.GetFileName(workspace) == "bad-figma-read-snapshot-digest";
+        var badFigmaReadSnapshotPrivate = Path.GetFileName(workspace) == "bad-figma-read-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3913,6 +3966,17 @@ internal static class Program
                         badFigmaMcpCapabilityDiscoverySnapshotBinding,
                         badFigmaMcpCapabilityDiscoverySnapshotDigest,
                         badFigmaMcpCapabilityDiscoverySnapshotPrivate);
+                    break;
+                case "design.figmaReadSnapshot.snapshot":
+                    await HandleFigmaReadSnapshotAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badFigmaReadSnapshotBinding,
+                        badFigmaReadSnapshotDigest,
+                        badFigmaReadSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -7429,6 +7493,107 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["toolCount"] = 8;
         if (includePrivateField) result["toolNames"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleFigmaReadSnapshotAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID FIGMA READ SNAPSHOT");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T20:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('b', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = FigmaReadSnapshotId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('c', 64)}",
+            ["state"] = "candidate",
+            ["fileCount"] = 2,
+            ["componentCount"] = 12,
+            ["variableCollectionCount"] = 3,
+            ["variableCount"] = 18,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T20:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "figma-read-snapshot-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "figma-read-snapshot-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = FigmaReadSnapshotId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["fileCount"] = 2,
+                ["componentCount"] = 12,
+                ["variableCollectionCount"] = 3,
+                ["variableCount"] = 18,
+                ["sourceRecordedItemCount"] = 5,
+                ["humanReviewedItemCount"] = 25,
+                ["notAssessedItemCount"] = 5,
+                ["staleFileCount"] = 1,
+                ["unknownFreshnessFileCount"] = 1,
+                ["unresolvedTypeCount"] = 2,
+                ["unresolvedOwnershipCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["snapshotCompletenessState"] = "partial",
+                ["provenanceState"] = "partial",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more source-recorded snapshot observations require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "figma-read-snapshot-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-authorize-write-validate-or-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-file-component-variable-names-external-identities-values-source-content-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "figma-read-snapshot-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-authorize-write-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["fileCount"] = 3;
+        if (includePrivateField) result["fileNames"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

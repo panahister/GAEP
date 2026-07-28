@@ -1,0 +1,42 @@
+namespace Gaep.HostClient;
+
+public sealed record FigmaReadSnapshotRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int FileCount,
+    int ComponentCount,
+    int VariableCollectionCount,
+    int VariableCount,
+    string ReviewState);
+
+public sealed record FigmaReadSnapshotProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    string ReviewState,
+    string SnapshotCompletenessState,
+    string ProvenanceState,
+    IReadOnlyList<string> Reasons,
+    int FileCount,
+    int ComponentCount,
+    int VariableCollectionCount,
+    int VariableCount,
+    int SourceRecordedItemCount,
+    int HumanReviewedItemCount,
+    int NotAssessedItemCount,
+    int StaleFileCount,
+    int UnknownFreshnessFileCount,
+    int UnresolvedTypeCount,
+    int UnresolvedOwnershipCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    int UnresolvedQuestionCount,
+    FigmaReadSnapshotRecordView? Candidate,
+    string SnapshotDigest);

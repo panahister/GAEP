@@ -156,6 +156,10 @@
                 Command="{Binding LoadFigmaMcpCapabilityDiscoveryCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds tool names, schemas, permissions, limits, versions, Source, Figma content, and personal content, and does not connect to or call Figma, request credentials, grant permissions, establish live tool availability or compatibility, authorize writes, approve design, establish a baseline or readiness, or authorize implementation or action."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadFigmaReadSnapshotButton" Content="Inspect governed Figma Read Snapshot"
+                Command="{Binding LoadFigmaReadSnapshotCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds Figma file, component, collection, variable, external identity, value, Source, personal, secret, credential, and permission content, and does not connect to or call Figma, request credentials, grant permissions, prove external completeness, authorize writes, validate or approve design, establish a baseline or readiness, or authorize implementation or action."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

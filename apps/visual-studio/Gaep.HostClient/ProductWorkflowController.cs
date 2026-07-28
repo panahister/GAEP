@@ -2046,6 +2046,66 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadFigmaReadSnapshotAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadFigmaReadSnapshotAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Figma Read Snapshot was read. Refresh the exact records.");
+        }
+        return RenderFigmaReadSnapshot(projection);
+    }
+
+    public static string RenderFigmaReadSnapshot(FigmaReadSnapshotProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Figma Read Snapshot candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine($"Catalogs: snapshot {projection.SnapshotCompletenessState} · provenance {projection.ProvenanceState}")
+            .AppendLine(
+                $"Inventory: {projection.FileCount} files · {projection.ComponentCount} components · " +
+                $"{projection.VariableCollectionCount} variable collections · {projection.VariableCount} variables")
+            .AppendLine(
+                $"Evidence: {projection.HumanReviewedItemCount} human-reviewed · " +
+                $"{projection.SourceRecordedItemCount} source-recorded · {projection.NotAssessedItemCount} not assessed")
+            .AppendLine(
+                $"Freshness and type gaps: {projection.StaleFileCount} stale at capture · " +
+                $"{projection.UnknownFreshnessFileCount} unknown freshness · {projection.UnresolvedTypeCount} unresolved variable types")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedOwnershipCount} ownership · {projection.UnresolvedQuestionCount} questions · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Figma Read Snapshot candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {candidate.FileCount} files · {candidate.ComponentCount} components · " +
+                    $"{candidate.VariableCollectionCount} variable collections · {candidate.VariableCount} variables · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Figma Read Snapshot candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and digests only; no Figma connection or call, " +
+                "credential request, permission grant, external completeness claim, write authority, design validation or approval, " +
+                "baseline, readiness, implementation, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,
