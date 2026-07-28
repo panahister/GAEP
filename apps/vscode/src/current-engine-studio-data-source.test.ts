@@ -31,6 +31,7 @@ import {
   type DesignRequirementsProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
+  type ResponsiveMultiPlatformTargetsProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2009,6 +2010,67 @@ function accessibilityDesignRulesProjection(): AccessibilityDesignRulesProjectio
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function responsiveMultiPlatformTargetsProjection(): ResponsiveMultiPlatformTargetsProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "responsive-multi-platform-targets-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "c6c6c6c6-c6c6-46c6-86c6-c6c6c6c6c6c6", revision: 2, digest: `sha256:${"5".repeat(64)}` as const },
+    platformTargetCount: 3,
+    breakpointCount: 7,
+    behaviorCount: 16,
+    checkCount: 22,
+    applicableBehaviorCount: 13,
+    unresolvedBehaviorCount: 3,
+    notAssessedCheckCount: 4,
+    evidenceRecordedCheckCount: 2,
+    humanReviewedCheckCount: 16,
+    contradictedCheckCount: 1,
+    representedRequirementCount: 10,
+    unresolvedRequirementCount: 2,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    targetCatalogState: "candidate-complete" as const,
+    breakpointCatalogState: "candidate-complete" as const,
+    behaviorCatalogState: "not-assessed" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more responsive platform behaviors retain unresolved applicability"],
+    assessedAt: "2026-07-28T15:30:00.000Z",
+    authorityBoundary: "responsive-multi-platform-targets-status-is-observational-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "responsive-multi-platform-targets-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"6".repeat(64)}` as const,
+      state: "candidate" as const,
+      platformTargetCount: 3,
+      breakpointCount: 7,
+      behaviorCount: 16,
+      checkCount: 22,
+      representedRequirementCount: 10,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-28T15:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-breakpoint-rules-behavior-procedures-evidence-requirement-source-design-or-personal-content-secrets-or-credentials" as const,
+    authorityBoundary: "responsive-multi-platform-targets-projection-is-read-only-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2662,6 +2724,7 @@ interface HarnessOptions {
   designRequirementsProjection?: DesignRequirementsProjection
   designSystemTokenContractProjection?: DesignSystemTokenContractProjection
   accessibilityDesignRulesProjection?: AccessibilityDesignRulesProjection
+  responsiveMultiPlatformTargetsProjection?: ResponsiveMultiPlatformTargetsProjection
   commandResult?: unknown
 }
 
@@ -2902,6 +2965,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.accessibilityDesignRulesProjection ? {
       accessibilityDesignRules: {
         project: async () => options.accessibilityDesignRulesProjection!,
+      },
+    } : {}),
+    ...(options.responsiveMultiPlatformTargetsProjection ? {
+      responsiveMultiPlatformTargets: {
+        project: async () => options.responsiveMultiPlatformTargetsProjection!,
       },
     } : {}),
   }
@@ -3689,6 +3757,33 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private rule procedure|private evidence|private requirement|private source content|private design content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Responsive and Multi-Platform Targets metadata on the native scope page", async () => {
+    const projection = responsiveMultiPlatformTargetsProjection()
+    const { source } = harness({ responsiveMultiPlatformTargetsProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "responsive-multi-platform-targets")).toMatchObject({
+      id: "responsive-multi-platform-targets",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          inventory: "3 platform targets · 7 breakpoints · 16 behaviors · 22 checks",
+          behaviors: "13 applicable · 3 unresolved",
+          checks: "16 human-reviewed · 2 evidence-recorded · 4 not assessed · 1 contradicted",
+          coverage: "10 represented requirements · 2 unresolved requirements",
+          assessment: "attention-required · held · targets candidate-complete · breakpoints candidate-complete · behaviors not-assessed",
+          gaps: "1 ownership gaps · 3 questions · 0 stale bindings · 2 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no breakpoint rules, behavior procedures, evidence, requirements, Source, design, or personal content and no responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private breakpoint rule|private behavior procedure|private evidence|private requirement|private source content|private design content|customer@example\.com|api_key/iu,
     )
   })
 

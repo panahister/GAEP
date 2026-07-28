@@ -82,6 +82,7 @@
     "onCommand:gaepKiro.designRequirements.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
+    "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -287,6 +288,10 @@
       {
         "command": "gaepKiro.accessibilityDesignRules.inspect",
         "title": "GAEP for Kiro: Inspect Governed Accessibility Design Rules Candidate"
+      },
+      {
+        "command": "gaepKiro.responsiveMultiPlatformTargets.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Responsive and Multi-Platform Targets Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

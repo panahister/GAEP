@@ -59,6 +59,7 @@ import type {
   DesignRequirementsProjection,
   DesignSystemTokenContractProjection,
   AccessibilityDesignRulesProjection,
+  ResponsiveMultiPlatformTargetsProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -243,6 +244,9 @@ export interface CurrentStudioEngineReader {
   accessibilityDesignRules?: {
     project(initiativeId: string): Promise<AccessibilityDesignRulesProjection>
   }
+  responsiveMultiPlatformTargets?: {
+    project(initiativeId: string): Promise<ResponsiveMultiPlatformTargetsProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -311,6 +315,7 @@ interface ObservedStudioState {
   designRequirementsProjections: Map<string, DesignRequirementsProjection>
   designSystemTokenContractProjections: Map<string, DesignSystemTokenContractProjection>
   accessibilityDesignRulesProjections: Map<string, AccessibilityDesignRulesProjection>
+  responsiveMultiPlatformTargetsProjections: Map<string, ResponsiveMultiPlatformTargetsProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2008,6 +2013,59 @@ function accessibilityDesignRulesTable(state: ObservedStudioState): StudioTableS
   }
 }
 
+function responsiveMultiPlatformTargetsTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.responsiveMultiPlatformTargetsProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        inventory: `${status.platformTargetCount} platform targets · ${status.breakpointCount} breakpoints · ${status.behaviorCount} behaviors · ${status.checkCount} checks`,
+        behaviors: `${status.applicableBehaviorCount} applicable · ${status.unresolvedBehaviorCount} unresolved`,
+        checks: `${status.humanReviewedCheckCount} human-reviewed · ${status.evidenceRecordedCheckCount} evidence-recorded · ${status.notAssessedCheckCount} not assessed · ${status.contradictedCheckCount} contradicted`,
+        coverage: `${status.representedRequirementCount} represented requirements · ${status.unresolvedRequirementCount} unresolved requirements`,
+        assessment: `${status.state} · ${status.reviewState} · targets ${status.targetCatalogState} · breakpoints ${status.breakpointCatalogState} · behaviors ${status.behaviorCatalogState}`,
+        gaps: `${status.unresolvedOwnershipCount} ownership gaps · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no breakpoint rules, behavior procedures, evidence, requirements, Source, design, or personal content and no responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "responsive-multi-platform-targets",
+    title: "Governed Responsive and Multi-Platform Targets Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "behaviors", label: "Behavior applicability" },
+      { key: "checks", label: "Check evidence" },
+      { key: "coverage", label: "Requirement coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Responsive and Multi-Platform Targets candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2034,6 +2092,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     designRequirementsTable(state),
     designSystemTokenContractTable(state),
     accessibilityDesignRulesTable(state),
+    responsiveMultiPlatformTargetsTable(state),
   )
   if (route === "architecture") {
     relatedRecords.push(
@@ -4684,6 +4743,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       designRequirementsProjections: new Map(),
       designSystemTokenContractProjections: new Map(),
       accessibilityDesignRulesProjections: new Map(),
+      responsiveMultiPlatformTargetsProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -6064,6 +6124,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "accessibility-design-rules-unavailable",
           "Accessibility Design Rules metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.responsiveMultiPlatformTargets) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.responsiveMultiPlatformTargets!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.responsiveMultiPlatformTargetsProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Responsive and Multi-Platform Targets projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `responsive-multi-platform-targets-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Responsive and Multi-Platform Targets metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "responsive-multi-platform-targets-unavailable",
+          "Responsive and Multi-Platform Targets metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

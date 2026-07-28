@@ -58,6 +58,7 @@ const screenStateInventoryId = "60606060-6060-4060-8060-606060606060"
 const designRequirementsId = "61616161-6161-4161-8161-616161616161"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
+const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -155,6 +156,8 @@ input.on("line", (line) => {
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
       return readAccessibilityDesignRules(id, request.params)
+    case "design.responsiveMultiPlatformTargets.snapshot":
+      return readResponsiveMultiPlatformTargets(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2207,6 +2210,77 @@ function readAccessibilityDesignRules(id, params) {
   if (workspacePath.endsWith("bad-accessibility-design-rules-snapshot-digest")) value.candidate.ruleCount = 19
   if (workspacePath.endsWith("bad-accessibility-design-rules-snapshot-private")) {
     value.ruleProcedure = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readResponsiveMultiPlatformTargets(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE RESPONSIVE MULTI PLATFORM TARGETS PARAMS")
+  }
+  const candidateDigest = `sha256:${"5".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "responsive-multi-platform-targets-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: responsiveMultiPlatformTargetsId, revision: 2, digest: candidateDigest },
+    platformTargetCount: 3,
+    breakpointCount: 5,
+    behaviorCount: 14,
+    checkCount: 22,
+    applicableBehaviorCount: 12,
+    unresolvedBehaviorCount: 2,
+    notAssessedCheckCount: 3,
+    evidenceRecordedCheckCount: 2,
+    humanReviewedCheckCount: 17,
+    contradictedCheckCount: 1,
+    representedRequirementCount: 10,
+    unresolvedRequirementCount: 2,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    targetCatalogState: "candidate-complete",
+    breakpointCatalogState: "not-assessed",
+    behaviorCatalogState: "not-assessed",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["Responsive behavior and breakpoint catalogs retain unresolved review gaps"],
+    assessedAt: "2026-07-28T15:30:00.000Z",
+    authorityBoundary: "responsive-multi-platform-targets-status-is-observational-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "responsive-multi-platform-targets-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: responsiveMultiPlatformTargetsId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"6".repeat(64)}`,
+      state: "candidate",
+      platformTargetCount: 3,
+      breakpointCount: 5,
+      behaviorCount: 14,
+      checkCount: 22,
+      representedRequirementCount: 10,
+      reviewState: "held",
+      updatedAt: "2026-07-28T15:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-breakpoint-rules-behavior-procedures-evidence-requirement-source-design-or-personal-content-secrets-or-credentials",
+    authorityBoundary: "responsive-multi-platform-targets-projection-is-read-only-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-responsive-multi-platform-targets-snapshot-binding")) content.initiative.id = responsiveMultiPlatformTargetsId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-responsive-multi-platform-targets-snapshot-digest")) value.candidate.behaviorCount = 15
+  if (workspacePath.endsWith("bad-responsive-multi-platform-targets-snapshot-private")) {
+    value.behaviorProcedure = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

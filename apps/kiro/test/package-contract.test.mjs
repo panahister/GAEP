@@ -25,7 +25,7 @@ test("verifies the exact bounded Kiro VSIX payload and built-byte parity", async
   assert.equal(result.kind, "gaep-kiro-vsix-verification-v1")
   assert.equal(result.packageId, "gaep.gaep-kiro@0.1.0")
   assert.equal(result.entries, 7)
-  assert.equal(result.commands, 50)
+  assert.equal(result.commands, 51)
   assert.equal(result.nativeKiroAcceptance, "not-established")
   assert.match(result.archiveDigest, /^sha256:[0-9a-f]{64}$/u)
   assert.match(result.engineDigest, /^sha256:[0-9a-f]{64}$/u)

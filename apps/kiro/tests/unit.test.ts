@@ -1771,6 +1771,60 @@ test("protocol-v2 client validates privacy-safe Accessibility Design Rules proje
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates privacy-safe Responsive and Multi-Platform Targets projections and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-responsive-multi-platform-targets-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-responsive-multi-platform-targets-snapshot-binding",
+    "bad-responsive-multi-platform-targets-snapshot-digest",
+    "bad-responsive-multi-platform-targets-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readResponsiveMultiPlatformTargets(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.platformTargetCount, 3)
+    assert.equal(projection.status.breakpointCount, 5)
+    assert.equal(projection.status.behaviorCount, 14)
+    assert.equal(projection.status.checkCount, 22)
+    assert.equal(projection.status.humanReviewedCheckCount, 17)
+    assert.equal(projection.status.representedRequirementCount, 10)
+    assert.equal(projection.candidate?.behaviorCount, 14)
+    assert.equal(
+      projection.authorityBoundary,
+      "responsive-multi-platform-targets-projection-is-read-only-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-write-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"behaviorProcedure":'), false)
+    assert.equal(serialized.includes('"behaviors":'), false)
+    assert.equal(serialized.includes('"checks":'), false)
+    assert.equal(serialized.includes('"requirements":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readResponsiveMultiPlatformTargets(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")
