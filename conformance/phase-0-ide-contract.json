@@ -53,7 +53,8 @@
     { "id": "evidence-registry", "label": "Exact governed Evidence Registry candidate projection without claim validation, evidence sufficiency, assurance, completed review, approval, risk acceptance, operational readiness, baseline promotion, or action authority" },
     { "id": "end-to-end-traceability", "label": "Exact governed End-to-End Traceability candidate projection with an explicit incomplete-coverage boundary and without relationship truth, completeness, approval, baseline promotion, operational readiness, or action authority" },
     { "id": "p0-p4-readiness-gate", "label": "Exact governed P0-P4 Readiness Gate candidate evaluation with an explicit passing-is-not-permission boundary and without readiness, approval, waiver acceptance, phase-entry or implementation authorization, baseline promotion, or action authority" },
-    { "id": "p5-handoff-package", "label": "Exact governed P5 Handoff Package candidate projection with retained source ownership and without acknowledgement, readiness, approval, Design Baseline, P5 entry, transfer, write, or action authority" }
+    { "id": "p5-handoff-package", "label": "Exact governed P5 Handoff Package candidate projection with retained source ownership and without acknowledgement, readiness, approval, Design Baseline, P5 entry, transfer, write, or action authority" },
+    { "id": "design-applicability", "label": "Exact governed Design Applicability candidate projection with explicit UX, UI, design-work and Figma decisions and depth, without inferred not-applicable state, design approval, Design Baseline, readiness, implementation, write, or action authority" }
   ],
   "hosts": [
     {
@@ -64,7 +65,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260727T201803Z-phase-1-agent-model-dashboard-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T235831Z-phase-2-design-applicability-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -228,6 +229,9 @@
         ] },
         { "capabilityId": "p5-handoff-package", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["p5HandoffPackageProjections: Map<string, P5HandoffPackageProjection>", "engine.p5HandoffPackage!.project(initiative.id)", "id: \"p5-handoff-packages\"", "Candidate context transfer only; source ownership remains retained and this does not establish acknowledgement, readiness, approval, a design baseline, P5 entry, transfer authority, write authority, or action authority."] }
+        ] },
+        { "capabilityId": "design-applicability", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designApplicability?: {", "engine.designApplicability!.project(initiative.id)", "id: \"design-applicability\"", "silence is never not applicable, and this does not approve design, establish a Design Baseline, grant readiness, authorize implementation, write, or action."] }
         ] }
       ]
     },
@@ -239,7 +243,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260727T201803Z-phase-1-agent-model-dashboard-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T235831Z-phase-2-design-applicability-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -419,6 +423,10 @@
         { "capabilityId": "p5-handoff-package", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readP5HandoffPackage(", "this.request(\"handoff.p5.snapshot\"", "p5HandoffPackageProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showP5HandoffPackage", "GAEP governed P5 Handoff Package candidate", "Handoff boundary: ${status.handoffBoundary}", "Source ownership remains retained. Complete for review is not acknowledgement"] }
+        ] },
+        { "capabilityId": "design-applicability", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignApplicability(", "this.request(\"design.applicability.snapshot\"", "designApplicabilityProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignApplicability", "GAEP governed Design Applicability candidate", "silence as not applicable", "does not approve design"] }
         ] }
       ]
     },
@@ -430,7 +438,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260727T201803Z-phase-1-agent-model-dashboard-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T235831Z-phase-2-design-applicability-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -644,6 +652,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readP5HandoffPackage(", "portableRequest(\"handoff.p5.snapshot\"", "parseP5HandoffPackageEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed P5 Handoff Package candidate", "Handoff boundary:", "source ownership remains retained"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["P5HandoffPackageRecordView", "P5_HANDOFF_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "design-applicability", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignApplicability(", "portableRequest(\"design.applicability.snapshot\"", "parseDesignApplicabilityEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design Applicability candidate", "silence is never not applicable", "does not approve design"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DesignApplicabilityProjection", "DESIGN_APPLICABILITY_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -655,7 +668,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260727T201803Z-phase-1-agent-model-dashboard-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260727T235831Z-phase-2-design-applicability-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -881,6 +894,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadP5HandoffPackageAsync(", "\"handoff.p5.snapshot\"", "ParseP5HandoffPackageResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed P5 Handoff Package candidate", "Handoff boundary:", "source ownership remains retained"] },
           { "path": "apps/visual-studio/Gaep.HostClient/P5HandoffPackageProtocol.cs", "contains": ["P5HandoffPackageProjection", "P5HandoffProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "design-applicability", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignApplicabilityAsync(", "\"design.applicability.snapshot\"", "ParseDesignApplicabilityResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Design Applicability candidate", "silence is never not applicable", "does not approve design"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/DesignApplicabilityProtocol.cs", "contains": ["DesignApplicabilityProjection", "DesignApplicabilityProjectionAuthorityBoundary"] }
         ] }
       ]
     }
