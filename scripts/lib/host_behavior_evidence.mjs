@@ -127,6 +127,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/InformationArchitectureProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/ScreenStateInventoryModels.cs",
       "apps/visual-studio/Gaep.HostClient/ScreenStateInventoryProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/DesignRequirementsModels.cs",
+      "apps/visual-studio/Gaep.HostClient/DesignRequirementsProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -143,7 +145,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (451)",
+        "GAEP Visual Studio host-client tests: PASS (458)",
       ],
     }],
   },

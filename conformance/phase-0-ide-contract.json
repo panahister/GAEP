@@ -58,7 +58,8 @@
     { "id": "design-personas-roles", "label": "Exact governed Design Personas and Roles candidate projection with purpose-limited evidence states and Product Designer responsibilities, without persona validation, role appointment, competence verification, design approval, readiness, write, or action authority" },
     { "id": "user-journeys", "label": "Exact governed User Journeys candidate projection with bounded journey, touchpoint, path and scope-coverage metadata, without observed-behavior proof, journey validation, design approval, readiness, write, or action authority" },
     { "id": "information-architecture", "label": "Exact governed Information Architecture candidate projection with bounded hierarchy, content-model, navigation-route and scope-coverage metadata, without findability, comprehension, accessibility or content validation, design approval, readiness, write, or action authority" },
-    { "id": "screen-state-inventory", "label": "Exact governed Screen and State Inventory candidate projection with bounded platform, screen, state, variant, route and scope-coverage metadata, without UI completeness, platform parity, state reachability, interaction quality or accessibility proof, design approval, readiness, write, or action authority" }
+    { "id": "screen-state-inventory", "label": "Exact governed Screen and State Inventory candidate projection with bounded platform, screen, state, variant, route and scope-coverage metadata, without UI completeness, platform parity, state reachability, interaction quality or accessibility proof, design approval, readiness, write, or action authority" },
+    { "id": "design-requirements", "label": "Exact governed Design Requirements candidate projection with bounded requirement, outcome, design-target and Initiative-backlog metadata, without requirement validity, completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, write, or action authority" }
   ],
   "hosts": [
     {
@@ -69,7 +70,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T111535Z-phase-2-screen-state-inventory-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T115846Z-phase-2-design-requirements-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -248,6 +249,9 @@
         ] },
         { "capabilityId": "screen-state-inventory", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["screenStateInventory?: {", "engine.screenStateInventory!.project(initiative.id)", "id: \"screen-state-inventory\"", "no UI completeness, platform parity, state reachability, interaction quality, accessibility validation, design approval, readiness, write, or action authority."] }
+        ] },
+        { "capabilityId": "design-requirements", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designRequirements?: {", "engine.designRequirements!.project(initiative.id)", "id: \"design-requirements\"", "no validity, completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, write, or action authority."] }
         ] }
       ]
     },
@@ -259,7 +263,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T111535Z-phase-2-screen-state-inventory-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T115846Z-phase-2-design-requirements-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -459,6 +463,10 @@
         { "capabilityId": "screen-state-inventory", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readScreenStateInventory(", "this.request(\"design.screenStateInventory.snapshot\"", "screenStateInventoryProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showScreenStateInventory", "GAEP governed Screen and State Inventory candidate", "does not prove UI completeness, platform parity, state reachability, interaction quality, or accessibility"] }
+        ] },
+        { "capabilityId": "design-requirements", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignRequirements(", "this.request(\"design.requirements.snapshot\"", "designRequirementsProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignRequirements", "GAEP governed Design Requirements candidate", "does not establish requirement validity, completeness, priority approval, satisfaction, backlog commitment"] }
         ] }
       ]
     },
@@ -470,7 +478,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T111535Z-phase-2-screen-state-inventory-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T115846Z-phase-2-design-requirements-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -709,6 +717,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readScreenStateInventory(", "portableRequest(\"design.screenStateInventory.snapshot\"", "parseScreenStateInventoryEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Screen and State Inventory candidate", "no UI", "accessibility proof"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["ScreenStateInventoryProjection", "SCREEN_STATE_INVENTORY_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "design-requirements", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignRequirements(", "portableRequest(\"design.requirements.snapshot\"", "parseDesignRequirementsEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design Requirements candidate", "no requirement validity", "backlog commitment"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DesignRequirementsProjection", "DESIGN_REQUIREMENTS_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -720,7 +733,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T111535Z-phase-2-screen-state-inventory-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T115846Z-phase-2-design-requirements-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -971,6 +984,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadScreenStateInventoryAsync(", "\"design.screenStateInventory.snapshot\"", "ParseScreenStateInventoryResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Screen and State Inventory candidate", "no UI", "accessibility proof"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ScreenStateInventoryProtocol.cs", "contains": ["ScreenStateInventoryProjection", "ScreenStateInventoryProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "design-requirements", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignRequirementsAsync(", "\"design.requirements.snapshot\"", "ParseDesignRequirementsResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Design Requirements candidate", "no requirement validity", "backlog commitment"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/DesignRequirementsProtocol.cs", "contains": ["DesignRequirementsProjection", "DesignRequirementsProjectionAuthorityBoundary"] }
         ] }
       ]
     }
