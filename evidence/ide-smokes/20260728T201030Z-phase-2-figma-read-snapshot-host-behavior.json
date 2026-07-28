@@ -13,8 +13,8 @@
       "package": {
         "status": "produced",
         "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
-        "bytes": 791766,
-        "digest": "sha256:bca0f37166650125a297d9bf77fb77a3e27d0b5bae559daf498a1e92b165eda1"
+        "bytes": 791783,
+        "digest": "sha256:a88dd7fef6544cd2be847191c14c76b98aae7b77b6aae7179f161d8077500bce"
       },
       "checks": [
         {
@@ -33,8 +33,8 @@
       "package": {
         "status": "produced",
         "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
-        "bytes": 1470327,
-        "digest": "sha256:06e73ab67d76c0c1cd0756ff106727a04d8e5c7d65404cae92d3bdb513db20bb"
+        "bytes": 1470343,
+        "digest": "sha256:a5e22753c4c4b4fa73893cc5b1ade5ee357d9bb43454bef1bcb2f6484f4f7312"
       },
       "checks": [
         {
@@ -76,8 +76,8 @@
       "package": {
         "status": "produced",
         "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
-        "bytes": 834159,
-        "digest": "sha256:6eb6a6530c8728e376565c36a8c57f4f4f41257d2d059d36aa06c8bb36ba45f7"
+        "bytes": 834180,
+        "digest": "sha256:3e6ed6064335a2b9ce54cb360918c213a953e2b0ed09eb93965cf7bb8222ee69"
       },
       "checks": [
         {
