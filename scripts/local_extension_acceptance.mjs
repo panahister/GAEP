@@ -43,7 +43,9 @@ export async function main(argv = process.argv.slice(2)) {
   if (!existsSync(manifestPath)) throw new Error(`missing bundle manifest: ${manifestPath}`)
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
   const identity = await currentSourceIdentity()
-  if (manifest.sourceTreeDigest !== identity.sourceTreeDigest || manifest.sourceCommit !== identity.baseCommit) {
+  // sourceCommit is provenance-only; sourceTreeDigest is the sole staleness identity. This lets a
+  // generated-evidence-only commit preserve acceptance for an otherwise byte-identical source tree.
+  if (manifest.sourceTreeDigest !== identity.sourceTreeDigest) {
     throw new Error("bundle is stale; regenerate it from the current source before local acceptance")
   }
 

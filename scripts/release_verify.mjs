@@ -33,7 +33,8 @@ if (manifest.changeSetId !== CHANGE_SET_ID) fail(`changeSetId ${manifest.changeS
 if (manifest.version !== VERSION) fail(`version ${manifest.version} != ${VERSION}`)
 const currentIdentity = await currentSourceIdentity()
 if (manifest.sourceTreeDigest !== currentIdentity.sourceTreeDigest) fail("bundle is stale: sourceTreeDigest differs from the current source tree")
-if (manifest.sourceCommit !== currentIdentity.baseCommit) fail("bundle is stale: sourceCommit differs from the current repository base commit")
+// sourceTreeDigest is the equivalence/staleness authority. A commit that changes only excluded,
+// generated evidence is valid provenance and must not invalidate a byte-identical source tree.
 
 // Every artifact must share the manifest's source identity (no mixed-commit bundle).
 for (const a of manifest.artifacts) {
