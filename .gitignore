@@ -15,6 +15,7 @@ node_modules/
 coverage/
 .vitest/
 **/.gradle/
+**/.kotlin/
 **/.intellijPlatform/
 **/build/
 **/bin/

@@ -112,8 +112,11 @@ function buildDarwinRider() {
     execFileSync(process.execPath, [join(repoRoot, "scripts", "stage_engine_host_sea.mjs"), "--target", "darwin-arm64", "--dest", join(repoRoot, "apps", "rider", "build", "gaep-engine-host")], { cwd: repoRoot, stdio: "inherit" })
   }
   const jbr = resolveIde("jbr")
+  const rider = resolveIde("rider")
   if (!jbr.path) throw new Error("Rider JBR not found; configure GAEP_RIDER_JBR")
+  if (!rider.path || !rider.path.endsWith(".app")) throw new Error("Rider app not found; configure GAEP_RIDER_APP")
   execFileSync("./gradlew", ["test", "buildPlugin", "verifyPlugin"], {
-    cwd: join(repoRoot, "apps", "rider"), stdio: "inherit", env: { ...process.env, JAVA_HOME: jbr.path },
+    cwd: join(repoRoot, "apps", "rider"), stdio: "inherit",
+    env: { ...process.env, JAVA_HOME: jbr.path, GAEP_RIDER_LOCAL_PATH: rider.path },
   })
 }

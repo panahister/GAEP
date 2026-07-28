@@ -13,8 +13,8 @@ function arg(name) {
 
 const archive = arg("--archive")
 const target = arg("--target")
-if (!archive || (target !== "win32-x64" && target !== "linux-x64")) {
-  process.stderr.write("Usage: verify_native_archive.mjs --archive <zip|vsix> --target <win32-x64|linux-x64>\n")
+if (!archive || !["win32-x64", "linux-x64", "darwin-arm64"].includes(target)) {
+  process.stderr.write("Usage: verify_native_archive.mjs --archive <zip|vsix> --target <win32-x64|linux-x64|darwin-arm64>\n")
   process.exit(64)
 }
 
