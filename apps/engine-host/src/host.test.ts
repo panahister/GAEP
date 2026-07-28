@@ -1646,6 +1646,52 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "responsive-multi-platform-targets-read-empty",
+      protocolVersion: 2,
+      method: "design.responsiveMultiPlatformTargets.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "responsive-multi-platform-targets-assess-empty",
+      protocolVersion: 2,
+      method: "design.responsiveMultiPlatformTargets.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      platformTargetCount: 0,
+      breakpointCount: 0,
+      behaviorCount: 0,
+      checkCount: 0,
+      applicableBehaviorCount: 0,
+      unresolvedBehaviorCount: 0,
+      notAssessedCheckCount: 0,
+      evidenceRecordedCheckCount: 0,
+      humanReviewedCheckCount: 0,
+      contradictedCheckCount: 0,
+      representedRequirementCount: 0,
+      unresolvedRequirementCount: 0,
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-responsive-completeness-platform-parity"),
+    })
+    const responsiveMultiPlatformTargetsProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "responsive-multi-platform-targets-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.responsiveMultiPlatformTargets.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: responsiveMultiPlatformTargetsSnapshotDigest,
+      ...responsiveMultiPlatformTargetsProjectionBody
+    } = responsiveMultiPlatformTargetsProjection
+    expect(responsiveMultiPlatformTargetsSnapshotDigest).toBe(canonicalDigest(responsiveMultiPlatformTargetsProjectionBody))
+    expect(responsiveMultiPlatformTargetsProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-breakpoint-rules-behavior-procedures-evidence-requirement-source-design-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-responsive-completeness-platform-parity"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1726,6 +1772,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "accessibility-design-rules-v1-block",
       method: "design.accessibilityRules.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "responsive-multi-platform-targets-v1-block",
+      method: "design.responsiveMultiPlatformTargets.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

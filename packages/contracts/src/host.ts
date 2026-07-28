@@ -56,6 +56,7 @@ import { screenStateInventoryInputSchema } from "./screen-state-inventory.js"
 import { designRequirementsInputSchema } from "./design-requirements.js"
 import { designSystemTokenContractInputSchema } from "./design-system-token-contract.js"
 import { accessibilityDesignRulesInputSchema } from "./accessibility-design-rules.js"
+import { responsiveMultiPlatformTargetsInputSchema } from "./responsive-multi-platform-targets.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -604,6 +605,18 @@ export const hostAccessibilityDesignRulesReviseParamsSchema = z.object({
   record: accessibilityDesignRulesInputSchema,
 }).strict()
 
+export const hostResponsiveMultiPlatformTargetsCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: responsiveMultiPlatformTargetsInputSchema,
+}).strict()
+
+export const hostResponsiveMultiPlatformTargetsReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: responsiveMultiPlatformTargetsInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -811,6 +824,11 @@ export const hostMethodSchema = z.enum([
   "design.accessibilityRules.revise",
   "design.accessibilityRules.assess",
   "design.accessibilityRules.snapshot",
+  "design.responsiveMultiPlatformTargets.read",
+  "design.responsiveMultiPlatformTargets.create",
+  "design.responsiveMultiPlatformTargets.revise",
+  "design.responsiveMultiPlatformTargets.assess",
+  "design.responsiveMultiPlatformTargets.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1027,6 +1045,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.accessibilityRules.revise", hostAccessibilityDesignRulesReviseParamsSchema),
   requestVariant("design.accessibilityRules.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.accessibilityRules.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.responsiveMultiPlatformTargets.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.responsiveMultiPlatformTargets.create", hostResponsiveMultiPlatformTargetsCreateParamsSchema),
+  requestVariant("design.responsiveMultiPlatformTargets.revise", hostResponsiveMultiPlatformTargetsReviseParamsSchema),
+  requestVariant("design.responsiveMultiPlatformTargets.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.responsiveMultiPlatformTargets.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

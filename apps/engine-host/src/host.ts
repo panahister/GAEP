@@ -249,6 +249,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.accessibilityRules.revise",
   "design.accessibilityRules.assess",
   "design.accessibilityRules.snapshot",
+  "design.responsiveMultiPlatformTargets.read",
+  "design.responsiveMultiPlatformTargets.create",
+  "design.responsiveMultiPlatformTargets.revise",
+  "design.responsiveMultiPlatformTargets.assess",
+  "design.responsiveMultiPlatformTargets.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1575,6 +1580,24 @@ export class EngineHost {
         return this.engine.accessibilityDesignRules.assess(request.params.initiativeId)
       case "design.accessibilityRules.snapshot":
         return this.engine.accessibilityDesignRules.project(request.params.initiativeId)
+      case "design.responsiveMultiPlatformTargets.read":
+        return await this.engine.responsiveMultiPlatformTargets.readCurrent(request.params.initiativeId) ?? null
+      case "design.responsiveMultiPlatformTargets.create":
+        return this.engine.responsiveMultiPlatformTargets.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.responsiveMultiPlatformTargets.revise":
+        return this.engine.responsiveMultiPlatformTargets.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.responsiveMultiPlatformTargets.assess":
+        return this.engine.responsiveMultiPlatformTargets.assess(request.params.initiativeId)
+      case "design.responsiveMultiPlatformTargets.snapshot":
+        return this.engine.responsiveMultiPlatformTargets.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

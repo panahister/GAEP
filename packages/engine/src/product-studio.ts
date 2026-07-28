@@ -19,6 +19,7 @@ import {
   designRequirementsSchema,
   designSystemTokenContractSchema,
   accessibilityDesignRulesSchema,
+  responsiveMultiPlatformTargetsSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -94,6 +95,7 @@ import {
   type DesignRequirements,
   type DesignSystemTokenContract,
   type AccessibilityDesignRules,
+  type ResponsiveMultiPlatformTargets,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2245,6 +2247,16 @@ export class ProductStudioService {
       /^accessibility-design-rules-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       accessibilityDesignRulesSchema,
     )
+    const responsiveMultiPlatformTargets = await this.listRecords(
+      "responsive-multi-platform-targets",
+      /^[0-9a-f-]+\.json$/i,
+      responsiveMultiPlatformTargetsSchema,
+    )
+    const responsiveMultiPlatformTargetsHistory = await this.listRecords(
+      "responsive-multi-platform-targets-history",
+      /^responsive-multi-platform-targets-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      responsiveMultiPlatformTargetsSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2325,6 +2337,8 @@ export class ProductStudioService {
       ...designSystemTokenContractHistory,
       ...accessibilityDesignRules,
       ...accessibilityDesignRulesHistory,
+      ...responsiveMultiPlatformTargets,
+      ...responsiveMultiPlatformTargetsHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2365,6 +2379,7 @@ export class ProductStudioService {
           designRequirements.find((record) => record.id === id)?.informationClassification ??
           designSystemTokenContracts.find((record) => record.id === id)?.informationClassification ??
           accessibilityDesignRules.find((record) => record.id === id)?.informationClassification ??
+          responsiveMultiPlatformTargets.find((record) => record.id === id)?.informationClassification ??
           portableDesignSnapshots.find((record) => record.bundleId === id)?.classification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
@@ -2616,6 +2631,13 @@ export class ProductStudioService {
       accessibilityDesignRulesHistory,
       (record) => `accessibility-design-rules-history/accessibility-design-rules-${record.id}-r${record.revision}.json`,
     )
+    append("responsive-multi-platform-targets", "responsive-multi-platform-targets-candidate", responsiveMultiPlatformTargets)
+    append(
+      "responsive-multi-platform-targets-history",
+      "responsive-multi-platform-targets-candidate",
+      responsiveMultiPlatformTargetsHistory,
+      (record) => `responsive-multi-platform-targets-history/responsive-multi-platform-targets-${record.id}-r${record.revision}.json`,
+    )
     append(
       "candidates",
       "portable-design-snapshot",
@@ -2706,6 +2728,7 @@ export class ProductStudioService {
           ...designRequirements.map((record) => record.informationClassification),
           ...designSystemTokenContracts.map((record) => record.informationClassification),
           ...accessibilityDesignRules.map((record) => record.informationClassification),
+          ...responsiveMultiPlatformTargets.map((record) => record.informationClassification),
           ...portableDesignSnapshots.map((record) => record.classification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
@@ -3055,6 +3078,14 @@ export class ProductStudioService {
           `accessibility-design-rules-history/accessibility-design-rules-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Accessibility Design Rules history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("responsive-multi-platform-targets-history/")) {
+        const record = validated as ResponsiveMultiPlatformTargets
+        const expectedHistoryPath =
+          `responsive-multi-platform-targets-history/responsive-multi-platform-targets-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Responsive and Multi-Platform Targets history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4189,7 +4220,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4221,7 +4252,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -6701,7 +6732,7 @@ export class ProductStudioService {
     const accessibilityDesignRulesHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("accessibility-design-rules-history/"))
       .map(([, record]) => accessibilityDesignRulesSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactAccessibilityDesignRules = validateVersionedBusinessRecords(
       accessibilityDesignRules, accessibilityDesignRulesHistory, "Accessibility Design Rules",
     )
     for (const candidate of [...accessibilityDesignRules, ...accessibilityDesignRulesHistory]) {
@@ -6792,6 +6823,130 @@ export class ProductStudioService {
       if (candidate.catalogCompletenessState === "candidate-complete" &&
           candidate.targets.some((target) => !linkedTargets.has(target.key))) {
         throw new Error(`Import Accessibility Design Rules ${candidate.id} candidate-complete catalog has an unrepresented target`)
+      }
+    }
+
+    const responsiveMultiPlatformTargets = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("responsive-multi-platform-targets/"))
+      .map(([, record]) => responsiveMultiPlatformTargetsSchema.parse(record))
+    const responsiveMultiPlatformTargetsHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("responsive-multi-platform-targets-history/"))
+      .map(([, record]) => responsiveMultiPlatformTargetsSchema.parse(record))
+    validateVersionedBusinessRecords(
+      responsiveMultiPlatformTargets, responsiveMultiPlatformTargetsHistory, "Responsive and Multi-Platform Targets",
+    )
+    for (const candidate of [...responsiveMultiPlatformTargets, ...responsiveMultiPlatformTargetsHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        screenStateInventory: candidate.screenStateInventory,
+        designRequirements: candidate.designRequirements,
+        designSystemTokenContract: candidate.designSystemTokenContract,
+        accessibilityDesignRules: candidate.accessibilityDesignRules,
+        platformTargets: candidate.platformTargets,
+        breakpoints: candidate.breakpoints,
+        behaviors: candidate.behaviors,
+        checks: candidate.checks,
+        requirementCoverage: candidate.requirementCoverage,
+        targetCatalogState: candidate.targetCatalogState,
+        breakpointCatalogState: candidate.breakpointCatalogState,
+        behaviorCatalogState: candidate.behaviorCatalogState,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        responsiveCompletenessState: candidate.responsiveCompletenessState,
+        platformParityState: candidate.platformParityState,
+        breakpointValidityState: candidate.breakpointValidityState,
+        behaviorValidityState: candidate.behaviorValidityState,
+        accessibilityConformanceState: candidate.accessibilityConformanceState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} membership digest is invalid`)
+      }
+      const inventory = exactScreenStateInventories.get(
+        `${candidate.screenStateInventory.recordId}:${candidate.screenStateInventory.revision}:${candidate.screenStateInventory.digest}`,
+      )
+      const requirements = exactDesignRequirements.get(
+        `${candidate.designRequirements.recordId}:${candidate.designRequirements.revision}:${candidate.designRequirements.digest}`,
+      )
+      const designSystem = exactDesignSystemTokenContracts.get(
+        `${candidate.designSystemTokenContract.recordId}:${candidate.designSystemTokenContract.revision}:${candidate.designSystemTokenContract.digest}`,
+      )
+      const accessibility = exactAccessibilityDesignRules.get(
+        `${candidate.accessibilityDesignRules.recordId}:${candidate.accessibilityDesignRules.revision}:${candidate.accessibilityDesignRules.digest}`,
+      )
+      if (!inventory || inventory.initiativeId !== candidate.initiativeId ||
+          inventory.membershipDigest !== candidate.screenStateInventory.membershipDigest) {
+        throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} exact Screen and State Inventory binding is unresolved`)
+      }
+      if (!requirements || requirements.initiativeId !== candidate.initiativeId ||
+          requirements.membershipDigest !== candidate.designRequirements.membershipDigest) {
+        throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} exact Design Requirements binding is unresolved`)
+      }
+      if (!designSystem || designSystem.initiativeId !== candidate.initiativeId ||
+          designSystem.membershipDigest !== candidate.designSystemTokenContract.membershipDigest) {
+        throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} exact Design System and Token Contract binding is unresolved`)
+      }
+      if (!accessibility || accessibility.initiativeId !== candidate.initiativeId ||
+          accessibility.membershipDigest !== candidate.accessibilityDesignRules.membershipDigest) {
+        throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} exact Accessibility Design Rules binding is unresolved`)
+      }
+      const targetedPlatforms = inventory.platforms.filter((entry) => entry.supportState === "targeted")
+      const platformByKey = new Map(targetedPlatforms.map((entry) => [entry.key, entry]))
+      const screenKeys = new Set(inventory.screens.map((entry) => entry.key))
+      const stateKeys = new Set(inventory.states.map((entry) => entry.key))
+      const requirementKeys = requirements.requirements.map((entry) => entry.key).sort((left, right) => left.localeCompare(right))
+      const requirementKeySet = new Set(requirementKeys)
+      const accessibilityRuleKeys = new Set(accessibility.rules.map((entry) => entry.key))
+      if (canonicalDigest(requirementKeys) !== canonicalDigest(candidate.requirementCoverage.map((entry) => entry.requirementKey))) {
+        throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} does not cover every exact current Design Requirement`)
+      }
+      for (const target of candidate.platformTargets) {
+        const platform = platformByKey.get(target.platformKey)
+        if (!platform || target.contextClassKeys.some((key) => !platform.viewportOrContainerClasses.includes(key)) ||
+            target.screenKeys.some((key) => !screenKeys.has(key)) ||
+            target.requirementKeys.some((key) => !requirementKeySet.has(key))) {
+          throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} has an unresolved governed platform target`)
+        }
+      }
+      const breakpointByKey = new Map(candidate.breakpoints.map((entry) => [entry.key, entry]))
+      for (const breakpoint of candidate.breakpoints) {
+        const platform = platformByKey.get(breakpoint.platformKey)
+        if (!platform?.viewportOrContainerClasses.includes(breakpoint.contextClassKey)) {
+          throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} has an unresolved governed breakpoint`)
+        }
+      }
+      const behaviorByKey = new Map(candidate.behaviors.map((entry) => [entry.key, entry]))
+      const coverageByRequirement = new Map(candidate.requirementCoverage.map((entry) => [entry.requirementKey, entry]))
+      for (const behavior of candidate.behaviors) {
+        if (behavior.platformKeys.some((key) => !platformByKey.has(key)) ||
+            behavior.breakpointKeys.some((key) => !breakpointByKey.has(key)) ||
+            behavior.screenKeys.some((key) => !screenKeys.has(key)) ||
+            behavior.stateKeys.some((key) => !stateKeys.has(key)) ||
+            behavior.requirementKeys.some((key) => !requirementKeySet.has(key) ||
+              !coverageByRequirement.get(key)?.behaviorKeys.includes(behavior.key)) ||
+            behavior.accessibilityRuleKeys.some((key) => !accessibilityRuleKeys.has(key))) {
+          throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} has an unresolved governed behavior`)
+        }
+      }
+      for (const coverage of candidate.requirementCoverage) {
+        if (coverage.behaviorKeys.some((key) => !behaviorByKey.get(key)?.requirementKeys.includes(coverage.requirementKey))) {
+          throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} Requirement coverage is not reciprocal`)
+        }
+      }
+      for (const check of candidate.checks) {
+        const behavior = behaviorByKey.get(check.behaviorKey)
+        if (!behavior || !behavior.platformKeys.includes(check.platformKey) || !behavior.screenKeys.includes(check.screenKey) ||
+            (check.stateKey !== undefined && !behavior.stateKeys.includes(check.stateKey)) ||
+            (check.breakpointKey !== undefined && !behavior.breakpointKeys.includes(check.breakpointKey))) {
+          throw new Error(`Import Responsive and Multi-Platform Targets ${candidate.id} has an unresolved governed check`)
+        }
       }
     }
 
@@ -7508,6 +7663,10 @@ export class ProductStudioService {
         /^accessibility-design-rules-history\/accessibility-design-rules-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "accessibility-design-rules-candidate"
     }
+    if (/^responsive-multi-platform-targets\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^responsive-multi-platform-targets-history\/responsive-multi-platform-targets-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "responsive-multi-platform-targets-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -7669,6 +7828,10 @@ export class ProductStudioService {
     if (/^accessibility-design-rules\/[0-9a-f-]+\.json$/i.test(path) ||
         /^accessibility-design-rules-history\/accessibility-design-rules-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return accessibilityDesignRulesSchema
+    }
+    if (/^responsive-multi-platform-targets\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^responsive-multi-platform-targets-history\/responsive-multi-platform-targets-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return responsiveMultiPlatformTargetsSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
