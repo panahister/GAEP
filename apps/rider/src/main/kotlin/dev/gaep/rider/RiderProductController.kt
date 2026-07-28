@@ -1660,6 +1660,66 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readManualFigmaExecutionPath(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readManualFigmaExecutionPath(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Manual Figma Execution Path was read. Refresh the exact records." }
+        return renderManualFigmaExecutionPath(projection)
+    }
+
+    fun renderManualFigmaExecutionPath(projection: ManualFigmaExecutionPathProjection): String = buildString {
+        appendLine("GAEP governed Manual Figma Execution Path candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine(
+            "Catalogs: guide ${projection.guideCatalogState} · handoff ${projection.handoffCatalogState} · " +
+                "return ${projection.returnContractState}",
+        )
+        appendLine(
+            "Inventory: ${projection.scopeCount} scopes · ${projection.instructionCount} instruction stages · " +
+                "${projection.checkCount} checks",
+        )
+        appendLine(
+            "Check evidence: ${projection.humanReviewedCheckCount} human-reviewed · " +
+                "${projection.evidenceRecordedCheckCount} evidence-recorded · ${projection.notAssessedCheckCount} not assessed · " +
+                "${projection.contradictedCheckCount} contradicted",
+        )
+        appendLine(
+            "Requirement coverage: ${projection.representedRequirementCount} represented · " +
+                "${projection.unresolvedRequirementCount} unresolved",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedOwnershipCount} ownership · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Manual Figma Execution Path candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate inventory: ${record.scopeCount} scopes · ${record.instructionCount} instruction stages · " +
+                    "${record.checkCount} checks · ${record.representedRequirementCount} represented requirements · " +
+                    record.reviewState,
+            )
+        } ?: appendLine("Manual Figma Execution Path candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and digests only; no Figma connection, " +
+                "execution or returned-design completeness, write authority, design approval, baseline, readiness, " +
+                "implementation, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

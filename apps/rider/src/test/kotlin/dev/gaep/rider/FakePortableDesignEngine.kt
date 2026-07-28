@@ -45,6 +45,7 @@ private val designRequirementsId = UUID.fromString("68686868-6868-4868-8868-6868
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
+private val manualFigmaExecutionPathId = UUID.fromString("72727272-7272-4272-8272-727272727272")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -268,6 +269,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.responsiveMultiPlatformTargets.snapshot" -> handleResponsiveMultiPlatformTargets(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.manualFigmaExecutionPath.snapshot" -> handleManualFigmaExecutionPath(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3258,6 +3264,100 @@ private fun handleResponsiveMultiPlatformTargets(id: Long, params: JsonObject, w
         }
         workspacePath.endsWith("bad-responsive-multi-platform-targets-snapshot-private") -> {
             value.addProperty("behaviorProcedure", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleManualFigmaExecutionPath(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MANUAL FIGMA EXECUTION PATH PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-manual-figma-execution-path-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-28T18:30:00.000Z"
+    val candidateDigest = "sha256:${"7".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "manual-figma-execution-path-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "manual-figma-execution-path-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", manualFigmaExecutionPathId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("scopeCount", 3)
+            addProperty("instructionCount", 5)
+            addProperty("checkCount", 24)
+            addProperty("notAssessedCheckCount", 3)
+            addProperty("evidenceRecordedCheckCount", 2)
+            addProperty("humanReviewedCheckCount", 19)
+            addProperty("contradictedCheckCount", 1)
+            addProperty("representedRequirementCount", 10)
+            addProperty("unresolvedRequirementCount", 2)
+            addProperty("unresolvedOwnershipCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("guideCatalogState", "candidate-complete")
+            addProperty("handoffCatalogState", "candidate-complete")
+            addProperty("returnContractState", "not-assessed")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("The manual return contract retains unresolved review gaps") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "manual-figma-execution-path-status-is-observational-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", manualFigmaExecutionPathId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"8".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("scopeCount", 3)
+            addProperty("instructionCount", 5)
+            addProperty("checkCount", 24)
+            addProperty("representedRequirementCount", 10)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-28T18:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-handoff-content-instructions-figma-identifiers-returned-design-source-or-personal-content-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "manual-figma-execution-path-projection-is-read-only-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-manual-figma-execution-path-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("scopeCount", 4)
+        }
+        workspacePath.endsWith("bad-manual-figma-execution-path-snapshot-private") -> {
+            value.addProperty("handoffContent", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

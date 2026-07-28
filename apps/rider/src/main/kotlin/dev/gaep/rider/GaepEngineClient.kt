@@ -375,6 +375,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readManualFigmaExecutionPath(initiativeId: UUID): ManualFigmaExecutionPathProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("design.manualFigmaExecutionPath.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseManualFigmaExecutionPathEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

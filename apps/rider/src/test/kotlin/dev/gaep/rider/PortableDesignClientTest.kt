@@ -1666,6 +1666,56 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Manual Figma Execution Path projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("manual-figma-execution-path-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readManualFigmaExecutionPath(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("candidate-complete", projection.guideCatalogState)
+            assertEquals("candidate-complete", projection.handoffCatalogState)
+            assertEquals("not-assessed", projection.returnContractState)
+            assertEquals(3, projection.scopeCount)
+            assertEquals(5, projection.instructionCount)
+            assertEquals(24, projection.checkCount)
+            assertEquals(19, projection.humanReviewedCheckCount)
+            assertEquals(10, projection.candidate?.representedRequirementCount)
+
+            val rendered = RiderProductController(client).readManualFigmaExecutionPath(entryId)
+            assertTrue(rendered.contains("GAEP governed Manual Figma Execution Path candidate"))
+            assertTrue(rendered.contains("3 scopes · 5 instruction stages · 24 checks"))
+            assertTrue(rendered.contains("19 human-reviewed"))
+            assertTrue(rendered.contains("no Figma connection"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("handoffContent"))
+        }
+
+        listOf(
+            "bad-manual-figma-execution-path-snapshot-digest",
+            "bad-manual-figma-execution-path-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readManualFigmaExecutionPath(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-manual-figma-execution-path-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readManualFigmaExecutionPath(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

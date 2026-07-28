@@ -594,6 +594,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += responsiveMultiPlatformTargetsButton
         actions.add(responsiveMultiPlatformTargetsButton)
 
+        val manualFigmaExecutionPathButton = JButton("Inspect Manual Figma Execution Path…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Handoff content, instructions, Figma identifiers, returned design, evidence, requirements, Source, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Manual Figma Execution Path",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Manual Figma Execution Path", status, output, buttons) {
+                    controller.readManualFigmaExecutionPath(initiativeId)
+                }
+            }
+        }
+        buttons += manualFigmaExecutionPathButton
+        actions.add(manualFigmaExecutionPathButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

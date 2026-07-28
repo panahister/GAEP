@@ -2121,6 +2121,49 @@ data class ResponsiveMultiPlatformTargetsProjection(
     val snapshotDigest: String,
 )
 
+data class ManualFigmaExecutionPathRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val scopeCount: Int,
+    val instructionCount: Int,
+    val checkCount: Int,
+    val representedRequirementCount: Int,
+    val reviewState: String,
+)
+
+data class ManualFigmaExecutionPathProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val guideCatalogState: String,
+    val handoffCatalogState: String,
+    val returnContractState: String,
+    val reasons: List<String>,
+    val scopeCount: Int,
+    val instructionCount: Int,
+    val checkCount: Int,
+    val notAssessedCheckCount: Int,
+    val evidenceRecordedCheckCount: Int,
+    val humanReviewedCheckCount: Int,
+    val contradictedCheckCount: Int,
+    val representedRequirementCount: Int,
+    val unresolvedRequirementCount: Int,
+    val unresolvedOwnershipCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: ManualFigmaExecutionPathRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -2338,6 +2381,12 @@ internal object PortableDesignProtocol {
         "responsive-multi-platform-targets-projection-is-read-only-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-write-or-action-authority"
     private const val RESPONSIVE_MULTI_PLATFORM_TARGETS_STATUS_AUTHORITY_BOUNDARY =
         "responsive-multi-platform-targets-status-is-observational-and-does-not-establish-responsive-completeness-platform-parity-breakpoint-or-behavior-validity-accessibility-conformance-ownership-design-approval-baseline-readiness-implementation-or-action-authority"
+    private const val MANUAL_FIGMA_EXECUTION_PATH_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-digests-only-not-handoff-content-instructions-figma-identifiers-returned-design-source-or-personal-content-secrets-or-credentials"
+    private const val MANUAL_FIGMA_EXECUTION_PATH_PROJECTION_AUTHORITY_BOUNDARY =
+        "manual-figma-execution-path-projection-is-read-only-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority"
+    private const val MANUAL_FIGMA_EXECUTION_PATH_STATUS_AUTHORITY_BOUNDARY =
+        "manual-figma-execution-path-status-is-observational-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -7472,6 +7521,139 @@ internal object PortableDesignProtocol {
             humanReviewedCheckCount, contradictedCheckCount, representedRequirementCount, unresolvedRequirementCount,
             unresolvedOwnershipCount, staleBindingCount, staleSourceReferenceCount, unresolvedQuestionCount,
             candidate, snapshotDigest,
+        )
+    }
+
+    fun parseManualFigmaExecutionPathEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): ManualFigmaExecutionPathProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "manual-figma-execution-path-projection" ||
+            projection.requireString("privacyBoundary") != MANUAL_FIGMA_EXECUTION_PATH_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != MANUAL_FIGMA_EXECUTION_PATH_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "scopeCount", "instructionCount", "checkCount", "notAssessedCheckCount",
+                "evidenceRecordedCheckCount", "humanReviewedCheckCount", "contradictedCheckCount",
+                "representedRequirementCount", "unresolvedRequirementCount", "unresolvedOwnershipCount",
+                "staleBindingCount", "staleSourceReferenceCount", "unresolvedQuestionCount", "guideCatalogState",
+                "handoffCatalogState", "returnContractState", "reviewState", "state", "reasons", "assessedAt",
+                "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "manual-figma-execution-path-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != MANUAL_FIGMA_EXECUTION_PATH_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val scopeCount = status.requireBoundedNonNegativeInt("scopeCount", 4_096)
+        val instructionCount = status.requireBoundedNonNegativeInt("instructionCount", 16_384)
+        val checkCount = status.requireBoundedNonNegativeInt("checkCount", 16_384)
+        val notAssessedCheckCount = status.requireBoundedNonNegativeInt("notAssessedCheckCount", 16_384)
+        val evidenceRecordedCheckCount = status.requireBoundedNonNegativeInt("evidenceRecordedCheckCount", 16_384)
+        val humanReviewedCheckCount = status.requireBoundedNonNegativeInt("humanReviewedCheckCount", 16_384)
+        val contradictedCheckCount = status.requireBoundedNonNegativeInt("contradictedCheckCount", 16_384)
+        val representedRequirementCount = status.requireBoundedNonNegativeInt("representedRequirementCount", 4_096)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 4_096)
+        val unresolvedOwnershipCount = status.requireBoundedNonNegativeInt("unresolvedOwnershipCount", 4_096)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val guideCatalogState = status.requireOneOf("guideCatalogState", setOf("candidate-complete", "not-assessed"))
+        val handoffCatalogState = status.requireOneOf("handoffCatalogState", setOf("candidate-complete", "not-assessed"))
+        val returnContractState = status.requireOneOf("returnContractState", setOf("candidate-complete", "not-assessed"))
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = notAssessedCheckCount + evidenceRecordedCheckCount + contradictedCheckCount +
+            unresolvedRequirementCount + unresolvedOwnershipCount + staleBindingCount +
+            staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (gapCount > 0 || guideCatalogState != "candidate-complete" || handoffCatalogState != "candidate-complete" ||
+                    returnContractState != "candidate-complete" || reviewState != "ready-for-human-review" ||
+                    reasons.isNotEmpty() || reference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "scopeCount", "instructionCount",
+                "checkCount", "representedRequirementCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = ManualFigmaExecutionPathRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("scopeCount", 4_096),
+                value.requireBoundedNonNegativeInt("instructionCount", 16_384),
+                value.requireBoundedNonNegativeInt("checkCount", 16_384),
+                value.requireBoundedNonNegativeInt("representedRequirementCount", 4_096),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.scopeCount != scopeCount || record.instructionCount != instructionCount ||
+                record.checkCount != checkCount || record.representedRequirementCount != representedRequirementCount ||
+                record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return ManualFigmaExecutionPathProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, guideCatalogState, handoffCatalogState,
+            returnContractState, reasons, scopeCount, instructionCount, checkCount, notAssessedCheckCount,
+            evidenceRecordedCheckCount, humanReviewedCheckCount, contradictedCheckCount, representedRequirementCount,
+            unresolvedRequirementCount, unresolvedOwnershipCount, staleBindingCount, staleSourceReferenceCount,
+            unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 
