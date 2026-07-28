@@ -123,6 +123,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/DesignPersonaRoleProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/UserJourneyModels.cs",
       "apps/visual-studio/Gaep.HostClient/UserJourneyProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/InformationArchitectureModels.cs",
+      "apps/visual-studio/Gaep.HostClient/InformationArchitectureProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -139,7 +141,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (437)",
+        "GAEP Visual Studio host-client tests: PASS (444)",
       ],
     }],
   },

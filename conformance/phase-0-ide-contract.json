@@ -56,7 +56,8 @@
     { "id": "p5-handoff-package", "label": "Exact governed P5 Handoff Package candidate projection with retained source ownership and without acknowledgement, readiness, approval, Design Baseline, P5 entry, transfer, write, or action authority" },
     { "id": "design-applicability", "label": "Exact governed Design Applicability candidate projection with explicit UX, UI, design-work and Figma decisions and depth, without inferred not-applicable state, design approval, Design Baseline, readiness, implementation, write, or action authority" },
     { "id": "design-personas-roles", "label": "Exact governed Design Personas and Roles candidate projection with purpose-limited evidence states and Product Designer responsibilities, without persona validation, role appointment, competence verification, design approval, readiness, write, or action authority" },
-    { "id": "user-journeys", "label": "Exact governed User Journeys candidate projection with bounded journey, touchpoint, path and scope-coverage metadata, without observed-behavior proof, journey validation, design approval, readiness, write, or action authority" }
+    { "id": "user-journeys", "label": "Exact governed User Journeys candidate projection with bounded journey, touchpoint, path and scope-coverage metadata, without observed-behavior proof, journey validation, design approval, readiness, write, or action authority" },
+    { "id": "information-architecture", "label": "Exact governed Information Architecture candidate projection with bounded hierarchy, content-model, navigation-route and scope-coverage metadata, without findability, comprehension, accessibility or content validation, design approval, readiness, write, or action authority" }
   ],
   "hosts": [
     {
@@ -67,7 +68,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T083917Z-phase-2-user-journeys-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T103228Z-phase-2-information-architecture-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -240,6 +241,9 @@
         ] },
         { "capabilityId": "user-journeys", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["userJourneyModel?: {", "engine.userJourneyModel!.project(initiative.id)", "id: \"user-journey-model\"", "no observed-behavior proof, journey validation, design approval, readiness, write, or action authority."] }
+        ] },
+        { "capabilityId": "information-architecture", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["informationArchitectureModel?: {", "engine.informationArchitectureModel!.project(initiative.id)", "id: \"information-architecture-model\"", "no findability, comprehension, accessibility, content, or design validation, readiness, write, or action authority."] }
         ] }
       ]
     },
@@ -251,7 +255,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T083917Z-phase-2-user-journeys-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T103228Z-phase-2-information-architecture-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -443,6 +447,10 @@
         { "capabilityId": "user-journeys", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readUserJourneyModel(", "this.request(\"design.journeys.snapshot\"", "userJourneyModelProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showUserJourneyModel", "GAEP governed User Journeys candidate", "does not prove observed behavior, validate journeys, approve design"] }
+        ] },
+        { "capabilityId": "information-architecture", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readInformationArchitectureModel(", "this.request(\"design.informationArchitecture.snapshot\"", "informationArchitectureModelProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showInformationArchitectureModel", "GAEP governed Information Architecture candidate", "does not prove findability, comprehension, or accessibility, validate content, approve design"] }
         ] }
       ]
     },
@@ -454,7 +462,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T083917Z-phase-2-user-journeys-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T103228Z-phase-2-information-architecture-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -683,6 +691,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readUserJourneyModel(", "portableRequest(\"design.journeys.snapshot\"", "parseUserJourneyEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed User Journeys candidate", "no observed-behavior proof", "journey validation"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["UserJourneyProjection", "USER_JOURNEY_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "information-architecture", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readInformationArchitectureModel(", "portableRequest(\"design.informationArchitecture.snapshot\"", "parseInformationArchitectureEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Information Architecture candidate", "no findability", "content validation"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["InformationArchitectureProjection", "INFORMATION_ARCHITECTURE_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -694,7 +707,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260728T083917Z-phase-2-user-journeys-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260728T103228Z-phase-2-information-architecture-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -935,6 +948,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadUserJourneyModelAsync(", "\"design.journeys.snapshot\"", "ParseUserJourneyResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed User Journeys candidate", "no observed-behavior proof", "journey validation"] },
           { "path": "apps/visual-studio/Gaep.HostClient/UserJourneyProtocol.cs", "contains": ["UserJourneyProjection", "UserJourneyProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "information-architecture", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadInformationArchitectureModelAsync(", "\"design.informationArchitecture.snapshot\"", "ParseInformationArchitectureResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Information Architecture candidate", "no findability", "content validation"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/InformationArchitectureProtocol.cs", "contains": ["InformationArchitectureProjection", "InformationArchitectureProjectionAuthorityBoundary"] }
         ] }
       ]
     }
