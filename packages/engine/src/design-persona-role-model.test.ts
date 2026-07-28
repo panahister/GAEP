@@ -19,9 +19,11 @@ import {
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InformationArchitectureModelInput,
+  type InformationArchitectureModel,
   type Product,
   type SourceRecord,
   type SourceRecordInput,
+  type ScreenStateInventoryInput,
   type StakeholderModel,
   type StakeholderModelInput,
   type UserJourneyModelInput,
@@ -709,6 +711,177 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function screenStateInventoryInput(
+    architecture: InformationArchitectureModel,
+    overrides: Partial<ScreenStateInventoryInput> = {},
+  ): Promise<ScreenStateInventoryInput> {
+    const exact = await exactContext()
+    const routeKeys = architecture.navigationRoutes.map((route) => route.key).sort()
+    const stateKeys = ["review-default", "review-error", "review-loading"]
+    const evidence = {
+      state: "human-reviewed" as const,
+      reviewedBy: { kind: "human" as const, id: actorId },
+      reviewedAt: "2026-07-28T11:00:00.000Z",
+    }
+    return {
+      initiativeId: initiative.id,
+      context: exact,
+      informationClassification: "internal",
+      title: "Customer portal Screen and State Inventory candidate",
+      informationArchitectureModel: {
+        recordId: architecture.id,
+        revision: architecture.revision,
+        digest: canonicalDigest(architecture),
+        membershipDigest: architecture.membershipDigest,
+      },
+      platforms: [{
+        key: "responsive-web",
+        label: "Responsive web client",
+        kind: "web",
+        supportState: "targeted",
+        interactionModes: ["keyboard", "pointer"],
+        viewportOrContainerClasses: ["compact", "wide"],
+        responsiveRules: ["Preserve task order and meaning while adapting presentation to the declared container class"],
+        accessibilityRequirements: ["Keyboard and assistive-technology operation remains available at every declared container class"],
+        privacyRequirements: ["Responsive behavior must not reveal data outside the current authorization and purpose boundary"],
+        rationale: "The exact current Information Architecture routes are intended for the bounded responsive web experience surface.",
+        sources: [reference()],
+        decision: { state: "not-required", conditions: [] },
+      }],
+      screens: [{
+        key: "release-review",
+        label: "Release readiness review",
+        purpose: "Present the bounded governed release-readiness context, path status, and recovery choices for accountable human review.",
+        platformKeys: ["responsive-web"],
+        routeKeys,
+        contentNodeKeys: ["portal-review"],
+        designScopeKeys: ["client-application.customer-portal"],
+        journeyKeys: ["release-readiness-review"],
+        touchpoints: [{ journeyKey: "release-readiness-review", touchpointKey: "portal-review" }],
+        personaKeys: ["release-change-owner"],
+        stateKeys,
+        entryStateKey: "review-default",
+        variantKeys: ["review-wide"],
+        responsiveRequirements: ["The review sequence remains ordered in compact and wide container classes"],
+        accessibilityRequirements: ["Status and recovery choices expose names, focus order, and non-color cues"],
+        privacyAndDataUse: {
+          dataCategories: ["candidate-metadata"],
+          purpose: "Display only the bounded candidate metadata needed for the exact accountable release-review task.",
+          minimization: "Exclude personal productivity rankings, source prose, credentials, and unrelated Product context.",
+          prohibitedUses: ["Individual productivity ranking is prohibited"],
+        },
+        fallback: "If the interactive screen cannot render safely, expose the bounded read-only review summary and recovery path.",
+        evidence,
+        sources: [reference()],
+        validationState: "not-established",
+      }],
+      states: [
+        {
+          key: "review-default",
+          screenKey: "release-review",
+          label: "Review ready",
+          kind: "default",
+          platformKeys: ["responsive-web"],
+          routeKeys,
+          visibleContentNodeKeys: ["portal-review"],
+          entryConditions: ["The bounded Information Architecture route projection was read without a transport or integrity error"],
+          exitConditions: ["The reviewer leaves the route or a declared loading or error condition becomes current"],
+          availableActionKeys: ["inspect-evidence"],
+          transitionStateKeys: ["review-error", "review-loading"],
+          accessibilityRequirements: ["Focus begins at the screen heading and status changes are announced without stealing focus"],
+          privacyRequirements: ["Only privacy-safe projection fields may be rendered"],
+          fallback: "Retain the last verified privacy-safe projection with an explicit freshness warning.",
+          evidence,
+          sources: [reference()],
+          validationState: "not-established",
+        },
+        {
+          key: "review-error",
+          screenKey: "release-review",
+          label: "Review unavailable",
+          kind: "error",
+          platformKeys: ["responsive-web"],
+          routeKeys,
+          visibleContentNodeKeys: [],
+          entryConditions: ["The bounded route projection could not be read or verified"],
+          exitConditions: ["A verified retry returns the screen to its default state"],
+          availableActionKeys: ["retry-read"],
+          transitionStateKeys: ["review-default"],
+          fallbackStateKey: "review-default",
+          accessibilityRequirements: ["The error and retry choice are announced and keyboard reachable"],
+          privacyRequirements: ["Raw transport errors, local paths, credentials, and source content remain hidden"],
+          fallback: "Show a privacy-safe unavailable state and preserve the explicit retry path.",
+          evidence,
+          sources: [reference()],
+          validationState: "not-established",
+        },
+        {
+          key: "review-loading",
+          screenKey: "release-review",
+          label: "Review loading",
+          kind: "loading",
+          platformKeys: ["responsive-web"],
+          routeKeys,
+          visibleContentNodeKeys: [],
+          entryConditions: ["A bounded route projection read is in progress"],
+          exitConditions: ["The read resolves to the default or error state"],
+          availableActionKeys: [],
+          transitionStateKeys: ["review-default", "review-error"],
+          accessibilityRequirements: ["Loading status is announced once without trapping focus"],
+          privacyRequirements: ["No stale or unrelated content is exposed while loading"],
+          fallback: "If loading exceeds the bounded interval, transition to the declared privacy-safe error state.",
+          evidence,
+          sources: [reference()],
+          validationState: "not-established",
+        },
+      ],
+      variants: [{
+        key: "review-wide",
+        screenKey: "release-review",
+        label: "Wide review layout",
+        platformKeys: ["responsive-web"],
+        stateKeys,
+        routeKeys,
+        condition: "The responsive web container satisfies the declared wide class without changing task or authorization semantics.",
+        differenceSummary: "Evidence navigation may appear beside status while preserving the same ordered content and actions.",
+        responsiveRules: ["Collapse to the canonical ordered single-column flow when the wide class no longer applies"],
+        accessibilityRequirements: ["Visual columns preserve one programmatic reading and focus order"],
+        privacyRequirements: ["The wider layout does not introduce additional data fields"],
+        fallback: "Use the canonical compact presentation when the container class cannot be established.",
+        evidence,
+        sources: [reference()],
+        validationState: "not-established",
+      }],
+      routeCoverage: routeKeys.map((routeKey) => ({
+        routeKey,
+        status: "represented" as const,
+        screenKeys: ["release-review"],
+        stateKeys,
+        rationale: "The exact current Information Architecture route is represented by the bounded review screen and explicit states.",
+        sources: [reference()],
+      })),
+      scopeCoverage: [{
+        designScopeKey: "client-application.customer-portal",
+        status: "represented",
+        screenKeys: ["release-review"],
+        rationale: "The exact represented Information Architecture scope is covered by the declared release-review screen.",
+        sources: [reference()],
+        decision: { state: "not-required", conditions: [] },
+      }],
+      unresolvedQuestions: [],
+      limitations: ["UI completeness, platform parity, state reachability, interaction quality, accessibility validation, design approval, readiness, implementation, and action authority remain not established"],
+      reviewState: "ready-for-human-review",
+      uiCompletenessState: "not-established",
+      platformParityState: "not-established",
+      stateReachabilityState: "not-established",
+      interactionQualityState: "not-established",
+      accessibilityValidationState: "not-established",
+      designApprovalState: "not-established",
+      implementationAuthorityState: "not-established",
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -1141,5 +1314,155 @@ describe("Design Persona and Role service", () => {
     const missingTouchpoint = await informationArchitectureInput(personaRole, journeyModel)
     missingTouchpoint.contentNodes[0]!.touchpoints = []
     await expect(engine.informationArchitectureModel.create(missingTouchpoint, actorId)).rejects.toThrow("place every exact current User Journey touchpoint")
+  })
+
+  it("persists, assesses, projects, and revises an exact Screen and State Inventory without UI, parity, reachability, quality, design, or action authority", async () => {
+    const personaRole = await engine.designPersonaRoleModel.create(await input(), actorId)
+    const journeyModel = await engine.userJourneyModel.create(await journeyInput(personaRole), actorId)
+    const architecture = await engine.informationArchitectureModel.create(
+      await informationArchitectureInput(personaRole, journeyModel), actorId,
+    )
+    const candidate = await engine.screenStateInventory.create(await screenStateInventoryInput(architecture), actorId)
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      platforms: [{ supportState: "targeted" }],
+      screens: [{ validationState: "not-established" }],
+      uiCompletenessState: "not-established",
+      platformParityState: "not-established",
+      stateReachabilityState: "not-established",
+      interactionQualityState: "not-established",
+      accessibilityValidationState: "not-established",
+      designApprovalState: "not-established",
+      implementationAuthorityState: "not-established",
+      authorityBoundary: expect.stringContaining("does-not-prove-ui-completeness-platform-parity-state-reachability"),
+    })
+    expect(candidate.states.every((state) => state.validationState === "not-established")).toBe(true)
+    expect(candidate.variants.every((variant) => variant.validationState === "not-established")).toBe(true)
+    expect(await engine.screenStateInventory.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      platformCount: 1,
+      targetedPlatformCount: 1,
+      unresolvedPlatformCount: 0,
+      screenCount: 1,
+      stateCount: 3,
+      variantCount: 1,
+      representedRouteCount: 4,
+      unresolvedRouteCount: 0,
+      representedScopeCount: 1,
+      unresolvedScopeCount: 0,
+      weakEvidenceItemCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.screenStateInventory.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: { id: candidate.id, revision: 1, platformCount: 1, screenCount: 1, stateCount: 3, variantCount: 1 },
+      privacyBoundary: expect.stringContaining("not-screen-state-variant-platform-content"),
+      authorityBoundary: expect.stringContaining("does-not-prove-ui-completeness-platform-parity-state-reachability"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Individual productivity ranking")
+    expect(JSON.stringify(projection)).not.toContain("Release readiness review")
+
+    const revisedInput = await screenStateInventoryInput(architecture, {
+      limitations: [
+        "The candidate remains subject to independent accountable human review",
+        "UI completeness, platform parity, state reachability, interaction quality, accessibility validation, design approval, readiness, implementation, and action authority remain not established",
+      ].sort(),
+    })
+    const revised = await engine.screenStateInventory.revise(candidate.id, candidate.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.screenStateInventory.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `screen-state-inventories/${candidate.id}.json`,
+      `screen-state-inventory-history/screen-state-inventory-${candidate.id}-r1.json`,
+      `screen-state-inventory-history/screen-state-inventory-${candidate.id}-r2.json`,
+    ]))
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "screen-state-inventory.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        informationArchitectureModel: revised.informationArchitectureModel,
+        platformCount: 1,
+        targetedPlatformCount: 1,
+        screenCount: 1,
+        stateCount: 3,
+        variantCount: 1,
+        stateKindCounts: { default: 1, error: 1, loading: 1 },
+        routeCoverageStatusCounts: { represented: 4 },
+        scopeCoverageStatusCounts: { represented: 1 },
+        reviewState: "ready-for-human-review",
+        uiCompletenessState: "not-established",
+        platformParityState: "not-established",
+        stateReachabilityState: "not-established",
+        interactionQualityState: "not-established",
+        accessibilityValidationState: "not-established",
+        designApprovalState: "not-established",
+        implementationAuthorityState: "not-established",
+        readinessAuthorityState: "not-established",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("fails Screen and State Inventory closed on stale architecture, unknown routes, incomplete coverage, and superseded Source evidence", async () => {
+    const personaRole = await engine.designPersonaRoleModel.create(await input(), actorId)
+    const journeyModel = await engine.userJourneyModel.create(await journeyInput(personaRole), actorId)
+    const architecture = await engine.informationArchitectureModel.create(
+      await informationArchitectureInput(personaRole, journeyModel), actorId,
+    )
+    const stale = await screenStateInventoryInput(architecture, {
+      informationArchitectureModel: {
+        recordId: architecture.id,
+        revision: architecture.revision,
+        digest: digest("f"),
+        membershipDigest: architecture.membershipDigest,
+      },
+    })
+    await expect(engine.screenStateInventory.create(stale, actorId)).rejects.toThrow("exact current Information Architecture")
+
+    const unknownRoute = await screenStateInventoryInput(architecture)
+    unknownRoute.screens[0]!.routeKeys = [...unknownRoute.screens[0]!.routeKeys, "unknown-route"].sort()
+    await expect(engine.screenStateInventory.create(unknownRoute, actorId)).rejects.toThrow("exact current Information Architecture")
+
+    const incompleteCoverage = await screenStateInventoryInput(architecture)
+    incompleteCoverage.routeCoverage = incompleteCoverage.routeCoverage.slice(1)
+    await expect(engine.screenStateInventory.create(incompleteCoverage, actorId)).rejects.toThrow("include every exact current Information Architecture route once")
+
+    const candidate = await engine.screenStateInventory.create(await screenStateInventoryInput(architecture), actorId)
+    await engine.sourceGovernance.reviseSource(source.id, source.revision, sourceInput({
+      revisionIdentity: { kind: "resource-revision", value: "GAEP-P2-05@2" },
+      contentDigest: digest("b"),
+    }), actorId)
+    expect(await engine.screenStateInventory.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "screen-state-inventory.binding-review-required",
+      severity: "warning",
+    }))
   })
 })

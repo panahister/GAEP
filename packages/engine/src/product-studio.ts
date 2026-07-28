@@ -15,6 +15,7 @@ import {
   designPersonaRoleModelSchema,
   userJourneyModelSchema,
   informationArchitectureModelSchema,
+  screenStateInventorySchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -86,6 +87,7 @@ import {
   type DesignPersonaRoleModel,
   type UserJourneyModel,
   type InformationArchitectureModel,
+  type ScreenStateInventory,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2197,6 +2199,16 @@ export class ProductStudioService {
       /^information-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       informationArchitectureModelSchema,
     )
+    const screenStateInventories = await this.listRecords(
+      "screen-state-inventories",
+      /^[0-9a-f-]+\.json$/i,
+      screenStateInventorySchema,
+    )
+    const screenStateInventoryHistory = await this.listRecords(
+      "screen-state-inventory-history",
+      /^screen-state-inventory-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      screenStateInventorySchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2516,6 +2528,13 @@ export class ProductStudioService {
       "information-architecture-model-candidate",
       informationArchitectureModelHistory,
       (record) => `information-architecture-model-history/information-architecture-${record.id}-r${record.revision}.json`,
+    )
+    append("screen-state-inventories", "screen-state-inventory-candidate", screenStateInventories)
+    append(
+      "screen-state-inventory-history",
+      "screen-state-inventory-candidate",
+      screenStateInventoryHistory,
+      (record) => `screen-state-inventory-history/screen-state-inventory-${record.id}-r${record.revision}.json`,
     )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
@@ -2913,6 +2932,14 @@ export class ProductStudioService {
           `information-architecture-model-history/information-architecture-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Information Architecture Model history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("screen-state-inventory-history/")) {
+        const record = validated as ScreenStateInventory
+        const expectedHistoryPath =
+          `screen-state-inventory-history/screen-state-inventory-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Screen and State Inventory history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -4039,7 +4066,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4071,7 +4098,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -6145,7 +6172,7 @@ export class ProductStudioService {
     const informationArchitectureModelHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("information-architecture-model-history/"))
       .map(([, record]) => informationArchitectureModelSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactInformationArchitectureModels = validateVersionedBusinessRecords(
       informationArchitectureModels, informationArchitectureModelHistory, "Information Architecture Model",
     )
     for (const candidate of [...informationArchitectureModels, ...informationArchitectureModelHistory]) {
@@ -6264,6 +6291,69 @@ export class ProductStudioService {
               throw new Error(`Import Information Architecture Model ${candidate.id} does not place every exact User Journey touchpoint`)
             }
           }
+        }
+      }
+    }
+
+    const screenStateInventories = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("screen-state-inventories/"))
+      .map(([, record]) => screenStateInventorySchema.parse(record))
+    const screenStateInventoryHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("screen-state-inventory-history/"))
+      .map(([, record]) => screenStateInventorySchema.parse(record))
+    validateVersionedBusinessRecords(
+      screenStateInventories, screenStateInventoryHistory, "Screen and State Inventory",
+    )
+    for (const candidate of [...screenStateInventories, ...screenStateInventoryHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        informationArchitectureModel: candidate.informationArchitectureModel,
+        platforms: candidate.platforms,
+        screens: candidate.screens,
+        states: candidate.states,
+        variants: candidate.variants,
+        routeCoverage: candidate.routeCoverage,
+        scopeCoverage: candidate.scopeCoverage,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        uiCompletenessState: candidate.uiCompletenessState,
+        platformParityState: candidate.platformParityState,
+        stateReachabilityState: candidate.stateReachabilityState,
+        interactionQualityState: candidate.interactionQualityState,
+        accessibilityValidationState: candidate.accessibilityValidationState,
+        designApprovalState: candidate.designApprovalState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Screen and State Inventory ${candidate.id} membership digest is invalid`)
+      }
+      const architecture = exactInformationArchitectureModels.get(
+        `${candidate.informationArchitectureModel.recordId}:${candidate.informationArchitectureModel.revision}:${candidate.informationArchitectureModel.digest}`,
+      )
+      if (!architecture || architecture.initiativeId !== candidate.initiativeId ||
+          architecture.membershipDigest !== candidate.informationArchitectureModel.membershipDigest) {
+        throw new Error(`Import Screen and State Inventory ${candidate.id} exact Information Architecture binding is unresolved`)
+      }
+      const routeKeys = architecture.navigationRoutes.map((route) => route.key).sort((left, right) => left.localeCompare(right))
+      if (canonicalDigest(routeKeys) !== canonicalDigest(candidate.routeCoverage.map((entry) => entry.routeKey))) {
+        throw new Error(`Import Screen and State Inventory ${candidate.id} does not cover the exact Information Architecture routes`)
+      }
+      const scopeByKey = new Map(architecture.scopeCoverage.map((entry) => [entry.designScopeKey, entry]))
+      const scopeKeys = [...scopeByKey.keys()].sort((left, right) => left.localeCompare(right))
+      if (canonicalDigest(scopeKeys) !== canonicalDigest(candidate.scopeCoverage.map((entry) => entry.designScopeKey)) ||
+          candidate.scopeCoverage.some((entry) => scopeByKey.get(entry.designScopeKey)?.status !== entry.status)) {
+        throw new Error(`Import Screen and State Inventory ${candidate.id} does not preserve exact Information Architecture scope coverage`)
+      }
+      const nodeKeys = new Set(architecture.contentNodes.map((node) => node.key))
+      const exactRouteKeys = new Set(routeKeys)
+      for (const screen of candidate.screens) {
+        if (screen.routeKeys.some((key) => !exactRouteKeys.has(key)) ||
+            screen.contentNodeKeys.some((key) => !nodeKeys.has(key))) {
+          throw new Error(`Import Screen and State Inventory ${candidate.id} contains unresolved Information Architecture screen links`)
         }
       }
     }
@@ -6965,6 +7055,10 @@ export class ProductStudioService {
         /^information-architecture-model-history\/information-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "information-architecture-model-candidate"
     }
+    if (/^screen-state-inventories\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^screen-state-inventory-history\/screen-state-inventory-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "screen-state-inventory-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -7109,6 +7203,10 @@ export class ProductStudioService {
     if (/^information-architecture-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^information-architecture-model-history\/information-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return informationArchitectureModelSchema
+    }
+    if (/^screen-state-inventories\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^screen-state-inventory-history\/screen-state-inventory-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return screenStateInventorySchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
