@@ -4,50 +4,63 @@
 // VS Code success is never Kiro evidence; installation/workflow must be executed in Kiro itself.
 import { execFileSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { npxExecutable } from "./npx-resolver.mjs"
+// Resolve the installed VSCE JavaScript entry and run it with the current Node runtime. This avoids
+// the Windows `npx`/`npx.cmd` launcher entirely (which fails as `spawnSync npx.cmd EINVAL` under
+// execFileSync without a shell) while keeping shell:false.
+export function resolveVsceCli(fromUrl = import.meta.url) {
+  return createRequire(fromUrl).resolve("@vscode/vsce/vsce")
+}
 
 const here = dirname(fileURLToPath(import.meta.url))
-const repoRoot = resolve(here, "..", "..")
-const vscodeRoot = join(repoRoot, "apps", "vscode")
-const outVsix = join(repoRoot, "dist", "phase0", "cs02", "gaep-kiro-0.2.0.vsix")
-const stage = join(here, ".stage")
+function main() {
+  const repoRoot = resolve(here, "..", "..")
+  const vscodeRoot = join(repoRoot, "apps", "vscode")
+  const outVsix = join(repoRoot, "dist", "phase0", "cs02", "gaep-kiro-0.2.0.vsix")
+  const stage = join(here, ".stage")
 
-rmSync(stage, { recursive: true, force: true })
-mkdirSync(stage, { recursive: true })
-// Ship only runtime files (no tests/maps/source): the compiled extension bundle + shared engine-host.
-const runtimeFiles = [
-  "dist/extension.cjs",
-  "dist/studio-client.js",
-  "dist/engine-host/gaep-engine-host-0.2.0.cjs",
-  "dist/engine-host/engine-host.sha256",
-  "media/gaep.svg",
-]
-for (const rel of runtimeFiles) {
-  const src = join(vscodeRoot, rel)
-  if (!existsSync(src)) continue
-  mkdirSync(dirname(join(stage, rel)), { recursive: true })
-  cpSync(src, join(stage, rel))
-}
-if (existsSync(join(here, "README.md"))) cpSync(join(here, "README.md"), join(stage, "README.md"))
-// Independent manifest derived from VS Code's contributions but with the Kiro identity.
-const vscodeManifest = JSON.parse(readFileSync(join(vscodeRoot, "package.json"), "utf8"))
-const kiroManifest = {
-  ...vscodeManifest,
-  name: "gaep-kiro",
-  displayName: "GAEP for Kiro",
-  description: "Governed provider/model read-only analysis for Kiro.",
-  version: "0.2.0",
-  main: "dist/extension.cjs",
-}
-delete kiroManifest.scripts
-delete kiroManifest.devDependencies
-kiroManifest.files = runtimeFiles.filter((rel) => existsSync(join(stage, rel)))
-writeFileSync(join(stage, "package.json"), `${JSON.stringify(kiroManifest, null, 2)}\n`)
+  rmSync(stage, { recursive: true, force: true })
+  mkdirSync(stage, { recursive: true })
+  // Ship only runtime files (no tests/maps/source): the compiled extension bundle + shared engine-host.
+  const runtimeFiles = [
+    "dist/extension.cjs",
+    "dist/studio-client.js",
+    "dist/engine-host/gaep-engine-host-0.2.0.cjs",
+    "dist/engine-host/engine-host.sha256",
+    "media/gaep.svg",
+  ]
+  for (const rel of runtimeFiles) {
+    const src = join(vscodeRoot, rel)
+    if (!existsSync(src)) continue
+    mkdirSync(dirname(join(stage, rel)), { recursive: true })
+    cpSync(src, join(stage, rel))
+  }
+  if (existsSync(join(here, "README.md"))) cpSync(join(here, "README.md"), join(stage, "README.md"))
+  // Independent manifest derived from VS Code's contributions but with the Kiro identity.
+  const vscodeManifest = JSON.parse(readFileSync(join(vscodeRoot, "package.json"), "utf8"))
+  const kiroManifest = {
+    ...vscodeManifest,
+    name: "gaep-kiro",
+    displayName: "GAEP for Kiro",
+    description: "Governed provider/model read-only analysis for Kiro.",
+    version: "0.2.0",
+    main: "dist/extension.cjs",
+  }
+  delete kiroManifest.scripts
+  delete kiroManifest.devDependencies
+  kiroManifest.files = runtimeFiles.filter((rel) => existsSync(join(stage, rel)))
+  writeFileSync(join(stage, "package.json"), `${JSON.stringify(kiroManifest, null, 2)}\n`)
 
-mkdirSync(dirname(outVsix), { recursive: true })
-execFileSync(npxExecutable(), ["--no-install", "vsce", "package", "--no-dependencies", "--allow-missing-repository", "-o", outVsix], { cwd: stage, stdio: "inherit" })
-rmSync(stage, { recursive: true, force: true })
-process.stdout.write(`Built gaep-kiro-0.2.0.vsix\n`)
+  mkdirSync(dirname(outVsix), { recursive: true })
+  execFileSync(process.execPath, [resolveVsceCli(), "package", "--no-dependencies", "--allow-missing-repository", "-o", outVsix], { cwd: stage, stdio: "inherit" })
+  rmSync(stage, { recursive: true, force: true })
+  process.stdout.write(`Built gaep-kiro-0.2.0.vsix\n`)
+}
+
+// Run the packager only when invoked directly (not when imported by tests).
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main()
+}

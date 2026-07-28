@@ -26,8 +26,8 @@ function main() {
   }
   const target = arg("--target")
   const dest = arg("--dest")
-  if ((target !== "win32-x64" && target !== "linux-x64") || !dest) {
-    process.stderr.write("Usage: stage_engine_host_sea.mjs --target <win32-x64|linux-x64> --dest <dir>\n")
+  if ((target !== "win32-x64" && target !== "linux-x64" && target !== "darwin-arm64") || !dest) {
+    process.stderr.write("Usage: stage_engine_host_sea.mjs --target <win32-x64|linux-x64|darwin-arm64> --dest <dir>\n")
     process.exit(64)
   }
   const here = dirname(fileURLToPath(import.meta.url))

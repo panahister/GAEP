@@ -15,6 +15,12 @@
       "archiveSha256": "sha256:83bf07dd343002a26211cf1fcd46a9d9534219aad42ee02847816940bf610a72",
       "executablePath": "node-v22.11.0-linux-x64/bin/node",
       "executableSha256": "sha256:08a8fa363038215afda76c21853ec2c64b405b2610ba4ff04ef09448997f982d"
+    },
+    "darwin-arm64": {
+      "archive": "node-v22.11.0-darwin-arm64.tar.xz",
+      "archiveSha256": "sha256:c379a90c6aa605b74042a233ddcda4247b347ba5732007d280e44422cc8f9ecb",
+      "executablePath": "node-v22.11.0-darwin-arm64/bin/node",
+      "executableSha256": "sha256:b3766cc0774a690436a2bc9e3cbfd9d80c29a3f64499ae2f98ca203853b1cd85"
     }
   }
 }

@@ -15,8 +15,8 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const target = process.argv[2]
-if (target !== "win32-x64" && target !== "linux-x64") {
-  process.stderr.write("Usage: build-sea.mjs <win32-x64|linux-x64>\n")
+if (target !== "win32-x64" && target !== "linux-x64" && target !== "darwin-arm64") {
+  process.stderr.write("Usage: build-sea.mjs <win32-x64|linux-x64|darwin-arm64>\n")
   process.exit(64)
 }
 
@@ -34,7 +34,8 @@ if (!pin?.executableSha256 || /0{64}/.test(pin.executableSha256)) {
 }
 
 const require = createRequire(join(repoRoot, "apps", "vscode", "package.json"))
-const nodeExe = process.env.GAEP_SEA_NODE_BINARY
+// Resolve to an absolute path: the SEA-config step runs with cwd=outDir, so a relative binary fails.
+const nodeExe = process.env.GAEP_SEA_NODE_BINARY ? resolve(process.env.GAEP_SEA_NODE_BINARY) : undefined
 if (!nodeExe) {
   process.stderr.write("Set GAEP_SEA_NODE_BINARY to the downloaded, verified Node executable (see scripts/fetch_cs02_node.mjs).\n")
   process.exit(70)
@@ -50,18 +51,31 @@ if (nodeDigest !== pin.executableSha256) {
 mkdirSync(outDir, { recursive: true })
 // Step 1: ensure the CJS bundle exists.
 execFileSync(process.execPath, [join(here, "build-bundle.mjs")], { stdio: "inherit" })
-// Step 2: generate the SEA blob.
-execFileSync(process.execPath, ["--experimental-sea-config", join(here, "sea-config.json")], { cwd: outDir, stdio: "inherit" })
+// Step 2: generate the SEA blob using a Node 22.x runtime with SEA support. Prefer the downloaded
+// TARGET Node when it can run on this host (its major version matches the injected binary, and some
+// host Node builds disable SEA); otherwise use the host runtime (e.g. CI's setup-node 22.11.0).
+const hostTarget = `${process.platform}-${process.arch}`
+const blobNode = target === hostTarget ? nodeExe : process.execPath
+execFileSync(blobNode, ["--experimental-sea-config", join(here, "sea-config.json")], { cwd: outDir, stdio: "inherit" })
 
 // Steps 5-6: copy the verified Node and inject the blob with postject.
 const outName = `gaep-engine-host-0.2.0-${target}${target === "win32-x64" ? ".exe" : ""}`
 const outPath = join(outDir, outName)
 copyFileSync(nodeExe, outPath)
 const postject = require.resolve("postject/dist/cli.js")
-execFileSync(process.execPath, [
+const postjectArgs = [
   postject, outPath, "NODE_SEA_BLOB", join(outDir, "sea-prep.blob"),
   "--sentinel-fuse", "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
-], { stdio: "inherit" })
+]
+if (target === "darwin-arm64") postjectArgs.push("--macho-segment-name", "NODE_SEA")
+execFileSync(process.execPath, postjectArgs, { stdio: "inherit" })
+
+// Step 7: macOS invalidates the code signature on injection — remove and ad-hoc re-sign so the SEA
+// is launchable (n/a for win32/linux). Only runs when building a darwin target on a macOS host.
+if (target === "darwin-arm64" && process.platform === "darwin") {
+  try { execFileSync("codesign", ["--remove-signature", outPath], { stdio: "inherit" }) } catch { /* may be unsigned */ }
+  execFileSync("codesign", ["--sign", "-", outPath], { stdio: "inherit" })
+}
 
 // Step 8: final digest; Step 9: emit the sidecar only after verification succeeds.
 const finalDigest = `sha256:${createHash("sha256").update(readFileSync(outPath)).digest("hex")}`

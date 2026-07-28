@@ -35,9 +35,9 @@ describe("Engine Host SEA build (INV-21/22, fail closed)", () => {
     expect(runSea(["win32-x64"])).not.toBe(0)
   })
 
-  it("pins real (non-placeholder) archive AND extracted-executable Node 22.11.0 digests for both targets", () => {
+  it("pins real (non-placeholder) archive AND extracted-executable Node 22.11.0 digests for all three targets", () => {
     expect(nodeTarget.nodeVersion).toBe("22.11.0")
-    for (const target of ["win32-x64", "linux-x64"]) {
+    for (const target of ["win32-x64", "linux-x64", "darwin-arm64"]) {
       const pin = nodeTarget.targets[target]
       expect(pin.archiveSha256).toMatch(/^sha256:[0-9a-f]{64}$/)
       expect(pin.archiveSha256).not.toMatch(/0{64}/)

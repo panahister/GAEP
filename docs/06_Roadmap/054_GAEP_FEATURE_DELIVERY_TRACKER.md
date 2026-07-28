@@ -2,9 +2,9 @@
 
 **Governed AI Engineering Platform (GAEP)**  
 **Document ID:** GAEP-RDM-054  
-**Version:** 1.0.4  
+**Version:** 1.0.5  
 **Status:** Active Delivery Control  
-**Last Updated:** 2026-07-26  
+**Last Updated:** 2026-07-28  
 **Authority:** Feature delivery status and phase acceptance  
 **Product Authority:** [GAEP Platform and Product Identity Manifest](../GAEP_PLATFORM_PRODUCT_IDENTITY_MANIFEST.md)  
 **Maintainers:** Product Owner, Codex, and Claude Code
@@ -116,11 +116,12 @@ It must contain:
 - `linux-x64/{vscode,kiro,rider}/`;
 - `test-kits/` with target-local, non-interactive verification plus documented installation/workflow smoke commands.
 
-The repository must expose three stable command contracts:
+The repository must expose four stable command contracts:
 
 1. `npm run release:matrix -- --target <current|macos-arm64|windows-x64|linux-x64>` builds every applicable IDE package that can truthfully be built on the selected host;
 2. `npm run release:collect -- --change-set <id> --version <version>` collects verified local and downloaded GitHub Actions artifacts into the canonical bundle without committing them;
 3. `npm run release:verify -- --bundle <path>` recomputes every digest, checks source/version/target consistency, verifies package membership, and runs the applicable non-interactive smoke tests.
+4. `npm run accept:macos -- --bundle <path>` performs real isolated install/list/uninstall checks for VS Code and Kiro and an isolated plugin-load/shutdown check for Rider; it records machine-readable evidence in the Git-ignored bundle without touching the user's normal IDE profiles.
 
 An unsupported native cross-build must remain `not-built` until a matching local machine or GitHub Actions VM produces it. A command must never fabricate or relabel a package for another operating system.
 

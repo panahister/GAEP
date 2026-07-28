@@ -31,7 +31,11 @@
     "release:cs02": "node scripts/build_cs02_release.mjs",
     "example:cs02": "node examples/phase0-provider-model/run.mjs",
     "evidence:cs02": "node examples/phase0-provider-model/run.mjs --verify",
-    "verify:cs02:packages": "node scripts/verify_cs02_packages.mjs"
+    "verify:cs02:packages": "node scripts/verify_cs02_packages.mjs",
+    "release:matrix": "node scripts/release_matrix.mjs",
+    "release:collect": "node scripts/release_collect.mjs",
+    "release:verify": "node scripts/release_verify.mjs",
+    "accept:macos": "node scripts/local_extension_acceptance.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

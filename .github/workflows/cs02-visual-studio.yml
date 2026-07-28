@@ -12,6 +12,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22.11.0' }
+      - uses: actions/setup-java@v4
+        with: { distribution: 'temurin', java-version: '21' }
       - run: npm ci
       - run: npm run build
       # Download + verify the pinned Node 22.11.0 archive, then build + digest-verify the win32-x64 SEA.
@@ -22,6 +24,23 @@ jobs:
           "GAEP_SEA_NODE_BINARY=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Build digest-verified win32-x64 SEA Engine Host
         run: node apps/engine-host/build-sea.mjs win32-x64
+      # Rider is supported on Windows too. Build it in the same Windows lane so the collected
+      # windows-x64 bundle contains all four agreed IDEs under one source identity.
+      - name: Stage SEA into the Rider plugin build resources
+        run: node scripts/stage_engine_host_sea.mjs --target win32-x64 --dest apps/rider/build/gaep-engine-host
+      - name: Test, build, and verify the Rider plugin
+        shell: bash
+        working-directory: apps/rider
+        run: bash ./gradlew test buildPlugin verifyPlugin
+      - name: Copy the Rider plugin into the release directory
+        shell: pwsh
+        run: |
+          $plugin = Get-ChildItem -Path apps/rider/build/distributions -Filter *.zip | Select-Object -First 1
+          if (-not $plugin) { throw "Rider plugin ZIP was not produced" }
+          New-Item -ItemType Directory -Force -Path dist/phase0/cs02 | Out-Null
+          Copy-Item $plugin.FullName dist/phase0/cs02/gaep-rider-0.2.0.zip
+      - name: Verify the Rider ZIP embeds the win32-x64 SEA + sidecar
+        run: node scripts/verify_native_archive.mjs --archive dist/phase0/cs02/gaep-rider-0.2.0.zip --target win32-x64
       - name: Unit-test the pure request/validation logic
         run: dotnet test apps/visual-studio/Gaep.Tests/Gaep.Tests.csproj --configuration Release
       # Stage the SEA + sidecar into an out-of-source `bin` staging dir (excluded from source identity);
@@ -43,14 +62,26 @@ jobs:
       # (only now that the manifest says built) emit the schema-valid build-only evidence.
       - name: Regenerate package manifest + checksums (Visual Studio now built)
         run: npm run release:cs02
+        env:
+          GAEP_RELEASE_RIDER_TARGET: win32-x64
+      - name: VS Code / Kiro package verification (extracted-package v3 smoke)
+        run: npm run verify:cs02:packages
       - name: Emit build-only evidence (buildState only; install/workflow not-run)
         run: node scripts/import_cs02_evidence.mjs --host visual-studio --artifact dist/phase0/cs02 --build-only
+      - name: Emit Rider build-only evidence (buildState only; install/workflow not-run)
+        run: node scripts/import_cs02_evidence.mjs --host rider --artifact dist/phase0/cs02 --build-only
+      # Upload the full windows-x64 package set so `release:collect --input <dir> --target windows-x64`
+      # can import Visual Studio + Rider + VS Code + Kiro against one source identity + checksums.
       - uses: actions/upload-artifact@v4
         with:
-          name: cs02-visual-studio
+          name: cs02-windows-x64
           path: |
             dist/phase0/cs02/Gaep.VisualStudio-0.2.0.vsix
+            dist/phase0/cs02/gaep-rider-0.2.0.zip
+            dist/phase0/cs02/gaep-vscode-0.2.0.vsix
+            dist/phase0/cs02/gaep-kiro-0.2.0.vsix
             dist/phase0/cs02/package-manifest.json
             dist/phase0/cs02/SHA256SUMS.txt
             dist/phase0/cs02/engine-host/gaep-engine-host-0.2.0-win32-x64.exe.sha256
             examples/phase0-provider-model/acceptance/visual-studio/
+            examples/phase0-provider-model/acceptance/rider/

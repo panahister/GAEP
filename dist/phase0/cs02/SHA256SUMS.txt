@@ -1,3 +1,3 @@
-b21815bfec2879578e81709fb35fc1d0ace47566279faf59a6dee9495a4bd8bc  gaep-vscode-0.2.0.vsix
-ea0c4e4e3e971bbcc87aeed5ea5ce68750a8656fb314c21c2add4614ea3a557a  gaep-kiro-0.2.0.vsix
+a2ea6099741a3422b5ba3fef1fdd815dd9204c8699b8510290fdb546540560ca  gaep-vscode-0.2.0.vsix
+4b5d05506c40b26daaeadd12d27f5b7c638aba8724a1b11e7b8901b2b2c4dafe  gaep-kiro-0.2.0.vsix
 6b4043bd1411da08a7e33142ccd35372a105706f3385fb5a3b7c3a265dc4169c  engine-host/gaep-engine-host-0.2.0.cjs

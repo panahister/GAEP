@@ -20,6 +20,14 @@ const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(here, "..")
 const outRoot = join(repoRoot, "dist", "phase0", "cs02")
 const engineHostBundle = join(outRoot, "engine-host", "gaep-engine-host-0.2.0.cjs")
+const riderTarget = process.env.GAEP_RELEASE_RIDER_TARGET ?? (
+  process.platform === "win32" && process.arch === "x64" ? "win32-x64"
+    : process.platform === "darwin" && process.arch === "arm64" ? "darwin-arm64"
+      : "linux-x64"
+)
+if (!new Set(["linux-x64", "darwin-arm64", "win32-x64"]).has(riderTarget)) {
+  throw new Error(`Unsupported GAEP_RELEASE_RIDER_TARGET: ${riderTarget}`)
+}
 
 function sha256File(path) {
   return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`
@@ -112,8 +120,8 @@ const artifacts = [
     ? built("visual-studio", "VS [17.8,18.0)", `Gaep.VisualStudio-${VERSION}.vsix`)
     : notBuilt("visual-studio", "VS [17.8,18.0)", `Gaep.VisualStudio-${VERSION}.vsix`, "requires-windows-visual-studio"),
   existsSync(join(outRoot, `gaep-rider-${VERSION}.zip`))
-    ? built("rider", "Rider 2025.3 (linux-x64)", `gaep-rider-${VERSION}.zip`)
-    : notBuilt("rider", "Rider 2025.3 (linux-x64)", `gaep-rider-${VERSION}.zip`, "requires-jdk21"),
+    ? built("rider", `Rider 2025.3 (${riderTarget})`, `gaep-rider-${VERSION}.zip`)
+    : notBuilt("rider", `Rider 2025.3 (${riderTarget})`, `gaep-rider-${VERSION}.zip`, "requires-jdk21"),
 ]
 
 const manifest = { schemaVersion: 1, changeSetId: CHANGE_SET_ID, version: VERSION, sourceIdentity, artifacts }

@@ -11,8 +11,8 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const target = process.argv[2]
-if (target !== "win32-x64" && target !== "linux-x64") {
-  process.stderr.write("Usage: fetch_cs02_node.mjs <win32-x64|linux-x64>\n")
+if (target !== "win32-x64" && target !== "linux-x64" && target !== "darwin-arm64") {
+  process.stderr.write("Usage: fetch_cs02_node.mjs <win32-x64|linux-x64|darwin-arm64>\n")
   process.exit(64)
 }
 
