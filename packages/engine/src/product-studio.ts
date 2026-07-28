@@ -8130,6 +8130,10 @@ export class ProductStudioService {
         /^figma-mcp-capability-discovery-history\/figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "figma-mcp-capability-discovery-candidate"
     }
+    if (/^figma-read-snapshots\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^figma-read-snapshot-history\/figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "figma-read-snapshot-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
