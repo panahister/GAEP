@@ -3,6 +3,7 @@
        Cross-platform (net8.0); run in the Windows lane via `dotnet test`. -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
