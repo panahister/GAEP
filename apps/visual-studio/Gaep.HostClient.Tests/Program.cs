@@ -69,6 +69,7 @@ internal static class Program
     private static readonly Guid DesignPersonaRoleId = Guid.Parse("64646464-6464-4464-8464-646464646464");
     private static readonly Guid UserJourneyId = Guid.Parse("65656565-6565-4565-8565-656565656565");
     private static readonly Guid InformationArchitectureId = Guid.Parse("66666666-6666-4666-8666-666666666666");
+    private static readonly Guid ScreenStateInventoryId = Guid.Parse("67676767-6767-4767-8767-676767676767");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -205,6 +206,9 @@ internal static class Program
         var badInformationArchitectureSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-information-architecture-snapshot-binding");
         var badInformationArchitectureSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-information-architecture-snapshot-digest");
         var badInformationArchitectureSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-information-architecture-snapshot-private");
+        var badScreenStateInventorySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-screen-state-inventory-snapshot-binding");
+        var badScreenStateInventorySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-screen-state-inventory-snapshot-digest");
+        var badScreenStateInventorySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-screen-state-inventory-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -341,6 +345,9 @@ internal static class Program
         Directory.CreateDirectory(badInformationArchitectureSnapshotBindingRoot);
         Directory.CreateDirectory(badInformationArchitectureSnapshotDigestRoot);
         Directory.CreateDirectory(badInformationArchitectureSnapshotPrivateRoot);
+        Directory.CreateDirectory(badScreenStateInventorySnapshotBindingRoot);
+        Directory.CreateDirectory(badScreenStateInventorySnapshotDigestRoot);
+        Directory.CreateDirectory(badScreenStateInventorySnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1732,6 +1739,49 @@ internal static class Program
                 "Information Architecture rejects a projection rebound to a substituted Product revision");
         }
 
+        var screenStateInventoryProjection = await client.ReadScreenStateInventoryAsync(InitiativeId);
+        Check(screenStateInventoryProjection.ProductId == product.Id &&
+              screenStateInventoryProjection.ProductRevision == product.Revision &&
+              screenStateInventoryProjection.ProductDigest == product.Digest &&
+              screenStateInventoryProjection.InitiativeId == resolved.Id &&
+              screenStateInventoryProjection.InitiativeRevision == resolved.Revision &&
+              screenStateInventoryProjection.InitiativeDigest == resolved.Digest &&
+              screenStateInventoryProjection.AssessmentState == "attention-required" &&
+              screenStateInventoryProjection.ReviewState == "held" &&
+              screenStateInventoryProjection.PlatformCount == 3 &&
+              screenStateInventoryProjection.ScreenCount == 9 &&
+              screenStateInventoryProjection.StateCount == 18 &&
+              screenStateInventoryProjection.Candidate?.VariantCount == 5,
+            "Typed Screen and State Inventory preserves exact Product, Initiative, assessment, and privacy-safe inventory metadata");
+        var screenStateInventoryOutput = await initiativeController.ReadScreenStateInventoryAsync(InitiativeId);
+        Check(screenStateInventoryOutput.Contains("GAEP governed Screen and State Inventory candidate", StringComparison.Ordinal) &&
+              screenStateInventoryOutput.Contains("Inventory: 9 screens · 18 states · 5 variants", StringComparison.Ordinal) &&
+              screenStateInventoryOutput.Contains("2 weak-evidence items", StringComparison.Ordinal) &&
+              screenStateInventoryOutput.Contains("no UI completeness", StringComparison.Ordinal) &&
+              screenStateInventoryOutput.Contains("accessibility proof", StringComparison.Ordinal) &&
+              !screenStateInventoryOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !screenStateInventoryOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !screenStateInventoryOutput.Contains("screenLabel", StringComparison.Ordinal) &&
+              !screenStateInventoryOutput.Contains("private screen", StringComparison.OrdinalIgnoreCase),
+            "Screen and State Inventory workflow renders privacy-safe metadata with explicit no-proof and no-authority boundaries");
+        foreach (var hostileRoot in new[] {
+                     badScreenStateInventorySnapshotDigestRoot, badScreenStateInventorySnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadScreenStateInventoryAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Screen and State Inventory rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badScreenStateInventorySnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadScreenStateInventoryAsync(InitiativeId),
+                "Screen and State Inventory rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3028,6 +3078,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-information-architecture-snapshot-digest";
         var badInformationArchitectureSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-information-architecture-snapshot-private";
+        var badScreenStateInventorySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-screen-state-inventory-snapshot-binding";
+        var badScreenStateInventorySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-screen-state-inventory-snapshot-digest";
+        var badScreenStateInventorySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-screen-state-inventory-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3435,6 +3491,17 @@ internal static class Program
                         badInformationArchitectureSnapshotBinding,
                         badInformationArchitectureSnapshotDigest,
                         badInformationArchitectureSnapshotPrivate);
+                    break;
+                case "design.screenStateInventory.snapshot":
+                    await HandleScreenStateInventoryAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badScreenStateInventorySnapshotBinding,
+                        badScreenStateInventorySnapshotDigest,
+                        badScreenStateInventorySnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -6238,6 +6305,105 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["nodeCount"] = 7;
         if (includePrivateField) result["nodeLabel"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleScreenStateInventoryAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID SCREEN STATE INVENTORY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T11:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('c', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = ScreenStateInventoryId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('d', 64)}",
+            ["state"] = "candidate",
+            ["platformCount"] = 3,
+            ["screenCount"] = 9,
+            ["stateCount"] = 18,
+            ["variantCount"] = 5,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T11:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "screen-state-inventory-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "screen-state-inventory-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = ScreenStateInventoryId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["platformCount"] = 3,
+                ["targetedPlatformCount"] = 2,
+                ["unresolvedPlatformCount"] = 1,
+                ["screenCount"] = 9,
+                ["stateCount"] = 18,
+                ["variantCount"] = 5,
+                ["representedRouteCount"] = 7,
+                ["unresolvedRouteCount"] = 1,
+                ["representedScopeCount"] = 1,
+                ["unresolvedScopeCount"] = 1,
+                ["weakEvidenceItemCount"] = 2,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Information Architecture routes have unresolved Screen and State Inventory coverage" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "screen-state-inventory-status-is-observational-and-does-not-prove-ui-completeness-platform-parity-state-reachability-interaction-quality-or-accessibility-approve-design-grant-readiness-or-authorize-action",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-screen-state-variant-platform-content-persona-source-or-personal-content-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "screen-state-inventory-projection-is-read-only-and-does-not-prove-ui-completeness-platform-parity-state-reachability-interaction-quality-or-accessibility-approve-design-grant-readiness-or-authorize-write-or-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["screenCount"] = 10;
+        if (includePrivateField) result["screenLabel"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

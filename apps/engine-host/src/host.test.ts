@@ -1481,6 +1481,46 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "screen-state-inventory-read-empty",
+      protocolVersion: 2,
+      method: "design.screenStateInventory.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "screen-state-inventory-assess-empty",
+      protocolVersion: 2,
+      method: "design.screenStateInventory.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      platformCount: 0,
+      targetedPlatformCount: 0,
+      unresolvedPlatformCount: 0,
+      screenCount: 0,
+      stateCount: 0,
+      variantCount: 0,
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-prove-ui-completeness-platform-parity-state-reachability"),
+    })
+    const screenStateInventoryProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "screen-state-inventory-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.screenStateInventory.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: screenStateInventorySnapshotDigest,
+      ...screenStateInventoryProjectionBody
+    } = screenStateInventoryProjection
+    expect(screenStateInventorySnapshotDigest).toBe(canonicalDigest(screenStateInventoryProjectionBody))
+    expect(screenStateInventoryProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-screen-state-variant-platform-content-persona-source-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-prove-ui-completeness-platform-parity-state-reachability"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1537,6 +1577,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "information-architecture-v1-block",
       method: "design.informationArchitecture.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "screen-state-inventory-v1-block",
+      method: "design.screenStateInventory.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

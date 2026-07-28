@@ -1905,6 +1905,47 @@ data class InformationArchitectureProjection(
     val snapshotDigest: String,
 )
 
+data class ScreenStateInventoryRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val platformCount: Int,
+    val screenCount: Int,
+    val stateCount: Int,
+    val variantCount: Int,
+    val reviewState: String,
+)
+
+data class ScreenStateInventoryProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val platformCount: Int,
+    val targetedPlatformCount: Int,
+    val unresolvedPlatformCount: Int,
+    val screenCount: Int,
+    val stateCount: Int,
+    val variantCount: Int,
+    val representedRouteCount: Int,
+    val unresolvedRouteCount: Int,
+    val representedScopeCount: Int,
+    val unresolvedScopeCount: Int,
+    val weakEvidenceItemCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: ScreenStateInventoryRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -2092,6 +2133,12 @@ internal object PortableDesignProtocol {
         "information-architecture-projection-is-read-only-and-does-not-prove-findability-comprehension-or-accessibility-validate-content-approve-design-grant-readiness-or-authorize-write-or-action"
     private const val INFORMATION_ARCHITECTURE_STATUS_AUTHORITY_BOUNDARY =
         "information-architecture-status-is-observational-and-does-not-prove-findability-comprehension-or-accessibility-validate-content-approve-design-grant-readiness-or-authorize-action"
+    private const val SCREEN_STATE_INVENTORY_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-digests-only-not-screen-state-variant-platform-content-persona-source-or-personal-content-secrets-or-credentials"
+    private const val SCREEN_STATE_INVENTORY_PROJECTION_AUTHORITY_BOUNDARY =
+        "screen-state-inventory-projection-is-read-only-and-does-not-prove-ui-completeness-platform-parity-state-reachability-interaction-quality-or-accessibility-approve-design-grant-readiness-or-authorize-write-or-action"
+    private const val SCREEN_STATE_INVENTORY_STATUS_AUTHORITY_BOUNDARY =
+        "screen-state-inventory-status-is-observational-and-does-not-prove-ui-completeness-platform-parity-state-reachability-interaction-quality-or-accessibility-approve-design-grant-readiness-or-authorize-action"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -6571,6 +6618,127 @@ internal object PortableDesignProtocol {
             productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
             initiativeState, assessmentState, reviewState, reasons, nodeCount, rootNodeCount, routeCount,
             representedScopeCount, unresolvedScopeCount, weakEvidenceNodeCount, weakEvidenceRouteCount,
+            staleBindingCount, staleSourceReferenceCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseScreenStateInventoryEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): ScreenStateInventoryProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "screen-state-inventory-projection" ||
+            projection.requireString("privacyBoundary") != SCREEN_STATE_INVENTORY_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != SCREEN_STATE_INVENTORY_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "platformCount", "targetedPlatformCount", "unresolvedPlatformCount", "screenCount", "stateCount",
+                "variantCount", "representedRouteCount", "unresolvedRouteCount", "representedScopeCount",
+                "unresolvedScopeCount", "weakEvidenceItemCount", "staleBindingCount", "staleSourceReferenceCount",
+                "unresolvedQuestionCount", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "screen-state-inventory-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != SCREEN_STATE_INVENTORY_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val platformCount = status.requireBoundedNonNegativeInt("platformCount", 128)
+        val targetedPlatformCount = status.requireBoundedNonNegativeInt("targetedPlatformCount", 128)
+        val unresolvedPlatformCount = status.requireBoundedNonNegativeInt("unresolvedPlatformCount", 128)
+        val screenCount = status.requireBoundedNonNegativeInt("screenCount", 4_096)
+        val stateCount = status.requireBoundedNonNegativeInt("stateCount", 16_384)
+        val variantCount = status.requireBoundedNonNegativeInt("variantCount", 8_192)
+        if (targetedPlatformCount + unresolvedPlatformCount > platformCount) throw invalidResponse()
+        val representedRouteCount = status.requireBoundedNonNegativeInt("representedRouteCount", 2_048)
+        val unresolvedRouteCount = status.requireBoundedNonNegativeInt("unresolvedRouteCount", 2_048)
+        val representedScopeCount = status.requireBoundedNonNegativeInt("representedScopeCount", 1_024)
+        val unresolvedScopeCount = status.requireBoundedNonNegativeInt("unresolvedScopeCount", 1_024)
+        val weakEvidenceItemCount = status.requireBoundedNonNegativeInt("weakEvidenceItemCount", 28_672)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = unresolvedPlatformCount + unresolvedRouteCount + unresolvedScopeCount + weakEvidenceItemCount +
+            staleBindingCount + staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (gapCount > 0 || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || reference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "platformCount", "screenCount",
+                "stateCount", "variantCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = ScreenStateInventoryRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("platformCount", 128),
+                value.requireBoundedNonNegativeInt("screenCount", 4_096),
+                value.requireBoundedNonNegativeInt("stateCount", 16_384),
+                value.requireBoundedNonNegativeInt("variantCount", 8_192),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.platformCount != platformCount || record.screenCount != screenCount || record.stateCount != stateCount ||
+                record.variantCount != variantCount || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return ScreenStateInventoryProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, reasons, platformCount, targetedPlatformCount,
+            unresolvedPlatformCount, screenCount, stateCount, variantCount, representedRouteCount,
+            unresolvedRouteCount, representedScopeCount, unresolvedScopeCount, weakEvidenceItemCount,
             staleBindingCount, staleSourceReferenceCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }

@@ -228,6 +228,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadDesignPersonaRoleCommand = new AsyncCommand(LoadDesignPersonaRoleAsync);
         LoadUserJourneyCommand = new AsyncCommand(LoadUserJourneyAsync);
         LoadInformationArchitectureCommand = new AsyncCommand(LoadInformationArchitectureAsync);
+        LoadScreenStateInventoryCommand = new AsyncCommand(LoadScreenStateInventoryAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -355,6 +356,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadInformationArchitectureCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadScreenStateInventoryCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -882,6 +886,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Information Architecture candidate",
             (controller, _, token) => controller.ReadInformationArchitectureModelAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadScreenStateInventoryAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Screen and State Inventory candidate",
+            (controller, _, token) => controller.ReadScreenStateInventoryAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

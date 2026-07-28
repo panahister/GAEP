@@ -514,6 +514,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += informationArchitectureButton
         actions.add(informationArchitectureButton)
 
+        val screenStateInventoryButton = JButton("Inspect Screen and State Inventory…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Platform, screen, state, variant, route, persona, Source, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Screen and State Inventory",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Screen and State Inventory", status, output, buttons) {
+                    controller.readScreenStateInventory(initiativeId)
+                }
+            }
+        }
+        buttons += screenStateInventoryButton
+        actions.add(screenStateInventoryButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

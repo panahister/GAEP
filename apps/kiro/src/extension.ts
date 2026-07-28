@@ -28,6 +28,7 @@ import {
   type DesignPersonaRoleModelProjection,
   type UserJourneyModelProjection,
   type InformationArchitectureModelProjection,
+  type ScreenStateInventoryProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -127,6 +128,7 @@ const commandIds = {
   designPersonaRole: "gaepKiro.designPersonasRoles.inspect",
   userJourney: "gaepKiro.userJourneys.inspect",
   informationArchitecture: "gaepKiro.informationArchitecture.inspect",
+  screenStateInventory: "gaepKiro.screenStateInventory.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -245,6 +247,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.designPersonaRole, (input?: unknown) => runUserCommand(() => showDesignPersonaRoleModel(pool, input))),
     vscode.commands.registerCommand(commandIds.userJourney, (input?: unknown) => runUserCommand(() => showUserJourneyModel(pool, input))),
     vscode.commands.registerCommand(commandIds.informationArchitecture, (input?: unknown) => runUserCommand(() => showInformationArchitectureModel(pool, input))),
+    vscode.commands.registerCommand(commandIds.screenStateInventory, (input?: unknown) => runUserCommand(() => showScreenStateInventory(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1582,6 +1585,47 @@ async function showInformationArchitectureModel(
     ] : []),
     "",
     "Candidate hierarchy, content-model, and route metadata only; this does not prove findability, comprehension, or accessibility, validate content, approve design, grant readiness, authorize write, or authorize action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showScreenStateInventory(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ScreenStateInventoryProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Screen and State Inventory", "Initiative ID")
+  const projection = await client.readScreenStateInventory(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Screen and State Inventory candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Inventory: ${status.platformCount} platforms · ${status.screenCount} screens · ${status.stateCount} states · ${status.variantCount} variants`,
+    `Route coverage: ${status.representedRouteCount} represented · ${status.unresolvedRouteCount} unresolved`,
+    `Scope coverage: ${status.representedScopeCount} represented · ${status.unresolvedScopeCount} unresolved`,
+    `Candidate gaps: ${status.unresolvedPlatformCount} unresolved platforms · ${status.weakEvidenceItemCount} weak-evidence items · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate inventory: ${record.platformCount} platforms · ${record.screenCount} screens · ${record.stateCount} states · ${record.variantCount} variants · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate platform, screen, state, and variant metadata only; this does not prove UI completeness, platform parity, state reachability, interaction quality, or accessibility, approve design, grant readiness, authorize write, or authorize action.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

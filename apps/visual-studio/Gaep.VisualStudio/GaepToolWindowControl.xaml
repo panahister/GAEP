@@ -128,6 +128,10 @@
                 Command="{Binding LoadInformationArchitectureCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded node, root, route, scope, gap, state, and digest metadata only; it withholds node, route, content, persona, Source, and personal content, and does not prove findability, comprehension, or accessibility, validate content, approve design, establish readiness, or authorize write or action."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadScreenStateInventoryButton" Content="Inspect governed Screen and State Inventory"
+                Command="{Binding LoadScreenStateInventoryCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded platform, screen, state, variant, route, scope, gap, review state, and digest metadata only; it withholds screen, state, variant, route, content, persona, Source, and personal content, and does not prove UI completeness, platform parity, state reachability, interaction quality, or accessibility, approve design, establish readiness, or authorize write or action."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

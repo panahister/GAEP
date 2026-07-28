@@ -55,6 +55,7 @@ import type {
   DesignPersonaRoleModelProjection,
   UserJourneyModelProjection,
   InformationArchitectureModelProjection,
+  ScreenStateInventoryProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -227,6 +228,9 @@ export interface CurrentStudioEngineReader {
   informationArchitectureModel?: {
     project(initiativeId: string): Promise<InformationArchitectureModelProjection>
   }
+  screenStateInventory?: {
+    project(initiativeId: string): Promise<ScreenStateInventoryProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -291,6 +295,7 @@ interface ObservedStudioState {
   designPersonaRoleProjections: Map<string, DesignPersonaRoleModelProjection>
   userJourneyProjections: Map<string, UserJourneyModelProjection>
   informationArchitectureProjections: Map<string, InformationArchitectureModelProjection>
+  screenStateInventoryProjections: Map<string, ScreenStateInventoryProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -1788,6 +1793,55 @@ function informationArchitectureTable(state: ObservedStudioState): StudioTableSn
   }
 }
 
+function screenStateInventoryTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.screenStateInventoryProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        inventory: `${status.platformCount} platforms · ${status.screenCount} screens · ${status.stateCount} states · ${status.variantCount} variants`,
+        coverage: `${status.representedRouteCount} represented routes · ${status.unresolvedRouteCount} unresolved routes · ${status.representedScopeCount} represented scopes · ${status.unresolvedScopeCount} unresolved scopes`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        gaps: `${status.unresolvedPlatformCount} unresolved platforms · ${status.weakEvidenceItemCount} weak-evidence items · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate platform, screen, state, and variant counts only; no UI completeness, platform parity, state reachability, interaction quality, accessibility validation, design approval, readiness, write, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "screen-state-inventory",
+    title: "Governed Screen and State Inventory Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "coverage", label: "Route and scope coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Screen and State Inventory candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer UI completeness, platform parity, state reachability, interaction quality, accessibility validation, design approval, readiness, write, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -1797,7 +1851,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     const legacy = legacyForm(route, state.product)
     const relatedRecords = [
       ...(businessTable ? [businessTable] : []),
-      ...(route === "users-jobs" ? [designPersonaRoleTable(state), userJourneyTable(state), informationArchitectureTable(state)] : []),
+      ...(route === "users-jobs" ? [designPersonaRoleTable(state), userJourneyTable(state), informationArchitectureTable(state), screenStateInventoryTable(state)] : []),
       ...(route === "architecture"
         ? [businessCapabilityMapTable(state), valueStreamModelTable(state), operatingModelTable(state), businessRuleCatalogTable(state), businessArchitectureBaselineTable(state), systemSolutionArchitectureTable(state), boundedContextModelTable(state), securityPrivacyAssessmentTable(state), processModelTable(state), dataModelTable(state), authorizationModelTable(state), eventIntegrationModelTable(state), failureRecoveryModelTable(state), architectureChallengeModelTable(state), architectureTable(state.architecture), designApplicabilityTable(state)]
         : []),
@@ -1807,7 +1861,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
   const relatedRecords: StudioTableSnapshot[] = []
   if (businessTable) relatedRecords.push(businessTable)
   if (route === "users-jobs") relatedRecords.push(
-    designPersonaRoleTable(state), userJourneyTable(state), informationArchitectureTable(state),
+    designPersonaRoleTable(state), userJourneyTable(state), informationArchitectureTable(state), screenStateInventoryTable(state),
   )
   if (route === "scope") relatedRecords.push(requirementsTable(state.requirements))
   if (route === "architecture") {
@@ -4455,6 +4509,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       designPersonaRoleProjections: new Map(),
       userJourneyProjections: new Map(),
       informationArchitectureProjections: new Map(),
+      screenStateInventoryProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -5667,6 +5722,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "information-architecture-unavailable",
           "Information Architecture metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "users-jobs" && engine.screenStateInventory) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.screenStateInventory!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.screenStateInventoryProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Screen and State Inventory projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `screen-state-inventory-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Screen and State Inventory metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "screen-state-inventory-unavailable",
+          "Screen and State Inventory metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

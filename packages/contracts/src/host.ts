@@ -52,6 +52,7 @@ import { designApplicabilityInputSchema } from "./design-applicability.js"
 import { designPersonaRoleModelInputSchema } from "./design-persona-role-model.js"
 import { userJourneyModelInputSchema } from "./user-journey-model.js"
 import { informationArchitectureModelInputSchema } from "./information-architecture-model.js"
+import { screenStateInventoryInputSchema } from "./screen-state-inventory.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -552,6 +553,18 @@ export const hostInformationArchitectureReviseParamsSchema = z.object({
   record: informationArchitectureModelInputSchema,
 }).strict()
 
+export const hostScreenStateInventoryCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: screenStateInventoryInputSchema,
+}).strict()
+
+export const hostScreenStateInventoryReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: screenStateInventoryInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -739,6 +752,11 @@ export const hostMethodSchema = z.enum([
   "design.informationArchitecture.revise",
   "design.informationArchitecture.assess",
   "design.informationArchitecture.snapshot",
+  "design.screenStateInventory.read",
+  "design.screenStateInventory.create",
+  "design.screenStateInventory.revise",
+  "design.screenStateInventory.assess",
+  "design.screenStateInventory.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -935,6 +953,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.informationArchitecture.revise", hostInformationArchitectureReviseParamsSchema),
   requestVariant("design.informationArchitecture.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.informationArchitecture.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.screenStateInventory.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.screenStateInventory.create", hostScreenStateInventoryCreateParamsSchema),
+  requestVariant("design.screenStateInventory.revise", hostScreenStateInventoryReviseParamsSchema),
+  requestVariant("design.screenStateInventory.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.screenStateInventory.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

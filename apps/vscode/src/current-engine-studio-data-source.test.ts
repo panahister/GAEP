@@ -27,6 +27,7 @@ import {
   type DesignPersonaRoleModelProjection,
   type UserJourneyModelProjection,
   type InformationArchitectureModelProjection,
+  type ScreenStateInventoryProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -1780,6 +1781,61 @@ function informationArchitectureProjection(): InformationArchitectureModelProjec
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function screenStateInventoryProjection(): ScreenStateInventoryProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "screen-state-inventory-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "f2f2f2f2-f2f2-42f2-82f2-f2f2f2f2f2f2", revision: 2, digest: `sha256:${"c".repeat(64)}` as const },
+    platformCount: 3,
+    targetedPlatformCount: 2,
+    unresolvedPlatformCount: 1,
+    screenCount: 9,
+    stateCount: 18,
+    variantCount: 5,
+    representedRouteCount: 7,
+    unresolvedRouteCount: 1,
+    representedScopeCount: 1,
+    unresolvedScopeCount: 1,
+    weakEvidenceItemCount: 2,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more Information Architecture routes have unresolved Screen and State Inventory coverage"],
+    assessedAt: "2026-07-28T11:30:00.000Z",
+    authorityBoundary: "screen-state-inventory-status-is-observational-and-does-not-prove-ui-completeness-platform-parity-state-reachability-interaction-quality-or-accessibility-approve-design-grant-readiness-or-authorize-action" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "screen-state-inventory-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"d".repeat(64)}` as const,
+      state: "candidate" as const,
+      platformCount: 3,
+      screenCount: 9,
+      stateCount: 18,
+      variantCount: 5,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-28T11:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-screen-state-variant-platform-content-persona-source-or-personal-content-secrets-or-credentials" as const,
+    authorityBoundary: "screen-state-inventory-projection-is-read-only-and-does-not-prove-ui-completeness-platform-parity-state-reachability-interaction-quality-or-accessibility-approve-design-grant-readiness-or-authorize-write-or-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2429,6 +2485,7 @@ interface HarnessOptions {
   designPersonaRoleProjection?: DesignPersonaRoleModelProjection
   userJourneyProjection?: UserJourneyModelProjection
   informationArchitectureProjection?: InformationArchitectureModelProjection
+  screenStateInventoryProjection?: ScreenStateInventoryProjection
   commandResult?: unknown
 }
 
@@ -2649,6 +2706,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.informationArchitectureProjection ? {
       informationArchitectureModel: {
         project: async () => options.informationArchitectureProjection!,
+      },
+    } : {}),
+    ...(options.screenStateInventoryProjection ? {
+      screenStateInventory: {
+        project: async () => options.screenStateInventoryProjection!,
       },
     } : {}),
   }
@@ -3334,6 +3396,31 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private node label|private route purpose|private persona|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Screen and State Inventory metadata on the native users and jobs page", async () => {
+    const projection = screenStateInventoryProjection()
+    const { source } = harness({ screenStateInventoryProjection: projection })
+    const snapshot = await source.readSnapshot("users-jobs")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "screen-state-inventory")).toMatchObject({
+      id: "screen-state-inventory",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          inventory: "3 platforms · 9 screens · 18 states · 5 variants",
+          coverage: "7 represented routes · 1 unresolved routes · 1 represented scopes · 1 unresolved scopes",
+          assessment: "attention-required · held",
+          gaps: "1 unresolved platforms · 2 weak-evidence items · 2 questions · 0 stale bindings · 1 stale Source references",
+          boundary: "Candidate platform, screen, state, and variant counts only; no UI completeness, platform parity, state reachability, interaction quality, accessibility validation, design approval, readiness, write, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private screen label|private state|private variant|private route|private persona|private source content|customer@example\.com|api_key/iu,
     )
   })
 

@@ -1362,6 +1362,62 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readScreenStateInventory(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readScreenStateInventory(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Screen and State Inventory was read. Refresh the exact records." }
+        return renderScreenStateInventory(projection)
+    }
+
+    fun renderScreenStateInventory(projection: ScreenStateInventoryProjection): String = buildString {
+        appendLine("GAEP governed Screen and State Inventory candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine(
+            "Platforms: ${projection.platformCount} total · ${projection.targetedPlatformCount} targeted · " +
+                "${projection.unresolvedPlatformCount} unresolved",
+        )
+        appendLine(
+            "Inventory: ${projection.screenCount} screens · ${projection.stateCount} states · " +
+                "${projection.variantCount} variants",
+        )
+        appendLine(
+            "Route coverage: ${projection.representedRouteCount} represented · ${projection.unresolvedRouteCount} unresolved",
+        )
+        appendLine(
+            "Scope coverage: ${projection.representedScopeCount} represented · ${projection.unresolvedScopeCount} unresolved",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.weakEvidenceItemCount} weak-evidence items · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Screen and State Inventory candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate inventory: ${record.platformCount} platforms · ${record.screenCount} screens · " +
+                    "${record.stateCount} states · ${record.variantCount} variants · ${record.reviewState}",
+            )
+        } ?: appendLine("Screen and State Inventory candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate platform, screen, state, variant, and coverage metadata only; no UI " +
+                "completeness, platform parity, state reachability, interaction quality, accessibility proof, design " +
+                "approval, readiness, write, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

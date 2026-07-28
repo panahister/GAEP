@@ -1,0 +1,40 @@
+namespace Gaep.HostClient;
+
+public sealed record ScreenStateInventoryRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int PlatformCount,
+    int ScreenCount,
+    int StateCount,
+    int VariantCount,
+    string ReviewState);
+
+public sealed record ScreenStateInventoryProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    string ReviewState,
+    IReadOnlyList<string> Reasons,
+    int PlatformCount,
+    int TargetedPlatformCount,
+    int UnresolvedPlatformCount,
+    int ScreenCount,
+    int StateCount,
+    int VariantCount,
+    int RepresentedRouteCount,
+    int UnresolvedRouteCount,
+    int RepresentedScopeCount,
+    int UnresolvedScopeCount,
+    int WeakEvidenceItemCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    int UnresolvedQuestionCount,
+    ScreenStateInventoryRecordView? Candidate,
+    string SnapshotDigest);

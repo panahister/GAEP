@@ -2274,6 +2274,8 @@ export class ProductStudioService {
       ...userJourneyModelHistory,
       ...informationArchitectureModels,
       ...informationArchitectureModelHistory,
+      ...screenStateInventories,
+      ...screenStateInventoryHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2307,6 +2309,7 @@ export class ProductStudioService {
           designPersonaRoleModels.find((record) => record.id === id)?.informationClassification ??
           userJourneyModels.find((record) => record.id === id)?.informationClassification ??
           informationArchitectureModels.find((record) => record.id === id)?.informationClassification ??
+          screenStateInventories.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2616,6 +2619,7 @@ export class ProductStudioService {
           ...designPersonaRoleModels.map((record) => record.informationClassification),
           ...userJourneyModels.map((record) => record.informationClassification),
           ...informationArchitectureModels.map((record) => record.informationClassification),
+          ...screenStateInventories.map((record) => record.informationClassification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
         ])],

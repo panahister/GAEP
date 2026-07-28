@@ -27,6 +27,7 @@ import {
   designPersonaRoleModelProjectionSchema,
   userJourneyModelProjectionSchema,
   informationArchitectureModelProjectionSchema,
+  screenStateInventoryProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -61,6 +62,7 @@ import {
   type DesignPersonaRoleModelProjection,
   type UserJourneyModelProjection,
   type InformationArchitectureModelProjection,
+  type ScreenStateInventoryProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -674,6 +676,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = informationArchitectureModelProjectionSchema.safeParse(
         await this.request("design.informationArchitecture.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readScreenStateInventory(initiativeValue: string): Promise<ScreenStateInventoryProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = screenStateInventoryProjectionSchema.safeParse(
+        await this.request("design.screenStateInventory.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

@@ -54,6 +54,7 @@ const designApplicabilityId = "56565656-5656-4656-8656-565656565656"
 const designPersonaRoleId = "57575757-5757-4757-8757-575757575757"
 const userJourneyId = "58585858-5858-4858-8858-585858585858"
 const informationArchitectureId = "59595959-5959-4959-8959-595959595959"
+const screenStateInventoryId = "60606060-6060-4060-8060-606060606060"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -143,6 +144,8 @@ input.on("line", (line) => {
       return readUserJourneyModel(id, request.params)
     case "design.informationArchitecture.snapshot":
       return readInformationArchitectureModel(id, request.params)
+    case "design.screenStateInventory.snapshot":
+      return readScreenStateInventory(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -1930,6 +1933,71 @@ function readInformationArchitectureModel(id, params) {
   if (workspacePath.endsWith("bad-information-architecture-snapshot-digest")) value.candidate.nodeCount = 7
   if (workspacePath.endsWith("bad-information-architecture-snapshot-private")) {
     value.nodeLabel = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readScreenStateInventory(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE SCREEN STATE INVENTORY PARAMS")
+  }
+  const candidateDigest = `sha256:${"c".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "screen-state-inventory-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: screenStateInventoryId, revision: 2, digest: candidateDigest },
+    platformCount: 3,
+    targetedPlatformCount: 2,
+    unresolvedPlatformCount: 1,
+    screenCount: 8,
+    stateCount: 24,
+    variantCount: 6,
+    representedRouteCount: 7,
+    unresolvedRouteCount: 1,
+    representedScopeCount: 1,
+    unresolvedScopeCount: 1,
+    weakEvidenceItemCount: 2,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more experience platforms remain unresolved"],
+    assessedAt: "2026-07-28T11:30:00.000Z",
+    authorityBoundary: "screen-state-inventory-status-is-observational-and-does-not-prove-ui-completeness-platform-parity-state-reachability-interaction-quality-or-accessibility-approve-design-grant-readiness-or-authorize-action",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "screen-state-inventory-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: screenStateInventoryId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"d".repeat(64)}`,
+      state: "candidate",
+      platformCount: 3,
+      screenCount: 8,
+      stateCount: 24,
+      variantCount: 6,
+      reviewState: "held",
+      updatedAt: "2026-07-28T11:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-screen-state-variant-platform-content-persona-source-or-personal-content-secrets-or-credentials",
+    authorityBoundary: "screen-state-inventory-projection-is-read-only-and-does-not-prove-ui-completeness-platform-parity-state-reachability-interaction-quality-or-accessibility-approve-design-grant-readiness-or-authorize-write-or-action",
+  }
+  if (workspacePath.endsWith("bad-screen-state-inventory-snapshot-binding")) content.initiative.id = screenStateInventoryId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-screen-state-inventory-snapshot-digest")) value.candidate.screenCount = 9
+  if (workspacePath.endsWith("bad-screen-state-inventory-snapshot-private")) {
+    value.screenLabel = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

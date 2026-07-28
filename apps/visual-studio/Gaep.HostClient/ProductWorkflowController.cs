@@ -1602,6 +1602,61 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadScreenStateInventoryAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadScreenStateInventoryAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Screen and State Inventory was read. Refresh the exact records.");
+        }
+        return RenderScreenStateInventory(projection);
+    }
+
+    public static string RenderScreenStateInventory(ScreenStateInventoryProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Screen and State Inventory candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine($"Platforms: {projection.PlatformCount} total · {projection.TargetedPlatformCount} targeted · {projection.UnresolvedPlatformCount} unresolved")
+            .AppendLine($"Inventory: {projection.ScreenCount} screens · {projection.StateCount} states · {projection.VariantCount} variants")
+            .AppendLine($"Route coverage: {projection.RepresentedRouteCount} represented · {projection.UnresolvedRouteCount} unresolved")
+            .AppendLine($"Scope coverage: {projection.RepresentedScopeCount} represented · {projection.UnresolvedScopeCount} unresolved")
+            .AppendLine(
+                $"Candidate gaps: {projection.WeakEvidenceItemCount} weak-evidence items · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Screen and State Inventory candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {candidate.PlatformCount} platforms · {candidate.ScreenCount} screens · " +
+                    $"{candidate.StateCount} states · {candidate.VariantCount} variants · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Screen and State Inventory candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate platform, screen, state, variant, and coverage metadata only; no UI " +
+                "completeness, platform parity, state reachability, interaction quality, accessibility proof, design " +
+                "approval, readiness, write, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

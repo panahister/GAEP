@@ -1426,6 +1426,52 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Screen and State Inventory projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("screen-state-inventory-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readScreenStateInventory(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals(3, projection.platformCount)
+            assertEquals(9, projection.screenCount)
+            assertEquals(18, projection.stateCount)
+            assertEquals(5, projection.candidate?.variantCount)
+
+            val rendered = RiderProductController(client).readScreenStateInventory(entryId)
+            assertTrue(rendered.contains("GAEP governed Screen and State Inventory candidate"))
+            assertTrue(rendered.contains("9 screens · 18 states · 5 variants"))
+            assertTrue(rendered.contains("2 weak-evidence items"))
+            assertTrue(rendered.contains("no UI completeness"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("screenLabel"))
+        }
+
+        listOf(
+            "bad-screen-state-inventory-snapshot-digest",
+            "bad-screen-state-inventory-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readScreenStateInventory(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-screen-state-inventory-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readScreenStateInventory(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
