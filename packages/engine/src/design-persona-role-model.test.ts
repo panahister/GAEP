@@ -12,6 +12,7 @@ import {
   type BusinessUnderstandingInput,
   type DesignApplicability,
   type DesignApplicabilityInput,
+  type DesignRequirementsInput,
   type DesignPersonaRoleModelInput,
   type DesignPersonaRoleModel,
   type ExactSourceReference,
@@ -20,10 +21,13 @@ import {
   type InitiativeClassificationInput,
   type InformationArchitectureModelInput,
   type InformationArchitectureModel,
+  type OutcomeModel,
+  type OutcomeModelInput,
   type Product,
   type SourceRecord,
   type SourceRecordInput,
   type ScreenStateInventoryInput,
+  type ScreenStateInventory,
   type StakeholderModel,
   type StakeholderModelInput,
   type UserJourneyModelInput,
@@ -882,6 +886,193 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function outcomeModelInput(): Promise<OutcomeModelInput> {
+    const [business, currentStakeholder] = await Promise.all([
+      engine.businessUnderstanding.readCurrentBusinessUnderstanding(initiative.id),
+      engine.businessUnderstanding.readCurrentStakeholderModel(initiative.id),
+    ])
+    if (!business || !currentStakeholder) throw new Error("Expected current business and stakeholder fixtures")
+    return {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: "internal",
+      businessUnderstanding: { recordId: business.id, revision: business.revision, digest: canonicalDigest(business) },
+      stakeholderModel: {
+        recordId: currentStakeholder.id,
+        revision: currentStakeholder.revision,
+        digest: canonicalDigest(currentStakeholder),
+      },
+      primaryHypothesis: attributed("Exact design requirement links help accountable reviewers trace intended outcomes to bounded design and backlog candidates."),
+      outcomes: [{
+        id: "safe-release-review",
+        level: "experience",
+        statement: attributed("Release owners can review bounded governance status and recovery choices without receiving approval or action authority."),
+        beneficiaryStakeholderKeys: ["change-owner"],
+        confounders: ["Review confidence may change independently when source freshness or Initiative scope changes"],
+      }],
+      measures: [{
+        key: "SAFE-REVIEW-COVERAGE",
+        name: "Bounded review coverage",
+        outcomeIds: ["safe-release-review"],
+        category: "quality-risk",
+        kind: "metric",
+        definition: "Observe whether the governed review experience exposes every declared status and recovery path without adding authority.",
+        direction: "increase",
+        unit: "represented review paths",
+        baseline: { status: "not-observed", sources: [] },
+        target: { status: "not-set" },
+        collection: {
+          ownerStakeholderKey: "change-owner",
+          method: "Review the exact candidate evidence and privacy-safe projections against the declared path catalog.",
+          cadence: "At each candidate revision",
+          qualityConditions: ["Every observation remains bound to the exact candidate revision and evidence source"],
+        },
+        dataUse: {
+          purpose: "Assess candidate design coverage without evaluating individual worker performance.",
+          classification: "internal",
+          aggregation: "Initiative-level candidate counts only",
+          retention: "Retain with the governed candidate history",
+          prohibitedUses: ["Individual productivity ranking is prohibited"],
+        },
+        acceptanceSignal: "Every declared governed review path has an explicit candidate design requirement link for human assessment.",
+        sources: [reference()],
+      }],
+      countermetricDisposition: {
+        status: "not-applicable",
+        rationale: "This bounded fixture records one candidate coverage metric and does not claim an approved target set.",
+        sources: [reference()],
+      },
+      burdenDisposition: {
+        status: "not-applicable",
+        rationale: "This bounded fixture does not establish a human burden measure or an approved measurement program.",
+        sources: [reference()],
+      },
+      unresolvedQuestions: [],
+      limitations: ["The candidate outcome and measure do not approve targets, design, readiness, release, implementation, or action"],
+    }
+  }
+
+  async function createDesignRequirementsPrerequisites() {
+    const personaRole = await engine.designPersonaRoleModel.create(await input(), actorId)
+    const journeyModel = await engine.userJourneyModel.create(await journeyInput(personaRole), actorId)
+    const architecture = await engine.informationArchitectureModel.create(
+      await informationArchitectureInput(personaRole, journeyModel), actorId,
+    )
+    const inventory = await engine.screenStateInventory.create(await screenStateInventoryInput(architecture), actorId)
+    const outcomeModel = await engine.businessUnderstanding.createOutcomeModel(await outcomeModelInput(), actorId)
+    const requirement = await engine.productStudio.createRequirement({
+      key: "DESIGN-REVIEW-01",
+      statement: "The responsive release-review experience must expose bounded status and recovery paths without granting approval or action authority.",
+      rationale: "Preserve the exact candidate outcome, design target, evidence, and authority boundary for accountable human review.",
+      priority: "must",
+      verificationCriteria: ["The privacy-safe projection contains exact counts and digests but no requirement, outcome, source, or Work Item content"],
+      sourceRecords: [],
+    }, product.revision!, actorId)
+    const change = await engine.productStudio.createChange({
+      initiativeId: initiative.id,
+      title: "Implement bounded release-review experience",
+      summary: "Represent the candidate design requirement through an exact Initiative-scoped backlog record without synthesizing commitment or readiness.",
+      baseline: {
+        kind: "genesis",
+        declaration: "No prior implementation baseline exists for this bounded fixture.",
+        rationale: "Create an explicit candidate Work Item for traceability testing.",
+      },
+      effectEnvelope: ["reversible-change"],
+    }, product.revision!, actorId)
+    const workItem = await engine.productStudio.createWorkItem({
+      changeId: change.id,
+      title: "Build bounded release-review projection",
+      objective: "Implement the exact privacy-safe review projection and preserve all declared no-authority boundaries.",
+      dependsOn: [],
+      completionCriteria: ["The bounded release-review projection satisfies its focused contract tests"],
+      evidenceCriteria: ["Focused contract and engine tests pass against the exact candidate revision"],
+      scope: {
+        read: [{ kind: "workspace-relative", path: "packages/contracts" }],
+        write: [{ kind: "workspace-relative", path: "packages/engine" }],
+        effects: [],
+      },
+      owner: { kind: "unassigned" },
+    }, product.revision!, actorId)
+    return { architecture, inventory, outcomeModel, requirement, workItem }
+  }
+
+  async function designRequirementsInput(
+    outcomeModel: OutcomeModel,
+    inventory: ScreenStateInventory,
+    requirement: Awaited<ReturnType<typeof engine.productStudio.readRequirement>>,
+    workItem: Awaited<ReturnType<typeof engine.productStudio.readWorkItem>>,
+    overrides: Partial<DesignRequirementsInput> = {},
+  ): Promise<DesignRequirementsInput> {
+    const routeKeys = inventory.routeCoverage.filter((entry) => entry.status === "represented").map((entry) => entry.routeKey).sort()
+    return {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: "internal",
+      title: "Customer portal Design Requirements candidate",
+      outcomeModel: { recordId: outcomeModel.id, revision: outcomeModel.revision, digest: canonicalDigest(outcomeModel) },
+      screenStateInventory: {
+        recordId: inventory.id,
+        revision: inventory.revision,
+        digest: canonicalDigest(inventory),
+        membershipDigest: inventory.membershipDigest,
+      },
+      requirements: [{
+        key: requirement.key,
+        requirement: {
+          recordType: "requirement",
+          recordId: requirement.id,
+          revision: requirement.revision,
+          digest: canonicalDigest(requirement),
+        },
+        outcomeIds: ["safe-release-review"],
+        targets: {
+          platformKeys: ["responsive-web"],
+          screenKeys: ["release-review"],
+          stateKeys: ["review-default", "review-error", "review-loading"],
+          variantKeys: ["review-wide"],
+          routeKeys,
+          designScopeKeys: ["client-application.customer-portal"],
+        },
+        backlog: {
+          state: "linked",
+          workItems: [{
+            recordType: "work-item",
+            recordId: workItem.id,
+            revision: workItem.revision,
+            digest: canonicalDigest(workItem),
+          }],
+          rationale: "The requirement is represented by one exact current Work Item under this Initiative without establishing backlog commitment.",
+        },
+        evidence: {
+          state: "human-reviewed",
+          sources: [reference()],
+          reviewedBy: { kind: "human", id: actorId },
+          reviewedAt: "2026-07-28T12:00:00.000Z",
+        },
+        verificationEvidenceState: "supported",
+        requirementValidityState: "not-established",
+        satisfactionState: "not-established",
+      }],
+      outcomeCoverage: [{
+        outcomeId: "safe-release-review",
+        status: "represented",
+        requirementKeys: [requirement.key],
+        rationale: "The exact current outcome is explicitly represented by the bounded Design Requirement candidate.",
+        sources: [reference()],
+      }],
+      catalogCompletenessState: "candidate-complete",
+      unresolvedQuestions: [],
+      limitations: ["Requirement validity, catalog completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, and action authority remain not established"],
+      reviewState: "ready-for-human-review",
+      priorityApprovalState: "not-established",
+      designApprovalState: "not-established",
+      backlogCommitmentState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-established",
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -1462,6 +1653,158 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "screen-state-inventory.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, and revises exact Design Requirements without validity, approval, commitment, readiness, or action authority", async () => {
+    const { inventory, outcomeModel, requirement, workItem } = await createDesignRequirementsPrerequisites()
+    const candidate = await engine.designRequirements.create(
+      await designRequirementsInput(outcomeModel, inventory, requirement, workItem), actorId,
+    )
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      requirements: [{
+        key: requirement.key,
+        backlog: { state: "linked", workItems: [{ recordId: workItem.id }] },
+        requirementValidityState: "not-established",
+        satisfactionState: "not-established",
+      }],
+      catalogCompletenessState: "candidate-complete",
+      priorityApprovalState: "not-established",
+      designApprovalState: "not-established",
+      backlogCommitmentState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-established",
+      authorityBoundary: expect.stringContaining("do-not-establish-requirement-validity-completeness-priority-approval"),
+    })
+    expect(await engine.designRequirements.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      requirementCount: 1,
+      mustPriorityCount: 1,
+      representedOutcomeCount: 1,
+      unresolvedOutcomeCount: 0,
+      linkedBacklogRequirementCount: 1,
+      notPlannedRequirementCount: 0,
+      unresolvedBacklogRequirementCount: 0,
+      workItemCount: 1,
+      weakEvidenceRequirementCount: 0,
+      staleBindingCount: 0,
+      staleDomainReferenceCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      catalogCompletenessState: "candidate-complete",
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.designRequirements.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        requirementCount: 1,
+        representedOutcomeCount: 1,
+        workItemCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-requirement-outcome-work-item-design-target-source-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-requirement-validity-completeness-priority-approval"),
+    })
+    expect(JSON.stringify(projection)).not.toContain(requirement.statement)
+    expect(JSON.stringify(projection)).not.toContain(workItem.objective)
+    expect(JSON.stringify(projection)).not.toContain(outcomeModel.outcomes[0]!.statement.text)
+
+    const revisedInput = await designRequirementsInput(outcomeModel, inventory, requirement, workItem, {
+      limitations: [
+        "Requirement validity, catalog completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, and action authority remain not established",
+        "The candidate remains subject to independent accountable human review",
+      ].sort(),
+    })
+    const revised = await engine.designRequirements.revise(candidate.id, candidate.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.designRequirements.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `design-requirements/${candidate.id}.json`,
+      `design-requirements-history/design-requirements-${candidate.id}-r1.json`,
+      `design-requirements-history/design-requirements-${candidate.id}-r2.json`,
+    ]))
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "design-requirements.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        outcomeModel: revised.outcomeModel,
+        screenStateInventory: revised.screenStateInventory,
+        requirementCount: 1,
+        requirementCatalogDigest: canonicalDigest(revised.requirements.map((entry) => ({ key: entry.key, requirement: entry.requirement }))),
+        outcomeCoverageDigest: canonicalDigest(revised.outcomeCoverage.map((entry) => ({
+          outcomeId: entry.outcomeId, status: entry.status, requirementKeys: entry.requirementKeys,
+        }))),
+        backlogDispositionCounts: { linked: 1 },
+        workItemCount: 1,
+        catalogCompletenessState: "candidate-complete",
+        reviewState: "ready-for-human-review",
+        priorityApprovalState: "not-established",
+        designApprovalState: "not-established",
+        backlogCommitmentState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-established",
+        requirementValidityState: "not-established",
+        requirementSatisfactionState: "not-established",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("fails Design Requirements closed on stale bindings, unknown targets, incomplete outcome coverage, and superseded domain evidence", async () => {
+    const { inventory, outcomeModel, requirement, workItem } = await createDesignRequirementsPrerequisites()
+    const staleOutcome = await designRequirementsInput(outcomeModel, inventory, requirement, workItem, {
+      outcomeModel: { recordId: outcomeModel.id, revision: outcomeModel.revision, digest: digest("f") },
+    })
+    await expect(engine.designRequirements.create(staleOutcome, actorId)).rejects.toThrow("exact current Outcome Model")
+
+    const unknownScreen = await designRequirementsInput(outcomeModel, inventory, requirement, workItem)
+    unknownScreen.requirements[0]!.targets.screenKeys = ["unknown-screen"]
+    await expect(engine.designRequirements.create(unknownScreen, actorId)).rejects.toThrow("exact current Screen and State Inventory")
+
+    const incompleteOutcomes = await designRequirementsInput(outcomeModel, inventory, requirement, workItem)
+    incompleteOutcomes.outcomeCoverage = []
+    await expect(engine.designRequirements.create(incompleteOutcomes, actorId)).rejects.toThrow()
+
+    const candidate = await engine.designRequirements.create(
+      await designRequirementsInput(outcomeModel, inventory, requirement, workItem), actorId,
+    )
+    await engine.productStudio.reviseRequirement(
+      requirement.id,
+      requirement.revision,
+      { state: "accepted" },
+      actorId,
+      "Record the generic Requirement state without granting design approval or satisfaction authority.",
+    )
+    expect(await engine.designRequirements.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 0,
+      staleDomainReferenceCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "design-requirements.binding-review-required",
       severity: "warning",
     }))
   })

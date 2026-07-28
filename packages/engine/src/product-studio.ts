@@ -16,6 +16,7 @@ import {
   userJourneyModelSchema,
   informationArchitectureModelSchema,
   screenStateInventorySchema,
+  designRequirementsSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -88,6 +89,7 @@ import {
   type UserJourneyModel,
   type InformationArchitectureModel,
   type ScreenStateInventory,
+  type DesignRequirements,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2209,6 +2211,16 @@ export class ProductStudioService {
       /^screen-state-inventory-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       screenStateInventorySchema,
     )
+    const designRequirements = await this.listRecords(
+      "design-requirements",
+      /^[0-9a-f-]+\.json$/i,
+      designRequirementsSchema,
+    )
+    const designRequirementsHistory = await this.listRecords(
+      "design-requirements-history",
+      /^design-requirements-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      designRequirementsSchema,
+    )
     const stakeholderModels = await this.listRecords(
       "stakeholder-models",
       /^[0-9a-f-]+\.json$/i,
@@ -2276,6 +2288,8 @@ export class ProductStudioService {
       ...informationArchitectureModelHistory,
       ...screenStateInventories,
       ...screenStateInventoryHistory,
+      ...designRequirements,
+      ...designRequirementsHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2310,6 +2324,7 @@ export class ProductStudioService {
           userJourneyModels.find((record) => record.id === id)?.informationClassification ??
           informationArchitectureModels.find((record) => record.id === id)?.informationClassification ??
           screenStateInventories.find((record) => record.id === id)?.informationClassification ??
+          designRequirements.find((record) => record.id === id)?.informationClassification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
         throw new Error(`Portable record ${id} is ${classification}; explicit disclosure review is required`)
@@ -2539,6 +2554,13 @@ export class ProductStudioService {
       screenStateInventoryHistory,
       (record) => `screen-state-inventory-history/screen-state-inventory-${record.id}-r${record.revision}.json`,
     )
+    append("design-requirements", "design-requirements-candidate", designRequirements)
+    append(
+      "design-requirements-history",
+      "design-requirements-candidate",
+      designRequirementsHistory,
+      (record) => `design-requirements-history/design-requirements-${record.id}-r${record.revision}.json`,
+    )
     append("stakeholder-models", "stakeholder-role-model", stakeholderModels)
     append(
       "stakeholder-model-history",
@@ -2620,6 +2642,7 @@ export class ProductStudioService {
           ...userJourneyModels.map((record) => record.informationClassification),
           ...informationArchitectureModels.map((record) => record.informationClassification),
           ...screenStateInventories.map((record) => record.informationClassification),
+          ...designRequirements.map((record) => record.informationClassification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
         ])],
@@ -2944,6 +2967,14 @@ export class ProductStudioService {
           `screen-state-inventory-history/screen-state-inventory-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Screen and State Inventory history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("design-requirements-history/")) {
+        const record = validated as DesignRequirements
+        const expectedHistoryPath =
+          `design-requirements-history/design-requirements-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Design Requirements history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("stakeholder-model-history/")) {
@@ -4070,7 +4101,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4102,7 +4133,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -6305,7 +6336,7 @@ export class ProductStudioService {
     const screenStateInventoryHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("screen-state-inventory-history/"))
       .map(([, record]) => screenStateInventorySchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactScreenStateInventories = validateVersionedBusinessRecords(
       screenStateInventories, screenStateInventoryHistory, "Screen and State Inventory",
     )
     for (const candidate of [...screenStateInventories, ...screenStateInventoryHistory]) {
@@ -6358,6 +6389,83 @@ export class ProductStudioService {
         if (screen.routeKeys.some((key) => !exactRouteKeys.has(key)) ||
             screen.contentNodeKeys.some((key) => !nodeKeys.has(key))) {
           throw new Error(`Import Screen and State Inventory ${candidate.id} contains unresolved Information Architecture screen links`)
+        }
+      }
+    }
+
+    const designRequirements = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-requirements/"))
+      .map(([, record]) => designRequirementsSchema.parse(record))
+    const designRequirementsHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-requirements-history/"))
+      .map(([, record]) => designRequirementsSchema.parse(record))
+    validateVersionedBusinessRecords(
+      designRequirements, designRequirementsHistory, "Design Requirements",
+    )
+    for (const candidate of [...designRequirements, ...designRequirementsHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        outcomeModel: candidate.outcomeModel,
+        screenStateInventory: candidate.screenStateInventory,
+        requirements: candidate.requirements,
+        outcomeCoverage: candidate.outcomeCoverage,
+        catalogCompletenessState: candidate.catalogCompletenessState,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        priorityApprovalState: candidate.priorityApprovalState,
+        designApprovalState: candidate.designApprovalState,
+        backlogCommitmentState: candidate.backlogCommitmentState,
+        readinessState: candidate.readinessState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Design Requirements ${candidate.id} membership digest is invalid`)
+      }
+      const outcomeModel = exactOutcomeModels.get(
+        `${candidate.outcomeModel.recordId}:${candidate.outcomeModel.revision}:${candidate.outcomeModel.digest}`,
+      )
+      const inventory = exactScreenStateInventories.get(
+        `${candidate.screenStateInventory.recordId}:${candidate.screenStateInventory.revision}:${candidate.screenStateInventory.digest}`,
+      )
+      if (!outcomeModel || outcomeModel.initiativeId !== candidate.initiativeId) {
+        throw new Error(`Import Design Requirements ${candidate.id} exact Outcome Model binding is unresolved`)
+      }
+      if (!inventory || inventory.initiativeId !== candidate.initiativeId ||
+          inventory.membershipDigest !== candidate.screenStateInventory.membershipDigest) {
+        throw new Error(`Import Design Requirements ${candidate.id} exact Screen and State Inventory binding is unresolved`)
+      }
+      const expectedOutcomes = outcomeModel.outcomes.map((outcome) => outcome.id).sort((left, right) => left.localeCompare(right))
+      if (canonicalDigest(expectedOutcomes) !== canonicalDigest(candidate.outcomeCoverage.map((entry) => entry.outcomeId))) {
+        throw new Error(`Import Design Requirements ${candidate.id} does not cover every exact Outcome Model outcome`)
+      }
+      const targetSets = {
+        platformKeys: new Set(inventory.platforms.filter((entry) => entry.supportState === "targeted").map((entry) => entry.key)),
+        screenKeys: new Set(inventory.screens.map((entry) => entry.key)),
+        stateKeys: new Set(inventory.states.map((entry) => entry.key)),
+        variantKeys: new Set(inventory.variants.map((entry) => entry.key)),
+        routeKeys: new Set(inventory.routeCoverage.filter((entry) => entry.status === "represented").map((entry) => entry.routeKey)),
+        designScopeKeys: new Set(inventory.scopeCoverage.filter((entry) => entry.status === "represented").map((entry) => entry.designScopeKey)),
+      }
+      for (const linked of candidate.requirements) {
+        const requirement = requirementSchema.parse(resolveExact(linked.requirement))
+        if (requirement.productId !== candidate.productId || requirement.key !== linked.key || requirement.state === "rejected") {
+          throw new Error(`Import Design Requirements ${candidate.id} exact Requirement link is invalid`)
+        }
+        for (const [kind, values] of Object.entries(linked.targets) as [keyof typeof targetSets, string[]][]) {
+          if (values.some((value) => !targetSets[kind].has(value))) {
+            throw new Error(`Import Design Requirements ${candidate.id} contains an unresolved ${kind} target`)
+          }
+        }
+        for (const workItemReference of linked.backlog.workItems) {
+          const workItem = workItemSchema.parse(resolveExact(workItemReference))
+          const change = changesById.get(workItem.changeId)
+          if (workItem.productId !== candidate.productId || change?.initiativeId !== candidate.initiativeId) {
+            throw new Error(`Import Design Requirements ${candidate.id} Work Item is outside its exact Initiative backlog`)
+          }
         }
       }
     }
@@ -7063,6 +7171,10 @@ export class ProductStudioService {
         /^screen-state-inventory-history\/screen-state-inventory-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "screen-state-inventory-candidate"
     }
+    if (/^design-requirements\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-requirements-history\/design-requirements-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "design-requirements-candidate"
+    }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "stakeholder-role-model"
@@ -7211,6 +7323,10 @@ export class ProductStudioService {
     if (/^screen-state-inventories\/[0-9a-f-]+\.json$/i.test(path) ||
         /^screen-state-inventory-history\/screen-state-inventory-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return screenStateInventorySchema
+    }
+    if (/^design-requirements\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-requirements-history\/design-requirements-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return designRequirementsSchema
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {

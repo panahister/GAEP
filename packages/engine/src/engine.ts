@@ -97,6 +97,7 @@ import { DesignPersonaRoleModelService } from "./design-persona-role-model.js"
 import { UserJourneyModelService } from "./user-journey-model.js"
 import { InformationArchitectureModelService } from "./information-architecture-model.js"
 import { ScreenStateInventoryService } from "./screen-state-inventory.js"
+import { DesignRequirementsService } from "./design-requirements.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -283,6 +284,7 @@ export class GaepEngine {
   readonly userJourneyModel: UserJourneyModelService
   readonly informationArchitectureModel: InformationArchitectureModelService
   readonly screenStateInventory: ScreenStateInventoryService
+  readonly designRequirements: DesignRequirementsService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -547,6 +549,15 @@ export class GaepEngine {
       this.sourceGovernance,
       this.informationArchitectureModel,
     )
+    this.designRequirements = new DesignRequirementsService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      this.businessUnderstanding,
+      this.screenStateInventory,
+      this.productStudio,
+    )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
@@ -640,7 +651,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
@@ -669,6 +680,7 @@ export class GaepEngine {
         this.userJourneyModel.healthIssues(),
         this.informationArchitectureModel.healthIssues(),
         this.screenStateInventory.healthIssues(),
+        this.designRequirements.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,
@@ -699,6 +711,7 @@ export class GaepEngine {
         ...userJourneyIssues,
         ...informationArchitectureIssues,
         ...screenStateInventoryIssues,
+        ...designRequirementsIssues,
       ]
     } catch (error) {
       domainIssues = [{
