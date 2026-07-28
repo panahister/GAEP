@@ -24,12 +24,14 @@ import {
   type DesignPersonaRoleModelInput,
   type DesignPersonaRoleModel,
   type ExactSourceReference,
+  type FigmaMcpCapabilityDiscoveryInput,
   type Initiative,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
   type InformationArchitectureModelInput,
   type InformationArchitectureModel,
   type ManualFigmaExecutionPathInput,
+  type ManualFigmaExecutionPath,
   type OutcomeModel,
   type OutcomeModelInput,
   type Product,
@@ -1562,6 +1564,147 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function figmaMcpCapabilityDiscoveryInput(
+    manualPath: ManualFigmaExecutionPath,
+    overrides: Partial<FigmaMcpCapabilityDiscoveryInput> = {},
+  ): Promise<FigmaMcpCapabilityDiscoveryInput> {
+    const permissions = {
+      read: [{
+        key: "file-read",
+        accessClass: "read" as const,
+        requirementState: "required" as const,
+        grantState: "not-granted" as const,
+        rationale: "The advertised read operation declares a file-scoped read requirement without granting access.",
+        sources: [reference()],
+      }],
+      write: [{
+        key: "file-write",
+        accessClass: "write" as const,
+        requirementState: "required" as const,
+        grantState: "not-granted" as const,
+        rationale: "The advertised write operation declares a file-scoped write requirement without granting access.",
+        sources: [reference()],
+      }],
+    }
+    const limits = [{
+      key: "request-timeout",
+      kind: "timeout" as const,
+      state: "declared" as const,
+      value: 30,
+      unit: "seconds",
+      rationale: "The source-backed candidate adapter description declares a bounded request timeout.",
+      sources: [reference()],
+    }]
+    const tools = [
+      {
+        key: "read-file-metadata",
+        toolName: "read_file_metadata",
+        capabilityClass: "read-metadata" as const,
+        effectClass: "figma-read" as const,
+        availabilityState: "advertised" as const,
+        versionState: "known" as const,
+        version: "1.0",
+        schemaDigest: digest("1"),
+        permissions: permissions.read,
+        limits,
+        evidenceState: "human-reviewed" as const,
+        evidenceDigests: [digest("2")],
+        reviewedBy: { kind: "human" as const, id: actorId },
+        reviewedAt: "2026-07-28T18:45:00.000Z",
+        sources: [reference()],
+        limitations: ["Advertised read availability is not live Figma compatibility evidence"],
+      },
+      {
+        key: "write-design-node",
+        toolName: "write_design_node",
+        capabilityClass: "write-design" as const,
+        effectClass: "figma-write" as const,
+        availabilityState: "advertised" as const,
+        versionState: "known" as const,
+        version: "1.0",
+        schemaDigest: digest("3"),
+        permissions: permissions.write,
+        limits,
+        evidenceState: "human-reviewed" as const,
+        evidenceDigests: [digest("4")],
+        reviewedBy: { kind: "human" as const, id: actorId },
+        reviewedAt: "2026-07-28T18:45:00.000Z",
+        sources: [reference()],
+        limitations: ["Advertised write capability grants no permission, write authority, or action authority"],
+      },
+    ]
+    const catalogDigest = canonicalDigest(tools.map((tool) => ({
+      key: tool.key,
+      toolName: tool.toolName,
+      capabilityClass: tool.capabilityClass,
+      effectClass: tool.effectClass,
+      availabilityState: tool.availabilityState,
+      versionState: tool.versionState,
+      version: tool.version,
+      schemaDigest: tool.schemaDigest,
+      permissions: tool.permissions,
+      limits: tool.limits,
+    })))
+    return {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: "internal",
+      title: "Customer portal Figma MCP Capability Discovery candidate",
+      designApplicability: {
+        recordId: applicability.id,
+        revision: applicability.revision,
+        digest: canonicalDigest(applicability),
+        membershipDigest: applicability.membershipDigest,
+      },
+      manualFigmaExecutionPath: {
+        recordId: manualPath.id,
+        revision: manualPath.revision,
+        digest: canonicalDigest(manualPath),
+        membershipDigest: manualPath.membershipDigest,
+      },
+      adapter: {
+        key: "figma-mcp",
+        kind: "figma-mcp",
+        displayName: "Candidate Figma MCP adapter",
+        transportClass: "local-process",
+        installationState: "observed",
+        discoveryInterfaceState: "advertised",
+        adapterVersionState: "known",
+        adapterVersion: "1.2.3",
+        protocolVersionState: "known",
+        protocolVersion: "2026-07",
+        sources: [reference()],
+        limitations: ["The source-backed observation does not prove a live Figma connection"],
+      },
+      observation: {
+        state: "human-reviewed",
+        catalogDigest,
+        observedAt: "2026-07-28T18:40:00.000Z",
+        reviewedBy: { kind: "human", id: actorId },
+        reviewedAt: "2026-07-28T18:45:00.000Z",
+      },
+      tools,
+      catalogState: "candidate-observation-complete",
+      permissionModelState: "candidate-separated",
+      limitCatalogState: "candidate-complete",
+      versionCatalogState: "candidate-complete",
+      ownership: { state: "assigned-candidate", owner: { kind: "role", id: "platform-integration-owner" } },
+      unresolvedQuestions: [],
+      limitations: ["No Figma request, credential access, permission grant, or compatibility test was performed"],
+      reviewState: "ready-for-human-review",
+      figmaConnectionState: "not-connected",
+      figmaRequestState: "not-sent",
+      credentialState: "not-requested",
+      permissionGrantState: "not-granted",
+      figmaWriteAuthorityState: "not-granted",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -2980,6 +3123,215 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "manual-figma-execution-path.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, and revises source-backed Figma MCP capability observations without connection, credentials, grants, or write authority", async () => {
+    const { inventory, requirement, requirements, designSystem, accessibility, responsive } =
+      await createManualFigmaExecutionPathPrerequisites()
+    const manualPath = await engine.manualFigmaExecutionPath.create(
+      await manualFigmaExecutionPathInput(
+        inventory, requirement, requirements, designSystem, accessibility, responsive,
+      ),
+      actorId,
+    )
+    const candidate = await engine.figmaMcpCapabilityDiscovery.create(
+      await figmaMcpCapabilityDiscoveryInput(manualPath),
+      actorId,
+    )
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      adapter: {
+        kind: "figma-mcp",
+        installationState: "observed",
+        discoveryInterfaceState: "advertised",
+        adapterVersionState: "known",
+        protocolVersionState: "known",
+      },
+      tools: [
+        {
+          key: "read-file-metadata",
+          effectClass: "figma-read",
+          availabilityState: "advertised",
+          permissions: [{ accessClass: "read", grantState: "not-granted" }],
+        },
+        {
+          key: "write-design-node",
+          effectClass: "figma-write",
+          availabilityState: "advertised",
+          permissions: [{ accessClass: "write", grantState: "not-granted" }],
+        },
+      ],
+      figmaConnectionState: "not-connected",
+      figmaRequestState: "not-sent",
+      credentialState: "not-requested",
+      permissionGrantState: "not-granted",
+      figmaWriteAuthorityState: "not-granted",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+      authorityBoundary: expect.stringContaining("does-not-connect-to-or-call-figma"),
+    })
+    expect(await engine.figmaMcpCapabilityDiscovery.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      toolCount: 2,
+      advertisedToolCount: 2,
+      unavailableToolCount: 0,
+      unknownAvailabilityCount: 0,
+      readToolCount: 1,
+      writeToolCount: 1,
+      unknownEffectCount: 0,
+      notAssessedToolCount: 0,
+      sourceRecordedToolCount: 0,
+      humanReviewedToolCount: 2,
+      unresolvedPermissionCount: 0,
+      unresolvedLimitCount: 0,
+      unresolvedVersionCount: 0,
+      unresolvedOwnershipCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      catalogState: "candidate-observation-complete",
+      permissionModelState: "candidate-separated",
+      limitCatalogState: "candidate-complete",
+      versionCatalogState: "candidate-complete",
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.figmaMcpCapabilityDiscovery.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        toolCount: 2,
+        advertisedToolCount: 2,
+        readToolCount: 1,
+        writeToolCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-tool-names-schemas-permissions-limits-versions"),
+      authorityBoundary: expect.stringContaining("does-not-connect-to-or-call-figma"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("read_file_metadata")
+    expect(JSON.stringify(projection)).not.toContain("file-write")
+    expect(JSON.stringify(projection)).not.toContain("1.2.3")
+
+    const revisedInput = await figmaMcpCapabilityDiscoveryInput(manualPath, {
+      limitations: [
+        "No Figma request, credential access, permission grant, or compatibility test was performed",
+        "The candidate observation remains subject to independent supported-host and live-adapter validation",
+      ].sort((left, right) => left.localeCompare(right)),
+    })
+    const revised = await engine.figmaMcpCapabilityDiscovery.revise(
+      candidate.id, candidate.revision, revisedInput, actorId,
+    )
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.figmaMcpCapabilityDiscovery.listHistory(candidate.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `figma-mcp-capability-discoveries/${candidate.id}.json`,
+      `figma-mcp-capability-discovery-history/figma-mcp-capability-discovery-${candidate.id}-r1.json`,
+      `figma-mcp-capability-discovery-history/figma-mcp-capability-discovery-${candidate.id}-r2.json`,
+    ]))
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "figma-mcp-capability-discovery.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        designApplicability: revised.designApplicability,
+        manualFigmaExecutionPath: revised.manualFigmaExecutionPath,
+        adapterKey: "figma-mcp",
+        adapterKind: "figma-mcp",
+        transportClass: "local-process",
+        installationState: "observed",
+        discoveryInterfaceState: "advertised",
+        adapterVersionState: "known",
+        protocolVersionState: "known",
+        observationState: "human-reviewed",
+        toolCount: 2,
+        catalogState: "candidate-observation-complete",
+        permissionModelState: "candidate-separated",
+        limitCatalogState: "candidate-complete",
+        versionCatalogState: "candidate-complete",
+        ownershipState: "assigned-candidate",
+        reviewState: "ready-for-human-review",
+        figmaConnectionState: "not-connected",
+        figmaRequestState: "not-sent",
+        credentialState: "not-requested",
+        permissionGrantState: "not-granted",
+        figmaWriteAuthorityState: "not-granted",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-granted",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+    expect(JSON.stringify(events.at(-1))).not.toContain("read_file_metadata")
+    expect(JSON.stringify(events.at(-1))).not.toContain("file-write")
+  })
+
+  it("fails Figma MCP capability discovery closed on stale bindings, forged catalogs, mixed permissions, or changed upstream records", async () => {
+    const { inventory, requirement, requirements, designSystem, accessibility, responsive } =
+      await createManualFigmaExecutionPathPrerequisites()
+    const manualPath = await engine.manualFigmaExecutionPath.create(
+      await manualFigmaExecutionPathInput(
+        inventory, requirement, requirements, designSystem, accessibility, responsive,
+      ),
+      actorId,
+    )
+
+    const staleManual = await figmaMcpCapabilityDiscoveryInput(manualPath)
+    staleManual.manualFigmaExecutionPath.digest = digest("f")
+    await expect(engine.figmaMcpCapabilityDiscovery.create(staleManual, actorId))
+      .rejects.toThrow("exact current manualFigmaExecutionPath")
+
+    const forgedCatalog = await figmaMcpCapabilityDiscoveryInput(manualPath)
+    forgedCatalog.observation.catalogDigest = digest("e")
+    await expect(engine.figmaMcpCapabilityDiscovery.create(forgedCatalog, actorId))
+      .rejects.toThrow("catalog digest must bind")
+
+    const mixedPermission = await figmaMcpCapabilityDiscoveryInput(manualPath)
+    mixedPermission.tools[0]!.permissions = mixedPermission.tools[1]!.permissions
+    await expect(engine.figmaMcpCapabilityDiscovery.create(mixedPermission, actorId))
+      .rejects.toThrow("read tools cannot declare write permission")
+
+    const candidate = await engine.figmaMcpCapabilityDiscovery.create(
+      await figmaMcpCapabilityDiscoveryInput(manualPath), actorId,
+    )
+    const revisedManualInput = await manualFigmaExecutionPathInput(
+      inventory, requirement, requirements, designSystem, accessibility, responsive,
+      { limitations: [
+        "Figma connection, execution, returned-design review, approval, baseline, readiness, implementation, and action authority remain not established",
+        "The manual path changed after the capability observation was recorded",
+      ].sort((left, right) => left.localeCompare(right)) },
+    )
+    await engine.manualFigmaExecutionPath.revise(manualPath.id, manualPath.revision, revisedManualInput, actorId)
+    expect(await engine.figmaMcpCapabilityDiscovery.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "figma-mcp-capability-discovery.binding-review-required",
       severity: "warning",
     }))
   })

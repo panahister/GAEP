@@ -21,6 +21,7 @@ import {
   accessibilityDesignRulesSchema,
   responsiveMultiPlatformTargetsSchema,
   manualFigmaExecutionPathSchema,
+  figmaMcpCapabilityDiscoverySchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -98,6 +99,7 @@ import {
   type AccessibilityDesignRules,
   type ResponsiveMultiPlatformTargets,
   type ManualFigmaExecutionPath,
+  type FigmaMcpCapabilityDiscovery,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2269,6 +2271,16 @@ export class ProductStudioService {
       /^manual-figma-execution-path-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       manualFigmaExecutionPathSchema,
     )
+    const figmaMcpCapabilityDiscoveries = await this.listRecords(
+      "figma-mcp-capability-discoveries",
+      /^[0-9a-f-]+\.json$/i,
+      figmaMcpCapabilityDiscoverySchema,
+    )
+    const figmaMcpCapabilityDiscoveryHistory = await this.listRecords(
+      "figma-mcp-capability-discovery-history",
+      /^figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      figmaMcpCapabilityDiscoverySchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2353,6 +2365,8 @@ export class ProductStudioService {
       ...responsiveMultiPlatformTargetsHistory,
       ...manualFigmaExecutionPaths,
       ...manualFigmaExecutionPathHistory,
+      ...figmaMcpCapabilityDiscoveries,
+      ...figmaMcpCapabilityDiscoveryHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2395,6 +2409,7 @@ export class ProductStudioService {
           accessibilityDesignRules.find((record) => record.id === id)?.informationClassification ??
           responsiveMultiPlatformTargets.find((record) => record.id === id)?.informationClassification ??
           manualFigmaExecutionPaths.find((record) => record.id === id)?.informationClassification ??
+          figmaMcpCapabilityDiscoveries.find((record) => record.id === id)?.informationClassification ??
           portableDesignSnapshots.find((record) => record.bundleId === id)?.classification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
@@ -2661,6 +2676,17 @@ export class ProductStudioService {
       (record) => `manual-figma-execution-path-history/manual-figma-execution-path-${record.id}-r${record.revision}.json`,
     )
     append(
+      "figma-mcp-capability-discoveries",
+      "figma-mcp-capability-discovery-candidate",
+      figmaMcpCapabilityDiscoveries,
+    )
+    append(
+      "figma-mcp-capability-discovery-history",
+      "figma-mcp-capability-discovery-candidate",
+      figmaMcpCapabilityDiscoveryHistory,
+      (record) => `figma-mcp-capability-discovery-history/figma-mcp-capability-discovery-${record.id}-r${record.revision}.json`,
+    )
+    append(
       "candidates",
       "portable-design-snapshot",
       portableDesignSnapshots,
@@ -2752,6 +2778,7 @@ export class ProductStudioService {
           ...accessibilityDesignRules.map((record) => record.informationClassification),
           ...responsiveMultiPlatformTargets.map((record) => record.informationClassification),
           ...manualFigmaExecutionPaths.map((record) => record.informationClassification),
+          ...figmaMcpCapabilityDiscoveries.map((record) => record.informationClassification),
           ...portableDesignSnapshots.map((record) => record.classification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
@@ -3117,6 +3144,14 @@ export class ProductStudioService {
           `manual-figma-execution-path-history/manual-figma-execution-path-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Manual Figma Execution Path history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("figma-mcp-capability-discovery-history/")) {
+        const record = validated as FigmaMcpCapabilityDiscovery
+        const expectedHistoryPath =
+          `figma-mcp-capability-discovery-history/figma-mcp-capability-discovery-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Figma MCP Capability Discovery history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4251,7 +4286,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4283,7 +4318,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -6987,7 +7022,7 @@ export class ProductStudioService {
     const manualFigmaExecutionPathHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("manual-figma-execution-path-history/"))
       .map(([, record]) => manualFigmaExecutionPathSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactManualFigmaExecutionPaths = validateVersionedBusinessRecords(
       manualFigmaExecutionPaths, manualFigmaExecutionPathHistory, "Manual Figma Execution Path",
     )
     for (const candidate of [...manualFigmaExecutionPaths, ...manualFigmaExecutionPathHistory]) {
@@ -7110,6 +7145,105 @@ export class ProductStudioService {
       if (canonicalDigest(requirementKeys) !==
           canonicalDigest(candidate.requirementCoverage.map((entry) => entry.requirementKey))) {
         throw new Error(`Import Manual Figma Execution Path ${candidate.id} does not cover every exact current Design Requirement`)
+      }
+    }
+
+    const figmaMcpCapabilityDiscoveries = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("figma-mcp-capability-discoveries/"))
+      .map(([, record]) => figmaMcpCapabilityDiscoverySchema.parse(record))
+    const figmaMcpCapabilityDiscoveryHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("figma-mcp-capability-discovery-history/"))
+      .map(([, record]) => figmaMcpCapabilityDiscoverySchema.parse(record))
+    validateVersionedBusinessRecords(
+      figmaMcpCapabilityDiscoveries,
+      figmaMcpCapabilityDiscoveryHistory,
+      "Figma MCP Capability Discovery",
+    )
+    for (const candidate of [...figmaMcpCapabilityDiscoveries, ...figmaMcpCapabilityDiscoveryHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        designApplicability: candidate.designApplicability,
+        manualFigmaExecutionPath: candidate.manualFigmaExecutionPath,
+        adapter: candidate.adapter,
+        observation: candidate.observation,
+        tools: candidate.tools,
+        catalogState: candidate.catalogState,
+        permissionModelState: candidate.permissionModelState,
+        limitCatalogState: candidate.limitCatalogState,
+        versionCatalogState: candidate.versionCatalogState,
+        ownership: candidate.ownership,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        figmaConnectionState: candidate.figmaConnectionState,
+        figmaRequestState: candidate.figmaRequestState,
+        credentialState: candidate.credentialState,
+        permissionGrantState: candidate.permissionGrantState,
+        figmaWriteAuthorityState: candidate.figmaWriteAuthorityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Figma MCP Capability Discovery ${candidate.id} membership digest is invalid`)
+      }
+      const applicability = exactDesignApplicability.get(
+        `${candidate.designApplicability.recordId}:${candidate.designApplicability.revision}:${candidate.designApplicability.digest}`,
+      )
+      const manualPath = exactManualFigmaExecutionPaths.get(
+        `${candidate.manualFigmaExecutionPath.recordId}:${candidate.manualFigmaExecutionPath.revision}:${candidate.manualFigmaExecutionPath.digest}`,
+      )
+      if (!applicability || applicability.initiativeId !== candidate.initiativeId ||
+          applicability.membershipDigest !== candidate.designApplicability.membershipDigest ||
+          !manualPath || manualPath.initiativeId !== candidate.initiativeId ||
+          manualPath.membershipDigest !== candidate.manualFigmaExecutionPath.membershipDigest) {
+        throw new Error(`Import Figma MCP Capability Discovery ${candidate.id} has an unresolved exact governed binding`)
+      }
+      const hasMaterialFigmaScope = applicability.scopes.some((scope) => {
+        const figma = scope.decisions.find((decision) => decision.aspect === "figma")
+        return figma && [
+          "already-satisfied",
+          "conditionally-required",
+          "optional",
+          "recommended",
+          "required",
+          "reused",
+        ].includes(figma.status) &&
+          scope.designSource.modes.some((mode) => mode === "figma-design" || mode === "figma-make")
+      })
+      if (!hasMaterialFigmaScope) {
+        throw new Error(`Import Figma MCP Capability Discovery ${candidate.id} lacks exact material Figma applicability`)
+      }
+      if (candidate.permissionModelState === "candidate-separated") {
+        for (const tool of candidate.tools) {
+          if (tool.effectClass === "figma-read" && tool.permissions.some((entry) => entry.accessClass === "write")) {
+            throw new Error(`Import Figma MCP Capability Discovery ${candidate.id} mixes write permissions into a read tool`)
+          }
+          if (tool.effectClass === "figma-write" && !tool.permissions.some((entry) => entry.accessClass === "write")) {
+            throw new Error(`Import Figma MCP Capability Discovery ${candidate.id} has a write tool without an explicit write permission requirement`)
+          }
+        }
+      }
+      if (candidate.catalogState === "candidate-observation-complete") {
+        const observedCatalogDigest = canonicalDigest(candidate.tools.map((tool) => ({
+          key: tool.key,
+          toolName: tool.toolName,
+          capabilityClass: tool.capabilityClass,
+          effectClass: tool.effectClass,
+          availabilityState: tool.availabilityState,
+          versionState: tool.versionState,
+          version: tool.version,
+          schemaDigest: tool.schemaDigest,
+          permissions: tool.permissions,
+          limits: tool.limits,
+        })))
+        if (candidate.observation.catalogDigest !== observedCatalogDigest) {
+          throw new Error(`Import Figma MCP Capability Discovery ${candidate.id} observed catalog digest is invalid`)
+        }
       }
     }
 
@@ -7834,6 +7968,10 @@ export class ProductStudioService {
         /^manual-figma-execution-path-history\/manual-figma-execution-path-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "manual-figma-execution-path-candidate"
     }
+    if (/^figma-mcp-capability-discoveries\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^figma-mcp-capability-discovery-history\/figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "figma-mcp-capability-discovery-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -8003,6 +8141,10 @@ export class ProductStudioService {
     if (/^manual-figma-execution-paths\/[0-9a-f-]+\.json$/i.test(path) ||
         /^manual-figma-execution-path-history\/manual-figma-execution-path-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return manualFigmaExecutionPathSchema
+    }
+    if (/^figma-mcp-capability-discoveries\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^figma-mcp-capability-discovery-history\/figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return figmaMcpCapabilityDiscoverySchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||

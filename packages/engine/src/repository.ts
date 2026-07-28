@@ -31,6 +31,7 @@ import {
   accessibilityDesignRulesSchema,
   responsiveMultiPlatformTargetsSchema,
   manualFigmaExecutionPathSchema,
+  figmaMcpCapabilityDiscoverySchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -173,6 +174,8 @@ const directoryNames = [
   "responsive-multi-platform-targets-history",
   "manual-figma-execution-paths",
   "manual-figma-execution-path-history",
+  "figma-mcp-capability-discoveries",
+  "figma-mcp-capability-discovery-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -1000,6 +1003,8 @@ export class GaepRepository {
       ["responsive-multi-platform-targets-history", /^responsive-multi-platform-targets-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["manual-figma-execution-paths", /^[0-9a-f-]+\.json$/i],
       ["manual-figma-execution-path-history", /^manual-figma-execution-path-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["figma-mcp-capability-discoveries", /^[0-9a-f-]+\.json$/i],
+      ["figma-mcp-capability-discovery-history", /^figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1207,6 +1212,10 @@ export class GaepRepository {
     if (/^manual-figma-execution-paths\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^manual-figma-execution-path-history\/manual-figma-execution-path-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, manualFigmaExecutionPathSchema)
+    }
+    if (/^figma-mcp-capability-discoveries\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^figma-mcp-capability-discovery-history\/figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, figmaMcpCapabilityDiscoverySchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
