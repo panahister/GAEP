@@ -18,6 +18,7 @@ import {
   screenStateInventorySchema,
   designRequirementsSchema,
   designSystemTokenContractSchema,
+  accessibilityDesignRulesSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -92,6 +93,7 @@ import {
   type ScreenStateInventory,
   type DesignRequirements,
   type DesignSystemTokenContract,
+  type AccessibilityDesignRules,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2233,6 +2235,16 @@ export class ProductStudioService {
       /^design-system-token-contract-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       designSystemTokenContractSchema,
     )
+    const accessibilityDesignRules = await this.listRecords(
+      "accessibility-design-rules",
+      /^[0-9a-f-]+\.json$/i,
+      accessibilityDesignRulesSchema,
+    )
+    const accessibilityDesignRulesHistory = await this.listRecords(
+      "accessibility-design-rules-history",
+      /^accessibility-design-rules-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      accessibilityDesignRulesSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2311,6 +2323,8 @@ export class ProductStudioService {
       ...designRequirementsHistory,
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
+      ...accessibilityDesignRules,
+      ...accessibilityDesignRulesHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2350,6 +2364,7 @@ export class ProductStudioService {
           screenStateInventories.find((record) => record.id === id)?.informationClassification ??
           designRequirements.find((record) => record.id === id)?.informationClassification ??
           designSystemTokenContracts.find((record) => record.id === id)?.informationClassification ??
+          accessibilityDesignRules.find((record) => record.id === id)?.informationClassification ??
           portableDesignSnapshots.find((record) => record.bundleId === id)?.classification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
@@ -2594,6 +2609,13 @@ export class ProductStudioService {
       designSystemTokenContractHistory,
       (record) => `design-system-token-contracts-history/design-system-token-contract-${record.id}-r${record.revision}.json`,
     )
+    append("accessibility-design-rules", "accessibility-design-rules-candidate", accessibilityDesignRules)
+    append(
+      "accessibility-design-rules-history",
+      "accessibility-design-rules-candidate",
+      accessibilityDesignRulesHistory,
+      (record) => `accessibility-design-rules-history/accessibility-design-rules-${record.id}-r${record.revision}.json`,
+    )
     append(
       "candidates",
       "portable-design-snapshot",
@@ -2683,6 +2705,7 @@ export class ProductStudioService {
           ...screenStateInventories.map((record) => record.informationClassification),
           ...designRequirements.map((record) => record.informationClassification),
           ...designSystemTokenContracts.map((record) => record.informationClassification),
+          ...accessibilityDesignRules.map((record) => record.informationClassification),
           ...portableDesignSnapshots.map((record) => record.classification),
           ...stakeholderModels.map((record) => record.informationClassification),
           ...outcomeModels.map((record) => record.informationClassification),
@@ -3024,6 +3047,14 @@ export class ProductStudioService {
           `design-system-token-contracts-history/design-system-token-contract-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Design System and Token Contract history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("accessibility-design-rules-history/")) {
+        const record = validated as AccessibilityDesignRules
+        const expectedHistoryPath =
+          `accessibility-design-rules-history/accessibility-design-rules-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Accessibility Design Rules history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4158,7 +4189,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4190,7 +4221,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -6537,7 +6568,7 @@ export class ProductStudioService {
     const designSystemTokenContractHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("design-system-token-contracts-history/"))
       .map(([, record]) => designSystemTokenContractSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactDesignSystemTokenContracts = validateVersionedBusinessRecords(
       designSystemTokenContracts, designSystemTokenContractHistory, "Design System and Token Contract",
     )
     for (const candidate of [...designSystemTokenContracts, ...designSystemTokenContractHistory]) {
@@ -6661,6 +6692,106 @@ export class ProductStudioService {
             throw new Error(`Import Design System and Token Contract ${candidate.id} imported Component binding is unresolved`)
           }
         }
+      }
+    }
+
+    const accessibilityDesignRules = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("accessibility-design-rules/"))
+      .map(([, record]) => accessibilityDesignRulesSchema.parse(record))
+    const accessibilityDesignRulesHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("accessibility-design-rules-history/"))
+      .map(([, record]) => accessibilityDesignRulesSchema.parse(record))
+    validateVersionedBusinessRecords(
+      accessibilityDesignRules, accessibilityDesignRulesHistory, "Accessibility Design Rules",
+    )
+    for (const candidate of [...accessibilityDesignRules, ...accessibilityDesignRulesHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        screenStateInventory: candidate.screenStateInventory,
+        designRequirements: candidate.designRequirements,
+        designSystemTokenContract: candidate.designSystemTokenContract,
+        targets: candidate.targets,
+        rules: candidate.rules,
+        checks: candidate.checks,
+        requirementCoverage: candidate.requirementCoverage,
+        catalogCompletenessState: candidate.catalogCompletenessState,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        accessibilityConformanceState: candidate.accessibilityConformanceState,
+        ruleValidityState: candidate.ruleValidityState,
+        legalComplianceState: candidate.legalComplianceState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Accessibility Design Rules ${candidate.id} membership digest is invalid`)
+      }
+      const inventory = exactScreenStateInventories.get(
+        `${candidate.screenStateInventory.recordId}:${candidate.screenStateInventory.revision}:${candidate.screenStateInventory.digest}`,
+      )
+      const requirements = exactDesignRequirements.get(
+        `${candidate.designRequirements.recordId}:${candidate.designRequirements.revision}:${candidate.designRequirements.digest}`,
+      )
+      const designSystem = exactDesignSystemTokenContracts.get(
+        `${candidate.designSystemTokenContract.recordId}:${candidate.designSystemTokenContract.revision}:${candidate.designSystemTokenContract.digest}`,
+      )
+      if (!inventory || inventory.initiativeId !== candidate.initiativeId ||
+          inventory.membershipDigest !== candidate.screenStateInventory.membershipDigest) {
+        throw new Error(`Import Accessibility Design Rules ${candidate.id} exact Screen and State Inventory binding is unresolved`)
+      }
+      if (!requirements || requirements.initiativeId !== candidate.initiativeId ||
+          requirements.membershipDigest !== candidate.designRequirements.membershipDigest) {
+        throw new Error(`Import Accessibility Design Rules ${candidate.id} exact Design Requirements binding is unresolved`)
+      }
+      if (!designSystem || designSystem.initiativeId !== candidate.initiativeId ||
+          designSystem.membershipDigest !== candidate.designSystemTokenContract.membershipDigest) {
+        throw new Error(`Import Accessibility Design Rules ${candidate.id} exact Design System and Token Contract binding is unresolved`)
+      }
+      const requirementKeys = requirements.requirements.map((entry) => entry.key).sort((left, right) => left.localeCompare(right))
+      if (canonicalDigest(requirementKeys) !== canonicalDigest(candidate.requirementCoverage.map((entry) => entry.requirementKey))) {
+        throw new Error(`Import Accessibility Design Rules ${candidate.id} does not cover every exact current Design Requirement`)
+      }
+      const catalogs = {
+        platform: new Set(inventory.platforms.filter((entry) => entry.supportState === "targeted").map((entry) => entry.key)),
+        screen: new Set(inventory.screens.map((entry) => entry.key)),
+        state: new Set(inventory.states.map((entry) => entry.key)),
+        "design-system": new Set(designSystem.designSystems.map((entry) => entry.key)),
+        token: new Set(designSystem.tokens.map((entry) => entry.path)),
+        variable: new Set(designSystem.variables.map((entry) => entry.key)),
+        component: new Set(designSystem.components.map((entry) => entry.key)),
+      }
+      const requirementKeySet = new Set(requirementKeys)
+      for (const target of candidate.targets) {
+        if (!catalogs[target.kind].has(target.referenceKey) ||
+            target.platformKeys.some((key) => !catalogs.platform.has(key)) ||
+            target.screenKeys.some((key) => !catalogs.screen.has(key)) ||
+            target.stateKeys.some((key) => !catalogs.state.has(key)) ||
+            target.requirementKeys.some((key) => !requirementKeySet.has(key))) {
+          throw new Error(`Import Accessibility Design Rules ${candidate.id} has an unresolved governed target`)
+        }
+      }
+      const coverageByRequirement = new Map(candidate.requirementCoverage.map((entry) => [entry.requirementKey, entry]))
+      const ruleByKey = new Map(candidate.rules.map((entry) => [entry.key, entry]))
+      for (const rule of candidate.rules) {
+        if (rule.requirementKeys.some((key) => !coverageByRequirement.get(key)?.ruleKeys.includes(rule.key))) {
+          throw new Error(`Import Accessibility Design Rules ${candidate.id} rule coverage is not reciprocal`)
+        }
+      }
+      for (const coverage of candidate.requirementCoverage) {
+        if (coverage.ruleKeys.some((key) => !ruleByKey.get(key)?.requirementKeys.includes(coverage.requirementKey))) {
+          throw new Error(`Import Accessibility Design Rules ${candidate.id} Requirement coverage is not reciprocal`)
+        }
+      }
+      const linkedTargets = new Set(candidate.rules.flatMap((entry) => entry.targetKeys))
+      if (candidate.catalogCompletenessState === "candidate-complete" &&
+          candidate.targets.some((target) => !linkedTargets.has(target.key))) {
+        throw new Error(`Import Accessibility Design Rules ${candidate.id} candidate-complete catalog has an unrepresented target`)
       }
     }
 
@@ -7373,6 +7504,10 @@ export class ProductStudioService {
         /^design-system-token-contracts-history\/design-system-token-contract-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "design-system-token-contract-candidate"
     }
+    if (/^accessibility-design-rules\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^accessibility-design-rules-history\/accessibility-design-rules-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "accessibility-design-rules-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -7530,6 +7665,10 @@ export class ProductStudioService {
     if (/^design-system-token-contracts\/[0-9a-f-]+\.json$/i.test(path) ||
         /^design-system-token-contracts-history\/design-system-token-contract-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return designSystemTokenContractSchema
+    }
+    if (/^accessibility-design-rules\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^accessibility-design-rules-history\/accessibility-design-rules-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return accessibilityDesignRulesSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||

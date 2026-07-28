@@ -1600,6 +1600,52 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "accessibility-design-rules-read-empty",
+      protocolVersion: 2,
+      method: "design.accessibilityRules.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "accessibility-design-rules-assess-empty",
+      protocolVersion: 2,
+      method: "design.accessibilityRules.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      targetCount: 0,
+      ruleCount: 0,
+      checkCount: 0,
+      applicableRuleCount: 0,
+      notApplicableRuleCount: 0,
+      unresolvedRuleCount: 0,
+      notAssessedCheckCount: 0,
+      evidenceRecordedCheckCount: 0,
+      humanReviewedCheckCount: 0,
+      contradictedCheckCount: 0,
+      representedRequirementCount: 0,
+      unresolvedRequirementCount: 0,
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-accessibility-conformance"),
+    })
+    const accessibilityDesignRulesProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "accessibility-design-rules-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.accessibilityRules.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: accessibilityDesignRulesSnapshotDigest,
+      ...accessibilityDesignRulesProjectionBody
+    } = accessibilityDesignRulesProjection
+    expect(accessibilityDesignRulesSnapshotDigest).toBe(canonicalDigest(accessibilityDesignRulesProjectionBody))
+    expect(accessibilityDesignRulesProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-rule-procedures-evidence-requirement-source-design-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-accessibility-conformance"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1674,6 +1720,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "design-system-token-contract-v1-block",
       method: "design.systemTokenContract.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "accessibility-design-rules-v1-block",
+      method: "design.accessibilityRules.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

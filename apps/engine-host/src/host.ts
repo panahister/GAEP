@@ -244,6 +244,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.systemTokenContract.revise",
   "design.systemTokenContract.assess",
   "design.systemTokenContract.snapshot",
+  "design.accessibilityRules.read",
+  "design.accessibilityRules.create",
+  "design.accessibilityRules.revise",
+  "design.accessibilityRules.assess",
+  "design.accessibilityRules.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1552,6 +1557,24 @@ export class EngineHost {
         return this.engine.designSystemTokenContract.assess(request.params.initiativeId)
       case "design.systemTokenContract.snapshot":
         return this.engine.designSystemTokenContract.project(request.params.initiativeId)
+      case "design.accessibilityRules.read":
+        return await this.engine.accessibilityDesignRules.readCurrent(request.params.initiativeId) ?? null
+      case "design.accessibilityRules.create":
+        return this.engine.accessibilityDesignRules.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.accessibilityRules.revise":
+        return this.engine.accessibilityDesignRules.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.accessibilityRules.assess":
+        return this.engine.accessibilityDesignRules.assess(request.params.initiativeId)
+      case "design.accessibilityRules.snapshot":
+        return this.engine.accessibilityDesignRules.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

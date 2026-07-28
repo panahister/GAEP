@@ -55,6 +55,7 @@ import { informationArchitectureModelInputSchema } from "./information-architect
 import { screenStateInventoryInputSchema } from "./screen-state-inventory.js"
 import { designRequirementsInputSchema } from "./design-requirements.js"
 import { designSystemTokenContractInputSchema } from "./design-system-token-contract.js"
+import { accessibilityDesignRulesInputSchema } from "./accessibility-design-rules.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -591,6 +592,18 @@ export const hostDesignSystemTokenContractReviseParamsSchema = z.object({
   record: designSystemTokenContractInputSchema,
 }).strict()
 
+export const hostAccessibilityDesignRulesCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: accessibilityDesignRulesInputSchema,
+}).strict()
+
+export const hostAccessibilityDesignRulesReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: accessibilityDesignRulesInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -793,6 +806,11 @@ export const hostMethodSchema = z.enum([
   "design.systemTokenContract.revise",
   "design.systemTokenContract.assess",
   "design.systemTokenContract.snapshot",
+  "design.accessibilityRules.read",
+  "design.accessibilityRules.create",
+  "design.accessibilityRules.revise",
+  "design.accessibilityRules.assess",
+  "design.accessibilityRules.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1004,6 +1022,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.systemTokenContract.revise", hostDesignSystemTokenContractReviseParamsSchema),
   requestVariant("design.systemTokenContract.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.systemTokenContract.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.accessibilityRules.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.accessibilityRules.create", hostAccessibilityDesignRulesCreateParamsSchema),
+  requestVariant("design.accessibilityRules.revise", hostAccessibilityDesignRulesReviseParamsSchema),
+  requestVariant("design.accessibilityRules.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.accessibilityRules.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
