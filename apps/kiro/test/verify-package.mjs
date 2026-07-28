@@ -145,7 +145,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 49 ||
+  if (!Array.isArray(commands) || commands.length !== 50 ||
       new Set(commands.map((command) => command.command)).size !== commands.length ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1Summary") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1ChangeImpact") ||
@@ -156,8 +156,9 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.informationArchitecture.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.screenStateInventory.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designRequirements.inspect") ||
-      !commands.some((command) => command.command === "gaepKiro.designSystemTokenContract.inspect")) {
-    fail("package command inventory must contain 49 unique commands including all three Phase 1 dashboards and governed Design phase candidates through Design System and Token Contract")
+      !commands.some((command) => command.command === "gaepKiro.designSystemTokenContract.inspect") ||
+      !commands.some((command) => command.command === "gaepKiro.accessibilityDesignRules.inspect")) {
+    fail("package command inventory must contain 50 unique commands including all three Phase 1 dashboards and governed Design phase candidates through Accessibility Design Rules")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))
