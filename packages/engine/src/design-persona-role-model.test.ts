@@ -10,11 +10,13 @@ import {
   stakeholderCategoryValues,
   type BusinessUnderstanding,
   type BusinessUnderstandingInput,
+  type AccessibilityDesignRulesInput,
   type DesignApplicability,
   type DesignApplicabilityInput,
   type DesignRequirementsInput,
   type DesignRequirements,
   type DesignSystemTokenContractInput,
+  type DesignSystemTokenContract,
   type DesignPersonaRoleModelInput,
   type DesignPersonaRoleModel,
   type ExactSourceReference,
@@ -1198,6 +1200,106 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function createAccessibilityDesignRulesPrerequisites() {
+    const { inventory, requirement, requirements } = await createDesignSystemTokenContractPrerequisites()
+    const designSystem = await engine.designSystemTokenContract.create(
+      await designSystemTokenContractInput(inventory, requirement, requirements), actorId,
+    )
+    return { inventory, requirement, requirements, designSystem }
+  }
+
+  async function accessibilityDesignRulesInput(
+    inventory: ScreenStateInventory,
+    requirement: Awaited<ReturnType<typeof engine.productStudio.readRequirement>>,
+    requirements: DesignRequirements,
+    designSystem: DesignSystemTokenContract,
+    overrides: Partial<AccessibilityDesignRulesInput> = {},
+  ): Promise<AccessibilityDesignRulesInput> {
+    const owner = { state: "assigned-candidate" as const, owner: { kind: "role" as const, id: "product-designer" } }
+    return {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: "internal",
+      title: "Customer portal Accessibility Design Rules candidate",
+      screenStateInventory: {
+        recordId: inventory.id,
+        revision: inventory.revision,
+        digest: canonicalDigest(inventory),
+        membershipDigest: inventory.membershipDigest,
+      },
+      designRequirements: {
+        recordId: requirements.id,
+        revision: requirements.revision,
+        digest: canonicalDigest(requirements),
+        membershipDigest: requirements.membershipDigest,
+      },
+      designSystemTokenContract: {
+        recordId: designSystem.id,
+        revision: designSystem.revision,
+        digest: canonicalDigest(designSystem),
+        membershipDigest: designSystem.membershipDigest,
+      },
+      targets: [{
+        key: "release-review-component",
+        kind: "component",
+        referenceKey: "release-review-card",
+        platformKeys: ["responsive-web"],
+        screenKeys: ["release-review"],
+        stateKeys: ["review-default"],
+        requirementKeys: [requirement.key],
+        ownership: owner,
+        sources: [reference()],
+        limitations: ["The governed target identity does not prove accessibility or implementation quality"],
+      }],
+      rules: [{
+        key: "keyboard-operation",
+        title: "Keyboard operation remains available",
+        principle: "operable",
+        applicability: "applicable",
+        impact: "major",
+        targetKeys: ["release-review-component"],
+        requirementKeys: [requirement.key],
+        checkKeys: ["keyboard-operation-review"],
+        standardReferences: [{ family: "wcag", version: "2.2", criterion: "2.1.1", level: "A" }],
+        ownership: owner,
+        rationale: "The primary release-review interaction requires a defined keyboard design check before accountable human review.",
+        sources: [reference()],
+      }],
+      checks: [{
+        key: "keyboard-operation-review",
+        ruleKey: "keyboard-operation",
+        targetKeys: ["release-review-component"],
+        method: "manual",
+        evidenceState: "human-reviewed",
+        observation: "evidence-supports",
+        evidenceDigests: [digest("a")],
+        reviewedBy: { kind: "human", id: actorId },
+        reviewedAt: "2026-07-28T14:00:00.000Z",
+        procedure: "Review the governed component design for keyboard reachability, visible focus, logical order, and non-pointer alternatives.",
+        sources: [reference()],
+      }],
+      requirementCoverage: [{
+        requirementKey: requirement.key,
+        state: "represented",
+        ruleKeys: ["keyboard-operation"],
+        rationale: "The exact current Design Requirement is represented by the candidate keyboard-operation accessibility rule.",
+        sources: [reference()],
+      }],
+      catalogCompletenessState: "candidate-complete",
+      unresolvedQuestions: [],
+      limitations: ["Accessibility conformance, rule and check validity, legal compliance, ownership authority, design approval, baseline, readiness, and implementation remain not established"],
+      reviewState: "ready-for-human-review",
+      accessibilityConformanceState: "not-established",
+      ruleValidityState: "not-established",
+      legalComplianceState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-established",
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -2092,6 +2194,151 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "design-system-token-contract.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, and revises exact Accessibility Design Rules without conformance, legal, ownership, approval, baseline, readiness, or action authority", async () => {
+    const { inventory, requirement, requirements, designSystem } = await createAccessibilityDesignRulesPrerequisites()
+    const candidate = await engine.accessibilityDesignRules.create(
+      await accessibilityDesignRulesInput(inventory, requirement, requirements, designSystem), actorId,
+    )
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      targets: [{ kind: "component", referenceKey: "release-review-card", ownership: { state: "assigned-candidate" } }],
+      rules: [{ applicability: "applicable", principle: "operable", impact: "major" }],
+      checks: [{ method: "manual", evidenceState: "human-reviewed", observation: "evidence-supports" }],
+      accessibilityConformanceState: "not-established",
+      ruleValidityState: "not-established",
+      legalComplianceState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-established",
+      authorityBoundary: expect.stringContaining("do-not-establish-accessibility-conformance"),
+    })
+    expect(await engine.accessibilityDesignRules.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      targetCount: 1,
+      ruleCount: 1,
+      checkCount: 1,
+      applicableRuleCount: 1,
+      notApplicableRuleCount: 0,
+      unresolvedRuleCount: 0,
+      notAssessedCheckCount: 0,
+      evidenceRecordedCheckCount: 0,
+      humanReviewedCheckCount: 1,
+      contradictedCheckCount: 0,
+      representedRequirementCount: 1,
+      unresolvedRequirementCount: 0,
+      unresolvedOwnershipCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      catalogCompletenessState: "candidate-complete",
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.accessibilityDesignRules.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        targetCount: 1,
+        ruleCount: 1,
+        checkCount: 1,
+        representedRequirementCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-rule-procedures-evidence-requirement-source-design-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-accessibility-conformance"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("keyboard-operation")
+    expect(JSON.stringify(projection)).not.toContain("release-review-card")
+
+    const revisedInput = await accessibilityDesignRulesInput(inventory, requirement, requirements, designSystem, {
+      limitations: [
+        "Accessibility conformance, rule and check validity, legal compliance, ownership authority, design approval, baseline, readiness, and implementation remain not established",
+        "The catalog remains subject to independent accountable human and assistive-technology validation",
+      ].sort(),
+    })
+    const revised = await engine.accessibilityDesignRules.revise(candidate.id, candidate.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.accessibilityDesignRules.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "accessibility-design-rules.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        screenStateInventory: revised.screenStateInventory,
+        designRequirements: revised.designRequirements,
+        designSystemTokenContract: revised.designSystemTokenContract,
+        targetCount: 1,
+        ruleCount: 1,
+        checkCount: 1,
+        catalogCompletenessState: "candidate-complete",
+        reviewState: "ready-for-human-review",
+        accessibilityConformanceState: "not-established",
+        ruleValidityState: "not-established",
+        legalComplianceState: "not-established",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-established",
+        checkValidityState: "not-established",
+        ownershipAuthorityState: "not-established",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("fails Accessibility Design Rules closed on stale bindings, unknown targets, or mismatched Requirement coverage", async () => {
+    const { inventory, requirement, requirements, designSystem } = await createAccessibilityDesignRulesPrerequisites()
+    const staleDesignSystem = await accessibilityDesignRulesInput(inventory, requirement, requirements, designSystem, {
+      designSystemTokenContract: {
+        recordId: designSystem.id,
+        revision: designSystem.revision,
+        digest: digest("f"),
+        membershipDigest: designSystem.membershipDigest,
+      },
+    })
+    await expect(engine.accessibilityDesignRules.create(staleDesignSystem, actorId)).rejects.toThrow("exact current Design System and Token Contract")
+
+    const unknownTarget = await accessibilityDesignRulesInput(inventory, requirement, requirements, designSystem)
+    unknownTarget.targets[0]!.referenceKey = "unknown-component"
+    await expect(engine.accessibilityDesignRules.create(unknownTarget, actorId)).rejects.toThrow("exact current governed")
+
+    const mismatchedCoverage = await accessibilityDesignRulesInput(inventory, requirement, requirements, designSystem)
+    mismatchedCoverage.rules[0]!.requirementKeys = []
+    await expect(engine.accessibilityDesignRules.create(mismatchedCoverage, actorId)).rejects.toThrow("reconcile to exact rule Requirement links")
+
+    const candidate = await engine.accessibilityDesignRules.create(
+      await accessibilityDesignRulesInput(inventory, requirement, requirements, designSystem), actorId,
+    )
+    const revisedDesignSystemInput = await designSystemTokenContractInput(inventory, requirement, requirements, {
+      limitations: [
+        "Design-system, token, variable, component, ownership, accessibility, approval, baseline, readiness, implementation, and action authority remain not established",
+        "The Design System and Token Contract changed after Accessibility Design Rules were created",
+      ].sort(),
+    })
+    await engine.designSystemTokenContract.revise(designSystem.id, designSystem.revision, revisedDesignSystemInput, actorId)
+    expect(await engine.accessibilityDesignRules.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "accessibility-design-rules.binding-review-required",
       severity: "warning",
     }))
   })
