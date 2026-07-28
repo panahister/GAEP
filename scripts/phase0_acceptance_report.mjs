@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260727T235831Z-phase-2-design-applicability-packages.json",
-  conformance: "evidence/ide-conformance/20260727T235831Z-phase-2-design-applicability.json",
+  packages: "evidence/local-packages/20260728T075736Z-phase-2-design-personas-roles-packages.json",
+  conformance: "evidence/ide-conformance/20260728T075736Z-phase-2-design-personas-roles.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability }) {
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    designApplicability
+    designPersonasRoles
+      ? {
+          id: "phase-2-design-personas-roles-closure",
+          state: "not-established",
+          basis: "the governed Design Personas and Roles candidate is implemented locally across the shared engine and four host projections; real Product research, persona validation, attributable human role-responsibility review, native-host interaction, design approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : designApplicability
       ? {
           id: "phase-2-design-applicability-closure",
           state: "not-established",
@@ -272,7 +278,10 @@ export async function buildPhase0AcceptanceReport({
   const designApplicability = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-applicability" && capability.state === "implemented"))
-  const gaps = knownGaps(inputs, { designApplicability })
+  const designPersonasRoles = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "design-personas-roles" && capability.state === "implemented"))
+  const gaps = knownGaps(inputs, { designApplicability, designPersonasRoles })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
     "gaep-claude-p0-p4-acceptance-receipt",
@@ -289,8 +298,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: designApplicability
+    phase: designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: designPersonasRoles
+      ? "phase-2-design-personas-roles-local"
+      : designApplicability
       ? "phase-2-design-applicability-local"
       : realisticReference
       ? "phase-1-realistic-reference-local"
@@ -334,7 +345,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: designApplicability
+    claimBoundary: designPersonasRoles
+      ? "This report binds the exact governed Design Personas and Roles candidate lifecycle, evidence-backed persona hypotheses, explicit design-role responsibilities, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not validate a persona, appoint a role, verify competence or authority, approve design, establish a Design Baseline, prove real Product research, grant implementation authority, or establish native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : designApplicability
       ? "This report binds the exact governed Design Applicability candidate lifecycle, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It records explicit UX, UI, design-work and Figma decisions and required depth without inferring not-applicable state. It is not an independent human design decision, design approval, Design Baseline, Figma integration, real Product validation, native-host acceptance, Product Owner acceptance, Product readiness, security approval, implementation authority, release authorization or deployment approval."
       : realisticReference
       ? "This report binds the exact Atlas Release Readiness realistic reference scenario to two independently reopened P0-P4 portable stores, 21 governed record kinds per provider, all 25 output classes, managed Run, readiness, handoff, audit and structural provider-comparison evidence. It is deterministic local evidence, not a real Product baseline, live-provider or native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
