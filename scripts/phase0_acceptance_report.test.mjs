@@ -70,8 +70,9 @@ function passingTestEvidence() {
 test("binds exact Phase 0 package, conformance, provider, host, example, test and gap truth", async () => {
   const report = await buildPhase0AcceptanceReport({ root, recordedAt, sourceCommit, testEvidence: passingTestEvidence() })
   assert.equal(report.verificationResult, "pass")
-  assert.equal(report.evidenceScope, "phase-1-realistic-reference-local")
-  assert.match(report.claimBoundary, /exact Atlas Release Readiness realistic reference scenario/u)
+  assert.equal(report.phase, "phase-2-ux-figma-loop")
+  assert.equal(report.evidenceScope, "phase-2-design-applicability-local")
+  assert.match(report.claimBoundary, /exact governed Design Applicability candidate lifecycle/u)
   assert.equal(report.reportingStatus, "current-local-evidence-bound")
   assert.equal(report.phaseGate, "incomplete")
   assert.equal(report.acceptance, "not-established")
@@ -83,6 +84,7 @@ test("binds exact Phase 0 package, conformance, provider, host, example, test an
   assert.equal(report.sources.length, 6)
   assert.equal(report.tests.length, 7)
   assert.equal(report.knownGaps.length, 6)
+  assert.equal(report.knownGaps.at(-1).id, "phase-2-design-applicability-closure")
   await verifyPhase0AcceptanceReportObject(report, { root })
 })
 
